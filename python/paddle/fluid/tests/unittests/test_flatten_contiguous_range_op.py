@@ -23,8 +23,6 @@ from op_test import OpTest
 
 class TestFlattenOp(OpTest):
     def setUp(self):
-        self.python_api = paddle.flatten
-        self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.start_axis = 0
         self.stop_axis = -1
@@ -37,10 +35,10 @@ class TestFlattenOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(no_check_set=["XShape"])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)

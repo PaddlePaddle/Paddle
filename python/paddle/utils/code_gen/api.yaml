@@ -514,15 +514,11 @@
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor
   infer_meta :
-    func : FlattenWithXShapeInferMeta
+    func : FlattenInferMeta
   kernel :
-    func : flatten_with_xshape
-    backend : x
-  inplace : (x -> out)
-  view : (x -> out)
-  backward : flatten_grad
+    func : flatten
 
 # flip
 - api : flip
