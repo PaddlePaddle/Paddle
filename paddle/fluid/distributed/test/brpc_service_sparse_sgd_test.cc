@@ -156,14 +156,14 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, 1);
+  _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto));
+      paddle::distributed::PSServerFactory::Create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
-  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
-  pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->Configure(server_proto, _ps_env, 0, empty_vec);
+  pserver_ptr_->Start(ip_, port_);
 }
 
 void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
@@ -172,17 +172,17 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
-  worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+      paddle::distributed::PSClientFactory::Create(worker_proto));
+  worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
 }
 
 void RunBrpcPushSparse() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // Srart Server
   std::thread server_thread(RunServer);
@@ -214,7 +214,7 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   LOG(INFO) << "Run pull_sparse_param";
-  auto pull_status = worker_ptr_->pull_sparse(
+  auto pull_status = worker_ptr_->PullSparse(
       fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
@@ -237,12 +237,12 @@ void RunBrpcPushSparse() {
         }
         closure->set_promise_value(ret);
       });
-  auto push_status = worker_ptr_->push_sparse_param(
+  auto push_status = worker_ptr_->PushSparseParam(
       0, fea_keys.data(), (const float**)fea_value_ptr.data(), fea_keys.size(),
       closure_push_param);
   push_status.wait();
 
-  auto pull_param_status = worker_ptr_->pull_sparse(
+  auto pull_param_status = worker_ptr_->PullSparse(
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_param_status.wait();
 
@@ -271,12 +271,12 @@ void RunBrpcPushSparse() {
   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
     push_g_vec.push_back(tensor->data<float>() + i * 10);
   }
-  auto push_grad_status = worker_ptr_->push_sparse_raw_gradient(
+  auto push_grad_status = worker_ptr_->PushSparseRawGradient(
       0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
       closure_push_grad);
   push_grad_status.wait();
 
-  auto pull_update_status = worker_ptr_->pull_sparse(
+  auto pull_update_status = worker_ptr_->PullSparse(
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
@@ -285,9 +285,9 @@ void RunBrpcPushSparse() {
   }
 
   LOG(INFO) << "Run stop_server";
-  worker_ptr_->stop_server();
+  worker_ptr_->StopServer();
   LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
   server_thread.join();
 }
 

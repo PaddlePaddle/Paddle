@@ -44,15 +44,15 @@ class SparseGeoTable : public CommonSparseTable {
   explicit SparseGeoTable() : CommonSparseTable() { geo_recorder = nullptr; }
   virtual ~SparseGeoTable() {}
 
-  virtual int32_t initialize_value();
+  virtual int32_t InitializeValue();
 
-  int32_t pull_geo_param(const uint32_t trainer_id, std::vector<float>* values,
-                         std::vector<uint64_t>* keys);
+  int32_t PullGeoParam(const uint32_t trainer_id, std::vector<float>* values,
+                       std::vector<uint64_t>* keys);
 
-  int32_t push_sparse(const uint64_t* keys, const float* values,
-                      size_t num) override;
+  int32_t PushSparse(const uint64_t* keys, const float* values,
+                     size_t num) override;
 
-  virtual int32_t initialize_recorder() {
+  virtual int32_t InitializeRecorder() {
     if (!geo_recorder) {
       auto trainers = _config.common().trainer_num();
       geo_recorder = std::make_shared<GeoRecorder>(trainers);
