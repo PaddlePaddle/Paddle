@@ -660,6 +660,12 @@
   kernel :
     func : square_grad
 
+- backward_api : stack_grad
+  forward : stack (Tensor[] x, int axis) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int axis)
+  output : Tensor[](x_grad)
+  invoke : stack_grad_impl(x, out_grad, axis)
+
 - backward_api : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)

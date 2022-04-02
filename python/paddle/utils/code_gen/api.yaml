@@ -1085,6 +1085,7 @@
     func : StackInferMeta
   kernel :
     func : stack
+  backward : stack_grad
 
 - api : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)

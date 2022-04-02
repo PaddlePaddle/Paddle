@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
@@ -118,6 +119,51 @@ std::vector<Tensor> split_impl(const Tensor& x,
                dense_outs);
 
   return out;
+}
+
+std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad,
+                                    int axis) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  Backend kernel_backend = kernel_key.backend();
+  DataLayout kernel_layout = kernel_key.layout();
+  DataType kernel_data_type = kernel_key.dtype();
+
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "stack_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "stack_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "stack_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
+
+  size_t out_number = x.size();
+  std::vector<Tensor> x_grad;
+  auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
+  std::vector<phi::MetaTensor> meta_x_grad;
+  meta_x_grad.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_x_grad_ptrs;
+  meta_x_grad_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_x_grad.push_back(dense_x_grad[i]);
+    meta_x_grad_ptrs.push_back(&meta_x_grad.back());
+  }
+
+  phi::StackGradInferMeta(
+      MakeMetaTensor(*dense_out_grad), axis, meta_x_grad_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    int axis,
+                                    std::vector<phi::DenseTensor*>);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *dense_out_grad, axis, dense_x_grad);
+
+  return x_grad;
 }
 
 }  // namespace experimental

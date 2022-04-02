@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace plat = paddle::platform;
@@ -131,4 +132,6 @@ REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
                   ops::StackGradOpMaker<paddle::framework::OpDesc>,
                   ops::StackGradOpMaker<paddle::imperative::OpBase>,
                   StackInferMetaFunctor);
-REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
+DECLARE_INFER_SHAPE_FUNCTOR(stack_grad, StackGradInferShapeFunctor,
+                            PD_INFER_META(phi::StackGradInferMeta));
+REGISTER_OPERATOR(stack_grad, ops::StackOpGrad, StackGradInferShapeFunctor);

@@ -133,7 +133,7 @@ class TestStackBF16Op(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
