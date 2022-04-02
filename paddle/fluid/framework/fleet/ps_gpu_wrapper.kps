@@ -13,18 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include <xpu/runtime.h>  // NOLINT
 #include <algorithm>
 #include <ctime>
 #include <memory>
 #include <numeric>
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-#include <xpu/runtime.h>  // NOLINT
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "xpu/kernel/cluster_header.h"  // NOLINT
 #include "xpu/kernel/debug.h"           // NOLINT
 #include "xpu/kernel/math.h"            // NOLINT
-
+#include "xpu/kernel/simd.h"
 
 namespace paddle {
 namespace framework {
@@ -161,24 +161,23 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
   }
 }
 
-
 PSGPUWrapper::~PSGPUWrapper() {
   delete HeterPs_;
 
-  xpu_free(optimizer_config::nonclk_coeff);
-  xpu_free(optimizer_config::clk_coeff);
-  xpu_free(optimizer_config::min_bound);
-  xpu_free(optimizer_config::max_bound);
-  xpu_free(optimizer_config::learning_rate);
-  xpu_free(optimizer_config::initial_g2sum);
-  xpu_freee(optimizer_config::initial_range);
+  xpu_free(reinterpret_cast<void*>(optimizer_config::nonclk_coeff));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::clk_coeff));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::min_bound));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::max_bound));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::learning_rate));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::initial_g2sum));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::initial_range));
 
-  xpu_free(optimizer_config::mf_create_thresholds);
-  xpu_free(optimizer_config::mf_learning_rate);
-  xpu_free(optimizer_config::mf_initial_g2sum);
-  xpu_free(optimizer_config::mf_initial_range);
-  xpu_free(optimizer_config::mf_min_bound);
-  xpu_free(optimizer_config::mf_max_bound);
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_create_thresholds));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_learning_rate));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_initial_g2sum));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_initial_range));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_min_bound));
+  xpu_free(reinterpret_cast<void*>(optimizer_config::mf_max_bound));
 }
 
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
@@ -233,7 +232,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                ->x_context()
                ->xpu_stream;
   auto slot_lengths_lod = slot_lengths;
-  for (int i = 1; i < slot_lengths_lod.size(); i++) {
+  for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
 
@@ -263,7 +262,6 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                               batch_size, d_slot_vector);
   xpu_wait(stream);
 }
-
 
 void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
                                 float min_bound, float max_bound,
@@ -317,7 +315,7 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_max_bound),
              sizeof(float));
 
-  xpu_memcpy(optimizer_config::mf_create_thresholds, &mf_create_thresholds, ,
+  xpu_memcpy(optimizer_config::mf_create_thresholds, &mf_create_thresholds,
              sizeof(float), XPU_HOST_TO_DEVICE);
   xpu_memcpy(optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
              sizeof(float), XPU_HOST_TO_DEVICE);

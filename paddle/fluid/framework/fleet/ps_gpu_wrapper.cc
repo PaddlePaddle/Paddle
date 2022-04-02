@@ -31,6 +31,7 @@ limitations under the License. */
 #include <algorithm>
 #include <deque>
 
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 

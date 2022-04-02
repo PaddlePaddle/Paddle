@@ -18,17 +18,17 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
-#ifdef PADDLE_WITH_PSLIB
-#include "common_value.h"  // NOLINT
-#endif
+// #ifdef PADDLE_WITH_PSLIB
+// #include "common_value.h"  // NOLINT
+// #endif
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "thrust/pair.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "thrust/pair.h"
 #endif
 #if defined(__xpu__)
 // #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -38,8 +38,8 @@ limitations under the License. */
 #include "xpu/kernel/simd.h"
 #endif
 // #include "cudf/concurrent_unordered_map.cuh.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -87,8 +87,8 @@ class XPUCacheArray {
   }
 
  private:
-  long long capacity_;
-  long long size_;
+  long long capacity_;  // NOLINT
+  long long size_;      // NOLINT
   KeyType* keys;
   ValType* vals;
 };
@@ -144,7 +144,7 @@ class HashTable {
 
 #endif
 
-  // int size() { return container_->size(); }
+  int size() { return container_->size(); }
 
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
@@ -159,8 +159,8 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
-#elif defined(__xpu__)
-  __global_ptr__ XPUCacheArray<KeyType, ValType>* container_;
+#elif defined(PADDLE_WITH_XPU_KP)
+  XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};

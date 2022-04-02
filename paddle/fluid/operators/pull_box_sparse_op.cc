@@ -134,5 +134,5 @@ REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
 REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>);
 REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(pull_box_sparse, ops::PullBoxSparseXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(push_box_sparse, ops::PushBoxSparseXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(pull_box_sparse, ops::PullBoxSparseXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(push_box_sparse, ops::PushBoxSparseXPUKernel<float>);

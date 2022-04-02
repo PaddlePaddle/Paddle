@@ -30,20 +30,22 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
-#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/heter_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
-#endif
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
@@ -56,6 +58,7 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
+class Dataset;
 class PSGPUWrapper {
  public:
   virtual ~PSGPUWrapper();
@@ -197,7 +200,6 @@ class PSGPUWrapper {
   void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
                     float mf_initial_g2sum, float mf_initial_range,
                     float mf_min_bound, float mf_max_bound);
-#ifdef PADDLE_WITH_CUDA
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -241,26 +243,18 @@ class PSGPUWrapper {
                              ? 1.0
                              : config["mf_max_bound"];
     for (size_t i = 0; i < heter_devices_.size(); i++) {
-      // #ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
+#elif defined(PADDLE_WITH_XPU_KP)
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
+#endif
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
                          learning_rate, initial_g2sum, initial_range);
       this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
                          mf_initial_g2sum, mf_initial_range, mf_min_bound,
                          mf_max_bound);
-      // #endif
-      // PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-      // TODO(xinxuan): xpu memcpy optimizer params from host to device, and
-      // used by
-      // optimizer
-      // this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-      //                    learning_rate, initial_g2sum, initial_range);
-      // this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-      //                    mf_initial_g2sum, mf_initial_range, mf_min_bound,
-      //                    mf_max_bound);
     }
   }
-#endif
 
   void SetDate(int year, int month, int day) {
     year_ = year;
