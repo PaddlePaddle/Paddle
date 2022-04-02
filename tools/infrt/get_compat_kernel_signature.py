@@ -21,9 +21,9 @@ skip_list = ["adam_sig.cc", "adamw_sig.cc"]
 
 def is_grad_kernel(kernel_info):
     kernel_name = kernel_info.split(",")[0]
-    if "grad" in kernel_name:
-        return False
-    return True
+    if kernel_name.endswith("_grad"):
+        return True
+    return False
 
 
 def parse_compat_registry(kernel_info):
@@ -69,7 +69,7 @@ def get_compat_kernels_info():
                         "").strip("return").strip("KernelSignature(").strip(
                             "\);").replace("\"", "").replace("\\", "")
                     registry = False
-                    if not is_grad_kernel(data):
+                    if is_grad_kernel(data):
                         continue
                     name, registry_info = parse_compat_registry(data)
 
