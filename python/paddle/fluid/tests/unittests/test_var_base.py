@@ -821,8 +821,6 @@ class TestVarBase(unittest.TestCase):
                                                                    0.55]))
 
         with self.assertRaises(ValueError):
-            var_tensor[[False, False, False, False]]
-        with self.assertRaises(ValueError):
             var_tensor[[True, False]]
         with self.assertRaises(ValueError):
             var_tensor[[True, False, False, False, False]]

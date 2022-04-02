@@ -1111,11 +1111,6 @@ void IndexSelectInferMeta(const MetaTensor& x,
           index_dim,
           index_dim.size()));
 
-  PADDLE_ENFORCE_EQ(
-      index_dim[0] != 0,
-      true,
-      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
-
   auto output_dim = phi::vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();

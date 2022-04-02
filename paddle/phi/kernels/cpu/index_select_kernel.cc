@@ -26,6 +26,9 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  if (x.numel() == 0 || index.numel() == 0) {
+    return;
+  }
   auto inputs = x;
   if (dim < 0) {
     dim += inputs.dims().size();

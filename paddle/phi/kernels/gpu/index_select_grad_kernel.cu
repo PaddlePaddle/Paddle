@@ -60,6 +60,9 @@ void IndexSelectGradKernel(const Context& ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  if (x.numel() == 0 || index.numel() == 0 || out_grad.numel() == 0) {
+    return;
+  }
   auto* output_grad_data = out_grad.data<T>();
   auto* in_grad_data = ctx.template Alloc<T>(x_grad);
 

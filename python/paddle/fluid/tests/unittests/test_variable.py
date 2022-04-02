@@ -332,9 +332,6 @@ class TestVariable(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
-        with self.assertRaises(ValueError):
-            with paddle.static.program_guard(prog):
-                res = x[[False, False]]
 
     def _test_slice_index_scalar_bool(self, place):
         data = np.random.rand(1, 3, 4).astype("float32")

@@ -27,6 +27,9 @@ void IndexSelectGradKernel(const Context& ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  if (x.numel() == 0 || index.numel() == 0 || out_grad.numel() == 0) {
+    return;
+  }
   if (dim < 0) {
     dim += out_grad.dims().size();
   }
