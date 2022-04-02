@@ -532,7 +532,7 @@
   backward : fmin_grad
 
 - api : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
