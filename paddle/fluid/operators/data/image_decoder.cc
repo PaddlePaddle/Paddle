@@ -210,7 +210,7 @@ nvjpegStatus_t ImageDecoder::GPUDecodeRandomCrop(const uint8_t* bit_stream,
 void ImageDecoder::Run(const uint8_t* bit_stream, size_t bit_len,
                        framework::LoDTensor* out,
                        RandomROIGenerator* roi_generator,
-                       platform::Place& place) {
+                       const platform::Place& place) {
   nvjpegImage_t image;
 
   nvjpegStatus_t status =
