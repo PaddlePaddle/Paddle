@@ -144,9 +144,6 @@ void TRTOpConverterPass::runOnOperation() {
   // final target for this lowering.
   ::mlir::ConversionTarget target(getContext());
 
-  LOG(INFO) << "here here, runOnOperation() => "
-            << getOperation()->getName().getIdentifier().str();
-
   // We define the specific operations, or dialects, that are legal targets for
   // this lowering. In our case, we are lowering to TensorRTDialect from
   // PaddleDialect
