@@ -450,7 +450,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             sorted_tensor, indices_upper, axis=axis)
         tensor_below = paddle.take_along_axis(
             sorted_tensor, indices_below, axis=axis)
-        weights = (indices - indices_below.astype('float64'))
+        weights = (index - indices_below.astype('float64'))
         out = paddle.lerp(
             tensor_below.astype('float64'),
             tensor_upper.astype('float64'), weights)
