@@ -384,7 +384,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     # Validate axis
     dims = len(x.shape)
-    out_shape = x.shape
+    out_shape = list(x.shape)
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
