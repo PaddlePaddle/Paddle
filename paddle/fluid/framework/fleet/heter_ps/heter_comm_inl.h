@@ -370,7 +370,6 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
     cur_use_stream = 0;
 #endif
 
-    auto cur_use_stream = streams[cur_stream];
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
