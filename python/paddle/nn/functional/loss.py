@@ -921,8 +921,11 @@ def kl_div(input, label, reduction='mean', name=None):
                 label.dtype) == 'float32':
         label = paddle.cast(label, 'float64')
 
-    if paddle.in_dynamic_mode():
-        out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+    if _non_static_mode():
+        if _in_legacy_dygraph():
+            out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+        else:
+            out = _C_ops.final_state_kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
