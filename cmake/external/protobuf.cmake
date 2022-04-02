@@ -230,6 +230,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             ${EXTERNAL_PROJECT_LOG_ARGS}
             ${SHALLOW_CLONE}
             PREFIX          ${PROTOBUF_PREFIX_DIR}
+            DOWNLOAD_DIR          ${PROTOBUF_SOURCE_DIR}
             DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
                                 && tar zxvf arm_protobuf.tar.gz
             UPDATE_COMMAND  ""
