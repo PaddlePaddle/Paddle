@@ -134,7 +134,7 @@ class BarrierTable : public Table {
   //  }
   //  int32_t PushDenseParam(const float *values, size_t num) override { return
   //  0; }
-  
+
   int32_t Shrink(const std::string &param) override { return 0; }
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }

@@ -1748,7 +1748,7 @@ void BrpcPsClient::PushDenseRawGradient(std::shared_ptr<DenseAsyncTask> &task,
   auto timer = std::make_shared<CostTimer>("pserver_client_push_dense_rpc");
   closure->add_timer(timer);
   uint32_t num_per_shard =
-  DenseDimPerShard(accessor->GetAccessorInfo().fea_dim, request_call_num);
+      DenseDimPerShard(accessor->GetAccessorInfo().fea_dim, request_call_num);
   auto send_timer =
       std::make_shared<CostTimer>("pserver_client_push_dense_send");
   for (size_t i = 0; i < request_call_num; ++i) {
