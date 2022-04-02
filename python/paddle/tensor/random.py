@@ -239,7 +239,13 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',

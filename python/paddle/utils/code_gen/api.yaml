@@ -532,7 +532,7 @@
   backward : fmin_grad
 
 - api : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place={})
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -572,6 +572,18 @@
     func : GatherTreeMeta
   kernel :
     func : gather_tree
+
+- api : gaussian_random
+  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
+  output: Tensor
+  infer_meta :
+    func : GaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+    backend : place
 
 - api : gelu
   args : (Tensor x,  bool approximate)
