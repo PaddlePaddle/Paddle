@@ -301,12 +301,13 @@ def get_value_for_bool_tensor(var, item):
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):
-        var_shape = var.shape
+        var_shape = list(var.shape)
         var_shape[0] = 0
         return paddle.empty(var_shape, dtype=var.dtype)
 
     from .layers.control_flow import cond
-    cond(item.any(), lambda: idx_not_empty(var, item), lambda: idx_empty(var))
+    return cond(item.any(), lambda: idx_not_empty(var, item),
+                lambda: idx_empty(var))
 
 
 def _getitem_impl_(var, item):
