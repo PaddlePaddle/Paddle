@@ -360,9 +360,10 @@ def sync_params_buffers(model,
                         is_model_parallel=False):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, ParamBase):

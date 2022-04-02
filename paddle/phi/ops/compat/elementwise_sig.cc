@@ -42,8 +42,12 @@ KernelSignature ElementwiseMulOpArgumentMapping(
       return KernelSignature("multiply", {"X", "Y"}, {}, {"Out"});
     }
     return KernelSignature("multiply_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  } else {
+    if (axis == -1) {
+      return KernelSignature("multiply_sr", {"X", "Y"}, {}, {"Out"});
+    }
+    return KernelSignature("multiply_raw_sr", {"X", "Y"}, {"axis"}, {"Out"});
   }
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ElementwiseDivOpArgumentMapping(

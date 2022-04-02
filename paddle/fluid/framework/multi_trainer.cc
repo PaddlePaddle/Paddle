@@ -276,7 +276,7 @@ void MultiTrainer::Finalize() {
   if (communicator == nullptr) {
     VLOG(0) << "MultiTrainer::Finalize communicator is null!";
   } else {
-    communicator->_worker_ptr->flush();
+    communicator->_worker_ptr->Flush();
     VLOG(1) << "MultiTrainer::Finalize ps client flush done";
   }
 #endif

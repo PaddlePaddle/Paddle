@@ -343,3 +343,7 @@ class UniformTestSample2(UniformTestSample):
     def init_param(self):
         self.low = -5.0
         self.high = 2.0
+
+
+if __name__ == '__main__':
+    unittest.main()
