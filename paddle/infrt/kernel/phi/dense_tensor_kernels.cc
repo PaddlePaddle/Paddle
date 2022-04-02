@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/infrt/kernel/phi/context_kernels.h"
 #include "paddle/infrt/paddle/model_parser.h"
 #include "paddle/infrt/paddle/scope.h"
+#include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
@@ -53,6 +55,47 @@ namespace phi {
                              ::phi::make_ddim(dims.get()),
                              ConvertLayoutToPhi(layout.get()),
                              {}));
+}
+
+::phi::DenseTensor CreateInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<float> value) {
+  ::phi::DenseTensor dense_tensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(
+          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
+          ::phi::make_ddim(dims.get()),
+          ConvertLayoutToPhi(layout.get()),
+          {}));
+  float* a_data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
+  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
+    a_data[i] = value.get();
+  }
+  return dense_tensor;
+}
+
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<float>> values) {
+  ::phi::DenseTensor dense_tensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(
+          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
+          ::phi::make_ddim(dims.get()),
+          ConvertLayoutToPhi(layout.get()),
+          {}));
+  CHECK_EQ(dense_tensor.numel(), static_cast<int64_t>(values.get().size()));
+  float* data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
+  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
+    data[i] = values.get()[i];
+  }
+  return dense_tensor;
 }
 
 ::phi::DenseTensor CreateGPUDenseTensor(
@@ -146,9 +189,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 #undef PRINT_META_DATA
 }
 
-::infrt::phi::DenseTensorMap LoadParams(
-    host_context::Attribute<std::string> path) {
-  const auto& file_path = path.get();
+::infrt::phi::DenseTensorMap LoadParameters(const std::string& file_path) {
   std::cout << "loading params from: " << file_path << std::endl;
   ::infrt::phi::DenseTensorMap map;
 
@@ -180,17 +221,19 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
-::infrt::phi::DenseTensorMap LoadCombinedParams(
-    host_context::Attribute<std::string> model_path,
-    host_context::Attribute<std::string> params_path) {
-  const auto& model = model_path.get();
-  std::cout << "loading params from: " << model << std::endl;
+::infrt::phi::DenseTensorMap LoadParams(
+    host_context::Attribute<std::string> path) {
+  return LoadParameters(path.get());
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParameters(
+    const std::string& model_path, const std::string& params_path) {
   ::infrt::phi::DenseTensorMap map;
 
-  auto pb_proto_prog = paddle::LoadProgram(model);
+  auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
 
-  std::ifstream param_file(params_path.get(), std::ios::binary);
+  std::ifstream param_file(params_path, std::ios::binary);
 
   std::set<std::string> tmp;
   for (auto& var : main_block.vars()) {
@@ -216,6 +259,12 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
+::infrt::phi::DenseTensorMap LoadCombinedParams(
+    host_context::Attribute<std::string> model_path,
+    host_context::Attribute<std::string> params_path) {
+  return LoadCombinedParameters(model_path.get(), params_path.get());
+}
+
 ::phi::DenseTensor TensorMapGetTensor(
     const ::infrt::phi::DenseTensorMap& map,
     host_context::Attribute<std::string> name) {
@@ -227,6 +276,69 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
   return map.size();
 }
+
+#ifdef INFRT_WITH_GPU
+inline size_t SizeOfDataType(::phi::DataType data_type) {
+  switch (data_type) {
+    case ::phi::DataType::BOOL:
+    case ::phi::DataType::UINT8:
+    case ::phi::DataType::INT8:
+      return 1;
+    case ::phi::DataType::BFLOAT16:
+    case ::phi::DataType::FLOAT16:
+    case ::phi::DataType::INT16:
+    case ::phi::DataType::UINT16:
+      return 2;
+    case ::phi::DataType::FLOAT32:
+    case ::phi::DataType::INT32:
+    case ::phi::DataType::UINT32:
+      return 4;
+    case ::phi::DataType::FLOAT64:
+    case ::phi::DataType::INT64:
+    case ::phi::DataType::UINT64:
+    case ::phi::DataType::COMPLEX64:
+      return 8;
+    case ::phi::DataType::COMPLEX128:
+      return 16;
+    case ::phi::DataType::UNDEFINED:
+      return 0;
+    default:
+      llvm_unreachable("should not reach here");
+      return 0;
+  }
+  return 0;
+}
+::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
+                             const ::phi::GPUContext& context,
+                             bool d2h) {
+  if (d2h) {
+    ::phi::DenseTensor ret(
+        const_cast<::phi::Allocator*>(&context.GetHostAllocator()),
+        input.meta());
+    CHECK(input.place().GetType() == ::phi::AllocationType::GPU);
+    // TODO(wilber): Add sync op and stream.
+    cudaMemcpyAsync(ret.data(),
+                    input.data(),
+                    SizeOfDataType(input.dtype()) * input.numel(),
+                    cudaMemcpyDeviceToHost,
+                    nullptr);
+    return ret;
+  } else {
+    // h2d
+    ::phi::DenseTensor ret(
+        const_cast<::phi::Allocator*>(&context.GetAllocator()), input.meta());
+    CHECK(input.place().GetType() == ::phi::AllocationType::CPU ||
+          input.place().GetType() == ::phi::AllocationType::GPUPINNED);
+    // TODO(wilber): Add sync op and stream.
+    cudaMemcpyAsync(ret.data(),
+                    input.data(),
+                    SizeOfDataType(input.dtype()) * input.numel(),
+                    cudaMemcpyHostToDevice,
+                    nullptr);
+    return ret;
+  }
+}
+#endif
 
 }  // namespace phi
 }  // namespace kernel

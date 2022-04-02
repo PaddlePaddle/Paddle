@@ -16,7 +16,8 @@ from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
-from ..framework import core, _in_eager_mode
+from ..framework import core
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check, _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -263,7 +264,7 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 
 setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
-if core._in_eager_mode():
+if _in_eager_without_dygraph_check():
     setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
@@ -1408,7 +1409,9 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    #if in_dygraph_mode():
+    #return _C_ops.final_state_gather(x, index, axis)
+    if _non_static_mode():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
@@ -1577,25 +1580,26 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [2., 2.],
             #  [1., 1.]]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_scatter(x, index, updates, overwrite)
-        return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
-
-    check_variable_and_dtype(
-        x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
-        'scatter')
-    check_type(overwrite, 'overwrite', bool, 'scatter')
-    helper = LayerHelper('scatter', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type="scatter",
-        inputs={"X": x,
-                "Ids": index,
-                "Updates": updates},
-        attrs={'overwrite': overwrite},
-        outputs={"Out": out})
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_scatter(x, index, updates, overwrite)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
+        else:
+            check_variable_and_dtype(
+                x, 'dtype',
+                ['float32', 'float64', 'float16', 'int32', 'int64'], 'scatter')
+            check_type(overwrite, 'overwrite', bool, 'scatter')
+            helper = LayerHelper('scatter', **locals())
+            out = helper.create_variable_for_type_inference(x.dtype)
+            helper.append_op(
+                type="scatter",
+                inputs={"X": x,
+                        "Ids": index,
+                        "Updates": updates},
+                attrs={'overwrite': overwrite},
+                outputs={"Out": out})
+            return out
 
 
 @inplace_apis_in_dygraph_only
@@ -1760,8 +1764,12 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tile(x, repeat_times)
+
+    if _in_legacy_dygraph():
         return _C_ops.tile(x, 'repeat_times', repeat_times)
+
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
@@ -1843,7 +1851,7 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(
@@ -2831,12 +2839,14 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
+        if not _in_legacy_dygraph():
+            return _C_ops.final_state_take_along_axis(arr, indices, axis)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -2896,12 +2906,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             "`indices` and `arr` must have the same number of dimensions!")
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         values = paddle.to_tensor(values) if not isinstance(
             values, paddle.Tensor) else values
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
+        if in_dygraph_mode():
+            return _C_ops.final_state_put_along_axis(arr, indices, values, axis,
+                                                     reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
                                      "Reduce", reduce)
 

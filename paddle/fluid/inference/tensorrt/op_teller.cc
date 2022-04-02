@@ -74,7 +74,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -133,7 +135,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -643,7 +647,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multiclass_nms") {
+    if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -652,7 +656,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      for (auto& param_name : desc.Inputs()) {
+      auto multiclass_nms_inputs = desc.Inputs();
+      if (multiclass_nms_inputs.find("RoisNum") !=
+          multiclass_nms_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
+      for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
@@ -669,6 +680,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
            desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
       if (has_attrs == false) return false;
+
+      // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+      // plugin are not constient with those of multiclass_nms3
+      if (desc.HasAttr("nms_eta") == false) return false;
+      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      if (nms_eta <= 1.0) return false;
 
       auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
@@ -959,7 +976,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
+        op_type == "elementwise_sub" || op_type == "elementwise_div") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -992,6 +1010,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
+      }
+      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+        if (x_var_desc->Persistable()) {
+          VLOG(3) << "Input X is a parameter which is not supported for "
+                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                     "y will work";
+          return false;
+        }
+      }
+      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
+          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
+                     "for elementwise_sub/elementwise_div in tensorrt";
+          return false;
+        }
       }
     }
 
@@ -1323,20 +1356,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the shuffle_channel op does not support dynamic shape yet";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* input_desc = block->FindVar(desc.Input("X").front());
-      const auto input_shape = input_desc->GetShape();
-      if (input_shape.size() != 4) {
-        VLOG(3) << "input dims is invalid. The input "
-                   "dims size should be 4.";
-        return false;
-      }
     }
 
     if (op_type == "skip_layernorm") {
@@ -1475,6 +1494,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+<<<<<<< HEAD
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
@@ -1486,7 +1506,29 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       // if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
       if (!with_dynamic_shape && (input_num != shape_num || shape.size() == 1))
+=======
+      if (!with_dynamic_shape) {
+        if (shape.size() == 1) {
+          return false;
+        }
+        if (shape[0] == 0) {
+          return true;
+        } else {
+          auto* block = desc.Block();
+          auto x_var_name = desc.Input("X")[0];
+          auto* x_var_desc = block->FindVar(x_var_name);
+          const auto x_shape = x_var_desc->GetShape();
+          int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
+                                          std::multiplies<int>());
+          int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
+                                          std::multiplies<int>());
+          if (input_num == shape_num) {
+            return true;
+          }
+        }
+>>>>>>> 1b58ce144a340ff895dedeeab68e3a3a3ab36c06
         return false;
+      }
     }
 
     if (op_type == "clip") {

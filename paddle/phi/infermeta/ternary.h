@@ -74,6 +74,18 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
 
+void PutAlongAxisInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& value,
+                           int axis,
+                           const std::string& reduce,
+                           MetaTensor* out);
+
+void RangeInferMeta(const MetaTensor& start,
+                    const MetaTensor& end,
+                    const MetaTensor& step,
+                    MetaTensor* out);
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        paddle::optional<const MetaTensor&> boxes_num,

@@ -161,6 +161,13 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
+  auto xshape_dims = xshape.dims();
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  dx->set_dims(x_dims);
+  dx->share_lod(xshape);
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -171,6 +178,72 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void NllLossGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& label,
+                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& total_weight,
+                          const MetaTensor& out_grad,
+                          int64_t ignore_index,
+                          const std::string& reduction,
+                          MetaTensor* dx,
+                          MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  const auto& dout_dims = out_grad.dims();
+  bool contain_unknown_dim =
+      phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dout_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    auto batch_size = x_dims[0];
+    if (x_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(dout_dims.size(),
+                        1,
+                        phi::errors::InvalidArgument(
+                            "The dimensions of Input(Out@Grad) must be 1"));
+      if (reduction == "none") {
+        PADDLE_ENFORCE_EQ(
+            dout_dims[0],
+            batch_size,
+            phi::errors::InvalidArgument(
+                "The unreduced size ofInput(Out@Grad) must be the "
+                "same as batch_size."));
+      } else {
+        PADDLE_ENFORCE_EQ(dout_dims[0],
+                          1,
+                          phi::errors::InvalidArgument(
+                              "The reduced size of Input(Out@Grad) must be 1"));
+      }
+    } else if (x_dims.size() == 4) {
+      if (reduction == "none") {
+        PADDLE_ENFORCE_EQ(
+            dout_dims.size(),
+            3,
+            phi::errors::InvalidArgument(
+                "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
+                dout_dims.size()));
+        PADDLE_ENFORCE_EQ(dout_dims[0] == label_dims[0] &&
+                              dout_dims[1] == label_dims[1] &&
+                              dout_dims[2] == label_dims[2],
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The dimensions of Input(Out@Grad) must be match "
+                              "to Input(Label) dimensions."));
+      } else {
+        PADDLE_ENFORCE_EQ(dout_dims[0],
+                          1,
+                          phi::errors::InvalidArgument(
+                              "The reduced size of Input(Out@Grad) must be 1"));
+      }
+    }
+  }
+
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(x.dtype());
+  }
 }
 
 void PoolGradInferMeta(const MetaTensor& x,

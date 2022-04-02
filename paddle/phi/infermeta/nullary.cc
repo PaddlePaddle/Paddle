@@ -16,9 +16,14 @@ limitations under the License. */
 
 namespace phi {
 
-void CreateInferMeta(const ScalarArray& shape,
-                     DataType dtype,
-                     MetaTensor* out) {
+void AssignValueInferMeta(const std::vector<int>& shape,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(phi::make_ddim(shape));
+  out->set_dtype(dtype);
+}
+
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
@@ -41,7 +46,7 @@ void EyeInferMeta(int64_t num_rows,
   out->set_dtype(dtype);
 }
 
-void GaussianRandomInferMeta(const ScalarArray& shape,
+void GaussianRandomInferMeta(const IntArray& shape,
                              float mean,
                              float std,
                              int seed,

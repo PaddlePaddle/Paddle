@@ -180,21 +180,23 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
-  phi::DenseTensor& dense_tensor =
-      *static_cast<phi::DenseTensor*>(tensor_in.get());
-  if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
-      (!NeedTransformPlace(
-           dense_tensor.place(), target_args_def.backend, transform_flag) &&
-       !NeedTransformDataType(
-           dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-       !NeedTransformLayout(
-           dense_tensor.layout(), target_args_def.layout, transform_flag))) {
-    return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+  if (tensor_in) {
+    phi::DenseTensor& dense_tensor =
+        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
+        (!NeedTransformPlace(
+             dense_tensor.place(), target_args_def.backend, transform_flag) &&
+         !NeedTransformDataType(
+             dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
+         !NeedTransformLayout(
+             dense_tensor.layout(), target_args_def.layout, transform_flag))) {
+      return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+    }
+    phi::DenseTensor out =
+        TransformData(dense_tensor, target_args_def, transform_flag);
+    return std::make_shared<phi::DenseTensor>(std::move(out));
   }
-
-  phi::DenseTensor out =
-      TransformData(dense_tensor, target_args_def, transform_flag);
-  return std::make_shared<phi::DenseTensor>(std::move(out));
+  return nullptr;
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
@@ -204,6 +206,17 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (input) {
     return PrepareData(*input, target_args_def, transform_flag);
   }
+  return {nullptr};
+}
+
+std::shared_ptr<phi::DenseTensor> PrepareData(
+    const paddle::optional<const Tensor&> input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input.get_ptr() != nullptr) {
+    return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
+  }
+
   return {nullptr};
 }
 

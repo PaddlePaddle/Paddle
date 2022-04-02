@@ -51,8 +51,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     float* weight_data = nullptr;
     auto output_name = op_desc.Output("Out")[0];
-    weight_data =
-        engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
+    weight_data = engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t);
     nvinfer1::Dims dims_x = X->getDimensions();
 
     auto regist_eltwise_weight = [&](nvinfer1::ScaleMode scale_mode) {
@@ -111,13 +110,6 @@ class ElementwiseWeightOpConverter : public OpConverter {
       } else {
         RreplenishLayerAndOutput(layer, "elementwise_" + op_type_,
                                  {output_name}, test_mode);
-      }
-      if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-        CHECK(op_desc.HasAttr("X_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
-        engine_->SetTensorDynamicRange(X, x_scale);
-#endif
       }
     };
 
