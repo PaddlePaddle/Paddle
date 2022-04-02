@@ -78,7 +78,8 @@ class TestQuantile(unittest.TestCase):
         input_data[0, 1, 1] = np.nan
         x = paddle.to_tensor(input_data)
         paddle_res = paddle.quantile(x, q=0.35, axis=0)
-        self.assertTrue(paddle.isnan(paddle_res[1, 1]))
+        np_res = np.nanquantile(x, q=0.35, axis=0)
+        self.assertTrue(np.allclose(paddle_res.numpy(), np_res, equal_nan=True))
 
 
 class TestQuantileMuitlpleQ(unittest.TestCase):
