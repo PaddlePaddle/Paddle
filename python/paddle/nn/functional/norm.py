@@ -181,7 +181,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dynamic_mode():
-        # for dygraph need tuple
+
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
@@ -489,7 +489,7 @@ def local_response_norm(x,
             format(dim))
 
     for i, sz in enumerate(sizes):
-        if not sz > 0:
+        if not sz > 0 and i > 0:
             raise ValueError("Expected every dim's size to be larger than 0, "
                              "but the size of the {}-th dim is {}".format(i,
                                                                           sz))
