@@ -80,8 +80,6 @@ void DiagInferMeta(const MetaTensor& x,
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask);
-
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
@@ -270,6 +268,15 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaConfig config = MetaConfig());
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void SliceRawInferMeta(const MetaTensor& input,
+                       const std::vector<int64_t>& axes,
+                       const IntArray& starts,
+                       const IntArray& ends,
+                       const std::vector<int64_t>& infer_flags,
+                       const std::vector<int64_t>& decrease_axis,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
 
