@@ -14,34 +14,123 @@
 
 import paddle
 import unittest
+import numpy
 
 
-class TestSwitchAutoTuneDyGraph(unittest.TestCase):
-    def dygraph_program(self):
-        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
-        conv = paddle.nn.Conv2D(4, 6, (3, 3))
-        out = conv(x_var)
-        loss = paddle.mean(out)
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.1, parameters=conv.parameters())
-        out.backward()
-        adam.step()
-        adam.clear_grad()
+def dygraph_program():
+    x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+    conv = paddle.nn.Conv2D(4, 6, (3, 3))
+    out = conv(x_var)
+    loss = paddle.mean(out)
+    adam = paddle.optimizer.Adam(parameters=conv.parameters())
+    out.backward()
+    adam.step()
+    adam.clear_grad()
+
+
+def static_program(data_shape=[2, 4, 8, 8]):
+    data = paddle.static.data(name='X', shape=data_shape, dtype='float32')
+    conv = paddle.nn.Conv2D(4, 6, (3, 3))
+    out = conv(data)
+    loss = paddle.mean(out)
+    adam = paddle.optimizer.Adam()
+    adam.minimize(loss)
+    return loss
+
+
+class TestAutoTune(unittest.TestCase):
+    def test_autotune(self):
+        paddle.fluid.core.disable_autotune()
+        status = paddle.fluid.core.autotune_status()
+        self.assertEqual(status["use_autotune"], False)
+
+        paddle.fluid.core.enable_autotune()
+        status = paddle.fluid.core.autotune_status()
+        self.assertEqual(status["use_autotune"], True)
+
+    def check_status(self, expected_res):
+        status = paddle.fluid.core.autotune_status()
+        for key in status.keys():
+            self.assertEqual(status[key], expected_res[key])
+
+
+class TestDygraphSwitchAutoTune(TestAutoTune):
+    def run_program(self, enable_autotune):
+        if enable_autotune:
+            paddle.fluid.core.enable_autotune()
+        else:
+            paddle.fluid.core.disable_autotune()
+
+        for i in range(12):
+            dygraph_program()
+            if i < 10:
+                expected_res = {
+                    "step_id": i,
+                    "use_autotune": enable_autotune,
+                    "cache_size": 0,
+                    "cache_hit_rate": 0
+                }
+                self.check_status(expected_res)
+            else:
+                expected_res = {
+                    "step_id": i,
+                    "use_autotune": False,
+                    "cache_size": 0,
+                    "cache_hit_rate": 0
+                }
+                self.check_status(expected_res)
 
     def test_enable_autotune(self):
-        paddle.fluid.core.enable_autotune()
-        for i in range(2):
-            self.dygraph_program()
-            status = paddle.fluid.core.auto_tune_status()
-            self.assertEqual(status["step_id"], i)
-            self.assertEqual(status["use_autotune"], True)
-            self.assertEqual(status["cache_size"], 0)
-            self.assertEqual(status["cache_hit_rate"], 0)
+        self.run_program(enable_autotune=True)
 
     def test_disable_autotune(self):
-        paddle.fluid.core.disable_autotune()
-        status = paddle.fluid.core.auto_tune_status()
-        self.assertEqual(status["use_autotune"], False)
+        self.run_program(enable_autotune=False)
+
+
+class TestStaticSwitchAutoTune(TestAutoTune):
+    def run_program(self, enable_autotune):
+        paddle.enable_static()
+        if enable_autotune:
+            paddle.fluid.core.enable_autotune()
+        else:
+            paddle.fluid.core.disable_autotune()
+
+        data_shape = [2, 4, 8, 8]
+        loss = static_program(data_shape)
+        place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+        x = numpy.random.random(size=data_shape).astype('float32')
+
+        for i in range(12):
+            exe.run(feed={'X': x}, fetch_list=[loss])
+            status = paddle.fluid.core.autotune_status()
+            # In static mode, the startup_program will run at first.
+            # The expected step_id will be increased by 1.
+            if i < 9:
+                expected_res = {
+                    "step_id": i + 1,
+                    "use_autotune": enable_autotune,
+                    "cache_size": 0,
+                    "cache_hit_rate": 0
+                }
+                self.check_status(expected_res)
+            else:
+                expected_res = {
+                    "step_id": i + 1,
+                    "use_autotune": False,
+                    "cache_size": 0,
+                    "cache_hit_rate": 0
+                }
+                self.check_status(expected_res)
+        paddle.disable_static()
+
+    def test_enable_autotune(self):
+        self.run_program(enable_autotune=True)
+
+    def test_disable_autotune(self):
+        self.run_program(enable_autotune=False)
 
 
 if __name__ == '__main__':

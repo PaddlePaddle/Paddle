@@ -390,7 +390,6 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
-  phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
   platform::RecordEvent backward_record_event(
       "backward", platform::TracerEventType::Operator, 1);
 
@@ -647,6 +646,8 @@ void BasicEngine::Execute() {
   Clear();
 
   VLOG(1) << "Backward op number: " << op_num;
+
+  phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
 }
 
 void BasicEngine::Clear() {

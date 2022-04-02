@@ -1285,7 +1285,7 @@ class Executor(object):
 
         """
         try:
-            return self._run_impl(
+            res = self._run_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1296,6 +1296,8 @@ class Executor(object):
                 use_program_cache=use_program_cache,
                 use_prune=use_prune,
                 return_merged=return_merged)
+            core.update_autotune_status()
+            return res
         except Exception as e:
             six.reraise(*sys.exc_info())
 

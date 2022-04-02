@@ -46,8 +46,11 @@ TEST(AlgosCache, AlgosCache) {
   EXPECT_EQ(cache.Find(key), false);
   cache.Set(key, ConvAlgos::CuDNNKernel_1);
   EXPECT_EQ(cache.Size(), 2);
-  EXPECT_EQ(autotune_cache.Size(), 2);
 
   float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
   EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);
+
+  autotune_cache.UpdateStatus();
+  EXPECT_EQ(autotune_cache.Size(), 2);
+  EXPECT_LT(std::abs(cache_hit_rate - autotune_cache.CacheHitRate()), 1e-5);
 }

@@ -4429,14 +4429,19 @@ All parameter, weight, gradient are variables in Paddle.
     return phi::autotune::SwitchAutoTune::Instance().DisableAutoTune();
   });
 
-  m.def("auto_tune_status", [] {
+  m.def("update_autotune_status", [] {
+    return phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
+  });
+
+  m.def("autotune_status", [] {
+    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     py::dict res;
     res["use_autotune"] =
         phi::autotune::SwitchAutoTune::Instance().UseAutoTune();
     res["step_id"] = phi::autotune::SwitchAutoTune::Instance().StepID();
     res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
     res["cache_hit_rate"] =
-        phi::autotune::AutoTuneCache::Instance().AutoTuneCacheHitRate();
+        phi::autotune::AutoTuneCache::Instance().CacheHitRate();
     return res;
   });
 

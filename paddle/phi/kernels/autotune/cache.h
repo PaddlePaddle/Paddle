@@ -142,28 +142,45 @@ class AutoTuneCache {
     return auto_tune_map_[algo_type];
   }
 
-  // The number of total config cached
-  int64_t Size() const {
-    int64_t total = 0;
-    for (auto& v : auto_tune_map_) {
-      VLOG(3) << v.first << " " << v.second.Size();
-      total += v.second.Size();
+  void Clean(float miss_rate) {
+    std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
+    // Set a small tolerance to avoid performance degradation
+    // due to large cache size under dynamic shape.
+    if (miss_rate > 0.01) {
+      auto_tune_map_.clear();
     }
-    return total;
   }
 
-  float AutoTuneCacheHitRate() const {
-    int64_t total_cache_hits = 0;
-    int64_t total_cache_misses = 0;
-    float total_cache_hit_rate = 0.;
+  void UpdateStatus() {
+    int64_t size = 0;
+    int64_t cache_hits = 0;
+    int64_t cache_misses = 0;
     for (auto& v : auto_tune_map_) {
-      total_cache_hits += v.second.CacheHits();
-      total_cache_misses += v.second.CacheMisses();
+      VLOG(4) << "AlgoType: " << v.first << " Cache Size: " << v.second.Size()
+              << " Hits: " << v.second.CacheHits()
+              << " Misses: " << v.second.CacheMisses()
+              << " Hit Rate: " << v.second.CacheHitRate();
+      size += v.second.Size();
+      cache_hits += v.second.CacheHits();
+      cache_misses += v.second.CacheMisses();
     }
+    total_size_ = size;
+    total_cache_hits_ = cache_hits;
+    total_cache_misses_ = cache_misses;
+  }
 
-    int64_t total_num_accesses = total_cache_hits + total_cache_misses;
+  // The number of total config cached
+  int64_t Size() const { return total_size_; }
+
+  int64_t CacheHits() const { return total_cache_hits_; }
+
+  int64_t CacheMisses() const { return total_cache_misses_; }
+
+  float CacheHitRate() const {
+    float total_cache_hit_rate = 0.;
+    int64_t total_num_accesses = total_cache_hits_ + total_cache_misses_;
     if (total_num_accesses != 0) {
-      total_cache_hit_rate = static_cast<float>(total_cache_hits) /
+      total_cache_hit_rate = static_cast<float>(total_cache_hits_) /
                              static_cast<float>(total_num_accesses);
     }
 
@@ -174,6 +191,9 @@ class AutoTuneCache {
   AutoTuneCache() : autotune_cache_mutex_(new std::mutex()) {}
   AlgorithmsTypeMap auto_tune_map_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
+  int64_t total_cache_hits_ = 0;
+  int64_t total_cache_misses_ = 0;
+  int64_t total_size_ = 0;
 };
 
 }  // namespace autotune
