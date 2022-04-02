@@ -199,7 +199,6 @@ struct PyGetSetDef string_tensor_variable_properties[] = {
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"_place_str", (getter)tensor_properties_get_place_str, nullptr, nullptr,
      nullptr},
-    {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind
