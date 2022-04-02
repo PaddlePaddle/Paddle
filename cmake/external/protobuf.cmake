@@ -223,7 +223,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         FILE(WRITE ${PROTOBUF_SOURCE_DIR}/CMakeLists.txt
         "PROJECT(ARM_PROTOBUF)\n"
         "cmake_minimum_required(VERSION 3.0)\n"
-        "install(DIRECTORY protobuf \n"
+        "install(DIRECTORY protobuf  protobuf protobuf\n"
         "        DESTINATION protobuf)\n")
         ExternalProject_Add(
             ${TARGET_NAME}
