@@ -1335,11 +1335,11 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in tensor_method__uva.";
-  int device_id = 0;
-  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 0);
-  if (Py_device_id) {
-    device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  }
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "CPU Tensor currently."));
+  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
   auto* self_tensor =
       static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
   tensor_uva(self_tensor, device_id);
@@ -1453,7 +1453,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
-    {"_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
+    {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #endif
     {NULL, NULL, 0, NULL}};
