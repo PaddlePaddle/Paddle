@@ -527,11 +527,13 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
         "please check your input or input array data type."));
   }
 }
-#if defined(PADDLE_WITH_CUDA)
+
 template <typename T>
-void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
-                                 const py::array_t<T> &array, int device_id) {
-  VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   int64_t numel = 1;
@@ -557,40 +559,8 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
                                    framework::TransToPhiDataType(data_type));
-}
 #endif
-
-#if defined(PADDLE_WITH_CUDA)
-template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array, int device_id) {
-  VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
-  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 }
-#endif
-
-#if defined(PADDLE_WITH_CUDA)
-template <typename T>
-void SetUVATensorFromPyArray_(
-    const std::shared_ptr<paddle::experimental::Tensor> &self,
-    const py::array_t<T> &array, int device_id) {
-  VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
-  phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
-  std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      meta);
-  self.get()->set_impl(tmp_t);
-  auto *self_tensor =
-      static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
-
-  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
-}
-#endif
 
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,

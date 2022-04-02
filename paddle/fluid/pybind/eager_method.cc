@@ -1330,26 +1330,6 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-#if defined(PADDLE_WITH_CUDA)
-static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
-                                    PyObject* kwargs) {
-  EAGER_TRY
-  VLOG(4) << "Running in tensor_method__uva.";
-  int device_id = 0;
-  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 0);
-  if (Py_device_id) {
-    device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  }
-  auto* self_tensor =
-      static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
-  tensor_uva(self_tensor, device_id);
-
-  Py_INCREF(Py_None);
-  return Py_None;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-#endif
-
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1452,10 +1432,6 @@ PyMethodDef variable_methods[] = {
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
-#if defined(PADDLE_WITH_CUDA)
-    {"_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-#endif
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind
