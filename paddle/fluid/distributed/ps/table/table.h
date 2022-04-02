@@ -36,20 +36,20 @@ namespace distributed {
 enum ValueType { Sparse = 0, Dense = 1 };
 
 struct TablePullContext {
-  const uint64_t *keys;
+  const uint64_t *keys = nullptr;
   PullSparseValue pull_value;
-  float *values;
-  char **ptr_values;
-  std::vector<uint64_t> *geo_pull_keys;  // for GEO
-  std::vector<float> *geo_pull_values;   // for GEO
+  float *values = nullptr;
+  char **ptr_values = nullptr;
+  std::vector<uint64_t> *geo_pull_keys = nullptr;  // for GEO
+  std::vector<float> *geo_pull_values = nullptr;   // for GEO
 };
 
 struct TablePushContext {
-  const uint64_t *keys;
-  const float *values;
-  const float **ptr_values;
-  const int64_t *push_steps;  // for global step
-  bool is_param = false;      // true: push param, false: push gradient
+  const uint64_t *keys = nullptr;
+  const float *values = nullptr;
+  const float **ptr_values = nullptr;
+  const int64_t *push_steps = nullptr;  // for global step
+  bool is_param = false;  // true: push param, false: push gradient
 };
 
 struct TableContext {

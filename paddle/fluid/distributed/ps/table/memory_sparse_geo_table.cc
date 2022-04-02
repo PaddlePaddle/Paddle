@@ -19,7 +19,7 @@ namespace distributed {
 
 int32_t MemorySparseGeoTable::Pull(TableContext& context) {
   CHECK(context.value_type == Sparse);
-  if (context.pull_context.values != nullptr) {
+  if (context.pull_context.geo_pull_keys != nullptr) {
     return PullGeoParam(context.trainer_id,
                         context.pull_context.geo_pull_values,
                         context.pull_context.geo_pull_keys);
