@@ -69,9 +69,9 @@ __global__ void AddDataKernel(const int64_t *label_data,
   }
   CUDA_KERNEL_LOOP(i, numel) {
     auto predict_data = pred_data[i * inference_width + (inference_width - 1)];
-    PADDLE_ENFORCE(predict_data <= 1, "The predict data must less or equal 1.");
+    PADDLE_ENFORCE(predict_data <= 1, "The predict data(%f) must less or equal 1.", predict_data);
     PADDLE_ENFORCE(predict_data >= 0,
-                   "The predict data must gather or equal 0.");
+                   "The predict data(%f) must gather or equal 0.", predict_data);
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
       paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
@@ -202,39 +202,40 @@ void AucKernel(const Context &dev_ctx,
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();
   auto *neg_in_data = stat_neg.data<int64_t>();
+  auto stream = dev_ctx.stream();
 #ifdef PADDLE_WITH_CUDA
   if (stat_pos_in_tensor != stat_pos_out) {
-    cudaMemcpy(
+    cudaMemcpyAsync(
         origin_stat_pos,
         pos_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        cudaMemcpyDeviceToDevice);
+        cudaMemcpyDeviceToDevice, stream);
   }
   if (stat_neg_in_tensor != stat_neg_out) {
-    cudaMemcpy(
+    cudaMemcpyAsync(
         origin_stat_neg,
         neg_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        cudaMemcpyDeviceToDevice);
+        cudaMemcpyDeviceToDevice, stream);
   }
 #else
   if (stat_pos_in_tensor != stat_pos_out) {
-    hipMemcpy(
+    hipMemcpyAsync(
         origin_stat_pos,
         pos_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        hipMemcpyDeviceToDevice);
+        hipMemcpyDeviceToDevice, stream);
   }
   if (stat_neg_in_tensor != stat_neg_out) {
-    hipMemcpy(
+    hipMemcpyAsync(
         origin_stat_neg,
         neg_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        hipMemcpyDeviceToDevice);
+        hipMemcpyDeviceToDevice, stream);
   }
 #endif
 
