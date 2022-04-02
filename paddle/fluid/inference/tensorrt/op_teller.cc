@@ -179,7 +179,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "multiclass_nms3"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -646,7 +647,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multiclass_nms") {
+    if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -655,7 +656,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      for (auto& param_name : desc.Inputs()) {
+      auto multiclass_nms_inputs = desc.Inputs();
+      if (multiclass_nms_inputs.find("RoisNum") !=
+          multiclass_nms_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
+      for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
@@ -672,6 +680,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
            desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
       if (has_attrs == false) return false;
+
+      // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+      // plugin are not constient with those of multiclass_nms3
+      if (desc.HasAttr("nms_eta") == false) return false;
+      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      if (nms_eta <= 1.0) return false;
 
       auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
@@ -1465,8 +1479,27 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
+      if (!with_dynamic_shape) {
+        if (shape.size() == 1) {
+          return false;
+        }
+        if (shape[0] == 0) {
+          return true;
+        } else {
+          auto* block = desc.Block();
+          auto x_var_name = desc.Input("X")[0];
+          auto* x_var_desc = block->FindVar(x_var_name);
+          const auto x_shape = x_var_desc->GetShape();
+          int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
+                                          std::multiplies<int>());
+          int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
+                                          std::multiplies<int>());
+          if (input_num == shape_num) {
+            return true;
+          }
+        }
         return false;
+      }
     }
 
     if (op_type == "clip") {

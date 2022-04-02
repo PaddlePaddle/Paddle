@@ -48,7 +48,7 @@ TEST(MemorySparseGeoTable, SSUM) {
   common_config->add_dims(emb_dim);
   common_config->add_initializers("fill_constant&1.0");
 
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, 0);
 
   // test push_sparse_param, and create params
@@ -58,12 +58,12 @@ TEST(MemorySparseGeoTable, SSUM) {
   for (size_t i = 0; i < init_keys.size() * emb_dim; i++) {
     init_values.push_back(0.0);
   }
-  table->push_sparse_param(init_keys.data(), init_values.data(),
-                           init_keys.size());
+  table->PushSparseParam(init_keys.data(), init_values.data(),
+                         init_keys.size());
 
   std::vector<float> pull_values(init_values.size());
   auto value = PullSparseValue(init_keys, init_fres, emb_dim);
-  table->pull_sparse(pull_values.data(), value);
+  table->PullSparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size() * emb_dim; i++) {
     ASSERT_TRUE(abs(pull_values[i] - init_values[i]) < 1e-5);
@@ -93,8 +93,7 @@ TEST(MemorySparseGeoTable, SSUM) {
     auto &push_keys = trainer_keys[i];
     auto &push_values = trainer_values[i];
     auto task = [table, &push_keys, &push_values] {
-      table->push_sparse(push_keys.data(), push_values.data(),
-                         push_keys.size());
+      table->PushSparse(push_keys.data(), push_values.data(), push_keys.size());
     };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
@@ -107,7 +106,7 @@ TEST(MemorySparseGeoTable, SSUM) {
   geo_pull_ids.resize(trainers);
   geo_pull_values.resize(trainers);
   for (int i = 0; i < trainers; i++) {
-    table->pull_geo_param(i, &geo_pull_values[i], &geo_pull_ids[i]);
+    table->PullGeoParam(i, &geo_pull_values[i], &geo_pull_ids[i]);
     ASSERT_EQ(geo_pull_values[i].size(), geo_pull_ids[i].size() * emb_dim);
     for (size_t j = 0; j < geo_pull_ids[i].size(); ++j) {
       auto id = geo_pull_ids[i][j];

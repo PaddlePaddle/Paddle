@@ -199,6 +199,22 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
 
+void InterpolateInferMeta(
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> out_size,
+    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    paddle::optional<const MetaTensor&> scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config = MetaConfig());
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
@@ -230,6 +246,10 @@ void RnnInferMeta(const MetaTensor& x,
                   MetaTensor* dropout_state,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
+
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out);
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
