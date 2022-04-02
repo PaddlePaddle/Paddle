@@ -82,9 +82,9 @@ void Atan2GradKernel(const Context& ctx,
   auto out_grad_data = out_grad.data<T>();
 
   auto* x_grad_data =
-      ctx.template Alloc<T>(x_grad, false, size_t(x.numel() * sizeof(T)));
+      ctx.template Alloc<T>(x_grad, size_t(x.numel() * sizeof(T)));
   auto* y_grad_data =
-      ctx.template Alloc<T>(y_grad, false, size_t(y.numel() * sizeof(T)));
+      ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)));
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::Atan2GradFunctor<T> functor(

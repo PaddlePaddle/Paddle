@@ -50,7 +50,7 @@ void AbsGradKernel(const Context& ctx,
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();
 
-  ctx.template Alloc<T>(dx, false, static_cast<size_t>(numel * sizeof(T)));
+  ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   auto* dx_data = dx->data<T>();
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);
@@ -67,7 +67,7 @@ void AbsDoubleGradKernel(const Context& ctx,
   auto numel = ddx.numel();
   auto* ddx_data = ddx.data<T>();
   auto* x_data = x.data<T>();
-  ctx.template Alloc<T>(ddout, false, static_cast<size_t>(numel * sizeof(T)));
+  ctx.template Alloc<T>(ddout, static_cast<size_t>(numel * sizeof(T)));
   auto* ddout_data = ddout->data<T>();
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);

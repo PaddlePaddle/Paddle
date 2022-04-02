@@ -571,6 +571,12 @@ PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const phi::SelectedRows* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
     Py_INCREF(Py_None);
