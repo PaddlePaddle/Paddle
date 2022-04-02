@@ -29,6 +29,8 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -192,6 +194,7 @@ void create_all_ops(const framework::BlockDesc& block,
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
+
     AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
@@ -199,6 +202,16 @@ void create_all_ops(const framework::BlockDesc& block,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      if (op->HasAttr("use_mkldnn")) {
+        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
+        op_base->SetAttr("use_mkldnn", true);
+      }
+    }
+#endif
+
     ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }
