@@ -30,22 +30,8 @@ class CommMergeAccessor : public ValueAccessor {
   CommMergeAccessor() {}
   virtual ~CommMergeAccessor() {}
   virtual int Initialize();
-  virtual void SetTableInfo(AccessorInfo &info);
-  virtual size_t GetTableInfo(InfoKey key);
-  // value维度
-  // pull value维度
-  size_t SelectDim();
-  // pull value各个维度的size
-  size_t SelectDimSize(size_t dim);
-  // pull value各维度相加总size
-  size_t SelectSize();
-  // push value维度
-  size_t UpdateDim();
-  // push value各个维度的size
-  size_t UpdateDimSize(size_t dim);
-  // push value各维度相加总size
-  size_t UpdateSize();
-  size_t fea_dim() { return _config.fea_dim(); }
+  // 初始化AccessorInfo
+  virtual void InitAccessorInfo();
   // 判断该value是否进行shrink
   virtual bool Shrink(float * /*value*/);
   // 判断该value是否在save阶段dump,

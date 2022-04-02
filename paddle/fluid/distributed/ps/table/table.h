@@ -162,7 +162,6 @@ class Table {
   TableParameter _config;
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
-  AccessorInfo _table_info;
   AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);

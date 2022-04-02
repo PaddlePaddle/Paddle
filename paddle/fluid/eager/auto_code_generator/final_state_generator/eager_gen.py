@@ -1249,7 +1249,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = (name in self.optional_inputs)
             optional_suffix = '_optional' if is_optional else ''
-            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name}{optional_suffix} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr);\n"
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name}{optional_suffix} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name},  this->shared_from_this());\n"
             if is_optional:
                 tensor_wrapper_recover_str = tensor_wrapper_recover_str + f"{indent}auto {transformed_tensor_name} = {transformed_tensor_name}{optional_suffix}.initialized() ? paddle::make_optional<const paddle::experimental::Tensor&>({transformed_tensor_name}{optional_suffix}) : paddle::none;"
             grad_api_args[grad_api_position] = transformed_tensor_name
