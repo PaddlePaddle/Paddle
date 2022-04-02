@@ -489,6 +489,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 forward_input_pos, orig_input_pos)
 
         for i in range(len(forward_attrs_list)):
+            print("i", i)
             orig_attr_name = orig_forward_attrs_list[i][0]
             orig_attr_type = orig_forward_attrs_list[i][1]
             orig_attr_default = orig_forward_attrs_list[i][2]

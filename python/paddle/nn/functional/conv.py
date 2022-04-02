@@ -119,7 +119,7 @@ def _conv_nd(x,
              name=None):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dygraph_mode():
+    if in_dygraph_mode() and op_type == "conv2d":
         pre_bias = _C_ops.final_state_conv2d(
             x, weight, stride, padding, padding_algorithm, groups, dilation,
             data_format, False, -1, False)

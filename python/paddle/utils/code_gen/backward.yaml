@@ -172,6 +172,16 @@
   kernel :
     func : cholesky_solve_grad
 
+- backward_api : conv2d_grad
+  forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor(input_grad), Tensor(filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv2d_grad
+
 - backward_api : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1071,16 +1081,6 @@
 
 - backward_api : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : where_grad
-
-- backward_api : where_grad
-  forward : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
