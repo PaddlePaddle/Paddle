@@ -22,6 +22,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -89,6 +90,10 @@ class TestDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.det(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
         paddle.enable_static()
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_api_dygraph()
 
 
 class TestSlogDeterminantOp(OpTest):
