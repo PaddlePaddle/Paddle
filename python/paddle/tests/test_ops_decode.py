@@ -32,7 +32,7 @@ DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
 
 
 class TestImageReaderDecodeCase1(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
@@ -42,16 +42,21 @@ class TestImageReaderDecodeCase1(unittest.TestCase):
         self.device_memory_padding = 1000000
 
     def test_static_output(self):
+        # NOTE: only support cuda kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
         paddle.enable_static()
-        self.setup()
 
         indices = paddle.arange(self.batch_size)
-        image, label = file_label_loader(self.data_root, indices)
-        image = image_decode(image,
-                             num_threads=self.num_threads)
+        image, label = file_label_loader(self.data_root, indices,
+                                         self.batch_size)
+        image = image_decode(image, num_threads=self.num_threads)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
-        out_image, out_label = exe.run(paddle.static.default_main_program(),
-                                       fetch_list=[image, label])
+        rets = exe.run(paddle.static.default_main_program(),
+                       fetch_list=image + [label])
+        out_image = rets[:-1]
+        out_label = rets[-1]
 
         assert len(out_image) == self.batch_size
         for i in range(self.batch_size):
@@ -61,15 +66,41 @@ class TestImageReaderDecodeCase1(unittest.TestCase):
             assert np.all(img >= 0)
             assert np.all(img <= 255)
 
-        assert len(out_label) == self.batch_size
-        assert label.dtype == paddle.int64
         label = np.array(out_label)
+        assert label.dtype == np.int64
+        assert label.shape[0] == self.batch_size
+        assert np.all(label >= 0)
+        assert np.all(label <= 1)
+
+        paddle.disable_static()
+
+    def test_dynamic_output(self):
+        # NOTE: only support cuda kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
+        indices = paddle.arange(self.batch_size)
+        image, label = file_label_loader(self.data_root, indices,
+                                         self.batch_size)
+        image = image_decode(image, num_threads=self.num_threads)
+
+        assert len(image) == self.batch_size
+        for i in range(self.batch_size):
+            img = image[i].numpy()
+            assert img.dtype == np.uint8
+            assert img.shape[2] == 3
+            assert np.all(img >= 0)
+            assert np.all(img <= 255)
+
+        label = label.numpy()
+        assert label.dtype == np.int64
+        assert label.shape[0] == self.batch_size
         assert np.all(label >= 0)
         assert np.all(label <= 1)
 
 
 class TestImageReaderDecodeCase2(TestImageReaderDecodeCase1):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
@@ -80,7 +111,7 @@ class TestImageReaderDecodeCase2(TestImageReaderDecodeCase1):
 
 
 class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
@@ -99,11 +130,15 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         self.channel_dim = 0
 
     def test_static_output(self):
+        # NOTE: only support cuda kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
         paddle.enable_static()
-        self.setup()
 
         indices = paddle.arange(self.batch_size)
-        image, label = file_label_loader(self.data_root, indices)
+        image, label = file_label_loader(self.data_root, indices,
+                                         self.batch_size)
         image = image_decode_random_crop(image,
                             num_threads=self.num_threads,
                             aspect_ratio_min=self.aspect_ratio_min,
@@ -113,8 +148,10 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
                             num_attempts=self.num_attempts,
                             data_format=self.data_format)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
-        out_image, out_label = exe.run(paddle.static.default_main_program(),
-                                       fetch_list=[image, label])
+        rets = exe.run(paddle.static.default_main_program(),
+                       fetch_list=image + [label])
+        out_image = rets[:-1]
+        out_label = rets[-1]
 
         assert len(out_image) == self.batch_size
         for i in range(self.batch_size):
@@ -130,9 +167,42 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         assert np.all(label >= 0)
         assert np.all(label <= 1)
 
+        paddle.disable_static()
+
+    def test_dynamic_output(self):
+        # NOTE: only support cuda kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
+        indices = paddle.arange(self.batch_size)
+        image, label = file_label_loader(self.data_root, indices,
+                                         self.batch_size)
+        image = image_decode_random_crop(image,
+                            num_threads=self.num_threads,
+                            aspect_ratio_min=self.aspect_ratio_min,
+                            aspect_ratio_max=self.aspect_ratio_max,
+                            area_min=self.area_min,
+                            area_max=self.area_max,
+                            num_attempts=self.num_attempts,
+                            data_format=self.data_format)
+
+        assert len(image) == self.batch_size
+        for i in range(self.batch_size):
+            img = image[i].numpy()
+            assert img.dtype == np.uint8
+            assert img.shape[self.channel_dim] == 3
+            assert np.all(img >= 0)
+            assert np.all(img <= 255)
+
+        label = label.numpy()
+        assert label.shape[0] == self.batch_size
+        assert label.dtype == np.int64
+        assert np.all(label >= 0)
+        assert np.all(label <= 1)
+
 
 class TestImageReaderDecodeRandomCropNHWC(TestImageReaderDecodeRandomCropNCHW):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
@@ -149,6 +219,26 @@ class TestImageReaderDecodeRandomCropNHWC(TestImageReaderDecodeRandomCropNCHW):
 
         self.data_format = "NHWC"
         self.channel_dim = 2
+
+
+class TestImageReaderDecodeRandomCropThread8(TestImageReaderDecodeRandomCropNCHW):
+    def setUp(self):
+        self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                           DATASET_MD5)
+
+        self.batch_size = 16
+        self.num_threads = 8
+        self.host_memory_padding = 20000
+        self.device_memory_padding = 20000
+
+        self.aspect_ratio_min = 1. / 2.
+        self.aspect_ratio_max = 3. / 2.
+        self.area_min = 0.01
+        self.area_max = 0.99
+        self.num_attempts = 50
+
+        self.data_format = "NCHW"
+        self.channel_dim = 0
 
 
 if __name__ == '__main__':

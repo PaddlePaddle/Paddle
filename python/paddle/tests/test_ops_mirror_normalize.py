@@ -45,7 +45,7 @@ def np_mirror_normalize(image, mirror, mean, std):
 
 
 class TestMirrorNormalize(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.image_shape = [16, 3, 32, 32]
         self.mirror_shape = [16, 1]
         self.mean = [123.675, 116.28, 103.53]
@@ -62,14 +62,16 @@ class TestMirrorNormalize(unittest.TestCase):
         if not core.is_compiled_with_cuda():
             return
 
-        self.setup()
         dy_result = mirror_normalize(paddle.to_tensor(self.image),
                                      paddle.to_tensor(self.mirror),
                                      self.mean, self.std)
         assert np.allclose(self.result, dy_result.numpy())
 
     def test_check_output_static(self):
-        self.setup()
+        # NOTE: only supoort CUDA kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
         paddle.enable_static()
 
         image_data = paddle.static.data(shape=self.image_shape,
@@ -99,7 +101,7 @@ class TestMirrorNormalize(unittest.TestCase):
 
 
 class TestMirrorNormalizeSingleMeanStd(TestMirrorNormalize):
-    def setup(self):
+    def setUp(self):
         self.image_shape = [16, 3, 32, 32]
         self.mirror_shape = [16, 1]
         self.mean = [123.675]
@@ -113,7 +115,7 @@ class TestMirrorNormalizeSingleMeanStd(TestMirrorNormalize):
 
 
 class TestMirrorNormalizeFloatMeanStd(TestMirrorNormalize):
-    def setup(self):
+    def setUp(self):
         self.image_shape = [16, 3, 32, 32]
         self.mirror_shape = [16, 1]
         self.mean = 123.675

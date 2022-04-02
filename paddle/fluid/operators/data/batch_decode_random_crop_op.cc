@@ -95,22 +95,15 @@ class BatchDecodeRandomCropOp : public framework::OperatorWithKernel {
   }
 };
 
-class BatchDecodeRandomCropInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
-                       framework::ALL_ELEMENTS);
-  }
-};
-
 class BatchDecodeRandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "A one dimensional uint8 tensor containing the raw bytes "
-             "of the JPEG image. It is a tensor with rank 1.")
+             "(List[Tensor]) A one dimensional uint8 tensor containing the "
+             "raw bytes of the JPEG image. It is a tensor with rank 1.")
         .AsDuplicable();
-    AddOutput("Out", "The output tensor of DecodeJpeg op").AsDuplicable();
+    AddOutput("Out", "The output tensor of BatchDecodeRandomCropOp")
+        .AsDuplicable();
     AddComment(R"DOC(
 This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
 or 1 dimensional Gray Tensor. Optionally converts the image to the 

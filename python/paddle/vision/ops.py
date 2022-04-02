@@ -934,10 +934,12 @@ def image_decode(x,
     }
 
     helper = LayerHelper("batch_decode", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("image_decode"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=x.dtype)
+    out = [
+        helper.create_variable(
+            name=unique_name.generate("image_decode"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype='uint8') for i in range(len(x))
+    ]
     helper.append_op(
         type="batch_decode", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
@@ -1019,14 +1021,10 @@ def image_decode_random_crop(x,
         "program_id": utils._hash_with_id(default_main_program())
     }
 
-    helper = LayerHelper("batch_decode_random_crop", **locals())
-    # out = helper.create_variable(
-    #     name=unique_name.generate("image_decode_random_crop"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-    #     dtype=x.dtype)
+    helper = LayerHelper("image_decode_random_crop", **locals())
     out = [
         helper.create_variable(
-            name=unique_name.generate("file_label_loader"),
+            name=unique_name.generate("image_decode_random_crop"),
             type=core.VarDesc.VarType.LOD_TENSOR,
             dtype='uint8') for i in range(len(x))
     ]

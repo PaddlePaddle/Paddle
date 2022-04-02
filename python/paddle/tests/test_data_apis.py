@@ -32,6 +32,15 @@ class TestRandomFlip(unittest.TestCase):
         except ValueError:
             pass
 
+        try:
+            data = paddle.ones([16, 3, 32, 32], dtype="float32")
+            out = random_flip(data, -0.5)
+
+            # should not execute following lines
+            assert False
+        except ValueError:
+            pass
+
     def test_output_dynamic(self):
         data = paddle.ones([16, 3, 32, 32], dtype="float32")
         out = random_flip(data, 0.5)

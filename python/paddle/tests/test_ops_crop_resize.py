@@ -165,7 +165,7 @@ def np_image_resize(images, size, interp_method,
 
 
 class TestImageResizeNearestNCHW(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 32, 32]
         self.image_shape2 = [3, 16, 16]
         self.size = (20, 30)
@@ -174,28 +174,25 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
         self.align_corners = False
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
     def build_np_data(self):
-        if not self._is_np_built:
-            self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
-            self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
-            self.np_result = np_image_resize(
-                                [self.image1, self.image2],
-                                size=self.size,
-                                interp_method=self.interp_method,
-                                align_corners=self.align_corners,
-                                align_mode=self.align_mode,
-                                data_format=self.data_format)
-            self._is_np_built = True
+        self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
+        self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
+        self.np_result = np_image_resize(
+                            [self.image1, self.image2],
+                            size=self.size,
+                            interp_method=self.interp_method,
+                            align_corners=self.align_corners,
+                            align_mode=self.align_mode,
+                            data_format=self.data_format)
 
     def test_output_dynamic(self):
+        # NOTE: only support cuda kernel currently
         if not core.is_compiled_with_cuda():
             return
 
         paddle.disable_static()
-        self.setup()
 
         images = paddle.tensor.create_array(dtype="uint8")
         images = paddle.tensor.array_write(paddle.to_tensor(self.image1), 
@@ -203,36 +200,27 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
         images = paddle.tensor.array_write(paddle.to_tensor(self.image2),
                                            paddle.to_tensor(1), images)
 
-        # NOTE: image_resize takes TensorArray as input, which cannot
-        #       create by Python API in dynamic mode
-        try:
-            dy_result = image_resize(images, self.size,
-                                     interp_method=self.interp_method,
-                                     align_corners=self.align_corners,
-                                     align_mode=self.align_mode,
-                                     data_format=self.data_format)
-        except:
-            pass
+        result = image_resize(images, self.size,
+                              interp_method=self.interp_method,
+                              align_corners=self.align_corners,
+                              align_mode=self.align_mode,
+                              data_format=self.data_format)
+        assert np.allclose(result.numpy(), self.np_result, rtol=1)
 
     def test_output_static(self):
+        # NOTE: only support cuda kernel currently
         if not core.is_compiled_with_cuda():
             return
 
         paddle.enable_static()
-        self.setup()
 
-        images = paddle.tensor.create_array(dtype="uint8")
-
-        idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         image1 = fluid.layers.assign(self.image1.astype('int32'))
         image1 = fluid.layers.cast(image1, dtype='uint8')
-        images = paddle.tensor.array_write(image1, idx, images)
 
         image2 = fluid.layers.assign(self.image2.astype('int32'))
         image2 = fluid.layers.cast(image2, dtype='uint8')
-        images = paddle.tensor.array_write(image2, idx + 1, images)
 
-        out = image_resize(images, self.size,
+        out = image_resize([image1, image2], self.size,
                            interp_method=self.interp_method,
                            align_corners=self.align_corners,
                            align_mode=self.align_mode,
@@ -247,7 +235,7 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
 
 
 class TestImageResizeNearestNHWC(TestImageResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [32, 32, 3]
         self.image_shape2 = [16, 16, 3]
         self.size = 20
@@ -256,15 +244,11 @@ class TestImageResizeNearestNHWC(TestImageResizeNearestNCHW):
         self.align_corners = True
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
-
-    def test_output_dynamic(self):
-        pass
 
 
 class TestImageResizeNearestNCHWAlignCorner(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 32, 32]
         self.image_shape2 = [3, 16, 16]
         self.size = 30
@@ -273,12 +257,11 @@ class TestImageResizeNearestNCHWAlignCorner(TestImageResizeNearestNHWC):
         self.align_corners = True
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeNearestNHWCAlignCorner(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [32, 32, 3]
         self.image_shape2 = [16, 16, 3]
         self.size = (20, 30)
@@ -287,12 +270,11 @@ class TestImageResizeNearestNHWCAlignCorner(TestImageResizeNearestNHWC):
         self.align_corners = True
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNCHW(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 32, 32]
         self.image_shape2 = [3, 16, 16]
         self.size = (20, 30)
@@ -301,12 +283,11 @@ class TestImageResizeBilinearNCHW(TestImageResizeNearestNHWC):
         self.align_corners = False
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNHWC(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [32, 32, 3]
         self.image_shape2 = [16, 16, 3]
         self.size = (20, 30)
@@ -315,12 +296,11 @@ class TestImageResizeBilinearNHWC(TestImageResizeNearestNHWC):
         self.align_corners = False
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNCHWAlignMode0(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 32, 32]
         self.image_shape2 = [3, 16, 16]
         self.size = (20, 30)
@@ -329,12 +309,11 @@ class TestImageResizeBilinearNCHWAlignMode0(TestImageResizeNearestNHWC):
         self.align_corners = False
         self.align_mode = 0
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNHWCAlignMode0(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [32, 32, 3]
         self.image_shape2 = [16, 16, 3]
         self.size = (20, 30)
@@ -343,12 +322,11 @@ class TestImageResizeBilinearNHWCAlignMode0(TestImageResizeNearestNHWC):
         self.align_corners = False
         self.align_mode = 0
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNCHWAlignCorner(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 32, 32]
         self.image_shape2 = [3, 16, 16]
         self.size = (20, 30)
@@ -357,12 +335,11 @@ class TestImageResizeBilinearNCHWAlignCorner(TestImageResizeNearestNHWC):
         self.align_corners = True
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageResizeBilinearNHWCAlignCorner(TestImageResizeNearestNHWC):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [32, 32, 3]
         self.image_shape2 = [16, 16, 3]
         self.size = (20, 30)
@@ -371,12 +348,11 @@ class TestImageResizeBilinearNHWCAlignCorner(TestImageResizeNearestNHWC):
         self.align_corners = True
         self.align_mode = 1
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeNearestNCHW(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]
         self.size = (20, 30)
@@ -387,21 +363,18 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
 
         self.out_shape = (2, 3, 20, 30)
 
-        self._is_np_built = False
         self.build_np_data()
 
     def build_np_data(self):
-        if not self._is_np_built:
-            self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
-            self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
-            self._is_np_built = True
+        self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
+        self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
 
     def test_output_dynamic(self):
+        # NOTE: only support cuda kernel currently
         if not core.is_compiled_with_cuda():
             return
 
         paddle.disable_static()
-        self.setup()
 
         images = paddle.tensor.create_array(dtype="uint8")
         images = paddle.tensor.array_write(paddle.to_tensor(self.image1), 
@@ -409,38 +382,31 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
         images = paddle.tensor.array_write(paddle.to_tensor(self.image2),
                                            paddle.to_tensor(1), images)
 
-        # NOTE: image_resize takes TensorArray as input, which cannot
-        #       create by Python API in dynamic mode
-        try:
-            dy_result = random_crop_and_resize(
-                                     images, self.size,
-                                     interp_method=self.interp_method,
-                                     align_corners=self.align_corners,
-                                     align_mode=self.align_mode,
-                                     data_format=self.data_format)
-        except:
-            pass
+        result = random_crop_and_resize(
+                                 images, self.size,
+                                 interp_method=self.interp_method,
+                                 align_corners=self.align_corners,
+                                 align_mode=self.align_mode,
+                                 data_format=self.data_format)
+        result = result.numpy()
+        assert result.shape == self.out_shape
+        assert result.dtype == np.uint8
 
     def test_output_static(self):
+        # NOTE: only support cuda kernel currently
         if not core.is_compiled_with_cuda():
             return
 
         paddle.enable_static()
-        self.setup()
 
-        images = paddle.tensor.create_array(dtype="uint8")
-
-        idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         image1 = fluid.layers.assign(self.image1.astype('int32'))
         image1 = fluid.layers.cast(image1, dtype='uint8')
-        images = paddle.tensor.array_write(image1, idx, images)
 
         image2 = fluid.layers.assign(self.image2.astype('int32'))
         image2 = fluid.layers.cast(image2, dtype='uint8')
-        images = paddle.tensor.array_write(image2, idx + 1, images)
 
         out = random_crop_and_resize(
-                           images, self.size,
+                           [image1, image2], self.size,
                            interp_method=self.interp_method,
                            align_corners=self.align_corners,
                            align_mode=self.align_mode,
@@ -450,12 +416,13 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
         result, = exe.run(paddle.static.default_main_program(),
                          fetch_list=[out])
         assert result.shape == self.out_shape
+        assert result.dtype == np.uint8
 
         paddle.disable_static()
 
 
 class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [16, 16, 3]
         self.image_shape2 = [32, 32, 3]
         self.size = 20
@@ -466,12 +433,11 @@ class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 20, 20, 3)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeNearestNCHWAlignCorner(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]
         self.size = 20
@@ -482,12 +448,11 @@ class TestImageCropResizeNearestNCHWAlignCorner(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 3, 20, 20)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [16, 16, 3]
         self.image_shape2 = [32, 32, 3]
         self.size = (20, 30)
@@ -498,12 +463,11 @@ class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 20, 30, 3)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeBilinearNCHW(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]
         self.size = (20, 30)
@@ -519,7 +483,7 @@ class TestImageCropResizeBilinearNCHW(TestImageCropResizeNearestNCHW):
 
 
 class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [16, 16, 3]
         self.image_shape2 = [32, 32, 3]
         self.size = (20, 30)
@@ -530,12 +494,11 @@ class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 20, 30, 3)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeBilinearNCHWAlignMode0(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]
         self.size = (20, 30)
@@ -546,12 +509,11 @@ class TestImageCropResizeBilinearNCHWAlignMode0(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 3, 20, 30)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeNearestNHWCAlignMode0(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [16, 16, 3]
         self.image_shape2 = [32, 32, 3]
         self.size = (20, 30)
@@ -562,12 +524,11 @@ class TestImageCropResizeNearestNHWCAlignMode0(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 20, 30, 3)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeBilinearNCHWAlignCorner(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]
         self.size = (20, 30)
@@ -578,12 +539,11 @@ class TestImageCropResizeBilinearNCHWAlignCorner(TestImageCropResizeNearestNCHW)
 
         self.out_shape = (2, 3, 20, 30)
 
-        self._is_np_built = False
         self.build_np_data()
 
 
 class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
-    def setup(self):
+    def setUp(self):
         self.image_shape1 = [16, 16, 3]
         self.image_shape2 = [32, 32, 3]
         self.size = (20, 30)
@@ -594,7 +554,6 @@ class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 20, 30, 3)
 
-        self._is_np_built = False
         self.build_np_data()
 
 

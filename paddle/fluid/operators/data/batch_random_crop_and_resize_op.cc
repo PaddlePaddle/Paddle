@@ -24,7 +24,10 @@ class BatchRandomCropAndResizeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchRandomCropAndResize");
+    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                        "Inputs(X) of BatchRandomCropAndResize "
+                        "should not be empty."));
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "BatchRandomCropAndResize");
 
@@ -62,7 +65,8 @@ class BatchRandomCropAndResizeOp : public framework::OperatorWithKernel {
 class BatchRandomCropAndResizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensorArray). A batch of instances to random crop.");
+    AddInput("X", "(List(Tensor)). A batch of instances to random crop.")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor). The cropped instance batch.");
     AddAttr<float>("aspect_ratio_min", "").SetDefault(3./4.);
     AddAttr<float>("aspect_ratio_max", "").SetDefault(4./3.);

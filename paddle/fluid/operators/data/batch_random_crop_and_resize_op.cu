@@ -276,8 +276,8 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
     // get input, output
-    auto* x = ctx.Input<framework::LoDTensorArray>("X");
-    PADDLE_ENFORCE_GT(x->size(), 0,
+    auto x = ctx.MultiInput<framework::LoDTensor>("X");
+    PADDLE_ENFORCE_GT(x.size(), 0,
                       platform::errors::InvalidArgument(
                           "The size of X must be greater than 0."));
     auto* out = ctx.Output<framework::LoDTensor>("Out");
@@ -291,7 +291,7 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     AreaRange area_range{area_min, area_max};
 
     auto* generators = GeneratorManager::Instance()->GetGenerators(
-                          x->size(), x->size(), aspect_ratio_range,
+                         x.size(), x.size(), aspect_ratio_range,
                           area_range);
 
     const std::vector<int64_t> size = ctx.Attr<std::vector<int64_t>>("size");
@@ -305,22 +305,22 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
 
-    auto* img = &x->at(0);
+    auto* img = x.at(0);
     int64_t img_c = data_format == DataLayout::kNCHW ? \
                   img->dims()[0] : img->dims()[2];
 
     std::vector<int64_t> out_dim;
     if (data_format == DataLayout::kNCHW) {
-      out_dim = {static_cast<int64_t>(x->size()), img_c, size[0], size[1]};
+      out_dim = {static_cast<int64_t>(x.size()), img_c, size[0], size[1]};
     } else {
-      out_dim = {static_cast<int64_t>(x->size()), size[0], size[1], img_c};
+      out_dim = {static_cast<int64_t>(x.size()), size[0], size[1], img_c};
     }
     out->Resize(phi::make_ddim(out_dim));
     out->mutable_data<T>(ctx.GetPlace());
 
     int img_h, img_w, idx_h, idx_w, crop_h, crop_w;
-    for (int i = 0; i < x->size(); i++) {
-      img = &x->at(i);
+    for (int i = 0; i < x.size(); i++) {
+      img = x.at(i);
       img_h =
           data_format == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
       img_w =

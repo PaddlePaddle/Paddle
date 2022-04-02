@@ -47,14 +47,14 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
         paddle.enable_static()
         self.indices_data = paddle.static.data(
                     shape=[self.batch_size], dtype='int64', name='indices')
-        self.sample_data, self.label_data = file_label_loader(self.data_root, self.indices_data)
+        self.sample_data, self.label_data = file_label_loader(self.data_root, self.indices_data, self.batch_size)
         self.exe = paddle.static.Executor(paddle.CPUPlace())
         paddle.disable_static()
 
     def loader_function(self, indices):
         if paddle.in_dynamic_mode():
             indices = paddle.to_tensor(indices)
-            return file_label_loader(self.data_root, indices)
+            return file_label_loader(self.data_root, indices, self.batch_size)
         else:
             paddle.enable_static()
             return self.exe.run(paddle.static.default_main_program(),

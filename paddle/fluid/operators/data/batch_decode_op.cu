@@ -42,23 +42,22 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
             static_cast<size_t>(host_memory_padding),
             static_cast<size_t>(device_memory_padding));
 
-    const framework::LoDTensorArray* inputs =
-        ctx.Input<framework::LoDTensorArray>("X");
+    auto inputs = ctx.MultiInput<framework::LoDTensor>("X");
+    int batch_size = inputs.size();
 
-    auto* out = ctx.OutputVar("Out");
-    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(inputs->size());
+    auto out_array = ctx.MultiOutput<framework::LoDTensor>("Out");
+    auto dev = platform::CUDAPlace(local_rank);
 
-    for (size_t i = 0; i < inputs->size(); i++) {
-      const framework::LoDTensor x = inputs->at(i);
-      auto* x_data = x.data<T>();
-      size_t x_numel = static_cast<size_t>(x.numel());
+    for (size_t i = 0; i < batch_size; i++) {
+      const framework::LoDTensor* x = inputs.at(i);
+      auto* x_data = x->data<T>();
+      size_t x_numel = static_cast<size_t>(x->numel());
 
       ImageDecodeTask task = {.bit_stream = x_data,
                               .bit_len = x_numel,
-                              .tensor = &out_array[i],
+                              .tensor = out_array[i],
                               .roi_generator = nullptr,
-                              .place = ctx.GetPlace()};
+                              .place = dev};
       decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
     }
 

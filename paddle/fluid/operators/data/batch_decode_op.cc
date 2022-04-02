@@ -23,8 +23,12 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DecodeJpeg");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DecodeJpeg");
+    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Inputs(X) of DecodeJpeg should not be empty."));
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(Out) of DecodeJpeg should not be empty."));
   }
 
  protected:
@@ -46,28 +50,22 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
   }
 };
 
-class BatchDecodeInferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY,
-                       framework::ALL_ELEMENTS);
-  }
-};
-
 class BatchDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "A one dimensional uint8 tensor containing the raw bytes "
-             "of the JPEG image. It is a tensor with rank 1.");
-    AddOutput("Out", "The output tensor of DecodeJpeg op").AsDuplicable();
+             "(List[Tensor]) A one dimensional uint8 tensor containing "
+             "the raw bytes of the JPEG image. It is a tensor with rank "
+             "1.").AsDuplicable();
+    AddOutput("Out", "The output tensor of BatchDecodeOp").AsDuplicable();
     AddComment(R"DOC(
 This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
 or 1 dimensional Gray Tensor. Optionally converts the image to the 
 desired format. The values of the output tensor are uint8 between 0 
 and 255.
 )DOC");
-    AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
+    AddAttr<int>("num_threads", "Path of the file to be readed.")
+        .SetDefault(2);
     AddAttr<int>("local_rank",
                  "(int)"
                  "The index of the op to start execution");
