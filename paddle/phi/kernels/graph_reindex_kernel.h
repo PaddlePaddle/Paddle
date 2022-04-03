@@ -19,13 +19,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogsumexpGradKernel(const Context& ctx,
-                         const DenseTensor& in,
-                         const DenseTensor& out,
-                         const DenseTensor& out_grad,
-                         const std::vector<int64_t>& axis,
-                         bool keepdim,
-                         bool reduce_all,
-                         DenseTensor* in_grad);
+void GraphReindexKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& neighbors,
+                        const DenseTensor& count,
+                        paddle::optional<const DenseTensor&> hashtable_value,
+                        paddle::optional<const DenseTensor&> hashtable_index,
+                        bool flag_buffer_hashtable,
+                        DenseTensor* reindex_src,
+                        DenseTensor* reindex_dst,
+                        DenseTensor* out_nodes);
 
 }  // namespace phi
