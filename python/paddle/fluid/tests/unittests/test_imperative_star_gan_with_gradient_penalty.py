@@ -17,6 +17,7 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -583,7 +584,7 @@ class StaticGraphTrainModel(object):
 
 
 class TestStarGANWithGradientPenalty(unittest.TestCase):
-    def test_main(self):
+    def func_main(self):
         self.place_test(fluid.CPUPlace())
 
         if fluid.is_compiled_with_cuda():
@@ -614,6 +615,10 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
                                                               dygraph_loss):
             self.assertEqual(g_loss_s, g_loss_d)
             self.assertEqual(d_loss_s, d_loss_d)
+
+    def test_all_cases(self):
+        if _in_legacy_dygraph():
+            self.func_main()
 
 
 if __name__ == '__main__':
