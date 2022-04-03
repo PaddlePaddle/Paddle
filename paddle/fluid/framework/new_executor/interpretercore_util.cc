@@ -454,8 +454,6 @@ void build_op_func_list(const platform::Place& place,
           if (kernels_iter == all_op_kernels.end() ||
               kernels_iter->second.find(expected_kernel_key) ==
                   kernels_iter->second.end()) {
-            LOG(WARNING) << "here";
-            
             auto pt_cpu_kernel_key = FallBackToCpu(
                 expected_kernel_key, pt_kernel_key, *op_with_kernel);
             op_with_kernel->ResetPhiKernel(
