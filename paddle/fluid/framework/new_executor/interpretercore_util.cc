@@ -432,8 +432,7 @@ void build_op_func_list(const platform::Place& place,
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op_with_kernel,
-                                                         runtime_context);
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
         // TODO(Aurelius84): In case of control flow ops, they are NOT
         // inheritted from OperatorWithKernel.
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);

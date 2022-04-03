@@ -1032,7 +1032,7 @@ set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu PROPERTIES
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
+set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 300)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu PROPERTIES TIMEOUT 120)
