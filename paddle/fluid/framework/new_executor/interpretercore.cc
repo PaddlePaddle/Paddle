@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -55,6 +58,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       block_(block),
       global_scope_(global_scope),
       stream_analyzer_(place) {
+  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
   is_build_ = false;
   async_work_queue_.reset(new interpreter::AsyncWorkQueue(
       kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
@@ -92,6 +96,14 @@ InterpreterCore::~InterpreterCore() {
   gc_.reset(nullptr);
 
   async_work_queue_.reset(nullptr);
+  VLOG(4) << "~InterpreterCore(): " << this;
+  VLOG(4) << " on" << place_;
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  platform::ClearMKLDNNCache(place_, this);
+#endif
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -101,6 +113,9 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool is_build = is_build_;
   global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
@@ -120,6 +135,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
@@ -407,13 +425,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
+    // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
       platform::RecordEvent infershape_event(
           "infer_shape", platform::TracerEventType::OperatorInner, 1,
           platform::EventRole::kInnerOp);
-      // If it is OperatorBase, InferShape do nothing.
-      op_with_kernel->Info().infer_shape_(
-          instr_node.InnerInferShapeContext().get());
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
     }
   }
 
@@ -483,7 +506,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   // for debug nan/inf
-  if (FLAGS_check_nan_inf) {
+  if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op, *global_scope_,
@@ -493,6 +516,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  unfinished_op_numer_ = vec_instr.size();
+  if (unfinished_op_numer_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -500,8 +529,6 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-
-  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 
@@ -524,10 +551,12 @@ void InterpreterCore::ExecuteInstructionList(
     if (exception_holder_.Type() != "EOF") {
       async_work_queue_->Cancel();
     }
+    VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(), 0,
         platform::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
 }
@@ -619,15 +648,18 @@ void InterpreterCore::RunInstructionAsync(
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(
         op->Type(), platform::TracerEventType::Operator, 1);
-    interpreter::WaitEvent(instr_node, place_);
 
     try {
+      interpreter::WaitEvent(instr_node, place_);
+
       RunInstruction(instr_node);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       RecordStreamForGC(instr_node);
 #endif
       CheckGC(instr_node, atomic_var_ref);
+
+      interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -658,8 +690,6 @@ void InterpreterCore::RunInstructionAsync(
         completion_notifier_->NotifyEvent();
       }
     }
-
-    interpreter::RecordEvent(instr_node, place_);
 
     RunNextInstructions(instr_node, &ready_ops, atomic_deps, atomic_var_ref);
   }

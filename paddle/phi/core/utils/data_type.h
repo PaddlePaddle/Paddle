@@ -44,6 +44,10 @@ namespace phi {
   _PhiForEachDataTypeHelper_(                                       \
       callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
 
+#define _PhiForEachDataTypeTiny_(callback)                    \
+  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32); \
+  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);
+
 template <typename Visitor>
 inline void VisitDataType(phi::DataType type, Visitor visitor) {
 #define PhiVisitDataTypeCallback(cpp_type, data_type) \
@@ -59,4 +63,21 @@ inline void VisitDataType(phi::DataType type, Visitor visitor) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
+
+template <typename Visitor>
+inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
+#define PhiVisitDataTypeCallbackTiny(cpp_type, data_type) \
+  do {                                                    \
+    if (type == data_type) {                              \
+      visitor.template apply<cpp_type>();                 \
+      return;                                             \
+    }                                                     \
+  } while (0)
+
+  _PhiForEachDataTypeTiny_(PhiVisitDataTypeCallbackTiny);
+#undef PhiVisitDataTypeCallbackTiny
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
+}
+
 }  // namespace phi
