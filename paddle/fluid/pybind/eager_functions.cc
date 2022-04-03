@@ -371,9 +371,9 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
             ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
   }
   for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
-    outs_auto_grad_metas[i] =
-        egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
-            ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
+    auto tmp_tensors = ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
+                                           ctx.OutputRangeAt(i).second);
+    outs_auto_grad_metas[i] = egr::EagerUtils::autograd_meta(&tmp_tensors);
   }
   bool require_any_grad = false;
   for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {

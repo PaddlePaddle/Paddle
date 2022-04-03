@@ -101,7 +101,11 @@ int64_t Tensor::size() const { return impl_->numel(); }
 phi::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return phi::vectorize<int64_t>(impl_->dims());
+  auto dims = impl_->dims();
+  if (dims.size() == 1 && dims.at(0) == 0) {
+    return {};
+  }
+  return phi::vectorize<int64_t>(dims);
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
