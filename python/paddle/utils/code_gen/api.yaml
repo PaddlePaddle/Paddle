@@ -1057,13 +1057,14 @@
     func : MeanAllInferMeta
   kernel :
     func : mean_all
+  backward : mean_all_grad
 
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
+  #backward : meshgrid_grad
   invoke : meshgrid_impl(inputs)
-  backward : meshgrid_grad
-
+  
 - api : min
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1109,6 +1110,12 @@
   kernel :
     func : modulo
   backward : modulo_grad
+
+- api : momentum
+  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
+  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
+  optional : master_param
 
 # multinomial
 - api : multinomial

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace experimental {
@@ -30,5 +31,19 @@ std::vector<Tensor> split_impl(const Tensor& x,
 std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
 std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
                                        const std::vector<Tensor>& outputs_grad);
+
+std::tuple<Tensor, Tensor, Tensor> momentum_impl(
+    const Tensor& param,
+    const Tensor& grad,
+    const Tensor& velocity,
+    const Tensor& learning_rate,
+    paddle::optional<const Tensor&> master_param,
+    float mu,
+    bool use_nesterov,
+    const std::string& regularization_method,
+    float regularization_coeff,
+    bool multi_precision,
+    float rescale_grad);
+
 }  // namespace experimental
 }  // namespace paddle
