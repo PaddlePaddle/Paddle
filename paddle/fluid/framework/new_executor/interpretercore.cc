@@ -425,13 +425,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
+    // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
       platform::RecordEvent infershape_event(
           "infer_shape", platform::TracerEventType::OperatorInner, 1,
           platform::EventRole::kInnerOp);
-      // If it is OperatorBase, InferShape do nothing.
-      op_with_kernel->Info().infer_shape_(
-          instr_node.InnerInferShapeContext().get());
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
     }
   }
 
@@ -511,6 +516,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  unfinished_op_numer_ = vec_instr.size();
+  if (unfinished_op_numer_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -518,8 +529,6 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-
-  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 

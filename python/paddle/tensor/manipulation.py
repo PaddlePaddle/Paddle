@@ -796,7 +796,10 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_roll(x, shifts, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     helper = LayerHelper("roll", **locals())
@@ -1409,7 +1412,9 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    #if in_dygraph_mode():
+    #return _C_ops.final_state_gather(x, index, axis)
+    if _non_static_mode():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 

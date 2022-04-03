@@ -106,14 +106,67 @@ _global_flags_ = core.globals()
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
+def _update_monkey_methods(is_eager):
+    """
+    Update monkey methods of VarBase or eager.Tensor while
+    switching eager mode and legacy mode.
+    """
+    from paddle import _C_ops
+    from .dygraph.varbase_patch_methods import monkey_patch_varbase
+    from .dygraph import monkey_patch_math_varbase
+
+    global _already_patch_eager_tensor
+    global _already_patch_varbase
+
+    assert isinstance(is_eager, bool)
+    # switch into eager mode
+    if is_eager:
+        _C_ops.switch_to_eager_ops()
+        if not _already_patch_eager_tensor:
+            monkey_patch_varbase()
+            monkey_patch_math_varbase()
+            # Ugly setting
+            from paddle.tensor.manipulation import fill_, zero_, fill_diagonal_, fill_diagonal_tensor_, tolist
+            setattr(core.eager.Tensor, 'fill_', fill_)
+            setattr(core.eager.Tensor, 'zero_', zero_)
+            setattr(core.eager.Tensor, 'fill_diagonal_', fill_diagonal_)
+            setattr(core.eager.Tensor, 'fill_diagonal_tensor_',
+                    fill_diagonal_tensor_)
+            setattr(core.eager.Tensor, 'tolist', tolist)
+
+            _already_patch_eager_tensor = True
+    # switch back into legacy mode
+    else:
+        _C_ops.switch_to_core_ops()
+        if not _already_patch_varbase:
+            monkey_patch_varbase()
+            monkey_patch_math_varbase()
+
+            _already_patch_varbase = True
+
+    # switch Paddle.Tensor bind type
+    _switch_tensor_bind_type(is_eager)
+
+
+def _switch_tensor_bind_type(is_eager):
+    import paddle
+    if is_eager:
+        paddle.Tensor = core.eager.Tensor
+    else:
+        paddle.Tensor = core.VarBase
+    paddle.Tensor.__qualname__ = 'Tensor'
+
+
 def _enable_legacy_dygraph():
     global _in_eager_mode_
     _in_eager_mode_ = False
+    _update_monkey_methods(is_eager=False)
 
 
 def _disable_legacy_dygraph():
     global _in_eager_mode_
     _in_eager_mode_ = True
+    _update_monkey_methods(is_eager=True)
 
 
 def _in_eager_without_dygraph_check():
@@ -162,31 +215,10 @@ def _non_static_mode():
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
     _disable_legacy_dygraph()
-    from paddle import _C_ops
-    _C_ops.switch_to_eager_ops()
-    global _already_patch_eager_tensor
-    global _already_patch_varbase
-    from .dygraph.varbase_patch_methods import monkey_patch_varbase
-    from .dygraph import monkey_patch_math_varbase
-    if not _already_patch_eager_tensor:
-        monkey_patch_varbase()
-        monkey_patch_math_varbase()
-
-        # Ugly setting
-        from paddle.tensor.manipulation import fill_, zero_
-        setattr(core.eager.Tensor, 'fill_', fill_)
-        setattr(core.eager.Tensor, 'zero_', zero_)
-
-        _already_patch_eager_tensor = True
     try:
         yield
     finally:
         _enable_legacy_dygraph()
-        if not _already_patch_varbase:
-            monkey_patch_varbase()
-            monkey_patch_math_varbase()
-            _already_patch_varbase = True
-        _C_ops.switch_to_core_ops()
 
 
 global_ipu_index = None

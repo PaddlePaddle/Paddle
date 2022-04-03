@@ -66,6 +66,32 @@ void AdadeltaInferMeta(const MetaTensor& param,
   avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
+void AdagradInferMeta(const MetaTensor& param,
+                      const MetaTensor& grad,
+                      const MetaTensor& moment,
+                      const MetaTensor& learning_rate,
+                      float epsilon,
+                      MetaTensor* param_out,
+                      MetaTensor* moment_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument("LearningRate should have one element"));
+  auto param_dims = param.dims();
+
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment.dims(),
+      phi::errors::InvalidArgument("Param and Moment input of AdagradOp "
+                                   "should have the same dimension."));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+  moment_out->set_dims(param_dims);
+  moment_out->set_dtype(moment.dtype());
+}
+
 void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -1390,6 +1416,22 @@ void InterpolateInferMeta(
   }
 }
 
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs) {
+  const size_t inputs_num = inputs.size();
+
+  auto out_shape = std::vector<int>(inputs_num);
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    out_shape[i] = inputs[i]->dims()[0];
+  }
+  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    outputs[i]->set_dims(out_dims);
+    outputs[i]->set_dtype(inputs[0]->dtype());
+  }
+}
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
@@ -1582,6 +1624,65 @@ void PsroiPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void RmspropInferMeta(const MetaTensor& param,
+                      const MetaTensor& mean_square,
+                      const MetaTensor& grad,
+                      const MetaTensor& moment,
+                      const MetaTensor& learning_rate,
+                      paddle::optional<const MetaTensor&> mean_grad,
+                      float epsilon,
+                      float decay,
+                      float momentum,
+                      bool centered,
+                      MetaTensor* param_out,
+                      MetaTensor* moment_out,
+                      MetaTensor* mean_square_out,
+                      MetaTensor* mean_grad_out) {
+  if (centered) {
+    PADDLE_ENFORCE_NOT_NULL(
+        mean_grad_out,
+        phi::errors::InvalidArgument(
+            "Output(MeanGradOut) of RmspropOp should not be null."));
+  }
+
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of RmspropOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment [%s]",
+                        param_dim,
+                        moment.dims()));
+  PADDLE_ENFORCE_EQ(param_dim,
+                    mean_square.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of RmspropOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and MeanSquare [%s]",
+                        param_dim,
+                        mean_square.dims()));
+
+  auto lr_dim = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dim),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning Rate of RmspropOp should be a scalar. But "
+                        "received LearningRate's dim [%s]",
+                        phi::product(lr_dim)));
+
+  param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
+  moment_out->set_dims(param_dim);
+  moment_out->set_dtype(moment.dtype());
+  mean_square_out->set_dims(param_dim);
+  mean_square_out->set_dtype(mean_square.dtype());
+  if (centered) {
+    mean_grad_out->set_dims(param_dim);
+    mean_grad_out->set_dtype(mean_grad.get_ptr()->dtype());
+  }
+}
+
 void RnnInferMeta(const MetaTensor& x,
                   const std::vector<MetaTensor*>& pre_state,
                   const std::vector<MetaTensor*>& weight_list,
@@ -1665,6 +1766,29 @@ void RnnInferMeta(const MetaTensor& x,
     state[i]->set_dims(pre_state[i]->dims());
     state[i]->set_dtype(x.dtype());
   }
+}
+
+void SGDInferMeta(const MetaTensor& param,
+                  const MetaTensor& learning_rate,
+                  const MetaTensor& grad,
+                  paddle::optional<const MetaTensor&> master_param,
+                  bool multi_precision,
+                  MetaTensor* param_out,
+                  MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(param_out,
+                          phi::errors::InvalidArgument(
+                              "Output(ParamOut) of SGDOp should not be null."));
+
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning rate should have 1 element. But received "
+                        "LearningRate dims [%s]",
+                        phi::product(lr_dims)));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
 }
 
 void StackInferMeta(const std::vector<MetaTensor*>& x,
@@ -1773,6 +1897,103 @@ void WhereInferMeta(const MetaTensor& condition,
                         x_dims,
                         y_dims));
   out->share_meta(x);
+}
+
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           paddle::optional<const MetaTensor&> hashtable_value,
+                           paddle::optional<const MetaTensor&> hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes) {
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+  if (flag_buffer_hashtable) {
+    GraphReindexShapeCheck(hashtable_value->dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index->dims(), "HashTable_Index");
+  }
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
+}
+
+void GraphSampleNeighborsInferMeta(
+    const MetaTensor& row,
+    const MetaTensor& col_ptr,
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> eids,
+    paddle::optional<const MetaTensor&> perm_buffer,
+    int sample_size,
+    bool return_eids,
+    bool flag_perm_buffer,
+    MetaTensor* out,
+    MetaTensor* out_count,
+    MetaTensor* out_eids) {
+  // GSN: GraphSampleNeighbors
+  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GSNShapeCheck(row.dims(), "Row");
+  GSNShapeCheck(col_ptr.dims(), "Col_Ptr");
+  GSNShapeCheck(x.dims(), "X");
+  if (return_eids) {
+    GSNShapeCheck(eids->dims(), "Eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+  if (flag_perm_buffer) {
+    GSNShapeCheck(perm_buffer->dims(), "Perm_Buffer");
+  }
+
+  out->set_dims({-1});
+  out->set_dtype(row.dtype());
+  out_count->set_dims({-1});
+  out_count->set_dtype(DataType::INT32);
 }
 
 void Yolov3LossInferMeta(const MetaTensor& x,
