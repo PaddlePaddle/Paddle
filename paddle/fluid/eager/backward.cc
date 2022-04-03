@@ -50,14 +50,15 @@ class GeneralGrad {
       for (size_t i = 0; i < num_inputs; i++) {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
-        auto* orig_target_node = auto_grad_meta->GetMutableGradNode().get();
+        auto* target_node = auto_grad_meta->GetMutableGradNode().get();
 
-        PADDLE_ENFORCE(
-            orig_to_copied_node_mapping_.count(orig_target_node),
-            paddle::platform::errors::InvalidArgument(
-                "Unable to find target node in orig_to_copied_node_mapping_."
-                "Most likely the starting nodes were not copied correctly."));
-        auto* target_node = orig_to_copied_node_mapping_[orig_target_node];
+        if (orig_to_copied_node_mapping_.count(target_node)) {
+          target_node = orig_to_copied_node_mapping_[target_node];
+        } else {
+          VLOG(6) << "Unable to find target node in "
+                     "orig_to_copied_node_mapping_, likely indicating an "
+                     "unused input";
+        }
 
         PADDLE_ENFORCE_NOT_NULL(target_node,
                                 paddle::platform::errors::Fatal(
@@ -257,14 +258,15 @@ class GeneralGrad {
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto& input = inputs[i];
       AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(input);
-      auto* orig_target_node = auto_grad_meta->GetMutableGradNode().get();
 
-      PADDLE_ENFORCE(
-          orig_to_copied_node_mapping_.count(orig_target_node),
-          paddle::platform::errors::InvalidArgument(
-              "Unable to find target node in orig_to_copied_node_mapping_."
-              "Most likely the starting nodes were not copied correctly."));
-      auto* target_node = orig_to_copied_node_mapping_[orig_target_node];
+      auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+      if (orig_to_copied_node_mapping_.count(target_node)) {
+        target_node = orig_to_copied_node_mapping_[target_node];
+      } else {
+        VLOG(6) << "Unable to find target node in "
+                   "orig_to_copied_node_mapping_, likely indicating an unused "
+                   "input";
+      }
 
       auto iter = results_map.find(target_node);
       if (iter != results_map.end()) {
@@ -341,6 +343,8 @@ class GeneralGrad {
     potential_stop_nodes.clear();
     depending_nodes.clear();
     results_map.clear();
+    copied_grad_nodes_.clear();
+    orig_to_copied_node_mapping_.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
@@ -359,11 +363,16 @@ class GeneralGrad {
   void ReconstructBackwardGraph(
       const std::queue<GradNodeBase*>& orig_init_queue) {
     std::queue<GradNodeBase*> queue = orig_init_queue;
+    std::unordered_set<GradNodeBase*> visited;
 
     // BFS and recursively copy the grad nodes
     while (!queue.empty()) {
       GradNodeBase* orig_node = queue.front();
       queue.pop();
+      if (visited.count(orig_node)) {
+        continue;
+      }
+      visited.insert(orig_node);
 
       PADDLE_ENFORCE(
           orig_to_copied_node_mapping_.count(orig_node),
