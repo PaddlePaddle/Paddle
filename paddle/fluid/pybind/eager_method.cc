@@ -125,6 +125,7 @@ class PyTensorVoidHook : public egr::TensorVoidHook {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
+                                     const paddle::platform::Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
