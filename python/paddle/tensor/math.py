@@ -1040,15 +1040,11 @@ def nanmean(x, axis=None, keepdim=False, name=None):
             :name: code-example1
 
             import paddle
-
-            # x is a Tensor with following elements:
-            # [[nan, 0.3, 0.5, 0.9]
-            #  [0.1, 0.2, -nan, 0.7]]
-            # Each example is followed by the corresponding output tensor.
+            # x is a 2-D Tensor:
             x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
                                   [0.1, 0.2, float('-nan'), 0.7]])
             out1 = paddle.nanmean(x)
-            # [0.45000002]
+            # [0.44999996]
             out2 = paddle.nanmean(x, axis=0)
             # [0.1, 0.25, 0.5, 0.79999995]
             out3 = paddle.nanmean(x, axis=0, keepdim=True)
@@ -1058,15 +1054,13 @@ def nanmean(x, axis=None, keepdim=False, name=None):
             out5 = paddle.nanmean(x, axis=1, keepdim=True)
             # [[0.56666666]
             #  [0.33333334]]
-            # y is a Tensor with shape [2, 2, 2] and elements as below:
-            # [[[1, nan], [3, 4]],
-            #   [[5, 6], [-nan, 8]]]
-            # Each example is followed by the corresponding output tensor.
+
+            # y is a 3-D Tensor:
             y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
                                    [[5, 6], [float('-nan'), 8]]])
-            out5 = paddle.nanmean(y, axis=[1, 2])
-            # [2.66666667, 6.33333333]
-            out6 = paddle.nanmean(y, axis=[0, 1])
+            out6 = paddle.nanmean(y, axis=[1, 2])
+            # [2.66666675, 6.33333349]
+            out7 = paddle.nanmean(y, axis=[0, 1])
             # [3., 6.]
     """
     if isinstance(axis, int):
