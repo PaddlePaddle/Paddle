@@ -24,10 +24,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 set(EXTERN_DEP "")
 if(WITH_HETERPS)
     set(TABLE_SRC common_sparse_table.cc ssd_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
-    #set(TABLE_SRC common_dense_table.cc barrier_table.cc common_graph_table.cc)
     set(EXTERN_DEP rocksdb)
 else()
-    set(TABLE_SRC common_sparse_table.cc sparse_geo_table.cc common_dense_table.cc barrier_table.cc common_graph_table.cc)
+    set(TABLE_SRC common_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
 endif()
 
 cc_library(common_table SRCS ${TABLE_SRC} DEPS ${TABLE_DEPS}

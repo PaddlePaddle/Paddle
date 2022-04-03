@@ -40,12 +40,6 @@ class MemorySparseTable : public Table {
   MemorySparseTable() {}
   virtual ~MemorySparseTable() {}
 
-  // unused method begin
-  //  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
-  //  virtual int32_t PushDenseParam(const float* values, size_t num) { return
-  //  0; }
-  //  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
-
   // unused method end
   static int32_t sparse_local_shard_num(uint32_t shard_num,
                                         uint32_t server_num) {
@@ -95,9 +89,6 @@ class MemorySparseTable : public Table {
   void* GetShard(size_t shard_idx) override {
     return &_local_shards[shard_idx];
   }
-  // protected:
-  //  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
-  //                              size_t num);
 
  protected:
   const int _task_pool_size = 24;

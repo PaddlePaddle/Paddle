@@ -469,16 +469,6 @@ class GraphTable : public Table {
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
 
-  //  virtual int32_t PullSparse(float *values, const PullSparseValue
-  //  &pull_value) {
-  //    return 0;
-  //  }
-  //
-  //  virtual int32_t PushSparse(const uint64_t *keys, const float *values,
-  //                             size_t num) {
-  //    return 0;
-  //  }
-
   virtual int32_t clear_nodes();
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }

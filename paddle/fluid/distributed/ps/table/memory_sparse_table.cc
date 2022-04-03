@@ -612,12 +612,6 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys, const float* values,
   return 0;
 }
 
-// int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
-//                                      const float** values, size_t num) {
-//  _PushSparse(keys, values, num);
-//  return 0;
-//}
-
 int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                                       const float** values, size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);

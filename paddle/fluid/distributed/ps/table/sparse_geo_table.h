@@ -46,9 +46,6 @@ class SparseGeoTable : public CommonSparseTable {
 
   virtual int32_t InitializeValue();
 
-  //  virtual int32_t Pull(TableContext& context);
-  //  virtual int32_t Push(TableContext& context);
-
   int32_t PullGeoParam(const uint32_t trainer_id, std::vector<float>* values,
                        std::vector<uint64_t>* keys);
 

@@ -52,18 +52,7 @@ class TensorTable : public Table {
 
   int32_t Pull(TableContext &context) override { return 0; }
   int32_t Push(TableContext &context) override { return 0; }
-  //  int32_t PullDense(float *values, size_t num) override { return 0; }
-  //
-  //  int32_t PushDense(const float *values, size_t num) override { return 0; }
-  //
-  //  int32_t PullSparse(float *values,
-  //                     const PullSparseValue &pull_value) override {
-  //    return 0;
-  //  }
-  //  int32_t PushSparse(const uint64_t *keys, const float *values,
-  //                     size_t num) override {
-  //    return 0;
-  //  }
+
   int32_t Shrink(const std::string &param) override { return 0; }
 
   void *GetShard(size_t shard_idx) override { return 0; }
@@ -82,11 +71,6 @@ class TensorTable : public Table {
   void Clear() override {}
 
   int32_t Initialize() override { return 0; }
-
-  //  int32_t PushDense(const int64_t *values, const int32_t trainer_id)
-  //  override {
-  //    return 0;
-  //  }
 
   int32_t SetProgramEnv(
       framework::Scope *scope, platform::Place place,
@@ -112,14 +96,6 @@ class DenseTensorTable : public TensorTable {
   DenseTensorTable() {}
   virtual ~DenseTensorTable() {}
 
-  //  int32_t PullSparse(float *values,
-  //                     const PullSparseValue &pull_value) override {
-  //    return 0;
-  //  }
-  //  int32_t PushSparse(const uint64_t *keys, const float *values,
-  //                     size_t num) override {
-  //    return 0;
-  //  }
   int32_t Shrink(const std::string &param) override { return 0; }
 
   void *GetShard(size_t shard_idx) override { return 0; }
@@ -138,18 +114,9 @@ class DenseTensorTable : public TensorTable {
     return 0;
   }
 
-  //  // Todo: Support pull dense
-  //  int32_t PullDense(float *values, size_t num) override { return 0; }
-
   /*----------------------------------------------------------------------*/
 
   int32_t Initialize() override { return 0; }
-
-  //  int32_t PushDense(const float *values, size_t num) override { return 0; }
-  //
-  //  int32_t PushDense(const int64_t *values, const int32_t trainer_id) {
-  //    return 0;
-  //  }
 
  protected:
   virtual int32_t _RunProgram(const float *values, size_t num,
@@ -168,14 +135,6 @@ class GlobalStepTable : public DenseTensorTable {
   GlobalStepTable() {}
   virtual ~GlobalStepTable() {}
 
-  //  int32_t PullSparse(float *values,
-  //                     const PullSparseValue &pull_value) override {
-  //    return 0;
-  //  }
-  //  int32_t PushSparse(const uint64_t *keys, const float *values,
-  //                     size_t num) override {
-  //    return 0;
-  //  }
   int32_t Shrink(const std::string &param) override { return 0; }
 
   void *GetShard(size_t shard_idx) override { return 0; }
@@ -192,8 +151,6 @@ class GlobalStepTable : public DenseTensorTable {
   int32_t Save(const std::string &path, const std::string &param) override {
     return 0;
   }
-
-  //  int32_t PullDense(float *values, size_t num) override { return 0; }
 
   /*----------------------------------------------------------------------*/
 
