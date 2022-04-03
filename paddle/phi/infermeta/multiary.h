@@ -251,6 +251,9 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);
 
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out);
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,
