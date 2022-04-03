@@ -477,6 +477,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       VLOG(6) << "Calling case1's initializer.";
       py_tensor_ptr->tensor.set_name(
           egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
+      py_tensor_ptr->tensor.set_impl(std::make_shared<phi::DenseTensor>());
       return 0;
     } else {  // no position args, all arguments are kwargs
       if (kw_value != NULL) {
