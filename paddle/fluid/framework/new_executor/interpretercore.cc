@@ -516,6 +516,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  unfinished_op_numer_ = vec_instr.size();
+  if (unfinished_op_numer_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -523,8 +529,6 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-
-  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 
