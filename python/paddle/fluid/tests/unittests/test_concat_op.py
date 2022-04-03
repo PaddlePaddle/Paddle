@@ -125,6 +125,7 @@ class TestConcatOp6(TestConcatOp):
     def setUp(self):
         self.op_type = "concat"
         self.dtype = self.get_dtype()
+        self.python_api = paddle.concat
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
@@ -142,12 +143,12 @@ class TestConcatOp6(TestConcatOp):
         self.outputs = {'Out': (out, self.out_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_dygraph=False)
-        self.check_grad(['x1'], 'Out', check_dygraph=False)
-        self.check_grad(['x2'], 'Out', check_dygraph=False)
+        self.check_grad(['x0'], 'Out', check_dygraph=True)
+        self.check_grad(['x1'], 'Out', check_dygraph=True)
+        self.check_grad(['x2'], 'Out', check_dygraph=True)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
@@ -160,6 +161,7 @@ def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):
             self.op_type = "concat"
+            self.python_api = paddle.concat
             self.dtype = self.get_dtype()
             self.init_test_data()
 
@@ -377,6 +379,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
 
     def setUp(self):
         self.axis = 1
+        self.python = paddle.concat
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
