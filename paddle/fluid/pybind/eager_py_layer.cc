@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 namespace paddle {
 namespace pybind {
@@ -479,7 +481,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_dealloc = (destructor)PyLayerDealloc;
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
-  type->tp_new = PyLayerNew;
+  type->tp_new = (newfunc)PyLayerNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=

@@ -18,51 +18,19 @@
 namespace paddle {
 namespace distributed {
 
-int CommMergeAccessor::Initialize() { return 0; }
-
-void CommMergeAccessor::SetTableInfo(AccessorInfo &info) {
-  info.select_dim = SelectDim();
-  info.select_size = SelectSize();
-  info.update_dim = UpdateDim();
-  info.update_size = UpdateSize();
-  info.fea_dim = fea_dim();
-}
-
-size_t CommMergeAccessor::GetTableInfo(InfoKey key) {
-  switch (key) {
-    case SELECT_DIM:
-      return SelectDim();
-    case SELECT_SIZE:
-      return SelectSize();
-    case UPDATE_DIM:
-      return UpdateDim();
-    case UPDATE_SIZE:
-      return UpdateSize();
-    case FEA_DIM:
-      return fea_dim();
-    default:
-      return 0;
-  }
+int CommMergeAccessor::Initialize() {
+  InitAccessorInfo();
   return 0;
 }
 
-// pull value 维度
-size_t CommMergeAccessor::SelectDim() { return _config.embedx_dim(); }
-
-// pull value 各个维度的size
-size_t CommMergeAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
-
-// pull value 各维度相加总size
-size_t CommMergeAccessor::SelectSize() { return SelectDim() * sizeof(float); }
-
-// push value 维度
-size_t CommMergeAccessor::UpdateDim() { return _config.embedx_dim(); }
-
-// push value 各个维度的size
-size_t CommMergeAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
-
-// push value 各维度相加总size
-size_t CommMergeAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
+void CommMergeAccessor::InitAccessorInfo() {
+  auto embedx_dim = _config.embedx_dim();
+  _accessor_info.select_dim = embedx_dim;
+  _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
+  _accessor_info.update_dim = embedx_dim;
+  _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
+  _accessor_info.fea_dim = _config.fea_dim();
+}
 
 // 判断该value 是否进行shrink
 bool CommMergeAccessor::Shrink(float * /*value*/) { return false; }
