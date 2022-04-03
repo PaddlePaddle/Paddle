@@ -22,7 +22,7 @@ from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
 from paddle.static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
 
 __all__ = []
 
@@ -687,7 +687,11 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                               0, 'dtype', dtype)
@@ -920,8 +924,7 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_randperm(
-            n, dtype, paddle.fluid.framework._current_expected_place())
+        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
     if _in_legacy_dygraph():
         return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
