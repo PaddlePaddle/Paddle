@@ -53,7 +53,7 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
     @given(
         in_shape=st.lists(
             st.integers(
-                min_value=1, max_value=3), min_size=1, max_size=9),
+                min_value=1, max_value=3), min_size=1, max_size=6),
         in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]))
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
