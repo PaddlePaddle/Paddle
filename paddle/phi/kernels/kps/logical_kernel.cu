@@ -71,7 +71,7 @@ PD_REGISTER_KERNEL(logical_Xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {}
 #else
 #define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
   PD_REGISTER_KERNEL(logical_and,                            \
-                     KPS,                                    \
+                     GPU,                                    \
                      ALL_LAYOUT,                             \
                      phi::Logical##func_type##Kernel,        \
                      float,                                  \
