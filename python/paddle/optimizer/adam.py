@@ -15,7 +15,7 @@
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable
+from ..fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
@@ -431,11 +431,20 @@ class Adam(Optimizer):
                     continue
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
-                    if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
-                    ) and self.regularization is not None:
-                        raise RuntimeError(
-                            "Adam don't support weight_decay with sparse parameters, please set it to None."
-                        )
+                    if in_dygraph_mode():
+                        if hasattr(grad_var, "is_selected_rows"
+                                   ) and grad_var.is_selected_rows(
+                                   ) and self.regularization is not None:
+                            raise RuntimeError(
+                                "Adam don't support weight_decay with sparse parameters, please set it to None."
+                            )
+                    else:
+                        if hasattr(grad_var,
+                                   "_is_sparse") and grad_var._is_sparse(
+                                   ) and self.regularization is not None:
+                            raise RuntimeError(
+                                "Adam don't support weight_decay with sparse parameters, please set it to None."
+                            )
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(

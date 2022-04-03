@@ -122,11 +122,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)
-
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -536,6 +537,8 @@ def bitwise_and(x, y, out=None, name=None):
             res = paddle.bitwise_and(x, y)
             print(res)  # [0, 2, 1]
     """
+    if in_dygraph_mode() and out == None:
+        return _C_ops.final_state_bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -562,6 +565,9 @@ def bitwise_or(x, y, out=None, name=None):
             res = paddle.bitwise_or(x, y)
             print(res)  # [-1, -1, -3]
     """
+    if in_dygraph_mode() and out == None:
+        return _C_ops.final_state_bitwise_or(x, y)
+
     return _bitwise_op(
         op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -588,6 +594,8 @@ def bitwise_xor(x, y, out=None, name=None):
             res = paddle.bitwise_xor(x, y)
             print(res) # [-1, -3, -4]
     """
+    if in_dygraph_mode() and out == None:
+        return _C_ops.final_state_bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -612,6 +620,8 @@ def bitwise_not(x, out=None, name=None):
             res = paddle.bitwise_not(x)
             print(res) # [4, 0, -2]
     """
+    if in_dygraph_mode() and out == None:
+        return _C_ops.final_state_bitwise_not(x)
 
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
@@ -669,7 +679,9 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True, True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',
                               str(atol), 'equal_nan', equal_nan)

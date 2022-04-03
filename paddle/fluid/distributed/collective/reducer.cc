@@ -320,7 +320,7 @@ EagerReducer::EagerReducer(
 
   if (find_unused_vars_each_step_) {
     global_used_vars_ = paddle::experimental::empty(
-        ScalarArray({static_cast<int32_t>(tensors_.size())}), DataType::INT32,
+        IntArray({static_cast<int32_t>(tensors_.size())}), DataType::INT32,
         inner_place_);
   }
 }
@@ -365,7 +365,7 @@ void EagerReducer::InitializeGroups(
       // process the dense gradient.
       InitializeDenseGroups(tensor_indices_, &group);
       group.dense_contents_ = paddle::experimental::empty(
-          ScalarArray({group.all_length_}), group.dtype_, inner_place_);
+          IntArray({group.all_length_}), group.dtype_, inner_place_);
     }
 
     // map tensors to this group by VariableLocator
@@ -410,7 +410,7 @@ void EagerReducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->origin_shapes_.push_back(ScalarArray(tensor.shape()));
+    p_group->origin_shapes_.push_back(IntArray(tensor.shape()));
     p_group->dense_tensors_.push_back(phi::DenseTensor());
 
     const auto &dtype = tensor.dtype();

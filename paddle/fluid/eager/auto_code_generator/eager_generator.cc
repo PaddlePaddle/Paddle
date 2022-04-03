@@ -1107,10 +1107,12 @@ static std::string GenerateGradNodeCreationContent(
   size_t bwd_in_slot_num = out_vars.size();
   size_t bwd_out_slot_num = in_vars.size();
   const char* GRAD_OP_NODE_TEMPLATE =
-      "      auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
+      "      auto grad_node = std::shared_ptr<GradNode%s>(new GradNode%s(%d, "
+      "%d));\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
-  grad_node_creation_str += paddle::string::Sprintf(
-      GRAD_OP_NODE_TEMPLATE, op_type, bwd_in_slot_num, bwd_out_slot_num);
+  grad_node_creation_str +=
+      paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE, op_type, op_type,
+                              bwd_in_slot_num, bwd_out_slot_num);
   grad_node_creation_str += "\n";
 
   VLOG(6) << "Generated GradOpNode construction";
@@ -1570,7 +1572,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       }
-      core_ops_args_info[op_type].push_back(output_var_name);
+      core_ops_args_info[op_type].push_back(output_name);
 
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
       // In inplace op, replace the output with the input directly.
@@ -1705,9 +1707,30 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       }
     }
   }
-  generated_function_body += "\n";
 
   VLOG(6) << "Generated Outs Map";
+
+  // [Generation] Apply View Strategy (Tensor)
+  if (inplace_map.empty() && view_op_map.count(op_type)) {
+    const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT =
+        "  if (ins.count(\"%s\") && outs.count(\"%s\")) {\n"
+        "    egr::EagerUtils::HandleViewBetweenInputAndOutput(ins[\"%s\"][0], "
+        "outs[\"%s\"][0]);\n"
+        "  };\n";
+
+    std::string view_strategy_str = "";
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
+        viwe_input_name, viwe_output_name);
+
+    generated_function_body += view_strategy_str;
+    generated_function_body += "\n";
+
+    VLOG(6) << "Generated View Strategy";
+  }
+  generated_function_body += "\n";
 
   // [Generation] Get Attrs
   dygraph_function_args_str +=
@@ -1801,7 +1824,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           // Bump inplace version of inplace tensor.
           auto inplace_input_name = inplace_map[output_name];
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  egr::EagerUtils::ModifyInplaceInput(outs[\"%s\"][0], &%s);\n"
+              "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n"
               "  %s.bump_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
@@ -2108,6 +2131,10 @@ static std::string GenerateSingleOpBase(
             GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
 
       } else {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
+          continue;
+        }
         size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
         if (duplicable_input_name_set.count(fwd_name) &&
             !is_op_base_per_duplicable_input) {
@@ -2144,6 +2171,42 @@ static std::string GenerateSingleOpBase(
       BWD_OUTS_MAP_TEMPLATE, outs_name, outs_contents_str);
   generated_grad_function_body += outs_map_str;
   generated_grad_function_body += "\n";
+  for (auto iter : grad_outs) {
+    const std::string& grad_output_name = iter.first;
+
+    if (grad_outs_slotname_map.count(grad_output_name)) {
+      // Fwd Tensor
+      const std::string& fwd_name = grad_outs_slotname_map.at(grad_output_name);
+      if (fwd_inputs_name_pos_map.count(fwd_name)) {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
+          if (duplicable_input_name_set.count(fwd_name) &&
+              !is_op_base_per_duplicable_input) {
+            size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
+            const char* DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE =
+                "  if(%s.size() > 0) %s[\"%s\"] = egr::EagerUtils::CreateVars( "
+                "this->OutputMeta()[%d].size() );\n";
+            generated_grad_function_body += paddle::string::Sprintf(
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
+                grad_output_name, fwd_input_position);
+          } else {
+            const char* DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE =
+                "  if(%s.initialized()) %s[\"%s\"] = "
+                "{std::make_shared<egr::EagerVariable>(egr::Controller::"
+                "Instance().GenerateUniqueName())};\n";
+            generated_grad_function_body += paddle::string::Sprintf(
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
+                grad_output_name);
+          }
+        }
+      }
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_output_name));
+    }
+  }
 
   VLOG(6) << "Generated Outs Map";
 
@@ -2740,7 +2803,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (infer_inplace && !special_inplace_op_set.count(op_type)) {
       auto in_to_outs = infer_inplace(true);
       for (auto& inplace_pair : in_to_outs) {
         inplace_map[inplace_pair.second] = inplace_pair.first;

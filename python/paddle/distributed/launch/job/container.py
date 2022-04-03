@@ -162,7 +162,7 @@ class Container(object):
                 if idx > lines:
                     break
         finally:
-            return self._log_handler.tell()
+            return
 
     def tail(self, length=3000):
         if not self._log_handler:
