@@ -710,16 +710,148 @@ std::map<int, std::list<int>> build_op_downstream_map(
   const std::set<std::string> random_op_set = {
       "bernoulli",      "poisson", "multinomial", "gaussian_random",
       "uniform_random", "randint", "randperm",    "exponential"};
-  const std::string communication_op_prefix = "c_";
+
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
-    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type()) ||
-        vec_instruction[op_idx].OpBase()->Type().find(
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // add dependency for communication op
+  const std::string communication_op_prefix = "c_";
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type().find(
             communication_op_prefix) != std::string::npos) {
       if (dependence_op_idx != -1) {
         op2dependences[op_idx].insert(dependence_op_idx);
       }
       dependence_op_idx = op_idx;
+    }
+  }
+
+  // TODO(zhiqiu): there still some cases not handled
+  // add dependency for c_sync_comm_stream
+
+  // in program, we can add only one c_sync_comm_stream to sync all
+  // communication ops.
+  // c_allreduce_sum(a)
+  // c_allreduce_sum(b)
+  // c_allreduce_sum(c)
+  // c_sync_comm_stream(a)
+  const std::string kSyncComm = "c_sync_comm_stream";
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
+      dependence_op_idx = op_idx;
+    } else {
+      if (dependence_op_idx != -1) {
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+    }
+  }
+
+  // add dependency for coalesce_tensor
+  const std::string kCoalesceTensor = "coalesce_tensor";
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
+      VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
+      auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
+      auto outputs = vec_instruction[op_idx].Outputs().at("Output");
+
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Inputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Outputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      // find first op that reads fused_out
+      auto first_read_fused_out_op = -1;
+      for (auto j = op_idx + 1; j < vec_instruction.size(); ++j) {
+        if (is_read(vec_instruction[j], fused_out)) {
+          first_read_fused_out_op = j;
+          break;
+        }
+      }
+
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
+        VLOG(4) << "No op read FusedOutput";
+        continue;
+      }
+
+      // find ops that write 'outputs' between (op_index,
+      // first_read_fused_out_op)
+      // add depend: them->first_read_fused_out_op
+      for (auto j = op_idx + 1;
+           j < static_cast<size_t>(first_read_fused_out_op); ++j) {
+        for (auto var_id : outputs) {
+          if (is_write(vec_instruction[j], var_id)) {
+            op2dependences[first_read_fused_out_op].insert(j);
+            VLOG(4) << j << " -> " << first_read_fused_out_op;
+            VLOG(4)
+                << "Add depend from " << vec_instruction[j].OpBase()->Type()
+                << " to "
+                << vec_instruction[first_read_fused_out_op].OpBase()->Type();
+          }
+        }
+      }
+
+      // find first op read 'outputs' between (first_read_fused_out_op, end)
+      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+
+      // special case for consecutive communication ops, for example,
+      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput= c_allreduce_sum(FusedOutput)
+      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // we should take the last one to add depned instead of
+      // 'first_read_fused_out_op'
+      size_t target = first_read_fused_out_op;
+      for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
+           ++j) {
+        if (j == target + 1 &&
+            vec_instruction[target].OpBase()->Type().find(
+                communication_op_prefix) != std::string::npos &&
+            vec_instruction[j].OpBase()->Type().find(communication_op_prefix) !=
+                std::string::npos) {
+          target = j;
+          VLOG(4) << "Found consecutive communication ops, "
+                  << vec_instruction[target].OpBase()->Type() << " -> "
+                  << vec_instruction[j].OpBase()->Type();
+        }
+
+        for (auto var_id : outputs) {
+          if (is_read(vec_instruction[j], var_id)) {
+            op2dependences[j].insert(target);
+            VLOG(4) << target << " -> " << j;
+            VLOG(4) << "Add depend from "
+                    << vec_instruction[target].OpBase()->Type() << " to "
+                    << vec_instruction[j].OpBase()->Type();
+          }
+        }
+      }
     }
   }
 
