@@ -83,6 +83,7 @@ class TestActivation(OpTest):
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
+        self.python_api = paddle.expm1
         self.init_dtype()
 
         np.random.seed(2049)
@@ -93,7 +94,10 @@ class TestExpm1(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestExpm1API(unittest.TestCase):
@@ -3005,6 +3009,7 @@ def ref_mish(x, threshold=20.):
 class TestMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
+        self.python_api = paddle.fluid.layers.nn.mish
         self.init_dtype()
 
         np.random.seed(1024)
@@ -3013,10 +3018,13 @@ class TestMish(TestActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestMishAPI(unittest.TestCase):

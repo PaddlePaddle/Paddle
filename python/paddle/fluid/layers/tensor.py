@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph
+from ..framework import _current_expected_place, convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -243,6 +243,11 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.final_state_cast(x, dtype)
+
     if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1428,6 +1433,10 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_arange(start, end, step, dtype,
+                                         _current_expected_place())
+
     if not isinstance(start, Variable):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
@@ -1446,7 +1455,7 @@ def range(start, end, step, dtype, name=None):
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         out = _C_ops.range(start, end, step)
         out.stop_gradient = True
         return out
