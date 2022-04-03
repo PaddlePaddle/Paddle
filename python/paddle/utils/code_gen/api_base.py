@@ -88,7 +88,7 @@ class BaseAPI(object):
             'Tensor[]': 'const std::vector<Tensor>&'
         }
         attr_types_map = {
-            'ScalarArray': 'const ScalarArray&',
+            'IntArray': 'const IntArray&',
             'Scalar': 'const Scalar&',
             'Scalar(int)': 'const Scalar&',
             'Scalar(int64_t)': 'const Scalar&',
@@ -193,7 +193,7 @@ class BaseAPI(object):
                     f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                       but now is {out_type}."
 
-                return out_type, result.group('name')
+                return output_type_map[out_type], result.group('name')
 
             else:
                 if output_item.strip() in output_type_map:
@@ -600,9 +600,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
                 # set attr for kernel_context
-                if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const phi::ScalarArray&')
-                    param = 'phi::ScalarArray(' + param + ')'
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append('const phi::IntArray&')
+                    param = 'phi::IntArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
@@ -665,9 +665,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
                 # set attr for kernel_context
-                if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const phi::ScalarArray&')
-                    param = 'phi::ScalarArray(' + param + ')'
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append('const phi::IntArray&')
+                    param = 'phi::IntArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
@@ -710,9 +710,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             self.outputs['types'], 'SetKernelOutput', code_indent, inplace_flag)
         api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
         return f"""
+{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
-{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  VLOG(6) << "{self.api} API kernel: " << kernel;
 
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);

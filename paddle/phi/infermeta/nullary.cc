@@ -23,9 +23,7 @@ void AssignValueInferMeta(const std::vector<int>& shape,
   out->set_dtype(dtype);
 }
 
-void CreateInferMeta(const ScalarArray& shape,
-                     DataType dtype,
-                     MetaTensor* out) {
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
@@ -48,7 +46,7 @@ void EyeInferMeta(int64_t num_rows,
   out->set_dtype(dtype);
 }
 
-void GaussianRandomInferMeta(const ScalarArray& shape,
+void GaussianRandomInferMeta(const IntArray& shape,
                              float mean,
                              float std,
                              int seed,
@@ -58,6 +56,11 @@ void GaussianRandomInferMeta(const ScalarArray& shape,
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
+}
+
+void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({n}));
+  out->set_dtype(dtype);
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,

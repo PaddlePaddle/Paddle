@@ -16,7 +16,7 @@
 
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"
 #include "paddle/phi/infermeta/strings/unary.h"
@@ -26,7 +26,7 @@ namespace strings {
 
 template <typename Context>
 void EmptyKernel(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  StringTensor* out);
 
 template <typename Context>
@@ -48,7 +48,7 @@ StringTensor Empty(const Context& dev_ctx) {
 }
 
 template <typename Context>
-StringTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
+StringTensor Empty(const Context& dev_ctx, const IntArray& shape) {
   StringTensor string_out;
   MetaTensor meta_out(&string_out);
   phi::strings::CreateInferMeta(shape, &meta_out);

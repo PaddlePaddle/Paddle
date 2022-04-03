@@ -330,16 +330,21 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  if (!self->tensor.defined()) {
+  if (!self->tensor.initialized()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -1089,7 +1094,7 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensor =
-      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->MutableGrad();
+      egr::EagerUtils::autograd_meta(&self->tensor)->MutableGrad();
   if (var_type == framework::proto::VarType::LOD_TENSOR) {
     grad_tensor->set_impl(std::make_shared<phi::DenseTensor>());
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
@@ -1279,6 +1284,15 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t element_size = framework::DataTypeSize(self->tensor.dtype());
+
+  return ToPyObject(element_size);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
@@ -1305,6 +1319,27 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   auto selected_rows =
       std::dynamic_pointer_cast<phi::SelectedRows>(self->tensor.impl());
   return ToPyObject(selected_rows->rows());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num == (Py_ssize_t)1) {
+    set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  if (grad && grad->defined() && grad->is_dense_tensor() &&
+      grad->initialized()) {
+    grad->reset_inplace_version(set_to_zero);
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1396,6 +1431,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"to_dense", (PyCFunction)(void (*)(void))tensor_method_to_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_method_element_size,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1406,6 +1443,9 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_reset_grad_inplace_version",
+     (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

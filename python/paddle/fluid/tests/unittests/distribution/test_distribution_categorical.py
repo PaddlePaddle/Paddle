@@ -439,3 +439,7 @@ class DistributionTestError(unittest.TestCase):
             cat.log_prob(value)
 
         self.assertRaises(ValueError, test_shape_not_match_error)
+
+
+if __name__ == '__main__':
+    unittest.main()
