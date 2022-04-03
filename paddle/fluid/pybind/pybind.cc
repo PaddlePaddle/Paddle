@@ -4422,23 +4422,22 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("enable_autotune", [] {
-    return phi::autotune::SwitchAutoTune::Instance().EnableAutoTune();
+    return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
   });
 
   m.def("disable_autotune", [] {
-    return phi::autotune::SwitchAutoTune::Instance().DisableAutoTune();
+    return phi::autotune::AutoTuneStatus::Instance().DisableAutoTune();
   });
 
-  m.def("update_autotune_status", [] {
-    return phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
-  });
+  m.def("update_autotune_status",
+        [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("autotune_status", [] {
     phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     py::dict res;
     res["use_autotune"] =
-        phi::autotune::SwitchAutoTune::Instance().UseAutoTune();
-    res["step_id"] = phi::autotune::SwitchAutoTune::Instance().StepID();
+        phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    res["step_id"] = phi::autotune::AutoTuneStatus::Instance().StepID();
     res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
     res["cache_hit_rate"] =
         phi::autotune::AutoTuneCache::Instance().CacheHitRate();

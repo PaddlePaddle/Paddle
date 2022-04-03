@@ -17,21 +17,26 @@ import unittest
 import numpy
 
 
-def dygraph_program():
-    x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
-    conv = paddle.nn.Conv2D(4, 6, (3, 3))
-    out = conv(x_var)
+class SimpleNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.conv = paddle.nn.Conv2D(4, 6, (3, 3))
+
+    def forward(self, image, label=None):
+        return self.conv(image)
+
+
+def train_dygraph(net, data):
+    out = net(data)
     loss = paddle.mean(out)
-    adam = paddle.optimizer.Adam(parameters=conv.parameters())
+    adam = paddle.optimizer.Adam(parameters=net.parameters())
     out.backward()
     adam.step()
     adam.clear_grad()
 
 
-def static_program(data_shape=[2, 4, 8, 8]):
-    data = paddle.static.data(name='X', shape=data_shape, dtype='float32')
-    conv = paddle.nn.Conv2D(4, 6, (3, 3))
-    out = conv(data)
+def static_program(net, data):
+    out = net(data)
     loss = paddle.mean(out)
     adam = paddle.optimizer.Adam()
     adam.minimize(loss)
@@ -54,15 +59,16 @@ class TestAutoTune(unittest.TestCase):
             self.assertEqual(status[key], expected_res[key])
 
 
-class TestDygraphSwitchAutoTune(TestAutoTune):
+class TestDygraphAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
         if enable_autotune:
             paddle.fluid.core.enable_autotune()
         else:
             paddle.fluid.core.disable_autotune()
-
+        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        net = SimpleNet()
         for i in range(12):
-            dygraph_program()
+            train_dygraph(net, x_var)
             if i < 10:
                 expected_res = {
                     "step_id": i,
@@ -87,7 +93,7 @@ class TestDygraphSwitchAutoTune(TestAutoTune):
         self.run_program(enable_autotune=False)
 
 
-class TestStaticSwitchAutoTune(TestAutoTune):
+class TestStaticAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
         paddle.enable_static()
         if enable_autotune:
@@ -96,7 +102,9 @@ class TestStaticSwitchAutoTune(TestAutoTune):
             paddle.fluid.core.disable_autotune()
 
         data_shape = [2, 4, 8, 8]
-        loss = static_program(data_shape)
+        data = paddle.static.data(name='X', shape=data_shape, dtype='float32')
+        net = SimpleNet()
+        loss = static_program(net, data)
         place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         exe = paddle.static.Executor(place)

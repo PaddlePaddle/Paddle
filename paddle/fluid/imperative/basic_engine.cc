@@ -647,7 +647,7 @@ void BasicEngine::Execute() {
 
   VLOG(1) << "Backward op number: " << op_num;
 
-  phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
+  phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
 void BasicEngine::Clear() {

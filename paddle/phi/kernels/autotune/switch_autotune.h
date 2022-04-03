@@ -22,54 +22,52 @@
 namespace phi {
 namespace autotune {
 
-class SwitchAutoTune {
+class AutoTuneStatus {
  public:
-  static SwitchAutoTune& Instance() {
-    static SwitchAutoTune switch_autotune;
+  static AutoTuneStatus& Instance() {
+    static AutoTuneStatus switch_autotune;
     return switch_autotune;
   }
 
-  bool UseAutoTune() { return ues_autotune_; }
+  bool UseAutoTune() { return use_autotune_; }
 
-  void UpdateAutoTuneStatus() {
+  void Update() {
     current_steps_id_ += 1;
-    if (ues_autotune_ == false) {
+    if (use_autotune_ == false) {
       return;
     }
 
-    if (current_steps_id_ < auto_tune_start_step_id_) {
-      ues_autotune_ = false;
-    } else if (current_steps_id_ >= auto_tune_start_step_id_ &&
-               current_steps_id_ <
-                   auto_tune_start_step_id_ + auto_tune_steps_) {
-      ues_autotune_ = true;
+    if (current_steps_id_ >= auto_tune_start_step_id_ &&
+        current_steps_id_ < auto_tune_start_step_id_ + auto_tune_steps_) {
+      use_autotune_ = true;
       AutoTuneCache::Instance().UpdateStatus();
       step_hit_rates_.push_back(StepHitRate());
       VLOG(3) << "Step ID " << current_steps_id_
-              << " , Accumulative Cache Hit Rate: "
+              << ", Accumulative Cache Hit Rate: "
               << AutoTuneCache::Instance().CacheHitRate()
-              << " Cache Size: " << AutoTuneCache::Instance().Size()
-              << " Current Step Hit Rate: " << StepHitRate();
+              << ", Cache Size: " << AutoTuneCache::Instance().Size()
+              << ", Current Step Hit Rate: " << StepHitRate();
     } else if (current_steps_id_ ==
                auto_tune_start_step_id_ + auto_tune_steps_) {
-      ues_autotune_ = false;
+      use_autotune_ = false;
       // clean cache according miss rate
       float miss_rate = static_cast<float>(1) - RecentHitRate();
       AutoTuneCache::Instance().Clean(miss_rate);
+      VLOG(3) << "Recent Miss Rate: " << miss_rate;
     } else {
-      ues_autotune_ = false;
+      use_autotune_ = false;
     }
   }
 
   // EnableAutoTune and DisableAutoTune Should be used for debug only.
   void EnableAutoTune() {
-    ues_autotune_ = true;
-    InitStatus();
+    use_autotune_ = true;
+    Init();
   }
 
   void DisableAutoTune() {
-    ues_autotune_ = false;
-    InitStatus();
+    use_autotune_ = false;
+    Init();
   }
 
   int64_t StepID() { return current_steps_id_; }
@@ -101,7 +99,7 @@ class SwitchAutoTune {
   }
 
   // Do not call the function
-  void InitStatus() {
+  void Init() {
     current_steps_id_ = -1;
     previous_hits_ = 0;
     previous_misses_ = 0;
@@ -110,11 +108,11 @@ class SwitchAutoTune {
   }
 
  private:
-  SwitchAutoTune() = default;
+  AutoTuneStatus() = default;
   int64_t auto_tune_start_step_id_ = 0;
   int64_t auto_tune_steps_ = 10;
   int64_t current_steps_id_ = -1;
-  bool ues_autotune_ = false;
+  bool use_autotune_ = false;
   int64_t previous_hits_ = 0;
   int64_t previous_misses_ = 0;
   std::vector<float> step_hit_rates_;
