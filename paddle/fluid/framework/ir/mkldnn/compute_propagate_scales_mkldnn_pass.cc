@@ -86,7 +86,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
 }
 
 void ComputePropagateScalesMkldnnPass::ComputeVarScales(
-    ir::Graph* graph, Scope* scope, const std::unordered_set<std::string> ops,
+    ir::Graph* graph, Scope* scope, const std::unordered_set<std::string>& ops,
     const std::string& weight_name, const int axis,
     StringPairMap* var_quant_scales) const {
   for (auto* op_node :

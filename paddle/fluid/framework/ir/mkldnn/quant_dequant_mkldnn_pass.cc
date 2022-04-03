@@ -46,7 +46,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
         }
 
         if (!is_quantized_op) {
-          op_node->Op()->SetAttr("skip_quant", true);
+          op_node->Op()->SetAttr("skip_quant", 1);
         }
       }
     }
@@ -64,7 +64,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedPool2d(ir::Graph* graph) const {
       auto pool_type =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("pooling_type"));
       if (pool_type == "avg") {
-        op_node->Op()->SetAttr("skip_quant", true);
+        op_node->Op()->SetAttr("skip_quant", 1);
       }
     }
   }

@@ -40,7 +40,7 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   std::vector<float> GetScales(Tensor* tensor, int axis) const;
 
   void ComputeVarScales(ir::Graph* graph, Scope* scope,
-                        const std::unordered_set<std::string> ops,
+                        const std::unordered_set<std::string>& ops,
                         const std::string& weight_name, const int axis,
                         StringPairMap* var_quant_scales) const;
 

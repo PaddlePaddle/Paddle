@@ -64,7 +64,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    if (op->Op()->GetAttrIfExists<bool>("skip_quant")) {
+    if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
 
