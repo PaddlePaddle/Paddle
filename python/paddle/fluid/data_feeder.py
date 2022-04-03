@@ -30,7 +30,7 @@ __all__ = ['DataFeeder']
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
     core.VarDesc.VarType.FP16: 'float16',
-    core.VarDesc.VarType.BF16: 'bfloat16',
+    core.VarDesc.VarType.BF16: bfloat16,
     core.VarDesc.VarType.FP32: 'float32',
     core.VarDesc.VarType.FP64: 'float64',
     core.VarDesc.VarType.INT8: 'int8',
@@ -56,10 +56,10 @@ def convert_dtype(dtype):
             return dtype.__name__
     else:
         if dtype in [
-                'bool', 'float16', 'bfloat16', 'float32', 'float64', 'int8',
+                'bool', 'float16', bfloat16, 'float32', 'float64', 'int8',
                 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128',
-                u'bool', u'float16', u'bfloat16', u'float32', u'float64',
-                u'int8', u'int16', u'int32', u'int64', u'uint8', u'complex64',
+                u'bool', u'float16', bfloat16, u'float32', u'float64', u'int8',
+                u'int16', u'int32', u'int64', u'uint8', u'complex64',
                 u'complex128'
         ]:
             # this code is a little bit dangerous, since error could happen
@@ -69,8 +69,8 @@ def convert_dtype(dtype):
             # may still be a long-lasting problem.
             return str(dtype)
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
-        if dtype in ['bfloat16']:
-            return 'bfloat16'
+        if dtype in [bfloat16]:
+            return bfloat16
 
     raise TypeError(
         "dtype must be any of [bool, float16, bfloat16, float32, float64, int8, int16, "
@@ -137,7 +137,7 @@ def check_dtype(input_dtype,
         warnings.warn(
             "The data type of '%s' in %s only support float16 in GPU now. %s" %
             (input_name, op_name, extra_message))
-    if convert_dtype(input_dtype) in ['bfloat16'] and op_name not in [
+    if convert_dtype(input_dtype) in [bfloat16] and op_name not in [
             'reshape', 'lookup_table', 'scale'
     ]:
         warnings.warn(
@@ -210,7 +210,7 @@ class DataToLoDTensorConverter(object):
                     format(self.shape, shape))
 
     def done(self):
-        # if self.dtype == 'bfloat16':
+        # if self.dtype == bfloat16:
         arr = np.array(self.data, dtype=self.dtype)
         if self.shape:
             if len(arr.shape) != len(self.shape):
