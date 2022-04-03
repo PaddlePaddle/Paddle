@@ -132,7 +132,7 @@ std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
   DataType kernel_data_type = kernel_key.dtype();
 
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "split", {kernel_backend, kernel_layout, kernel_data_type});
+      "concat_grad", {kernel_backend, kernel_layout, kernel_data_type});
   VLOG(6) << "concat_grad API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "concat_grad API kernel: " << kernel;
@@ -147,25 +147,31 @@ std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
   size_t out_number = x.size();
   std::vector<Tensor> x_grad;
   auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
-  std::vector<phi::MetaTensor> meta_x_grad;
-  meta_x_grad.reserve(out_number);
-  std::vector<phi::MetaTensor*> meta_x_grad_ptrs;
-  std::vector<phi::MetaTensor> meta_x;
-  std::vector<phi::MetaTensor*> meta_x_ptrs;
-  meta_x_grad_ptrs.reserve(out_number);
-  for (size_t i = 0; i < out_number; ++i) {
-    meta_x_grad.push_back(dense_x_grad[i]);
-    meta_x_grad_ptrs.push_back(&meta_x_grad.back());
 
-    meta_x.push_back((*dense_x)[i]);
+  std::vector<phi::MetaTensor> meta_x;
+  meta_x.reserve(x.size());
+  std::vector<phi::MetaTensor*> meta_x_ptrs;
+  meta_x_ptrs.reserve(x.size());
+  for (const auto& t : *dense_x) {
+    meta_x.push_back(t);
     meta_x_ptrs.push_back(&meta_x.back());
+  }
+
+  std::vector<phi::MetaTensor> meta_x_grad;
+  meta_x_grad.reserve(x.size());
+  std::vector<phi::MetaTensor*> meta_x_grad_ptrs;
+  meta_x_grad_ptrs.reserve(x.size());
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_x_grad.push_back(*dense_x_grad[i]);
+    meta_x_grad_ptrs.push_back(&meta_x_grad.back());
   }
 
   phi::UnchangedMultiInferMeta(meta_x_ptrs, meta_x_grad_ptrs);
 
   std::vector<const phi::DenseTensor*> dense_x_ptr;
-  for (size_t i = 0; i < out_number; ++i) {
-    dense_x_ptr.push_back(&(*dense_x)[i]);
+  dense_x_ptr.reserve(x.size());
+  for (const auto& t : *dense_x) {
+    dense_x_ptr.push_back(&t);
   }
 
   using kernel_signature = void (*)(const platform::DeviceContext&,

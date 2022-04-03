@@ -19,6 +19,7 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
@@ -49,7 +50,7 @@ class TestConcatOp(OpTest):
             place = core.CUDAPlace(0)
             self.check_output_with_place(place)
         else:
-            self.check_output()
+            self.check_output(check_eager=True)
 
     def test_check_grad(self):
         if self.dtype == np.uint16:
@@ -58,9 +59,9 @@ class TestConcatOp(OpTest):
             self.check_grad_with_place(place, ['x1'], 'Out')
             self.check_grad_with_place(place, ['x2'], 'Out')
         else:
-            self.check_grad(['x0'], 'Out')
-            self.check_grad(['x1'], 'Out')
-            self.check_grad(['x2'], 'Out')
+            self.check_grad(['x0'], 'Out', check_eager=True)
+            self.check_grad(['x1'], 'Out', check_eager=True)
+            self.check_grad(['x2'], 'Out', check_eager=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -333,6 +334,12 @@ class TestConcatAPI(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_api()
+            self.test_fluid_api()
+            self.test_imperative()
 
     def test_errors(self):
         with program_guard(Program(), Program()):
