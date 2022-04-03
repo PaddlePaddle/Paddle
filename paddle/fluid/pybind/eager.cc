@@ -77,9 +77,6 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                  ddims));
-    if (phi::product(ddims) > 0) {
-      dense_tensor->mutable_data(place);
-    }
     self->tensor.set_impl(dense_tensor);
   }
 
@@ -92,6 +89,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
 }
 
 void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
+                              const paddle::platform::Place& place,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(), true,
@@ -102,7 +100,6 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
           "eager tensor before init it with NumPy."));
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  paddle::platform::Place place = impl_ptr->place();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
@@ -289,7 +286,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
 
   EmptyTensorInitializer(py_tensor_ptr, act_name, place, persistable,
                          stop_gradient);
-  InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
+  InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
 // initialize Tensor by Tensor or framework::Tensor (mix args and
