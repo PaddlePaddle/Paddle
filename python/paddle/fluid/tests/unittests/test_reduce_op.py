@@ -238,10 +238,14 @@ class TestMin8DOp(OpTest):
         self.check_output(check_eager=True)
 
 
+def raw_reduce_prod(x, dim=[0], keep_dim=False):
+    return paddle.prod(x, dim, keep_dim)
+
+
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
-        self.python_api = paddle.prod
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -251,15 +255,16 @@ class TestProdOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -274,15 +279,16 @@ class TestProd6DOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random(
@@ -298,10 +304,10 @@ class TestProd8DOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAllOp(OpTest):
