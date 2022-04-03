@@ -1458,11 +1458,19 @@ class TestVarBaseNumel(unittest.TestCase):
         x_expected_numel = np.product((3, 8, 8))
         self.assertEqual(x_actual_numel, x_expected_numel)
 
-    def test_numel_without_holder(self):
+    def func_numel_without_holder(self):
         paddle.disable_static()
-        x_without_holder = core.VarBase()
+        if _in_legacy_dygraph():
+            x_without_holder = core.VarBase()
+        elif in_dygraph_mode():
+            x_without_holder = core.eager.Tensor()
         x_actual_numel = x_without_holder._numel()
         self.assertEqual(x_actual_numel, 0)
+
+    def test_numel_without_holder(self):
+        with _test_eager_guard():
+            self.func_numel_without_holder()
+        self.func_numel_without_holder()
 
 
 class TestVarBaseCopyGradientFrom(unittest.TestCase):
