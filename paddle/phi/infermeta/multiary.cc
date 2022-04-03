@@ -1415,30 +1415,20 @@ void InterpolateInferMeta(
                                  config);
   }
 }
-void MeshgridInferMeta(const std::vector<MetaTensor*>& x,
-                       std::vector<MetaTensor*> out) {
-  PADDLE_ENFORCE_GE(
-      x.size(), 1UL, errors::InvalidArgument("Input(X) should not be empty."));
-  PADDLE_ENFORCE_GE(
-      out.size(),
-      1UL,
-      errors::InvalidArgument("Output(Out) should not be empty."));
-  std::vector<phi::DDim> inputs_dims;
-  for (auto x_meta_tensor : x) {
-    inputs_dims.push_back(x_meta_tensor->dims());
-  }
-  const size_t inputs_num = inputs_dims.size();
-  const size_t outputs_num = out.size();
+
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs) {
+  const size_t inputs_num = inputs.size();
 
   auto out_shape = std::vector<int>(inputs_num);
 
-  for (size_t i = 0; i < inputs_num; i++) {
-    out_shape[i] = inputs_dims[i][0];
+  for (size_t i = 0; i < inputs.size(); i++) {
+    out_shape[i] = inputs[i]->dims()[0];
   }
   auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
-  std::vector<phi::DDim> outs_dims(outputs_num, out_dims);
-  for (size_t i = 0; i < out.size(); i++) {
-    out[i]->set_dims(outs_dims[i]);
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    outputs[i]->set_dims(out_dims);
+    outputs[i]->set_dtype(inputs[0]->dtype());
   }
 }
 
@@ -1486,22 +1476,6 @@ void MomentumInferMeta(const MetaTensor& param,
 
   if (master_param_out) {
     master_param_out->set_dims(param_dim);
-  }
-}
-
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
-                       std::vector<MetaTensor*> outputs) {
-  const size_t inputs_num = inputs.size();
-
-  auto out_shape = std::vector<int>(inputs_num);
-
-  for (size_t i = 0; i < inputs.size(); i++) {
-    out_shape[i] = inputs[i]->dims()[0];
-  }
-  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->set_dims(out_dims);
-    outputs[i]->set_dtype(inputs[0]->dtype());
   }
 }
 
