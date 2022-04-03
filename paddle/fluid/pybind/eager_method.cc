@@ -337,9 +337,14 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.defined()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.defined()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -459,6 +464,9 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
                         self->tensor.name()));
   auto* src_tensor =
       static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
+  if (!dst_ptr->defined()) {
+    dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+  }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
   dst_tensor->ShareDataWith(*src_tensor);
@@ -1223,6 +1231,9 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
 static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_coo_tensor() ||
                     self->tensor.is_sparse_csr_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1231,6 +1242,9 @@ static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_coo_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1238,6 +1252,9 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_csr_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1307,6 +1324,9 @@ static PyObject* tensor_method_is_selected_rows(TensorObject* self,
                                                 PyObject* args,
                                                 PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_selected_rows());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

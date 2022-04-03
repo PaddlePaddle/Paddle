@@ -81,6 +81,10 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
       dense_tensor->mutable_data(place);
     }
     self->tensor.set_impl(dense_tensor);
+  } else {
+    std::shared_ptr<phi::SelectedRows> tensor =
+        std::make_shared<phi::SelectedRows>();
+    self->tensor.set_impl(tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -471,10 +475,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     if (!flag_kwargs) {
       // case 1
       VLOG(6) << "Calling case1's initializer.";
-      EmptyTensorInitializer(
-          py_tensor_ptr,
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor"),
-          egr::Controller::Instance().GetExpectedPlace());
+      py_tensor_ptr->tensor.set_name(
+          egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
       return 0;
     } else {  // no position args, all arguments are kwargs
       if (kw_value != NULL) {

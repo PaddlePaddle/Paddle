@@ -550,7 +550,7 @@ class TestVarBase(unittest.TestCase):
                     np.array(copy_selected_rows.get_tensor()),
                     np.array(selected_rows.get_tensor())))
 
-    def ttest_deep_copy(self):
+    def test_deep_copy(self):
         with _test_eager_guard():
             self.func_test_deep_copy()
         self.func_test_deep_copy()
