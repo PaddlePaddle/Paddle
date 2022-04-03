@@ -428,18 +428,19 @@ void build_op_func_list(const platform::Place& place,
       op_func_node.dev_ctx_ = dev_ctx;
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      auto exec_ctx =
-          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        InterpretercoreInferShapeContext infer_shape_ctx(*op_with_kernel,
+                                                         runtime_context);
         // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
+        // inheritted from OperatorWithKernel.
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
+
+      auto exec_ctx =
+          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -476,7 +477,6 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
                                               &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
-
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
         auto kernels_iter = all_op_kernels.find(op->Type());
@@ -711,9 +711,12 @@ std::map<int, std::list<int>> build_op_downstream_map(
   const std::set<std::string> random_op_set = {
       "bernoulli",      "poisson", "multinomial", "gaussian_random",
       "uniform_random", "randint", "randperm",    "exponential"};
+  const std::string communication_op_prefix = "c_";
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
-    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type()) ||
+        vec_instruction[op_idx].OpBase()->Type().find(
+            communication_op_prefix) != std::string::npos) {
       if (dependence_op_idx != -1) {
         op2dependences[op_idx].insert(dependence_op_idx);
       }
