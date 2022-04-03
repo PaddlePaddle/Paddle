@@ -304,8 +304,8 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map[index_dim_vec_[i]] = i;
     }
-    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
-    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
