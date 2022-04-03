@@ -555,6 +555,16 @@
     data_type : dtype > x
     backend : place > x
 
+- api : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
+
 - api : gather_nd
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -1086,6 +1096,16 @@
   kernel:
     func : pool2d
 
+- api : pow
+  args : (Tensor x, Scalar s)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow
+  backward : pow_grad
+
 - api : prelu
   args : (Tensor x, Tensor alpha, str data_format, str mode)
   output : Tensor(out)
@@ -1548,23 +1568,3 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
-
-- api : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
-  output : Tensor(out)
-  infer_meta : 
-    func : GatherInferMeta
-  kernel : 
-    func : gather
-    data_type: x
-  backward : gather_grad
-
-- api : pow
-  args : (Tensor x, Scalar s)
-  output : Tensor(out)
-  infer_meta : 
-    func : UnchangedInferMeta
-    param: [x]
-  kernel : 
-    func : pow
-  backward : pow_grad

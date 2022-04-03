@@ -150,17 +150,15 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    #if in_dygraph_mode():
-    #if isinstance(y, (int, float)):
-    #return _C_ops.final_state_pow(x, y)
-    #elif isinstance(y, (paddle.Tensor, Variable)):
-    #return _elementwise_op_in_dygraph(
-    #x, y, axis=-1, act=None, op_name='elementwise_pow')
-    #else:
-    #raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
-
-    #if _in_legacy_dygraph():
-    if _non_static_mode():
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            return _C_ops.final_state_pow(x, y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    if _in_legacy_dygraph():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
@@ -169,22 +167,21 @@ def pow(x, y, name=None):
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     # in static graph mode
+    if isinstance(y, (int, float)):
+        helper = LayerHelper('pow', **locals())
+        inputs = {'X': x}
+        attrs = {'factor': y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        return out
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+        helper = LayerHelper('elementwise_pow', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
     else:
-        if isinstance(y, (int, float)):
-            helper = LayerHelper('pow', **locals())
-            inputs = {'X': x}
-            attrs = {'factor': y}
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-            return out
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
-            helper = LayerHelper('elementwise_pow', **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
+        raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
 
 OP_NAMEMAPPING = {
@@ -192,6 +189,7 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 @dygraph_only

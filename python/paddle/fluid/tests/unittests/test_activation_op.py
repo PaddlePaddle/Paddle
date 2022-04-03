@@ -2322,7 +2322,7 @@ class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
         self.python_api = paddle.pow
-        self.check_eager = False
+        self.check_eager = True
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2332,6 +2332,9 @@ class TestPow(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {'factor': 3.0}
         self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
