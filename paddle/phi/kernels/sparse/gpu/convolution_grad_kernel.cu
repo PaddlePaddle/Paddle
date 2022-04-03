@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
+#include "paddle/phi/api/ext/dispatch.h"
+
 namespace phi {
 namespace sparse {
 
@@ -35,24 +37,24 @@ namespace sparse {
 //]
 // x_grad = out_grad * transpose(kenrel)
 // kernel_grad = transpose(x) * out_grad
-template <typename T, typename Context>
-void Conv3dGradKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const DenseTensor& kernel,
-                      const DenseTensor& rulebook,
-                      const SparseCooTensor& out_grad,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
-                      const std::vector<int>& strides,
-                      const int groups,
-                      const bool subm,
-                      SparseCooTensor* x_grad,
-                      DenseTensor* kernel_grad) {
+template <typename T, typename IntT>
+void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& kernel,
+                         const DenseTensor& rulebook,
+                         const SparseCooTensor& out_grad,
+                         const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
+                         const std::vector<int>& strides,
+                         const int groups,
+                         const bool subm,
+                         SparseCooTensor* x_grad,
+                         DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
-  const int* rulebook_ptr = rulebook.data<int>();
+  const IntT* rulebook_ptr = rulebook.data<IntT>();
 
   const int rulebook_len = rulebook.dims()[1];
 
@@ -74,29 +76,29 @@ void Conv3dGradKernel(const Context& dev_ctx,
   T* out_grad_features_ptr = out_grad_features.data<T>();
   *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
   T* d_kernel_ptr = kernel_grad->data<T>();
-  phi::funcs::SetConstant<Context, T> set_zero;
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
 
   int half_kernel_size = kernel_size / 2;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   DenseTensor x_grad_indices =
-      phi::EmptyLike<int>(dev_ctx, x.non_zero_indices());
+      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
   set_zero(dev_ctx, &d_x_features, static_cast<T>(0.0f));
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_indices(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     &x_grad_indices);
+  phi::Copy<GPUContext>(dev_ctx,
+                        x.non_zero_indices(),
+                        dev_ctx.GetPlace(),
+                        false,
+                        &x_grad_indices);
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
-  std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0),
+  std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
       h_counter(rulebook_len, 0);
   phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
                                      rulebook_ptr,
-                                     rulebook_len * sizeof(int),
+                                     rulebook_len * sizeof(IntT),
 #ifdef PADDLE_WITH_HIP
                                      hipMemcpyDeviceToHost,
 #else
@@ -109,7 +111,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   for (int i = 0; i < rulebook_len; i++) {
     counter[h_counter[i]] += 1;
   }
-  int offset = 0, max_count = 0;
+  IntT offset = 0, max_count = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
     offset += counter[i];
@@ -120,15 +122,16 @@ void Conv3dGradKernel(const Context& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, Context>(dev_ctx,
-                                                   x,
-                                                   kernel,
-                                                   out_grad.non_zero_elements(),
-                                                   in_channels,
-                                                   out_channels,
-                                                   half_kernel_size,
-                                                   kernel_grad,
-                                                   &x_grad_values);
+    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(
+        dev_ctx,
+        x,
+        kernel,
+        out_grad.non_zero_elements(),
+        in_channels,
+        out_channels,
+        half_kernel_size,
+        kernel_grad,
+        &x_grad_values);
     if (max_count == 0) {
       return;
     }
@@ -136,21 +139,21 @@ void Conv3dGradKernel(const Context& dev_ctx,
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
-  GatherKernel<T, int><<<config.block_per_grid.x,
-                         config.thread_per_block.x,
-                         0,
-                         dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                                             rulebook_ptr + rulebook_len,
-                                             in_features_ptr,
-                                             rulebook_len,
-                                             in_channels);
+  GatherKernel<T, IntT><<<config.block_per_grid.x,
+                          config.thread_per_block.x,
+                          0,
+                          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                                              rulebook_ptr + rulebook_len,
+                                              in_features_ptr,
+                                              rulebook_len,
+                                              in_channels);
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * out_channels, 1);
-  GatherKernel<T, int><<<config.block_per_grid.x,
-                         config.thread_per_block.x,
-                         0,
-                         dev_ctx.stream()>>>(
+  GatherKernel<T, IntT><<<config.block_per_grid.x,
+                          config.thread_per_block.x,
+                          0,
+                          dev_ctx.stream()>>>(
       out_grad.non_zero_elements().data<T>(),
       rulebook_ptr + rulebook_len * 2,
       out_grad_features_ptr,
@@ -203,15 +206,19 @@ void Conv3dGradKernel(const Context& dev_ctx,
   // x_grad->ResizeAndAllocate(x.non_zero_elements().dims());
   DenseTensorMeta index_meta(DataType::INT32, {rulebook_len}, DataLayout::NCHW);
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_key = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<IntT>::Type(),
+                      {rulebook_len},
+                      DataLayout::NCHW));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
-  SortedAndUniqueIndex(dev_ctx,
-                       rulebook_ptr + rulebook_len,
-                       rulebook_len,
-                       &out_index,
-                       &unique_key,
-                       &unique_value);
+  SortedAndUniqueIndex<GPUContext, IntT>(dev_ctx,
+                                         rulebook_ptr + rulebook_len,
+                                         rulebook_len,
+                                         &out_index,
+                                         &unique_key,
+                                         &unique_value);
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
@@ -227,6 +234,36 @@ void Conv3dGradKernel(const Context& dev_ctx,
                                          in_channels,
                                          x_grad_values_ptr,
                                          subm);
+}
+
+template <typename T, typename Context>
+void Conv3dGradKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const DenseTensor& kernel,
+                      const DenseTensor& rulebook,
+                      const SparseCooTensor& out_grad,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      const std::vector<int>& strides,
+                      const int groups,
+                      const bool subm,
+                      SparseCooTensor* x_grad,
+                      DenseTensor* kernel_grad) {
+  PD_DISPATCH_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "Conv3dGradGPUKernel", ([&] {
+        Conv3dGradGPUKernel<T, data_t>(dev_ctx,
+                                       x,
+                                       kernel,
+                                       rulebook,
+                                       out_grad,
+                                       paddings,
+                                       dilations,
+                                       strides,
+                                       groups,
+                                       subm,
+                                       x_grad,
+                                       kernel_grad);
+      }));
 }
 
 }  // namespace sparse
