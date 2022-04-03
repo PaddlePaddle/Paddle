@@ -70,7 +70,7 @@ PD_REGISTER_KERNEL(
 
 #else
 PD_REGISTER_KERNEL(bitwise_and,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::BitwiseAndKernel,
                    bool,
@@ -81,7 +81,7 @@ PD_REGISTER_KERNEL(bitwise_and,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(bitwise_or,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::BitwiseOrKernel,
                    bool,
@@ -92,7 +92,7 @@ PD_REGISTER_KERNEL(bitwise_or,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(bitwise_xor,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::BitwiseXorKernel,
                    bool,
@@ -103,7 +103,7 @@ PD_REGISTER_KERNEL(bitwise_xor,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(bitwise_not,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::BitwiseNotKernel,
                    bool,
