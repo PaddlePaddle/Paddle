@@ -58,6 +58,11 @@ void GaussianRandomInferMeta(const IntArray& shape,
   out->set_layout(DataLayout::NCHW);
 }
 
+void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({n}));
+  out->set_dtype(dtype);
+}
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
