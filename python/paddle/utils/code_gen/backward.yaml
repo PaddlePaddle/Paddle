@@ -780,7 +780,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : reduce_prod_grad
+    func : prod_grad
 
 - backward_api : relu_double_grad
   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
