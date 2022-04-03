@@ -178,7 +178,7 @@
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
     func : ConvTransposeGradInferMeta
-  kernel : 
+  kernel :
     func : conv2d_transpose_grad
 
 - backward_api : conv3d_transpose_grad
@@ -388,6 +388,17 @@
     param : [x]
   kernel :
     func : frobenius_norm_grad
+
+- backward_api : gather_grad
+  forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0, bool overwrite=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    data_type: x
+    func : gather_grad
 
 - backward_api : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
@@ -802,6 +813,16 @@
     func : PoolGradInferMeta
   kernel :
     func : pool3d_grad
+
+- backward_api : pow_grad
+  forward : pow(Tensor x, Scalar s) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar s=-1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow_grad
 
 - backward_api : prelu_grad
   forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
