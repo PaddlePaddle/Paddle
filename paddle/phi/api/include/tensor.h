@@ -494,6 +494,7 @@ class PADDLE_API Tensor final {
    * @return AbstractAutogradMeta*
    */
   AbstractAutogradMeta* get_autograd_meta() const;
+  const std::shared_ptr<AbstractAutogradMeta>& mutable_autograd_meta() const;
 
   /**
    * @brief Set the autograd meta object
