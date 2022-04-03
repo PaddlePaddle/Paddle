@@ -68,7 +68,8 @@ class GradNodePyLayer : public GradNodeBase {
   }
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node = std::make_shared<GradNodePyLayer>(*this);
+    auto copied_node =
+        std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
     return copied_node;
   }
 
