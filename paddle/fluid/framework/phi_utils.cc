@@ -98,6 +98,10 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
 phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                              const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
+    LOG(WARNING) << "expected_kernel_key: " << expected_kernel_key;
+    LOG(WARNING) << "kernel_key: " << kernel_key;
+    LOG(WARNING) << "op.Type(): " << op.Type();
+
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
@@ -110,6 +114,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(expected_kernel_key.place_)) {
+    LOG(WARNING) << "here";
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
             << ", phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -145,6 +150,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                           kernel_key.dtype());
   }
 #endif
+  LOG(WARNING) << "here";
   return phi::KernelKey();
 }
 

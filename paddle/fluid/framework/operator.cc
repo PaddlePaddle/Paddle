@@ -1373,6 +1373,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
       if (is_xpu_kp_support) {
         kernel_type_->library_type_ = LibraryType::kKP;
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
       if ((type_ == "assign") && platform::is_npu_place(kernel_type_->place_)) {
         LOG(WARNING) << "type_: " << type_;

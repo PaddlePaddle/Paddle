@@ -38,7 +38,8 @@ class TestAssign(OpTest):
         self.inputs = {'X': x}
 
         self.attrs = {}
-        self.outputs = {'Out': x}
+        out = np.zeros([3, 3]).astype(self.dtype)
+        self.outputs = {'Out': out}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -47,7 +48,7 @@ class TestAssign(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_dygraph=True)
 
 
 if __name__ == '__main__':

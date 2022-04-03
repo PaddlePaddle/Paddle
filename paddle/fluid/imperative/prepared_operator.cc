@@ -163,7 +163,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #ifdef PADDLE_WITH_ASCEND_CL
   if (paddle::platform::is_npu_place(expected_kernel_key.place_)) {
     if (std::find(npu_op_black_lists.begin(), npu_op_black_lists.end(), op.Type()) != npu_op_black_lists.end()) {
-      VLOG(3) << "find NPU kernel " << op.Type()
+      LOG(WARNING) << "find NPU kernel " << op.Type()
               << " in black lists, expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
       expected_kernel_key.place_ = platform::CPUPlace();
@@ -182,6 +182,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       paddle::platform::is_in_xpu_black_list(op.Type());
 
 #endif
+  LOG(WARNING) << "here";
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
     pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
@@ -232,6 +233,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         && !is_xpu_unsupport
 #endif
         ) {
+      LOG(WARNING) << "here";
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
@@ -239,11 +241,12 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       if (expected_kernel_key.place_ != place) {
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
-
+      LOG(WARNING) << "here";
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
+      LOG(WARNING) << "here";
       VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
@@ -252,6 +255,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   // 2. check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
+  LOG(WARNING) << "here";
 
 // NOTE(Liu-xiandong): If we can't find heterogeneous kernel in phi,
 // we need to select the heterogeneous kernel in fluid, but the kernel
@@ -278,6 +282,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
       ) {
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+      LOG(WARNING) << "op.Type(): " << op.Type();
+
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
       auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
@@ -301,6 +307,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
+  for (auto it = kernels.begin(); it != kernels.end(); ++it) {
+    LOG(WARNING) << "expected_kernel_key: " << it->first;
+  }
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
@@ -339,6 +348,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
+  LOG(WARNING) << "here";
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << op.Type()
@@ -376,9 +386,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                         KernelTypeToString(expected_kernel_key)));
 
   if (!(expected_kernel_key.place_ == place)) {
+    LOG(WARNING) << "here";
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
+  LOG(WARNING) << "here";
   return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second, dev_ctx);
 }
 
