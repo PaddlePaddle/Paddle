@@ -174,7 +174,7 @@
 
 - backward_api : clip_grad
   forward : clip (Tensor x, Scalar min, Scalar max) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, Scalar min, Scalar max)
+  args : (Tensor x, Tensor out_grad, Scalar min = 0., Scalar max = 0.)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
