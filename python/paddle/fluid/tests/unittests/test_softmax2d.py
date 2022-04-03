@@ -74,5 +74,17 @@ class TestSoftmax2DCPU(TestSoftmax2DAPI):
         self.place = paddle.CPUPlace()
 
 
+class TestSoftmax2DRepr(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_extra_repr(self):
+        paddle.disable_static(self.place)
+        m = paddle.nn.Softmax2D(name='test')
+        self.assertTrue(m.extra_repr() == 'name=test')
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
