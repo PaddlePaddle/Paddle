@@ -665,7 +665,7 @@ class DenseTable(Table):
         table_proto.table_id = ctx.table_id()
 
         table_proto.type = the_one_ps_pb2.PS_DENSE_TABLE
-        table_proto.table_class = "CommonDenseTable"
+        table_proto.table_class = "MemoryDenseTable"
         table_proto.shard_num = 256
 
         table_proto.accessor.accessor_class = 'CommMergeAccessor'
