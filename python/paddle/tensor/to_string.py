@@ -330,6 +330,10 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     if tensor.is_sparse():
@@ -342,7 +346,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return _template.format(
             prefix=prefix,
             shape=tensor.shape,
-            dtype=tensor.dtype,
+            dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
             indent=' ' * indent,
