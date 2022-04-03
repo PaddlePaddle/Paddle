@@ -1257,6 +1257,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
+    LOG(WARNING) << "kernel_type_->place_: " << kernel_type_->place_;
+
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
@@ -1268,7 +1270,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
+    LOG(WARNING) << "here";
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
+      LOG(WARNING) << "here";
       pt_kernel_signature_.reset(
           new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
@@ -1284,14 +1288,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
               pt_kernel_name, pt_kernel_key)));
 
       if (pt_kernel_->IsValid()) {
+        LOG(WARNING) << "here";
         VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
                 << pt_kernel_name << " | kernel key: " << pt_kernel_key
                 << " | kernel: " << *pt_kernel_;
       } else {
+        LOG(WARNING) << "here";
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
     } else {
+      LOG(WARNING) << "here";
       pt_kernel_name = pt_kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -1344,8 +1351,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         && !is_xpu_unsupport
 #endif
         ) {
+      LOG(WARNING) << "here";
       run_phi_kernel_ = true;
     } else {
+      LOG(WARNING) << "here";
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
 
@@ -1364,6 +1373,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
       if (is_xpu_kp_support) {
         kernel_type_->library_type_ = LibraryType::kKP;
+#ifdef PADDLE_WITH_ASCEND_CL
+      if ((type_ == "assign") && platform::is_npu_place(kernel_type_->place_)) {
+        LOG(WARNING) << "type_: " << type_;
+        LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
+        kernel_type_->place_ = platform::CPUPlace();
+        LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
       }
 #endif
 
@@ -1374,8 +1389,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           || is_xpu_unsupport
 #endif
           ) {
+        LOG(WARNING) << "here";
+        
+#ifdef PADDLE_WITH_ASCEND_CL
+        if ((type_ == "assign") && platform::is_cpu_place(kernel_type_->place_)) {
+          LOG(WARNING) << "type_: " << type_;
+          LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
+          kernel_type_->place_ = platform::NPUPlace();
+          LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
+        }
+#endif
+
+        // LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
+        // kernel_type_->place_ = platform::NPUPlace();
+        // LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
+
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
+        LOG(WARNING) << "pt_cpu_kernel_key: " << pt_cpu_kernel_key;
+        LOG(WARNING) << "pt_kernel_name: " << pt_kernel_name;
         pt_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 pt_kernel_name, pt_cpu_kernel_key)));
@@ -1391,11 +1423,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
   if (!run_phi_kernel_) {
+    LOG(WARNING) << "here";
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
       dev_ctx = pool.Get(kernel_type_->place_);
     }
   }
+  LOG(WARNING) << "here";
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
@@ -1555,6 +1589,9 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
 }
 
 void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
+  LOG(WARNING) << "here";
+  LOG(WARNING) << "type_: " << type_;
+
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -1566,9 +1603,15 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   OpKernelMap& kernels = kernels_iter->second;
 
+  for (auto it = kernels.begin(); it != kernels.end(); ++it) {
+    LOG(WARNING) << "expected_kernel_key: " << it->first;
+  }
+
   auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+
+  LOG(WARNING) << "expected_kernel_key: " << expected_kernel_key;
 
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
@@ -1651,6 +1694,11 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+  if ((type_ == "assign") && platform::is_npu_place(expected_kernel_key.place_)) {
+    LOG(WARNING) << "here";
+    // kernel_iter = kernels.end();
+  }
+
   if (kernel_iter == kernels.end() &&
       platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << type_
