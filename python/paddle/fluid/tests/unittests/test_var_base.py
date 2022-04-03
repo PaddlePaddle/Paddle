@@ -1114,7 +1114,7 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_bf16(self):
+    def func_tensor_str_bf16(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
         a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
@@ -1127,6 +1127,11 @@ class TestVarBase(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()
+
+    def test_tensor_str_bf16(self):
+        with _test_eager_guard():
+            self.func_tensor_str_bf16()
+        self.func_tensor_str_bf16()
 
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
