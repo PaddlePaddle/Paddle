@@ -567,6 +567,10 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor =
         static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
@@ -583,6 +587,10 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
                                                            PyObject* args,
                                                            PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
   if (self->tensor.is_selected_rows()) {
     auto* selected_rows =
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());

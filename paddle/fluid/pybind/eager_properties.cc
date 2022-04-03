@@ -143,8 +143,11 @@ int tensor_properties_set_persistable(TensorObject* self, PyObject* value,
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_TRY
-  auto ddim = self->tensor.shape();
   std::vector<int64_t> value;
+  if (!self->tensor.defined()) {
+    return ToPyObject(value);
+  }
+  auto ddim = self->tensor.shape();
   size_t rank = static_cast<size_t>(ddim.size());
   value.resize(rank);
   for (size_t i = 0; i < rank; i++) {

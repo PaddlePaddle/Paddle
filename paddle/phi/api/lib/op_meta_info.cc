@@ -25,10 +25,11 @@ limitations under the License. */
 namespace paddle {
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
-  PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
-                    true,
-                    phi::errors::Unavailable(
-                        "Now only supported DenseTensor in Custom Operator."));
+  PADDLE_ENFORCE_EQ(
+      src.defined() && src.is_dense_tensor() && dst->is_dense_tensor(),
+      true,
+      phi::errors::Unavailable(
+          "Now only supported DenseTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
