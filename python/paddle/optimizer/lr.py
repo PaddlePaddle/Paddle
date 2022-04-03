@@ -1693,14 +1693,15 @@ class CyclicLR(LRScheduler):
                  verbose=False):
         self.max_lr = max_learning_rate
 
+        step_size_up = float(step_size_up)
+        step_size_down = float(
+            step_size_down) if step_size_down is not None else step_size_up
+
         if step_size_up <= 0:
             raise ValueError("'step_size_up' must be a positive integer.")
         if step_size_down <= 0:
             raise ValueError("'step_size_down' must be a positive integer.")
 
-        step_size_up = float(step_size_up)
-        step_size_down = float(
-            step_size_down) if step_size_down is not None else step_size_up
         self.total_size = step_size_up + step_size_down
         self.step_ratio = step_size_up / self.total_size
 
