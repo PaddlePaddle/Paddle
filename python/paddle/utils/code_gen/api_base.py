@@ -481,8 +481,13 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 elif param in self.optional_vars:
                     meta_tensor_code = meta_tensor_code + f"""
 {code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param} = paddle::none;
+{code_indent}  phi::DenseTensor dt;
+{code_indent}  phi::MetaTensor {PREFIX_TENSOR_NAME}meta_tmp_{param}(dt);
 {code_indent}  if ({PREFIX_TENSOR_NAME}{param}_ptr) {{
-{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} =  MakeMetaTensor( * {PREFIX_TENSOR_NAME}{param}_ptr );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dtype( {PREFIX_TENSOR_NAME}{param}_ptr->dtype() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dims( {PREFIX_TENSOR_NAME}{param}_ptr->dims() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_layout( {PREFIX_TENSOR_NAME}{param}_ptr->layout() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} =  {PREFIX_TENSOR_NAME}meta_tmp_{param};
 {code_indent}  }}\n"""
 
                     param_code = param_code + f"{PREFIX_TENSOR_NAME}meta_ref_{param}, "
