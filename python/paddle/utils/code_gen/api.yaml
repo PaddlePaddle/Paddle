@@ -290,7 +290,7 @@
   backward : cholesky_solve_grad
 
 - api : clip
-  args : (Tensor x, Scalar min, Scalar max)
+  args : (Tensor x, Scalar(float) min, Scalar(float) max)
   output : Tensor(out)
   inplace : (x -> out)
   infer_meta :
