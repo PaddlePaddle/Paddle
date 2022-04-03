@@ -76,9 +76,6 @@ def fill_(x, value):
                             float(value), "value_int", int(value))
 
 
-setattr(core.VarBase, 'fill_', fill_)
-
-
 @dygraph_only
 def zero_(x):
     """
@@ -105,9 +102,6 @@ def zero_(x):
 
     """
     return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
-
-
-setattr(core.VarBase, 'zero_', zero_)
 
 
 @dygraph_only
@@ -154,9 +148,6 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
                                      'wrap', wrap)
     return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
                                  True)
-
-
-setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
 
 
 def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
@@ -226,9 +217,6 @@ def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
         x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
 
 
-setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
-
-
 def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
     """
     This function fill the source Tensor y into the x Tensor's diagonal.
@@ -262,12 +250,6 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
         x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
 
 
-setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
-
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
-
-
 @dygraph_only
 def tolist(x):
     """
@@ -299,9 +281,6 @@ def tolist(x):
 
     """
     return x.numpy().tolist()
-
-
-setattr(core.VarBase, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):
@@ -2961,3 +2940,17 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     values = paddle.broadcast_to(values, indices.shape)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
+
+
+# TODO(dev): We need avoid implementing it by this way.
+__METHODS = {
+    'fill_': fill_,
+    'zero_': zero_,
+    'fill_diagonal_': fill_diagonal_,
+    'fill_diagonal_tensor_': fill_diagonal_tensor_,
+    "fill_diagonal_tensor": fill_diagonal_tensor,
+    'tolist': tolist
+}
+for name, func in __METHODS.items():
+    setattr(core.VarBase, name, func)
+    setattr(core.eager.Tensor, name, func)
