@@ -337,9 +337,14 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.defined()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.defined()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
