@@ -109,6 +109,10 @@ void AdamwInferMeta(const MetaTensor& param,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs);
 
+void AddNInferMeta(const std::vector<MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
