@@ -70,6 +70,7 @@
     func : AddNInferMeta
   kernel :
     func : add_n
+  backward : add_n_grad
 
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)

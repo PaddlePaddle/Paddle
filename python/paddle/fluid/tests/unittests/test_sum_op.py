@@ -348,13 +348,26 @@ class API_Test_Add_n(unittest.TestCase):
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-        with _test_eager_guard():
-            input0 = paddle.ones(shape=[2, 3], dtype='float32')
-            expected_result = np.empty((2, 3))
-            expected_result.fill(2)
-            sum_value = paddle.add_n([input0, input0])
+    def test_dygraph_final_state_api(self):
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                input0 = paddle.ones(shape=[2, 3], dtype='float32')
+                input1 = paddle.ones(shape=[2, 3], dtype='float32')
+                input0.stop_gradient = False
+                input1.stop_gradient = False
+                expected_result = np.empty((2, 3))
+                expected_result.fill(2)
+                sum_value = paddle.add_n([input0, input1])
+                self.assertEqual((sum_value.numpy() == expected_result).all(),
+                                 True)
 
-            self.assertEqual((sum_value.numpy() == expected_result).all(), True)
+                expected_grad_result = np.empty((2, 3))
+                expected_grad_result.fill(1)
+                sum_value.backward()
+                self.assertEqual(
+                    (input0.grad.numpy() == expected_grad_result).all(), True)
+                self.assertEqual(
+                    (input1.grad.numpy() == expected_grad_result).all(), True)
 
 
 class TestRaiseSumError(unittest.TestCase):
