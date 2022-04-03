@@ -577,8 +577,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
   static void ChooseAlgo(const std::vector<PerfT>& perf_results,
                          size_t workspace_limit, SearchResultT* algo_result) {
-    VLOG(3) << GetPerfResultString<PerfT>(perf_results, perf_results.size(),
-                                          workspace_limit);
+    VLOG(3) << GetPerfResultString<PerfT>(
+        "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
+        perf_results.size(), workspace_limit);
 
     for (size_t i = 0; i != perf_results.size(); ++i) {
       const auto& result = perf_results[i];
