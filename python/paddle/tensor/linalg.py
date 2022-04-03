@@ -27,6 +27,9 @@ from paddle import _C_ops
 
 __all__ = []
 
+# Consistent with kDefaultDim from C++ Backend
+K_DEFAULT_DIM = 9
+
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
@@ -1157,6 +1160,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
+        axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.final_state_cross(x, y, axis)
     else:
         if _in_legacy_dygraph():

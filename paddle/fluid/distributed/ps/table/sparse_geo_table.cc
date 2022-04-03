@@ -17,9 +17,9 @@
 namespace paddle {
 namespace distributed {
 
-int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
-                                       std::vector<float>* values,
-                                       std::vector<uint64_t>* ids) {
+int32_t SparseGeoTable::PullGeoParam(const uint32_t trainer_id,
+                                     std::vector<float>* values,
+                                     std::vector<uint64_t>* ids) {
   geo_recorder->GetAndClear(trainer_id, ids);
   auto dim = _config.common().dims()[0];
 
@@ -32,21 +32,21 @@ int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
   pull_value.frequencies_ = frequencies.data();
 
   values->resize(ids->size() * dim);
-  CommonSparseTable::pull_sparse(values->data(), pull_value);
+  CommonSparseTable::PullSparse(values->data(), pull_value);
   return 0;
 }
 
-int32_t SparseGeoTable::push_sparse(const uint64_t* keys, const float* values,
-                                    size_t num) {
+int32_t SparseGeoTable::PushSparse(const uint64_t* keys, const float* values,
+                                   size_t num) {
   std::vector<uint64_t> ids;
   ids.resize(num);
   std::copy_n(keys, num, ids.begin());
   geo_recorder->Update(ids);
-  CommonSparseTable::push_sparse(keys, values, num);
+  CommonSparseTable::PushSparse(keys, values, num);
   return 0;
 }
 
-int32_t SparseGeoTable::initialize_value() {
+int32_t SparseGeoTable::InitializeValue() {
   auto common = _config.common();
   shard_values_.reserve(task_pool_size_);
 
@@ -82,7 +82,7 @@ int32_t SparseGeoTable::initialize_value() {
     auto pull_value = PullSparseValue(ids, fres, param_dim_);
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), pull_value);
+    PullSparse(pulls.data(), pull_value);
   }
   return 0;
 }
