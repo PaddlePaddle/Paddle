@@ -1069,6 +1069,7 @@
   args : (Tensor[] x, Tensor out_grad, int axis)
   output : Tensor[](x_grad)
   invoke : stack_grad_impl(x, out_grad, axis)
+  no_need_buffer : x, y
 
 - backward_api : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
