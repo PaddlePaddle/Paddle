@@ -193,7 +193,7 @@ class BaseAPI(object):
                     f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                       but now is {out_type}."
 
-                return out_type, result.group('name')
+                return output_type_map[out_type], result.group('name')
 
             else:
                 if output_item.strip() in output_type_map:
