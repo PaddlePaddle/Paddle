@@ -49,8 +49,8 @@ class LeakyReluOpConverter : public OpConverter {
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
-      CHECK(op_desc.HasAttr("X_scale"));
-      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
+      CHECK(op_desc.HasAttr("Input_scale"));
+      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else
