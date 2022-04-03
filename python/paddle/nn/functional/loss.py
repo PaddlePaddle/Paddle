@@ -1719,7 +1719,7 @@ def cross_entropy(input,
                 ignore_index, 'numeric_stable_mode', True, 'axis', axis,
                 'use_softmax', use_softmax)
         else:
-            if in_dynamic_mode():
+            if in_dygraph_mode():
                 _, out = _C_ops.final_state_cross_entropy_with_softmax(
                     input, label, soft_label, use_softmax, True, ignore_index,
                     axis)
