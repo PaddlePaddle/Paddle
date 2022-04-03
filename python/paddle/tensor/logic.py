@@ -231,7 +231,8 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_equal(x, y)
+        default_axis = -1
+        return _C_ops.final_state_greater_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_equal(x, y)
