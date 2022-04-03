@@ -238,7 +238,8 @@ class BaseAPI(object):
             'param': None,
             'backend': None,
             'layout': None,
-            'data_type': None
+            'data_type': None,
+            'use_cudnn': 'false'
         }
         if 'backend' in kernel_config and len(kernel_config['backend']) > 0:
             kernel['backend'] = kernel_config['backend']
@@ -248,6 +249,10 @@ class BaseAPI(object):
             kernel['data_type'] = kernel_config['data_type']
         if 'param' in kernel_config:
             kernel['param'] = kernel_config['param']
+        if 'use_cudnn' in kernel_config:
+            kernel['use_cudnn'] = kernel_config['use_cudnn']
+            if isinstance(kernel['use_cudnn'], bool):
+                kernel['use_cudnn'] = str(kernel['use_cudnn']).lower()
         kernel['func'] = [
             kernel_fn.strip() for kernel_fn in kernel_config['func'].split(',')
         ]
@@ -709,10 +714,12 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], 'SetKernelOutput', code_indent, inplace_flag)
         api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
+        cudnn_args = '' if self.kernel[
+            'use_cudnn'] == 'false' else ', ' + self.kernel['use_cudnn']
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
 {code_indent}  VLOG(6) << "{self.api} API kernel: " << kernel;
 
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
