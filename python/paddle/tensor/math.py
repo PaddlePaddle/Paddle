@@ -1067,7 +1067,11 @@ def add_n(inputs, name=None):
             # [[8., 10., 12.], 
             #  [14., 16., 18.]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return _C_ops.final_state_add_n(inputs)
+    if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.sum(inputs, 'use_mkldnn', False)
