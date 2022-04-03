@@ -71,11 +71,11 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/curand.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/fluid/platform/dynload/nvjpeg.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
 #include "paddle/phi/backends/dynload/nccl.h"
@@ -288,7 +288,8 @@ inline const char* GetErrorMsgUrl(T status) {
              "index.html#cusparseStatus_t";
       break;
     case platform::proto::ApiType::NVJPEG:
-      return "https://docs.nvidia.com/cuda/nvjpeg/index.html#nvjpeg-api-return-codes";
+      return "https://docs.nvidia.com/cuda/nvjpeg/"
+             "index.html#nvjpeg-api-return-codes";
       break;
     default:
       return "Unknown type of External API, can't get error message URL!";
@@ -462,19 +463,30 @@ inline std::string build_nvidia_error_msg(cufftResult_t stat) {
 }
 
 /**************** NVJPEG ERROR ****************/
-inline bool is_error(nvjpegStatus_t stat) { return stat != NVJPEG_STATUS_SUCCESS; }
+inline bool is_error(nvjpegStatus_t stat) {
+  return stat != NVJPEG_STATUS_SUCCESS;
+}
 
 inline std::string get_nvjpeg_error_str(nvjpegStatus_t stat) {
   switch (stat) {
-    case NVJPEG_STATUS_SUCCESS: return "NVJPEG_STATUS_SUCCESS";
-    case NVJPEG_STATUS_NOT_INITIALIZED: return "NVJPEG_STATUS_NOT_INITIALIZED";
-    case NVJPEG_STATUS_INVALID_PARAMETER: return "NVJPEG_STATUS_INVALID_PARAMETER";
-    case NVJPEG_STATUS_BAD_JPEG: return "NVJPEG_STATUS_BAD_JPEG";
-    case NVJPEG_STATUS_JPEG_NOT_SUPPORTED: return "NVJPEG_STATUS_JPEG_NOT_SUPPORTED";
-    case NVJPEG_STATUS_ALLOCATOR_FAILURE: return "NVJPEG_STATUS_ALLOCATOR_FAILURE";
-    case NVJPEG_STATUS_EXECUTION_FAILED: return "NVJPEG_STATUS_EXECUTION_FAILED";
-    case NVJPEG_STATUS_ARCH_MISMATCH: return "NVJPEG_STATUS_ARCH_MISMATCH";
-    case NVJPEG_STATUS_INTERNAL_ERROR: return "NVJPEG_STATUS_INTERNAL_ERROR";
+    case NVJPEG_STATUS_SUCCESS:
+      return "NVJPEG_STATUS_SUCCESS";
+    case NVJPEG_STATUS_NOT_INITIALIZED:
+      return "NVJPEG_STATUS_NOT_INITIALIZED";
+    case NVJPEG_STATUS_INVALID_PARAMETER:
+      return "NVJPEG_STATUS_INVALID_PARAMETER";
+    case NVJPEG_STATUS_BAD_JPEG:
+      return "NVJPEG_STATUS_BAD_JPEG";
+    case NVJPEG_STATUS_JPEG_NOT_SUPPORTED:
+      return "NVJPEG_STATUS_JPEG_NOT_SUPPORTED";
+    case NVJPEG_STATUS_ALLOCATOR_FAILURE:
+      return "NVJPEG_STATUS_ALLOCATOR_FAILURE";
+    case NVJPEG_STATUS_EXECUTION_FAILED:
+      return "NVJPEG_STATUS_EXECUTION_FAILED";
+    case NVJPEG_STATUS_ARCH_MISMATCH:
+      return "NVJPEG_STATUS_ARCH_MISMATCH";
+    case NVJPEG_STATUS_INTERNAL_ERROR:
+      return "NVJPEG_STATUS_INTERNAL_ERROR";
     case NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED:
       return "NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED";
   }
@@ -540,19 +552,19 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                                          \
   } while (0)
 
-#define PADDLE_ENFORCE_NVJPEG_SUCCESS(COND)                      \
-  do {                                                           \
-    auto __cond__ = (COND);                                      \
-    using __NVJPEG_STATUS_TYPE__ = decltype(__cond__);           \
-    constexpr auto __success_type__ =                            \
-        ::paddle::platform::details::ExternalApiType<            \
-            __NVJPEG_STATUS_TYPE__>::kSuccess;                   \
-    if (UNLIKELY(__cond__ != __success_type__)) {                \
-      auto __summary__ = ::paddle::platform::errors::External(   \
-            "Nvjpeg failed: %s",                                 \
-					  ::paddle::platform::get_nvjpeg_error_str(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                     \
-    }                                                            \
+#define PADDLE_ENFORCE_NVJPEG_SUCCESS(COND)                    \
+  do {                                                         \
+    auto __cond__ = (COND);                                    \
+    using __NVJPEG_STATUS_TYPE__ = decltype(__cond__);         \
+    constexpr auto __success_type__ =                          \
+        ::paddle::platform::details::ExternalApiType<          \
+            __NVJPEG_STATUS_TYPE__>::kSuccess;                 \
+    if (UNLIKELY(__cond__ != __success_type__)) {              \
+      auto __summary__ = ::paddle::platform::errors::External( \
+          "Nvjpeg failed: %s",                                 \
+          ::paddle::platform::get_nvjpeg_error_str(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                   \
+    }                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {

@@ -29,7 +29,8 @@ using ParallelExecutor = framework::ParallelExecutor;
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 namespace data {
 
@@ -39,9 +40,8 @@ class Pipeline {
            const platform::Place &place, int64_t start_op_index,
            int64_t end_op_index, int64_t program_id,
            const std::vector<std::string> &output_var_names);
-           // size_t prefetch_queue_size);
 
-  ~Pipeline() { VLOG(1) << "~Pipeline"; }
+  ~Pipeline() {}
 
   void ReadNext(std::vector<Variable *> &out_vars);
 
@@ -50,19 +50,18 @@ class Pipeline {
   void Reset() { running_.store(true); }
 
  private:
-
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-  void copy_tensor(const framework::LoDTensor& lod_tensor,
-                   framework::LoDTensor* out) const {
+  void copy_tensor(const framework::LoDTensor &lod_tensor,
+                   framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
-    auto& out_tensor = *out;
+    auto &out_tensor = *out;
     framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 
   std::atomic<bool> running_;
-  
+
   Scope scope_;
   std::shared_ptr<BlockDesc> global_block_;
   platform::Place place_;
@@ -71,7 +70,6 @@ class Pipeline {
   int64_t program_id_;
 
   std::vector<std::string> output_var_names_;
-
 };
 
 class PipelineManager {
@@ -96,10 +94,10 @@ class PipelineManager {
     return pm_instance_ptr_;
   }
 
-  Pipeline* GetPipeline(
-      int64_t program_id, BlockDesc *global_block, const platform::Place &place,
-      int64_t start_op_index, int64_t end_op_index,
-      const std::vector<std::string> &output_var_names) {
+  Pipeline *GetPipeline(int64_t program_id, BlockDesc *global_block,
+                        const platform::Place &place, int64_t start_op_index,
+                        int64_t end_op_index,
+                        const std::vector<std::string> &output_var_names) {
     auto iter = prog_id_to_pipeline_.find(program_id);
     if (iter == prog_id_to_pipeline_.end()) {
       prog_id_to_pipeline_[program_id] = std::unique_ptr<Pipeline>(new Pipeline(
@@ -122,16 +120,11 @@ class PipelineManager {
     }
   }
 
-  void ShutDown() {
-    prog_id_to_pipeline_.clear();
-  }
+  void ShutDown() { prog_id_to_pipeline_.clear(); }
 
-  PipelineManager() { VLOG(1) << "PipelineManager init"; }
+  PipelineManager() {}
 
-  ~PipelineManager() {
-    VLOG(1) << "~PipelineManager";
-    ShutDown();
-  }
+  ~PipelineManager() { ShutDown(); }
 };
 
 }  // data

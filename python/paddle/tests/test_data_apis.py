@@ -50,7 +50,8 @@ class TestRandomFlip(unittest.TestCase):
 
     def test_output_static(self):
         paddle.enable_static()
-        input_data = paddle.static.data(shape=[16, 3, 32, 32], dtype="float32", name="input")
+        input_data = paddle.static.data(
+            shape=[16, 3, 32, 32], dtype="float32", name="input")
         out_data = random_flip(input_data, 0.5)
 
         places = [paddle.CPUPlace()]
@@ -59,9 +60,11 @@ class TestRandomFlip(unittest.TestCase):
 
         for place in places:
             exe = paddle.static.Executor(place)
-            out, = exe.run(paddle.static.default_main_program(),
-                    feed={"input": np.ones([16, 3, 32, 32], dtype="float32")},
-                    fetch_list=[out_data])
+            out, = exe.run(
+                paddle.static.default_main_program(),
+                feed={"input": np.ones(
+                    [16, 3, 32, 32], dtype="float32")},
+                fetch_list=[out_data])
             assert out.dtype == np.bool
             assert out.shape == (16, 1)
         paddle.disable_static()

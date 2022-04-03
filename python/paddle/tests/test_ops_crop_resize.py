@@ -23,10 +23,7 @@ import paddle.fluid.core as core
 from paddle.vision.ops import image_resize, random_crop_and_resize
 
 
-def np_nearest_interp(image,
-                      size,
-                      align_corners=True,
-                      data_format='NCHW'):
+def np_nearest_interp(image, size, align_corners=True, data_format='NCHW'):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if isinstance(size, int):
         size = (size, size)
@@ -138,8 +135,11 @@ def np_bilinear_interp(image,
     return out.astype(image.dtype)
 
 
-def np_image_resize(images, size, interp_method,
-                    align_corners=True, align_mode=1,
+def np_image_resize(images,
+                    size,
+                    interp_method,
+                    align_corners=True,
+                    align_mode=1,
                     data_format="NCHW"):
     if isinstance(size, int):
         size = (size, size)
@@ -147,17 +147,21 @@ def np_image_resize(images, size, interp_method,
     results = []
     if interp_method == "nearest":
         for image in images:
-            results.append(np_nearest_interp(image,
-                                             size=size,
-                                             align_corners=align_corners,
-                                             data_format=data_format))
+            results.append(
+                np_nearest_interp(
+                    image,
+                    size=size,
+                    align_corners=align_corners,
+                    data_format=data_format))
     elif interp_method == "bilinear":
         for image in images:
-            results.append(np_bilinear_interp(image,
-                                              size=size,
-                                              align_corners=align_corners,
-                                              align_mode=align_mode,
-                                              data_format=data_format))
+            results.append(
+                np_bilinear_interp(
+                    image,
+                    size=size,
+                    align_corners=align_corners,
+                    align_mode=align_mode,
+                    data_format=data_format))
     else:
         raise ValueError("unknown interp_method")
 
@@ -177,15 +181,17 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
         self.build_np_data()
 
     def build_np_data(self):
-        self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
-        self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
+        self.image1 = np.random.randint(
+            0, 256, self.image_shape1, dtype="uint8")
+        self.image2 = np.random.randint(
+            0, 256, self.image_shape2, dtype="uint8")
         self.np_result = np_image_resize(
-                            [self.image1, self.image2],
-                            size=self.size,
-                            interp_method=self.interp_method,
-                            align_corners=self.align_corners,
-                            align_mode=self.align_mode,
-                            data_format=self.data_format)
+            [self.image1, self.image2],
+            size=self.size,
+            interp_method=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format)
 
     def test_output_dynamic(self):
         # NOTE: only support cuda kernel currently
@@ -195,16 +201,18 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
         paddle.disable_static()
 
         images = paddle.tensor.create_array(dtype="uint8")
-        images = paddle.tensor.array_write(paddle.to_tensor(self.image1), 
-                                           paddle.to_tensor(0), images)
-        images = paddle.tensor.array_write(paddle.to_tensor(self.image2),
-                                           paddle.to_tensor(1), images)
+        images = paddle.tensor.array_write(
+            paddle.to_tensor(self.image1), paddle.to_tensor(0), images)
+        images = paddle.tensor.array_write(
+            paddle.to_tensor(self.image2), paddle.to_tensor(1), images)
 
-        result = image_resize(images, self.size,
-                              interp_method=self.interp_method,
-                              align_corners=self.align_corners,
-                              align_mode=self.align_mode,
-                              data_format=self.data_format)
+        result = image_resize(
+            images,
+            self.size,
+            interp_method=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format)
         assert np.allclose(result.numpy(), self.np_result, rtol=1)
 
     def test_output_static(self):
@@ -220,15 +228,17 @@ class TestImageResizeNearestNCHW(unittest.TestCase):
         image2 = fluid.layers.assign(self.image2.astype('int32'))
         image2 = fluid.layers.cast(image2, dtype='uint8')
 
-        out = image_resize([image1, image2], self.size,
-                           interp_method=self.interp_method,
-                           align_corners=self.align_corners,
-                           align_mode=self.align_mode,
-                           data_format=self.data_format)
+        out = image_resize(
+            [image1, image2],
+            self.size,
+            interp_method=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         result, = exe.run(paddle.static.default_main_program(),
-                         fetch_list=[out])
+                          fetch_list=[out])
         assert np.allclose(result, self.np_result, rtol=1)
 
         paddle.disable_static()
@@ -366,8 +376,10 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
         self.build_np_data()
 
     def build_np_data(self):
-        self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
-        self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
+        self.image1 = np.random.randint(
+            0, 256, self.image_shape1, dtype="uint8")
+        self.image2 = np.random.randint(
+            0, 256, self.image_shape2, dtype="uint8")
 
     def test_output_dynamic(self):
         # NOTE: only support cuda kernel currently
@@ -377,17 +389,18 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
         paddle.disable_static()
 
         images = paddle.tensor.create_array(dtype="uint8")
-        images = paddle.tensor.array_write(paddle.to_tensor(self.image1), 
-                                           paddle.to_tensor(0), images)
-        images = paddle.tensor.array_write(paddle.to_tensor(self.image2),
-                                           paddle.to_tensor(1), images)
+        images = paddle.tensor.array_write(
+            paddle.to_tensor(self.image1), paddle.to_tensor(0), images)
+        images = paddle.tensor.array_write(
+            paddle.to_tensor(self.image2), paddle.to_tensor(1), images)
 
         result = random_crop_and_resize(
-                                 images, self.size,
-                                 interp_method=self.interp_method,
-                                 align_corners=self.align_corners,
-                                 align_mode=self.align_mode,
-                                 data_format=self.data_format)
+            images,
+            self.size,
+            interp_method=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format)
         result = result.numpy()
         assert result.shape == self.out_shape
         assert result.dtype == np.uint8
@@ -406,15 +419,16 @@ class TestImageCropResizeNearestNCHW(unittest.TestCase):
         image2 = fluid.layers.cast(image2, dtype='uint8')
 
         out = random_crop_and_resize(
-                           [image1, image2], self.size,
-                           interp_method=self.interp_method,
-                           align_corners=self.align_corners,
-                           align_mode=self.align_mode,
-                           data_format=self.data_format)
+            [image1, image2],
+            self.size,
+            interp_method=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         result, = exe.run(paddle.static.default_main_program(),
-                         fetch_list=[out])
+                          fetch_list=[out])
         assert result.shape == self.out_shape
         assert result.dtype == np.uint8
 
@@ -527,7 +541,8 @@ class TestImageCropResizeNearestNHWCAlignMode0(TestImageCropResizeNearestNCHW):
         self.build_np_data()
 
 
-class TestImageCropResizeBilinearNCHWAlignCorner(TestImageCropResizeNearestNCHW):
+class TestImageCropResizeBilinearNCHWAlignCorner(
+        TestImageCropResizeNearestNCHW):
     def setUp(self):
         self.image_shape1 = [3, 16, 16]
         self.image_shape2 = [3, 32, 32]

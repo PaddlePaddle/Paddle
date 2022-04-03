@@ -282,12 +282,49 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
+template <typename DevCtx>
+inline void EmplaceAsyncDeviceContext(
+    std::map<Place, std::map<int64_t, std::unique_ptr<DeviceContext>>>* map_ptr,
+    platform::Place p, const int64_t stream_id) {
+  using PtrType = std::unique_ptr<DeviceContext>;
+
+  auto* dev_ctx = new DevCtx(p);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
+  PADDLE_ENFORCE_NOT_NULL(
+      cuda_ctx, platform::errors::InvalidArgument(
+                    "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
+  dev_ctx->SetAllocator(
+      memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());
+  dev_ctx->SetPinnedAllocator(
+      memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
+
+  cuda_ctx->PartialInitWithAllocator();
+  dev_ctx->SetGenerator(
+      framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+#endif
+
+  dev_ctx->SetHostGenerator(framework::DefaultCPUGenerator().get());
+  dev_ctx->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
+                                .GetAllocator(platform::CPUPlace())
+                                .get());
+  dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                .GetZeroAllocator(p)
+                                .get());
+
+  (*map_ptr)[p].emplace(stream_id, PtrType(dev_ctx));
+}
+
 AsyncDeviceContextPool* AsyncDeviceContextPool::pool = nullptr;
 
-platform::DeviceContext* AsyncDeviceContextPool::Get(const platform::Place& place, const int64_t stream_id) {
+platform::DeviceContext* AsyncDeviceContextPool::Get(
+    const platform::Place& place, const int64_t stream_id) {
   VLOG(6) << "AsyncDeviceContextPool Get: " << place << ", " << stream_id;
   if (!platform::is_gpu_place(place)) return nullptr;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto place_it = device_contexts_.find(place);
   if (place_it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -300,10 +337,17 @@ platform::DeviceContext* AsyncDeviceContextPool::Get(const platform::Place& plac
   if (device_contexts_[place].count(stream_id) > 0) {
     return device_contexts_[place][stream_id].get();
   } else {
-    auto* dev_ctx = new CUDADeviceContext(place);
-    device_contexts_[place].emplace(stream_id, std::unique_ptr<DeviceContext>(dev_ctx));
-    return dev_ctx;
+    // auto* dev_ctx = dynamic_cast<CUDADeviceContext*>
+    // device_contexts_[place].emplace(stream_id,
+    //     std::unique_ptr<DeviceContext>(
+    //       new platform::CUDADeviceContext(place)));
+    EmplaceAsyncDeviceContext<CUDADeviceContext>(&device_contexts_, place,
+                                                 stream_id);
+    return device_contexts_[place][stream_id].get();
   }
+#else
+  return nullptr;
+#endif
 }
 
 AsyncDeviceContextPool::AsyncDeviceContextPool(
@@ -320,7 +364,8 @@ AsyncDeviceContextPool::AsyncDeviceContextPool(
   for (auto& p : set) {
     if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      device_contexts_.emplace(p, std::map<int64_t, std::unique_ptr<DeviceContext>>());
+      device_contexts_.emplace(
+          p, std::map<int64_t, std::unique_ptr<DeviceContext>>());
 #endif
     }
   }

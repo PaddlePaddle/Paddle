@@ -29,32 +29,28 @@ using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 namespace data {
 
 class MapRunner {
  public:
-  MapRunner(const std::shared_ptr<BlockDesc> map_block,
-            const int64_t program_id,
-            const Scope* scope,
-            const platform::Place &place,
-            const std::vector<std::string> &input_var_names,
-            const std::vector<std::string> &output_var_names,
-            const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
-            const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues);
+  MapRunner(
+      const std::shared_ptr<BlockDesc> map_block, const int64_t program_id,
+      const Scope *scope, const platform::Place &place,
+      const std::vector<std::string> &input_var_names,
+      const std::vector<std::string> &output_var_names,
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues);
 
-  ~MapRunner() {
-    VLOG(1) << "~MapRunner";
-    ShutDown();
-  }
+  ~MapRunner() { ShutDown(); }
 
   void ShutDown();
 
   void Reset();
 
   inline bool IsRunning() { return running_; }
-
 
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
@@ -65,9 +61,9 @@ class MapRunner {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  bool ShareInputsIntoScope(Scope* scope);
+  bool ShareInputsIntoScope(Scope *scope);
 
-  void StartMapThread(const Scope* scope);
+  void StartMapThread(const Scope *scope);
 
   void CheckInputVarStatus(const Variable &var, const std::string &var_name);
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
@@ -111,25 +107,26 @@ class MapRunnerManager {
   }
 
   void StartMapRunner(
-      BlockDesc *map_block, const int64_t program_id,
-      const Scope* scope, const platform::Place &place,
+      BlockDesc *map_block, const int64_t program_id, const Scope *scope,
+      const platform::Place &place,
       const std::vector<std::string> &input_var_names,
       const std::vector<std::string> &output_var_names,
       const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &input_queues,
-      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues) {
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>>
+          &output_queues) {
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter == prog_id_to_runner_.end()) {
       prog_id_to_runner_[program_id] = std::unique_ptr<MapRunner>(new MapRunner(
           std::shared_ptr<BlockDesc>(map_block), program_id, scope, place,
           input_var_names, output_var_names, input_queues, output_queues));
-      }
+    }
   }
 
   void ShutDownMapRunner(int program_id) {
     std::lock_guard<std::mutex> lk(m_);
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter != prog_id_to_runner_.end()) {
-      if(iter->second.get()) iter->second.get()->ShutDown();
+      if (iter->second.get()) iter->second.get()->ShutDown();
       prog_id_to_runner_.erase(iter);
     }
   }
@@ -144,7 +141,7 @@ class MapRunnerManager {
 
   void ShutDown() {
     if (prog_id_to_runner_.empty()) return;
-    
+
     std::lock_guard<std::mutex> lk(m_);
     auto iter = prog_id_to_runner_.begin();
     for (; iter != prog_id_to_runner_.end(); iter++) {
@@ -152,12 +149,9 @@ class MapRunnerManager {
     }
   }
 
-  MapRunnerManager() { VLOG(1) << "MapRunnerManager init"; }
+  MapRunnerManager() {}
 
-  ~MapRunnerManager() {
-    VLOG(1) << "~MapRunnerManager";
-    ShutDown();
-  }
+  ~MapRunnerManager() { ShutDown(); }
 };
 
 }  // data

@@ -18,20 +18,20 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-RandomROIGenerator::RandomROIGenerator(
-    AspectRatioRange aspect_ratio_range, AreaRange area_range,
-    int64_t seed, int64_t num_attempts)
+RandomROIGenerator::RandomROIGenerator(AspectRatioRange aspect_ratio_range,
+                                       AreaRange area_range, int64_t seed,
+                                       int64_t num_attempts)
     : aspect_ratio_range_(aspect_ratio_range),
       area_range_(area_range),
       random_generator_(seed),
       seed_(seed),
       num_attempts_(num_attempts) {}
 
-void RandomROIGenerator::GenerateRandomROI(
-    const int64_t width, const int64_t height, ROI* roi) {
+void RandomROIGenerator::GenerateRandomROI(const int64_t width,
+                                           const int64_t height, ROI* roi) {
   if (width <= 0 || height <= 0) return;
-	
-	float min_wh_ratio = aspect_ratio_range_.first;
+
+  float min_wh_ratio = aspect_ratio_range_.first;
   float max_wh_ratio = aspect_ratio_range_.second;
   float max_hw_ratio = 1 / aspect_ratio_range_.first;
   float min_area = width * height * area_distribution_.a();
@@ -53,19 +53,16 @@ void RandomROIGenerator::GenerateRandomROI(
       float roi_area = scale * height * width;
 
       // calc ROI width/height
-      float ratio = std::exp(
-                    aspect_ratio_distribution_(random_generator_));
-      auto w = static_cast<int64_t>(
-              std::roundf(sqrtf(roi_area * ratio)));
-      auto h = static_cast<int64_t>(
-              std::roundf(sqrtf(roi_area / ratio)));
+      float ratio = std::exp(aspect_ratio_distribution_(random_generator_));
+      auto w = static_cast<int64_t>(std::roundf(sqrtf(roi_area * ratio)));
+      auto h = static_cast<int64_t>(std::roundf(sqrtf(roi_area / ratio)));
       w = std::max<int64_t>(1, w);
       h = std::max<int64_t>(1, h);
 
       // check restrictions
       ratio = static_cast<float>(w) / h;
-      if (w <= width && h <= height
-          && ratio >= min_wh_ratio && ratio <= max_hw_ratio) {
+      if (w <= width && h <= height && ratio >= min_wh_ratio &&
+          ratio <= max_hw_ratio) {
         roi->w = w;
         roi->h = h;
         break;
@@ -93,9 +90,9 @@ void RandomROIGenerator::GenerateRandomROI(
 
     // generate random left top coordination x, y
     roi->x = std::uniform_int_distribution<int64_t>(
-                  0, width - roi->w)(random_generator_);
+        0, width - roi->w)(random_generator_);
     roi->y = std::uniform_int_distribution<int64_t>(
-                  0, height - roi->h)(random_generator_);
+        0, height - roi->h)(random_generator_);
   }
 }
 

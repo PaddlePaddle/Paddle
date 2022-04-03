@@ -26,8 +26,8 @@ class BatchRandomCropAndResizeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       platform::errors::InvalidArgument(
-                        "Inputs(X) of BatchRandomCropAndResize "
-                        "should not be empty."));
+                          "Inputs(X) of BatchRandomCropAndResize "
+                          "should not be empty."));
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "BatchRandomCropAndResize");
 
@@ -47,8 +47,8 @@ class BatchRandomCropAndResizeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::proto::VarType::UINT8, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::UINT8,
+                                   ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -62,14 +62,15 @@ class BatchRandomCropAndResizeOp : public framework::OperatorWithKernel {
   }
 };
 
-class BatchRandomCropAndResizeOpMaker : public framework::OpProtoAndCheckerMaker {
+class BatchRandomCropAndResizeOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(List(Tensor)). A batch of instances to random crop.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor). The cropped instance batch.");
-    AddAttr<float>("aspect_ratio_min", "").SetDefault(3./4.);
-    AddAttr<float>("aspect_ratio_max", "").SetDefault(4./3.);
+    AddAttr<float>("aspect_ratio_min", "").SetDefault(3. / 4.);
+    AddAttr<float>("aspect_ratio_max", "").SetDefault(4. / 3.);
     AddAttr<float>("area_min", "").SetDefault(0.08);
     AddAttr<float>("area_max", "").SetDefault(1.);
     AddAttr<int64_t>("num_attempts", "").SetDefault(10);

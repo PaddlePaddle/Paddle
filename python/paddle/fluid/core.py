@@ -344,7 +344,7 @@ if load_noavx:
         from .core_noavx import _shutdown_all_dataloaders
         from .core_noavx import _shutdown_readers_and_decoders
         from .core_noavx import _shutdown_pipeline
-        from .core_noavx import _reset_dataloder
+        from .core_noavx import _reset_dataloader
         from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids

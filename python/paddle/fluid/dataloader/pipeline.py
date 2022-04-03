@@ -26,9 +26,7 @@ from collections.abc import Sequence, Mapping
 
 __all__ = ["DataPipeline"]
 
-
 CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
-
 
 AVAILABLE_OP_TYPES = ['data_reader', 'map']
 
@@ -48,10 +46,10 @@ class DataPipeline(object):
         self._init_programs()
 
         self.is_shutdown = False
-        
+
         if paddle.distributed.ParallelEnv().nranks > 1:
-            paddle.set_device('gpu:%d' % 
-                        paddle.distributed.ParallelEnv().dev_id)
+            paddle.set_device('gpu:%d' %
+                              paddle.distributed.ParallelEnv().dev_id)
 
     def _init_programs(self):
         self._main_program = fluid.Program()
@@ -67,7 +65,7 @@ class DataPipeline(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._main_program = framework.switch_main_program(self._main_program)
-            
+
         local_rank = paddle.distributed.get_rank()
         paddle.disable_static("gpu:" + str(local_rank))
 
@@ -142,7 +140,7 @@ class DataPipeline(object):
         return self.__next__()
 
     def reset(self):
-        reader_id= _hash_with_id(self._main_program)
+        reader_id = _hash_with_id(self._main_program)
 
         map_ids = []
         for op in self._main_program.block(0).ops:

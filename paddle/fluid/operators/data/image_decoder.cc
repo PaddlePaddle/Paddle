@@ -95,7 +95,6 @@ void ImageDecoder::CPUDecodeRandomCrop(const uint8_t* data, size_t length,
                                        size_t workspace_size,
                                        framework::LoDTensor* out,
                                        platform::Place place) {
-  VLOG(4) << "CPUDecodeRandomCropResize enter";
 #ifdef PADDLE_WITH_OPENCV
   cv::Mat image = cv::imdecode(
       cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)),

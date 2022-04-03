@@ -41,4 +41,3 @@ class BatchRandomCropAndResizeCPUKernel : public framework::OpKernel<T> {
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle
-

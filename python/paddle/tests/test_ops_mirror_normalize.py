@@ -34,9 +34,9 @@ def np_mirror_normalize(image, mirror, mean, std):
     mean = np.array(mean)
     std = np.array(std)
     if np.size(mean) == 1:
-        mean = np.tile(mean, (3,))
+        mean = np.tile(mean, (3, ))
     if np.size(std) == 1:
-        std = np.tile(std, (3,))
+        std = np.tile(std, (3, ))
 
     mean = np.array(mean[:]).reshape([1, 3, 1, 1])
     std = np.array(std[:]).reshape([1, 3, 1, 1])
@@ -51,20 +51,22 @@ class TestMirrorNormalize(unittest.TestCase):
         self.mean = [123.675, 116.28, 103.53]
         self.std = [58.395, 57.120, 57.375]
 
-        self.image = np.random.randint(0, 256, self.image_shape, 'int32').astype("float32")
-        self.mirror = np.random.randint(0, 2, self.mirror_shape, 'int32').astype("bool")
+        self.image = np.random.randint(0, 256, self.image_shape,
+                                       'int32').astype("float32")
+        self.mirror = np.random.randint(0, 2, self.mirror_shape,
+                                        'int32').astype("bool")
 
-        self.result = np_mirror_normalize(self.image, self.mirror,
-                                          self.mean, self.std)
+        self.result = np_mirror_normalize(self.image, self.mirror, self.mean,
+                                          self.std)
 
     def test_check_output_dynamic(self):
         # NOTE: only supoort CUDA kernel currently
         if not core.is_compiled_with_cuda():
             return
 
-        dy_result = mirror_normalize(paddle.to_tensor(self.image),
-                                     paddle.to_tensor(self.mirror),
-                                     self.mean, self.std)
+        dy_result = mirror_normalize(
+            paddle.to_tensor(self.image),
+            paddle.to_tensor(self.mirror), self.mean, self.std)
         assert np.allclose(self.result, dy_result.numpy())
 
     def test_check_output_static(self):
@@ -74,14 +76,12 @@ class TestMirrorNormalize(unittest.TestCase):
 
         paddle.enable_static()
 
-        image_data = paddle.static.data(shape=self.image_shape,
-                                        dtype='float32',
-                                        name="image")
-        mirror_data = paddle.static.data(shape=self.mirror_shape,
-                                         dtype='bool',
-                                         name="mirror")
-        result_data = mirror_normalize(image_data, mirror_data,
-                                       self.mean, self.std)
+        image_data = paddle.static.data(
+            shape=self.image_shape, dtype='float32', name="image")
+        mirror_data = paddle.static.data(
+            shape=self.mirror_shape, dtype='bool', name="mirror")
+        result_data = mirror_normalize(image_data, mirror_data, self.mean,
+                                       self.std)
 
         # NOTE: only supoort CUDA kernel currently
         places = []
@@ -90,10 +90,11 @@ class TestMirrorNormalize(unittest.TestCase):
 
         for place in places:
             exe = paddle.static.Executor(place)
-            st_result = exe.run(paddle.static.default_main_program(),
-                                feed={"image": self.image,
-                                      "mirror": self.mirror},
-                                fetch_list=[result_data])
+            st_result = exe.run(
+                paddle.static.default_main_program(),
+                feed={"image": self.image,
+                      "mirror": self.mirror},
+                fetch_list=[result_data])
 
             assert np.allclose(self.result, st_result)
 
@@ -107,11 +108,13 @@ class TestMirrorNormalizeSingleMeanStd(TestMirrorNormalize):
         self.mean = [123.675]
         self.std = [58.395]
 
-        self.image = np.random.randint(0, 256, self.image_shape, 'int32').astype("float32")
-        self.mirror = np.random.randint(0, 2, self.mirror_shape, 'int32').astype("bool")
+        self.image = np.random.randint(0, 256, self.image_shape,
+                                       'int32').astype("float32")
+        self.mirror = np.random.randint(0, 2, self.mirror_shape,
+                                        'int32').astype("bool")
 
-        self.result = np_mirror_normalize(self.image, self.mirror,
-                                          self.mean, self.std)
+        self.result = np_mirror_normalize(self.image, self.mirror, self.mean,
+                                          self.std)
 
 
 class TestMirrorNormalizeFloatMeanStd(TestMirrorNormalize):
@@ -121,11 +124,13 @@ class TestMirrorNormalizeFloatMeanStd(TestMirrorNormalize):
         self.mean = 123.675
         self.std = 58.395
 
-        self.image = np.random.randint(0, 256, self.image_shape, 'int32').astype("float32")
-        self.mirror = np.random.randint(0, 2, self.mirror_shape, 'int32').astype("bool")
+        self.image = np.random.randint(0, 256, self.image_shape,
+                                       'int32').astype("float32")
+        self.mirror = np.random.randint(0, 2, self.mirror_shape,
+                                        'int32').astype("bool")
 
-        self.result = np_mirror_normalize(self.image, self.mirror,
-                                          self.mean, self.std)
+        self.result = np_mirror_normalize(self.image, self.mirror, self.mean,
+                                          self.std)
 
 
 if __name__ == '__main__':

@@ -26,10 +26,10 @@ from paddle.utils.download import get_path_from_url
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.reader import _sampler_manager, file_label_loader
 
-
 DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
 DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
 DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+
 
 class TestFileLabelLoaderStatic(unittest.TestCase):
     def setup(self):
@@ -46,8 +46,9 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
     def build_program(self):
         paddle.enable_static()
         self.indices_data = paddle.static.data(
-                    shape=[self.batch_size], dtype='int64', name='indices')
-        self.sample_data, self.label_data = file_label_loader(self.data_root, self.indices_data, self.batch_size)
+            shape=[self.batch_size], dtype='int64', name='indices')
+        self.sample_data, self.label_data = file_label_loader(
+            self.data_root, self.indices_data, self.batch_size)
         self.exe = paddle.static.Executor(paddle.CPUPlace())
         paddle.disable_static()
 
@@ -59,8 +60,7 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
             paddle.enable_static()
             return self.exe.run(paddle.static.default_main_program(),
                                 feed={'indices': indices},
-                                fetch_list=[self.sample_data,
-                                            self.label_data])
+                                fetch_list=[self.sample_data, self.label_data])
 
     def test_check_output(self):
         self.setup()
@@ -70,9 +70,8 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
         targets = [s[1] for s in data_folder.samples]
 
         sampler_id = fluid.layers.utils._hash_with_id(
-                            self.data_root, self.batch_size,
-                            self.shuffle, self.drop_last,
-                            self.dynamic)
+            self.data_root, self.batch_size, self.shuffle, self.drop_last,
+            self.dynamic)
         sampler = _sampler_manager.get(sampler_id,
                                        batch_size=self.batch_size,
                                        num_samples=len(samples),
@@ -93,7 +92,7 @@ class TestFileLabelLoaderDynamic(TestFileLabelLoaderStatic):
         self.batch_size = 16
         self.shuffle = False
         self.drop_last = False
-        self.dynamic = True 
+        self.dynamic = True
 
         if not self.dynamic:
             self.build_program()
@@ -104,9 +103,9 @@ class TestFileLabelLoaderStaticShuffle(TestFileLabelLoaderStatic):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
-        self.shuffle = True 
+        self.shuffle = True
         self.drop_last = False
-        self.dynamic = False 
+        self.dynamic = False
 
         if not self.dynamic:
             self.build_program()
@@ -117,9 +116,9 @@ class TestFileLabelLoaderDynamicShuffle(TestFileLabelLoaderStatic):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
-        self.shuffle = True 
+        self.shuffle = True
         self.drop_last = False
-        self.dynamic = True 
+        self.dynamic = True
 
         if not self.dynamic:
             self.build_program()
@@ -130,8 +129,8 @@ class TestFileLabelLoaderStaticDropLast(TestFileLabelLoaderStatic):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
-        self.shuffle = True 
-        self.drop_last = True 
+        self.shuffle = True
+        self.drop_last = True
         self.dynamic = False
 
         if not self.dynamic:
@@ -143,8 +142,8 @@ class TestFileLabelLoaderDynamicDropLast(TestFileLabelLoaderStatic):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
-        self.shuffle = True 
-        self.drop_last = True 
+        self.shuffle = True
+        self.drop_last = True
         self.dynamic = True
 
         if not self.dynamic:

@@ -22,9 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.utils.download import get_path_from_url
 from paddle.vision.datasets import DatasetFolder
-from paddle.vision.ops import image_decode, image_decode_random_crop 
+from paddle.vision.ops import image_decode, image_decode_random_crop
 from paddle.vision.reader import file_label_loader
-
 
 DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
 DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
@@ -139,14 +138,15 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         indices = paddle.arange(self.batch_size)
         image, label = file_label_loader(self.data_root, indices,
                                          self.batch_size)
-        image = image_decode_random_crop(image,
-                            num_threads=self.num_threads,
-                            aspect_ratio_min=self.aspect_ratio_min,
-                            aspect_ratio_max=self.aspect_ratio_max,
-                            area_min=self.area_min,
-                            area_max=self.area_max,
-                            num_attempts=self.num_attempts,
-                            data_format=self.data_format)
+        image = image_decode_random_crop(
+            image,
+            num_threads=self.num_threads,
+            aspect_ratio_min=self.aspect_ratio_min,
+            aspect_ratio_max=self.aspect_ratio_max,
+            area_min=self.area_min,
+            area_max=self.area_max,
+            num_attempts=self.num_attempts,
+            data_format=self.data_format)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         rets = exe.run(paddle.static.default_main_program(),
                        fetch_list=image + [label])
@@ -177,14 +177,15 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         indices = paddle.arange(self.batch_size)
         image, label = file_label_loader(self.data_root, indices,
                                          self.batch_size)
-        image = image_decode_random_crop(image,
-                            num_threads=self.num_threads,
-                            aspect_ratio_min=self.aspect_ratio_min,
-                            aspect_ratio_max=self.aspect_ratio_max,
-                            area_min=self.area_min,
-                            area_max=self.area_max,
-                            num_attempts=self.num_attempts,
-                            data_format=self.data_format)
+        image = image_decode_random_crop(
+            image,
+            num_threads=self.num_threads,
+            aspect_ratio_min=self.aspect_ratio_min,
+            aspect_ratio_max=self.aspect_ratio_max,
+            area_min=self.area_min,
+            area_max=self.area_max,
+            num_attempts=self.num_attempts,
+            data_format=self.data_format)
 
         assert len(image) == self.batch_size
         for i in range(self.batch_size):
@@ -221,7 +222,8 @@ class TestImageReaderDecodeRandomCropNHWC(TestImageReaderDecodeRandomCropNCHW):
         self.channel_dim = 2
 
 
-class TestImageReaderDecodeRandomCropThread8(TestImageReaderDecodeRandomCropNCHW):
+class TestImageReaderDecodeRandomCropThread8(
+        TestImageReaderDecodeRandomCropNCHW):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)

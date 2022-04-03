@@ -79,37 +79,44 @@ def map(map_func, *args, **kwargs):
     #       3. flat_inputs: holds variables in main_program/global_block in
     #          flatten format, will be used as inputs for appendding map OP
     #       and _parse_program_outputs follows similar logic
-    def _build_program_inputs(inputs, map_block,
-                              input_vars=[], flat_inputs=[]):
+    def _build_program_inputs(inputs, map_block, input_vars=[], flat_inputs=[]):
         if isinstance(inputs, Sequence):
-            return [_build_program_inputs(inp, map_block, input_vars,
-                        flat_inputs) for inp in inputs]
+            return [
+                _build_program_inputs(inp, map_block, input_vars, flat_inputs)
+                for inp in inputs
+            ]
         elif isinstance(inputs, Mapping):
-            return {k: _build_program_inputs(v, map_block, input_vars,
-                        flat_inputs) for k,v in inputs.items()}
+            return {
+                k: _build_program_inputs(v, map_block, input_vars, flat_inputs)
+                for k, v in inputs.items()
+            }
         else:
             var = map_block.create_var(
-                        name=unique_name.generate("map_sub"),
-                        type=inputs.desc.type(),
-                        dtype=inputs.desc.dtype(),
-                        persistable=False)
+                name=unique_name.generate("map_sub"),
+                type=inputs.desc.type(),
+                dtype=inputs.desc.dtype(),
+                persistable=False)
             input_vars.append(var)
             flat_inputs.append(inputs)
             return var
 
     def _parse_program_outputs(outputs, output_vars=[], flat_outputs=[]):
         if isinstance(outputs, Sequence):
-            return [_parse_program_outputs(outp, output_vars,
-                        flat_outputs) for outp in outputs]
+            return [
+                _parse_program_outputs(outp, output_vars, flat_outputs)
+                for outp in outputs
+            ]
         elif isinstance(outputs, Mapping):
-            return {k: _parse_program_outputs(v, output_vars,
-                        flat_outputs) for outp in outputs}
+            return {
+                k: _parse_program_outputs(v, output_vars, flat_outputs)
+                for outp in outputs
+            }
         else:
             var = helper.create_variable(
-                            name=unique_name.generate("map"),
-                            type=outputs.desc.type(),
-                            dtype=outputs.desc.dtype(),
-                            persistable=True)
+                name=unique_name.generate("map"),
+                type=outputs.desc.type(),
+                dtype=outputs.desc.dtype(),
+                persistable=True)
             flat_outputs.append(var)
             output_vars.append(outputs)
             return var
@@ -121,10 +128,10 @@ def map(map_func, *args, **kwargs):
         map_block = main_program.current_block()
 
         input_vars, flat_inputs = [], []
-        program_inputs_args = _build_program_inputs(
-                                args, map_block, input_vars, flat_inputs)
-        program_inputs_kwargs = _build_program_inputs(
-                                kwargs, map_block, input_vars, flat_inputs)
+        program_inputs_args = _build_program_inputs(args, map_block, input_vars,
+                                                    flat_inputs)
+        program_inputs_kwargs = _build_program_inputs(kwargs, map_block,
+                                                      input_vars, flat_inputs)
 
         program_outputs = map_func(*program_inputs_args,
                                    **program_inputs_kwargs)
@@ -132,8 +139,7 @@ def map(map_func, *args, **kwargs):
     # NOTE: _parse_program_outputs create main_program variables, so
     #       we need to call it outside of _ProgramGuard
     output_vars, flat_outputs = [], []
-    outputs = _parse_program_outputs(program_outputs, output_vars,
-                                     flat_outputs)
+    outputs = _parse_program_outputs(program_outputs, output_vars, flat_outputs)
     input_var_names = [v.name for v in input_vars]
     output_var_names = [v.name for v in output_vars]
 

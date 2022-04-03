@@ -13,18 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
-#include <vector>
 #include <random>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef _WIN32
+static unsigned sleep(unsigned seconds) {
+  Sleep(seconds * 1000);
+  return 0;
+}
+#endif
 
 namespace paddle {
 namespace operators {
@@ -36,108 +43,94 @@ using BlockDesc = framework::BlockDesc;
 using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 class Sampler {
-  public:
-    explicit Sampler(const int64_t batch_size, const int64_t num_samples,
-                     const bool shuffle, const bool drop_last,
-                     const int64_t seed, const int rank,
-                     const int world_size)
-                     : current_iter_(0),
-                       batch_size_(batch_size),
-                       shuffle_(shuffle),
-                       drop_last_(drop_last),
-                       rank_(rank),
-                       world_size_(world_size) {
-      int trunc_num_samples;
-      if (drop_last) {
-        int total_batch_size = world_size * batch_size;
-        trunc_num_samples = floor(num_samples / total_batch_size) * total_batch_size;
-        sample_ids_.reserve(trunc_num_samples);
-        VLOG(4) << "Sampler trunc sampler num_samples " << trunc_num_samples;
-      }
-      else{
-        sample_ids_.reserve(num_samples);
-        trunc_num_samples = num_samples;
-      }
-      for (int64_t i = 0; i < trunc_num_samples; i++) {
-        sample_ids_.emplace_back(i);
-      }
-      num_samples_ = sample_ids_.size();
-      if (shuffle) {
-        rnd_.seed(seed);
-        std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
-      }
+ public:
+  explicit Sampler(const int64_t batch_size, const int64_t num_samples,
+                   const bool shuffle, const bool drop_last, const int64_t seed,
+                   const int rank, const int world_size)
+      : current_iter_(0),
+        batch_size_(batch_size),
+        shuffle_(shuffle),
+        drop_last_(drop_last),
+        rank_(rank),
+        world_size_(world_size) {
+    int trunc_num_samples;
+    if (drop_last) {
+      int total_batch_size = world_size * batch_size;
+      trunc_num_samples =
+          floor(num_samples / total_batch_size) * total_batch_size;
+      sample_ids_.reserve(trunc_num_samples);
+    } else {
+      sample_ids_.reserve(num_samples);
+      trunc_num_samples = num_samples;
+    }
+    for (int64_t i = 0; i < trunc_num_samples; i++) {
+      sample_ids_.emplace_back(i);
+    }
+    num_samples_ = sample_ids_.size();
+    if (shuffle) {
+      rnd_.seed(seed);
+      std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
+    }
+  }
+
+  void GetNextIndices(std::vector<int64_t>* indices) {
+    int64_t start_idx = batch_size_ * world_size_ * current_iter_ + rank_;
+    current_iter_++;
+
+    if (start_idx >= num_samples_) return;
+
+    for (int64_t i = 0; i < batch_size_; i++) {
+      int cur_idx = start_idx + i * world_size_;
+      if (cur_idx >= num_samples_)  return;
+      indices->emplace_back(sample_ids_[cur_idx]);
+    }
+  }
+
+  void Reset() {
+    if (shuffle_) {
+      std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
     }
 
-    void GetNextIndices(std::vector<int64_t>* indices) {
-      int64_t start_idx =
-          batch_size_ * world_size_ * current_iter_ + rank_;
-          // batch_size_ * world_size_ * current_iter_ + rank_ * batch_size_;
-      current_iter_++;
+    current_iter_ = 0;
+  }
 
-      if (start_idx >= num_samples_) {
-        VLOG(4) << " start idx >= num samples " << start_idx << " >= " << num_samples_;
-        return;
-      }
+ private:
+  int64_t current_iter_;
+  const int64_t batch_size_;
+  const bool shuffle_;
+  int64_t num_samples_;
+  const bool drop_last_;
+  const int rank_;
+  const int world_size_;
 
-      for (int64_t i = 0; i < batch_size_; i++) {
-        int cur_idx =  start_idx + i * world_size_;
-        if (cur_idx >= num_samples_) {
-          VLOG(4) << " cur_idx >= num samples " << cur_idx << " >= " << num_samples_;
-          return;
-        }
-        indices->emplace_back(sample_ids_[cur_idx]);
-      }
-    }
-
-    void Reset() {
-      if (shuffle_) {
-        std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
-      }
-
-      current_iter_ = 0;
-    }
-
-  private:
-    int64_t current_iter_;
-    const int64_t batch_size_;
-    const bool shuffle_;
-    int64_t num_samples_;
-    const bool drop_last_;
-    const int rank_;
-    const int world_size_;
-
-    std::mt19937 rnd_;
-    std::vector<int64_t> sample_ids_;
+  std::mt19937 rnd_;
+  std::vector<int64_t> sample_ids_;
 };
 
 class DataReader {
  public:
-  explicit DataReader(BlockDesc* reader_block,
-                      const Scope* scope,
-                      const platform::Place place,
-                      const std::string &indices_var_name,
-                      const std::vector<std::string> &output_var_names,
-                      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues,
-                      const int batch_size,
-                      const int num_samples,
-                      const bool shuffle,
-                      const bool drop_last,
-                      const int64_t seed,
-                      const int rank,
-                      const int world_size)
-                      : running_(true),
-                        shutdown_(false),
-                        reader_block_(reader_block),
-                        place_(place),
-                        indices_var_name_(indices_var_name),
-                        output_var_names_(output_var_names),
-                        output_queues_(output_queues),
-                        batch_size_(batch_size),
-                        sampler_(batch_size, num_samples, shuffle,
-                                 drop_last, seed, rank, world_size) {
+  explicit DataReader(
+      BlockDesc* reader_block, const Scope* scope, const platform::Place place,
+      const std::string& indices_var_name,
+      const std::vector<std::string>& output_var_names,
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues,
+      const int batch_size, const int num_samples, const bool shuffle,
+      const bool drop_last, const int64_t seed, const int rank,
+      const int world_size)
+      : running_(true),
+        shutdown_(false),
+        reader_block_(reader_block),
+        place_(place),
+        indices_var_name_(indices_var_name),
+        output_var_names_(output_var_names),
+        output_queues_(output_queues),
+        batch_size_(batch_size),
+        sampler_(batch_size, num_samples, shuffle, drop_last, seed, rank,
+                 world_size) {
     StartReaderThread(scope);
   }
 
@@ -159,7 +152,7 @@ class DataReader {
         sampler_.GetNextIndices(&indices);
         // shutdown reader if indices drained
         if (indices.size() == 0) {
-          for(auto& queue: output_queues_) {
+          for (auto& queue : output_queues_) {
             while (queue->Size()) sleep(0.5);
             queue->Close();
           }
@@ -172,18 +165,19 @@ class DataReader {
 
         try {
           executor.Run(*reader_block_->Program(), &scope_,
-                       static_cast<int>(reader_block_->ID()),
-                       false, true, {}, false, true);
+                       static_cast<int>(reader_block_->ID()), false, true, {},
+                       false, true);
         } catch (...) {
           break;
         }
 
         for (size_t i = 0; i < output_var_names_.size(); i++) {
-          auto *out_var = scope_.FindVar(output_var_names_[i]);
+          auto* out_var = scope_.FindVar(output_var_names_[i]);
           PADDLE_ENFORCE_NOT_NULL(
               out_var, platform::errors::NotFound(
-                "The output variable %s is not found in DataReader "
-                "program's internal scope", output_var_names_[i]));
+                           "The output variable %s is not found in DataReader "
+                           "program's internal scope",
+                           output_var_names_[i]));
           // CheckOutputVarStatus(*out_var, output_var_names_[i]);
 
           if (out_var->IsType<LoDTensor>()) {
@@ -205,7 +199,7 @@ class DataReader {
   }
 
   void ShutDown() {
-    for(auto& queue: output_queues_) {
+    for (auto& queue : output_queues_) {
       if (queue && !queue->IsClosed()) queue->Close();
     }
 
@@ -218,7 +212,7 @@ class DataReader {
 
   void Reset() {
     // reopen all output queues
-    for (auto& queue: output_queues_) queue->ReOpen();
+    for (auto& queue : output_queues_) queue->ReOpen();
 
     // reset sampler to regenerate indices
     sampler_.Reset();
@@ -228,14 +222,15 @@ class DataReader {
     running_cond_.notify_all();
   }
 
-  void ShareIndicesIntoScope(Scope* scope,
-                             std::vector<int64_t> indices) {
+  void ShareIndicesIntoScope(Scope* scope, std::vector<int64_t> indices) {
     auto* var = scope->Var(indices_var_name_);
 
     auto* indices_tensor = var->GetMutable<LoDTensor>();
-    indices_tensor->Resize(phi::make_ddim({static_cast<int64_t>(indices.size())}));
-    auto* indices_data = indices_tensor->mutable_data<int64_t>(platform::CPUPlace());
-    
+    indices_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(indices.size())}));
+    auto* indices_data =
+        indices_tensor->mutable_data<int64_t>(platform::CPUPlace());
+
     for (size_t i = 0; i < indices.size(); i++) {
       indices_data[i] = indices[i];
     }
@@ -268,18 +263,17 @@ class DataReader {
   }
 };
 
-
 class ReaderManager {
  private:
   DISABLE_COPY_AND_ASSIGN(ReaderManager);
 
-  static ReaderManager *rm_instance_ptr_;
+  static ReaderManager* rm_instance_ptr_;
   static std::mutex m_;
 
   std::map<int64_t, std::unique_ptr<DataReader>> id_to_reader_;
 
  public:
-  static ReaderManager *Instance() {
+  static ReaderManager* Instance() {
     if (rm_instance_ptr_ == nullptr) {
       std::lock_guard<std::mutex> lk(m_);
       if (rm_instance_ptr_ == nullptr) {
@@ -290,21 +284,19 @@ class ReaderManager {
   }
 
   void StartDataReader(
-      const int64_t reader_id, BlockDesc *reader_block,
-      const Scope* scope, const platform::Place place,
-      const std::string &indices_var_name,
-      const std::vector<std::string> &output_var_names,
-      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues,
+      const int64_t reader_id, BlockDesc* reader_block, const Scope* scope,
+      const platform::Place place, const std::string& indices_var_name,
+      const std::vector<std::string>& output_var_names,
+      const std::vector<std::shared_ptr<LoDTensorBlockingQueue>>& output_queues,
       const int batch_size, const int num_samples, const bool shuffle,
       const bool drop_last, const int64_t seed, const int rank,
       const int world_size) {
     auto iter = id_to_reader_.find(reader_id);
     if (iter == id_to_reader_.end()) {
-      id_to_reader_[reader_id] = std::unique_ptr<DataReader>(
-          new DataReader(reader_block, scope, place, indices_var_name,
-                         output_var_names, output_queues, batch_size,
-                         num_samples, shuffle, drop_last, seed,
-                         rank, world_size));
+      id_to_reader_[reader_id] = std::unique_ptr<DataReader>(new DataReader(
+          reader_block, scope, place, indices_var_name, output_var_names,
+          output_queues, batch_size, num_samples, shuffle, drop_last, seed,
+          rank, world_size));
     }
   }
 
@@ -325,8 +317,8 @@ class ReaderManager {
 
   void ShutDown() {
     auto iter = id_to_reader_.begin();
-    while (iter != id_to_reader_.end()){
-      if(iter->second.get()){
+    while (iter != id_to_reader_.end()) {
+      if (iter->second.get()) {
         iter->second.get()->ShutDown();
       }
       iter++;
@@ -334,36 +326,33 @@ class ReaderManager {
     id_to_reader_.clear();
   }
 
-  ReaderManager() { VLOG(1) << "ReaderManager init"; }
+  ReaderManager() {}
 
-  ~ReaderManager() {
-    VLOG(1) << "~ReaderManager";
-    ShutDown();
-  }
+  ~ReaderManager() { ShutDown(); }
 };
 
-static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capacity) {
+static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars,
+                                    int capacity) {
   for (auto var : vars) {
     if (var->IsInitialized()) {
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
-          platform::errors::InvalidArgument(
-            "Output Variables of DataLoaderOp should hold "
-            "LoDTensorBlockingQueueHolder type"));
+                        platform::errors::InvalidArgument(
+                            "Output Variables of DataLoaderOp should hold "
+                            "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
         holder->InitOnce(capacity);
-        VLOG(1) << "DataLoaderOpKernel init queue" << holder->GetQueue();
       }
     } else {
-      VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
       auto* holder = var->GetMutable<LoDTensorBlockingQueueHolder>();
       holder->InitOnce(capacity);
     }
   }
 }
 
-static std::vector<std::shared_ptr<LoDTensorBlockingQueue>> GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
+static std::vector<std::shared_ptr<LoDTensorBlockingQueue>>
+GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues;
   queues.reserve(vars.size());
   for (size_t i = 0; i < vars.size(); i++) {
@@ -373,9 +362,9 @@ static std::vector<std::shared_ptr<LoDTensorBlockingQueue>> GetQueueVecFromVaria
 }
 
 template <typename T>
-class DataReaderCPUKernel: public framework::OpKernel<T> {
+class DataReaderCPUKernel : public framework::OpKernel<T> {
  public:
-   void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace data

@@ -328,6 +328,8 @@ class DataLoader(object):
                  worker_init_fn=None,
                  persistent_workers=False):
 
+        # Whether use multi-stream/thread GPU DataLoader
+        self._use_data_pipeline = False
         if callable(dataset):
             self._use_data_pipeline = True
             with DataPipeline() as self._data_pipeline:

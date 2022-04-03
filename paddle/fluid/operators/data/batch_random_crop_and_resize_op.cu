@@ -23,7 +23,8 @@ namespace data {
 
 using framework::LoDTensor;
 using DataLayout = framework::DataLayout;
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(
@@ -291,8 +292,7 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     AreaRange area_range{area_min, area_max};
 
     auto* generators = GeneratorManager::Instance()->GetGenerators(
-                         x.size(), x.size(), aspect_ratio_range,
-                          area_range);
+        x.size(), x.size(), aspect_ratio_range, area_range);
 
     const std::vector<int64_t> size = ctx.Attr<std::vector<int64_t>>("size");
 
@@ -306,8 +306,8 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
     int align_mode = ctx.Attr<int>("align_mode");
 
     auto* img = x.at(0);
-    int64_t img_c = data_format == DataLayout::kNCHW ? \
-                  img->dims()[0] : img->dims()[2];
+    int64_t img_c =
+        data_format == DataLayout::kNCHW ? img->dims()[0] : img->dims()[2];
 
     std::vector<int64_t> out_dim;
     if (data_format == DataLayout::kNCHW) {
@@ -331,10 +331,10 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
       //                   &crop_w, seed);
 
       auto out_tensor = out->Slice(i, i + 1);
-      BatchRandomCropAndResizeFwd<T>(
-            ctx, *img, &out_tensor, size, interp_method, align_corners,
-            align_mode, img_h, img_w, img_c, roi.y, roi.x, roi.h,
-            roi.w, data_format);
+      BatchRandomCropAndResizeFwd<T>(ctx, *img, &out_tensor, size,
+                                     interp_method, align_corners, align_mode,
+                                     img_h, img_w, img_c, roi.y, roi.x, roi.h,
+                                     roi.w, data_format);
     }
   }
 };

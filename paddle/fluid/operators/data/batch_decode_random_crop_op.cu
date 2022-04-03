@@ -79,21 +79,13 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       auto* x_data = x->data<T>();
       size_t x_numel = static_cast<size_t>(x->numel());
 
-      if (data_format == DataLayout::kNCHW) {
-        ImageDecodeTask task = {.bit_stream = x_data,
-                                .bit_len = x_numel,
-                                .tensor = &temp_array[i],
-                                .roi_generator = generators->at(i).get(),
-                                .place = dev};
-        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
-      } else {
-        ImageDecodeTask task = {.bit_stream = x_data,
-                                .bit_len = x_numel,
-                                .tensor = out_array[i],
-                                .roi_generator = generators->at(i).get(),
-                                .place = dev};
-        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
-      }
+      ImageDecodeTask task;
+      task.bit_stream = x_data;
+      task.bit_len = x_numel;
+      task.roi_generator = generators->at(i).get(), task.place = dev;
+      task.tensor =
+          data_format == DataLayout::kNCHW ? &temp_array[i] : out_array[i];
+      decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
     }
 
     decode_pool->RunAll(true);

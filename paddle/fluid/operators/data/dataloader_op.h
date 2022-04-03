@@ -11,8 +11,8 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/data/pipeline.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +39,6 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
     pipeline->ReadNext(output_vars);
 
     if (!pipeline->IsRunning()) {
-      VLOG(4) << "DataLoaderOpKernel Pipeline not running, throw EOF";
       PADDLE_THROW_EOF();
     }
   }

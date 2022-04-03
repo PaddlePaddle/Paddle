@@ -14,39 +14,45 @@
 
 #pragma once
 #include "paddle/fluid/operators/data/data_reader_op.h"
-#include "paddle/fluid/operators/data/image_decoder.h"
 #include "paddle/fluid/operators/data/map_runner.h"
 #include "paddle/fluid/operators/data/pipeline.h"
 
+#ifdef PADDLE_WITH_GPU
+#include "paddle/fluid/operators/data/image_decoder.h"
+#endif
 
 namespace paddle {
 namespace operators {
 namespace data {
 
+#ifdef PADDLE_WITH_GPU
 extern ImageDecoderThreadPool* decode_pool;
+#endif
 
 void ShutDownAllDataLoaders() {
-  VLOG(4) << "ShutDownAllDataLoaders enter";
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDown();
   
+#ifdef PADDLE_WITH_GPU
   // step 2: shutdown decoder
   if (decode_pool) decode_pool->ShutDown();
+#endif
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
 
-  // // step 3: shutdown Pipeline
-  // PipelineManager::Instance()->ShutDown();
-  VLOG(4) << "ShutDownAllDataLoaders Pipeline shutdown finish";
+  // step 3: shutdown Pipeline
+  PipelineManager::Instance()->ShutDown();
 }
 
 void ShutDownReadersAndDecoders(const int64_t program_id) {
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDownReader(program_id);
 
+#ifdef PADDLE_WITH_GPU
   // step 2: shutdown decoder
   ImageDecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
+#endif
 }
 
 void ShutDownPipeline(const int64_t program_id) {
@@ -56,9 +62,6 @@ void ShutDownPipeline(const int64_t program_id) {
 void ResetDataLoader(const int64_t reader_id,
                      const std::vector<int64_t> map_ids,
                      const int64_t pipeline_id) {
-  VLOG(4) << "ResetDataLoader enter, reader_id: " << reader_id \
-          << ", map_ids size: " << map_ids.size() << ", pipeline_id: " \
-          << pipeline_id;
   // step 1: reset readers
   ReaderManager::Instance()->ResetReader(reader_id);
 
@@ -69,7 +72,6 @@ void ResetDataLoader(const int64_t reader_id,
 
   // step3: reset pipeline
   PipelineManager::Instance()->ResetPipeline(pipeline_id);
-  VLOG(4) << "ResetDataLoader finish";
 }
 
 }  // namespace data

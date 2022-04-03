@@ -16,5 +16,4 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    map,
-    ops::MapOpKernel<paddle::platform::CUDADeviceContext, float>);
+    map, ops::MapOpKernel<paddle::platform::CUDADeviceContext, float>);

@@ -11,52 +11,52 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/data/map_runner.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
-
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 static void CheckInputQueueStatus(const std::vector<Variable*>& vars) {
   for (auto var : vars) {
     PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
-        platform::errors::InvalidArgument(
-          "Input Variables of MapOp should hold "
-          "LoDTensorBlockingQueueHolder type"));
+                      platform::errors::InvalidArgument(
+                          "Input Variables of MapOp should hold "
+                          "LoDTensorBlockingQueueHolder type"));
     auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     PADDLE_ENFORCE_NE(queue, nullptr,
-        platform::errors::InvalidArgument(
-          "Input LoDTensorBlockingQueue is not initialized"));
+                      platform::errors::InvalidArgument(
+                          "Input LoDTensorBlockingQueue is not initialized"));
   }
 }
 
-static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars, int capacity) {
+static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars,
+                                    int capacity) {
   for (auto var : vars) {
     if (var->IsInitialized()) {
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
-          platform::errors::InvalidArgument(
-            "Output Variables of MapOp should hold "
-            "LoDTensorBlockingQueueHolder type"));
+                        platform::errors::InvalidArgument(
+                            "Output Variables of MapOp should hold "
+                            "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
         auto* holder = var->template GetMutable<LoDTensorBlockingQueueHolder>();
         holder->InitOnce(capacity);
-        VLOG(1) << "MapOpKernel init queue" << holder->GetQueue();
       }
     } else {
-      VLOG(1) << "Initialize Output LoDTensorBlockingQueue capacity " << capacity;
       auto* holder = var->GetMutable<LoDTensorBlockingQueueHolder>();
       holder->InitOnce(capacity);
     }
   }
 }
 
-static std::vector<std::shared_ptr<LoDTensorBlockingQueue>> GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
+static std::vector<std::shared_ptr<LoDTensorBlockingQueue>>
+GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues;
   queues.reserve(vars.size());
   for (size_t i = 0; i < vars.size(); i++) {

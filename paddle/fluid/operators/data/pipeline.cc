@@ -27,8 +27,6 @@ Pipeline::Pipeline(const std::shared_ptr<BlockDesc> global_block,
       end_op_index_(end_op_index),
       program_id_(program_id),
       output_var_names_(output_var_names) {
-  VLOG(1) << "Pipeline init";
-
   PADDLE_ENFORCE_GT(end_op_index_, start_op_index_,
                     platform::errors::InvalidArgument(
                         "end_op_index should be greater than start_op_index, "
@@ -78,11 +76,12 @@ void Pipeline::CheckOutputVarStatus(const Variable &var,
 }
 
 void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
-  PADDLE_ENFORCE_EQ(out_vars.size(), output_var_names_.size(), 
-        platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(
+      out_vars.size(), output_var_names_.size(),
+      platform::errors::InvalidArgument(
           "Out variable number should equal to output variable name "
-          "number, but receive %d != %d", out_vars.size(),
-          output_var_names_.size()));
+          "number, but receive %d != %d",
+          out_vars.size(), output_var_names_.size()));
   for (size_t i = 0; i < output_var_names_.size(); i++) {
     auto *out_var = scope_.FindVar(output_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
@@ -98,12 +97,13 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
 
     bool success = true;
     auto outputs = out_queue->Pop(&success);
-    PADDLE_ENFORCE_EQ(success, true, 
-        platform::errors::PreconditionNotMet("Read from output queue %s failed", output_var_names_[i]));
-    
+    PADDLE_ENFORCE_EQ(success, true, platform::errors::PreconditionNotMet(
+                                         "Read from output queue %s failed",
+                                         output_var_names_[i]));
+
     CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
     copy_tensor(outputs.at(0), out_vars[i]->GetMutable<LoDTensor>());
-    for (auto &output: outputs) output.clear();
+    for (auto &output : outputs) output.clear();
     outputs.clear();
   }
 }

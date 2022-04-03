@@ -185,14 +185,9 @@ class ImageDecoderThreadPoolManager {
     }
   }
 
-  ImageDecoderThreadPoolManager() {
-    VLOG(1) << "ImageDecoderThreadPoolManager init";
-  }
+  ImageDecoderThreadPoolManager() {}
 
-  ~ImageDecoderThreadPoolManager() {
-    VLOG(1) << "~DecoderThreadPoolManager";
-    ShutDown();
-  }
+  ~ImageDecoderThreadPoolManager() { ShutDown(); }
 };
 
 }  // namespace data

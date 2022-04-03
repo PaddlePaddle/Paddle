@@ -941,7 +941,8 @@ class AsyncDeviceContextPool {
   }
 
   /*! \brief  Create should only called by Init function */
-  static AsyncDeviceContextPool& Init(const std::vector<platform::Place>& places) {
+  static AsyncDeviceContextPool& Init(
+      const std::vector<platform::Place>& places) {
     if (pool == nullptr) {
       pool = new AsyncDeviceContextPool(places);
     }
@@ -949,11 +950,13 @@ class AsyncDeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  platform::DeviceContext* Get(const platform::Place& place, const int64_t stream_id);
+  platform::DeviceContext* Get(const platform::Place& place,
+                               const int64_t stream_id);
 
  private:
   static AsyncDeviceContextPool* pool;
-  std::map<Place, std::map<int64_t, std::unique_ptr<DeviceContext>>> device_contexts_;
+  std::map<Place, std::map<int64_t, std::unique_ptr<DeviceContext>>>
+      device_contexts_;
   DISABLE_COPY_AND_ASSIGN(AsyncDeviceContextPool);
 };
 

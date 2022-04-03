@@ -23,31 +23,36 @@ class MirrorNormalizeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of MirrorNormalizeOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "Input(X) of MirrorNormalizeOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Mirror"), true,
-        platform::errors::NotFound("Input(Mirror) of MirrorNormalizeOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of MirrorNormalizeOp should not be null."));
+        platform::errors::NotFound(
+            "Input(Mirror) of MirrorNormalizeOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound(
+            "Output(Out) of MirrorNormalizeOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-              platform::errors::NotFound(
-                  "Input(X) of MirrorNormalizeOp should be a 4-D Tensor"));
+      PADDLE_ENFORCE_EQ(
+          x_dims.size(), 4,
+          platform::errors::NotFound(
+              "Input(X) of MirrorNormalizeOp should be a 4-D Tensor"));
 
       auto c = x_dims[1];
       auto mean = ctx->Attrs().Get<std::vector<float>>("mean");
       auto std = ctx->Attrs().Get<std::vector<float>>("std");
-      PADDLE_ENFORCE_EQ(mean.size(), c,
-              platform::errors::NotFound(
-                  "The channel number of Input(X) should equal to length of mean"));
-      PADDLE_ENFORCE_EQ(mean.size(), c,
-              platform::errors::NotFound(
-                  "The channel number of Input(X) should equal to length of mean"));
+      PADDLE_ENFORCE_EQ(
+          mean.size(), c,
+          platform::errors::NotFound(
+              "The channel number of Input(X) should equal to length of mean"));
+      PADDLE_ENFORCE_EQ(
+          mean.size(), c,
+          platform::errors::NotFound(
+              "The channel number of Input(X) should equal to length of mean"));
     }
 
     std::vector<int64_t> output_dims(x_dims.size());
@@ -69,10 +74,12 @@ class MirrorNormalizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of mirror_normalize op.");
-    AddInput("Mirror", "(Tensor), The mirror vector for random flip, the "
-                       "shape is {N, 1}, N is the batch size of input X");
-    AddOutput("Out", "(Tensor), The output tensor in the same shape as "
-                     "input X.");
+    AddInput("Mirror",
+             "(Tensor), The mirror vector for random flip, the "
+             "shape is {N, 1}, N is the batch size of input X");
+    AddOutput("Out",
+              "(Tensor), The output tensor in the same shape as "
+              "input X.");
     AddAttr<std::vector<float>>("mean", "The mean value to normalize data");
     AddAttr<std::vector<float>>("std", "The stdvalue to normalize data");
     AddComment(R"DOC(
@@ -81,7 +88,8 @@ class MirrorNormalizeOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class MirrorNormalizeOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+class MirrorNormalizeOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
   std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
@@ -96,8 +104,9 @@ class MirrorNormalizeOpInferVarType : public framework::PassInDtypeAndVarTypeToO
 
 namespace ops = paddle::operators::data;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(mirror_normalize, ops::MirrorNormalizeOp, ops::MirrorNormalizeOpMaker, ops::MirrorNormalizeOpInferVarType);
+REGISTER_OPERATOR(mirror_normalize, ops::MirrorNormalizeOp,
+                  ops::MirrorNormalizeOpMaker,
+                  ops::MirrorNormalizeOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    mirror_normalize, ops::MirrorNormalizeCPUKernel<float>,
-    ops::MirrorNormalizeCPUKernel<double>);
+REGISTER_OP_CPU_KERNEL(mirror_normalize, ops::MirrorNormalizeCPUKernel<float>,
+                       ops::MirrorNormalizeCPUKernel<double>);

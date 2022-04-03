@@ -26,11 +26,10 @@ from paddle.vision.ops import image_decode_random_crop, image_resize, \
                                 random_flip, mirror_normalize
 from paddle.vision.reader import file_label_reader
 
-
 DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
 DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
 DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
-IMAGE_NUM = 100 
+IMAGE_NUM = 100
 
 
 class TestDataPipelineCase1(unittest.TestCase):
@@ -38,7 +37,7 @@ class TestDataPipelineCase1(unittest.TestCase):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
-        self.num_epoches= 2
+        self.num_epoches = 2
         self.batch_size = 16
         self.num_threads = 2
         self.host_memory_padding = 1000000
@@ -74,13 +73,15 @@ class TestDataPipelineCase1(unittest.TestCase):
 
     def build_reader(self):
         def imagenet_reader():
-            image, label = file_label_reader(self.data_root,
-                                    batch_size=self.batch_size,
-                                    shuffle=self.shuffle,
-                                    drop_last=self.drop_last)
+            image, label = file_label_reader(
+                self.data_root,
+                batch_size=self.batch_size,
+                shuffle=self.shuffle,
+                drop_last=self.drop_last)
+
             def decode(image):
                 image = image_decode_random_crop(
-                                image, num_threads=self.num_threads)
+                    image, num_threads=self.num_threads)
                 return image
 
             def resize(image):
@@ -89,9 +90,8 @@ class TestDataPipelineCase1(unittest.TestCase):
 
             def flip_normalize(image):
                 mirror = random_flip(image, prob=self.flip_prob)
-                image = mirror_normalize(image, mirror,
-                                          mean=self.mean,
-                                          std=self.std)
+                image = mirror_normalize(
+                    image, mirror, mean=self.mean, std=self.std)
                 return image
 
             image = paddle.io.map(decode, image)
@@ -99,10 +99,14 @@ class TestDataPipelineCase1(unittest.TestCase):
             image = paddle.io.map(flip_normalize, image)
 
             return {'image': image, 'label': label}
-        
+
         self.reader = imagenet_reader
 
     def test_static_output(self):
+        # NOTE: only supoort CUDA kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
         loader = paddle.io.DataLoader(self.reader)
 
         for eid in range(self.num_epoches):
@@ -131,19 +135,13 @@ class TestDataPipelineCase1(unittest.TestCase):
             if eid < self.num_epoches - 1:
                 loader.reset()
 
-        del loader
-
-    def test_shutdown(self):
-        loader = paddle.io.DataLoader(self.reader)
-        core._shutdown_all_dataloaders()
-
 
 class TestDataPipelineCase2(TestDataPipelineCase1):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
 
-        self.num_epoches= 1
+        self.num_epoches = 1
         self.batch_size = 32
         self.num_threads = 4
         self.host_memory_padding = 0

@@ -27,9 +27,6 @@ class FileLabelLoaderOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
                       platform::errors::InvalidArgument(
                           "Input(Indices) of ReadFileLoaderOp is null."));
-    // PADDLE_ENFORCE_EQ(ctx->HasOutput("Image"), true,
-    //                   platform::errors::InvalidArgument(
-    //                       "Output(Image) of ReadFileLoaderOp is null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Label"), true,
                       platform::errors::InvalidArgument(
                           "Output(Label) of ReadFileLoaderOp is null."));

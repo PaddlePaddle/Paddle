@@ -24,34 +24,34 @@ namespace dynload {
   using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
-#define NVJPEG_RAND_ROUTINE_EACH(__macro)         \
-  __macro(nvjpegCreateSimple);                    \
-  __macro(nvjpegCreateEx);                        \
-  __macro(nvjpegSetDeviceMemoryPadding);          \
-  __macro(nvjpegSetPinnedMemoryPadding);          \
-  __macro(nvjpegJpegStateCreate);                 \
-  __macro(nvjpegJpegStreamCreate);                \
-  __macro(nvjpegDecodeParamsCreate);              \
-  __macro(nvjpegDecoderCreate);                   \
-  __macro(nvjpegDecoderStateCreate);              \
-  __macro(nvjpegBufferDeviceCreate);              \
-  __macro(nvjpegBufferPinnedCreate);              \
-  __macro(nvjpegDecodeParamsSetOutputFormat);     \
-  __macro(nvjpegDecodeParamsSetROI);              \
-  __macro(nvjpegStateAttachPinnedBuffer);         \
-  __macro(nvjpegStateAttachDeviceBuffer);         \
-  __macro(nvjpegJpegStreamParse);                 \
-  __macro(nvjpegDecodeJpegHost);                  \
-  __macro(nvjpegDecodeJpegTransferToDevice);      \
-  __macro(nvjpegDecodeJpegDevice);                \
-  __macro(nvjpegJpegStreamDestroy);               \
-  __macro(nvjpegDecodeParamsDestroy);             \
-  __macro(nvjpegDecoderDestroy);                  \
-  __macro(nvjpegBufferDeviceDestroy);             \
-  __macro(nvjpegBufferPinnedDestroy);             \
-  __macro(nvjpegGetImageInfo);                    \
-  __macro(nvjpegJpegStateDestroy);                \
-  __macro(nvjpegDestroy);                         \
+#define NVJPEG_RAND_ROUTINE_EACH(__macro)     \
+  __macro(nvjpegCreateSimple);                \
+  __macro(nvjpegCreateEx);                    \
+  __macro(nvjpegSetDeviceMemoryPadding);      \
+  __macro(nvjpegSetPinnedMemoryPadding);      \
+  __macro(nvjpegJpegStateCreate);             \
+  __macro(nvjpegJpegStreamCreate);            \
+  __macro(nvjpegDecodeParamsCreate);          \
+  __macro(nvjpegDecoderCreate);               \
+  __macro(nvjpegDecoderStateCreate);          \
+  __macro(nvjpegBufferDeviceCreate);          \
+  __macro(nvjpegBufferPinnedCreate);          \
+  __macro(nvjpegDecodeParamsSetOutputFormat); \
+  __macro(nvjpegDecodeParamsSetROI);          \
+  __macro(nvjpegStateAttachPinnedBuffer);     \
+  __macro(nvjpegStateAttachDeviceBuffer);     \
+  __macro(nvjpegJpegStreamParse);             \
+  __macro(nvjpegDecodeJpegHost);              \
+  __macro(nvjpegDecodeJpegTransferToDevice);  \
+  __macro(nvjpegDecodeJpegDevice);            \
+  __macro(nvjpegJpegStreamDestroy);           \
+  __macro(nvjpegDecodeParamsDestroy);         \
+  __macro(nvjpegDecoderDestroy);              \
+  __macro(nvjpegBufferDeviceDestroy);         \
+  __macro(nvjpegBufferPinnedDestroy);         \
+  __macro(nvjpegGetImageInfo);                \
+  __macro(nvjpegJpegStateDestroy);            \
+  __macro(nvjpegDestroy);                     \
   __macro(nvjpegDecode);
 
 NVJPEG_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);

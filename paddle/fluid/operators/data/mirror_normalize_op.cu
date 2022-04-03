@@ -23,16 +23,16 @@ namespace data {
 
 using framework::LoDTensor;
 
-template<typename T>
-__global__ void KeMirrorNormalize(
-        const int numel, const T* in_data, const bool* mirrors, T* out_data,
-        const float* mean, const float* std, const int chw, const int hw,
-        const int w) {
+template <typename T>
+__global__ void KeMirrorNormalize(const int numel, const T* in_data,
+                                  const bool* mirrors, T* out_data,
+                                  const float* mean, const float* std,
+                                  const int chw, const int hw, const int w) {
   CUDA_KERNEL_LOOP(idx, numel) {
     int ni = idx / chw;
     int ci = (idx % chw) / hw;
     int wi = idx % w;
-    
+
     int out_idx = idx;
     if (mirrors[ni]) out_idx = idx - 2 * wi + w - 1;
     out_data[out_idx] = (in_data[idx] - mean[ci]) / std[ci];
@@ -44,7 +44,7 @@ class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
-    auto* mirror  = ctx.Input<LoDTensor>("Mirror");
+    auto* mirror = ctx.Input<LoDTensor>("Mirror");
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto mean = ctx.Attr<std::vector<float>>("mean");
@@ -76,9 +76,9 @@ class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
                  dev_ctx.stream());
 
     platform::GpuLaunchConfig config =
-                  platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-    KeMirrorNormalize<T><<<config.block_per_grid, config.thread_per_block,
-                           0, dev_ctx.stream()>>>(
+        platform::GetGpuLaunchConfig1D(dev_ctx, numel);
+    KeMirrorNormalize<T><<<config.block_per_grid, config.thread_per_block, 0,
+                           dev_ctx.stream()>>>(
         numel, x_data, mirror_data, out_data, mean_data, std_data, chw, hw, w);
   }
 };

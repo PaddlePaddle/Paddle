@@ -19,7 +19,7 @@ namespace operators {
 namespace data {
 
 // initialization static variables out of ReaderManager
-ReaderManager *ReaderManager::rm_instance_ptr_ = nullptr;
+ReaderManager* ReaderManager::rm_instance_ptr_ = nullptr;
 std::mutex ReaderManager::m_;
 
 class DataReaderOp : public framework::OperatorBase {
@@ -28,7 +28,7 @@ class DataReaderOp : public framework::OperatorBase {
                const framework::VariableNameMap& inputs,
                const framework::VariableNameMap& outputs,
                const framework::AttributeMap& attrs)
-               : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const {
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "DataReaderOp");
@@ -36,7 +36,7 @@ class DataReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-      const platform::Place& dev_place) const override {
+               const platform::Place& dev_place) const override {
     auto outputs = Outputs("Out");
     std::vector<Variable*> output_vars;
     output_vars.reserve(outputs.size());
@@ -61,8 +61,8 @@ class DataReaderOp : public framework::OperatorBase {
     auto output_queues = GetQueueVecFromVariableVec(output_vars);
     ReaderManager::Instance()->StartDataReader(
         reader_id, reader_block, &scope, platform::CPUPlace(), indices_var_name,
-        output_var_names, output_queues, batch_size, num_samples,
-        shuffle, drop_last, seed, rank, world_size);
+        output_var_names, output_queues, batch_size, num_samples, shuffle,
+        drop_last, seed, rank, world_size);
   }
 };
 
@@ -86,27 +86,24 @@ class DataReaderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("batch_size", "The batch size for reading samples")
         .SetDefault(1);
     AddAttr<int>("num_samples", "The sample number in dataset");
-    AddAttr<bool>("shuffle", "Whether shuffle the dataset")
-        .SetDefault(false);
+    AddAttr<bool>("shuffle", "Whether shuffle the dataset").SetDefault(false);
     AddAttr<bool>("drop_last", "Whether drop last incomplete batch")
         .SetDefault(false);
-    AddAttr<int64_t>("seed", "Random seed for shuffle")
-        .SetDefault(0);
-    AddAttr<int>("rank", "The logical rank of current device.")
-        .SetDefault(0);
-    AddAttr<int>("world_size", "The number of running devices.")
-        .SetDefault(1);
+    AddAttr<int64_t>("seed", "Random seed for shuffle").SetDefault(0);
+    AddAttr<int>("rank", "The logical rank of current device.").SetDefault(0);
+    AddAttr<int>("world_size", "The number of running devices.").SetDefault(1);
     AddAttr<int64_t>("reader_id", "The unique id to generate and get reader");
     AddAttr<BlockDesc*>("reader_block",
                         "(BlockDesc *)"
                         "The global block of executed reader program "
                         "desc.");
     AddAttr<std::string>("indices_var_name",
-                     "(string)"
-                     "input variable names for sample indices");
-    AddAttr<std::vector<std::string>>("output_var_names",
-                     "(list of string)"
-                     "output variable names for reader program");
+                         "(string)"
+                         "input variable names for sample indices");
+    AddAttr<std::vector<std::string>>(
+        "output_var_names",
+        "(list of string)"
+        "output variable names for reader program");
     AddComment(R"DOC(
         This operator read a file.
 )DOC");
@@ -119,8 +116,7 @@ class DataReaderOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators::data;
 
-REGISTER_OPERATOR(
-    data_reader, ops::DataReaderOp, ops::DataReaderOpMaker,
-    ops::DataReaderInferShape, ops::DataReaderInferVarType)
+REGISTER_OPERATOR(data_reader, ops::DataReaderOp, ops::DataReaderOpMaker,
+                  ops::DataReaderInferShape, ops::DataReaderInferVarType)
 
 REGISTER_OP_CPU_KERNEL(data_reader, ops::DataReaderCPUKernel<uint8_t>)

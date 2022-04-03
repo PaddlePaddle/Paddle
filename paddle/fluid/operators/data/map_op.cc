@@ -20,8 +20,7 @@ using framework::Tensor;
 
 class MapOp : public framework::OperatorBase {
  public:
-  MapOp(const std::string& type,
-        const framework::VariableNameMap& inputs,
+  MapOp(const std::string& type, const framework::VariableNameMap& inputs,
         const framework::VariableNameMap& outputs,
         const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -39,7 +38,7 @@ class MapOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-      const platform::Place& dev_place) const override {
+               const platform::Place& dev_place) const override {
     // Step1: get output vars and attrs
     auto inputs = Inputs("In");
     std::vector<Variable*> input_vars;
@@ -66,9 +65,8 @@ class MapOp : public framework::OperatorBase {
     auto input_queues = GetQueueVecFromVariableVec(input_vars);
     auto output_queues = GetQueueVecFromVariableVec(output_vars);
     data::MapRunnerManager::Instance()->StartMapRunner(
-                    map_block, program_id, &scope, dev_place,
-                    input_var_names, output_var_names,
-                    input_queues, output_queues);
+        map_block, program_id, &scope, dev_place, input_var_names,
+        output_var_names, input_queues, output_queues);
   }
 };
 
@@ -89,7 +87,7 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("In",
              "(LoDTensorBlockingQueueHolder)"
-              "The output tensors of Map operator")
+             "The output tensors of Map operator")
         .AsDuplicable();
     AddOutput("Out",
               "(LoDTensorBlockingQueueHolder)"
@@ -104,11 +102,11 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
                      "The unique hash id used as cache key for "
                      "ExecutorInfoCache");
     AddAttr<std::vector<std::string>>("input_var_names",
-                     "(list of string)"
-                     "input variable names for map program");
+                                      "(list of string)"
+                                      "input variable names for map program");
     AddAttr<std::vector<std::string>>("output_var_names",
-                     "(list of string)"
-                     "output variable names for map program");
+                                      "(list of string)"
+                                      "output variable names for map program");
     AddComment(R"DOC(
         Map Op
          )DOC");
@@ -119,6 +117,7 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(map, ops::MapOp, ops::MapOpMaker,
-                  ops::MapInferShape, ops::MapInferVarType);
-REGISTER_OP_CPU_KERNEL(map, ops::MapOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OPERATOR(map, ops::MapOp, ops::MapOpMaker, ops::MapInferShape,
+                  ops::MapInferVarType);
+REGISTER_OP_CPU_KERNEL(
+    map, ops::MapOpKernel<paddle::platform::CPUDeviceContext, float>);
