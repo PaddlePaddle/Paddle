@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -35,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -771,6 +773,7 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 #endif
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -794,13 +797,13 @@ PyMethodDef variable_functions[] = {
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
+/**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read", (PyCFunction)(void (*)(void))eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"async_write", (PyCFunction)(void (*)(void))eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #endif
-    /**sparse functions**/
     {NULL, NULL, 0, NULL}};
 
 void BindFunctions(PyObject* module) {
