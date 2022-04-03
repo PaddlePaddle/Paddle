@@ -125,14 +125,6 @@ def _update_monkey_methods(is_eager):
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
-            # Ugly setting
-            from paddle.tensor.manipulation import fill_, zero_, fill_diagonal_, fill_diagonal_tensor_, tolist
-            setattr(core.eager.Tensor, 'fill_', fill_)
-            setattr(core.eager.Tensor, 'zero_', zero_)
-            setattr(core.eager.Tensor, 'fill_diagonal_', fill_diagonal_)
-            setattr(core.eager.Tensor, 'fill_diagonal_tensor_',
-                    fill_diagonal_tensor_)
-            setattr(core.eager.Tensor, 'tolist', tolist)
 
             _already_patch_eager_tensor = True
     # switch back into legacy mode
