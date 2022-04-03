@@ -154,13 +154,7 @@ inline Backend StringToBackend(const char* backend_cstr) {
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    // KPS is not yet a complete backend, and it still needs to be converted
-    // to GPU in the GPU environment
-    return Backend::GPU;
-#else
     return Backend::KPS;
-#endif
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));
