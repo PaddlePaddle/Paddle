@@ -70,7 +70,7 @@ class Table {
 
   virtual int32_t Pull(TableContext &context) = 0;
   virtual int32_t Push(TableContext &context) = 0;
-  
+
   // only for barrier
   virtual int32_t Barrier(const uint32_t trainer_id,
                           const std::string barrier_type) {

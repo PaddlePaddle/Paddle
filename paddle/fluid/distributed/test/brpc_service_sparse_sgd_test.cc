@@ -62,12 +62,12 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
-  auto g_size = rows_numel + 30; // hard code here: key_num * (fea_dim + 3), show/clk/slot
+  auto g_size = rows_numel +
+                30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
   auto x_g_var = scope->Var("x@GRAD")->GetMutable<framework::LoDTensor>();
   float* x_g_ptr =
       x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
   for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
-
 }
 
 void GetDownpourSparseTableProto(
@@ -77,7 +77,7 @@ void GetDownpourSparseTableProto(
   sparse_table_proto->set_shard_num(10);
   ::paddle::distributed::TableAccessorParameter* accessor_config =
       sparse_table_proto->mutable_accessor();
- 
+
   accessor_config->set_accessor_class("SparseAccessor");
   accessor_config->set_fea_dim(10);
   accessor_config->set_embedx_dim(9);
@@ -91,7 +91,7 @@ void GetDownpourSparseTableProto(
       0.99);
 
   accessor_config->mutable_embed_sgd_param()->set_name("SparseNaiveSGDRule");
-  auto *naive_param =
+  auto* naive_param =
       accessor_config->mutable_embed_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(1.0);
   naive_param->set_initial_range(0.3);
@@ -234,7 +234,7 @@ void RunBrpcPushSparse() {
   auto pull_status = worker_ptr_->PullSparse(
       fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
-  
+
   /*-----------------------Test Push Grad----------------------------------*/
   // first to expand embedx, init
   paddle::distributed::DownpourBrpcClosure* closure_push_grad =
@@ -253,7 +253,7 @@ void RunBrpcPushSparse() {
 
   framework::Variable* g_var = client_scope.FindVar("x@GRAD");
   framework::LoDTensor* g_tensor = g_var->GetMutable<framework::LoDTensor>();
-  
+
   LOG(INFO) << "Run push_sparse_grad";
   std::vector<float*> push_g_vec;
   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
@@ -263,15 +263,11 @@ void RunBrpcPushSparse() {
       0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
       closure_push_grad);
   push_grad_status.wait();
-  
-  // pull
-  pull_status = worker_ptr_->PullSparse(
-      fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
-  pull_status.wait();
 
-  for (auto aaa: fea_values) {
-    VLOG(0) << aaa;
-  }
+  // pull
+  pull_status = worker_ptr_->PullSparse(fea_value_ptr.data(), 0,
+                                        fea_keys.data(), fea_keys.size(), true);
+  pull_status.wait();
 
   paddle::distributed::DownpourBrpcClosure* closure_push_grad1 =
       new paddle::distributed::DownpourBrpcClosure(1, [&](void* done) {
