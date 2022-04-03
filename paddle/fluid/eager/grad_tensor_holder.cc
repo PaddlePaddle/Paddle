@@ -64,8 +64,9 @@ void GradTensorHolder::CopyValueFromTensor(
   } else {
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
-      // Fill 1.0
-      buffer_[slot_id][rank] = paddle::experimental::ones_like(t, t.dtype());
+      // Fill 1.0, use full to support complex, one_like don't support it.
+      buffer_[slot_id][rank] =
+          paddle::experimental::full(t.shape(), 1, t.dtype(), t.inner_place());
     }
   }
 }
