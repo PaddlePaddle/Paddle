@@ -765,6 +765,9 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
 
+DEFINE_bool(show_all_op_output_data, false,
+            "show all op output data , default false");
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait

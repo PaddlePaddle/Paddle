@@ -31,6 +31,7 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(show_all_op_output_data);
 namespace paddle {
 namespace imperative {
 
@@ -180,6 +181,113 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarMap<egr::EagerVariable>& ins,
                              const NameVarMap<egr::EagerVariable>& outs) {
   return LayerDebugStringImpl<egr::EagerVariable>(op_type, ins, outs);
+}
+
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
+// using namespace framework::proto;
+template <typename T>
+void print_data(const std::vector<T>& vec, std::stringstream& sstr,
+                bool whole = false) {
+  auto& vec1 = vec;
+  // size_t step = vec1.size() / 1;
+  size_t step = 1;
+  step = step < 1 ? 1 : step;
+  if (vec.size() <= 0) {
+    return;
+  }
+  T max_val, min_val;
+  max_val = vec[0];
+  min_val = vec[0];
+  for (size_t i = 1; i < vec1.size(); i++) {
+    max_val = std::max(max_val, vec1[i]);
+    min_val = std::min(min_val, vec1[i]);
+  }
+  sstr << " max: " << max_val << " min: " << min_val << " data100: ";
+  for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
+    sstr << vec1[i] << " ";
+  }
+}
+
+static std::vector<std::string> split_str(std::string strtem, char a) {
+  std::vector<std::string> strvec;
+
+  std::string::size_type pos1, pos2;
+  pos2 = strtem.find(a);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    strvec.push_back(strtem.substr(pos1, pos2 - pos1));
+
+    pos1 = pos2 + 1;
+    pos2 = strtem.find(a, pos1);
+  }
+  strvec.push_back(strtem.substr(pos1));
+  return strvec;
+}
+template <class VarBaseType>
+void show_var(const std::string& var_name, VarBaseType* var_base) {
+  /*
+  */
+
+  std::stringstream sstr;
+  VLOG(4) << "try to find: " << var_name;
+  sstr << "data of " << var_name << ": ";
+  Variable* var = nullptr;
+  if (var_base) {
+    var = const_cast<Variable*>(&var_base->Var());
+  }
+  if (var != nullptr) {
+    VLOG(4) << "found var: " << var_name;
+    VLOG(4) << "initialized: " << var->IsInitialized();
+
+    std::vector<float> vec_float(0);
+    std::vector<int> vec_int(0);
+    std::vector<int64_t> vec_int64(0);
+    std::vector<paddle::platform::float16> vec_fp16(0);
+
+    if (var->IsInitialized()) {
+      if (var->IsType<LoDTensor>()) {
+        const LoDTensor& tensor = var->Get<LoDTensor>();
+
+        if (tensor.IsInitialized()) {
+          auto* ctx =
+              platform::DeviceContextPool::Instance().Get(tensor.place());
+          auto type = tensor.type();
+          if (type == paddle::experimental::DataType::INT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == paddle::experimental::DataType::INT64) {
+            framework::TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == paddle::experimental::DataType::FLOAT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == paddle::experimental::DataType::FLOAT16) {
+            framework::TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      } else if (var->IsType<Tensor>()) {
+        const Tensor& tensor = var->Get<Tensor>();
+        if (tensor.IsInitialized()) {
+          auto* ctx =
+              platform::DeviceContextPool::Instance().Get(tensor.place());
+          auto type = tensor.type();
+          if (type == paddle::experimental::DataType::INT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == paddle::experimental::DataType::INT64) {
+            framework::TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == paddle::experimental::DataType::FLOAT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == paddle::experimental::DataType::FLOAT16) {
+            framework::TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      }
+    }
+    bool show_whole = true;
+    print_data<int64_t>(vec_int64, sstr, show_whole);
+    print_data<int>(vec_int, sstr, show_whole);
+    print_data<float>(vec_float, sstr, show_whole);
+    print_data<paddle::platform::float16>(vec_fp16, sstr, show_whole);
+    VLOG(4) << sstr.str();
+  }
 }
 
 template <typename VarType>
@@ -510,6 +618,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
+  if (FLAGS_show_all_op_output_data) {
+    for (auto& var_pair : outs) {
+      int num = 0;
+      for (auto& var : var_pair.second) {
+        show_var(var_pair.first + std::to_string(num), var.get());
+      }
+    }
+  }
 
   // set the output var
   SetForwardDataTypeOfGradVars<VarType>(outs);
