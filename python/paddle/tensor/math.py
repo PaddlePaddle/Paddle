@@ -1062,9 +1062,8 @@ def nanmean(x, axis=None, keepdim=False, name=None):
             # [[[1, nan], [3, 4]],
             #   [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = np.array([[[1, float('nan')], [3, 4]],
-                           [[5, 6], [float('-nan'), 8]]])
-            y = paddle.to_tensor(y)
+            y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
+                                   [[5, 6], [float('-nan'), 8]]])
             out5 = paddle.nanmean(y, axis=[1, 2])
             # [2.66666667, 6.33333333]
             out6 = paddle.nanmean(y, axis=[0, 1])
