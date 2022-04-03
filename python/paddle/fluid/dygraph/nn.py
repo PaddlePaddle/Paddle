@@ -246,7 +246,7 @@ class Conv2D(layers.Layer):
                 self._groups if self._groups else 1, self._dilation, "NCHW",
                 False, -1, False)
             if self.bias is not None:
-                out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+                out = F.elementwise_add(pre_bias, bias, axis=channel_dim)
                 return out
             else:
                 return pre_bias
