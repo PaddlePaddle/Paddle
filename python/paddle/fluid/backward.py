@@ -1337,6 +1337,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
         # infer_shape and infer_type
+        op_desc.check_attrs()
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
 
