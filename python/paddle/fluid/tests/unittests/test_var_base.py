@@ -22,7 +22,7 @@ import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
 
 
 class TestVarBase(unittest.TestCase):
