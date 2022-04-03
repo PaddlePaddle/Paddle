@@ -222,8 +222,9 @@ void InterpolateInferMeta(
     int align_mode,
     MetaTensor* output,
     MetaConfig config = MetaConfig());
-void MeshgridInferMeta(const std::vector<MetaTensor*>& x,
-                       std::vector<MetaTensor*> out);
+
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs);
 
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
@@ -239,9 +240,6 @@ void MomentumInferMeta(const MetaTensor& param,
                        MetaTensor* param_out,
                        MetaTensor* velocity_out,
                        MetaTensor* master_param_out);
-
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
-                       std::vector<MetaTensor*> outputs);
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
