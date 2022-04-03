@@ -796,7 +796,10 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_roll(x, shifts, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     helper = LayerHelper("roll", **locals())
