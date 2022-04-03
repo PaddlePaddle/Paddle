@@ -517,6 +517,18 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=-1)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=-1)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=500, mode='t')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=-1, scale_mode='c')
 
         func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
             "d_model": 0.01,
@@ -584,7 +596,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'triangular',
             "gamma": 1.,
-            "scale_mode": None,
+            "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
@@ -594,7 +606,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'triangular2',
             "gamma": 1.,
-            "scale_mode": None,
+            "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
@@ -604,7 +616,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'exp_range',
             "gamma": 0.8,
-            "scale_mode": None,
+            "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
@@ -614,7 +626,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'exp_range',
             "gamma": 1.,
-            "scale_mode": lambda x: 0.95**x,
+            "scale_fn": lambda x: 0.95**x,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
@@ -624,7 +636,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'exp_range',
             "gamma": 1.,
-            "scale_mode": lambda x: 0.95,
+            "scale_fn": lambda x: 0.95,
             "scale_mode": 'iterations',
             "verbose": False
         })]
