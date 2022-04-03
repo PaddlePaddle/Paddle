@@ -1937,6 +1937,9 @@ class OpTest(unittest.TestCase):
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
+            # ensure switch into legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set, False)
@@ -1950,6 +1953,8 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+            # ensure switch back eager dygraph
+            g_disable_legacy_dygraph()
 
         if check_eager:
             with fluid.dygraph.base.guard(place):
@@ -2087,7 +2092,6 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
-
                 loss.backward()
 
                 fetch_list_grad = []

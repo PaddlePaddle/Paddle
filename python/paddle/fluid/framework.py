@@ -106,14 +106,35 @@ _global_flags_ = core.globals()
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
+def _update_monkey_methods(is_eager):
+    """
+    Update monkey methods of VarBase or eager.Tensor while
+    switching eager mode and legacy mode.
+    """
+    from paddle import _C_ops
+    from .dygraph.varbase_patch_methods import monkey_patch_varbase
+    from .dygraph import monkey_patch_math_varbase
+
+    assert isinstance(is_eager, bool)
+    if is_eager:
+        _C_ops.switch_to_eager_ops()
+    else:
+        _C_ops.switch_to_core_ops()
+
+    monkey_patch_varbase()
+    monkey_patch_math_varbase()
+
+
 def _enable_legacy_dygraph():
     global _in_eager_mode_
     _in_eager_mode_ = False
+    _update_monkey_methods(is_eager=False)
 
 
 def _disable_legacy_dygraph():
     global _in_eager_mode_
     _in_eager_mode_ = True
+    _update_monkey_methods(is_eager=True)
 
 
 def _in_eager_without_dygraph_check():
