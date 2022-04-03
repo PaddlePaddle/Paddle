@@ -30,7 +30,6 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
-#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"

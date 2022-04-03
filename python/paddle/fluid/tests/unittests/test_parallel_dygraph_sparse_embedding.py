@@ -42,22 +42,6 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphSparseEmdeddingEager(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._eager_mode = True
-        self._dygraph = True
-
-    def test_sparse_embedding(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_sparse_embedding.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
-
-
 class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -91,6 +75,22 @@ class TestParallelDygraphSparseEmdeddingEager(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_sparse_embedding.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestParallelDygraphSparseEmdeddingFP64Eager(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._eager_mode = True
+        self._nccl2_mode = True
+        self._dygraph = True
+
+    def test_sparse_embedding_fp64(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_sparse_embedding_fp64.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)

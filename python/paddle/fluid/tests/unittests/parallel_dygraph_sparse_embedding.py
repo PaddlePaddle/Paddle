@@ -42,7 +42,6 @@ class SimpleNet(fluid.Layer):
             dtype=dtype,
             is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
-                name='embedding_param',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
         self.softmax_weight = self.create_parameter(

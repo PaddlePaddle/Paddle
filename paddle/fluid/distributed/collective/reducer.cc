@@ -552,9 +552,6 @@ void EagerReducer::AddDistHook(size_t var_index) {
     return;
   }
 
-  auto &tensor = tensors_[var_index];
-  const auto &grad_node = GetGradNodeFromTensor(&tensor);
-
   VLOG(3) << "Tensor[" << var_index << "] [" << tensors_[var_index].name()
           << "@Grad] arrived and triggered disthook";
 
@@ -679,7 +676,6 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             var_index, tensors_[var_index].name()));
 
     group.sparse_contents_.set_impl(grad_tensor.impl());
-    // group.sparse_contents_ = grad_tensor;
   }
 
   if (--group.pending_ == 0) {
@@ -811,32 +807,6 @@ void EagerReducer::FinalizeBackward() {
     VLOG(3) << "ProcessUnusedDenseVars is finished.";
   }
 
-  for (long unsigned int i = 0; i < tensors_.size(); i++) {
-    VLOG(0) << "debug 1";
-    if (tensors_[i].name() == "embedding_param") {
-      VLOG(0) << "debug 2";
-      auto src =
-          std::dynamic_pointer_cast<phi::SelectedRows>(tensors_[i].impl());
-      VLOG(0) << "debug 3";
-      Tensor src_value(std::make_shared<phi::DenseTensor>(src->value()));
-      VLOG(0) << "debug 4";
-      Tensor cpu_tensor_ =
-          experimental::copy_to(src_value, phi::CPUPlace(), true);
-      VLOG(0) << "debug 5";
-      auto *cpu_tensor_data_ = cpu_tensor_.data<float>();
-
-      VLOG(0) << "=== after backward ===";
-      std::vector<int64_t> tensor_vector_ = cpu_tensor_.shape();
-      for (int64_t i = 0; i < cpu_tensor_.numel(); i++) {
-        if (i % tensor_vector_[0] == (tensor_vector_[0] - 1)) {
-          std::cout << cpu_tensor_data_[i] << std::endl;
-        } else {
-          std::cout << cpu_tensor_data_[i] << "   ";
-        }
-      }
-    }
-  }
-
   VLOG(3) << "In the batch, Reducer is finished.";
 }
 
@@ -864,145 +834,122 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
 
 void EagerReducer::AllReduceSparse(EagerGroup *group,
                                    const int curr_group_index) {
+  // div nranks
+  Tensor sparse_tensor(group->sparse_contents_);
+  paddle::experimental::scale_(sparse_tensor, 1.0 / nranks_, 0.0, false);
+
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
+  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+    dev_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(inner_place_));
-
-    auto src = std::dynamic_pointer_cast<phi::SelectedRows>(
-        group->sparse_contents_.impl());
-    const auto &src_tensor = src->value();
-    const auto &place = src_tensor.place();
-    const auto &rank_ = process_group_->GetRank();
-    const auto &size_ = process_group_->GetSize();
-
-    Tensor src_value(std::make_shared<phi::DenseTensor>(src->value()));
-    Tensor cpu_tensor_ =
-        experimental::copy_to(src_value, phi::CPUPlace(), true);
-    auto *cpu_tensor_data_ = cpu_tensor_.data<float>();
-
-    VLOG(0) << "=== before all_reduce ===";
-    std::vector<int64_t> tensor_vector_ = cpu_tensor_.shape();
-    for (int64_t i = 0; i < cpu_tensor_.numel(); i++) {
-      if (i % tensor_vector_[0] == (tensor_vector_[0] - 1)) {
-        std::cout << cpu_tensor_data_[i] << std::endl;
-      } else {
-        std::cout << cpu_tensor_data_[i] << "   ";
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place), true,
-        platform::errors::Unimplemented(
-            "Dygraph mode does not support multi-CPU training yet."));
-
-    const auto &src_rows = src->rows();
-    framework::Vector<int64_t> rows_num_vector(size_);
-    rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
-
-    Tensor rows_num_tensor =
-        paddle::experimental::empty(ScalarArray({static_cast<int64_t>(size_)}),
-                                    DataType::INT64, inner_place_);
-    auto *rows_num_dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(rows_num_tensor.impl())
-            .get();
-    framework::TensorFromVector<int64_t>(rows_num_vector, *dev_ctx,
-                                         rows_num_dense_tensor);
-
-    distributed::AllreduceOptions opts;
-    opts.reduce_op = ReduceOp::SUM;
-    std::vector<Tensor> reduce_tensors = {rows_num_tensor};
-    process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
-
-    framework::TensorToVector<int64_t>(*rows_num_dense_tensor, *dev_ctx,
-                                       &rows_num_vector);
-    dev_ctx->Wait();
-
-    const auto *cpu_rows_num_ptr = rows_num_vector.data();
-    auto rows_num = std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
-                                    static_cast<int64_t>(0));
-
-    VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
-            << ", total rows number: " << rows_num
-            << ", height: " << src->height();
-
-    dev_ctx->Wait();
-
-    if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
-                    [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
-      // During sparse communication, the number of each card is same.
-      // allgather is used to speed up the allreduce by replacing broadcast.
-
-      VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
-
-      Tensor dst_rows_tensor = paddle::experimental::empty(
-          ScalarArray({static_cast<int64_t>(rows_num)}), DataType::INT64,
-          inner_place_);
-      Tensor src_rows_tensor = paddle::experimental::empty(
-          ScalarArray({static_cast<int64_t>((*src).rows().size())}),
-          DataType::INT64, inner_place_);
-      auto *src_rows_dense_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(src_rows_tensor.impl())
-              .get();
-      framework::TensorFromVector<int64_t>((*src).rows(), *dev_ctx,
-                                           src_rows_dense_tensor);
-
-      std::vector<Tensor> src_rows_tensors = {src_rows_tensor};
-      std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
-      process_group_->AllGather(src_rows_tensors, dst_rows_tensors)
-          ->Synchronize();
-
-      framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
-      auto *dst_rows_dense_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
-              .get();
-      framework::TensorToVector<int64_t>(*dst_rows_dense_tensor, *dev_ctx,
-                                         &dst_rows_vector);
-      dev_ctx->Wait();
-
-      Tensor src_value_tensor(std::make_shared<phi::DenseTensor>(src->value()));
-      std::vector<int64_t> dst_shape = src_value_tensor.shape();
-      dst_shape[dst_shape.size() - 2] = rows_num;
-      auto dst_dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-          paddle::experimental::full(ScalarArray(dst_shape), 0,
-                                     src_value_tensor.dtype(), inner_place_)
-              .impl());
-
-      auto dst =
-          std::make_shared<phi::SelectedRows>(dst_rows_vector, (*src).height());
-      *(dst->mutable_value()) = *dst_dense_tensor;
-      Tensor dst_value_tensor(std::make_shared<phi::DenseTensor>(dst->value()));
-
-      std::vector<Tensor> src_value_tensors = {src_value_tensor};
-      std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
-      process_group_->AllGather(src_value_tensors, dst_value_tensors)
-          ->Synchronize();
-
-      src->set_rows(dst_rows_vector);
-      *(src->mutable_value()) = *(
-          std::dynamic_pointer_cast<phi::DenseTensor>(dst_value_tensor.impl()));
-
-      Tensor cpu_tensor =
-          experimental::copy_to(dst_value_tensor, phi::CPUPlace(), true);
-      auto *cpu_tensor_data = cpu_tensor.data<float>();
-
-      std::vector<int64_t> tensor_vector = cpu_tensor.shape();
-      VLOG(0) << "=== after allreduce+allgather ===";
-      for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
-        if (i % tensor_vector[0] == (tensor_vector[0] - 1)) {
-          std::cout << cpu_tensor_data[i] << std::endl;
-        } else {
-          std::cout << cpu_tensor_data[i] << "   ";
-        }
-      }
-
-    } else {
-      PADDLE_THROW(
-          platform::errors::Unimplemented("This case is not supported."));
-    }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat grad tensors since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
 #endif
+  } else if (platform::is_cpu_place(inner_place_)) {
+    dev_ctx = static_cast<platform::CPUDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(inner_place_));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Split grad tensor not supported on place (%s)", inner_place_));
+  }
+
+  auto src = std::dynamic_pointer_cast<phi::SelectedRows>(
+      group->sparse_contents_.impl());
+  const auto &src_rows = src->rows();
+
+  const auto &rank_ = process_group_->GetRank();
+  const auto &size_ = process_group_->GetSize();
+
+  framework::Vector<int64_t> rows_num_vector(size_);
+  rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
+
+  Tensor rows_num_tensor = paddle::experimental::empty(
+      IntArray({static_cast<int64_t>(size_)}), DataType::INT64, inner_place_);
+  auto *rows_num_dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(rows_num_tensor.impl()).get();
+  framework::TensorFromVector<int64_t>(rows_num_vector, *dev_ctx,
+                                       rows_num_dense_tensor);
+
+  distributed::AllreduceOptions opts;
+  opts.reduce_op = ReduceOp::SUM;
+  std::vector<Tensor> reduce_tensors = {rows_num_tensor};
+  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
+
+  framework::TensorToVector<int64_t>(*rows_num_dense_tensor, *dev_ctx,
+                                     &rows_num_vector);
+  dev_ctx->Wait();
+
+  const auto *cpu_rows_num_ptr = rows_num_vector.data();
+  auto rows_num = std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
+                                  static_cast<int64_t>(0));
+
+  VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
+          << ", total rows number: " << rows_num
+          << ", height: " << src->height();
+
+  dev_ctx->Wait();
+
+  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
+                  [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
+    // During sparse communication, the number of each card is same.
+    // allgather is used to speed up the allreduce by replacing broadcast.
+
+    VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
+
+    Tensor dst_rows_tensor =
+        paddle::experimental::empty(IntArray({static_cast<int64_t>(rows_num)}),
+                                    DataType::INT64, inner_place_);
+    Tensor src_rows_tensor = paddle::experimental::empty(
+        IntArray({static_cast<int64_t>((*src).rows().size())}), DataType::INT64,
+        inner_place_);
+    auto *src_rows_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(src_rows_tensor.impl())
+            .get();
+    framework::TensorFromVector<int64_t>((*src).rows(), *dev_ctx,
+                                         src_rows_dense_tensor);
+
+    std::vector<Tensor> src_rows_tensors = {src_rows_tensor};
+    std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
+    process_group_->AllGather(src_rows_tensors, dst_rows_tensors)
+        ->Synchronize();
+
+    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    auto *dst_rows_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
+            .get();
+    framework::TensorToVector<int64_t>(*dst_rows_dense_tensor, *dev_ctx,
+                                       &dst_rows_vector);
+    dev_ctx->Wait();
+
+    Tensor src_value_tensor(std::make_shared<phi::DenseTensor>(src->value()));
+    std::vector<int64_t> dst_shape = src_value_tensor.shape();
+    dst_shape[dst_shape.size() - 2] = rows_num;
+    auto dst_dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+        paddle::experimental::full(IntArray(dst_shape), 0,
+                                   src_value_tensor.dtype(), inner_place_)
+            .impl());
+
+    auto dst =
+        std::make_shared<phi::SelectedRows>(dst_rows_vector, (*src).height());
+    *(dst->mutable_value()) = *dst_dense_tensor;
+    Tensor dst_value_tensor(std::make_shared<phi::DenseTensor>(dst->value()));
+
+    std::vector<Tensor> src_value_tensors = {src_value_tensor};
+    std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
+    process_group_->AllGather(src_value_tensors, dst_value_tensors)
+        ->Synchronize();
+
+    src->set_rows(dst_rows_vector);
+    *(src->mutable_value()) =
+        *(std::dynamic_pointer_cast<phi::DenseTensor>(dst_value_tensor.impl()));
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("This case is not supported."));
   }
 }
 
