@@ -1037,7 +1037,8 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
+            :name: code-example1
+
             import paddle
 
             # x is a Tensor with following elements:
