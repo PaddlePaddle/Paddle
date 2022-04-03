@@ -1684,7 +1684,7 @@ class CyclicLR(LRScheduler):
                  base_learning_rate,
                  max_learning_rate,
                  step_size_up,
-                 step_size_down,
+                 step_size_down=None,
                  mode='triangular',
                  gamma=1.,
                  scale_fn=None,
