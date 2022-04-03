@@ -696,7 +696,7 @@
 - backward_api : meshgrid_grad
   forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
   args : (Tensor[] inputs, Tensor[] outputs_grad)
-  output : Tensor[]
+  output : Tensor[](inputs_grad)
   invoke : meshgrid_grad_impl(inputs, outputs_grad)
 
 - backward_api : min_grad

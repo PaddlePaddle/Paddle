@@ -1062,8 +1062,8 @@
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
-  #backward : meshgrid_grad
   invoke : meshgrid_impl(inputs)
+  backward : meshgrid_grad
   
 - api : min
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
