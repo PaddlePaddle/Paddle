@@ -72,11 +72,24 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::make_shared<phi::DenseTensor>(
-            phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                                 ddims));
+    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+
+    if (dims.empty()) {
+      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          allocation_ptr,
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
+    } else if (phi::product(ddims) > 0) {
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Required phi::product(ddims) > 0 and ddims shall not be empty while "
+          "calling EmptyTensorInitializer"));
+    }
     self->tensor.set_impl(dense_tensor);
   }
 
