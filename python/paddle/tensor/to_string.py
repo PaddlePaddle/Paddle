@@ -264,6 +264,9 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        tensor = tensor.astype('float32')
+
     np_tensor = tensor.numpy()
 
     if len(tensor.shape) == 0:
