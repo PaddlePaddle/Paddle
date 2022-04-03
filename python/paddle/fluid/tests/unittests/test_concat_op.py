@@ -143,12 +143,12 @@ class TestConcatOp6(TestConcatOp):
         self.outputs = {'Out': (out, self.out_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_dygraph=True)
-        self.check_grad(['x1'], 'Out', check_dygraph=True)
-        self.check_grad(['x2'], 'Out', check_dygraph=True)
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
