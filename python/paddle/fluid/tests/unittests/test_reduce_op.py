@@ -30,15 +30,15 @@ class TestSumOp(OpTest):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.attrs = {'dim': [0]}
 
-    #def test_check_output(self):
-    #    self.check_output(check_eager=True)
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-'''
 class TestSumOp_fp16(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
@@ -135,6 +135,7 @@ class TestSumOp5D(OpTest):
         self.inputs = {
             'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
         }
+        self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -151,6 +152,7 @@ class TestSumOp6D(OpTest):
         self.inputs = {
             'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
         }
+        self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -977,7 +979,7 @@ class TestAnyAPI(unittest.TestCase):
                 self.assertTrue((np_out4 == expect_res4).all())
 
         paddle.enable_static()
-'''
+
 
 if __name__ == '__main__':
     import paddle

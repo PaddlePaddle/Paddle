@@ -911,7 +911,9 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             axis = axis if axis != None and axis != [] else [0]
 
         out_dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
+        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
+        print(f"in python api, result = {out}")
+        return out
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
