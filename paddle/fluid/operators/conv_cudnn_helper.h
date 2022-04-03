@@ -72,7 +72,8 @@ static size_t CaclWorkspaceLimitInBytes(const phi::GPUContext& ctx) {
   VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
           << " MB, reserved=" << ToMegaBytes(reserved)
           << " MB, available_to_alloc=" << ToMegaBytes(availble)
-          << " MB, current_workspace_size=" << ToMegaBytes(cur_workspace_size);
+          << " MB, current_workspace_size=" << ToMegaBytes(cur_workspace_size)
+          << " MB.";
   return std::max(std::max(availble, cur_workspace_size), reserved - allocated);
   // return FLAGS_conv_workspace_size_limit * 1024 * 1024;
 }

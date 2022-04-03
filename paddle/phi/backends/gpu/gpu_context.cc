@@ -170,7 +170,7 @@ void DnnWorkspaceHandle::RunFuncSync(
 #else
     auto status = cudaMalloc(&workspace_ptr, size);
 #endif
-    if (status == cudaSuccess) {
+    if (status == gpuSuccess) {
       cudnn_func(workspace_ptr);
       phi::backends::gpu::GpuStreamSync(stream_);
 #ifdef PADDLE_WITH_HIP
