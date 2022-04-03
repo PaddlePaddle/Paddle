@@ -127,7 +127,7 @@ def minimize_bfgs(objective_func,
 
     Hk = paddle.assign(initial_inverse_hessian_estimate)
     # use assign to create new tensor rather than =, or xk will share memory and grad with initial_position
-    xk = paddle.assign(initial_position.detach)
+    xk = paddle.assign(initial_position)
 
     value, g1 = _value_and_gradient(objective_func, xk)
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
