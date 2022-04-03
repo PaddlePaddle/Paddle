@@ -105,7 +105,10 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                     data_gen=partial(generate_scores, batch,
                                                      num_boxes, num_classes))
                             },
-                            outputs=["nms_output_boxes", "nms_output_num"])
+                            outputs=[
+                                "nms_output_boxes", "nms_output_num",
+                                "nms_output_index"
+                            ])
 
                         yield program_config
 
@@ -140,6 +143,8 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                             baseline: Dict[str, np.array]):
         # the order of tensorrt outputs are not consistent with paddle
         for key, arr in tensor.items():
+            if key == "nms_output_index":
+                continue
             if key == "nms_output_boxes":
                 basline_arr = np.array(
                     sorted(
