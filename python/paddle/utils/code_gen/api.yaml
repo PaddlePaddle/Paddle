@@ -1345,6 +1345,7 @@
   kernel :
     func : scale, scale_sr
   inplace : (x -> out)
+  backward : scale_grad
 
 - api : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
