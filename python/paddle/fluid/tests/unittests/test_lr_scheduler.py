@@ -522,13 +522,24 @@ class TestLRScheduler(unittest.TestCase):
                 base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=-1)
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
-                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=-1)
+                base_learning_rate=0.5,
+                max_learning_rate=1.0,
+                step_size_up=500,
+                step_size_down=-1)
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
-                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=500, mode='t')
+                base_learning_rate=0.5,
+                max_learning_rate=1.0,
+                step_size_up=500,
+                step_size_down=500,
+                mode='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
-                base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=500, step_size_down=-1, scale_mode='c')
+                base_learning_rate=0.5,
+                max_learning_rate=1.0,
+                step_size_up=500,
+                step_size_down=-1,
+                scale_mode='test')
 
         func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
             "d_model": 0.01,
