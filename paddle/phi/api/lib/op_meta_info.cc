@@ -26,19 +26,22 @@ namespace paddle {
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   PADDLE_ENFORCE_EQ(
-      src.defined() && src.is_dense_tensor() && dst->is_dense_tensor(),
-      true,
-      phi::errors::Unavailable(
-          "Now only supported DenseTensor in Custom Operator."));
-  PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
       phi::errors::Unavailable(
           "The Custom OpKernel calculate output is not initialized."));
+  PADDLE_ENFORCE_EQ(src.is_dense_tensor(),
+                    true,
+                    phi::errors::Unavailable(
+                        "Now only supported DenseTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(dst->defined(),
                     true,
                     phi::errors::Unavailable(
                         "The Custom OpKernel origin output is not defined."));
+  PADDLE_ENFORCE_EQ(dst->is_dense_tensor(),
+                    true,
+                    phi::errors::Unavailable(
+                        "Now only supported DenseTensor in Custom Operator."));
   auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
   auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
   *dense_dst = dense_src;
