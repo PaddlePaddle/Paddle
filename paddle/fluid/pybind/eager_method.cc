@@ -330,16 +330,21 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  if (!self->tensor.defined()) {
+  if (!self->tensor.initialized()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
