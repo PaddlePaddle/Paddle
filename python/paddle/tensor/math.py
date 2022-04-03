@@ -1638,7 +1638,11 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_logsumexp(x, axis, keepdim, reduce_all)
+    if _in_legacy_dygraph():
         return _C_ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
