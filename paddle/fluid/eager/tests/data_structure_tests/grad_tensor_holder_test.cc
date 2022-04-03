@@ -25,6 +25,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
@@ -77,11 +78,11 @@ TEST(GradTensorHolder, Interfaces) {
 
   // add():
   // fill one
-  grad_tensor_holder.add(0, 0, et0, true);
+  grad_tensor_holder.CopyValueFromTensor(0, 0, et0, true);
 
   // accumulation
-  grad_tensor_holder.add(1, 0, et0, false);
-  grad_tensor_holder.add(1, 0, et1, false);
+  grad_tensor_holder.add(1, 0, et0);
+  grad_tensor_holder.add(1, 0, et1);
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();
@@ -141,8 +142,8 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
       GradTensorHolder({slot_meta, slot_meta});
 
   // accumulation
-  grad_tensor_holder.add(0, 0, t1, false);
-  grad_tensor_holder.add(0, 0, t2, false);
+  grad_tensor_holder.add(0, 0, t1);
+  grad_tensor_holder.add(0, 0, t2);
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();
