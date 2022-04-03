@@ -83,7 +83,7 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _global_flags_ = core.globals()
 
-# Some explanation of our execution system 2022.03
+# Some explanation  of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
 # build a fast execution system for dynamic mode. But we can't just remove all legacy
 # code once we present the new system for some historical reason. That's why we have 
