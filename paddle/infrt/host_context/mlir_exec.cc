@@ -98,8 +98,8 @@ int main(int argc, char** argv) {
   std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
                                              infrt::PrecisionType::FLOAT32,
                                              infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
-  phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
+  phi_pass_manager.addPass(infrt::CreatePhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(infrt::CreateInfrtOpFusePass());
 #endif
 
   if (mlir::failed(pm.run(*module))) {

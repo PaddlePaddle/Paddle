@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 namespace paddle {
 namespace pybind {
@@ -43,8 +45,7 @@ namespace py = ::pybind11;
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 
-std::set<paddle::experimental::Tensor*> GetNonDifferentiableNames(
-    PyObject* obj) {
+std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   std::set<paddle::experimental::Tensor*> result;
   if (obj == nullptr) {
     return result;
@@ -298,8 +299,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   VLOG(6) << "PyLayer forward function finish...";
 
   if (require_any_grad && trace_backward) {
-    auto non_differentiable =
-        GetNonDifferentiableNames(ctx->non_differentiable);
+    auto non_differentiable = GetTensorsFromPyObject(ctx->non_differentiable);
     for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
       for (size_t j = 0; j < outputs_autograd_meta[i].size(); j++) {
         if (non_differentiable.find(outputs_tensor[i][j]) !=
@@ -311,7 +311,22 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       }
     }
 
-    // TODO(pangyoki) add inplace, inplaced tensor is ctx->dirty_tensors
+    // add inplace strategy, inplaced tensor is ctx->dirty_tensors
+    auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
+    for (auto it = dirty_tensors.begin(); it != dirty_tensors.end(); ++it) {
+      auto dirty_tensor = *it;
+      auto dirty_tensor_autograd_meta =
+          egr::EagerUtils::autograd_meta(dirty_tensor);
+      PADDLE_ENFORCE_EQ(!dirty_tensor_autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(*dirty_tensor),
+                        false, paddle::platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   dirty_tensor->name()));
+      dirty_tensor->bump_inplace_version();
+      VLOG(3) << "Tensor(" << dirty_tensor->name()
+              << ") uses Inplace Strategy.";
+    }
 
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
         reinterpret_cast<PyObject*>(ctx), outputs_autograd_meta.size(),
@@ -466,7 +481,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_dealloc = (destructor)PyLayerDealloc;
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
-  type->tp_new = PyLayerNew;
+  type->tp_new = (newfunc)PyLayerNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=

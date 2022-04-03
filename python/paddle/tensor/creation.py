@@ -224,7 +224,10 @@ def full_like(x, fill_value, dtype=None, name=None):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_full_like(x, fill_value, dtype, x.place)
+
+    if _in_legacy_dygraph():
         return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
@@ -658,7 +661,10 @@ def tril(x, diagonal=0, name=None):
             #        [ 9, 10,  0,  0]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tril_triu(x, diagonal, True)
+
+    if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
 
@@ -725,7 +731,10 @@ def triu(x, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tril_triu(x, diagonal, False)
+
+    if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)
 

@@ -27,6 +27,9 @@ from paddle import _C_ops
 
 __all__ = []
 
+# Consistent with kDefaultDim from C++ Backend
+K_DEFAULT_DIM = 9
+
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
@@ -251,7 +254,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        if paddle.in_dynamic_mode():
+
+        if in_dygraph_mode():
+            if dim is None:
+                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+            return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
+        if _in_legacy_dygraph():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
                                              'reduce_all', True)
@@ -288,10 +296,16 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            if axis is None: axis = -1
+            return _C_ops.final_state_p_norm(input, porder, axis, 1e-12,
+                                             keepdim, asvector)
+
+        if _in_legacy_dygraph():
             if axis is None: axis = -1
             return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
                                  'keepdim', keepdim, 'asvector', asvector)
+
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -1151,6 +1165,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
+        axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.final_state_cross(x, y, axis)
     else:
         if _in_legacy_dygraph():
@@ -1212,8 +1227,12 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky(x, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky(x, "upper", upper)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -1397,7 +1416,10 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_histogram(input, bins, min, max)
+
+    if _in_legacy_dygraph():
         return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
@@ -1444,7 +1466,10 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if paddle.in_dynamic_mode():
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_bincount(x, weights, minlength)
+
+    if _in_legacy_dygraph():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1758,7 +1783,10 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matrix_power(x, n)
+
+    if _in_legacy_dygraph():
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -2276,7 +2304,10 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigh(x, UPLO)
+
+    if _in_legacy_dygraph():
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):
@@ -2746,7 +2777,10 @@ def cholesky_solve(x, y, upper=False, name=None):
         print(out)
         # [-2.5, -7, 9.5]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky_solve(x, y, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())

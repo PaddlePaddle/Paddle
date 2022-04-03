@@ -1089,7 +1089,7 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensor =
-      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->MutableGrad();
+      egr::EagerUtils::autograd_meta(&self->tensor)->MutableGrad();
   if (var_type == framework::proto::VarType::LOD_TENSOR) {
     grad_tensor->set_impl(std::make_shared<phi::DenseTensor>());
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
@@ -1279,6 +1279,15 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t element_size = framework::DataTypeSize(self->tensor.dtype());
+
+  return ToPyObject(element_size);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
@@ -1416,6 +1425,8 @@ PyMethodDef variable_methods[] = {
     {"to_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_to_sparse_csr,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"to_dense", (PyCFunction)(void (*)(void))tensor_method_to_dense,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
