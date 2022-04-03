@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestExpandAsBaisc(OpTest):
+class TestExpandAsBasic(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -40,7 +40,7 @@ class TestExpandAsBaisc(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestExpandAsOpRank2(TestExpandAsBaisc):
+class TestExpandAsOpRank2(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -53,7 +53,7 @@ class TestExpandAsOpRank2(TestExpandAsBaisc):
         self.outputs = {'Out': output}
 
 
-class TestExpandAsOpRank3(TestExpandAsBaisc):
+class TestExpandAsOpRank3(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -66,7 +66,7 @@ class TestExpandAsOpRank3(TestExpandAsBaisc):
         self.outputs = {'Out': output}
 
 
-class TestExpandAsOpRank4(TestExpandAsBaisc):
+class TestExpandAsOpRank4(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
