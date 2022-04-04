@@ -622,6 +622,23 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
   }
 
   outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
+
+  auto nodes_to_string =
+      [](std::unordered_set<ir::Node *> nodes) -> std::string {
+    std::stringstream ss;
+    for (auto n : nodes) {
+      if (n->IsVar()) {
+        ss << n->Name() << " ";
+      }
+    }
+    return ss.str();
+  };
+
+  VLOG(4) << "add inputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(inputs);
+  VLOG(4) << "add outputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(outputs);
+
   fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
                                 inputs.end());
   fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),

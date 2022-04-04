@@ -1072,7 +1072,6 @@ def yolov3_loss(x,
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
-    helper = LayerHelper('yolov3_loss', **locals())
 
     if not isinstance(x, Variable):
         raise TypeError("Input x of yolov3_loss must be Variable")
@@ -1095,8 +1094,16 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if _non_static_mode():
+        attrs = ("anchors", anchors, "anchor_mask", anchor_mask, "class_num",
+                 class_num, "ignore_thresh", ignore_thresh, "downsample_ratio",
+                 downsample_ratio, "use_label_smooth", use_label_smooth,
+                 "scale_x_y", scale_x_y)
+        loss, _, _ = _C_ops.yolov3_loss(x, gt_box, gt_label, gt_score, *attrs)
+        return loss
 
+    helper = LayerHelper('yolov3_loss', **locals())
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
 

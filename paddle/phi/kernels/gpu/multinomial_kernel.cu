@@ -243,8 +243,7 @@ void MultinomialKernel(const Context& dev_ctx,
             dev_ctx, rand, -1, true, false, 3 /*proto::VarType::INT64*/, out);
       } else {
         std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
-        DenseTensor value =
-            Empty<T, Context>(dev_ctx, ScalarArray(out_dim_vec));
+        DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));
         TopkKernel<T, Context>(
             dev_ctx, rand, Scalar(num_samples), -1, true, true, &value, out);
       }

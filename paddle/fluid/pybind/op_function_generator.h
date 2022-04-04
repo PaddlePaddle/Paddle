@@ -36,6 +36,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
     {"assign", {"X"}},
+    {"crop", {"X", "Y", "Offsets"}},
+    {"crop_tensor", {"X", "Shape", "Offsets"}},
     {"reshape2", {"X", "Shape"}},
     {"expand", {"X", "ExpandTimes"}},
     {"slice",
@@ -50,11 +52,13 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
+    {"smooth_l1_loss", {"X", "Y", "InsideWeight", "OutsideWeight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
     {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"prroi_pool", {"X", "ROIs", "BatchRoINums"}},
     {"psroi_pool", {"X", "ROIs", "RoisNum"}},
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
@@ -96,11 +100,16 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nce",
      {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
       "CustomDistAlias", "CustomDistAliasProbs"}},
+    {"yolov3_loss", {"X", "GTBox", "GTLabel", "GTScore"}},
     {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
     {"group_norm", {"X", "Scale", "Bias"}},
     {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
     {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
+    {"sequence_mask", {"X", "MaxLenTensor"}},
+    {"graph_reindex",
+     {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
+    {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -218,6 +227,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
+    {"assign", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
@@ -244,4 +254,13 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"unsqueeze2", {"X", "Out"}},
     {"reshape2", {"X", "Out"}},
     {"flatten_contiguous_range", {"X", "Out"}},
+};
+
+// NOTE(pangyoki): Special inplace ops that are not supported in temporary.
+// The input and output of some inplace ops are special, such as
+// duplicate input. These inplace ops have no usage scenarios and
+// are not supported in temporary.
+std::set<std::string> special_inplace_op_set = {
+    "sum",     // `sum` op has duplicate input
+    "assign",  // output of `assign` op is in `op_passing_outs_map`
 };

@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -62,12 +60,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv, ops::ElementwiseOp,
                              ops::ElementwiseFloorDivOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_floordiv,
-    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
 
 REGISTER_OP_VERSION(elementwise_floordiv)
     .AddCheckpoint(

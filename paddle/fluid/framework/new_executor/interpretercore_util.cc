@@ -21,13 +21,21 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
+
+constexpr size_t kPrepareWorkQueueIdx = 2;
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
@@ -47,34 +55,31 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
   VLOG(4) << "PrepareAtomicDeps";
-  auto p = std::make_shared<
-      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
-  atomic_deps_ = p->get_future();
-  queue_group_->AddTask(2, [&dependecy_count, p] {
-    auto* op_deps =
-        new std::vector<std::atomic<size_t>>(dependecy_count.size());
-    for (size_t i = 0; i < dependecy_count.size(); ++i) {
-      (*op_deps)[i] = dependecy_count[i];
-    }
-    VLOG(4) << "AtomicDeps:" << op_deps << " " << (*op_deps).size();
-    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(op_deps));
-  });
+  atomic_deps_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&dependecy_count] {
+        auto op_deps = std::make_unique<std::vector<std::atomic<size_t>>>(
+            dependecy_count.size());
+        for (size_t i = 0; i < dependecy_count.size(); ++i) {
+          (*op_deps)[i] = dependecy_count[i];
+        }
+        VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
+        return op_deps;
+      });
 }
 
 void AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
   VLOG(4) << "PrepareAtomicVarRef";
-  auto p = std::make_shared<
-      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
-  atomic_var_ref_ = p->get_future();
-  queue_group_->AddTask(2, [&vec_meta_info, p] {
-    auto* var_ref = new std::vector<std::atomic<size_t>>(vec_meta_info.size());
-    for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-      (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
-    }
-    VLOG(4) << "AtomicVarRef:" << var_ref << " " << (*var_ref).size();
-    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(var_ref));
-  });
+  atomic_var_ref_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&vec_meta_info] {
+        auto var_ref = std::make_unique<std::vector<std::atomic<size_t>>>(
+            vec_meta_info.size());
+        for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+          (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+        }
+        VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
+        return var_ref;
+      });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -189,6 +194,7 @@ void create_all_ops(const framework::BlockDesc& block,
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
+
     AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
@@ -196,6 +202,16 @@ void create_all_ops(const framework::BlockDesc& block,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      if (op->HasAttr("use_mkldnn")) {
+        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
+        op_base->SetAttr("use_mkldnn", true);
+      }
+    }
+#endif
+
     ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }
@@ -312,6 +328,10 @@ void build_op_func_list(const platform::Place& place,
       main_program, block.ID(), ops_unique);
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       main_program, block.ID(), ops_unique);
+
+#ifdef PADDLE_WITH_MKLDNN
+  platform::RegisterModelLayout(ops_unique, place);
+#endif
 
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
@@ -685,6 +705,22 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli",      "poisson", "multinomial", "gaussian_random",
+      "uniform_random", "randint", "randperm",    "exponential"};
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
   return std::move(get_downstream_map(op2dependences));
 }
 
