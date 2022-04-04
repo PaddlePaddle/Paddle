@@ -650,7 +650,7 @@ class TestDoubleGradBasics(TestCase):
             grad_out = paddle.to_tensor(
                 np.ones([3, 3]), stop_gradient=False, dtype='float32')
 
-            out = _C_ops.final_state_matmul(x, y, False, False)
+            out = paddle.matmul(x, y, False, False)
             new_x_g, new_y_g = paddle.grad(
                 [out], [x, y], [grad_out], retain_graph=True, create_graph=True)
             new_x_g.backward()

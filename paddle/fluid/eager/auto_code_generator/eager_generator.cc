@@ -2484,7 +2484,8 @@ static std::string GenerateGradNodeHeaderContents(
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
       "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
-      "    auto copied_node = std::make_shared<GradNode%s>(*this);\n "
+      "    auto copied_node = std::shared_ptr<GradNode%s>(new "
+      "GradNode%s(*this));\n "
       "    return copied_node;\n "
       "}}\n "
       "\n"
@@ -2601,7 +2602,7 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, clear_tensor_wrappers_str, op_type, op_type,
+      op_type, clear_tensor_wrappers_str, op_type, op_type, op_type,
       set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
       attr_members_str);
 

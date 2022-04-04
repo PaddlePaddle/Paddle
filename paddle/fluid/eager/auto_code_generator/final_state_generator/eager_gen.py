@@ -128,7 +128,8 @@ class {} : public egr::GradNodeBase {{
   }}
 
   std::shared_ptr<GradNodeBase> Copy() const override {{
-      auto copied_node = std::make_shared<{}>(*this);
+      auto copied_node = std::shared_ptr<{}>(new {}(*this));
+      
       return copied_node;
   }}
   
@@ -1241,8 +1242,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self.node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
             grad_node_name, grad_node_name, grad_node_name, grad_node_name,
             grad_node_name, clear_tensor_wrapper_str, grad_node_name,
-            set_tensor_wrapper_methods_str, set_attribute_methods_str,
-            tensor_wrapper_members_str, attribute_members_str)
+            grad_node_name, set_tensor_wrapper_methods_str,
+            set_attribute_methods_str, tensor_wrapper_members_str,
+            attribute_members_str)
 
         logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
 

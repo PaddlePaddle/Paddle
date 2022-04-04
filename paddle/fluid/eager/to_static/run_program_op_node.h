@@ -465,7 +465,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node = std::make_shared<GradNodeRunProgram>(*this);
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
     return copied_node;
   }
 

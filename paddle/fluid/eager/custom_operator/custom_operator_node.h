@@ -69,7 +69,8 @@ class RunCustomOpNode : public GradNodeBase {
   void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    auto copied_node = std::make_shared<RunCustomOpNode>(*this);
+    auto copied_node =
+        std::shared_ptr<RunCustomOpNode>(new RunCustomOpNode(*this));
     return copied_node;
   }
 
