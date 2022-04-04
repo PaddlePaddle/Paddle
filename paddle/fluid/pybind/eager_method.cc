@@ -1344,6 +1344,19 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__offset(TensorObject* self, PyObject* args,
+                                PyObject* kwargs) {
+  EAGER_TRY
+  auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  PADDLE_ENFORCE_EQ(
+      t->IsInitialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  return ToPyObject(t->offset());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1471,6 +1484,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,

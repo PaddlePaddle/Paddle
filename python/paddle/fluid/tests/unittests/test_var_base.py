@@ -1396,7 +1396,7 @@ class TestVarBaseClear(unittest.TestCase):
 
 
 class TestVarBaseOffset(unittest.TestCase):
-    def test_offset(self):
+    def func_offset(self):
         paddle.disable_static()
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
@@ -1404,6 +1404,11 @@ class TestVarBaseOffset(unittest.TestCase):
         actual_x = x._slice(expected_offset, 1)
         actual_x = paddle.to_tensor(actual_x)
         self.assertEqual(actual_x._offset(), expected_offset)
+
+    def test_offset(self):
+        with _test_eager_guard():
+            self.func_offset()
+        self.func_offset()
 
 
 class TestVarBaseShareBufferTo(unittest.TestCase):
