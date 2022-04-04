@@ -12,16 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
-                       const DenseTensor& out_grad,
-                       DenseTensor* x_grad);
-
-}  // namespace phi
+PD_REGISTER_BASE_KERNEL_NAME(range, arange);

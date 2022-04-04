@@ -817,6 +817,10 @@ def monkey_patch_varbase():
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
+    def _uva(self, device_id=0):
+        self._tensor_uva(device_id)
+
+    @framework.dygraph_only
     def cpu(self):
         if self.place.is_cpu_place():
             return self
@@ -878,6 +882,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
+        setattr(core.eager.Tensor, "_uva", _uva)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

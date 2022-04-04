@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/slice_utils.h"
+#include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -1360,6 +1361,13 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_methon_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1381,12 +1389,25 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_methon_element_size(TensorObject* self, PyObject* args,
-                                            PyObject* kwargs) {
+#if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
   EAGER_TRY
-  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
+  VLOG(4) << "Running in tensor_method__uva.";
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "CPU Tensor currently."));
+  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  auto* self_tensor =
+      static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
+  tensor_uva(self_tensor, device_id);
+
+  Py_INCREF(Py_None);
+  return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+#endif
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1492,11 +1513,15 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_methon_element_size,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"element_size", (PyCFunction)(void (*)(void))tensor_methon_element_size,
+#if defined(PADDLE_WITH_CUDA)
+    {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS, NULL},
+#endif
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

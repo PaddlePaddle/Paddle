@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/range_kernel.h"
+#include "paddle/phi/kernels/arange_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -40,11 +40,11 @@ __global__ void Range(T start, T step, int64_t size, T* out) {
 }
 
 template <typename T, typename Context>
-void RangeKernel(const Context& dev_ctx,
-                 const DenseTensor& start,
-                 const DenseTensor& end,
-                 const DenseTensor& step,
-                 DenseTensor* out) {
+void ArangeKernel(const Context& dev_ctx,
+                  const DenseTensor& start,
+                  const DenseTensor& end,
+                  const DenseTensor& step,
+                  DenseTensor* out) {
   T start_value = GetValue<T, Context>(dev_ctx, start);
   T end_value = GetValue<T, Context>(dev_ctx, end);
   T step_value = GetValue<T, Context>(dev_ctx, step);
@@ -63,7 +63,7 @@ void RangeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    range, GPU, ALL_LAYOUT, phi::RangeKernel, float, double, int64_t, int) {
+    arange, GPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int64_t, int) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
   kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::CPU);
