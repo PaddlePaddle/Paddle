@@ -231,10 +231,13 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
 
   paddle::optional<const phi::MetaTensor&> input_meta_ref_master_param(
       paddle::none);
-  auto input_meta_master_param = MakeMetaTensor(input_master_param);
-  if (input_meta_master_param) {
-    input_meta_ref_master_param =
-        paddle::make_optional<const phi::MetaTensor&>(*input_meta_master_param);
+  phi::DenseTensor dt;
+  phi::MetaTensor input_meta_tmp_master_param(dt);
+  if (input_master_param_ptr) {
+    input_meta_tmp_master_param.set_dtype(input_master_param_ptr->dtype());
+    input_meta_tmp_master_param.set_dims(input_master_param_ptr->dims());
+    input_meta_tmp_master_param.set_layout(input_master_param_ptr->layout());
+    input_meta_ref_master_param = input_meta_tmp_master_param;
   }
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
@@ -306,6 +309,7 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
 
   return api_output;
 }
+
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     const Tensor& x,
     const Tensor& scale,
