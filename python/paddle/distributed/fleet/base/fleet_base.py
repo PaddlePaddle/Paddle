@@ -1668,7 +1668,7 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                if v:
+                if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
 
@@ -1745,7 +1745,7 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                if v:
+                if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
             # print("fleet base opt info:", id(program), program._fleet_opt)
