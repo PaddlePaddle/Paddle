@@ -50,7 +50,16 @@ class GeneralGrad {
       for (size_t i = 0; i < num_inputs; i++) {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
-        auto target_node = auto_grad_meta->GetMutableGradNode().get();
+        auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+
+        if (orig_to_copied_node_mapping_.count(target_node)) {
+          target_node = orig_to_copied_node_mapping_[target_node];
+        } else {
+          VLOG(6) << "Unable to find target node in "
+                     "orig_to_copied_node_mapping_, likely indicating an "
+                     "unused input";
+        }
+
         PADDLE_ENFORCE_NOT_NULL(target_node,
                                 paddle::platform::errors::Fatal(
                                     "There is no grad op for %s:[%d] or it's"
@@ -249,7 +258,15 @@ class GeneralGrad {
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto& input = inputs[i];
       AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(input);
-      auto target_node = auto_grad_meta->GetMutableGradNode().get();
+
+      auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+      if (orig_to_copied_node_mapping_.count(target_node)) {
+        target_node = orig_to_copied_node_mapping_[target_node];
+      } else {
+        VLOG(6) << "Unable to find target node in "
+                   "orig_to_copied_node_mapping_, likely indicating an unused "
+                   "input";
+      }
 
       auto iter = results_map.find(target_node);
       if (iter != results_map.end()) {
@@ -326,6 +343,78 @@ class GeneralGrad {
     potential_stop_nodes.clear();
     depending_nodes.clear();
     results_map.clear();
+    copied_grad_nodes_.clear();
+    orig_to_copied_node_mapping_.clear();
+  }
+
+  GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
+    if (orig_to_copied_node_mapping_.count(orig_node.get())) {
+      return orig_to_copied_node_mapping_[orig_node.get()];
+    }
+    std::shared_ptr<GradNodeBase> copied_node = orig_node->Copy();
+
+    // Save node and update mapping
+    orig_to_copied_node_mapping_[orig_node.get()] = copied_node.get();
+    copied_grad_nodes_.push_back(copied_node);
+
+    return copied_node.get();
+  }
+
+  void ReconstructBackwardGraph(
+      const std::queue<GradNodeBase*>& orig_init_queue) {
+    std::queue<GradNodeBase*> queue = orig_init_queue;
+    std::unordered_set<GradNodeBase*> visited;
+
+    // BFS and recursively copy the grad nodes
+    while (!queue.empty()) {
+      GradNodeBase* orig_node = queue.front();
+      queue.pop();
+      if (visited.count(orig_node)) {
+        continue;
+      }
+      visited.insert(orig_node);
+
+      PADDLE_ENFORCE(
+          orig_to_copied_node_mapping_.count(orig_node),
+          paddle::platform::errors::Fatal(
+              "Cannot reconstruct backward graph,"
+              "unable to find copied target for certain grad node."));
+      GradNodeBase* copied_node = orig_to_copied_node_mapping_[orig_node];
+
+      const std::vector<std::vector<Edge>>& orig_edges = orig_node->GetEdges();
+      std::vector<std::vector<Edge>>& copied_edges =
+          copied_node->GetMutableEdges();
+      for (size_t i = 0; i < orig_edges.size(); i++) {
+        for (size_t j = 0; j < orig_edges[i].size(); j++) {
+          const Edge& orig_edge = orig_edges[i][j];
+          Edge& copied_edge = copied_edges[i][j];
+
+          std::shared_ptr<GradNodeBase> orig_next_node =
+              orig_edge.GetMutableGradNode();
+          if (!orig_next_node) continue;
+
+          // Copy Next Node
+          std::shared_ptr<GradNodeBase> copied_next_node;
+          if (orig_to_copied_node_mapping_.count(orig_next_node.get())) {
+            copied_next_node =
+                orig_to_copied_node_mapping_[orig_next_node.get()]
+                    ->shared_from_this();
+
+          } else {
+            copied_next_node = orig_next_node->Copy();
+            orig_to_copied_node_mapping_[orig_next_node.get()] =
+                copied_next_node.get();
+            copied_grad_nodes_.push_back(copied_next_node);
+          }
+
+          // Update Edge's Grad Node
+          copied_edge.SetGradNode(copied_next_node);
+
+          // Update BFS queue
+          queue.push(orig_next_node.get());
+        }
+      }
+    }
   }
 
  private:
@@ -345,6 +434,10 @@ class GeneralGrad {
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes;
   std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map;
+
+  std::vector<std::shared_ptr<GradNodeBase>> copied_grad_nodes_;
+  std::unordered_map<GradNodeBase*, GradNodeBase*> orig_to_copied_node_mapping_;
+
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
 
@@ -444,6 +537,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   // 1. Init queue with starting nodes
   // 2. Prepare initial input buffers
   std::queue<GradNodeBase*> queue;
+  std::queue<GradNodeBase*> orig_queue;
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   for (size_t i = 0; i < tensors.size(); i++) {
@@ -468,6 +562,16 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // TODO(zhanlve): Copy and Modify GradNode if is_general_grad
     GradNodeBase* grad_node = shared_grad_node.get();
+    if (is_general_grad) {
+      // Save orig grad node
+      orig_queue.push(grad_node);
+
+      // Replace grad_node with copied grad_node
+      grad_node = GeneralGrad::Instance().CopyGradNode(shared_grad_node);
+
+      // Record potential startup grad node
+      GeneralGrad::Instance().GetPotentialStartupNodes()->insert(grad_node);
+    }
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
@@ -504,9 +608,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // Prepare queue, potential startup_nodes
     queue.push(grad_node);
-    if (is_general_grad) {
-      GeneralGrad::Instance().GetPotentialStartupNodes()->emplace(grad_node);
-    }
+  }
+
+  if (is_general_grad) {
+    // Copy Backward Graph
+    GeneralGrad::Instance().ReconstructBackwardGraph(orig_queue);
   }
 
   VLOG(6) << "Update In degree Map for backward";
