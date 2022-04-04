@@ -63,6 +63,15 @@
   backward : add_grad
   # no_need_buffer : x, y
 
+- api : add_n
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : AddNInferMeta
+  kernel :
+    func : add_n
+  backward : add_n_grad
+
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)
   output : Tensor
@@ -1276,6 +1285,18 @@
     data_type : x
   backward : put_along_axis_grad
 
+- api : randint
+  args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : RandintInferMeta
+    param : [low, high, shape, dtype]
+  kernel :
+    func : randint
+    param : [low, high, shape, dtype]
+    data_type : dtype
+    backend : place
+
 - api : randperm
   args : (int n, DataType dtype, Place place={})
   output : Tensor
@@ -1287,7 +1308,7 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
-
+                   
 - api : reciprocal
   args : (Tensor x)
   output : Tensor
