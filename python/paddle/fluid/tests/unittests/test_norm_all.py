@@ -86,8 +86,13 @@ def frobenius_norm(x, axis=None, keepdims=False):
     return r
 
 
+def final_state_frobenius_norm(x, dim, keep_dim, reduce_all):
+    return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
+
+
 class TestFrobeniusNormOp(OpTest):
     def setUp(self):
+        self.python_api = final_state_frobenius_norm
         self.op_type = "frobenius_norm"
         self.init_test_case()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
@@ -102,10 +107,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -122,7 +127,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestPnormOp(OpTest):

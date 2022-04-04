@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/slice_utils.h"
+#include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -332,16 +333,21 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  if (!self->tensor.defined()) {
+  if (!self->tensor.initialized()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -1368,11 +1374,31 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Sharing memory in Windows OS is not supported currently"));
+  Py_INCREF(Py_None);
+  return Py_None;
 #endif
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+#if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method__uva.";
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "CPU Tensor currently."));
+  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  auto* self_tensor =
+      static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
+  tensor_uva(self_tensor, device_id);
+
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+#endif
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1480,7 +1506,10 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
-
+#if defined(PADDLE_WITH_CUDA)
+    {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+#endif
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind
