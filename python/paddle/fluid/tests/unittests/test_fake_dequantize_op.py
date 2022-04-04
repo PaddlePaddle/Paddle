@@ -205,7 +205,6 @@ class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
         self.bit_length = 8
         self.data_type = "float32"
         self.quant_axis = 1
-        print('TestChannelWiseDequantizeOp1:')
 
 
 class TestDequantizeOp(OpTest):
@@ -214,7 +213,6 @@ class TestDequantizeOp(OpTest):
         self.quant_axis = -1
         self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float32"
-        print('TestDequantizeOp:')
 
     def setUp(self):
         self.set_args()
@@ -242,16 +240,14 @@ class TestDequantizeOpDouble(TestDequantizeOp):
         self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float64"
         self.quant_axis = -1
-        print('TestDequantizeOpDouble:')
 
 
-class TestFakeDequantizeMaxAbsOp5Bits(TestDequantizeOp):
+class TestDequantizeOp5Bits(TestDequantizeOp):
     def set_args(self):
         self.bit_length = 5
         self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float32"
         self.quant_axis = -1
-        print('TestFakeDequantizeMaxAbsOp5Bits:')
 
 
 if __name__ == "__main__":
