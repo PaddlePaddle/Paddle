@@ -193,7 +193,7 @@ class BaseAPI(object):
                     f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                       but now is {out_type}."
 
-                return out_type, result.group('name')
+                return output_type_map[out_type], result.group('name')
 
             else:
                 if output_item.strip() in output_type_map:
@@ -480,11 +480,15 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     param_code = param_code + param + "_metas, "
                 elif param in self.optional_vars:
                     meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param}(paddle::none);
-{code_indent}  auto {PREFIX_TENSOR_NAME}meta_{param} = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  if ({PREFIX_TENSOR_NAME}meta_{param}) {{
-{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} = paddle::make_optional<const phi::MetaTensor&>(*{PREFIX_TENSOR_NAME}meta_{param});
-{code_indent}  }}"""
+{code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param} = paddle::none;
+{code_indent}  phi::DenseTensor dt;
+{code_indent}  phi::MetaTensor {PREFIX_TENSOR_NAME}meta_tmp_{param}(dt);
+{code_indent}  if ({PREFIX_TENSOR_NAME}{param}_ptr) {{
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dtype( {PREFIX_TENSOR_NAME}{param}_ptr->dtype() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dims( {PREFIX_TENSOR_NAME}{param}_ptr->dims() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_layout( {PREFIX_TENSOR_NAME}{param}_ptr->layout() );
+{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} =  {PREFIX_TENSOR_NAME}meta_tmp_{param};
+{code_indent}  }}\n"""
 
                     param_code = param_code + f"{PREFIX_TENSOR_NAME}meta_ref_{param}, "
                 else:
