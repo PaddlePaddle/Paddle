@@ -20,7 +20,7 @@ import numpy
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super(SimpleNet, self).__init__()
-        self.conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        self.conv = paddle.nn.Conv2D(1, 2, (3, 3))
 
     def forward(self, image, label=None):
         return self.conv(image)
@@ -65,11 +65,12 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
             paddle.fluid.core.enable_autotune()
         else:
             paddle.fluid.core.disable_autotune()
-        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        paddle.fluid.core.autotune_range(1, 2)
+        x_var = paddle.uniform((1, 1, 8, 8), dtype='float32', min=-1., max=1.)
         net = SimpleNet()
-        for i in range(12):
+        for i in range(3):
             train_dygraph(net, x_var)
-            if i < 10:
+            if i >= 1 and i < 2:
                 expected_res = {
                     "step_id": i,
                     "use_autotune": enable_autotune,
@@ -100,8 +101,9 @@ class TestStaticAutoTuneStatus(TestAutoTune):
             paddle.fluid.core.enable_autotune()
         else:
             paddle.fluid.core.disable_autotune()
+        paddle.fluid.core.autotune_range(1, 2)
 
-        data_shape = [2, 4, 8, 8]
+        data_shape = [1, 1, 8, 8]
         data = paddle.static.data(name='X', shape=data_shape, dtype='float32')
         net = SimpleNet()
         loss = static_program(net, data)
@@ -111,12 +113,12 @@ class TestStaticAutoTuneStatus(TestAutoTune):
         exe.run(paddle.static.default_startup_program())
         x = numpy.random.random(size=data_shape).astype('float32')
 
-        for i in range(12):
+        for i in range(3):
             exe.run(feed={'X': x}, fetch_list=[loss])
             status = paddle.fluid.core.autotune_status()
             # In static mode, the startup_program will run at first.
             # The expected step_id will be increased by 1.
-            if i < 9:
+            if i >= 0 and i < 1:
                 expected_res = {
                     "step_id": i + 1,
                     "use_autotune": enable_autotune,

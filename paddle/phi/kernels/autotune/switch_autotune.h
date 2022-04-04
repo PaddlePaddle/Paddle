@@ -31,34 +31,6 @@ class AutoTuneStatus {
 
   bool UseAutoTune() { return use_autotune_; }
 
-  void Update() {
-    current_steps_id_ += 1;
-    if (use_autotune_ == false) {
-      return;
-    }
-
-    if (current_steps_id_ >= auto_tune_start_step_id_ &&
-        current_steps_id_ < auto_tune_start_step_id_ + auto_tune_steps_) {
-      use_autotune_ = true;
-      AutoTuneCache::Instance().UpdateStatus();
-      step_hit_rates_.push_back(StepHitRate());
-      VLOG(3) << "Step ID " << current_steps_id_
-              << ", Accumulative Cache Hit Rate: "
-              << AutoTuneCache::Instance().CacheHitRate()
-              << ", Cache Size: " << AutoTuneCache::Instance().Size()
-              << ", Current Step Hit Rate: " << StepHitRate();
-    } else if (current_steps_id_ ==
-               auto_tune_start_step_id_ + auto_tune_steps_) {
-      use_autotune_ = false;
-      // clean cache according miss rate
-      float miss_rate = static_cast<float>(1) - RecentHitRate();
-      AutoTuneCache::Instance().Clean(miss_rate);
-      VLOG(3) << "Recent Miss Rate: " << miss_rate;
-    } else {
-      use_autotune_ = false;
-    }
-  }
-
   // EnableAutoTune and DisableAutoTune Should be used for debug only.
   void EnableAutoTune() {
     use_autotune_ = true;
@@ -68,6 +40,35 @@ class AutoTuneStatus {
   void DisableAutoTune() {
     use_autotune_ = false;
     Init();
+  }
+
+  void Update() {
+    current_steps_id_ += 1;
+
+    if (!use_autotune_ && !update_use_autotune_) {
+      return;
+    }
+
+    if (current_steps_id_ < start_step_id_) {
+      use_autotune_ = false;
+    } else if (current_steps_id_ >= start_step_id_ &&
+               current_steps_id_ < stop_step_id_) {
+      use_autotune_ = true;
+      AutoTuneCache::Instance().UpdateStatus();
+      step_hit_rates_.push_back(StepHitRate());
+      VLOG(3) << "Step ID " << current_steps_id_
+              << ", Accumulative Cache Hit Rate: "
+              << AutoTuneCache::Instance().CacheHitRate()
+              << ", Cache Size: " << AutoTuneCache::Instance().Size()
+              << ", Current Step Hit Rate: " << StepHitRate();
+    } else if (current_steps_id_ == stop_step_id_) {
+      use_autotune_ = false;
+      update_use_autotune_ = false;
+      // clean cache according miss rate
+      float miss_rate = static_cast<float>(1) - RecentHitRate();
+      AutoTuneCache::Instance().Clean(miss_rate);
+      VLOG(3) << "Recent Miss Rate: " << miss_rate;
+    }
   }
 
   int64_t StepID() { return current_steps_id_; }
@@ -98,8 +99,16 @@ class AutoTuneStatus {
     return step_hit_rate;
   }
 
-  // Do not call the function
+  void SetAutoTuneRange(int64_t start, int64_t stop) {
+    start_step_id_ = start;
+    stop_step_id_ = stop;
+  }
+
+ private:
+  AutoTuneStatus() = default;
+
   void Init() {
+    update_use_autotune_ = use_autotune_;
     current_steps_id_ = -1;
     previous_hits_ = 0;
     previous_misses_ = 0;
@@ -107,12 +116,11 @@ class AutoTuneStatus {
     AutoTuneCache::Instance().Clean(1.0);
   }
 
- private:
-  AutoTuneStatus() = default;
-  int64_t auto_tune_start_step_id_ = 0;
-  int64_t auto_tune_steps_ = 10;
+  int64_t start_step_id_ = 0;
+  int64_t stop_step_id_ = 10;
   int64_t current_steps_id_ = -1;
   bool use_autotune_ = false;
+  bool update_use_autotune_ = false;
   int64_t previous_hits_ = 0;
   int64_t previous_misses_ = 0;
   std::vector<float> step_hit_rates_;
