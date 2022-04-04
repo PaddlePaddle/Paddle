@@ -61,7 +61,6 @@
   kernel :
     func : add
   backward : add_grad
-  # no_need_buffer : x, y
 
 - api : add_n
   args : (Tensor[] x)
@@ -147,7 +146,6 @@
   kernel :
     func : argsort
   backward : argsort_grad
-  # no_need_buffer : x
 
 # asin
 - api : asin
@@ -455,7 +453,6 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
-  # no_need_buffer : x
 
 - api : digamma
   args : (Tensor x)
@@ -666,9 +663,9 @@
 - api : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : ReduceInferMetaBase
-  kernel : 
+  kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
 
@@ -817,14 +814,13 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
-  # no_need_buffer : x
 
 - api : index_select
   args : (Tensor x, Tensor index,  int dim)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : IndexSelectInferMeta
-  kernel : 
+  kernel :
     func : index_select
     data_type : x
   backward : index_select_grad
@@ -1283,7 +1279,7 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
-  backward : pool2d_grad 
+  backward : pool2d_grad
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1393,9 +1389,9 @@
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : RollInferMeta
-  kernel : 
+  kernel :
     func : roll
   backward : roll_grad
 
@@ -1428,7 +1424,6 @@
   kernel :
     func : scatter
   backward : scatter_grad
-  # no_need_buffer : updates
 
 - api : scatter_nd_add
   args : (Tensor x, Tensor index, Tensor updates)
@@ -1439,7 +1434,6 @@
   kernel :
     func : scatter_nd_add
   backward : scatter_nd_add_grad
-  # no_need_buffer : updates
 
 - api : searchsorted
   args : (Tensor sorted_sequence, Tensor value, bool out_int32, bool right)
@@ -1633,7 +1627,6 @@
   kernel :
     func : subtract
   backward : subtract_grad
-  # no_need_buffer : x, y
 
 - api : sum
   args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
@@ -1707,7 +1700,6 @@
   kernel :
     func : tile
   backward : tile_grad
-  # no_need_buffer : x
 
 - api : top_k
   args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
@@ -1726,7 +1718,6 @@
   kernel :
     func : trace
   backward : trace_grad
-  no_need_buffer : x
 
 - api : transpose
   args : (Tensor x, int[] axis)
@@ -1749,9 +1740,9 @@
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : TrilTriuInferMeta
-  kernel : 
+  kernel :
     func : tril_triu
   backward : tril_triu_grad
 
@@ -1773,7 +1764,6 @@
   kernel :
     func : unfold
   backward : unfold_grad
-  # no_need_buffer : x
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)
@@ -1812,7 +1802,6 @@
     func : WhereIndexInferMeta
   kernel :
     func : where_index
-  # no_need_buffer : x, y
 
 # yolo_box
 - api : yolo_box
