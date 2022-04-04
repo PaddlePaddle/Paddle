@@ -182,7 +182,8 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_equal(x, y)
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.equal(x, y)
