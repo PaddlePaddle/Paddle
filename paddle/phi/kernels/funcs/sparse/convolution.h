@@ -79,18 +79,6 @@ inline HOSTDEVICE IntT PointToIndex(const IntT& batch,
          y * dims[3] + x;
 }
 
-/**
- * @brief convert the indices to a index
- * the length of indices must equal dims.size()
-**/
-template <typename Dim>
-inline HOSTDEVICE int IndicesToIndex(const int* indices, const Dim& dims) {
-  int index = 0;
-  for (int i = 0; i < dims.size(); i++) {
-  }
-  return index;
-}
-
 // TODO(zhangkaihuo): use division and multiply to optimize
 // modulo operation
 template <typename Dim, typename IntT = int>
