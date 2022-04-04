@@ -35,7 +35,7 @@ import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
-
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
@@ -1460,7 +1460,34 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
+            with _test_eager_guard():
+                self.check_with_place_func(
+                    model_file=model_file,
+                    delta=delta,
+                    check_error_log=check_error_log,
+                    need_envs=need_envs,
+                    log_name=log_name)
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
+        else:
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
 
+    def check_with_place_func(self,
+                              model_file,
+                              delta=1e-3,
+                              check_error_log=False,
+                              need_envs={},
+                              log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         if self._gloo_mode:
