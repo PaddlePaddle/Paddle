@@ -31,9 +31,10 @@ def PD2TRT_Conv2d_Lower : Pat<
         (PD_Conv2dOp:$old_value $Input, $Filter, $strides, $paddings, $padding_algorithm, $groups, $dilations, $data_format),
         (createTRTConv2dOp $old_value)>;
 
+def createTrtPoolingOp : NativeCodeCall<"::infrt::trt::CreatePaddleTrtPoolingOp($_builder, $0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)">;
 def PD2TRT_Pooling_Lower : Pat<
         (PD_Pool2dOp $Input, $pooling_type, $ksize, $global_pooling, $strides, $paddings, $exclusive, $adaptive, $ceil_mode, $data_format, $padding_algorithm),
-        (TRT_PoolingOp $Input, (INFRT_createI32Attr<"0">)/*kmax*/, $ksize, $strides, $paddings, $padding_algorithm)>;
+        (createTrtPoolingOp $Input, $pooling_type, $ksize, $global_pooling, $strides, $paddings, $exclusive, $adaptive, $ceil_mode, $data_format, $padding_algorithm)>;
 
 def PD2TRT_MatrixMultipl_Lower : Pat<
         (PD_MulOp $Input1, $Input2, $x_num_col_dims, $y_num_col_dims),
@@ -42,6 +43,12 @@ def PD2TRT_MatrixMultipl_Lower : Pat<
 def PD2TRT_SoftMax_Lower : Pat<
         (PD_SoftmaxOp $Input, $axis, $_),
         (TRT_SoftMaxOp $Input, $axis)>;
+
+// pd.matmul_v2 + pd.elementwise_add -> trt.fc
+def createTrtFcOp : NativeCodeCall<"::infrt::trt::createTrtFcOp($_builder, $0, $1, $2, $3)">;
+def PD2TRT_Fc_Lower : Pat<
+        (PD_Elementwise_addOp:$elt_out (PD_Matmul_v2Op $X, $Y, $trans_x, $trans_y), $elt_y, $axis),
+        (createTrtFcOp $X, $Y, $elt_y, $elt_out)>;
 
 def createTRTShuffledOp : NativeCodeCall<"createTRTShuffledOp($_builder, $0.getDefiningOp(), $1, $2, $3)">;
 

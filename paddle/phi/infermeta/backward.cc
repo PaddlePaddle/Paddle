@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+
 namespace phi {
 
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
@@ -103,6 +105,69 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config) {
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto softmax_rank = softmax_dims.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+  PADDLE_ENFORCE_LT(axis,
+                    softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+
+  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  for (int i = 0; i < softmax_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(
+            softmax_dims[i],
+            labels_dims[i],
+            phi::errors::InvalidArgument(
+                "Input(Logits) and Input(Label) should in same shape in "
+                "dimensions except axis."));
+      }
+    }
+  }
+
+  if (soft_label) {
+    if (config.is_runtime ||
+        (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
+      PADDLE_ENFORCE_EQ(softmax_dims[axis],
+                        labels_dims[axis],
+                        phi::errors::InvalidArgument(
+                            "If Attr(soft_label) == true, "
+                            "the axis dimension of "
+                            "Input(X) and Input(Label) should be equal."));
+    }
+  } else {
+    if (config.is_runtime || labels_dims[axis] > 0) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[axis],
+          1UL,
+          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                       "the axis dimension of "
+                                       "Input(Label) should be 1."));
+    }
+  }
+
+  logits_grad->set_dims(softmax.dims());
+  logits_grad->set_dtype(softmax.dtype());
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -178,6 +243,72 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void NllLossGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& label,
+                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& total_weight,
+                          const MetaTensor& out_grad,
+                          int64_t ignore_index,
+                          const std::string& reduction,
+                          MetaTensor* dx,
+                          MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  const auto& dout_dims = out_grad.dims();
+  bool contain_unknown_dim =
+      phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dout_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    auto batch_size = x_dims[0];
+    if (x_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(dout_dims.size(),
+                        1,
+                        phi::errors::InvalidArgument(
+                            "The dimensions of Input(Out@Grad) must be 1"));
+      if (reduction == "none") {
+        PADDLE_ENFORCE_EQ(
+            dout_dims[0],
+            batch_size,
+            phi::errors::InvalidArgument(
+                "The unreduced size ofInput(Out@Grad) must be the "
+                "same as batch_size."));
+      } else {
+        PADDLE_ENFORCE_EQ(dout_dims[0],
+                          1,
+                          phi::errors::InvalidArgument(
+                              "The reduced size of Input(Out@Grad) must be 1"));
+      }
+    } else if (x_dims.size() == 4) {
+      if (reduction == "none") {
+        PADDLE_ENFORCE_EQ(
+            dout_dims.size(),
+            3,
+            phi::errors::InvalidArgument(
+                "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
+                dout_dims.size()));
+        PADDLE_ENFORCE_EQ(dout_dims[0] == label_dims[0] &&
+                              dout_dims[1] == label_dims[1] &&
+                              dout_dims[2] == label_dims[2],
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The dimensions of Input(Out@Grad) must be match "
+                              "to Input(Label) dimensions."));
+      } else {
+        PADDLE_ENFORCE_EQ(dout_dims[0],
+                          1,
+                          phi::errors::InvalidArgument(
+                              "The reduced size of Input(Out@Grad) must be 1"));
+      }
+    }
+  }
+
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(x.dtype());
+  }
 }
 
 void PoolGradInferMeta(const MetaTensor& x,

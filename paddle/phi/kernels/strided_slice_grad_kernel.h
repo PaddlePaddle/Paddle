@@ -14,21 +14,31 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+void StridedSliceRawGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& out_grad,
+                               const std::vector<int>& axes,
+                               const IntArray& starts,
+                               const IntArray& ends,
+                               const IntArray& strides,
+                               const std::vector<int>& infer_flags,
+                               const std::vector<int>& decrease_axis,
+                               DenseTensor* x_grad);
 
 template <typename T, typename Context>
 void StridedSliceGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& out_grad,
                             const std::vector<int>& axes,
-                            const ScalarArray& starts,
-                            const ScalarArray& ends,
-                            const ScalarArray& strides,
-                            const std::vector<int>& infer_flags,
-                            const std::vector<int>& decrease_axis,
+                            const IntArray& starts,
+                            const IntArray& ends,
+                            const IntArray& strides,
                             DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -37,9 +47,9 @@ void StridedSliceArrayGradKernel(
     const std::vector<const DenseTensor*>& x,
     const std::vector<const DenseTensor*>& out_grad,
     const std::vector<int>& axes,
-    const ScalarArray& starts,
-    const ScalarArray& ends,
-    const ScalarArray& strides,
+    const IntArray& starts,
+    const IntArray& ends,
+    const IntArray& strides,
     const std::vector<int>& infer_flags,
     const std::vector<int>& decrease_axis,
     std::vector<DenseTensor*> x_grad);

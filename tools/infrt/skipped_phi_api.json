@@ -1,4 +1,4 @@
 {
-"phi_apis":["conj"],
+"phi_apis":["conj", "nll_loss", "flatten", "expand_as", "dropout"],
 "phi_kernels":["equal_all"]
 }

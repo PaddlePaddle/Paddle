@@ -108,7 +108,10 @@ namespace tensorrt {
     } else {
       // TODO(wilber): Replace with the op name that generates the weights.
       std::unordered_set<std::string> weight_flags{
-          "phi_dt.tensor_map_get_tensor", "phi_dt.create_dense_tensor.cpu"};
+          "phi_dt.tensor_map_get_tensor",
+          "phi_dt.create_dense_tensor.cpu",
+          "phi_dt.create_inited_dense_tensor.cpu.f32",
+          "phi_dt.create_host_inited_dense_tensor.f32"};
       if (!weight_flags.count(
               operand.getDefiningOp()->getName().getStringRef().str())) {
         trt_bind_inputs[input_name] = t;
@@ -126,6 +129,7 @@ namespace tensorrt {
 
   // TODO(wilber): Find a way to add layer.
   for (auto& operation : block.without_terminator()) {
+    VLOG(1) << "process " << operation.getName().getStringRef().str() << " ...";
     if (trt::ActivationOp op = llvm::dyn_cast<trt::ActivationOp>(operation)) {
       ActivationFunc(
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
@@ -135,6 +139,8 @@ namespace tensorrt {
     } else if (trt::ConvolutionOp op =
                    llvm::dyn_cast<trt::ConvolutionOp>(operation)) {
       ConvFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::PoolingOp op = llvm::dyn_cast<trt::PoolingOp>(operation)) {
+      PoolFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";
     }
