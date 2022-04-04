@@ -26,9 +26,7 @@ using GraphWithStats = std::pair<ir::Graph*, int>;
 class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
   GraphWithStats FuseFC(const std::string& name_scope,
-                           const GraphWithStats& graph_with_stats, bool asX) const;
-  GraphWithStats FuseProjectionFC(const std::string& name_scope,
-                                  const GraphWithStats& graph_with_stats) const;
+                           const GraphWithStats& graph_with_stats, bool as_X) const;
 
  public:
   FCResidualConnectionMKLDNNFusePass();

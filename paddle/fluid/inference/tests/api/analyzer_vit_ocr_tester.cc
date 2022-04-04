@@ -22,7 +22,6 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
                 FLAGS_infer_model + "/inference.pdiparams");
 
-  cfg->DisableGpu();
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
     cfg->SwitchIrOptim();
@@ -34,6 +33,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   }
 }
 
+#ifdef PADDLE_WITH_MKLDNN
 // Check the fuse status
 TEST(Analyzer_vit_ocr, fuse_status) {
   AnalysisConfig cfg;
@@ -47,6 +47,7 @@ TEST(Analyzer_vit_ocr, fuse_status) {
   CHECK_EQ(fuse_status.at("conv_activation_mkldnn_fuse"), 2);
   CHECK_EQ(fuse_status.at("fc_elementwise_add_mkldnn_fuse"), 16);
 }
+#endif
 
 }  // namespace analysis
 }  // namespace inference

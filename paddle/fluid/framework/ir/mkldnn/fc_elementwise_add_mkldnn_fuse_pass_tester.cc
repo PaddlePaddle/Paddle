@@ -88,31 +88,6 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsY) {
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
 }
 
-TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX_FCBiasAsY) {
-  auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e", "f"},
-                                     {"bias", "weights", "bias2", "weights2"});
-
-  test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-
-  // left branch
-  Create_Op_FC(&prog, {{"Input", "a"}, {"Bias", "bias"}, {"W", "weights"}},
-               {{"Out", "f"}});
-
-  // right branch
-  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias2"}, {"W", "weights2"}},
-               {{"Out", "c"}});
-
-  Create_Op_elementwise_add(&prog, {{"X", "f"}, {"Y", "c"}}, {{"Out", "d"}});
-  test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
-
-  Graph graph(prog);
-
-  EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "e", nodes_removed, nodes_added));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 0}}));
-}
-
 TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
   auto prog =
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
