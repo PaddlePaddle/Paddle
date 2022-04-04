@@ -259,12 +259,16 @@ def binary_cross_entropy_with_logits(logit,
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
                              'str_value', '1.0', 'shape', [1])
-        out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if in_dygraph_mode():
+            out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+                logit, label, False, -100)
+        else:
+            out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         if pos_weight is not None:
             log_weight = _C_ops.elementwise_add(
                 _C_ops.elementwise_mul(label,
@@ -2018,14 +2022,14 @@ def sigmoid_focal_loss(logit,
                 "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".
                 format(normalizer_dims))
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
                              'str_value', '1.0', 'shape', logit.shape)
         if in_dygraph_mode():
-            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(logit,
-                                                                        label)
+            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+                logit, label.False, -100)
         else:
             loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         pred = _C_ops.sigmoid(logit)
