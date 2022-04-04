@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
@@ -76,12 +78,16 @@ class GradSlotMeta {
     return *meta_.get();
   }
 
+  void SetPlace(const phi::Place& place) { place_ = place; }
+  const phi::Place& GetPlace() const { return place_; }
+
  private:
   bool stop_gradient_{false};
+  phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
-class GradNodeBase {
+class GradNodeBase : public std::enable_shared_from_this<GradNodeBase> {
  public:
   GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
@@ -102,7 +108,7 @@ class GradNodeBase {
    * is better choice to fit this format.
    * **/
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
       bool create_graph = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
@@ -143,7 +149,6 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
-
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -274,5 +279,30 @@ class Edge {
   size_t in_rank_;
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
+
+inline void CheckTensor(const paddle::experimental::Tensor& pre,
+                        const paddle::experimental::Tensor& post) {
+  if (!pre.initialized() && post.initialized()) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "The tensor in before and after hook are not consistent"));
+  }
+  if (pre.initialized() && post.initialized()) {
+    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+            << paddle::framework::DataType2String(post.dtype());
+    PADDLE_ENFORCE_EQ(
+        pre.dtype(), post.dtype(),
+        paddle::platform::errors::PermissionDenied(
+            "The dtype of tensor before(%s) and after(%s) hook are not "
+            "consistent",
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+    PADDLE_ENFORCE_EQ(
+        pre.inner_place(), post.inner_place(),
+        paddle::platform::errors::PermissionDenied(
+            "The place of tensor before(%s) and after(%s) "
+            "hook are not consistent",
+            pre.inner_place().DebugString(), post.inner_place().DebugString()));
+  }
+}
 
 }  // namespace egr

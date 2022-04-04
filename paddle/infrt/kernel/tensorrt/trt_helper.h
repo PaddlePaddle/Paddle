@@ -28,13 +28,13 @@ namespace infrt {
 namespace kernel {
 namespace tensorrt {
 
-static nvinfer1::DataType TensorTypeToWeightType(phi::DataType tensor_type) {
+static nvinfer1::DataType TensorTypeToWeightType(::phi::DataType tensor_type) {
   switch (tensor_type) {
-    case phi::DataType::FLOAT32:
+    case ::phi::DataType::FLOAT32:
       return nvinfer1::DataType::kFLOAT;
-    case phi::DataType::INT32:
+    case ::phi::DataType::INT32:
       return nvinfer1::DataType::kINT32;
-    case phi::DataType::FLOAT16:
+    case ::phi::DataType::FLOAT16:
       return nvinfer1::DataType::kHALF;
     default:
       llvm_unreachable("should not reach here");
@@ -52,7 +52,7 @@ static nvinfer1::Dims ArrayAttrToNvDims(const mlir::ArrayAttr& int_array_attr) {
   return dims;
 }
 
-static nvinfer1::Weights TensorToWeights(phi::DenseTensor* tensor) {
+static nvinfer1::Weights TensorToWeights(::phi::DenseTensor* tensor) {
   CHECK_NOTNULL(tensor);
   nvinfer1::Weights ret;
   ret.type = TensorTypeToWeightType(tensor->dtype());

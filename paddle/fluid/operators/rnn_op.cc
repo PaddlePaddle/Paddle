@@ -12,11 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/rnn_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,69 +26,6 @@ namespace operators {
 class RNNOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "RNN");
-    OP_INOUT_CHECK(ctx->HasInputs("PreState"), "Input", "PreState", "RNN");
-
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "RNN");
-    OP_INOUT_CHECK(ctx->HasOutputs("State"), "Output", "State", "RNN");
-
-    auto in_dims = ctx->GetInputDim("Input");
-    auto pre_state_dims = ctx->GetInputsDim("PreState");
-
-    PADDLE_ENFORCE_EQ(in_dims.size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input in RNN  must be 3. But "
-                          "received Input's rank is %d.",
-                          in_dims.size()));
-
-    if (ctx->HasInput("SequenceLength")) {
-      auto seq_dims = ctx->GetInputDim("SequenceLength");
-      PADDLE_ENFORCE_EQ(
-          in_dims[1], seq_dims[0],
-          platform::errors::InvalidArgument(
-              "The size of SequenceLength has to equal the batch_size. But "
-              "received batch_size is %d and the size of SequenceLength is %d.",
-              in_dims[1], seq_dims[0]));
-    }
-
-    PADDLE_ENFORCE_EQ(pre_state_dims[0].size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The rank of PreState in RNN  must be 3. But "
-                          "the received rank is %d.",
-                          pre_state_dims[0].size()));
-    size_t i = 0;
-    for (; i < pre_state_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          in_dims[1], pre_state_dims[i][1],
-          platform::errors::InvalidArgument(
-              "The second dimension size (representing for batch size) of "
-              "Input and PreState should be equal. But received %d and %d.",
-              in_dims[1], pre_state_dims[i][1]));
-      PADDLE_ENFORCE_EQ(
-          pre_state_dims[0], pre_state_dims[i],
-          platform::errors::InvalidArgument(
-              "The dims of all tensors in PreState should be same. But "
-              "received PreState[0] is %s and PreState[%d] is %s.",
-              pre_state_dims[0], i, pre_state_dims[i]));
-    }
-    auto mode = ctx->Attrs().Get<std::string>("mode");
-    size_t num_state = mode == "LSTM" ? 2 : 1;
-    PADDLE_ENFORCE_EQ(
-        i, num_state,
-        platform::errors::InvalidArgument(
-            "The number of tensors in PreState of %s should be %d, "
-            "but received %d.",
-            mode, 2, i));
-
-    auto out_dims = in_dims;
-    auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
-    bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
-    out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputsDim("State", pre_state_dims);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -249,15 +188,11 @@ class NotImpleKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(rnn, RnnInferShapeFunctor,
+                            PD_INFER_META(phi::RnnInferMeta));
+
 REGISTER_OPERATOR(rnn, ops::RNNOp, ops::RNNOpMaker,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RNNGradOpMaker<paddle::imperative::OpBase>);
+                  ops::RNNGradOpMaker<paddle::imperative::OpBase>,
+                  RnnInferShapeFunctor);
 REGISTER_OPERATOR(rnn_grad, ops::RNNGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    rnn, ops::RNNCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RNNCPUKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    rnn_grad, ops::RNNCPUGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RNNCPUGradKernel<paddle::platform::CPUDeviceContext, double>);

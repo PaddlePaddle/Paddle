@@ -75,6 +75,9 @@ class CollectiveController(Controller):
         job_endpoints = [i['endpoints'] for i in peer_list]
 
         self.pod.reset()
+        selected_dev_key = self.ctx.node.device.get_selected_device_key()
+        selected_dev_list = self.ctx.node.device.get_selected_devices(
+            self.ctx.args.devices)
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -90,9 +93,9 @@ class CollectiveController(Controller):
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if self.pod.replicas == 1:
-                e.update(self.ctx.node.device.selected_flags())
+                e.update({selected_dev_key: ",".join(selected_dev_list)})
             else:
-                e.update(self.ctx.node.device.selected_flags(i))
+                e.update({selected_dev_key: selected_dev_list[i]})
             self.add_container(envs=e, log_tag=i)
 
         return True
@@ -115,46 +118,6 @@ class CollectiveElasticController(CollectiveController):
 
         self.master.register_heartbeat(self.job.id, self.pod.name)
 
-    def watch(self) -> bool:
-        '''
-        watch self and peer status, return true to exit
-        '''
-
-        self.ctx.logger.info("Watching {}".format(self.pod))
-        while not self.ctx.status.is_done():
-            # self status
-            status = self.pod.watch(timeout=2)
-            self.ctx.logger.debug("Pod status {}, Ctx status {}".format(
-                status, self.ctx.status.current()))
-
-            # completed
-            if status == self.ctx.status.COMPLETED:
-                self.master.set_status(status)
-                self.ctx.status.complete()
-                self.ctx.logger.info("Pod complete {}".format(status))
-                return True
-
-            # self failure
-            elif status == self.ctx.status.FAILED:
-                self.master.set_status(status)
-                self.master.restart_peer()
-                self.ctx.logger.info("Pod failed {}".format(status))
-                self.pod.stop()
-
-                if self.ctx.args.elastic_level <= 0:
-                    return True
-                else:
-                    return False
-
-            # peer failure
-            if self.ctx.status.is_restarting() and self.master.get_status(
-            ) != self.ctx.status.COMPLETED:
-                self.pod.stop()
-                return False
-
-            #peers = self.master.fetch_peer_alive()
-            #print("peers {}".format(peers))
-
     def run(self):
 
         timeout = self.ctx.args.elastic_timeout if self.job.elastic else self.ctx.args.elastic_timeout * 10
@@ -164,12 +127,14 @@ class CollectiveElasticController(CollectiveController):
 
             self.build_job()
 
+            self.ctx.logger.info("Waiting peer ready...")
+
             ok, replicas = self.master.wait_peer_ready(
                 self.job.replicas_min, self.job.replicas_max, timeout)
             if ok:
                 self.job.replicas = replicas
             else:
-                self.ctx.logger.warnning("peer not ready {}".format(self.job))
+                self.ctx.logger.warning("peer not ready {}".format(self.job))
                 break
 
             self.ctx.logger.debug("Run {}".format(self.job))

@@ -14,10 +14,10 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer, _in_eager_mode
+from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -26,6 +26,9 @@ from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
 
 __all__ = []
+
+# Consistent with kDefaultDim from C++ Backend
+K_DEFAULT_DIM = 9
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -133,8 +136,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [10, 3, 5, 5]
 
     """
-    op_type = 'matmul_v2'
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matmul(x, y, transpose_x, transpose_y)
+
+    if _in_legacy_dygraph():
+        op_type = 'matmul_v2'
         op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
@@ -147,7 +153,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
             check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
+                val, name,
+                ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+                'matmul')
 
     __check_input(x, y)
 
@@ -246,7 +254,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        if paddle.in_dynamic_mode():
+
+        if in_dygraph_mode():
+            if dim is None:
+                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+            return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
+        if _in_legacy_dygraph():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
                                              'reduce_all', True)
@@ -283,10 +296,16 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            if axis is None: axis = -1
+            return _C_ops.final_state_p_norm(input, porder, axis, 1e-12,
+                                             keepdim, asvector)
+
+        if _in_legacy_dygraph():
             if axis is None: axis = -1
             return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
                                  'keepdim', keepdim, 'asvector', asvector)
+
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -1145,26 +1164,28 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]
             #  [0. 0. 0.]]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_cross(x, y, axis)
-        if axis is not None:
-            return _C_ops.cross(x, y, 'dim', axis)
+    if in_dygraph_mode():
+        axis = K_DEFAULT_DIM if axis is None else axis
+        return _C_ops.final_state_cross(x, y, axis)
+    else:
+        if _in_legacy_dygraph():
+            if axis is not None:
+                return _C_ops.cross(x, y, 'dim', axis)
+            else:
+                return _C_ops.cross(x, y)
         else:
-            return _C_ops.cross(x, y)
+            helper = LayerHelper("cross", **locals())
+            out = helper.create_variable_for_type_inference(x.dtype)
+            attrs = dict()
+            attrs['dim'] = axis
 
-    helper = LayerHelper("cross", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    attrs = dict()
-    attrs['dim'] = axis
-
-    helper.append_op(
-        type='cross',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+            helper.append_op(
+                type='cross',
+                inputs={'X': x,
+                        'Y': y},
+                outputs={'Out': out},
+                attrs=attrs)
+            return out
 
 
 def cholesky(x, upper=False, name=None):
@@ -1206,8 +1227,12 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky(x, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky(x, "upper", upper)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -1391,7 +1416,10 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_histogram(input, bins, min, max)
+
+    if _in_legacy_dygraph():
         return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
@@ -1438,7 +1466,10 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if paddle.in_dynamic_mode():
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_bincount(x, weights, minlength)
+
+    if _in_legacy_dygraph():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1491,35 +1522,38 @@ def mv(x, vec, name=None):
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_mv(x, vec)
-        out = _C_ops.mv(x, vec)
-        return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_mv(x, vec)
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.mv(x, vec)
+            return out
+        else:
 
-    def __check_input(x, vec):
-        var_names = {'x': x, 'vec': vec}
-        for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'], 'mv')
-        x_shape = list(x.shape)
-        vec_shape = list(vec.shape)
-        if len(x_shape) != 2:
-            raise ValueError(
-                "x should be 2-dimensional. But received x's dimention: {}".
-                format(x_shape))
-        if len(vec_shape) != 1:
-            raise ValueError(
-                "vec should be 1-dimensional. But received vec's dimention: {}".
-                format(vec_shape))
+            def __check_input(x, vec):
+                var_names = {'x': x, 'vec': vec}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(val, name, ['float32', 'float64'],
+                                             'mv')
+                x_shape = list(x.shape)
+                vec_shape = list(vec.shape)
+                if len(x_shape) != 2:
+                    raise ValueError(
+                        "x should be 2-dimensional. But received x's dimention: {}".
+                        format(x_shape))
+                if len(vec_shape) != 1:
+                    raise ValueError(
+                        "vec should be 1-dimensional. But received vec's dimention: {}".
+                        format(vec_shape))
 
-    __check_input(x, vec)
+            __check_input(x, vec)
 
-    helper = LayerHelper('mv', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='mv', inputs={'X': x,
-                           'Vec': vec}, outputs={'Out': out})
-    return out
+            helper = LayerHelper('mv', **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='mv', inputs={'X': x,
+                                   'Vec': vec}, outputs={'Out': out})
+            return out
 
 
 def det(x, name=None):
@@ -1749,7 +1783,10 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matrix_power(x, n)
+
+    if _in_legacy_dygraph():
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -2267,7 +2304,10 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigh(x, UPLO)
+
+    if _in_legacy_dygraph():
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):
@@ -2737,7 +2777,10 @@ def cholesky_solve(x, y, upper=False, name=None):
         print(out)
         # [-2.5, -7, 9.5]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky_solve(x, y, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())

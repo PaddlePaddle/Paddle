@@ -40,7 +40,7 @@ struct PSHost {
   // |---ip---|---port---|--rank--|
   // |-32bit--|--20bit---|--12bit-|
 
-  uint64_t serialize_to_uint64() {
+  uint64_t SerializeToUint64() {
     uint64_t host_label = 0;
     host_label = inet_addr(ip.c_str());
     host_label = host_label << 32;
@@ -49,7 +49,7 @@ struct PSHost {
     return host_label;
   }
 
-  void parse_from_uint64(uint64_t host_label) {
+  void ParseFromUint64(uint64_t host_label) {
     static uint64_t rank_label_mask = (1L << 12) - 1;
     static uint64_t port_label_mask = (1L << 20) - 1;
     rank = host_label & rank_label_mask;
@@ -58,17 +58,17 @@ struct PSHost {
     ip = inet_ntoa(*(in_addr *)&ip_addr);  // NOLINT
   }
 
-  std::string to_string() {
+  std::string ToString() {
     std::stringstream s;
     s << "host: " << ip;
     s << " port: " << port;
     s << " rank: " << rank;
-    s << " uint: " << serialize_to_uint64();
+    s << " uint: " << SerializeToUint64();
     return s.str();
   }
 
   // for open source parameter server
-  std::string serialize_to_string() {
+  std::string SerializeToString() {
     std::stringstream s;
     s << ip << ":";
     s << port << ":";
@@ -76,16 +76,16 @@ struct PSHost {
     return s.str();
   }
 
-  void parse_from_string(std::string endpoint) {
+  void ParseFromString(std::string endpoint) {
     std::vector<std::string> endpoint_info;
-    string_split(endpoint, ':', &endpoint_info);
+    StringSplit(endpoint, ':', &endpoint_info);
     ip = endpoint_info[0];
     port = std::stoi(endpoint_info[1]);
     rank = std::stoi(endpoint_info[2]);
   }
 
-  void string_split(const std::string &str, char sep,
-                    std::vector<std::string> *pieces, bool ignore_null = true) {
+  void StringSplit(const std::string &str, char sep,
+                   std::vector<std::string> *pieces, bool ignore_null = true) {
     pieces->clear();
     if (str.empty()) {
       if (!ignore_null) {
@@ -111,63 +111,60 @@ class PSEnvironment {
   explicit PSEnvironment() {}  // NOLINT
   virtual ~PSEnvironment() {}
 
-  virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsServers(uint64_t *host_sign_list, int node_num) {
     return 0;
   }
-  virtual int32_t set_ps_servers(
+  virtual int32_t SetPsServers(
       const std::vector<std::string> *host_endpoint_list, int node_num) {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsClients(uint64_t *host_sign_list, int node_num) {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(std::string *host_endpoint_list,
-                                 int node_num) {
+  virtual int32_t SetPsClients(std::string *host_endpoint_list, int node_num) {
     return 0;
   }
-  virtual uint64_t get_local_host_sign() { return 0; }
-  virtual std::vector<PSHost> get_ps_servers() const { return _ps_server_list; }
-  virtual int32_t registe_ps_server(const std::string &ip, uint32_t port,
-                                    int32_t rank) {
-    return registe_ps_host(ip, port, rank, _ps_server_list,
-                           _ps_server_sign_set);
+  virtual uint64_t GetLocalHostSign() { return 0; }
+  virtual std::vector<PSHost> GetPsServers() const { return _ps_server_list; }
+  virtual int32_t RegistePsServer(const std::string &ip, uint32_t port,
+                                  int32_t rank) {
+    return RegistePsHost(ip, port, rank, _ps_server_list, _ps_server_sign_set);
   }
 
-  virtual std::vector<PSHost> get_ps_clients() const { return _ps_client_list; }
-  virtual int32_t registe_ps_client(const std::string &ip, uint32_t port,
-                                    int32_t rank) {
-    return registe_ps_host(ip, port, rank, _ps_client_list,
-                           _ps_client_sign_set);
+  virtual std::vector<PSHost> GetPsClients() const { return _ps_client_list; }
+  virtual int32_t RegistePsClient(const std::string &ip, uint32_t port,
+                                  int32_t rank) {
+    return RegistePsHost(ip, port, rank, _ps_client_list, _ps_client_sign_set);
   }
 
-  virtual std::vector<uint64_t> get_client_info() {
+  virtual std::vector<uint64_t> GetClientInfo() {
     std::vector<uint64_t> client_info;
     for (auto &i : _ps_client_list) {
-      client_info.push_back(i.serialize_to_uint64());
+      client_info.push_back(i.SerializeToUint64());
     }
     return client_info;
   }
 
-  virtual std::vector<std::string> get_client_info(bool use_string_endpoint) {
+  virtual std::vector<std::string> GetClientInfo(bool use_string_endpoint) {
     if (use_string_endpoint) {
       std::vector<std::string> client_info;
       for (auto &i : _ps_client_list) {
-        client_info.push_back(i.serialize_to_string());
+        client_info.push_back(i.SerializeToString());
       }
       return client_info;
     }
     return {};
   }
 
-  virtual void set_trainers(int trainers) { trainers_ = trainers; }
+  virtual void SetTrainers(int trainers) { trainers_ = trainers; }
 
-  virtual int get_trainers() { return trainers_; }
+  virtual int GetTrainers() { return trainers_; }
 
  protected:
   //注册一个host //  NOLINT
-  virtual int32_t registe_ps_host(
+  virtual int32_t RegistePsHost(
       const std::string &ip, uint32_t port, int32_t rank,
       std::vector<PSHost> &host_list,            // NOLINT
       std::unordered_set<uint64_t> &sign_set) {  // NOLINT
@@ -198,15 +195,15 @@ class PaddlePSEnvironment : public PSEnvironment {
   explicit PaddlePSEnvironment() {}  // NOLINT
   virtual ~PaddlePSEnvironment() {}
 
-  virtual int32_t set_ps_servers(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsServers(uint64_t *host_sign_list, int node_num) {
     _ps_server_list.clear();
     _ps_server_sign_set.clear();
     for (int i = 0; i < node_num; ++i) {
       if (host_sign_list[i] > 0) {
         PSHost host;
-        host.parse_from_uint64(host_sign_list[i]);
+        host.ParseFromUint64(host_sign_list[i]);
         _ps_server_list.push_back(host);
-        _ps_server_sign_set.insert(host.serialize_to_uint64());
+        _ps_server_sign_set.insert(host.SerializeToUint64());
       }
     }
     std::sort(
@@ -215,14 +212,14 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual int32_t set_ps_servers(const std::vector<std::string> *host_sign_list,
-                                 int node_num) {
+  virtual int32_t SetPsServers(const std::vector<std::string> *host_sign_list,
+                               int node_num) {
     _ps_server_list.clear();
     _ps_server_sign_set.clear();
     for (int i = 0; i < node_num; ++i) {
       if (host_sign_list->at(i) != "") {
         PSHost host;
-        host.parse_from_string(host_sign_list->at(i));
+        host.ParseFromString(host_sign_list->at(i));
         _ps_server_list.push_back(host);
         _ps_server_sign_set.insert(host.rank);
       }
@@ -233,15 +230,15 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsClients(uint64_t *host_sign_list, int node_num) {
     _ps_client_list.clear();
     _ps_client_sign_set.clear();
     for (int i = 0; i < node_num; ++i) {
       if (host_sign_list[i] > 0) {
         PSHost host;
-        host.parse_from_uint64(host_sign_list[i]);
+        host.ParseFromUint64(host_sign_list[i]);
         _ps_client_list.push_back(host);
-        _ps_client_sign_set.insert(host.serialize_to_uint64());
+        _ps_client_sign_set.insert(host.SerializeToUint64());
       }
     }
     std::sort(
@@ -250,14 +247,14 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual int32_t set_ps_clients(const std::vector<std::string> *host_sign_list,
-                                 int node_num) {
+  virtual int32_t SetPsClients(const std::vector<std::string> *host_sign_list,
+                               int node_num) {
     _ps_client_list.clear();
     _ps_client_sign_set.clear();
     for (int i = 0; i < node_num; ++i) {
       if (host_sign_list->at(i) != "") {
         PSHost host;
-        host.parse_from_string(host_sign_list->at(i));
+        host.ParseFromString(host_sign_list->at(i));
         _ps_client_list.push_back(host);
         _ps_client_sign_set.insert(host.rank);
       }
@@ -269,9 +266,9 @@ class PaddlePSEnvironment : public PSEnvironment {
     return 0;
   }
 
-  virtual uint64_t get_local_host_sign() {
+  virtual uint64_t GetLocalHostSign() {
     if (_ps_client_list.size() > 0) {
-      return _ps_client_list[0].serialize_to_uint64();
+      return _ps_client_list[0].SerializeToUint64();
     } else {
       return 0;
     }

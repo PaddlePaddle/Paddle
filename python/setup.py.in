@@ -273,6 +273,7 @@ packages=['paddle',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
           'paddle.incubate',
+          'paddle.incubate.autograd',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
@@ -307,6 +308,7 @@ packages=['paddle',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
           'paddle.distributed.auto_parallel.tuner',
+          'paddle.distributed.auto_parallel.cost',
           'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
@@ -361,6 +363,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.nn.functional',
           'paddle.incubate.nn.layer',
+          'paddle.incubate.optimizer.functional',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -733,7 +736,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.launch.__main__:launch'
+                'fleetrun = paddle.distributed.launch.main:launch'
             ]
         },
         classifiers=[

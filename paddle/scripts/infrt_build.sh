@@ -46,7 +46,9 @@ function update_pd_ops() {
    python3 generate_phi_kernel_dialect.py
    # generate test model
    cd ${PADDLE_ROOT}
-   python3 paddle/infrt/tests/model/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+   mkdir -p ${PADDLE_ROOT}/build/models
+   python3 paddle/infrt/tests/models/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+   python3 paddle/infrt/tests/models/resnet50_model.py ${PADDLE_ROOT}/build/models/resnet50/model
 }
 
 function init() {
@@ -79,6 +81,7 @@ function init() {
 }
 
 function infrt_gen_and_build() {
+    parallel_number=24
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
@@ -114,6 +117,7 @@ function create_fake_models() {
     python3 -m pip install  *whl
     cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/models/linear.py
 }
 
 function test_infrt() {
