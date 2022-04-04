@@ -213,6 +213,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        // emplace empty Tensor for None
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -229,6 +232,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        // emplace empty Tensor for None
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
