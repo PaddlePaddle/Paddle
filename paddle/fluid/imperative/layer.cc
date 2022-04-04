@@ -616,9 +616,9 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   } else {
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
-
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
-  if (FLAGS_show_all_op_output_data) {
+  VLOG(4) << "FLAGS_show_all_op_output_data: " << FLAGS_show_all_op_output_data;
+  if (FLAGS_show_all_op_output_data || true) {
     for (auto& var_pair : outs) {
       int num = 0;
       for (auto& var : var_pair.second) {
