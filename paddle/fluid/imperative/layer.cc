@@ -32,6 +32,7 @@
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(show_all_op_output_data);
+int show_all_var = 0;
 namespace paddle {
 namespace imperative {
 

@@ -59,7 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/type_defs.h"
-
+extern int show_all_var;
 namespace paddle {
 namespace pybind {
 
@@ -607,7 +607,8 @@ void BindImperative(py::module *m_ptr) {
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 #endif
-
+  m.def("change_imperative_show_val_state",
+        []() { show_all_var = !show_all_var; });
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
   m.def("_set_eager_tracer",
