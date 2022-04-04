@@ -1456,7 +1456,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(forward_api_name)
 
         if len(grad_node_creation_str) == 0:
-            grad_node_creation_str = f"if(create_graph) PADDLE_THROW(paddle::platform::errors::Unimplemented(\"Higher order grad node for {grad_node_name} has not been implemented yet.\"));"
+            grad_node_creation_str = f"if(create_graph) VLOG(3) << \"Higher order grad node for {grad_node_name} has not been implemented yet.\";"
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
