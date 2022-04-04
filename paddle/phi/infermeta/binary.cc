@@ -75,6 +75,32 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
+void EmbeddingInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        MetaTensor* out) {
+  auto table_dims = weight.dims();
+  auto ids_dims = input.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+
+  auto output_dims = phi::vectorize(ids_dims);
+  output_dims.push_back(table_dims[1]);
+
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(weight.dtype());
+  out->share_lod(input);
+}
+
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -748,6 +774,26 @@ void DistInferMeta(const MetaTensor& x,
                         y_dims));
   out->set_dims({1});
   out->set_dtype(x.dtype());
+}
+
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask) {
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (mask != nullptr) {
+    mask->set_dims(x_dims);
+    mask->set_dtype(DataType::UINT8);
+  }
 }
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {

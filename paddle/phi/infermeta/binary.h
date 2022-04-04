@@ -37,6 +37,11 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void EmbeddingInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        MetaTensor* out);
+
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -118,6 +123,16 @@ void DistInferMeta(const MetaTensor& x,
                    MetaTensor* out);
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask);
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
