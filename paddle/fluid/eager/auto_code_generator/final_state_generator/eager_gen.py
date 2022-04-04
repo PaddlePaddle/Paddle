@@ -88,9 +88,9 @@ VECTOR_TENSOR_MEMBER_TEMPLATE = \
 
 CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE = \
 """
-       for (auto tw: {}) {
+       for (auto& tw : {}) {{
          tw.clear();
-       };
+       }}
 """
 
 SET_ATTR_METHOD_TEMPLATE = \
