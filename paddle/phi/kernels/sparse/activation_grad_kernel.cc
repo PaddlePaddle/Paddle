@@ -17,5 +17,21 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/utils.h"
 
-DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sparse_relu_grad, ReluGradKernel)
-DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sparse_sqrt_grad, SqrtGradKernel)
+DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(relu_grad, ReluGradKernel)
+DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
+
+namespace phi {
+namespace sparse {
+
+template <typename T, typename Context>
+void SparseCooXXGrad(const Context& dev_ctx,
+                 const SparseCooTensor& x,
+                 SparseCooTensor* out) {
+}
+}  // namespace sparse
+}  // namespace phi
+
+PD_REGISTER_KERNEL(
+    sparse_coo_xx_grad, CPU, ALL_LAYOUT, phi::sparse::SparseCooXXGrad, float, double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

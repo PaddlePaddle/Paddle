@@ -16,5 +16,21 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/utils.h"
 
-DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sparse_relu, ReluKernel)
-DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sparse_sqrt, SqrtKernel)
+DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(relu, ReluKernel)
+DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sqrt, SqrtKernel)
+
+namespace phi {
+namespace sparse {
+
+template <typename T, typename Context>
+void SparseCooXX(const Context& dev_ctx,
+                 const SparseCooTensor& x,
+                 SparseCooTensor* out) {
+}
+}  // namespace sparse
+}  // namespace phi
+
+PD_REGISTER_KERNEL(
+    sparse_coo_xx, CPU, ALL_LAYOUT, phi::sparse::SparseCooXX, float, double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

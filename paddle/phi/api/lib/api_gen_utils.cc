@@ -144,7 +144,7 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
           std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
                                                  phi::DenseTensor(),
                                                  phi::DenseTensor(),
-                                                 phi::DDim{-1});
+                                                 phi::DDim{-1, -1});
       out->set_impl(sparse_tensor);
       return sparse_tensor.get();
     } else {
