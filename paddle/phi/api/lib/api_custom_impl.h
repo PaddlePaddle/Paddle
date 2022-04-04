@@ -22,11 +22,18 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad);
+
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
 std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
+
+std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
+                                     const Tensor& out_grad,
+                                     const Scalar& axis);
 
 }  // namespace experimental
 }  // namespace paddle

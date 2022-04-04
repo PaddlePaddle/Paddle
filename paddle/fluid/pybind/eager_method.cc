@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/slice_utils.h"
+#include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -330,16 +331,21 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  if (!self->tensor.defined()) {
+  if (!self->tensor.initialized()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(&(src_tensor))->StopGradient());
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+    }
+  } else {
+    if (src_tensor.initialized()) {
+      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+    }
   }
-
-  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -1279,6 +1285,15 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t element_size = framework::DataTypeSize(self->tensor.dtype());
+
+  return ToPyObject(element_size);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
@@ -1328,6 +1343,43 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* tensor__offset(TensorObject* self, PyObject* args,
+                                PyObject* kwargs) {
+  EAGER_TRY
+  auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  PADDLE_ENFORCE_EQ(
+      t->IsInitialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  return ToPyObject(t->offset());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+#if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method__uva.";
+  PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "DenseTensor currently."));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "CPU Tensor currently."));
+  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  auto* self_tensor =
+      static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
+  tensor_uva(self_tensor, device_id);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1417,6 +1469,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"to_dense", (PyCFunction)(void (*)(void))tensor_method_to_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_method_element_size,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1431,6 +1485,12 @@ PyMethodDef variable_methods[] = {
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+#if defined(PADDLE_WITH_CUDA)
+    {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+#endif
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

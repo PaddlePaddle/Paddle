@@ -817,6 +817,25 @@ def monkey_patch_varbase():
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
+    def _uva(self, device_id=0):
+        '''
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(x)
+        '''
+        self._tensor_uva(device_id)
+
+    @framework.dygraph_only
     def cpu(self):
         if self.place.is_cpu_place():
             return self
@@ -874,6 +893,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
+        setattr(core.eager.Tensor, "_uva", _uva)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)
