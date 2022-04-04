@@ -50,7 +50,7 @@ template <typename BaseT>
 TypeInfo<BaseT> TypeRegistry<BaseT>::RegisterType(const std::string& type) {
   std::lock_guard<std::mutex> guard(mutex_);
   assert(name_to_id_.find(type) == name_to_id_.end());
-  assert(names_.size() < std::numeric_limits<int8_t>::max());
+  assert(names_.size() < static_cast<decltype(names_.size())>(std::numeric_limits<int8_t>::max()));
   int8_t id = names_.size();
   names_.emplace_back(type);
   name_to_id_[type] = id;
