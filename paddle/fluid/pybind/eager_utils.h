@@ -13,8 +13,8 @@ limitations under the License. */
 #include <Python.h>
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "pybind11/pybind11.h"
@@ -55,6 +55,7 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
+PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
 PyObject* ToPyObject(float value);
@@ -74,6 +75,7 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
+PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
@@ -150,8 +152,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
 
-paddle::experimental::ScalarArray CastPyArg2ScalarArray(
-    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos);
 
 paddle::experimental::Place CastPyArg2Place(PyObject* obj,
                                             const std::string& op_type,

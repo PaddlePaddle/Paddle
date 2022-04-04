@@ -17,18 +17,18 @@ import warnings
 
 import numpy as np
 from paddle import _C_ops
+from paddle.distribution import distribution
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (check_dtype, check_type,
+                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
+from paddle.tensor import arange, concat, gather_nd, multinomial
 
-from ..fluid import core
-from ..fluid.data_feeder import (check_dtype, check_type,
-                                 check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import _non_static_mode
-from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                            elementwise_mul, elementwise_sub, nn, ops, tensor)
-from ..tensor import arange, concat, gather_nd, multinomial
-from .distribution import Distribution
 
-
-class Uniform(Distribution):
+class Uniform(distribution.Distribution):
     r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details

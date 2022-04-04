@@ -37,7 +37,8 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode,_non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+
 __all__ = []
 
 
@@ -259,12 +260,16 @@ def binary_cross_entropy_with_logits(logit,
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
                              'str_value', '1.0', 'shape', [1])
-        out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if in_dygraph_mode():
+            out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+                logit, label, False, -100)
+        else:
+            out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         if pos_weight is not None:
             log_weight = _C_ops.elementwise_add(
                 _C_ops.elementwise_mul(label,
@@ -784,11 +789,22 @@ def nll_loss(input,
             input_dims))
     n = input_shape[0]
     c = input_shape[1]
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         if input_dims != 2 and input_dims != 4:
             input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
             label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
+        out, total_weight = _C_ops.final_state_nll_loss(input, label, weight,
+                                                        ignore_index, reduction)
+        if input_dims != 2 and input_dims != 4 and reduction == 'none':
+            out, _ = _C_ops.reshape2(out, None, 'shape', out_shape)
+        return out
+    if _in_legacy_dygraph():
+        if input_dims != 2 and input_dims != 4:
+            input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
+            label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
+            out_shape = [n] + input_shape[2:]
+
         out, total_weight = _C_ops.nll_loss(input, label, weight,
                                             'ignore_index', ignore_index,
                                             'reduction', reduction)
@@ -910,8 +926,11 @@ def kl_div(input, label, reduction='mean', name=None):
                 label.dtype) == 'float32':
         label = paddle.cast(label, 'float64')
 
-    if paddle.in_dynamic_mode():
-        out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+    if _non_static_mode():
+        if _in_legacy_dygraph():
+            out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
+        else:
+            out = _C_ops.final_state_kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1686,7 +1705,8 @@ def cross_entropy(input,
              (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dynamic_mode():
+
+    if _non_static_mode():
         if soft_label == False:
             valid_label = paddle.cast(
                 label != ignore_index, dtype=label.dtype) * label
@@ -1704,10 +1724,15 @@ def cross_entropy(input,
                 ignore_index, 'numeric_stable_mode', True, 'axis', axis,
                 'use_softmax', use_softmax)
         else:
-            _, out = _C_ops.softmax_with_cross_entropy(
-                input, label, 'soft_label', soft_label, 'ignore_index',
-                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
-                'use_softmax', use_softmax)
+            if in_dygraph_mode():
+                _, out = _C_ops.final_state_cross_entropy_with_softmax(
+                    input, label, soft_label, use_softmax, True, ignore_index,
+                    axis)
+            if _in_legacy_dygraph():
+                _, out = _C_ops.softmax_with_cross_entropy(
+                    input, label, 'soft_label', soft_label, 'ignore_index',
+                    ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                    'use_softmax', use_softmax)
 
         if weight is not None:
 
@@ -2004,12 +2029,16 @@ def sigmoid_focal_loss(logit,
                 "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".
                 format(normalizer_dims))
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
                              'str_value', '1.0', 'shape', logit.shape)
-        loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if in_dygraph_mode():
+            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+                logit, label, False, -100)
+        else:
+            loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         pred = _C_ops.sigmoid(logit)
         p_t = _C_ops.elementwise_add(
             _C_ops.elementwise_mul(pred, label),
@@ -2242,7 +2271,7 @@ def triplet_margin_loss(input,positive,negative,
         raise ValueError(
             "margin should not smaller than 0"
         )
-    if _non_static_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'triplet_margin_loss')
         check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],

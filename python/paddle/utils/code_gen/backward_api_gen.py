@@ -156,7 +156,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -179,6 +179,8 @@ def source_include(header_file_path):
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+DECLARE_bool(conv2d_disable_cudnn);
 """
 
 

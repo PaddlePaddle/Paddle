@@ -68,6 +68,17 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config = MetaConfig());
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -103,6 +114,16 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool global_pooling,
                                    bool adaptive,
                                    MetaTensor* dx);
+
+void NllLossGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& label,
+                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& total_weight,
+                          const MetaTensor& out_grad,
+                          int64_t ignore_index,
+                          const std::string& reduction,
+                          MetaTensor* intput_grad,
+                          MetaConfig config = MetaConfig());
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
