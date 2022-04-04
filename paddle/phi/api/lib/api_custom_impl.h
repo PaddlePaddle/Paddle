@@ -25,6 +25,32 @@ namespace experimental {
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad);
 
+Tensor conv2d_impl(const Tensor& input,
+                   const Tensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::string& paddding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search);
+
+std::vector<std::vector<Tensor>> conv2d_grad_impl(
+    const Tensor& input,
+    const Tensor& filter,
+    const Tensor& out_grad,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& paddding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search);
+
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
 std::vector<Tensor> split_impl(const Tensor& x,

@@ -568,6 +568,11 @@ def conv2d(x,
             "received: the number of filters is {}, the shape of weight is {}"
             ", the groups is {}".format(num_filters, weight.shape, groups))
 
+    cudnn_version = get_cudnn_version()
+
+    use_cudnn = True if (is_compiled_with_cuda() and
+                         cudnn_version is not None) else False
+
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
     stride = convert_to_list(stride, 2, 'stride')
@@ -591,11 +596,6 @@ def conv2d(x,
                 return out
             else:
                 return pre_bias
-
-    cudnn_version = get_cudnn_version()
-
-    use_cudnn = True if (is_compiled_with_cuda() and
-                         cudnn_version is not None) else False
 
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
