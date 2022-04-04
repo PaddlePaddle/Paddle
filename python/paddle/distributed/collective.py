@@ -319,14 +319,7 @@ def new_group(ranks=None, backend=None):
         else:
             rank = -1
             pg = None
-        group = Group(
-            rank,
-            size,
-            id=gid,
-            ranks=ranks,
-            pg=pg,
-            name=group_name,
-            backend=backend)
+        group = Group(rank, size, id=gid, ranks=ranks, pg=pg, name=group_name)
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
