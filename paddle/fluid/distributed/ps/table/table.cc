@@ -17,15 +17,11 @@
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 
-#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
-//#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
-#include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
-//#include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
-//#ifdef PADDLE_WITH_HETERPS
-//#include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
-//#endif
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
+
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
@@ -35,13 +31,10 @@ namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
-//REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
 #ifdef PADDLE_WITH_HETERPS
-//REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(GraphSampler, CompleteGraphSampler);
 REGISTER_PSCORE_CLASS(GraphSampler, BasicBfsGraphSampler);
 #endif
-//REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
 REGISTER_PSCORE_CLASS(Table, TensorTable);
 REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
