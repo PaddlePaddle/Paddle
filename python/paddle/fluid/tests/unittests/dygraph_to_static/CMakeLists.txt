@@ -16,7 +16,12 @@ if(NOT ON_INFER)
 endif()
 
 if(WIN32 AND NOT WITH_GPU)
-    list(REMOVE_ITEM TEST_OPS test_resnet_amp) # disable on Windows CPU CI for timeout
+    if(NOT WITH_GPU)
+        list(REMOVE_ITEM TEST_OPS test_resnet_amp) # disable on Windows CPU CI for timeout
+    else()
+        list(REMOVE_ITEM TEST_EAGER_OPS test_sentiment)
+        list(REMOVE_ITEM TEST_EAGER_OPS test_seq2seq)
+    endif()
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
