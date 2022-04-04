@@ -1522,6 +1522,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
