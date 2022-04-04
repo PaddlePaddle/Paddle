@@ -270,10 +270,7 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            if framework._in_eager_mode_ and op_type == 'elementwise_add':
-                math_op = getattr(_C_ops, 'final_state_add')
-            else:
-                math_op = getattr(_C_ops, op_type)
+            math_op = getattr(_C_ops, op_type)
             return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment

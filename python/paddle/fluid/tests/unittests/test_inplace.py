@@ -103,7 +103,9 @@ class TestInplace(unittest.TestCase):
 
             var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
+            var_c = paddle.add(
+                var_b,
+                var_b)  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_c.sum()
 
             var_b[1:2] = 3  # var_b is modified inplace after using it
