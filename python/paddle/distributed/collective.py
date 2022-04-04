@@ -14,7 +14,6 @@
 
 import numpy as np
 import os
-import contextlib
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 import paddle.fluid.framework as framework
@@ -85,21 +84,13 @@ class Group():
     The abstract representation of group.
     """
 
-    def __init__(self,
-                 rank,
-                 rank_num,
-                 id=0,
-                 ranks=[],
-                 pg=None,
-                 name=None,
-                 backend=None):
+    def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
         self.rank = rank
         self.nranks = rank_num
         self.id = id
         self.ranks = ranks
         self.pg = pg
         self.name = name
-        self.backend = backend
 
     def is_member(self):
         if self.rank < 0:
@@ -1885,28 +1876,3 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'dtype': tensor.dtype,
             'use_calc_stream': use_calc_stream,
         })
-
-
-@contextlib.contextmanager
-def _batch_p2p_manager(backend):
-    if backend == "nccl":
-        core.ProcessGroupNCCL._group_start()
-    try:
-        yield
-    finally:
-        if backend == "nccl":
-            core.ProcessGroupNCCL._group_end()
-
-
-def _batch_isend_irecv(op_list, tensors, peers, group=None):
-    group = _get_default_group() if group is None else group
-    backend = group.backend
-    handlers = []
-    with _batch_p2p_manager(backend):
-        for idx, op in enumerate(op_list):
-            tensor = tensors[idx]
-            peer = peers[idx]
-            handler = op(tensor, peer, group, use_calc_stream=False)
-            if handler is not None:
-                handlers.append(handler)
-    return handlers
