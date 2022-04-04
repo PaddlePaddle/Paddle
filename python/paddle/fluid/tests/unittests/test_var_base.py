@@ -795,17 +795,17 @@ class TestVarBase(unittest.TestCase):
         np_value = np.random.random(shape).astype('float32')
         var_tensor = paddle.to_tensor(np_value)
         index = [[True, True, True, True], [True, False, True, True],
-                 [True, False, False, True], [False, 0, 1, True, True]]
+                 [True, False, False, True], [False, 0, 1, True, True],
+                 [False, False, False, False]]
         index2d = np.array([[True, True], [False, False], [True, False],
                             [True, True]])
         tensor_index = paddle.to_tensor(index2d)
         var = [
-            var_tensor[index[0]].numpy(),
-            var_tensor[index[1]].numpy(),
-            var_tensor[index[2]].numpy(),
-            var_tensor[index[3]].numpy(),
+            var_tensor[index[0]].numpy(), var_tensor[index[1]].numpy(),
+            var_tensor[index[2]].numpy(), var_tensor[index[3]].numpy(),
             var_tensor[paddle.to_tensor(index[0])].numpy(),
             var_tensor[tensor_index].numpy(),
+            var_tensor[paddle.to_tensor(index[4])].numpy()
         ]
         self.assertTrue(np.array_equal(var[0], np_value[index[0]]))
         self.assertTrue(np.array_equal(var[1], np_value[index[1]]))
@@ -813,6 +813,7 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(np.array_equal(var[3], np_value[index[3]]))
         self.assertTrue(np.array_equal(var[4], np_value[index[0]]))
         self.assertTrue(np.array_equal(var[5], np_value[index2d]))
+        self.assertTrue(np.array_equal(var[6], np_value[index[4]]))
         self.assertTrue(
             np.array_equal(var_tensor[var_tensor > 0.67], np_value[np_value >
                                                                    0.67]))
@@ -996,7 +997,7 @@ class TestVarBase(unittest.TestCase):
 
         self.assertListEqual(list(var_base.shape), list(static_var.shape))
 
-    def test_tensor_str(self):
+    def func_test_tensor_str(self):
         paddle.enable_static()
         paddle.disable_static(paddle.CPUPlace())
         paddle.seed(10)
@@ -1016,7 +1017,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str2(self):
+    def test_tensor_str(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str()
+        self.func_test_tensor_str()
+
+    def func_test_tensor_str2(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
         a_str = str(a)
@@ -1028,7 +1034,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str3(self):
+    def test_tensor_str2(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str2()
+        self.func_test_tensor_str2()
+
+    def func_test_tensor_str3(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
         a_str = str(a)
@@ -1040,7 +1051,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_scaler(self):
+    def test_tensor_str3(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str3()
+        self.func_test_tensor_str3()
+
+    def func_test_tensor_str_scaler(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor(np.array(False))
         a_str = str(a)
@@ -1051,7 +1067,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_shape_with_zero(self):
+    def test_tensor_str_scaler(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str_scaler()
+        self.func_test_tensor_str_scaler()
+
+    def func_test_tensor_str_shape_with_zero(self):
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.ones((10, 10))
         y = paddle.fluid.layers.where(x == 0)
@@ -1063,7 +1084,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_linewidth(self):
+    def test_tensor_str_shape_with_zero(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str_shape_with_zero()
+        self.func_test_tensor_str_shape_with_zero()
+
+    def func_test_tensor_str_linewidth(self):
         paddle.disable_static(paddle.CPUPlace())
         paddle.seed(2021)
         x = paddle.rand([128])
@@ -1091,7 +1117,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_linewidth2(self):
+    def test_tensor_str_linewidth(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str_linewidth()
+        self.func_test_tensor_str_linewidth()
+
+    def func_test_tensor_str_linewidth2(self):
         paddle.disable_static(paddle.CPUPlace())
         paddle.seed(2021)
         x = paddle.rand([128])
@@ -1114,7 +1145,12 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_bf16(self):
+    def test_tensor_str_linewidth2(self):
+        with _test_eager_guard():
+            self.func_test_tensor_str_linewidth2()
+        self.func_test_tensor_str_linewidth2()
+
+    def func_tensor_str_bf16(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
         a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
@@ -1127,6 +1163,11 @@ class TestVarBase(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()
+
+    def test_tensor_str_bf16(self):
+        with _test_eager_guard():
+            self.func_tensor_str_bf16()
+        self.func_tensor_str_bf16()
 
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
@@ -1356,7 +1397,7 @@ class TestVarBaseClear(unittest.TestCase):
 
 
 class TestVarBaseOffset(unittest.TestCase):
-    def test_offset(self):
+    def func_offset(self):
         paddle.disable_static()
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
@@ -1364,6 +1405,11 @@ class TestVarBaseOffset(unittest.TestCase):
         actual_x = x._slice(expected_offset, 1)
         actual_x = paddle.to_tensor(actual_x)
         self.assertEqual(actual_x._offset(), expected_offset)
+
+    def test_offset(self):
+        with _test_eager_guard():
+            self.func_offset()
+        self.func_offset()
 
 
 class TestVarBaseShareBufferTo(unittest.TestCase):
