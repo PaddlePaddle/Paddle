@@ -512,7 +512,8 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
         self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array)) {
+  } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array) ||
+             py::isinstance<py::array_t<uint16_t>>(array)) {
     py::handle bfloat16(paddle_bfloat::Bfloat16Dtype());
     py::dtype dtype =
         py::dtype::from_args(py::reinterpret_borrow<py::object>(bfloat16));

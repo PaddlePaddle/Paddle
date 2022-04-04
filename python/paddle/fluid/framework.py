@@ -1040,6 +1040,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT32
     elif dtype == np.int16:
         return core.VarDesc.VarType.INT16
+    elif dtype == np.uint16:
+        return core.VarDesc.VarType.BF16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
