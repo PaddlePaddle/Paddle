@@ -19,10 +19,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RangeKernel(const Context& dev_ctx,
-                 const DenseTensor& start,
-                 const DenseTensor& end,
-                 const DenseTensor& step,
-                 DenseTensor* out);
+void ArangeKernel(const Context& dev_ctx,
+                  const DenseTensor& start,
+                  const DenseTensor& end,
+                  const DenseTensor& step,
+                  DenseTensor* out);
 
 }  // namespace phi
