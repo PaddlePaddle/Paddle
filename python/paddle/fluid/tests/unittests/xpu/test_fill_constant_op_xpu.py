@@ -77,6 +77,8 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
                 self.index = 20
             if self.dtype == np.int8:
                 self.index = 21
+            if self.dtype == np.uint16:  # same as paddle.bfloat16
+                self.index = 22
             if self.dtype == np.complex64:
                 self.index = 23
             if self.dtype == np.complex128:
