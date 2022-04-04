@@ -463,6 +463,16 @@
   kernel :
     func : dot
 
+- api : dropout
+  args : (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : DropoutInferMeta
+  kernel :
+    func : dropout
+  optional : seed_tensor
+  backward : dropout_grad
+
 # eigh
 - api : eigh
   args : (Tensor x, str uplo)
@@ -1504,6 +1514,15 @@
   kernel :
     func : size
 
+- api : slice
+  args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor
+  infer_meta :
+    func : SliceRawInferMeta
+  kernel :
+    func : slice
+  backward : slice_grad
+
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
@@ -1577,13 +1596,14 @@
   # no_need_buffer : x, y
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
-  output : Tensor
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  output : Tensor(out)
   infer_meta :
     func : SumInferMeta
   kernel :
     func : sum
     data_type : x
+  backward : sum_grad
 
 # take_along_axis
 - api : take_along_axis
