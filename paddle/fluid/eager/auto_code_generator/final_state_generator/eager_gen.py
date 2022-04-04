@@ -1257,18 +1257,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 name)
 
             is_optional = (name in self.optional_inputs)
-            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
+            optional_suffix = '_optional' if is_optional else ''
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name}{optional_suffix} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name},  this->shared_from_this());\n"
             if is_optional:
-                tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
-                    transformed_tensor_name, transformed_tensor_name,
-                    transformed_tensor_name, transformed_tensor_name)
-
-                grad_api_args[
-                    grad_api_position] = transformed_tensor_name + "_optional"
-
-            else:
-                grad_api_args[grad_api_position] = transformed_tensor_name
-
+                tensor_wrapper_recover_str = tensor_wrapper_recover_str + f"{indent}auto {transformed_tensor_name} = {transformed_tensor_name}{optional_suffix}.initialized() ? paddle::make_optional<const paddle::experimental::Tensor&>({transformed_tensor_name}{optional_suffix}) : paddle::none;"
+            grad_api_args[grad_api_position] = transformed_tensor_name
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
