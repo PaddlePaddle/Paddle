@@ -1596,13 +1596,14 @@
   # no_need_buffer : x, y
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
-  output : Tensor
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  output : Tensor(out)
   infer_meta :
     func : SumInferMeta
   kernel :
     func : sum
     data_type : x
+  backward : sum_grad
 
 # take_along_axis
 - api : take_along_axis
