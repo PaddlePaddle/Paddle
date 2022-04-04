@@ -117,6 +117,10 @@ void AdamwInferMeta(const MetaTensor& param,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs);
 
+void AddNInferMeta(const std::vector<MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -284,6 +288,9 @@ void SGDInferMeta(const MetaTensor& param,
 void StackInferMeta(const std::vector<MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);
+
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out);
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
