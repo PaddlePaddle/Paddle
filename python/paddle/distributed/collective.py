@@ -14,6 +14,7 @@
 
 import numpy as np
 import os
+import contextlib
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 import paddle.fluid.framework as framework
@@ -84,13 +85,21 @@ class Group():
     The abstract representation of group.
     """
 
-    def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
+    def __init__(self,
+                 rank,
+                 rank_num,
+                 id=0,
+                 ranks=[],
+                 pg=None,
+                 name=None,
+                 backend=None):
         self.rank = rank
         self.nranks = rank_num
         self.id = id
         self.ranks = ranks
         self.pg = pg
         self.name = name
+        self.backend = backend
 
     def is_member(self):
         if self.rank < 0:
@@ -297,15 +306,15 @@ def new_group(ranks=None, backend=None):
         global_group = _get_default_group()
         global_rank = global_group.rank
         global_ranks = global_group.ranks
+        backend = _default_backend if backend is None else backend
         if ranks is None:
             ranks = global_ranks
         assert len(ranks) <= len(global_ranks), (
             "Size of new group must be less than or "
             "equal to that of the default global group.")
         size = len(ranks)
-        assert size > 1, "A group must have at least two memebers."
         ranks = sorted(ranks)
-        if global_rank in ranks:
+        if global_rank in ranks and size > 1:
             rank = ranks.index(global_rank)
             pg = _new_process_group_impl(
                 backend,
@@ -318,7 +327,14 @@ def new_group(ranks=None, backend=None):
         else:
             rank = -1
             pg = None
-        group = Group(rank, size, id=gid, ranks=ranks, pg=pg, name=group_name)
+        group = Group(
+            rank,
+            size,
+            id=gid,
+            ranks=ranks,
+            pg=pg,
+            name=group_name,
+            backend=backend)
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
@@ -1869,3 +1885,28 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'dtype': tensor.dtype,
             'use_calc_stream': use_calc_stream,
         })
+
+
+@contextlib.contextmanager
+def _batch_p2p_manager(backend):
+    if backend == "nccl":
+        core.ProcessGroupNCCL._group_start()
+    try:
+        yield
+    finally:
+        if backend == "nccl":
+            core.ProcessGroupNCCL._group_end()
+
+
+def _batch_isend_irecv(op_list, tensors, peers, group=None):
+    group = _get_default_group() if group is None else group
+    backend = group.backend
+    handlers = []
+    with _batch_p2p_manager(backend):
+        for idx, op in enumerate(op_list):
+            tensor = tensors[idx]
+            peer = peers[idx]
+            handler = op(tensor, peer, group, use_calc_stream=False)
+            if handler is not None:
+                handlers.append(handler)
+    return handlers
