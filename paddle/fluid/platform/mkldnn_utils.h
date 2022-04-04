@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,12 +11,10 @@ limitations under the License. */
 
 #pragma once
 
-//#include "paddle/fluid/framework/data_type.h"
-
 // NOTE:
 // GetMKLDNNFormat and ToMKLDNNDataType functions are here temporarily. They are
 // needed because without them forward declaration was causing an error when
-// building with "-DWITH_TESTING=ON". They will be deleted from here after full
+// building with "-DWITH_TESTING=ON". This file will be deleted after completing
 // md-related refactoring
 
 namespace paddle {

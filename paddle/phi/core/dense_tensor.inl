@@ -21,8 +21,6 @@ limitations under the License. */
     Will be adjusted/removed/moved in the near future
 */
 
-//#include "paddle/fluid/platform/mkldnn_utils.h"
-
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */

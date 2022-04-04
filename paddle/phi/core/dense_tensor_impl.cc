@@ -21,9 +21,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-
 #ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/mkldnn_utils.h"
 #endif
 
