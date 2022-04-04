@@ -1379,12 +1379,28 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
 #endif
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+static PyObject* tensor__offset(TensorObject* self, PyObject* args,
+                                PyObject* kwargs) {
+  EAGER_TRY
+  auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  PADDLE_ENFORCE_EQ(
+      t->IsInitialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  return ToPyObject(t->offset());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in tensor_method__uva.";
+  PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(), true,
+                    platform::errors::InvalidArgument(
+                        "Unified virtual addressing only support "
+                        "DenseTensor currently."));
   PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
@@ -1505,6 +1521,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
+    {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,

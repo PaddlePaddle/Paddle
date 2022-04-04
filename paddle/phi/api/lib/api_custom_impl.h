@@ -31,5 +31,9 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
+std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
+                                     const Tensor& out_grad,
+                                     const Scalar& axis);
+
 }  // namespace experimental
 }  // namespace paddle
