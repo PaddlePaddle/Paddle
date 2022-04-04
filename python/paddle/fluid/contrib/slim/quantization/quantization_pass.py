@@ -1780,6 +1780,17 @@ class AddQuantDequantPass(object):
 class InsertQuantizeLinear(object):
     """
     Insert quantize_linear and dequantize_linear op before ops.
+
+    Args:
+        place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to restore the weight tensors.
+            If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
+        scope(paddle.Scope): scope is used to get the weight tensor values.
+        quant_bits(int, optional): quantization bit number for weight. Default is 8.
+        quant_axis(int, optional): quantization dimension of channels. When it is greater than or
+            equal to 0, it will quantization with per channel, else quantization with per layer.
+            Default is -1.
+        channel_wise(bool, optional): Whether quantization with per channel or not. Default is False.
+        is_test(bool, optional): Whether quantization with training or not. Default is True.
     """
 
     def __init__(self,
@@ -1956,7 +1967,79 @@ class QuantizationTransformPassV2(object):
                  act_preprocess_func=None,
                  optimizer_func=None,
                  executor=None):
+        r"""
+        Args:
+            scope(paddle.Scope): When activation use 'range_abs_max' as the quantize
+                type, this pass will create some new parameters. The scope is used to
+                initialize these new parameters.
+            place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
+                parameters described above. If it's string, It can be ``cpu``, and ``gpu:x``,
+                where ``x`` is the index of the GPUs. 
+            weight_bits(int): quantization bit number for weights,
+                the bias is not quantized.
+            activation_bits(int): quantization bit number for activation.
+            activation_quantize_type(str): quantization type for activation,
+                now support 'abs_max', 'range_abs_max' and 'moving_average_abs_max'.
+                If use 'abs_max' mode, the quantization scale will be calculated
+                dynamically each step in both training and testing period. If use
+                'range_abs_max', a static quantization scale will be calculated
+                during training and used in inference.
+            weight_quantize_type(str): quantization type for weights,
+                support 'abs_max' and 'channel_wise_abs_max'. The 'range_abs_max'
+                usually is not used for weight, since weights are fixed once the
+                model is well trained.
+            window_size(int): the window size for 'range_abs_max' quantization.
+            moving_rate(float): the param for 'moving_average_abs_max' quantization.
+            skip_pattern(str or str list): The user-defined quantization skip pattern, which
+                will be presented in the name scope of an op. When the skip pattern is
+                detected in an op's name scope, the corresponding op will not be quantized. 
+            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
+                QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
+            weight_quantize_func(function): Function that defines how to quantize weight.
+                Using this can quickly test if user's quantization method works or not.
+                In this function, user should both define quantization function and
+                dequantization function, that is, the function's input is non-quantized
+                weight and function returns dequantized weight. If None, will use
+                quantization op defined by 'weight_quantize_type'. Default is None.
+            act_quantize_func(function): Function that defines how to quantize activation.
+                Using this can quickly test if user's quantization method works or not.
+                In this function, user should both define quantization and dequantization
+                process, that is, the function's input is non-quantized activation and
+                function returns dequantized activation. If None, will use quantization
+                op defined by 'activation_quantize_type'. Default is None.
+            weight_preprocess_func(function): Function that defines how to preprocess
+                weight before quantization. Using this can quickly test if user's preprocess
+                method works or not. The function's input is non-quantized weight and
+                function returns processed weight to be quantized. If None, the weight will
+                be quantized directly. Default is None.
+            act_preprocess_func(function): Function that defines how to preprocess
+                activation before quantization. Using this can quickly test if user's
+                preprocess method works or not. The function's input is non-quantized
+                activation and function returns processed activation to be quantized.
+                If None, the activation will be quantized directly. Default is None.
+            optimizer_func(function): Fuction return a optimizer. When 'is_test' is
+                False and user want to use self-defined quantization function and
+                preprocess function, this function must be set. Default is None.
+            executor(paddle.Executor): If user want to use self-defined quantization
+                function and preprocess function, executor must be set for initialization.
+                Default is None.
 
+        Examples:
+        .. code-block:: python
+            # The original graph will be rewrite.
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import QuantizationTransformPassV2
+            from paddle.fluid.contrib.slim.graph import IrGraph
+            from paddle.fluid import core
+
+            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            place = paddle.CPUPlace()
+            scope = paddle.static.global_scope()
+            transform_pass = QuantizationTransformPassV2(scope, place)
+            transform_pass.apply(graph)
+        """
         self._scope = scope
         self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
@@ -2186,11 +2269,9 @@ class AddQuantDequantPassV2(object):
                  quantizable_op_type=["elementwise_add", "pool2d"],
                  is_full_quantized=False):
         """
-        Constructor.
-
         Args:
-            scope(fluid.Scope): The scope is used to initialize these new parameters.
-            place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to initialize new
+            scope(paddle.Scope): The scope is used to initialize these new parameters.
+            place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
                 parameters described above. If ``place`` is string, it can be It can be ``cpu``
                 or ``gpu:x``, where ``x`` is the index of the GPUs.
             moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
@@ -2206,6 +2287,21 @@ class AddQuantDequantPassV2(object):
                 quantization to all supported quantizable op type. If set is_full_quantized
                 as False, only apply quantization to the op type according to the input 
                 quantizable_op_type.
+        
+        Examples:
+        .. code-block:: python
+            # The original graph will be rewrite.
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import AddQuantDequantPassV2
+            from paddle.fluid.contrib.slim.graph import IrGraph
+            from paddle.fluid import core
+
+            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            place = paddle.CPUPlace()
+            scope = paddle.static.global_scope()
+            add_quant_dequant_pass = AddQuantDequantPassV2(scope, place)
+            add_quant_dequant_pass.apply(graph)
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -2303,7 +2399,33 @@ class AddQuantDequantPassV2(object):
 
 
 class ReplaceFakeQuantDequantPass(object):
+    """
+    replace quant-dequant ops with quantize_linear and dequantize_linear ops.
+    """
+
     def __init__(self, scope, place):
+        r"""
+        Args:
+            scope(paddle.Scope): The scope is used to initialize these new parameters.
+            place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to initialize new
+                parameters described above. If ``place`` is string, it can be It can be ``cpu``
+                or ``gpu:x``, where ``x`` is the index of the GPUs.
+        
+        Examples:
+        .. code-block:: python
+            # The original graph will be rewrite.
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import ReplaceFakeQuantDequantPass
+            from paddle.fluid.contrib.slim.graph import IrGraph
+            from paddle.fluid import core
+
+            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            place = paddle.CPUPlace()
+            scope = paddle.static.global_scope()
+            replace_pass = ReplaceFakeQuantDequantPass(scope, place)
+            replace_pass.apply(graph)
+        """
         self._place = _get_paddle_place(place)
         self._scope = scope
         assert self._scope != None, "scope must not be None."
@@ -2407,13 +2529,28 @@ class QuantWeightPass(object):
     and weight will be scaled offline.
 
     Args:
-        scope(fluid.Scope): scope is used to get the weight tensor values.
-        place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to restore the weight tensors.
+        scope(paddle.Scope): scope is used to get the weight tensor values.
+        place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to restore the weight tensors.
             If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
         bias_correction(bool): whether use bias correction for post-training quantization.
              https://arxiv.org/abs/1810.05723.
         quant_bits(int, optional): quantization bit number for weight. Default is 8.
         save_int_weight(bool, optional): Whether the type saving the weight is int. Default is True.
+    
+    Examples:
+        .. code-block:: python
+            # The original graph will be rewrite.
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import QuantWeightPass
+            from paddle.fluid.contrib.slim.graph import IrGraph
+            from paddle.fluid import core
+
+            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            place = paddle.CPUPlace()
+            scope = paddle.static.global_scope()
+            quant_weight_pass = QuantWeightPass(scope, place)
+            quant_weight_pass.apply(graph)
     """
 
     def __init__(self,
