@@ -950,7 +950,7 @@
     func : subtract_grad
 
 - backward_api : sum_grad
-  forward : sum (Tensor x, int64_t[] dims={0}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
+  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int64_t[] dims, bool keep_dim, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
