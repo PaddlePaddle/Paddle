@@ -48,5 +48,32 @@ class TestParallelDygraphSparseEmdeddingOverHeightSpawn(TestDistSpawnRunner):
                 test_class=TestSparseEmbeddingOverHeight, delta=1e-5)
 
 
+class TestParallelDygraphSparseEmdeddingOverHeightEager(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._eager_mode = True
+        self._nccl2_mode = True
+        self._dygraph = True
+
+    def test_sparse_embedding(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_sparse_embedding_over_height.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestParallelDygraphSparseEmdeddingOverHeightSpawnEager(
+        TestDistSpawnRunner):
+    def _args_config(self, args):
+        args.eager_mode = True
+
+    def test_sparse_embedding_with_spawn(self):
+        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            self.check_dist_result_with_spawn(
+                test_class=TestSparseEmbeddingOverHeight, delta=1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()
