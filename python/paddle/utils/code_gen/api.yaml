@@ -327,6 +327,7 @@
     param : [x, axis]
   kernel :
     func : concat
+  backward : concat_grad
 
 - api : conj
   args : (Tensor x)

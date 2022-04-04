@@ -45,5 +45,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     bool trainable_statistics,
     bool fuse_with_relu);
 
+std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
+                                     const Tensor& out_grad,
+                                     const Scalar& axis);
+
 }  // namespace experimental
 }  // namespace paddle
