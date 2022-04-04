@@ -139,6 +139,7 @@ def _update_monkey_methods(is_eager):
     # switch Paddle.Tensor bind type
     _switch_tensor_bind_type(is_eager)
 
+
 def _switch_tensor_bind_type(is_eager):
     import paddle
     if is_eager:
