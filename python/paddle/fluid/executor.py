@@ -1391,6 +1391,8 @@ class Executor(object):
                 # else:
                 #     return False
             else:
+                if isinstance(program._graph, compiler.CompiledProgram):
+                    return False
                 assert isinstance(program, Program)
                 return True
 

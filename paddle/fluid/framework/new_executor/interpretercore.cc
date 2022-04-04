@@ -300,8 +300,16 @@ void InterpreterCore::Convert(
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
+  bool inplaced = false;
+  for (auto inst : vec_instruction_) {
+    if (inst.OpBase()->Type() == "share_buffer" ||
+        inst.OpBase()->Type() == "share_data") {
+      VLOG(4) << "Already inplaced, skip inplace now.";
+      inplaced = true;
+    }
+  }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
 
