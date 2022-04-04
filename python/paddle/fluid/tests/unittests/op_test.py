@@ -375,13 +375,14 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
-        return self.dtype == bfloat16 or self.dtype == np.uint16(
-            hasattr(self, 'output_dtype') and self.output_dtype ==
-            bfloat16) or (hasattr(self, 'mkldnn_data_type') and
-                          getattr(self, 'mkldnn_data_type') == "bfloat16") or (
-                              hasattr(self, 'attrs') and
-                              'mkldnn_data_type' in self.attrs and
-                              self.attrs['mkldnn_data_type'] == 'bfloat16')
+        return self.dtype == bfloat16 or self.dtype == np.uint16 or (
+            hasattr(self, 'output_dtype') and
+            self.output_dtype == bfloat16) or (
+                hasattr(self, 'mkldnn_data_type') and
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
+                    hasattr(self, 'attrs') and
+                    'mkldnn_data_type' in self.attrs and
+                    self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def is_mkldnn_op(self):
         return (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or (
@@ -1377,16 +1378,6 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if actual_np.dtype == bfloat16 or expect_np.dtype == bfloat16:
-                    atol = 5e-2
-                    actual_np = actual_np.astype(np.float32)
-                    expect_np = expect_np.astype(np.float32)
-                else:
-                    atol = 1e-5
-
-                print(actual_np.dtype)
-                print(expect_np.dtype)
-
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1464,14 +1455,18 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                        np.float32, np.float64
-                ]:
+                if actual_np.dtype in [np.uint16, bfloat16
+                                       ] and expect_np.dtype in [
+                                           np.float32, np.float64
+                                       ]:
                     actual_np = convert_uint16_to_float(actual_np)
+                    expect_np = convert_uint16_to_float(expect_np)
                     self.rtol = 1.e-2
                 else:
                     self.rtol = 1.e-5
-                if expect_np.dtype == np.uint16 and actual_np.dtype == np.uint16:
+                if actual_np.dtype in [
+                        np.uint16, bfloat16
+                ] and expect_np.dtype in [np.uint16, bfloat16]:
                     nonlocal atol
                     expect_np = convert_uint16_to_float(expect_np)
                     actual_np = convert_uint16_to_float(actual_np)
@@ -1503,9 +1498,9 @@ class OpTest(unittest.TestCase):
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
                 if self.op_test.is_bfloat16_op():
-                    if actual_np.dtype == np.uint16:
+                    if actual_np.dtype == np.uint16 or actual_np.dtype == bfloat16:
                         actual_np = convert_uint16_to_float(actual_np)
-                    if expect_np.dtype == np.uint16:
+                    if expect_np.dtype == np.uint16 or expect_np.dtype == bfloat16:
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
@@ -1526,13 +1521,6 @@ class OpTest(unittest.TestCase):
                                         1) == 0:
                     pass
                 else:
-                    if actual_np.dtype == bfloat16 or expect_np.dtype == bfloat16:
-                        atol = 5e-2
-                        actual_np = actual_np.astype(np.float32)
-                        expect_np = expect_np.astype(np.float32)
-                    else:
-                        atol = 1e-5
-
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
@@ -1937,9 +1925,6 @@ class OpTest(unittest.TestCase):
                 max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
-
-        # print("analytic", analytic_grads)
-        # print("numeric", numeric_grads)
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
