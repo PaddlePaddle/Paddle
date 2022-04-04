@@ -335,6 +335,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
+        if (var->Get<LoDTensorArray>().size() == 0) {
+          continue;
+        }
         tensor_in =
             static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
       } else {

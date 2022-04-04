@@ -836,10 +836,11 @@ std::map<int, std::list<int>> build_op_downstream_map(
                 communication_op_prefix) != std::string::npos &&
             vec_instruction[j].OpBase()->Type().find(communication_op_prefix) !=
                 std::string::npos) {
-          target = j;
           VLOG(4) << "Found consecutive communication ops, "
                   << vec_instruction[target].OpBase()->Type() << " -> "
                   << vec_instruction[j].OpBase()->Type();
+          target = j;
+          continue;
         }
 
         for (auto var_id : outputs) {
@@ -854,7 +855,13 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
-
+  for (auto pair : op2dependences) {
+    VLOG(10) << pair.first << " Depends on " << pair.second.size();
+    std::ostringstream oss;
+    std::copy(pair.second.begin(), pair.second.end(),
+              std::ostream_iterator<int>(oss, " "));
+    VLOG(10) << oss.str();
+  }
   return std::move(get_downstream_map(op2dependences));
 }
 

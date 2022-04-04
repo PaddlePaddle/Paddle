@@ -565,12 +565,11 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
-  VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " " << &(*atomic_deps)[next_id]
-            << " " << next_id;
+    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
+            << ", remain deps: " << (*atomic_deps)[next_id];
     return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
   };
 
