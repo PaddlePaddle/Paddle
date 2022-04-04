@@ -27,9 +27,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 
-#include "paddle/fluid/eager/amp_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
-
 #include "glog/logging.h"
 
 namespace paddle {
@@ -165,8 +162,6 @@ Tensor conv2d_impl(const Tensor& input,
   }
 
   {
-    paddle::platform::RecordEvent kernel_record_event(
-        "conv2d compute", paddle::platform::TracerEventType::Operator, 1);
     (*kernel_fn)(*dev_ctx,
                  *input_input,
                  *input_filter,
@@ -267,8 +262,6 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
     kernel_fn = kernel_dnn.GetVariadicKernelFn<kernel_signature>();
   }
   {
-    paddle::platform::RecordEvent kernel_record_event(
-        "conv2d_grad compute", paddle::platform::TracerEventType::Operator, 1);
     (*kernel_fn)(*dev_ctx,
                  *input_input,
                  *input_filter,
