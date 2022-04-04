@@ -94,8 +94,7 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False,
-            passes=["fc_elementwise_add_mkldnn_fuse_pass"])
+            quant=False, passes=["fc_elementwise_add_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":

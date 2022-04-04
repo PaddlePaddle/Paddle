@@ -67,8 +67,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
   patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
   elementwise_pattern(
-      fc_output,
-      pattern->NewNode(elementwise_pattern.residual_data_repr()),
+      fc_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
       "elementwise_add", as_x);
   fc_output->AsIntermediate();
 
@@ -127,8 +126,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
 void FCResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  auto graph_with_stats =
-      FuseFC(name_scope_, std::make_pair(graph, 0), true);
+  auto graph_with_stats = FuseFC(name_scope_, std::make_pair(graph, 0), true);
   graph_with_stats = FuseFC(name_scope_, graph_with_stats, false);
 
   AddStatis(graph_with_stats.second);
