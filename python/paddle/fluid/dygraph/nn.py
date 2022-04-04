@@ -1355,6 +1355,8 @@ class BatchNorm(layers.Layer):
                 batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     mean_out, variance_out, *attrs)
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
