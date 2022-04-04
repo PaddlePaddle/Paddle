@@ -122,11 +122,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)
-
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -279,7 +280,8 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y)
+        axis = -1  # default value
+        return _C_ops.final_state_greater_than(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_than(x, y)
@@ -678,7 +680,9 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True, True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',
                               str(atol), 'equal_nan', equal_nan)

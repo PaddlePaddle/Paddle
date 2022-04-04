@@ -1,0 +1,37 @@
+name: 🚀 新需求 Feature Request
+description: 提交一个你对Paddle的新需求。 Submit a request for a new Paddle feature.
+labels: [type/feature-request, status/new-issue]
+
+body:
+- type: markdown
+  attributes:
+    value: >
+      #### 你可以在这里提出你对Paddle框架的新需求，包括但不限于：功能或模型缺失、功能不全或无法使用、精度/性能不符合预期等。
+      
+      #### You could submit a request for a new Paddle feature here, including but not limited to: new features or models, incomplete or unusable features, accuracy/performance not as expected, etc.
+      
+- type: textarea
+  id: description
+  attributes:
+    label: 需求描述 Feature Description
+    description: |
+      请尽可能包含任务目标、需求场景、功能描述等信息，全面的信息有利于我们准确评估你的需求。
+      Please include as much information as possible, such as mission objectives, requirement scenarios, functional descriptions, etc. Comprehensive information will help us accurately assess your feature request.
+    value: "任务目标（请描述你正在做的项目是什么，如模型、论文、项目是什么？）; <br /> 需求场景（请描述你的项目中为什么需要用此功能）;  <br /> 功能描述（请简单描述或设计这个功能）"
+  validations:
+    required: true
+    
+- type: textarea
+  id: alternatives
+  attributes:
+    label: 替代实现 Alternatives
+    description: |
+      如果你考虑过的任何替代解决方案或功能，请简要描述下，我们会综合评估。
+      A description of any alternative solutions or features you've considered, if any.
+  validations:
+    required: false
+    
+- type: markdown
+  attributes:
+    value: >
+      感谢你的贡献 🎉！Thanks for your contribution 🎉!
