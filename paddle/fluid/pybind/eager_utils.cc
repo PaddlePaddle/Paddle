@@ -426,6 +426,8 @@ PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
 PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
 
+PyObject* ToPyObject(size_t value) { return PyLong_FromLong(value); }
+
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
@@ -971,7 +973,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
 
-  } else if (type_name == "paddle.Tensor") {
+  } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
