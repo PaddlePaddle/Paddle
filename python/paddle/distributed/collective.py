@@ -208,6 +208,7 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0):
     pg = None
+    assert backend in _valid_backend_list, "Unsupported backend %s." % backend
     if backend == "gloo":
         pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
     elif backend == "nccl":
@@ -297,15 +298,15 @@ def new_group(ranks=None, backend=None):
         global_group = _get_default_group()
         global_rank = global_group.rank
         global_ranks = global_group.ranks
+        backend = _default_backend if backend is None else backend
         if ranks is None:
             ranks = global_ranks
         assert len(ranks) <= len(global_ranks), (
             "Size of new group must be less than or "
             "equal to that of the default global group.")
         size = len(ranks)
-        assert size > 1, "A group must have at least two memebers."
         ranks = sorted(ranks)
-        if global_rank in ranks:
+        if global_rank in ranks and size > 1:
             rank = ranks.index(global_rank)
             pg = _new_process_group_impl(
                 backend,
