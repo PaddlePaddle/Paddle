@@ -32,7 +32,7 @@ class TestSparseActivation(unittest.TestCase):
             #TODO(zhangkaihuo): change to test the corresponding API: paddle.sparse.relu(sparse_coo_x)
             sparse_act_out = _C_ops.final_state_sparse_relu(sparse_coo_x)
             correct_result = [0, 2, 0, 4, 5]
-            actual_result = sparse_act_out.non_zero_elements().numpy()
+            actual_result = sparse_act_out.values().numpy()
             assert np.array_equal(correct_result, actual_result)
 
 
