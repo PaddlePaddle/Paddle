@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -358,17 +359,6 @@ void DiagonalInferMeta(const MetaTensor& input,
     }
   }
   out->set_dims(phi::make_ddim(out_dims));
-}
-
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask) {
-  auto x_dims = x.dims();
-  out->set_dims(x_dims);
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-
-  if (mask != nullptr) {
-    mask->set_dims(x_dims);
-  }
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -1736,6 +1726,51 @@ void ShardIndexInferMeta(const MetaTensor& in,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void SliceRawInferMeta(const MetaTensor& input,
+                       const std::vector<int64_t>& axes,
+                       const IntArray& starts_arr,
+                       const IntArray& ends_arr,
+                       const std::vector<int64_t>& infer_flags_t,
+                       const std::vector<int64_t>& decrease_axis,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument("The rank of input should be less than 7."));
+  DDim out_dims(in_dims);
+
+  std::vector<int64_t> infer_flags = infer_flags_t;
+  if (infer_flags.empty()) {
+    // Initialize infer_flags with 1.
+    // To be compatible with other op tests in which infer_flags is not set.
+    infer_flags = std::vector<int64_t>(axes.size(), 1);
+  }
+
+  // 2.1 Check attrs.
+  std::vector<int64_t> starts = starts_arr.GetData();
+  std::vector<int64_t> ends = ends_arr.GetData();
+
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
+      in_dims, axes, &starts, &ends, nullptr, &infer_flags);
+
+  auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
+      in_dims, axes, starts, ends, nullptr, &infer_flags);
+  if (config.is_runtime) {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, &infer_flags);
+  } else {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, nullptr);
+  }
+
+  out->set_dims(out_dims);
+  if (axes.size() > 0 && axes[0] != 0) {
+    out->share_lod(input);
+  }
 }
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {

@@ -279,6 +279,78 @@ void AdamwInferMeta(const MetaTensor& param,
                 master_param_outs);
 }
 
+void AddNInferMeta(const std::vector<MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config) {
+  auto N = x.size();
+  PADDLE_ENFORCE_GT(
+      N,
+      0,
+      phi::errors::InvalidArgument(
+          "The input tensor X's dimensions of SumOp "
+          "should be larger than 0. But received X's dimensions %d.",
+          N));
+  if (N == 1) {
+    VLOG(3) << "Warning: SumOp have only one input, may waste memory";
+  }
+
+  phi::DDim in_dim({0});
+  for (size_t i = 0; i < x.size(); ++i) {
+    auto x_dim = x[i]->dims();
+    if (phi::product(x_dim) == 0) {
+      continue;
+    }
+    if (phi::product(in_dim) == 0) {
+      in_dim = x_dim;
+    } else {
+      if (config.is_runtime) {
+        PADDLE_ENFORCE_EQ(in_dim,
+                          x_dim,
+                          phi::errors::InvalidArgument(
+                              "The input tensor X of SumOp must"
+                              " have same shape. But received X[0]'s shape = "
+                              "[%s], X[%d]'s shape = [%s].",
+                              in_dim,
+                              i,
+                              x_dim));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            in_dim.size(),
+            x_dim.size(),
+            phi::errors::InvalidArgument(
+                "The input tensor X of SumOp must have same "
+                "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
+                "shape = "
+                "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
+                in_dim.size(),
+                in_dim,
+                i,
+                x_dim.size(),
+                i,
+                x_dim));
+        // if in_dim or x_dim has -1, not check equal
+        for (int j = 0; j < x_dim.size(); ++j) {
+          if (x_dim[j] == -1 || in_dim[j] == -1) {
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(
+              in_dim[j],
+              x_dim[j],
+              phi::errors::InvalidArgument(
+                  "The input tensor X of SumOp must have same shape "
+                  "if not -1."
+                  "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
+                  in_dim,
+                  i,
+                  x_dim));
+        }
+      }
+    }
+  }
+  out->set_dims(in_dim);
+  out->share_lod(*x[0]);
+}
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -1882,6 +1954,13 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
   out->share_lod(*x.at(0));
+}
+
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out) {
+  for (size_t i = 0; i < x.size(); ++i) {
+    out[i]->share_meta(*x[i]);
+  }
 }
 
 void WarpctcInferMeta(const MetaTensor& logits,

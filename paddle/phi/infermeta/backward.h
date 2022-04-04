@@ -68,6 +68,17 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config = MetaConfig());
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

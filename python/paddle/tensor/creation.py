@@ -776,12 +776,10 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if _in_legacy_dygraph():
+    if paddle.in_dynamic_mode():
         num = len(args)
         out = _C_ops.meshgrid(list(args), num)
         return out
-    if in_dygraph_mode():
-        return _C_ops.final_state_meshgrid(list(args))
 
     name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())

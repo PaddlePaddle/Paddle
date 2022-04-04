@@ -2479,22 +2479,23 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  void ClearTensorWrappers() override { \n"
       "%s\n"
-      "    is_tensor_wrappers_cleared = true;\n"
+      "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
+      "\n"
+      "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
+      "    auto copied_node = std::shared_ptr<GradNode%s>(new "
+      "GradNode%s(*this));\n "
+      "    return copied_node;\n "
+      "}}\n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
-      "  bool IsTensorWrappersCleared() override { \n"
-      "    return is_tensor_wrappers_cleared;\n"
-      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
-      "   bool is_tensor_wrappers_cleared = false;\n"
-      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2601,8 +2602,9 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
-      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, op_type, op_type,
+      set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
+      attr_members_str);
 
   return grad_node_str;
 }
