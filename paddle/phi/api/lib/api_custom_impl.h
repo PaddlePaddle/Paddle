@@ -31,6 +31,20 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu);
+
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
                                      const Scalar& axis);
