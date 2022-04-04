@@ -49,8 +49,8 @@ std::tuple<SparseCooTensor, DenseTensor> Conv3dGrad(
     const int groups,
     const bool subm) {
   SparseCooTensor x_grad;
-  DenseTensor kernel_grad = phi::Empty<Context>(
-      dev_ctx, DenseTensorMeta(kernel.dtype(), {1}, kernel.layout()));
+  DenseTensor kernel_grad;
+
   // TODO(zhangkaihuo): call InferMeta func here
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,

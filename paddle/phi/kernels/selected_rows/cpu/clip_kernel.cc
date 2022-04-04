@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/selected_rows/clip_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/selected_rows/impl/clip_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void RangeKernel(const Context& dev_ctx,
-                 const DenseTensor& start,
-                 const DenseTensor& end,
-                 const DenseTensor& step,
-                 DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(clip_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sr::ClipSparseKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

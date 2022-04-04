@@ -28,7 +28,7 @@ from paddle import nn
 from paddle.distributed import collective
 
 from .group_sharded_storage import GradStorage
-from .group_sharded_optimizer_stage2 import ShardingOptimizerStage2
+from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
 from .group_sharded_utils import Taskflow, Type, device_guard
 
 
@@ -36,10 +36,10 @@ def _trainable(param):
     return param.trainable
 
 
-class ShardingStage2(nn.Layer):
+class GroupShardedStage2(nn.Layer):
     """ 
     A wrapper for Sharding Stage2 Layer in Dygraph. 
-    .. warning: ShardingStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
+    .. warning: GroupShardedStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
@@ -202,9 +202,9 @@ class ShardingStage2(nn.Layer):
         for param in self._trainable_params:
             if param.name in self._param_grads and param.grad is not None:
                 param.grad.scale_(scale=self._world_size_scaling)
-                param._reset_grad_inplace_version(True)
+                # param._reset_grad_inplace_version(True)
 
-        # Scale grads of master params with offload strategy
+            # Scale grads of master params with offload strategy
         if self._offload:
             self._sharding_optimizers[0]._offload_scale_grad(
                 self._world_size_scaling)
@@ -277,8 +277,6 @@ class ShardingStage2(nn.Layer):
                 self._global_root_rank,
                 self._group,
                 use_calc_stream=True)
-        # Synchronous cpu & gpu
-        paddle.device.cuda.synchronize()
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -339,8 +337,6 @@ class ShardingStage2(nn.Layer):
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
 
-                    # Synchronous cpu & gpu
-                    paddle.device.cuda.synchronize()
                     cleanup()
 
         else:
@@ -387,8 +383,6 @@ class ShardingStage2(nn.Layer):
                             group=self._group)
                         #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
 
-                        # Synchronous cpu & gpu
-                        paddle.device.cuda.synchronize()
                         cleanup()
 
                     # Clear the task flow and trigger callback to clear the redundant gradient

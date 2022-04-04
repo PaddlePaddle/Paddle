@@ -170,6 +170,7 @@ class ParamStorage(InternalStorage):
         with device_guard(self.dev_id, self._device):
             tmp_tensor = self.buffer._slice(self._fill, var_end)
             tmp_tensor._share_buffer_to(param)
+            param.get_tensor()._set_dims(p_shape)
 
         self._fill = offset
 

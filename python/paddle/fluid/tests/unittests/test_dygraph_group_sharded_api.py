@@ -18,12 +18,15 @@ import unittest
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphGroupSharded(TestMultipleGpus):
 
     # check group sharded logic as well as the accuracy with single mode
     def test_dygraph_group_sharded(self):
+        with _test_eager_guard():
+            self.run_mnist_2gpu('dygraph_group_sharded_api.py')
         self.run_mnist_2gpu('dygraph_group_sharded_api.py')
 
 

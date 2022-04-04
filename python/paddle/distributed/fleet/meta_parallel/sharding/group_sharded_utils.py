@@ -44,7 +44,7 @@ class Type(Enum):
     fp32 = paddle.float32
 
 
-class ShardingClipGrad:
+class GroupShardedClipGrad:
     def __init__(self, clip, device, group):
         self._clip = clip
         self._device = device
@@ -134,7 +134,7 @@ class ShardingClipGrad:
             else:
                 g.scale_(clip_var)
             g.stop_gradient = origin_state
-            p._reset_grad_inplace_version(True)
+            # p._reset_grad_inplace_version(True)
 
         return params_grads
 
@@ -159,7 +159,7 @@ def device_guard(dev_id=0, device="cpu"):
 
 
 @dygraph_only
-def ShardingScaler(scaler):
+def GroupShardedScaler(scaler):
     def unscale_method(self, optimizer):
         if not self._enable:
             return

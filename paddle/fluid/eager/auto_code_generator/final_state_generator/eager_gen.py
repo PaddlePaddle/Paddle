@@ -88,9 +88,9 @@ VECTOR_TENSOR_MEMBER_TEMPLATE = \
 
 CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE = \
 """
-       for (auto tw: {}) {
+       for (auto& tw : {}) {{
          tw.clear();
-       };
+       }}
 """
 
 SET_ATTR_METHOD_TEMPLATE = \
@@ -125,7 +125,13 @@ class {} : public egr::GradNodeBase {{
   
   void ClearTensorWrappers() override {{
       {}
-    is_tensor_wrappers_cleared = true;
+      SetIsTensorWrappersCleared(true);
+  }}
+
+  std::shared_ptr<GradNodeBase> Copy() const override {{
+      auto copied_node = std::shared_ptr<{}>(new {}(*this));
+      
+      return copied_node;
   }}
   
   // SetTensorWrapperX, SetTensorWrapperY, ...
@@ -133,14 +139,9 @@ class {} : public egr::GradNodeBase {{
   // SetAttributes
   {}
 
-  bool IsTensorWrappersCleared() override {{
-      return is_tensor_wrappers_cleared;  
-  }}
  private:
   // TensorWrappers
   {}
-
-  bool is_tensor_wrappers_cleared = false;
 
   // Attributes
   {}
@@ -357,6 +358,12 @@ CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
     paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
     if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+"""
+
+CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
+"""
+    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
+    if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
 """
 
 
@@ -1212,9 +1219,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(forward_op_name)
         self.node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
             grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-            grad_node_name, clear_tensor_wrapper_str,
-            set_tensor_wrapper_methods_str, set_attribute_methods_str,
-            tensor_wrapper_members_str, attribute_members_str)
+            grad_node_name, clear_tensor_wrapper_str, grad_node_name,
+            grad_node_name, set_tensor_wrapper_methods_str,
+            set_attribute_methods_str, tensor_wrapper_members_str,
+            attribute_members_str)
 
         logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
 
@@ -1248,11 +1256,18 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 name)
 
             is_optional = (name in self.optional_inputs)
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
             if is_optional:
-                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
+                tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
+                    transformed_tensor_name, transformed_tensor_name,
+                    transformed_tensor_name, transformed_tensor_name)
+
+                grad_api_args[
+                    grad_api_position] = transformed_tensor_name + "_optional"
+
             else:
-                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
-            grad_api_args[grad_api_position] = transformed_tensor_name
+                grad_api_args[grad_api_position] = transformed_tensor_name
+
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads

@@ -28,7 +28,7 @@ from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import _get_global_group, new_group, broadcast, wait
 
 from .group_sharded_storage import ParamStorage, GradStorage
-from .sharding_utils import Type, device_guard, ShardingClipGrad
+from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096}
@@ -38,7 +38,7 @@ align = {
 }
 
 
-class ShardingOptimizerStage2(Optimizer):
+class GroupShardedOptimizerStage2(Optimizer):
     """
     A wrapper for Sharding Stage2 Optimizer in Dygraph. 
 
@@ -66,7 +66,7 @@ class ShardingOptimizerStage2(Optimizer):
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
-        assert device == "gpu", "Only GPU is supported now"
+        assert core.is_compiled_with_cuda(), "Only GPU is supported now"
 
         # Segmentation information
         self._dtype_rank_params = OrderedDict(
@@ -114,16 +114,14 @@ class ShardingOptimizerStage2(Optimizer):
             logging.warning(
                 "While using ClipGradByGlobalNorm in ShardingOptimizer, the grad clip of original optimizer will be changed."
             )
-            self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
-                                                      paddle.get_device(),
-                                                      self._group)
+
+            self._optim._grad_clip = GroupShardedClipGrad(
+                self._optim._grad_clip, paddle.get_device(), self._group)
             if self._optim._parameter_list and isinstance(
                     self._optim._parameter_list[0], dict):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
-                        item["grad_clip"] = ShardingClipGrad(
-                            self._optim._grad_clip,
-                            paddle.get_device(), self._group)
+                        item["grad_clip"] = self._optim._grad_clip
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -153,8 +151,6 @@ class ShardingOptimizerStage2(Optimizer):
                 src=self._global_root_rank,
                 group=self._group,
                 use_calc_stream=True)
-        # Synchronous cpu & gpu
-        paddle.device.cuda.synchronize()
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
