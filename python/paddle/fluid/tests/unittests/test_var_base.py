@@ -795,17 +795,17 @@ class TestVarBase(unittest.TestCase):
         np_value = np.random.random(shape).astype('float32')
         var_tensor = paddle.to_tensor(np_value)
         index = [[True, True, True, True], [True, False, True, True],
-                 [True, False, False, True], [False, 0, 1, True, True]]
+                 [True, False, False, True], [False, 0, 1, True, True],
+                 [False, False, False, False]]
         index2d = np.array([[True, True], [False, False], [True, False],
                             [True, True]])
         tensor_index = paddle.to_tensor(index2d)
         var = [
-            var_tensor[index[0]].numpy(),
-            var_tensor[index[1]].numpy(),
-            var_tensor[index[2]].numpy(),
-            var_tensor[index[3]].numpy(),
+            var_tensor[index[0]].numpy(), var_tensor[index[1]].numpy(),
+            var_tensor[index[2]].numpy(), var_tensor[index[3]].numpy(),
             var_tensor[paddle.to_tensor(index[0])].numpy(),
             var_tensor[tensor_index].numpy(),
+            var_tensor[paddle.to_tensor(index[4])].numpy()
         ]
         self.assertTrue(np.array_equal(var[0], np_value[index[0]]))
         self.assertTrue(np.array_equal(var[1], np_value[index[1]]))
@@ -813,6 +813,7 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(np.array_equal(var[3], np_value[index[3]]))
         self.assertTrue(np.array_equal(var[4], np_value[index[0]]))
         self.assertTrue(np.array_equal(var[5], np_value[index2d]))
+        self.assertTrue(np.array_equal(var[6], np_value[index[4]]))
         self.assertTrue(
             np.array_equal(var_tensor[var_tensor > 0.67], np_value[np_value >
                                                                    0.67]))
