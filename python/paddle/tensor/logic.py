@@ -182,7 +182,8 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_equal(x, y, -1)
+        axis = -1
+        return _C_ops.final_state_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.equal(x, y)
@@ -231,7 +232,8 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_equal(x, y, -1)
+        axis = -1
+        return _C_ops.final_state_greater_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_equal(x, y)
@@ -330,7 +332,8 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_less_equal(x, y, -1)
+        axis = -1
+        return _C_ops.final_state_less_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_equal(x, y)
@@ -380,7 +383,8 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_less_than(x, y, -1)
+        axis = -1
+        return _C_ops.final_state_less_than(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_than(x, y)
@@ -430,7 +434,8 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_not_equal(x, y, -1)
+        axis = -1
+        return _C_ops.final_state_not_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.not_equal(x, y)
@@ -537,7 +542,7 @@ def bitwise_and(x, y, out=None, name=None):
             res = paddle.bitwise_and(x, y)
             print(res)  # [0, 2, 1]
     """
-    if in_dygraph_mode() and out == None:
+    if in_dygraph_mode() and out is None:
         return _C_ops.final_state_bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
@@ -565,7 +570,7 @@ def bitwise_or(x, y, out=None, name=None):
             res = paddle.bitwise_or(x, y)
             print(res)  # [-1, -1, -3]
     """
-    if in_dygraph_mode() and out == None:
+    if in_dygraph_mode() and out is None:
         return _C_ops.final_state_bitwise_or(x, y)
 
     return _bitwise_op(
@@ -594,7 +599,7 @@ def bitwise_xor(x, y, out=None, name=None):
             res = paddle.bitwise_xor(x, y)
             print(res) # [-1, -3, -4]
     """
-    if in_dygraph_mode() and out == None:
+    if in_dygraph_mode() and out is None:
         return _C_ops.final_state_bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
@@ -620,7 +625,7 @@ def bitwise_not(x, out=None, name=None):
             res = paddle.bitwise_not(x)
             print(res) # [4, 0, -2]
     """
-    if in_dygraph_mode() and out == None:
+    if in_dygraph_mode() and out is None:
         return _C_ops.final_state_bitwise_not(x)
 
     return _bitwise_op(

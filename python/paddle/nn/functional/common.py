@@ -28,7 +28,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
+from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 
 from ...fluid import dygraph_utils
 from ...fluid import layers
@@ -895,9 +895,15 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        if in_dynamic_mode():
+        if _non_static_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
+
+            if in_dygraph_mode():
+                out, mask = _C_ops.final_state_dropout( x, None, p, not training, mode, \
+                    seed if seed is not None else 0, seed is not None)
+
+                return out
             out, mask = _C_ops.dropout(
                 x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
                 seed is not None, 'seed', seed
