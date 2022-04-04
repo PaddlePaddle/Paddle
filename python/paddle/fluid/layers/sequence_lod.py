@@ -1382,19 +1382,18 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        if in_dygraph_mode():
-            if maxlen is not None:
-                if isinstance(maxlen, core.eager.Tensor):
-                    attrs = ('out_dtype', dtype)
-                    out = _C_ops.sequence_mask(x, maxlen, *attrs)
-                else:
-                    attrs = ('out_dtype', dtype, 'maxlen', maxlen)
-                    out = _C_ops.sequence_mask(x, None, *attrs)
-                out.stop_gradient = True
-                return out
+        if maxlen is not None:
+            if isinstance(maxlen, core.eager.Tensor):
+                attrs = ('out_dtype', dtype)
+                out = _C_ops.sequence_mask(x, maxlen, *attrs)
+            else:
+                attrs = ('out_dtype', dtype, 'maxlen', maxlen)
+                out = _C_ops.sequence_mask(x, None, *attrs)
+            out.stop_gradient = True
+            return out
 
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
