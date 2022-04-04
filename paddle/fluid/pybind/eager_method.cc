@@ -1227,21 +1227,6 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_to_sparse_coo(TensorObject* self, PyObject* args,
-                                             PyObject* kwargs) {
-  EAGER_TRY
-  int64_t sparse_dim = CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  auto coo_tensor = self->tensor.to_sparse_coo(sparse_dim);
-  egr::EagerUtils::autograd_meta(&coo_tensor)
-      ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient());
-  egr::EagerUtils::autograd_meta(&coo_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
-  return ToPyObject(coo_tensor);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
@@ -1253,20 +1238,6 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self, PyObject* args,
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   return ToPyObject(csr_tensor);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* tensor_method_to_dense(TensorObject* self, PyObject* args,
-                                        PyObject* kwargs) {
-  EAGER_TRY
-  auto dense_tensor = self->tensor.to_dense();
-  egr::EagerUtils::autograd_meta(&dense_tensor)
-      ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient());
-  egr::EagerUtils::autograd_meta(&dense_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
-  return ToPyObject(dense_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1393,17 +1364,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
-    {"non_zero_indices",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
+    {"indices", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_elements",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_elements,
+    {"values", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_elements,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_crows",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
+    {"crows", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_cols",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
+    {"cols", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse", (PyCFunction)(void (*)(void))tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1411,11 +1378,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"to_sparse_coo", (PyCFunction)(void (*)(void))tensor_method_to_sparse_coo,
-     METH_VARARGS | METH_KEYWORDS, NULL},
     {"to_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_to_sparse_csr,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"to_dense", (PyCFunction)(void (*)(void))tensor_method_to_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,

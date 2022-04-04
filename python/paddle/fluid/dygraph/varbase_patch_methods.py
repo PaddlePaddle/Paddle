@@ -856,6 +856,28 @@ def monkey_patch_varbase():
             raise ValueError(
                 "only SparseCooTensor and SparseCsrTensor have method values")
 
+    @framework.dygraph_only
+    def to_dense(self):
+        if self.is_sparse_coo():
+            return _C_ops.final_state_sparse_coo_to_dense(self)
+        elif self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_dense(self)
+        else:
+            return self
+
+    @framework.dygraph_only
+    def to_sparse_coo(self, sparse_dim):
+        if self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
+        elif self.is_sparse_coo():
+            return self
+        elif self.is_selected_rows():
+            raise ValueError(
+                "SelectedRows does not support to_sparse_coo method")
+        else:
+            #is dense tensor
+            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -868,7 +890,8 @@ def monkey_patch_varbase():
         ("__repr__", __str__), ("__deepcopy__", __deepcopy__),
         ("__module__", "paddle"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__), ("_to", _to), ("values", values)):
+        ("__setitem__", __setitem__), ("_to", _to), ("values", values),
+        ("to_dense", to_dense), ("to_sparse_coo", to_sparse_coo)):
         if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:

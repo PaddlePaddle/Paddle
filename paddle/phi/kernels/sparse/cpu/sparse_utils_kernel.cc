@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -245,6 +246,7 @@ template <typename T, typename Context>
 void SparseCooToDenseKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             DenseTensor* out) {
+  VLOG(6) << "1...";
   const auto non_zero_num = x.nnz();
   const auto dense_dims = x.dims();
   const auto indices = x.non_zero_indices();
