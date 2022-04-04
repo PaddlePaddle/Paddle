@@ -13,8 +13,8 @@ limitations under the License. */
 #include <Python.h>
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "pybind11/pybind11.h"
@@ -26,11 +26,9 @@ class Scope;
 }
 namespace pybind {
 
-typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor tensor;
-} TensorObject;
-
 int TensorDtype2NumpyDtype(phi::DataType dtype);
+
+bool IsEagerTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -57,13 +55,15 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
+PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
 PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value);
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      ssize_t value_idx, PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
@@ -75,6 +75,7 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
+PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
@@ -151,8 +152,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
 
-paddle::experimental::ScalarArray CastPyArg2ScalarArray(
-    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos);
 
 paddle::experimental::Place CastPyArg2Place(PyObject* obj,
                                             const std::string& op_type,
@@ -162,7 +164,7 @@ paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
@@ -184,6 +186,14 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
+
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
+    PyObject* obj);
+
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj);
+
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

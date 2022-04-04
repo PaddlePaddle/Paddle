@@ -57,6 +57,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/type_defs.h"
 
@@ -621,17 +622,9 @@ void BindImperative(py::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
   m.def("_switch_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
-          if (egr::Controller::Instance().InEagerMode()) {
-            egr::Controller::Instance().SetCurrentTracer(tracer);
-          }
+          egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
-  m.def("_enable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(true); });
-  m.def("_disable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(false); });
-  m.def("_in_eager_mode",
-        []() { return egr::Controller::Instance().InEagerMode(); });
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
   g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
@@ -655,7 +648,6 @@ void BindImperative(py::module *m_ptr) {
              } else {
                act_name = name.cast<std::string>();
              }
-             VLOG(4) << "Init VarBase :" << act_name;
              new (&self) imperative::VarBase(act_name);
              self.SetPersistable(persistable);
              self.SetType(type);
@@ -1638,39 +1630,9 @@ void BindImperative(py::module *m_ptr) {
                                platform::errors::InvalidArgument(
                                    "Unified virtual addressing only support "
                                    "CPU Tensor currently."));
-             platform::DeviceContextPool &pool =
-                 platform::DeviceContextPool::Instance();
-             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
-             VLOG(4) << "Init the DeviceContext, and the place is "
-                     << dev_ctx->GetPlace();
              auto *self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             // Register the cpu memory as the cuda host memory
-             const auto &data_numel = self_tensor->numel();
-             const size_t &need_allocate_size =
-                 data_numel *
-                 framework::SizeOfType(
-                     framework::TransToProtoVarType(self_tensor->dtype()));
-             void *data_ptr = self_tensor->data();
-             auto result = cudaHostRegister(data_ptr, need_allocate_size,
-                                            cudaHostRegisterDefault);
-             if (cudaSuccess != result) {
-               VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
-                       << need_allocate_size << ", the error code:" << result;
-             }
-
-             // Get device pointer from the function of cudaHostGetDevicePointer
-             void *cuda_device_pointer = nullptr;
-             cudaHostGetDevicePointer(
-                 reinterpret_cast<void **>(&cuda_device_pointer),
-                 reinterpret_cast<void *>(data_ptr), 0);
-
-             // Reset the memory with device pointer
-             std::shared_ptr<memory::allocation::Allocation> holder =
-                 std::make_shared<memory::allocation::Allocation>(
-                     cuda_device_pointer, need_allocate_size,
-                     platform::CUDAPlace(device_id));
-             self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
+             tensor_uva(self_tensor, device_id);
            },
            py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
         Returns self tensor with the UVA(unified virtual addressing).

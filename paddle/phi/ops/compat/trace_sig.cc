@@ -23,7 +23,7 @@ KernelSignature TraceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("trace_grad",
-                         {GradVarName("Out"), "Input"},
+                         {"Input", GradVarName("Out")},
                          {"offset", "axis1", "axis2"},
                          {GradVarName("Input")});
 }

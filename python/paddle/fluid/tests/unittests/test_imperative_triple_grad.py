@@ -19,11 +19,12 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -65,7 +66,7 @@ class TestDygraphTripleGrad(TestCase):
             allow_unused=allow_unused)
 
     @dygraph_guard
-    def test_exception(self):
+    def func_exception(self):
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -95,7 +96,7 @@ class TestDygraphTripleGrad(TestCase):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
     @dygraph_guard
-    def test_example_with_gradient_and_create_graph(self):
+    def func_example_with_gradient_and_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         x.stop_gradient = False
@@ -145,6 +146,11 @@ class TestDygraphTripleGrad(TestCase):
         dddx_grad_actual = x.gradient()
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
 
+    def test_all_cases(self):
+        if _in_legacy_dygraph():
+            self.func_exception()
+            self.func_example_with_gradient_and_create_graph()
+
 
 class TestDygraphTripleGradBradcastCase(TestCase):
     def setUp(self):
@@ -172,7 +178,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
             allow_unused=allow_unused)
 
     @dygraph_guard
-    def test_example_with_gradient_and_create_graph(self):
+    def func_example_with_gradient_and_create_graph(self):
         x = random_var(self.x_shape)
         x_np = x.numpy()
         x.stop_gradient = False
@@ -226,6 +232,10 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         ddx_actual.backward()
         dddx_grad_actual = x.gradient()
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
+
+    def test_all_cases(self):
+        if _in_legacy_dygraph():
+            self.func_example_with_gradient_and_create_graph()
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ import numpy as np
 from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
 from ..framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -87,7 +88,11 @@ def mean(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_mean(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                   'reduce_all', reduce_all)
 
@@ -387,7 +392,7 @@ def quantile(x, q, axis=None, keepdim=False):
     if not isinstance(x, Variable):
         raise TypeError("input x should be a Tensor.")
     dims = len(x.shape)
-    out_shape = x.shape
+    out_shape = list(x.shape)
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
@@ -433,16 +438,15 @@ def quantile(x, q, axis=None, keepdim=False):
             indices.append(q_num * (x.shape[axis] - 1))
     else:
         raise TypeError("Type of q should be int, float, list or tuple.")
-    indices = paddle.to_tensor(indices).astype(paddle.float32)
     sorted_tensor = paddle.sort(x, axis)
-    indices_below = paddle.floor(indices).astype(paddle.int32)
-    indices_upper = paddle.ceil(indices).astype(paddle.int32)
+    indices_tensor = paddle.assign(indices).astype(paddle.float32)
+    indices_below = paddle.floor(indices_tensor).astype(paddle.int32)
+    indices_upper = paddle.ceil(indices_tensor).astype(paddle.int32)
     outputs = []
 
     def expand_dim(indices, sorted_tensor_shape, axis):
         assert axis < len(list(sorted_tensor_shape))
         expanded_shape = [1] * len(list(sorted_tensor_shape))
-        expanded_shape[axis] = len(indices)
         expanded_shape = tuple(expanded_shape)
         indices = indices.reshape(expanded_shape)
         return indices

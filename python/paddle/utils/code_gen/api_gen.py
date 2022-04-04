@@ -17,7 +17,7 @@ import yaml
 import argparse
 import re
 
-from api_base import BaseAPI
+from api_base import BaseAPI, PREFIX_TENSOR_NAME
 
 
 class ForwardAPI(BaseAPI):
@@ -94,6 +94,13 @@ class ForwardAPI(BaseAPI):
 {code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
+            if not inplace_flag and self.view_map is not None and self.outputs[
+                    'names'][0] in self.view_map:
+                output_create = output_create + f"""
+{code_indent}  kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+
         elif len(output_type_list) > 1:
             output_create = f"""
 {code_indent}  {self.outputs['return_type']} api_output;"""
@@ -108,6 +115,13 @@ class ForwardAPI(BaseAPI):
 
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
+
+                if not inplace_flag and self.view_map is not None and self.outputs[
+                        'names'][i] in self.view_map:
+                    output_create = output_create + f"""
+{code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -124,7 +138,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -137,7 +151,6 @@ def source_include(header_file_path):
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -150,12 +163,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-"""
 
-
-def api_register():
-    return """
-PD_REGISTER_API(Math);
+DECLARE_bool(conv2d_disable_cudnn);
 """
 
 
@@ -171,15 +180,12 @@ namespace experimental {
 """)
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path,
-                 dygraph_header_file_path, dygraph_source_file_path):
+def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
-    dygraph_header_file = open(dygraph_header_file_path, 'w')
-    dygraph_source_file = open(dygraph_source_file_path, 'w')
 
     namespace = api_namespace()
 
@@ -191,40 +197,19 @@ def generate_api(api_yaml_path, header_file_path, source_file_path,
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
-    dygraph_header_file.write("#pragma once\n")
-    dygraph_header_file.write(header_include())
-    dygraph_header_file.write(namespace[0])
-
-    dygraph_include_header_file = "paddle/phi/api/lib/dygraph_api.h"
-    dygraph_source_file.write(source_include(dygraph_include_header_file))
-    dygraph_source_file.write(namespace[0])
-
     for api in apis:
         foward_api = ForwardAPI(api)
         if foward_api.is_dygraph_api:
-            dygraph_header_file.write(foward_api.gene_api_declaration())
-            dygraph_source_file.write(foward_api.gene_api_code())
-
             foward_api.is_dygraph_api = False
-            header_file.write(foward_api.gene_api_declaration())
-            source_file.write(foward_api.gene_api_code())
-        else:
-            header_file.write(foward_api.gene_api_declaration())
-            source_file.write(foward_api.gene_api_code())
+
+        header_file.write(foward_api.gene_api_declaration())
+        source_file.write(foward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
 
-    dygraph_header_file.write(namespace[1])
-    dygraph_source_file.write(namespace[1])
-
-    source_file.write(api_register())
-
     header_file.close()
     source_file.close()
-
-    dygraph_header_file.close()
-    dygraph_source_file.close()
 
 
 def main():
@@ -245,26 +230,13 @@ def main():
         help='output of generated api source code file',
         default='paddle/phi/api/lib/api.cc')
 
-    parser.add_argument(
-        '--dygraph_api_header_path',
-        help='output of generated dygraph api header code file',
-        default='paddle/phi/api/lib/dygraph_api.h')
-
-    parser.add_argument(
-        '--dygraph_api_source_path',
-        help='output of generated dygraph api source code file',
-        default='paddle/phi/api/lib/dygraph_api.cc')
-
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
-    dygraph_header_file_path = options.dygraph_api_header_path
-    dygraph_source_file_path = options.dygraph_api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path,
-                 dygraph_header_file_path, dygraph_source_file_path)
+    generate_api(api_yaml_path, header_file_path, source_file_path)
 
 
 if __name__ == '__main__':

@@ -21,7 +21,8 @@ import os
 ########################
 ### Global Variables ###
 ########################
-ops_to_fill_zero_for_empty_grads = set(list("split"))
+ops_to_fill_zero_for_empty_grads = set(
+    ["split_grad", "rnn_grad", "matmul_double_grad"])
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -30,22 +31,30 @@ core_ops_args_info = {}
 core_ops_args_type_info = {}
 
 yaml_types_mapping = {
-    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
+    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
     'Place' : 'paddle::experimental::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
-    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
     'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
     'Scalar' : 'paddle::experimental::Scalar',
-    'ScalarArray' : 'paddle::experimental::ScalarArray'
+    'Scalar(int)' : 'paddle::experimental::Scalar',
+    'Scalar(int64_t)' : 'paddle::experimental::Scalar',
+    'Scalar(float)' : 'paddle::experimental::Scalar',
+    'Scalar(double)' : 'paddle::experimental::Scalar',
+    'IntArray' : 'paddle::experimental::IntArray'
 }
 
 
 #############################
 ###  File Reader Helpers  ###
 #############################
+def AssertMessage(lhs_str, rhs_str):
+    return f"lhs: {lhs_str}, rhs: {rhs_str}"
+
+
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
@@ -58,10 +67,10 @@ def ReadBwdFile(filepath):
     contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
     for content in contents:
+        assert 'backward_api' in content.keys(), AssertMessage('backward_api',
+                                                               content.keys())
         if 'backward_api' in content.keys():
             api_name = content['backward_api']
-        else:
-            assert False
 
         ret[api_name] = content
     f.close()
@@ -79,6 +88,10 @@ def FindForwardName(string):
     if not string.endswith("_grad"):
         return None
     return string[:-5]
+
+
+def IsGradName(string):
+    return string.endswith("_grad")
 
 
 def IsPlainTensorType(string):
@@ -158,6 +171,17 @@ def GetForwardFunctionName(string):
     return f"{string}_final_state_dygraph_function"
 
 
+def TransformGradVarNameForDoubleGradGeneration(string):
+    if IsGradName(string):
+        string = "grad_" + string[:-5]
+    return string
+
+
+def GetIndent(num):
+    tab = "   "
+    return "".join([tab for i in range(num)])
+
+
 ######################
 ###  Yaml Parsers  ###
 ######################
@@ -221,7 +245,7 @@ def ParseYamlReturns(string):
         ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
-        assert "Tensor" in ret_type
+        assert "Tensor" in ret_type, AssertMessage("Tensor", ret_type)
         ret_name = RemoveSpecialSymbolsInName(ret_name)
         returns_list.append([ret_name, ret_type, i])
 
@@ -254,8 +278,8 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
-    args_str = re.search(args_pattern, args_str).group(1)
+    args_pattern = f'^\({fargs}\)$'
+    args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
     returns_list = ParseYamlReturns(returns_str)
@@ -326,10 +350,10 @@ class FunctionGeneratorBase:
             self.inplace_map[key] = val
 
     def ParseNoNeedBuffer(self):
-        forward_api_contents = self.forward_api_contents
+        grad_api_contents = self.grad_api_contents
 
-        if 'no_need_buffer' in forward_api_contents.keys():
-            no_need_buffer_str = forward_api_contents['no_need_buffer']
+        if 'no_need_buffer' in grad_api_contents.keys():
+            no_need_buffer_str = grad_api_contents['no_need_buffer']
             for name in no_need_buffer_str.split(","):
                 name = name.strip()
                 name = RemoveSpecialSymbolsInName(name)
@@ -413,3 +437,5 @@ class YamlGeneratorBase:
         api_yaml_path = self.api_yaml_path
         if "sparse" in api_yaml_path:
             self.namespace = "sparse::"
+        elif "strings" in api_yaml_path:
+            self.namespace = "strings::"

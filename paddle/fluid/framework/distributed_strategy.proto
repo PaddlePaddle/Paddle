@@ -67,6 +67,8 @@ message AMPConfig {
   repeated string custom_black_varnames = 9;
   optional bool use_pure_fp16 = 10 [ default = false ];
   optional bool use_fp16_guard = 11 [ default = true ];
+  optional bool use_optimizer_fp16 = 12
+      [ default = false ]; // auto parallel effective only
 }
 
 message LocalSGDConfig {
@@ -161,6 +163,8 @@ message TrainerDescConfig {
   repeated string dump_fields = 2;
   repeated string dump_param = 3;
   repeated string stat_var_names = 4;
+  optional string trainer = 5;
+  optional string device_worker = 6;
 }
 
 message PipelineConfig {
@@ -187,6 +191,7 @@ message TableParameter {
   optional uint64 shard_num = 4 [ default = 1000 ];
   optional TableType type = 5;
   optional TableAccessorParameter accessor = 6;
+  optional bool compress_in_save = 7 [ default = false ];
 }
 
 message TableAccessorParameter {

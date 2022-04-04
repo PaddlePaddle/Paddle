@@ -1,9 +1,9 @@
 include(operators)
 
 cc_library(cinn_op_helper SRCS cinn_op_helper.cc DEPS operator device_context)
-cc_library(cinn_launch_context SRCS cinn_launch_context.cc DEPS ddim lod_tensor scope proto_desc graph build_strategy device_context parallel_executor cinn)
+cc_library(cinn_launch_context SRCS cinn_launch_context.cc DEPS ddim lod_tensor scope proto_desc graph build_strategy device_context parallel_executor transform_type cinn)
 
-SET(CINN_OP_DEPS parallel_executor string_helper cinn cinn_compiler cinn_op_helper cinn_launch_context)
+SET(CINN_OP_DEPS parallel_executor string_helper cinn cinn_compiler cinn_op_helper cinn_launch_context transform_type)
 register_operators(DEPS ${CINN_OP_DEPS})
 
 if (WITH_TESTING)

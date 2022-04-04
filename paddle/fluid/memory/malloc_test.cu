@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thread>  // NOLINT
+#include <vector>
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/stream.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -20,14 +29,6 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-
-#include <thread>  // NOLINT
-#include <vector>
-
-#include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace memory {
@@ -119,6 +120,10 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
             .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
     MultiStreamCompute(&data[i], &second_data[i], *dev_ctx[i]);
@@ -171,6 +176,10 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
             .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
     threads.push_back(std::thread(MultiStreamCompute, &data[i], &second_data[i],
@@ -196,5 +205,12 @@ TEST(Malloc, AllocZero) {
   AllocationPtr allocation_ptr = Alloc(place, 0);
   EXPECT_GE(allocation_ptr->size(), 0);
 }
+
+TEST(Malloc, AllocWithStream) {
+  size_t size = 1024;
+  AllocationPtr allocation = Alloc(platform::CUDAPlace(), size, phi::Stream(0));
+  EXPECT_EQ(allocation->size(), 1024);
+}
+
 }  // namespace memory
 }  // namespace paddle

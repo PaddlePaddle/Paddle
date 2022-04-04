@@ -33,6 +33,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -309,7 +310,7 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   // get the parameters of reduceKernel
-  void Run() {
+  void Run(const KPDevice& dev_ctx) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -321,6 +322,9 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
+
+    // step5: limit the grid to prevent thead overflow
+    paddle::platform::LimitGridDim(dev_ctx, &grid);
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -796,7 +800,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                             1,
                                             1,
                                             left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -824,7 +828,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                            1,
                                            1,
                                            left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -1060,7 +1064,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   auto x_dim = phi::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
-  config.Run();
+  config.Run(dev_ctx);
   int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
