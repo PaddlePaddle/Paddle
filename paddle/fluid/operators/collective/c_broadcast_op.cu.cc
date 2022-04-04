@@ -37,15 +37,20 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      pg->Broadcast(x, out);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*x);
+      out_tensor.push_back(*out);
+      auto task = pg->Broadcast(in_tensor, out_tensor);
+      task->Wait();
       return;
     }
 
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);

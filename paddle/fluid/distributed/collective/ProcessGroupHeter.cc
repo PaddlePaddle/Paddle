@@ -26,13 +26,13 @@ namespace distributed {
 using Place = paddle::platform::Place;
 
 std::shared_ptr<ProcessGroupHeter::HeterTask> ProcessGroupHeter::CreateTask(
-    int rank, CommType comm_type, const std::vector<Tensor>& inputs) {
+    int rank, CommType comm_type, const std::vector<phi::DenseTensor>& inputs) {
   return std::make_shared<ProcessGroupHeter::HeterTask>(rank, comm_type,
                                                         inputs);
 }
 
-ProcessGroupHeter::HeterTask::HeterTask(int rank, CommType CommType,
-                                        const std::vector<Tensor>& inputs)
+ProcessGroupHeter::HeterTask::HeterTask(
+    int rank, CommType CommType, const std::vector<phi::DenseTensor>& inputs)
     : Task(rank, inputs, CommType) {}
 
 ProcessGroupHeter::HeterTask::~HeterTask() {}
@@ -67,11 +67,7 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
   PADDLE_THROW(platform::errors::InvalidArgument(
       "ProcessGroupHeter only supports NCCL and HCCL now.");
 #endif
-  if (with_switch_) {
-    // TODO(sandyhouse) starts a client to connect the cloud switch module
-    // std::shared_ptr<HeterClient> client_ =
-    // HeterClient::GetInstance({switch_endpoint}, {}, 0);
-  } else if (local_rank_ == 0) {
+  if (local_rank_ == 0 && !with_switch_) {
     auto opts = ProcessGroupGloo::GlooOptions::create();
     opts->device = ProcessGroupGloo::createDefaultDevice();
     inter_pg_ = std::make_shared<ProcessGroupGloo>(store, gloo_rank_,
@@ -80,130 +76,98 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
-    std::vector<Tensor>& tensors, const AllreduceOptions& opts) {
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors, const AllreduceOptions& opts) {
 #if defined(PADDLE_WITH_NCCL)
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(tensors), true,
+      CheckTensorsInCudaPlace(in_tensors), true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors), true,
+      platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
 #endif
 
   // Step1: do allreduce in inner cluster
-  auto task = inner_pg_->AllReduce(tensors, opts);
+  auto task = inner_pg_->AllReduce(in_tensors, in_tensors, opts);
   task->Wait();
 
   // Step2: copy tensors to CPU
   if (local_rank_ == 0) {
-    std::vector<Tensor> cpu_tensors(tensors.size());
-    for (size_t i = 0; i < tensors.size(); i++) {
-      auto dense_gpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl());
-      auto dense_cpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[i].impl());
-      dense_cpu_tensor->Resize(tensors[i].dims());
-      framework::TensorCopySync(*dense_gpu_tensor, platform::CPUPlace(),
-                                dense_cpu_tensor.get());
+    std::vector<phi::DenseTensor> cpu_tensors;
+    cpu_tensors.reserve(in_tensors.size());
+    for (size_t i = 0; i < in_tensors.size(); i++) {
+      auto gpu_tensor = in_tensors[i];
+      auto cpu_tensor = cpu_tensors[i];
+      cpu_tensor.Resize(gpu_tensor.dims());
+      framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
     }
     // Step3: do inter cluster allreduce
     if (with_switch_) {
       // TODO(sandyhouse) send to and recv from switch, and do add
     } else {
-      auto gloo_task = inter_pg_->AllReduce(cpu_tensors, opts);
+      auto gloo_task = inter_pg_->AllReduce(cpu_tensors, cpu_tensors, opts);
       gloo_task->Wait();
     }
     // Step4: copy cpu tensors to gpu
     // TODO(sandyhouse)
     // copy cpu tensors to gpu
-    for (size_t i = 0; i < tensors.size(); i++) {
-      auto dense_gpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl());
-      auto dense_cpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[i].impl());
-      // framework::TensorCopySync(*dense_cpu_tensor, tensors[i].place(),
-      // dense_gpu_tensor.get());
-      framework::TensorCopySync(*dense_cpu_tensor, dense_cpu_tensor->place(),
-                                dense_gpu_tensor.get());
+    for (size_t i = 0; i < in_tensors.size(); i++) {
+      auto gpu_tensor = out_tensors[i];
+      auto cpu_tensor = cpu_tensors[i];
+      framework::TensorCopySync(cpu_tensor, cpu_tensor.place(), &gpu_tensor);
     }
   }
 
   // Step5: broadcast among inner cluster
   auto b_opts = BroadcastOptions();
-  b_opts.source_root = 0;
-  auto broadcast_task = inner_pg_->Broadcast(tensors, b_opts);
+  b_opts.source_rank = 0;
+  auto broadcast_task = inner_pg_->Broadcast(out_tensors, out_tensors, b_opts);
   broadcast_task->Wait();
-  return CreateTask(rank_, CommType::ALLREDUCE, tensors);
+  return CreateTask(rank_, CommType::ALLREDUCE, in_tensors);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
-    std::vector<Tensor>& tensors, const BroadcastOptions& opts) {
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors, const BroadcastOptions& opts) {
 #if defined(PADDLE_WITH_NCCL)
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(tensors), true,
+      CheckTensorsInCudaPlace(in_tensors), true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors), true,
+      platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
 #endif
 
   // Step1: do broadcast in inner cluster
   auto b_opts = BroadcastOptions();
-  b_opts.source_root = 0;
-  inner_pg_->Broadcast(tensors, b_opts);
+  b_opts.source_rank = 0;
+  inner_pg_->Broadcast(in_tensors, out_tensors, b_opts);
 
   if (local_rank_ == 0) {
-    std::vector<Tensor> cpu_tensors(tensors.size());
-    for (size_t i = 0; i < tensors.size(); i++) {
-      auto dense_gpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl());
-      auto dense_cpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[i].impl());
-      dense_cpu_tensor->Resize(tensors[i].dims());
-      framework::TensorCopySync(*dense_gpu_tensor, platform::CPUPlace(),
-                                dense_cpu_tensor.get());
+    std::vector<phi::DenseTensor> cpu_tensors;
+    cpu_tensors.reserve(in_tensors.size());
+    for (size_t i = 0; i < in_tensors.size(); i++) {
+      auto gpu_tensor = in_tensors[i];
+      auto cpu_tensor = cpu_tensors[i];
+      cpu_tensor.Resize(gpu_tensor.dims());
+      framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
     }
     if (with_switch_) {
       // TODO(sandyhouse) send to and recv
     } else {
-      auto gloo_task = inter_pg_->Broadcast(cpu_tensors, opts);
+      auto gloo_task = inter_pg_->Broadcast(cpu_tensors, cpu_tensors, opts);
       gloo_task->Wait();
     }
-    for (size_t i = 0; i < tensors.size(); i++) {
-      auto dense_gpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl());
-      auto dense_cpu_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[i].impl());
-      // framework::TensorCopySync(*dense_cpu_tensor, tensors[i].place(),
-      // dense_gpu_tensor.get());
-      framework::TensorCopySync(*dense_cpu_tensor, dense_cpu_tensor->place(),
-                                dense_gpu_tensor.get());
+    for (size_t i = 0; i < in_tensors.size(); i++) {
+      auto gpu_tensor = out_tensors[i];
+      auto cpu_tensor = cpu_tensors[i];
+      framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
     }
   }
-  auto broadcast_task = inner_pg_->Broadcast(tensors, b_opts);
+  auto broadcast_task = inner_pg_->Broadcast(out_tensors, out_tensors, b_opts);
   broadcast_task->Wait();
-  return CreateTask(rank_, CommType::BROADCAST, tensors);
+  return CreateTask(rank_, CommType::BROADCAST, in_tensors);
 }
 
-void ProcessGroupHeter::Broadcast(const phi::DenseTensor* in,
-                                  phi::DenseTensor* out) {
-  // Step1: do broadcast in inner cluster
-  inner_pg_->Broadcast(in, out);
-
-  if (local_rank_ == 0) {
-    Tensor cpu_tensor;
-    auto dense_cpu_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensor.impl());
-    dense_cpu_tensor->Resize(in->dims());
-    framework::TensorCopySync(*in, platform::CPUPlace(),
-                              dense_cpu_tensor.get());
-    if (with_switch_) {
-      // TODO(sandyhouse) send to and recv
-    } else {
-      std::vector<Tensor> cpu_tensors = {cpu_tensor};
-      // auto gloo_task = inter_pg_->Broadcast(cpu_tensors);
-      // gloo_task->Wait();
-      inter_pg_->Broadcast(cpu_tensors);
-    }
-    framework::TensorCopySync(*dense_cpu_tensor, dense_cpu_tensor->place(),
-                              out);
-  }
-  inner_pg_->Broadcast(out, out);
-}
-
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace distributed
+}  // namespace paddle
