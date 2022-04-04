@@ -60,7 +60,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             bool persistable = false, int stop_gradient = -1,
                             framework::proto::VarType::Type dtype =
                                 paddle::framework::proto::VarType::FP32,
-                            const std::vector<int>& dims = {},
+                            const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);

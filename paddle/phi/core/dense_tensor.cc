@@ -64,7 +64,6 @@ int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;
   }
-  if (meta_.dims.to_str() == "[]") return int64_t(0);
   return product(meta_.dims);
 }
 
