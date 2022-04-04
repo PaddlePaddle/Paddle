@@ -1414,12 +1414,12 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
                   const DenseTensor* Out,
-                  const DenseTensor* ddX,
                   const DenseTensor* dOut,
-                  const DenseTensor* d_DDOut,
+                  const DenseTensor* ddX,
                   const DenseTensor* d_dOut_New,
-                  DenseTensor* d_d_Out,
+                  const DenseTensor* d_DDOut,
                   DenseTensor* d_Out_New,
+                  DenseTensor* d_d_Out,
                   DenseTensor* d_DDx) const {
     auto* d = dev.eigen_device();
     auto ddx = EigenVector<T>::Flatten(

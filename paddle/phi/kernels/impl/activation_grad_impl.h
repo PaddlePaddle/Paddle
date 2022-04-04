@@ -243,8 +243,8 @@ void LogitGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SigmoidDoubleGradKernel(const Context& dev_ctx,
                              const DenseTensor& out,
-                             const DenseTensor& ddx,
                              const DenseTensor& dout,
+                             const DenseTensor& ddx,
                              DenseTensor* dout_new,
                              DenseTensor* ddout) {
   if (dout_new) {

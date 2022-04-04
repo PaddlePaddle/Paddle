@@ -141,6 +141,54 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
     dz->share_meta(z);
   }
 }
+void GeneralQuaternaryGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& z,
+                                    const MetaTensor& k,
+                                    MetaTensor* dx,
+                                    MetaTensor* dy,
+                                    MetaTensor* dz,
+                                    MetaTensor* dk) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+}
+
+void GeneralQuinaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 const MetaTensor& k,
+                                 const MetaTensor& l,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz,
+                                 MetaTensor* dk,
+                                 MetaTensor* dl) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dl) {
+    dl->share_meta(l);
+  }
+}
 
 void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
   if (dx) {

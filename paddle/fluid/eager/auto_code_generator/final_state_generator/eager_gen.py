@@ -31,7 +31,6 @@ from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromB
 from codegen_utils import ParseYamlForward, ParseYamlBackward
 from codegen_utils import FunctionGeneratorBase, YamlGeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
-from codegen_utils import TransformGradVarNameForDoubleGradGeneration
 from codegen_utils import AssertMessage, GetIndent
 
 
@@ -476,10 +475,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         orig_forward_returns_list = self.orig_forward_returns_list
 
         for i in range(len(forward_inputs_list)):
-            forward_input_name = forward_inputs_list[i][0]
             forward_input_type = forward_inputs_list[i][1]
             forward_input_pos = forward_inputs_list[i][2]
-            orig_input_name = orig_forward_inputs_list[i][0]
             orig_input_type = orig_forward_inputs_list[i][1]
             orig_input_pos = orig_forward_inputs_list[i][2]
 
@@ -489,11 +486,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 forward_input_pos, orig_input_pos)
 
         for i in range(len(forward_attrs_list)):
-            orig_attr_name = orig_forward_attrs_list[i][0]
             orig_attr_type = orig_forward_attrs_list[i][1]
             orig_attr_default = orig_forward_attrs_list[i][2]
             orig_attr_pos = orig_forward_attrs_list[i][3]
-            forward_attr_name = forward_attrs_list[i][0]
             forward_attr_type = forward_attrs_list[i][1]
             forward_attr_default = forward_attrs_list[i][2]
             forward_attr_pos = forward_attrs_list[i][3]
@@ -1125,10 +1120,19 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
                                               grad_api_contents, namespace)
 
+        # Record name mapping from forward_api_name to grad_api_names
+        self.to_next_grad_name_mapping = {}  # {name : name}
+
         # Generated Results
         self.node_declaration_str = ""
         self.node_definition_str = ""
         self.next_grad_api_contents = next_grad_api_contents
+
+    def TransformToNextGradName(self, string):
+        name_mapping = self.to_next_grad_name_mapping
+        if string in name_mapping.keys():
+            return name_mapping[string]
+        return string
 
     def ResetOptionalInputs(self):
         namespace = self.namespace
@@ -1138,6 +1142,22 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         base_generator.ParseDispensable()
 
         self.optional_inputs = base_generator.optional_inputs
+
+    def RecordGrad2NextGradNameMapping(self, next_node_generator):
+        next_orig_inputs_list = next_node_generator.orig_forward_inputs_list
+        next_orig_returns_list = next_node_generator.orig_forward_returns_list
+
+        next_forward_inputs_list = next_node_generator.forward_inputs_list
+        next_forward_returns_list = next_node_generator.forward_returns_list
+        for i in range(len(next_orig_inputs_list)):
+            grad_name = next_orig_inputs_list[i][0]
+            next_forward_name = next_forward_inputs_list[i][0]
+            self.to_next_grad_name_mapping[grad_name] = next_forward_name
+
+        for i in range(len(next_orig_returns_list)):
+            grad_ret_name = next_orig_returns_list[i][0]
+            next_ret_name = next_forward_returns_list[i][0]
+            self.to_next_grad_name_mapping[grad_ret_name] = next_ret_name
 
     def GenerateHigherOrderNodeCreationCode(self):
         namespace = self.namespace
@@ -1155,6 +1175,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             next_node_generator.run()
             next_node_generator.GenerateNodeCreationCodes()
             grad_node_creation_str = next_node_generator.node_creation_str
+
+            self.RecordGrad2NextGradNameMapping(next_node_generator)
 
         return grad_node_creation_str
 
@@ -1244,8 +1266,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         for name, (_, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
             tensor_wrapper_name = GetSavedName(name)
-            transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                name)
+            transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
             if is_optional:
@@ -1258,8 +1279,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Grad Ins from grads
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_inputs_map.items():
-            transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                name)
+            transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
             if IsPlainTensorType(ttype):
@@ -1300,8 +1320,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         num_outputs = len(backward_grad_outputs_map.keys())
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
-            transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                name)
+            transformed_tensor_name = self.TransformToNextGradName(name)
 
             if num_outputs == 1:
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result;"
@@ -1323,8 +1342,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_args_list = ["trace_backward"]
             for name, (ttype, pos,
                        grad_api_position) in backward_grad_inputs_map.items():
-                transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                    name)
+                transformed_tensor_name = self.TransformToNextGradName(name)
 
                 input_autograd_meta_name = GetAutoGradMetaName(
                     transformed_tensor_name)
@@ -1342,8 +1360,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             # 2. Get TensorWrapper AutoGradMeta
             for name, (ttype, _, pos), in backward_forward_inputs_map.items():
-                transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                    name)
+                transformed_tensor_name = self.TransformToNextGradName(name)
 
                 input_autograd_meta_name = GetAutoGradMetaName(
                     transformed_tensor_name)
@@ -1366,8 +1383,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             outputs_autograd_meta_list = []
             num_fwd_outputs = len(backward_grad_outputs_map.keys())
             for name, (rtype, pos, _) in backward_grad_outputs_map.items():
-                transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                    name)
+                transformed_tensor_name = self.TransformToNextGradName(name)
 
                 output_autograd_meta_name = GetAutoGradMetaName(
                     transformed_tensor_name)
@@ -1401,8 +1417,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         returns_str = f"{indent}std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
-            transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
-                name)
+            transformed_tensor_name = self.TransformToNextGradName(name)
 
             # Infer Grad API Return Type
             if num_bwd_outputs == 1:
@@ -1441,10 +1456,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         #####################
         ## Code Generation ##
         #####################
-        self.GenerateNodeDeclaration()
-
         # Higher-order GradNode generation
         grad_node_creation_str = self.GenerateHigherOrderNodeCreationCode()
+
+        self.GenerateNodeDeclaration()
 
         self.GenerateNodeDefinition(grad_node_creation_str)
 
