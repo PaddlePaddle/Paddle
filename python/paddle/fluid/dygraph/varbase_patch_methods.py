@@ -818,6 +818,21 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def _uva(self, device_id=0):
+        '''
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(x)
+        '''
         self._tensor_uva(device_id)
 
     @framework.dygraph_only
