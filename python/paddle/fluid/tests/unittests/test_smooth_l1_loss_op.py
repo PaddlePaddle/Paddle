@@ -48,18 +48,27 @@ class TestSmoothL1LossOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.03, no_grad_set=set("X"))
+            ['Y'],
+            'Out',
+            max_relative_error=0.03,
+            no_grad_set=set("X"),
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.03, no_grad_set=set('Y'))
+            ['X'],
+            'Out',
+            max_relative_error=0.03,
+            no_grad_set=set('Y'),
+            check_eager=True)
 
 
 class TestSmoothL1LossOp2(OpTest):
@@ -86,24 +95,27 @@ class TestSmoothL1LossOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.03)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.03, check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']))
+            no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']),
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
+            no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']),
+            check_eager=True)
 
 
 class TestSmoothL1LossOpError(unittest.TestCase):
