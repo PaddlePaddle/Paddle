@@ -37,7 +37,7 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode,_non_static_mode
 __all__ = []
 
 
@@ -2242,7 +2242,7 @@ def triplet_margin_loss(input,positive,negative,
         raise ValueError(
             "margin should not smaller than 0"
         )
-    if not in_dynamic_mode():
+    if _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'triplet_margin_loss')
         check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
