@@ -19,10 +19,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RangeKernel(const Context& dev_ctx,
-                 const DenseTensor& start,
-                 const DenseTensor& end,
-                 const DenseTensor& step,
-                 DenseTensor* out);
+void GraphReindexKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& neighbors,
+                        const DenseTensor& count,
+                        paddle::optional<const DenseTensor&> hashtable_value,
+                        paddle::optional<const DenseTensor&> hashtable_index,
+                        bool flag_buffer_hashtable,
+                        DenseTensor* reindex_src,
+                        DenseTensor* reindex_dst,
+                        DenseTensor* out_nodes);
 
 }  // namespace phi

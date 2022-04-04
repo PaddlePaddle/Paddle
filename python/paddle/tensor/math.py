@@ -98,10 +98,13 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_scale`.
     """
-    _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-    return _C_ops.scale_(x, 'scale',
-                            float(_scale), 'bias',
-                            float(bias), 'bias_after_scale', bias_after_scale)
+    if in_dygraph_mode():
+        return _C_ops.final_state_scale_(x, scale, float(bias), bias_after_scale)
+    if _in_legacy_dygraph():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        return _C_ops.scale_(x, 'scale',
+                                float(_scale), 'bias',
+                                float(bias), 'bias_after_scale', bias_after_scale)
 
 
 def pow(x, y, name=None):
@@ -150,17 +153,15 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    #if in_dygraph_mode():
-    #if isinstance(y, (int, float)):
-    #return _C_ops.final_state_pow(x, y)
-    #elif isinstance(y, (paddle.Tensor, Variable)):
-    #return _elementwise_op_in_dygraph(
-    #x, y, axis=-1, act=None, op_name='elementwise_pow')
-    #else:
-    #raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
-
-    #if _in_legacy_dygraph():
-    if _non_static_mode():
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            return _C_ops.final_state_pow(x, y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    if _in_legacy_dygraph():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
@@ -169,22 +170,21 @@ def pow(x, y, name=None):
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     # in static graph mode
+    if isinstance(y, (int, float)):
+        helper = LayerHelper('pow', **locals())
+        inputs = {'X': x}
+        attrs = {'factor': y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        return out
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+        helper = LayerHelper('elementwise_pow', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
     else:
-        if isinstance(y, (int, float)):
-            helper = LayerHelper('pow', **locals())
-            inputs = {'X': x}
-            attrs = {'factor': y}
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-            return out
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
-            helper = LayerHelper('elementwise_pow', **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
+        raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
 
 OP_NAMEMAPPING = {
@@ -192,6 +192,7 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 @dygraph_only
@@ -1067,7 +1068,11 @@ def add_n(inputs, name=None):
             # [[8., 10., 12.], 
             #  [14., 16., 18.]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return _C_ops.final_state_add_n(inputs)
+    if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.sum(inputs, 'use_mkldnn', False)
@@ -1565,7 +1570,11 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_logsumexp(x, axis, keepdim, reduce_all)
+    if _in_legacy_dygraph():
         return _C_ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',

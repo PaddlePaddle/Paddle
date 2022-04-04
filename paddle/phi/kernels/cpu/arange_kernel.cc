@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/range_kernel.h"
+#include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
@@ -20,11 +20,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void RangeKernel(const Context& dev_ctx,
-                 const DenseTensor& start,
-                 const DenseTensor& end,
-                 const DenseTensor& step,
-                 DenseTensor* out) {
+void ArangeKernel(const Context& dev_ctx,
+                  const DenseTensor& start,
+                  const DenseTensor& end,
+                  const DenseTensor& step,
+                  DenseTensor* out) {
   T start_value = start.data<T>()[0];
   T end_value = end.data<T>()[0];
   T step_value = step.data<T>()[0];
@@ -42,4 +42,4 @@ void RangeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    range, CPU, ALL_LAYOUT, phi::RangeKernel, float, double, int, int64_t) {}
+    arange, CPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {}
