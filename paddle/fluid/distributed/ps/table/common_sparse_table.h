@@ -108,15 +108,16 @@ struct Meta {
   }
 };
 
-class CommonSparseTable : public SparseTable {
+class CommonSparseTable : public Table {
  public:
   CommonSparseTable() { rwlock_.reset(new phi::RWLock); }
   virtual ~CommonSparseTable() {}
 
   // unused method begin
-  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
-  virtual int32_t PushDenseParam(const float* values, size_t num) { return 0; }
-  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
+  //  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
+  //  virtual int32_t PushDenseParam(const float* values, size_t num) { return
+  //  0; }
+  //  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
   // unused method end
 
   virtual int32_t Pull(TableContext& context);
@@ -163,13 +164,14 @@ class CommonSparseTable : public SparseTable {
   // only for sparse geo table
   virtual int32_t PushSparseParam(const uint64_t* keys, const float* values,
                                   size_t num);
-
-  virtual int32_t SetGlobalLR(float* lr) override;
+  virtual int32_t SetGlobalLR(float* lr);
 
   virtual int32_t Pour();
   virtual int32_t Flush();
   virtual int32_t Shrink(const std::string& param);
   virtual void Clear();
+
+  virtual void* GetShard(size_t shard_idx) { return 0; }
 
  protected:
   virtual int32_t _PushSparse(const uint64_t* keys, const float* values,

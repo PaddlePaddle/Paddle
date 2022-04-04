@@ -904,7 +904,18 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return (False, src_type)
 
     dtype_flag, dtype = get_dtype(x, dtype)
-    if paddle.in_dynamic_mode():
+
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        else:
+            axis = axis if axis != None and axis != [] else [0]
+
+        out_dtype = convert_np_dtype_to_dtype_(dtype)
+        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
+        return out
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
@@ -1068,7 +1079,11 @@ def add_n(inputs, name=None):
             # [[8., 10., 12.], 
             #  [14., 16., 18.]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return _C_ops.final_state_add_n(inputs)
+    if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.sum(inputs, 'use_mkldnn', False)
@@ -2275,7 +2290,16 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = min_ if min is None else min
+        max = max_ if max is None else max
+        return _C_ops.final_state_clip(x, min, max)
+
+    if _in_legacy_dygraph():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
@@ -2335,7 +2359,12 @@ def clip_(x, min=None, max=None, name=None):
         max = max.numpy().item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
-    return _C_ops.clip_(x, "min", min, "max", max)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_(x, min, max)
+
+    if _in_legacy_dygraph():
+        return _C_ops.clip_(x, "min", min, "max", max)
 
 
 

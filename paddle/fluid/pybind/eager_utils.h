@@ -55,6 +55,7 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
+PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
 PyObject* ToPyObject(float value);
@@ -74,6 +75,7 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
+PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);

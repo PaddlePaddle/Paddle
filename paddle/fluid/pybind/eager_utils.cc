@@ -213,6 +213,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        // emplace empty Tensor for None
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -229,6 +232,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        // emplace empty Tensor for None
+        result.emplace_back();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -426,6 +432,8 @@ PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
 PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
 
+PyObject* ToPyObject(size_t value) { return PyLong_FromLong(value); }
+
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
@@ -564,6 +572,12 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
 }
 
 PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
@@ -971,7 +985,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
 
-  } else if (type_name == "paddle.Tensor") {
+  } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);

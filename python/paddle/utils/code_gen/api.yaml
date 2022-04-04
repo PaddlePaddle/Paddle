@@ -61,7 +61,15 @@
   kernel :
     func : add
   backward : add_grad
-  # no_need_buffer : x, y
+
+- api : add_n
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : AddNInferMeta
+  kernel :
+    func : add_n
+  backward : add_n_grad
 
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)
@@ -138,7 +146,6 @@
   kernel :
     func : argsort
   backward : argsort_grad
-  # no_need_buffer : x
 
 # asin
 - api : asin
@@ -197,6 +204,13 @@
     func : AucInferMeta
   kernel :
     func : auc
+
+# batch_norm
+- api : batch_norm
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  invoke : batch_norm_impl(x, scale, bias, mean, variance, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics, fuse_with_relu)
+  backward : batch_norm_grad
 
 - api : bce_loss
   args : (Tensor input, Tensor label)
@@ -303,6 +317,17 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- api : clip
+  args : (Tensor x, Scalar(float) min, Scalar(float) max)
+  output : Tensor(out)
+  inplace : (x -> out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip
+  backward : clip_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -311,6 +336,7 @@
     param : [x, axis]
   kernel :
     func : concat
+  backward : concat_grad
 
 - api : conj
   args : (Tensor x)
@@ -372,6 +398,17 @@
     func : cross
   backward : cross_grad
 
+# Part of python API paddle.nn.functional.cross_entropy
+- api : cross_entropy_with_softmax
+  args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
+  output : Tensor(softmax), Tensor(loss)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxInferMeta
+  kernel :
+    func : cross_entropy_with_softmax
+    data_type : input
+  backward : cross_entropy_with_softmax_grad
+
 - api : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -416,7 +453,6 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
-  # no_need_buffer : x
 
 - api : digamma
   args : (Tensor x)
@@ -452,6 +488,16 @@
     func : DotInferMeta
   kernel :
     func : dot
+
+- api : dropout
+  args : (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : DropoutInferMeta
+  kernel :
+    func : dropout
+  optional : seed_tensor
+  backward : dropout_grad
 
 # eigh
 - api : eigh
@@ -534,6 +580,17 @@
   kernel :
     func : erfinv
   backward : erfinv_grad
+
+# expand_as
+- api : expand_as
+  args : (Tensor x, Tensor y, int[] target_shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandAsInferMeta
+  kernel :
+    func : expand_as
+  optional : y
+  backward : expand_as_grad
 
 - api : expm1
   args : (Tensor x)
@@ -766,7 +823,6 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
-  # no_need_buffer : x
 
 - api : index_select
   args : (Tensor x, Tensor index,  int dim)
@@ -1426,7 +1482,6 @@
   kernel :
     func : scatter
   backward : scatter_grad
-  # no_need_buffer : updates
 
 - api : scatter_nd_add
   args : (Tensor x, Tensor index, Tensor updates)
@@ -1437,7 +1492,6 @@
   kernel :
     func : scatter_nd_add
   backward : scatter_nd_add_grad
-  # no_need_buffer : updates
 
 - api : searchsorted
   args : (Tensor sorted_sequence, Tensor value, bool out_int32, bool right)
@@ -1552,6 +1606,15 @@
   kernel :
     func : size
 
+- api : slice
+  args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor
+  infer_meta :
+    func : SliceRawInferMeta
+  kernel :
+    func : slice
+  backward : slice_grad
+
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
@@ -1622,16 +1685,16 @@
   kernel :
     func : subtract
   backward : subtract_grad
-  # no_need_buffer : x, y
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
-  output : Tensor
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  output : Tensor(out)
   infer_meta :
     func : SumInferMeta
   kernel :
     func : sum
     data_type : x
+  backward : sum_grad
 
 # take_along_axis
 - api : take_along_axis
@@ -1695,7 +1758,6 @@
   kernel :
     func : tile
   backward : tile_grad
-  # no_need_buffer : x
 
 - api : top_k
   args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
@@ -1714,7 +1776,6 @@
   kernel :
     func : trace
   backward : trace_grad
-  no_need_buffer : x
 
 - api : transpose
   args : (Tensor x, int[] axis)
@@ -1761,7 +1822,6 @@
   kernel :
     func : unfold
   backward : unfold_grad
-  # no_need_buffer : x
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)
@@ -1800,7 +1860,6 @@
     func : WhereIndexInferMeta
   kernel :
     func : where_index
-  # no_need_buffer : x, y
 
 # yolo_box
 - api : yolo_box
