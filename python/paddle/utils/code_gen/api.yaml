@@ -557,11 +557,15 @@
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
-  output : Tensor
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : FlattenInferMeta
+    func : FlattenWithXShapeInferMeta
   kernel :
-    func : flatten
+    func : flatten_with_xshape
+    backend : x
+  inplace : (x -> out)
+  view : (x -> out)
+  backward : flatten_grad
 
 # flip
 - api : flip
@@ -641,6 +645,16 @@
     param : [x, value, dtype]
     data_type : dtype > x
     backend : place > x
+
+- api : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
 
 - api : gather_nd
   args : (Tensor x, Tensor index)
@@ -1230,6 +1244,16 @@
     func : pool3d
   backward : pool3d_grad
 
+- api : pow
+  args : (Tensor x, Scalar s)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow
+  backward : pow_grad
+
 - api : prelu
   args : (Tensor x, Tensor alpha, str data_format, str mode)
   output : Tensor(out)
@@ -1251,6 +1275,18 @@
     data_type : x
   backward : put_along_axis_grad
 
+- api : randint
+  args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : RandintInferMeta
+    param : [low, high, shape, dtype]
+  kernel :
+    func : randint
+    param : [low, high, shape, dtype]
+    data_type : dtype
+    backend : place
+
 - api : randperm
   args : (int n, DataType dtype, Place place={})
   output : Tensor
@@ -1262,7 +1298,7 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
-
+                   
 - api : reciprocal
   args : (Tensor x)
   output : Tensor
@@ -1331,6 +1367,7 @@
   kernel :
     func : scale, scale_sr
   inplace : (x -> out)
+  backward : scale_grad
 
 - api : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
