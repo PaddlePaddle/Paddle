@@ -27,7 +27,7 @@ class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
   GraphWithStats FuseFC(const std::string& name_scope,
                         const GraphWithStats& graph_with_stats,
-                        bool as_X) const;
+                        bool as_x) const;
 
  public:
   FCResidualConnectionMKLDNNFusePass();
