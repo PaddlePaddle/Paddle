@@ -333,12 +333,12 @@ void StackGradInferMeta(const MetaTensor& out_grad,
           axis));
 
   if (axis < 0) axis += rank;
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_LE(
       x_grad.size(),
       static_cast<size_t>(dy_dim[axis]),
       phi::errors::InvalidArgument(
-          "Number of Outputs(X@Grad) is equal to dy dim at axis, but"
-          " received outputs size is:%d, dy dims is:%d.",
+          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "at axis, but received outputs size is:%d, dy dims is:%d.",
           x_grad.size(),
           static_cast<size_t>(dy_dim[axis])));
 
