@@ -139,8 +139,11 @@ int32_t CommonDenseTable::Pull(TableContext& context) {
 int32_t CommonDenseTable::Push(TableContext& context) {
   CHECK(context.value_type == Dense);
   if (context.push_context.values != nullptr) {
-    const float* values = context.push_context.values;
-    return PushDense(values, context.num);
+    if (!context.push_context.is_param) {
+      return PushDense(context.push_context.values, context.num);
+    } else {
+      return PushDenseParam(context.push_context.values, context.num);
+    }
   }
   return 0;
 }

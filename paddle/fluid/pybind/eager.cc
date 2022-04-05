@@ -72,12 +72,25 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::make_shared<phi::DenseTensor>(
-            phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                                 ddims));
+    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    if (dims.empty()) {
+      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          allocation_ptr,
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
+    } else {
+      // TODO(dev): we need enhance check for ddims.
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
+    }
     self->tensor.set_impl(dense_tensor);
+  } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
+    std::shared_ptr<phi::SelectedRows> tensor =
+        std::make_shared<phi::SelectedRows>();
+    self->tensor.set_impl(tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
