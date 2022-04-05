@@ -1120,6 +1120,12 @@
     func : mean
   backward : mean_grad
 
+- api : meshgrid
+  args : (Tensor[] inputs)
+  output : Tensor[]
+  invoke : meshgrid_impl(inputs)
+  backward : meshgrid_grad
+
 - api : min
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
