@@ -48,7 +48,7 @@ namespace ipu {
 
 #define USE_HANDLER(op_type)                              \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                         \
-      __reg_ipu_op_handler__##op_type,                    \
+      __use_ipu_op_handler__##op_type,                    \
       "USE_HANDLER must be called in global namespace");  \
   extern int TouchPaddleIpuOpHandlerRegister_##op_type(); \
   UNUSED static int use_handler__itself_##op_type##_ =    \
