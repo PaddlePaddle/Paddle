@@ -22,8 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad);
+// NOTE: Separate forward and backward(grad) api impl
+// NOTE: The api_impl in this file are arranged in alphabetic order.
+
+////////////////// Forward api impls //////////////////////
 
 Tensor conv2d_impl(const Tensor& input,
                    const Tensor& filter,
@@ -57,6 +59,11 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
+////////////////// Backward(grad) api impls //////////////////////
+
+std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad);
+
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     const Tensor& x,
     const Tensor& scale,
@@ -74,6 +81,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
                                      const Scalar& axis);
+
+std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad,
+                                    int axis);
 
 }  // namespace experimental
 }  // namespace paddle

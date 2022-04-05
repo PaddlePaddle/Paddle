@@ -1616,6 +1616,15 @@
   view: (x -> out)
   backward : squeeze_grad
 
+- api : stack
+  args : (Tensor[] x, int axis)
+  output : Tensor
+  infer_meta :
+    func : StackInferMeta
+  kernel :
+    func : stack
+  backward : stack_grad
+
 - api : strided_slice
   args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
   output : Tensor
