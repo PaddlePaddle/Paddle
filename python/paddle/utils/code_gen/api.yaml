@@ -1344,7 +1344,7 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
-                   
+
 - api : reciprocal
   args : (Tensor x)
   output : Tensor
@@ -1385,6 +1385,16 @@
   view: (x -> out)
   intermediate : xshape
   backward: reshape_grad
+
+- api : roi_align
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
+  output : Tensor
+  infer_meta :
+    func : RoiAlignInferMeta
+  kernel :
+    func : roi_align
+  optional : boxes_num
+  backward : roi_align_grad
 
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
