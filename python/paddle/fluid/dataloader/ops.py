@@ -18,7 +18,7 @@ import paddle
 
 from ...fluid import core, framework, Program, program_guard, unique_name
 from ...fluid.layers.utils import _hash_with_id
-from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import _non_static_mode
 from ...common_ops_import import *
 
 from collections.abc import Sequence, Mapping
@@ -63,7 +63,59 @@ def _generate_stream_id():
 
 
 def map(map_func, *args, **kwargs):
-    if in_dygraph_mode():
+    """
+    This API used to split data loading stages of :attr:`DataPipeline`, the
+    map function will be run in independent C++ thread and stream.
+
+    Args:
+        map_func (callable): A callable function construct of data
+            preprocess OPs.
+
+    Returns:
+        The output of map function
+
+    Examples:
+        .. code-block:: python
+
+            import os
+            import paddle
+            from paddle.utils.download import get_path_from_url
+
+            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
+            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
+            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+            BATCH_SIZE = 100
+
+            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                          DATASET_MD5)
+
+            def imagenet_pipeline():
+                image, label = paddle.vision.reader.file_label_reader(
+                                    data_root, batch_size=BATCH_SIZE)
+
+                def decode(image):
+                    image = paddle.vision.ops.image_decode_random_crop(image, num_threads=4)
+                    return image
+                def resize(image):
+                    image = paddle.vision.ops.image_resize(image, size=224)
+                    return image
+                def flip_normalize(image):
+                    mirror = paddle.vision.ops.random_flip(image, prob=0.5)
+                    image = paddle.vision.ops.mirror_normalize(image, mirror)
+                    return image
+
+                image = paddle.io.map(decode, image)
+                image = paddle.io.map(resize, image)
+                image = paddle.io.map(flip_normalize, image)
+
+                return {'image': image, 'label': label}
+
+            dataloader = paddle.io.DataLoader(imagenet_pipeline)
+            for data in dataloader:
+                print(data['image'].shape, data['label'].shape)
+
+    """
+    if _non_static_mode():
         return map_func(inputs)
 
     helper = LayerHelper("map", **locals())
@@ -169,7 +221,65 @@ def data_reader(reader_func,
                 shuffle=False,
                 drop_last=False,
                 seed=None):
-    assert not in_dygraph_mode(), \
+    """
+    This API used to auto loading dataset in :attr:`DataPipeline`, the
+    reader function will be run in independent C++ thread.
+
+    Args:
+        reader_func (callable): A callable function construct of a data
+            loader OP.
+        batch_size (int): The batch size of a mini-batch. Default 1.
+        shuffle (bool): Whether to shuffle samples. Default False.
+        drop_last (bool): Whether to drop the last incomplete batch. Default False.
+        seed (int, optional): The seed for sample shuffling. Default None.
+
+    Returns:
+        The output of reader function
+
+    Examples:
+        .. code-block:: python
+
+            import os
+            import paddle
+            from paddle.utils.download import get_path_from_url
+
+            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
+            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
+            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+            BATCH_SIZE = 100
+            NUM_SAMPLES = 100
+
+            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                          DATASET_MD5)
+
+            def imagenet_pipeline():
+                def imagenet_reader(indices):
+                    return paddle.vision.reader.file_label_loader(
+                                        data_root, indices, BATCH_SIZE)
+
+                outs = paddle.io.data_reader(imagenet_reader,
+                                    BATCH_SIZE, NUM_SAMPLES)
+                image = outs[:-1]
+                label = outs[-1]
+
+                def decode(image):
+                    image = paddle.vision.ops.image_decode_random_crop(image, num_threads=4)
+                    return image
+                def resize(image):
+                    image = paddle.vision.ops.image_resize(image, size=224)
+                    return image
+
+                image = paddle.io.map(decode, image)
+                image = paddle.io.map(resize, image)
+
+                return {'image': image, 'label': label}
+
+            dataloader = paddle.io.DataLoader(imagenet_pipeline)
+            for data in dataloader:
+                print(data['image'].shape, data['label'].shape)
+
+    """
+    assert not _non_static_mode(), \
             "paddle.io.data_reader can only be used in static mode"
     helper = LayerHelper("data_reader", **locals())
 

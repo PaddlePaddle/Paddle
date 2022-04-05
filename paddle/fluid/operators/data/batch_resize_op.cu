@@ -262,5 +262,7 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(batch_resize, ops::data::BatchResizeCUDAKernel<uint8_t>,
-                        ops::data::BatchResizeCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(batch_resize,
+                        ops::data::BatchResizeCUDAKernel<uint8_t>,
+                        ops::data::BatchResizeCUDAKernel<float>,
+                        ops::data::BatchResizeCUDAKernel<double>);

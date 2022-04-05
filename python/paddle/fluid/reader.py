@@ -184,9 +184,17 @@ class DataLoader(object):
 
 
     Args:  
-        dataset(Dataset|callable): the dataset to load data from, should be an
-            instance of subclass of :code:`paddle.io.Dataset` or
-            :code:`paddle.io.IterableDataset`.
+        dataset(Dataset|callable): the dataset to load data from, there 
+            are 2 available types:
+            1. an instance of subclass of :code:`paddle.io.Dataset` or
+            :code:`paddle.io.IterableDataset` for Python multi-process
+            DataLoader.
+            2. a callable function constructed with
+            :code:`paddle.io.data_reader`, :code:`paddle.io.map` and other
+            data processing OPs from :code:`paddle.vision.ops` for C++
+            multi-thread and multi-stream DataLoader. Only support data
+            preprocessing of ImageNet dataset currently. Please see
+            :code:`paddle.io.map` for example codes.
         feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
             The Tensors should be created by :code:`paddle.static.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is

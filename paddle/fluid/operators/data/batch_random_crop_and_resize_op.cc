@@ -122,4 +122,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(batch_random_crop_and_resize,
-                       ops::data::BatchRandomCropAndResizeCPUKernel<uint8_t>)
+                       ops::data::BatchRandomCropAndResizeCPUKernel<uint8_t>,
+                       ops::data::BatchRandomCropAndResizeCPUKernel<float>,
+                       ops::data::BatchRandomCropAndResizeCPUKernel<double>);
