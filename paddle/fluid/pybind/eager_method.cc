@@ -42,7 +42,9 @@ limitations under the License. */
 #include "pybind11/detail/internals.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/framework/python_headers.h"
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace pybind {
@@ -125,6 +127,7 @@ class PyTensorVoidHook : public egr::TensorVoidHook {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
+                                     const paddle::platform::Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
@@ -1389,6 +1392,40 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+#ifndef _WIN32
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+                    platform::errors::InvalidArgument(
+                        "Sharing memory only support CPU Tensor currently"));
+  // 1. get LoDTensor
+  auto* t =
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl()).get();
+  // 2. allocate shared memory
+  void* data_ptr = t->data();
+  size_t data_size =
+      t->numel() *
+      framework::SizeOfType(framework::TransToProtoVarType(t->dtype()));
+  auto shared_writer_holder =
+      memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+  // 3. maintain mmap fd set & backup ipc_name
+  const std::string& ipc_name = shared_writer_holder->ipc_name();
+  memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+  // 4. copy data & reset holder
+  memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+               platform::CPUPlace(), data_ptr, data_size);
+  t->ResetHolder(shared_writer_holder);
+  return ToPyObject(t);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Sharing memory in Windows OS is not supported currently"));
+  Py_INCREF(Py_None);
+  return Py_None;
+#endif
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__offset(TensorObject* self, PyObject* args,
                                 PyObject* kwargs) {
   EAGER_TRY
@@ -1534,6 +1571,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
