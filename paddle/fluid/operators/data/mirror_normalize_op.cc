@@ -83,7 +83,8 @@ class MirrorNormalizeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<float>>("mean", "The mean value to normalize data");
     AddAttr<std::vector<float>>("std", "The stdvalue to normalize data");
     AddComment(R"DOC(
-          Mirror Normalize Operator.
+       This OP perform horizintal flipping on input Tensor. Mirror is used
+       to define whether flipping is need in the give sample.
       )DOC");
   }
 };

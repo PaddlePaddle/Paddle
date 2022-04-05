@@ -63,7 +63,13 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
                      "The unique hash id used as cache key for "
                      "ExecutorInfoCache");
     AddComment(R"DOC(
-        DataLoader Op
+      DataLoader OP
+      This OP runs DataPipeline programs to start up DataPipeline for
+      multi-thread and multi-stream data loading. For DataPipeline
+      program construct with :code:`paddle.io.map` and
+      :code:`paddle.io.data_reader`, which holds independent threads
+      and streams, so DataLoader Op simply initialize a ParallelExecutor
+      to run DataPipeline progran once.
          )DOC");
   }
 };

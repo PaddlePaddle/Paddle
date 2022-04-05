@@ -92,7 +92,7 @@ class BatchResizeOpMaker : public framework::OpProtoAndCheckerMaker {
         "channel_first or channel_last.")
         .SetDefault("NCHW");
     AddComment(R"DOC(
-      Batch resize images
+      Resize a batch of input images to given size.
     )DOC");
   }
 };

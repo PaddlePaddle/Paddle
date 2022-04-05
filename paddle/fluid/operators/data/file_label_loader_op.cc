@@ -53,7 +53,12 @@ class FileLabelLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Label", "The output label tensor of ReadFileLoader op");
     AddAttr<std::string>("data_root", "Path of root directory of dataset");
     AddComment(R"DOC(
-This operator read a file.
+      This operator read ImageNet format dataset for :attr:`data_root` with
+      given indices.
+      There are 2 outputs:
+      1. Image: a list of Tensor which holds the image bytes data
+      2. Label: a Tensor with shape [N] and dtype as int64, N is the batch
+      size, which is the length of input indices.
 )DOC");
   }
 };

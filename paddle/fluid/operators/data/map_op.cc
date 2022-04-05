@@ -108,7 +108,8 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
                                       "(list of string)"
                                       "output variable names for map program");
     AddComment(R"DOC(
-        Map Op
+      This OP used to split data loading stages of DataPipeline, the
+      map function will be run in independent C++ thread and stream.
          )DOC");
   }
 };
