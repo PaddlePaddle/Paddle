@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
-import paddle.distributed.collective as collective
+from paddle.distributed import collective
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _group_map
 from paddle.distributed.collective import _default_group_name
