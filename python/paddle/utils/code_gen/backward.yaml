@@ -280,7 +280,7 @@
 
 - backward_api : divide_grad
   forward : divide (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
