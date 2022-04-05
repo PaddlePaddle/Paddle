@@ -3661,8 +3661,9 @@ class TestBook(LayerTest):
                 shape=[1],
                 dtype='float32',
                 append_batch_size=False)
-
-            out = layers.scale(input, scale=scale_var)
+            _scale = scale_var.numpy().item(0) if isinstance(
+                scale_var, core.eager.Tensor) else scale_var
+            out = layers.scale(input, scale=_scale)
             return out
 
     def make_softshrink(self):
