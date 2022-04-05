@@ -243,6 +243,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"get_float_status", {"FloatStatusOut"}},
     {"split", {"Out"}},
     {"concat", {"Out"}},
+    {"assign", {"Out"}},
+    {"assign_value", {"Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
