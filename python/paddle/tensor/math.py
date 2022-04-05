@@ -205,13 +205,17 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return  op_name[-1] == "_"
 
-    if in_dygraph_mode():
-        op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
-        out = op(x, y)
-
-    if _in_legacy_dygraph():
+    if op_name not in OP_NAMEMAPPING.keys():
         op = getattr(_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -904,7 +908,18 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return (False, src_type)
 
     dtype_flag, dtype = get_dtype(x, dtype)
-    if paddle.in_dynamic_mode():
+
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        else:
+            axis = axis if axis != None and axis != [] else [0]
+
+        out_dtype = convert_np_dtype_to_dtype_(dtype)
+        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
+        return out
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
@@ -2279,7 +2294,16 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = min_ if min is None else min
+        max = max_ if max is None else max
+        return _C_ops.final_state_clip(x, min, max)
+
+    if _in_legacy_dygraph():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
@@ -2339,7 +2363,12 @@ def clip_(x, min=None, max=None, name=None):
         max = max.numpy().item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
-    return _C_ops.clip_(x, "min", min, "max", max)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_(x, min, max)
+
+    if _in_legacy_dygraph():
+        return _C_ops.clip_(x, "min", min, "max", max)
 
 
 

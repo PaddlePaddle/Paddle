@@ -104,7 +104,13 @@ int32_t PsLocalClient::Initialize() {
 
   std::vector<float> region_buffer;
   region_buffer.resize(num_per_shard);
-  table_ptr->PullDense(region_buffer.data(), region_buffer.size());
+
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.pull_context.values = region_buffer.data();
+  table_context.num = region_buffer.size();
+  table_ptr->Pull(table_context);
+  //  table_ptr->PullDense(region_buffer.data(), region_buffer.size());
 
   size_t region_idx = 0;
   size_t region_data_idx = 0;
@@ -154,6 +160,13 @@ int32_t PsLocalClient::Initialize() {
     offset += data_num;
   }
 
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.push_context.values = region_buffer.data();
+  table_context.push_context.is_param = true;
+  table_context.num = region_buffer.size();
+
+  table_ptr->Push(table_context);
   // table_ptr->PushDenseParam(region_buffer.data(), region_buffer.size());
 
   return done();
@@ -168,7 +181,13 @@ int32_t PsLocalClient::Initialize() {
 
   auto* table_ptr = GetTable(table_id);
 
-  table_ptr->PushDense(total_send_data, total_send_data_size);
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.push_context.values = total_send_data;
+  table_context.num = total_send_data_size;
+  //  table_ptr->PushDense(total_send_data, total_send_data_size);
+  table_ptr->Push(table_context);
+
   delete closure;
   return done();
 }
@@ -194,7 +213,12 @@ int32_t PsLocalClient::Initialize() {
     offset += data_num;
   }
 
-  table_ptr->PushDense(region_buffer.data(), region_buffer.size());
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.push_context.values = region_buffer.data();
+  table_context.num = region_buffer.size();
+  //  table_ptr->PushDense(total_send_data, total_send_data_size);
+  table_ptr->Push(table_context);
 
   return done();
 }
@@ -241,7 +265,15 @@ int32_t PsLocalClient::Initialize() {
   //将key拆分到各shard请求，并记录原始对应value指针
   auto* table_ptr = GetTable(table_id);
 
-  table_ptr->PullSparsePtr(select_values, keys, num);
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.pull_context.keys = keys;
+  table_context.pull_context.ptr_values = select_values;
+  table_context.use_ptr = true;
+  table_context.num = num;
+
+  //  table_ptr->PullSparsePtr(select_values, keys, num);
+  table_ptr->Pull(table_context);
 
   return done();
 }
@@ -253,7 +285,15 @@ int32_t PsLocalClient::Initialize() {
   auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
-  table_ptr->PushSparse(keys, update_values, num);
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.push_context.keys = keys;
+  table_context.push_context.ptr_values = update_values;
+  table_context.num = num;
+  table_context.use_ptr = true;
+
+  // table_ptr->PushSparse(keys, update_values, num);
+  table_ptr->Push(table_context);
   delete closure;
   return done();
 }
@@ -265,7 +305,15 @@ int32_t PsLocalClient::Initialize() {
   auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
-  table_ptr->PushSparse(keys, update_values, num);
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.push_context.keys = keys;
+  table_context.push_context.ptr_values = update_values;
+  table_context.num = num;
+  table_context.use_ptr = true;
+
+  //  table_ptr->PushSparse(keys, update_values, num);
+  table_ptr->Push(table_context);
   return done();
 }
 }

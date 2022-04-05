@@ -68,6 +68,17 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config = MetaConfig());
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -151,5 +162,9 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                const MetaTensor& out_grad,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
+
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad);
 
 }  // namespace phi
