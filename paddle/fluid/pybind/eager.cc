@@ -78,6 +78,10 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                  ddims));
     self->tensor.set_impl(dense_tensor);
+  } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
+    std::shared_ptr<phi::SelectedRows> tensor =
+        std::make_shared<phi::SelectedRows>();
+    self->tensor.set_impl(tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {

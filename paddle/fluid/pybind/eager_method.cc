@@ -465,6 +465,9 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
                         self->tensor.name()));
   auto* src_tensor =
       static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
+  if (!dst_ptr->defined()) {
+    dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+  }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
   dst_tensor->ShareDataWith(*src_tensor);
@@ -565,11 +568,34 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor =
         static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
+  } else {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
+                                                           PyObject* args,
+                                                           PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  if (self->tensor.is_selected_rows()) {
+    auto* selected_rows =
+        static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+    return ToPyObject(selected_rows);
   } else {
     Py_IncRef(Py_None);
     return Py_None;
@@ -1214,6 +1240,9 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
 static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_coo_tensor() ||
                     self->tensor.is_sparse_csr_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1222,6 +1251,9 @@ static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_coo_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1229,6 +1261,9 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_sparse_csr_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1307,6 +1342,9 @@ static PyObject* tensor_method_is_selected_rows(TensorObject* self,
                                                 PyObject* args,
                                                 PyObject* kwargs) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
   return ToPyObject(self->tensor.is_selected_rows());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1320,6 +1358,13 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   auto selected_rows =
       std::dynamic_pointer_cast<phi::SelectedRows>(self->tensor.impl());
   return ToPyObject(selected_rows->rows());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_methon_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1420,6 +1465,9 @@ PyMethodDef variable_methods[] = {
     {"get_tensor",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1481,6 +1529,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_methon_element_size,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,

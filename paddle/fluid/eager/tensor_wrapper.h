@@ -51,6 +51,7 @@ class TensorWrapper {
      * to avoid recursive depends on GradNodeBase
      * **/
     full_reserved_ = full_reserved;
+    no_need_buffer_ = no_need_buffer;
     if (full_reserved_) {
       VLOG(6) << "Fully reserved tensor: " << tensor.name();
       intermidiate_tensor_ = tensor;
@@ -58,7 +59,6 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
-    no_need_buffer_ = no_need_buffer;
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta

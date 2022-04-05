@@ -10309,7 +10309,10 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_stack(x, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
