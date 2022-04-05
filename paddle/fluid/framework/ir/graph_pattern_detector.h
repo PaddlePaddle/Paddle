@@ -1032,6 +1032,22 @@ struct Elementwise : public PatternBase {
   PATTERN_DECL_NODE(elementwise_out);
 };
 
+// Residual Elementwise ops
+// This pattern allows operator output to be X or Y
+// and residual data Y or X, based on as_x flag
+struct ResidualElementwise : public PatternBase {
+  ResidualElementwise(PDPattern* pattern, const std::string& name_scope,
+                      bool as_x)
+      : PatternBase(pattern, name_scope, "residual_elementwise") {}
+  PDNode* operator()(PDNode* op_var, PDNode* residual_var,
+                     const std::string elementwise_type, bool as_x);
+
+  PATTERN_DECL_NODE(operator_output);
+  PATTERN_DECL_NODE(residual_data);
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_out);
+};
+
 // Transpose op
 // Forward pass for transpose.
 // transpose_out is a result of the operator.
