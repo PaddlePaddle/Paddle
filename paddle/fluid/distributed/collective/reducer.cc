@@ -932,7 +932,6 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     for (auto &t : src_rows_tensors) {
       in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
-    std::vector<phi::DenseTensor> out;
     for (auto &t : dst_rows_tensors) {
       out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
@@ -961,16 +960,17 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     std::vector<Tensor> src_value_tensors = {src_value_tensor};
     std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
-    std::vector<phi::DenseTensor> in;
-    std::vector<phi::DenseTensor> out;
+    std::vector<phi::DenseTensor> src_dense;
+    std::vector<phi::DenseTensor> dst_dense;
     for (auto &t : src_value_tensors) {
-      in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+      src_dense.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
-    std::vector<phi::DenseTensor> out;
     for (auto &t : dst_value_tensors) {
-      out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+      dst_dense.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
-    process_group_->AllGather(in, out)->Synchronize();
+    process_group_->AllGather(src_dense, dst_dense)->Synchronize();
 
     src->set_rows(dst_rows_vector);
     *(src->mutable_value()) =
