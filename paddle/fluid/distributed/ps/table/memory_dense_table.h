@@ -30,10 +30,10 @@ namespace distributed {
 
 class DenseOptimizer;
 
-class CommonDenseTable : public Table {
+class MemoryDenseTable : public Table {
  public:
-  CommonDenseTable() {}
-  virtual ~CommonDenseTable() {}
+  MemoryDenseTable() {}
+  virtual ~MemoryDenseTable() {}
   int32_t Initialize() override;
   int32_t InitializeShard() override { return 0; }
   void CreateInitializer(const std::string& attr, const std::string& name);

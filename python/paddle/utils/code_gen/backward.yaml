@@ -779,6 +779,16 @@
   kernel :
     func : maximum_grad
 
+- backward_api : mean_all_grad
+  forward : mean_all(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : mean_all_grad
+
 - backward_api : mean_grad
   forward: mean (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
