@@ -60,10 +60,8 @@ class BatchDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput("Out", "The output tensor of BatchDecodeOp").AsDuplicable();
     AddComment(R"DOC(
-This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
-or 1 dimensional Gray Tensor. Optionally converts the image to the 
-desired format. The values of the output tensor are uint8 between 0 
-and 255.
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor. 
+The values of the output tensor are uint8 between 0 and 255.
 )DOC");
     AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
     AddAttr<int>("local_rank",

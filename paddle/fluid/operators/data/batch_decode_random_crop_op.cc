@@ -105,10 +105,9 @@ class BatchDecodeRandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of BatchDecodeRandomCropOp")
         .AsDuplicable();
     AddComment(R"DOC(
-This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
-or 1 dimensional Gray Tensor. Optionally converts the image to the 
-desired format. The values of the output tensor are uint8 between 0 
-and 255.
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor.
+Optionally converts the image to the desired format.
+The values of the output tensor are uint8 between 0 and 255.
 )DOC");
     AddAttr<int>("local_rank",
                  "(int64_t)"
@@ -129,11 +128,21 @@ and 255.
         "Specify that the data format of the input and output data is "
         "channel_first or channel_last.")
         .SetDefault("NCHW");
-    AddAttr<float>("aspect_ratio_min", "").SetDefault(3. / 4.);
-    AddAttr<float>("aspect_ratio_max", "").SetDefault(4. / 3.);
-    AddAttr<float>("area_min", "").SetDefault(0.08);
-    AddAttr<float>("area_max", "").SetDefault(1.);
-    AddAttr<int64_t>("num_attempts", "").SetDefault(10);
+    AddAttr<float>("aspect_ratio_min", 
+        "(float) The minimum aspect ratio of random cropping boxes")
+        .SetDefault(3. / 4.);
+    AddAttr<float>("aspect_ratio_max",
+        "(float) The maximum aspect ratio of random cropping boxes")
+        .SetDefault(4. / 3.);
+    AddAttr<float>("area_min",
+        "(float) The min area ratio of random cropping boxes")
+        .SetDefault(0.08);
+    AddAttr<float>("area_max",
+        "(float) The max area ratio of random cropping boxes")
+        .SetDefault(1.);
+    AddAttr<int64_t>("num_attempts",
+        "(int) The max attempt number of random cropping boxes")
+        .SetDefault(10);
     AddAttr<int64_t>("program_id",
                      "(int64_t)"
                      "The unique hash id used as cache key for "
