@@ -246,10 +246,11 @@ class Conv2D(layers.Layer):
                 self._groups if self._groups else 1, self._dilation, "NCHW",
                 False, -1, False)
             if self.bias is not None:
-                out = F.elementwise_add(pre_bias, self.bias, axis=1)
-                return out
+                pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
             else:
-                return pre_bias
+                pre_act = pre_bias
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
 
         if _non_static_mode() and (self._l_type == 'conv2d' or
                                    self._l_type == 'depthwise_conv2d'):

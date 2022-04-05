@@ -114,13 +114,20 @@ Tensor conv2d_impl(const Tensor& input,
   VLOG(6) << "conv2d API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "conv2d", {kernel_backend, kernel_layout, kernel_data_type});
+      "conv2d", {kernel_backend, kernel_layout, kernel_data_type}, true);
   VLOG(6) << "conv2d API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto input_input = PrepareData(input, kernel.InputAt(0), {});
-  auto input_filter = PrepareData(filter, kernel.InputAt(1), {});
+  phi::TensorArgDef args0 = kernel.InputAt(0);
+  phi::TensorArgDef args1 = kernel.InputAt(1);
+  if (kernel_backend == Backend::GPU) {
+    args0.backend = Backend::GPU;
+    args1.backend = Backend::GPU;
+  }
+
+  auto input_input = PrepareData(input, args0, {});
+  auto input_filter = PrepareData(filter, args1, {});
 
   Tensor api_output;
   auto kernel_out = SetKernelOutput(kernel_backend, &api_output);
@@ -153,13 +160,6 @@ Tensor conv2d_impl(const Tensor& input,
                                     bool,
                                     phi::DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  // change kernel to cudnn if place is GPU
-  if (kernel_backend == Backend::GPU) {
-    const auto& kernel_dnn =
-        phi::KernelFactory::Instance().SelectKernelOrThrowError(
-            "conv2d", {Backend::GPUDNN, kernel_layout, kernel_data_type});
-    kernel_fn = kernel_dnn.GetVariadicKernelFn<kernel_signature>();
-  }
 
   {
     (*kernel_fn)(*dev_ctx,
@@ -216,14 +216,23 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
   VLOG(6) << "conv2d_grad API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "conv2d_grad", {kernel_backend, kernel_layout, kernel_data_type});
+      "conv2d_grad", {kernel_backend, kernel_layout, kernel_data_type}, true);
   VLOG(6) << "conv2d_grad API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto input_input = PrepareData(input, kernel.InputAt(0), {});
-  auto input_filter = PrepareData(filter, kernel.InputAt(1), {});
-  auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+  phi::TensorArgDef args0 = kernel.InputAt(0);
+  phi::TensorArgDef args1 = kernel.InputAt(1);
+  phi::TensorArgDef args2 = kernel.InputAt(2);
+  if (kernel_backend == Backend::GPU) {
+    args0.backend = Backend::GPU;
+    args1.backend = Backend::GPU;
+    args2.backend = Backend::GPU;
+  }
+
+  auto input_input = PrepareData(input, args0, {});
+  auto input_filter = PrepareData(filter, args1, {});
+  auto input_out_grad = PrepareData(out_grad, args2, {});
 
   std::vector<std::vector<Tensor>> api_output(2);
   api_output[0].emplace_back();
@@ -255,12 +264,6 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
                                     phi::DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
-  if (kernel_backend == Backend::GPU) {
-    const auto& kernel_dnn =
-        phi::KernelFactory::Instance().SelectKernelOrThrowError(
-            "conv2d_grad", {Backend::GPUDNN, kernel_layout, kernel_data_type});
-    kernel_fn = kernel_dnn.GetVariadicKernelFn<kernel_signature>();
-  }
   {
     (*kernel_fn)(*dev_ctx,
                  *input_input,
