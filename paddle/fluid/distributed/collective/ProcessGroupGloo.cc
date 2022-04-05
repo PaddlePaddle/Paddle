@@ -200,7 +200,9 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
                      phi::DenseTensor& out) {  // NOLINT
     gloo::BroadcastOptions opts(_context);
     const auto& dtype = in.dtype();
-    GENERATE_FUNC(dtype, set_input, opts, in);
+    if (rank_ == _root) {
+      GENERATE_FUNC(dtype, set_input, opts, in);
+    }
     GENERATE_FUNC(dtype, set_output, opts, out);
     opts.setRoot(_root);
     opts.setTag(_tag);
