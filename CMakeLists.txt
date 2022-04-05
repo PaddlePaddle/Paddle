@@ -244,7 +244,6 @@ option(NEW_RELEASE_ALL   "PaddlePaddle next-level release strategy for all arche
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
-option(WITH_OPENCV    "Compile with opencv"      OFF)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 
@@ -393,18 +392,6 @@ endif()
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
-
-if(WITH_OPENCV)
-    find_package(OpenCV 4.0 QUIET COMPONENTS core imgproc imgcodecs)
-    if(NOT OpenCV_FOUND)
-    find_package(OpenCV 3.0 REQUIRED COMPONENTS core imgproc imgcodecs)
-    endif()
-    message(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS} (found suitable version \"${OpenCV_VERSION}\", minimum required is \"3.0\")")
-    include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
-    include_directories(${OpenCV_INCLUDE_DIRS})
-    link_directories(${OpenCV_LIBS})
-    add_definitions(-DPADDLE_WITH_OPENCV)
-endif()
 
 if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)

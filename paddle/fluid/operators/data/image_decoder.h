@@ -17,10 +17,6 @@ limitations under the License. */
 #include <map>
 #include <vector>
 
-#ifdef PADDLE_WITH_OPENCV
-#include <opencv2/opencv.hpp>
-#endif
-
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"

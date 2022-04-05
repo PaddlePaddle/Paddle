@@ -95,46 +95,8 @@ void ImageDecoder::CPUDecodeRandomCrop(const uint8_t* data, size_t length,
                                        size_t workspace_size,
                                        framework::LoDTensor* out,
                                        platform::Place place) {
-#ifdef PADDLE_WITH_OPENCV
-  cv::Mat image = cv::imdecode(
-      cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)),
-      cv::IMREAD_COLOR);
-
-  cv::Mat cropped;
-  int height = image.rows;
-  int width = image.cols;
-  if (roi_generator) {
-    ROI roi;
-    roi_generator->GenerateRandomROI(image.cols, image.rows, &roi);
-    cv::Rect cv_roi;
-    cv_roi.x = roi.x;
-    cv_roi.y = roi.y;
-    cv_roi.width = roi.w;
-    cv_roi.height = roi.h;
-    height = roi.h;
-    width = roi.w;
-
-    image(cv_roi).copyTo(cropped);
-  } else {
-    cropped = image;
-  }
-
-  // allocate cpu tensor and memory
-  framework::LoDTensor cpu_tensor;
-  std::vector<int64_t> out_shape = {height, width, 3};
-  cpu_tensor.Resize(phi::make_ddim(out_shape));
-  auto* cpu_data = cpu_tensor.mutable_data<uint8_t>(platform::CPUPlace());
-
-  cv::Mat cpu_mat(height, width, CV_8UC3, const_cast<unsigned char*>(cpu_data),
-                  cv::Mat::AUTO_STEP);
-  cv::cvtColor(cropped, cpu_mat, cv::COLOR_BGR2RGB);
-
-  // copy cpu tensor to output gpu tensor
-  framework::TensorCopySync(cpu_tensor, place, out);
-#else
   PADDLE_THROW(platform::errors::Fatal(
       "Nvjpeg decode failed and Paddle is not compiled with OpenCV"));
-#endif
 }
 
 nvjpegStatus_t ImageDecoder::ParseDecodeParams(
