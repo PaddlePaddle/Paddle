@@ -24,51 +24,51 @@ class VarDesc;
 
 namespace paddle {
 namespace operators {
-class ScatterAddPrimOp : public framework::OperatorBase {
+class SliceAssignPrimOp : public framework::OperatorBase {
  public:
-  ScatterAddPrimOp(const std::string &type,
-                   const framework::VariableNameMap &inputs,
-                   const framework::VariableNameMap &outputs,
-                   const framework::AttributeMap &attrs)
+  SliceAssignPrimOp(const std::string &type,
+                    const framework::VariableNameMap &inputs,
+                    const framework::VariableNameMap &outputs,
+                    const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Prim operator scatter_add_p should not be excuted directly"));
+        "Prim operator slice_assign_p should not be excuted directly"));
   }
 };
 
-class ScatterAddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
+class SliceAssignPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The tensor to apply scatter rule and add on.");
-    AddInput("Y", "(Tensor), The source tensor of scatter_add_p op.");
-    AddInput(
-        "IndexTensor",
-        "(Tensor), The index tensor of scatter_add_p op, which is a 1D tensor.")
-        .AsDispensable();
-    AddOutput("Z", "(Tensor), The output tensor of scatter_add_p op.");
-    AddAttr<int64_t>("axis",
-                     "(int64_t), The axis along which to scatter and add.");
+    AddInput("X", "(Tensor), The tensor to slice from and assign on.");
+    AddInput("Y", "(Tensor), The source tensor of slice_assign_p op.");
+    AddOutput("Z", "(Tensor), The output tensor of slice_assign_p op.");
     AddAttr<std::vector<int64_t>>(
-        "index", "(std::vector<int64_t>) If index of scatter_add_p op");
+        "axis", "(std::vector<int64_t>), The axis along which to gather.");
+    AddAttr<std::vector<int64_t>>(
+        "starts",
+        "(std::vector<int64_t>) The slice starts of slice_assign_p op");
+    AddAttr<std::vector<int64_t>>(
+        "ends", "(std::vector<int64_t>) The slice ends of slice_assign_p op");
+    AddAttr<std::vector<int64_t>>(
+        "strides",
+        "(std::vector<int64_t>) The slice strides of slice_assign_p op");
   }
 };
 
-class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
+class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    // TODO(lml): add some check for y's shape.
+    // TODO(lml): add some check for Y.
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    auto x_shape = x_var->GetShape();
-
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
+    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_var->GetShape());
   }
 };
 
-class ScatterAddPrimOpVarTypeInference
+class SliceAssignPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
@@ -82,6 +82,6 @@ class ScatterAddPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(scatter_add_p, paddle::operators::ScatterAddPrimOp,
-                  paddle::operators::ScatterAddPrimOpShapeInference,
-                  paddle::operators::ScatterAddPrimOpVarTypeInference);
+REGISTER_OPERATOR(slice_assign_p, paddle::operators::SliceAssignPrimOp,
+                  paddle::operators::SliceAssignPrimOpShapeInference,
+                  paddle::operators::SliceAssignPrimOpVarTypeInference);
