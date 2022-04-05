@@ -39,7 +39,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
 #include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
 #endif
 
