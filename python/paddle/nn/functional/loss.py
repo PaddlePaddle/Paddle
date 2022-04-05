@@ -37,7 +37,7 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode,_non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 __all__ = []
 
 
