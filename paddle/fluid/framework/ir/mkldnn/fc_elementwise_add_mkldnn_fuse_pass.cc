@@ -56,19 +56,21 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
 
 GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     const std::string& name_scope, const GraphWithStats& graph_with_stats,
-    bool as_x) const {
+    bool fc_as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope};
+  bool fc_has_bias = true;
   auto fc_output = fc_pattern(
       gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
           "fc", "Input"),
-      true);
+      fc_has_bias);
 
-  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
+  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope,
+                                                    fc_as_x};
   elementwise_pattern(
       fc_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add", as_x);
+      "elementwise_add", fc_as_x);
   fc_output->AsIntermediate();
 
   int found_fc_count = 0;
@@ -88,9 +90,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
                               elementwise_pattern);
 
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
-
     if (!IsReachable(g, residual_data, fc_output)) return;
-
     if (HasFusedActivation(fc_op)) return;
 
     if (!IsCompat(subgraph, g)) {
@@ -114,7 +114,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   gpd(graph_with_stats.first, handler);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     std::stringstream msg_ss;
-    std::string fusionMode = as_x ? "x" : "y";
+    std::string fusionMode = fc_as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode
            << ") + elementwise_add patterns";
     paddle::string::PrettyLogDetail(msg_ss.str().c_str());

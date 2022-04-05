@@ -28,7 +28,7 @@ import hypothesis.strategies as st
 class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
-        FCAsX = draw(st.sampled_from([True, False]))
+        fc_as_x = draw(st.sampled_from([True, False]))
         fc_in = draw(st.sampled_from([32, 64]))
         fc_wei = draw(st.sampled_from([32, 64]))
 
@@ -62,7 +62,7 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 "in_num_col_dims": 1,
             })
 
-        if FCAsX:
+        if fc_as_x:
             inputs = {"X": ["fc_output"], "Y": ["input_data"]}
         else:
             inputs = {"X": ["input_data"], "Y": ["fc_output"]}
