@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
+from paddle_bfloat import bfloat16
 
 DELTA = 0.00001
 
@@ -261,7 +262,7 @@ class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16
         """
-        self.test_normal_initializer("uint16")
+        self.test_normal_initializer(bfloat16)
 
 
 class TestXavierInitializer(unittest.TestCase):
@@ -368,7 +369,7 @@ class TestXavierInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.XavierInitializer(
                     uniform=uniform, fan_in=12, fan_out=23, seed=134))
-        num_ops = 2 if (dtype == "float16" or (dtype == "uint16" and
+        num_ops = 2 if (dtype == "float16" or (dtype in ["uint16", bfloat16] and
                                                not uniform)) else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -392,10 +393,10 @@ class TestXavierInitializer(unittest.TestCase):
         """Test the Xavier initializer with bfloat16
         """
         block_uniform = self.test_xavier_initializer_supplied_arguments(
-            "uint16")
+            bfloat16)
         self.assertEqual(len(block_uniform.ops), 1)
         block_gaussian = self.test_xavier_initializer_supplied_arguments(
-            "uint16", False)
+            bfloat16, False)
         self.assertTrue(check_cast_op(block_gaussian.ops[1]))
 
 

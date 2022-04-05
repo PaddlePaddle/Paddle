@@ -1455,10 +1455,9 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype in [np.uint16, bfloat16
-                                       ] and expect_np.dtype in [
-                                           np.float32, np.float64
-                                       ]:
+                if actual_np.dtype in [
+                        np.uint16, bfloat16
+                ] and expect_np.dtype in [np.float32, np.float64]:
                     actual_np = convert_uint16_to_float(actual_np)
                     expect_np = convert_uint16_to_float(expect_np)
                     self.rtol = 1.e-2
