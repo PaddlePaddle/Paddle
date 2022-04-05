@@ -156,6 +156,17 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos) {
+  if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return PyLong_AsSize_t(obj);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "long, but got %s",
+        arg_pos + 1, (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+  }
+}
+
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
     return static_cast<float>(PyFloat_AsDouble(obj));
@@ -297,6 +308,51 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
   return result;
 }
 
+std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
+  std::vector<size_t> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(PyLong_AsSize_t(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
+    PyObject* obj, size_t arg_pos) {
+  std::vector<std::vector<size_t>> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      result.emplace_back(CastPyArg2VectorOfSize_t(item, arg_pos));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   platform::Place place;
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(g_place_pytype))) {
@@ -432,9 +488,9 @@ PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
 PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
 
-PyObject* ToPyObject(size_t value) { return PyLong_FromLong(value); }
-
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
+
+PyObject* ToPyObject(size_t value) { return PyLong_FromSize_t(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
 
@@ -508,6 +564,16 @@ PyObject* ToPyObject(const std::vector<int64_t>& value) {
   return result;
 }
 
+PyObject* ToPyObject(const std::vector<size_t>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, (Py_ssize_t)i, ToPyObject(value[i]));
+  }
+
+  return result;
+}
+
 PyObject* ToPyObject(const std::vector<float>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
@@ -519,6 +585,16 @@ PyObject* ToPyObject(const std::vector<float>& value) {
 }
 
 PyObject* ToPyObject(const std::vector<double>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
+}
+
+PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {

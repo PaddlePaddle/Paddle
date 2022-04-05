@@ -59,12 +59,16 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
       place, out_t, in_t, offsets, extents);
 }
 
-static double ToMegaBytes(size_t bytes) {
+static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }
 
+static inline bool UseFixedWorkspace() {
+  return FLAGS_conv_workspace_size_limit > 0;
+}
+
 static size_t CaclWorkspaceLimitInBytes(const phi::GPUContext& ctx) {
-  if (FLAGS_conv_workspace_size_limit == 0) {
+  if (!UseFixedWorkspace()) {
     int device_id = platform::GetCurrentDeviceId();
     int64_t allocated = memory::StatGetCurrentValue("Allocated", device_id);
     int64_t reserved = memory::StatGetCurrentValue("Reserved", device_id);
@@ -233,7 +237,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       max_workspace_size));
             };
             workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                         false);
+                                         UseFixedWorkspace());
 
             VLOG(4) << GetPerfResultString<PerfT>(
                 "[Exhaustive Search] FwdAlgo Perf result", perf_results,
@@ -261,7 +265,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
  private:
   static size_t FindMaxWorkspaceSize(const ConvArgs& args,
                                      size_t workspace_size_limit) {
-    if (FLAGS_conv_workspace_size_limit == 0) {
+    if (!UseFixedWorkspace()) {
       size_t max_workspace_size = 0;
       for (size_t algo = 0; algo < kNUM_CUDNN_FWD_ALGS; ++algo) {
         size_t workspace_size = 0;
@@ -381,7 +385,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                           max_workspace_size));
             };
             workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                         false);
+                                         UseFixedWorkspace());
 
             VLOG(3) << GetPerfResultString<PerfT>(
                 "[Exhaustive Search] BwdDataAlgo Perf result", perf_results,
@@ -409,7 +413,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
  private:
   static size_t FindMaxWorkspaceSize(const ConvArgs& args,
                                      size_t workspace_size_limit) {
-    if (FLAGS_conv_workspace_size_limit == 0) {
+    if (!UseFixedWorkspace()) {
       size_t max_workspace_size = 0;
       for (size_t algo = 0; algo < kNUM_CUDNN_BWD_DATA_ALGS; ++algo) {
         size_t workspace_size = 0;
@@ -522,7 +526,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                             max_workspace_size));
               };
               workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                           false);
+                                           UseFixedWorkspace());
 
               VLOG(3) << GetPerfResultString<PerfT>(
                   "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
@@ -572,7 +576,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
  private:
   static size_t FindMaxWorkspaceSize(const ConvArgs& args,
                                      size_t workspace_size_limit) {
-    if (FLAGS_conv_workspace_size_limit == 0) {
+    if (!UseFixedWorkspace()) {
       size_t max_workspace_size = 0;
       for (size_t algo = 0; algo < kNUM_CUDNN_BWD_FILTER_ALGS; ++algo) {
         size_t workspace_size = 0;
