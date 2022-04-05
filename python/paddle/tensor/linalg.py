@@ -551,6 +551,9 @@ def dist(x, y, p=2, name=None):
             out = paddle.dist(x, y, float("-inf"))
             print(out) # out = [0.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dist(x, y, p)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')

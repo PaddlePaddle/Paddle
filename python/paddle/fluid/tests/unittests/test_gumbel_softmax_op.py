@@ -17,7 +17,7 @@ import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-paddle.enable_static()
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestGumbelSoftmaxOp(OpTest):
@@ -177,12 +177,16 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.assertEqual(out_np.sum(), self.count_expected)
 
         # test dygrapg api
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x)
-        y = paddle.nn.functional.gumbel_softmax(x, hard=True)
-        out_np = np.array(y)
-        self.assertEqual(out_np.sum(), self.count_expected)
-        paddle.enable_static()
+        with paddle.fluid.dygraph.base.guard():
+            x = paddle.to_tensor(self.x)
+            y = paddle.nn.functional.gumbel_softmax(x, hard=True)
+            out_np = np.array(y)
+            self.assertEqual(out_np.sum(), self.count_expected)
+
+            with _test_eager_guard():
+                y = paddle.nn.functional.gumbel_softmax(x, hard=True)
+                out_np = np.array(y)
+                self.assertEqual(out_np.sum(), self.count_expected)
 
 
 class TestGumbelSoftmaxOpError(unittest.TestCase):
@@ -226,4 +230,5 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
