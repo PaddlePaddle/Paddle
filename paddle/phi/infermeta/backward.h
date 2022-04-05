@@ -165,4 +165,8 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
 
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad);
+
 }  // namespace phi
