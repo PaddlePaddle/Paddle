@@ -553,5 +553,153 @@ std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
   return x_grad;
 }
 
+std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(inputs);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "meshgrid", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "meshgrid API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "meshgrid API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_inputs_vec = PrepareData(inputs, kernel.InputAt(0), {});
+  std::vector<const phi::DenseTensor*> input_inputs(input_inputs_vec->size());
+  for (size_t i = 0; i < input_inputs.size(); ++i) {
+    input_inputs[i] = &input_inputs_vec->at(i);
+  }
+
+  auto x_meta_vec = MakeMetaTensor(input_inputs);
+  std::vector<phi::MetaTensor*> inputs_metas(x_meta_vec.size());
+  for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+    inputs_metas[i] = &x_meta_vec[i];
+  }
+
+  // Calculate the number of out tensors
+  size_t out_number = inputs.size();
+
+  std::vector<Tensor> out;
+  auto dense_outs = SetKernelOutput(out_number, kernel_backend, &out);
+
+  std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_outs.push_back(dense_outs[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
+  }
+  phi::MeshgridInferMeta(inputs_metas, meta_out_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const std::vector<const phi::DenseTensor*>&,
+                                    std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, input_inputs, dense_outs);
+
+  return out;
+}
+
+std::vector<Tensor> meshgrid_grad_impl(
+    const std::vector<Tensor>& inputs,
+    const std::vector<Tensor>& outputs_grad) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(inputs, outputs_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "meshgrid_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "meshgrid_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "meshgrid_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_inputs_vec = PrepareData(inputs, kernel.InputAt(0), {});
+  std::vector<const phi::DenseTensor*> input_inputs(input_inputs_vec->size());
+  for (size_t i = 0; i < input_inputs.size(); ++i) {
+    input_inputs[i] = &input_inputs_vec->at(i);
+  }
+  auto input_outputs_grad_vec =
+      PrepareData(outputs_grad, kernel.InputAt(1), {});
+  std::vector<const phi::DenseTensor*> input_outputs_grad(
+      input_outputs_grad_vec->size());
+  for (size_t i = 0; i < input_outputs_grad.size(); ++i) {
+    input_outputs_grad[i] = &input_outputs_grad_vec->at(i);
+  }
+
+  size_t out_number = inputs.size();
+  std::vector<Tensor> api_output;
+  auto kernel_out = SetKernelOutput(out_number, kernel_backend, &api_output);
+
+  auto inputs_meta_vec = MakeMetaTensor(input_inputs);
+  std::vector<phi::MetaTensor*> inputs_metas(inputs_meta_vec.size());
+  for (size_t i = 0; i < inputs_meta_vec.size(); ++i) {
+    inputs_metas[i] = &inputs_meta_vec[i];
+  }
+
+  auto outputs_grad_meta_vec = MakeMetaTensor(input_outputs_grad);
+  std::vector<phi::MetaTensor*> outputs_grad_metas(
+      outputs_grad_meta_vec.size());
+  for (size_t i = 0; i < outputs_grad_meta_vec.size(); ++i) {
+    outputs_grad_metas[i] = &outputs_grad_meta_vec[i];
+  }
+
+  std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_outs.push_back(kernel_out[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
+  }
+
+  phi::MeshgridGradInferMeta(inputs_metas, outputs_grad_metas, meta_out_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const std::vector<const phi::DenseTensor*>&,
+                                    const std::vector<const phi::DenseTensor*>&,
+                                    std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, input_inputs, input_outputs_grad, kernel_out);
+
+  return api_output;
+}
+
 }  // namespace experimental
 }  // namespace paddle
