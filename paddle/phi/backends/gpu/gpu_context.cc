@@ -155,11 +155,15 @@ static void StreamCallbackFunc(gpuStream_t stream,
 
 }  // namespace internal
 
-void DnnWorkspaceHandle::ResetWorkspace() { allocation_ = nullptr; }
+void DnnWorkspaceHandle::ResetWorkspace() {
+  std::lock_guard<std::mutex> guard(*mtx_);
+  allocation_ = nullptr;
+}
 
 void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   if (required_workspace_bytes <= WorkspaceSize()) return;
   // reset allocation first before re-allocate to save memory
+  std::lock_guard<std::mutex> guard(*mtx_);
   allocation_.reset();
   allocation_ = allocator_->Allocate(required_workspace_bytes);
 }
@@ -168,7 +172,6 @@ inline void DnnWorkspaceHandle::RunFunc(
     const std::function<void(void*)>& cudnn_func,
     size_t required_workspace_bytes) {
   if (required_workspace_bytes > WorkspaceSize()) {
-    std::lock_guard<std::mutex> guard(*mtx_);
     ReallocWorkspace(required_workspace_bytes);
   }
   {
@@ -189,6 +192,7 @@ inline void DnnWorkspaceHandle::RunFuncSync(
 }
 
 inline size_t DnnWorkspaceHandle::WorkspaceSize() {
+  std::lock_guard<std::mutex> guard(*mtx_);
   if (allocation_ == nullptr) {
     return 0;
   }
