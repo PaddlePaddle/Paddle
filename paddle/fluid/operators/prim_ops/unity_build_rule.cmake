@@ -5,6 +5,8 @@ register_unity_group(cc
     transpose_p_op.cc
     split_p_op.cc
     concat_p_op.cc
+    gather_p_op.cc
+    scatter_add_p_op.cc
     add_p_op.cc
     sub_p_op.cc
     mul_p_op.cc
