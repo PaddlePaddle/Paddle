@@ -144,10 +144,12 @@ _default_backend = None
 
 
 def _set_default_backend(backend):
+    global _default_backend
     _default_backend = backend
 
 
 def _set_default_store(store):
+    global _default_store
     _default_store = store
 
 
@@ -170,6 +172,7 @@ def _get_group_map_by_name():
 
 
 def _get_default_group():
+    global _group_map_by_name
     assert _default_group_name in _group_map_by_name, (
         "Call paddle.distributed.init_parallel_env first "
         "to initialize the distributed environment.")
@@ -307,7 +310,7 @@ def new_group(ranks=None, backend=None):
 
     """
     global _group_map
-    if framework._in_eager_mode_:
+    if in_dygraph_mode():
         global _default_group_name
         gid = _new_ring_id()
         group_name = _default_group_name + str(gid)
