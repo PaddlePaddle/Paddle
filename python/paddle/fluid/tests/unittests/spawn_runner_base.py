@@ -21,7 +21,7 @@ import paddle
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
-from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
+from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
@@ -29,8 +29,6 @@ class SpawnAssistTestArgs(object):
     update_method = "local"
     trainer_id = 0
     find_unused_parameters = False
-    eager_mode = False
-    dist_port = get_dist_port_from_flags()
 
 
 class TestDistSpawnRunner(unittest.TestCase):
@@ -55,14 +53,17 @@ class TestDistSpawnRunner(unittest.TestCase):
             result_list.append(res_queue.get())
         return result_list
 
-    def _args_config(self, args):
-        return
-
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
+        with _test_eager_guard():
+            self.check_dist_result_with_spawn_func(
+                test_class=test_class, delta=delta)
+        self.check_dist_result_with_spawn_func(
+            test_class=test_class, delta=delta)
+
+    def check_dist_result_with_spawn_func(self, test_class, delta=1e-3):
         # 0. prepare model and args
         model = test_class()
         args = SpawnAssistTestArgs()
-        self._args_config(args)
 
         # 1. calc signal card loss
         losses = self._run(model, args)
