@@ -915,8 +915,8 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
+    float alpha = 0.0;
+    float beta = 0.0;
 
     if (ctx.Type() == "scale") {
       bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
@@ -938,11 +938,34 @@ class ActivationMKLDNNHandler
       beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
                                  : ctx.Attr<float>("max");
     } else {
-      // paddle uses beta but mkldnn uses alpha for swish
-      if (algorithm == dnnl::algorithm::eltwise_swish) {
-        std::swap(alpha, beta);
-      } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-        alpha = ctx.Attr<float>("threshold");
+      switch (algorithm) {
+        // alpha and beta does not exist for those
+        case dnnl::algorithm::eltwise_abs:
+        case dnnl::algorithm::eltwise_exp:
+        case dnnl::algorithm::eltwise_gelu:
+        case dnnl::algorithm::eltwise_hardswish:
+        case dnnl::algorithm::eltwise_logistic:
+        case dnnl::algorithm::eltwise_mish:
+        case dnnl::algorithm::eltwise_relu:
+        case dnnl::algorithm::eltwise_sqrt:
+        case dnnl::algorithm::eltwise_tanh:
+          break;
+        // alpha is defined for following ones
+        case dnnl::algorithm::eltwise_elu:
+        case dnnl::algorithm::eltwise_leaky_relu:
+          alpha = ctx.Attr<float>("alpha");
+          break;
+        case dnnl::algorithm::eltwise_swish:
+          // paddle uses beta but mkldnn uses alpha for swish
+          alpha = ctx.Attr<float>("beta");
+          break;
+        case dnnl::algorithm::eltwise_bounded_relu:
+          alpha = ctx.Attr<float>("threshold");
+          break;
+        default:
+          alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
+          beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
+          break;
       }
     }
 
@@ -1093,16 +1116,18 @@ static void SetDstMemoryQuantized(
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
 
-  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
-                                     "Dst memory for quantization can not have "
-                                     "dims > 5. But received dst_dims is %d.",
-                                     dst_dims));
+  PADDLE_ENFORCE_LE(dst_dims, 5,
+                    platform::errors::InvalidArgument(
+                        "Dst memory for quantization can not have "
+                        "dims > 5. But received dst_dims is %d.",
+                        dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md = platform::MKLDNNMemDesc(
-      {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType()),
-      dst_fmt);
+  auto tmp_dst_md =
+      platform::MKLDNNMemDesc({dst_tz},
+                              paddle::framework::ToMKLDNNDataType(
+                                  framework::DataTypeTrait<T>::DataType()),
+                              dst_fmt);
   dst_md.reset(new dnnl::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new dnnl::memory(*dst_md, engine, to_void_cast<T>(output_data)));
