@@ -270,14 +270,7 @@ class PipelineLayer(Layer):
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
             with paddle.framework.no_grad():
-                paddle.fluid.framework._dygraph_tracer().trace_op(
-                    type="c_allreduce_sum",
-                    inputs={'X': param._grad_ivar()},
-                    outputs={'Out': param._grad_ivar()},
-                    attrs={
-                        'ring_id': comm['group'].id,
-                        'use_calc_stream': True
-                    })
+                paddle.distributed.all_reduce(param.grad, group=comm['group'])
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")

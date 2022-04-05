@@ -23,6 +23,7 @@ from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 from .pp_utils import p2p_communication as p2p
+import paddle.fluid.core as core
 
 __all__ = []
 
@@ -238,9 +239,9 @@ class PipelineParallel(MetaParallelBase):
                 assert self._layers._loss_fn is not None, "loss function should exist to compute loss"
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
-                assert isinstance(
-                    output_tensor, paddle.Tensor
-                ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                assert isinstance(output_tensor, (
+                    paddle.Tensor, core.eager.Tensor
+                )), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
                     if self.accumulate_steps > 1:
