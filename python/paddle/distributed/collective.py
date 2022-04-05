@@ -224,7 +224,7 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0):
     pg = None
-    assert backend in _valid_backend_list, "Unsupported backend %s." % backend
+    assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
         pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
     elif backend == "nccl":
