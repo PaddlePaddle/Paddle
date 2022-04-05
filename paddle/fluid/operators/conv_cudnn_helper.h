@@ -33,9 +33,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DataLayout = platform::DataLayout;
+using framework::AlgorithmsCache;
+using framework::ConvSearchCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using framework::AlgorithmsCache;
+
 static inline void GetNCDHW(const framework::DDim& dims,
                             const DataLayout& layout, int* N, int* C, int* D,
                             int* H, int* W) {
@@ -96,16 +98,6 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
-inline int MaxBwdFilterAlgos(cudnnHandle_t cudnn_handle) {
-  int max_algos = 0;
-#if CUDNN_VERSION_MIN(7, 0, 1)
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
-          cudnn_handle, &max_algos));
-#endif
-  return max_algos;
-}
-
 template <typename PerfType, typename AlgoType>
 void ChooseAlgo(const std::vector<PerfType>& perf_results,
                 size_t workspace_byte, AlgoType* algo) {
@@ -151,8 +143,6 @@ void ChooseAlgo(const std::vector<PerfType>& perf_results,
   }
 }
 
-using framework::ConvSearchCache;
-
 static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
                             const platform::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
@@ -180,7 +170,7 @@ static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
 #endif
 }
 
-/* After adopting cuDNN find api, more than 1 algorithm acquired. some
+/* After adopting cuDNN find api, more than 1 algorithm acquired. Some
     of them may perf as well as the bese algo, but occupy less memory.*/
 template <typename PerfT, typename AlgoT>
 static AlgoT ChooseAlgoByWorkspace(PerfT* perf_stats, int perf_num,

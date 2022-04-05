@@ -59,12 +59,12 @@ size_t GetKey(Args&&... args) {
 }
 
 // Define the cache key of operator
-size_t ConvKey(const std::vector<int64_t>& x_dims,
-               const std::vector<int64_t>& w_dims,
-               const std::vector<int>& strides,
-               const std::vector<int>& paddings,
-               const std::vector<int>& dilations,
-               phi::DataType dtype) {
+static size_t ConvKey(const std::vector<int64_t>& x_dims,
+                      const std::vector<int64_t>& w_dims,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      phi::DataType dtype) {
   return GetKey(x_dims,
                 w_dims,
                 strides,
