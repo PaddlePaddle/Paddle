@@ -846,18 +846,20 @@ def read_file(filename, name=None):
 
     Examples:
         .. code-block:: python
-
-            import cv2
             import paddle
+            from paddle.utils.download import get_path_from_url
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
+            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
+            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+            BATCH_SIZE = 16
 
-            cv2.imwrite('fake.jpg', fake_img)
-
-            img_bytes = paddle.vision.ops.read_file('fake.jpg')
-            
-            print(img_bytes.shape)
+            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                          DATASET_MD5)
+            indices = paddle.arange(BATCH_SIZE)
+            outs = paddle.vision.reader.file_label_loader(data_root,
+                                                indices, BATCH_SIZE)
+            print(outs[0].shape)
 
     """
 
@@ -881,36 +883,46 @@ def image_decode(x,
                  device_memory_padding=0,
                  name=None):
     """
-    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
-    Optionally converts the image to the desired format. 
-    The values of the output tensor are uint8 between 0 and 255.
+    Decodes a batch of JPEG images into a list of 3 dimensional RGB
+    Tensors with multi-threads and Nvjpeg. Default Nvjpeg decoding
+    output format is RGBI, for detail infomations, please see
+    https://docs.nvidia.com/cuda/nvjpeg/index.html.
+
+    This api is only available for Paddle GPU version
+
+    The values of the output tensors are uint8 between 0 and 255.
 
     Args:
-        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
-            of the JPEG image.
-        mode (str): The read mode used for optionally converting the image. 
-            Default: 'unchanged'.
-        num_threads (int): parallel thread number.
+        x (List[Tensor]): A list of one dimensional uint8 Tensors
+                          containing the raw bytes of the JPEG image.
+        num_threads (int): The parallel thread number for decoding
+        host_memory_padding (int): The CUDA pinned memory allocation
+                padding size of Nvjpeg decoding. Default 0.
+        host_memory_padding (int): The CUDA memory allocation padding
+                size of Nvjpeg decoding. Default 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
     Returns:
-        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+        Tensor: A list of decoded image tensors with shape of
+                (imge_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
             import cv2
             import paddle
-
+            import numpy as np
+            
             fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
-
+                    (400, 300, 3)) * 255).astype('uint8')
+            
             cv2.imwrite('fake.jpg', fake_img)
-
+            
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
-            img = paddle.vision.ops.decode_jpeg(img_bytes)
-
-            print(img.shape)
+            imgs = paddle.vision.ops.image_decode([img_bytes])
+            
+            print(imgs[0].shape)
     """
 
     local_rank = paddle.distributed.get_rank()
@@ -959,40 +971,64 @@ def image_decode_random_crop(x,
                              num_attempts=10,
                              name=None):
     """
-    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
-    Optionally converts the image to the desired format. 
-    The values of the output tensor are uint8 between 0 and 255.
+    Decodes and performs random cropping on a batch of JPEG images into
+    a list of 3 dimensional RGB Tensors with multi-threads and Nvjpeg.
+    Default Nvjpeg decoding output format is RGBI, for detail infomations, 
+    please see https://docs.nvidia.com/cuda/nvjpeg/index.html.
+
+    This api is only available for Paddle GPU version
+
+    The values of the output tensors are uint8 between 0 and 255.
 
     Args:
-        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
-            of the JPEG image.
-        num_threads (int): parallel thread number.
-        aspect_ratio_min (float): 
-        aspect_ratio_max (float): 
-        area_min (float): 
-        area_max (float): 
-        num_attempts (int):
+        x (List[Tensor]): A list of one dimensional uint8 Tensors
+                          containing the raw bytes of the JPEG image.
+        num_threads (int): The parallel thread number for decoding
+        host_memory_padding (int): The CUDA pinned memory allocation
+                padding size of Nvjpeg decoding. Default 0.
+        host_memory_padding (int): The CUDA memory allocation padding
+                size of Nvjpeg decoding. Default 0.
+        data_format (string): The output image format, if NCHW, output
+                images will be in shape of (channels, image_height,
+                image_width), if NHWC, output images will be in shape of
+                (image_height, image_width, channels). Default NCHW.
+        aspect_ratio_min (float): The minimum aspect ratio of random
+                cropping boxes, this should be a value between 0 and
+                1. Default :attr:`3. / 4.`.
+        aspect_ratio_max (float): The maximum aspect ratio of random
+                cropping boxes, this should be a value greater than 1.
+                Default :attr:`4. / 3.`.
+        area_min (float): The minimum area ratio of random cropping boxes,
+                this should be a value between 0 and 1. Default 0.08.
+        area_max (float): The maximum area ratio of random cropping boxes,
+                this should be a value between 0 and 1. Default 1.
+        num_attempts (int): The max attempt number to find random cropping
+                boxes, this should be a position integer. Default 10.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
     Returns:
-        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+        Tensor: A list of decoded image tensors with shape of
+                (imge_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
             import cv2
             import paddle
-
+            import numpy as np
+            
             fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
-
+                    (400, 300, 3)) * 255).astype('uint8')
+            
             cv2.imwrite('fake.jpg', fake_img)
-
+            
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
-            img = paddle.vision.ops.decode_jpeg(img_bytes)
-
-            print(img.shape)
+            imgs = paddle.vision.ops.image_decode_random_crop([img_bytes])
+            
+            print(imgs[0].shape)
     """
+
     local_rank = paddle.distributed.get_rank()
     if in_dygraph_mode():
         out = core.VarBase(core.VarDesc.VarType.UINT8, [],
@@ -1039,6 +1075,33 @@ def image_decode_random_crop(x,
 
 
 def random_flip(x, prob=0.5, name=None):
+    """
+    This API generates flipping mirror flags for input Tensor, it treats
+    the 1st dimension as batch size and generates a bool value of whether
+    to flip the input samples for each sample.
+
+    Args:
+        x (Tensor): The input tensor in shape of [N, ...], N if the batch
+            size to generate random flipping mirror flags.
+        prob (float): The probability for flip the input samples, this
+            should be a float value between 0 and 1. Default 0.5
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A bool Tensor in shape of [N, 1], N is the shape of 1st
+                dimension of input Tensor.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            
+            x = paddle.rand(shape=[8, 3, 32, 32])
+            mirror = paddle.vision.ops.random_flip(x)
+
+            print(mirror)
+    """
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
 
@@ -1545,12 +1608,24 @@ def random_crop_and_resize(x,
     Args:
         x (List[Tensor]): A list of input images, 3D-Tensor with the shape
             of [C,H,W] or [H,W,c]. The data type is uint8 or float32.
-        size (int|list|tuple): Target size of output image,
-            with (height, width) shape.
-        scale (list|tuple): Scale range of the cropped image before resizing,
-            relatively to the origin image. Default: (0.08, 1.0)
-        ratio (list|tuple): Range of aspect ratio of the origin aspect ratio
-            cropped. Default: (0.75, 1.33)
+        size (int|list|tuple): Target size of output image, with (height,
+            width) shape.
+        aspect_ratio_min (float): The minimum aspect ratio of random
+                cropping boxes, this should be a value between 0 and
+                1. Default :attr:`3. / 4.`.
+        aspect_ratio_max (float): The maximum aspect ratio of random
+                cropping boxes, this should be a value greater than 1.
+                Default :attr:`4. / 3.`.
+        area_min (float): The minimum area ratio of random cropping boxes,
+                this should be a value between 0 and 1. Default 0.08.
+        area_max (float): The maximum area ratio of random cropping boxes,
+                this should be a value between 0 and 1. Default 1.
+        num_attempts (int): The max attempt number to find random cropping
+                boxes, this should be a position integer. Default 10.
+        data_format (string): The input image format, if NCHW, input  
+                images will be in shape of (channels, image_height,
+                image_width), if NHWC, input images will be in shape of
+                (image_height, image_width, channels). Default NCHW.
         interp_method (str, optional): Interpolation method. Default: 'bilinear'.
             support method are as following:
             - "nearest",
@@ -1570,18 +1645,22 @@ def random_crop_and_resize(x,
             default.
 
     Returns:
-        Tensor: The output of RandomCropAndResizeOp is a 4-D tensor with shape
-            (batch_size, channels, h, w). The data type is uint8 or float32.
+        Tensor: The output is a 4-D tensor with shape (batch_size,
+                channels, h, w) or (batch_random_crop_and_resize, h, w, 
+                channels). The data type is uint8 or float32.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            from paddle.vision.ops import batch_random_crop_and_resize
 
-            data = paddle.rand([3, 256, 256])
-            out = batch_random_crop_and_resize([data])
+            data = paddle.randn(shape=[3, 256, 256])
+            data = paddle.cast(data, dtype='uint8')
+            out = paddle.vision.ops.random_crop_and_resize([data], size=224)
+
+            print(out.shape)
     """
+
     check_type(size, 'size', (int, tuple), 'batch_random_crop_and_resize')
     assert interp_method in ['bilinear', 'nearest']
     assert data_format in ['NCHW', 'NHWC']
@@ -1638,9 +1717,9 @@ def image_resize(x,
 
     Args:
         x (List[Tensor]): A list of input images, 3D-Tensor with the shape
-            of [C,H,W] or [H,W,c]. The data type is uint8 or float32.
-        size (int|list|tuple): Target size of output image,
-            with (height, width) shape.
+            of [C, H, W] or [H, W, C]. The data type is uint8 or float32.
+        size (int|list|tuple): Target size of output image, with (height,
+            width) shape.
         interp_method (str, optional): Interpolation method. Default: 'bilinear'.
             support method are as following:
             - "nearest",
@@ -1660,17 +1739,20 @@ def image_resize(x,
             default.
 
     Returns:
-        Tensor: The output of RandomCropAndResizeOp is a 4-D tensor with shape
-            (batch_size, channels, h, w). The data type is uint8 or float32.
+        Tensor: The output of image_resizeis a 4-D tensor with shape
+            (batch_size, channels, h, w) or (batch_resize, h, w, channels). 
+            The data type is uint8 or float32.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            from paddle.vision.ops import image_resize
 
-            data = paddle.rand([3, 256, 256])
-            out = image_resize([data])
+            data = paddle.randn(shape=[3, 256, 256])
+            data = paddle.cast(data, dtype='uint8')
+            out = paddle.vision.ops.image_resize([data], size=224)
+
+            print(out.shape)
     """
     check_type(size, 'size', (int, tuple), 'image_resize')
     assert interp_method in ['bilinear', 'nearest']

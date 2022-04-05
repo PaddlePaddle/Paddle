@@ -40,9 +40,6 @@ void ShutDownAllDataLoaders() {
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
-
-  // step 3: shutdown Pipeline
-  PipelineManager::Instance()->ShutDown();
 }
 
 void ShutDownReadersAndDecoders(const int64_t program_id) {

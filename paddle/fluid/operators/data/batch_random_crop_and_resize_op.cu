@@ -346,4 +346,5 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(batch_random_crop_and_resize,
                         ops::data::BatchRandomCropAndResizeCUDAKernel<uint8_t>,
-                        ops::data::BatchRandomCropAndResizeCUDAKernel<float>);
+                        ops::data::BatchRandomCropAndResizeCUDAKernel<float>,
+                        ops::data::BatchRandomCropAndResizeCUDAKernel<double>);

@@ -16,7 +16,7 @@ import numpy as np
 from ..fluid.layer_helper import LayerHelper, unique_name
 from ..fluid import core, layers
 from ..fluid.layers import nn, utils
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 
 import paddle
 from paddle.common_ops_import import *
@@ -87,15 +87,43 @@ def file_label_loader(data_root, indices, batch_size, name=None):
     Reads a batch of data, outputs the bytes contents of a file
     as a uint8 Tensor with one dimension.
 
+    This API can only be used in Paddle GPU version.
+
     Args:
-        data_root (str): root directory of data
-        indices (list of int): batch indices of samples
+        data_root (str): root directory of ImageNet dataset.
+        indices (Tensor): A Tensor of batch indices of samples in shape of 
+            [N], while N is the batch size.
+        batch_size (int): The batch size, same as shape of indices.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A list of image Tensor holds byte streams of a batch of images and
+        A Tensor of label Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import os
+            import paddle
+            from paddle.utils.download import get_path_from_url
+
+            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
+            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
+            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+            BATCH_SIZE = 16
+
+            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                          DATASET_MD5)
+            indices = paddle.arange(BATCH_SIZE)
+            images, labels = paddle.vision.reader.file_label_loader(
+                                    data_root, indices, BATCH_SIZE)
+            print(images[0].shape, labels.shape)
+
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         image = [
             core.VarBase(core.VarDesc.VarType.UINT8, [],
                          unique_name.generate("file_label_loader"),
@@ -130,40 +158,61 @@ def file_label_loader(data_root, indices, batch_size, name=None):
     return image, label
 
 
-def file_label_reader(file_root,
+def file_label_reader(data_root,
                       batch_size=1,
                       shuffle=False,
                       drop_last=False,
                       seed=None):
     """
-    Reads and outputs the bytes contents of a file as a uint8 Tensor
-    with one dimension.
+    Reads batches of data iterably, outputs the bytes contents of a file
+    as a uint8 Tensor with one dimension.
+
+    This API will start a C++ thread to load data with
+    :attr:`file_label_loader`, and yiled data iterably.
+
+    This API can only be used in Paddle GPU version.
 
     Args:
-        filename (str): Path of the file to be read.
+        data_root (str): root directory of ImageNet dataset.
+        batch_size (int): The batch size of a mini-batch. Default 1.
+        shuffle (bool): Whether to shuffle samples. Default False.
+        drop_last (bool): Whether to drop the last incomplete batch. Default False.
+        seed (int, optional): The seed for sample shuffling. Default None.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        A uint8 tensor.
+        A list of image Tensor holds byte streams of a batch of images and
+        A Tensor of label Tensor.
 
     Examples:
         .. code-block:: python
 
-            import cv2
+            import os
             import paddle
+            from paddle.utils.download import get_path_from_url
 
-            image = paddle.vision.ops.file_label_reader('/workspace/datasets/ILSVRC2012/val/', 2)
+            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
+            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
+            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
+            BATCH_SIZE = 16
+
+            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
+                                          DATASET_MD5)
+            images, labels = paddle.vision.reader.file_label_reader(
+                                    data_root, BATCH_SIZE)
+            print(images[0].shape, labels.shape)
 
     """
+
     from paddle.vision.datasets import DatasetFolder
-    data_folder = DatasetFolder(file_root)
+    data_folder = DatasetFolder(data_root)
     samples = [s[0] for s in data_folder.samples]
     targets = [s[1] for s in data_folder.samples]
 
-    if in_dygraph_mode():
-        sample_id = utils._hash_with_id(file_root, batch_size, shuffle,
+    if _non_static_mode():
+        sample_id = utils._hash_with_id(data_root, batch_size, shuffle,
                                         drop_last)
         sampler = _sampler_manager.get(sample_id,
                                        batch_size=batch_size,
@@ -171,11 +220,10 @@ def file_label_reader(file_root,
                                        shuffle=shuffle,
                                        drop_last=drop_last)
         indices = paddle.to_tensor(next(sampler), dtype='int64')
-        outs = file_label_loader(file_root, indices, batch_size)
-        return outs[:-1], outs[-1]
+        return file_label_loader(data_root, indices, batch_size)
 
     def _reader(indices):
-        return file_label_loader(file_root, indices, batch_size)
+        return file_label_loader(data_root, indices, batch_size)
 
     outs = paddle.io.data_reader(
         _reader,
