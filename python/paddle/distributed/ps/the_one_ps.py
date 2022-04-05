@@ -621,7 +621,7 @@ class SparseTable(Table):
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
         super(GeoSparseTable, self).__init__(context, send_ctx)
-        self.table_class = "SparseGeoTable"
+        self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
 

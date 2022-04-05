@@ -85,6 +85,9 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   int64_t numel = x_grad->numel();
+  if (numel == 0) {
+    return;
+  }
   int64_t index_nums = index.numel();
   int64_t out_nums = out_grad.numel();
 
