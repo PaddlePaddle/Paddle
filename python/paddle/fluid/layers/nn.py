@@ -12806,8 +12806,10 @@ def mean(x, name=None):
             mean = fluid.layers.mean(input)
     """
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.mean(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_mean_all(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
