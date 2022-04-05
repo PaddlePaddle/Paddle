@@ -32,7 +32,7 @@ def prepare_python_path_and_return_module(path):
     assert filename.endswith(py_suffix), filename
 
     env_name = 'PYTHONPATH'
-    python_path = env_name
+    python_path = os.environ.get(env_name, '')
     if python_path:
         paths = [p for p in python_path.split(":") if p]
         if dirname not in paths:
@@ -41,6 +41,7 @@ def prepare_python_path_and_return_module(path):
     else:
         python_path = path
     os.environ[env_name] = python_path
+    print('GLOG_v=', os.environ.get('GLOG_v', None), flush=1)
     return filename[:-len(py_suffix)]
 
 

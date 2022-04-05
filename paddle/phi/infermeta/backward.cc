@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+
 namespace phi {
 
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
@@ -101,6 +103,69 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   if (ddout) {
     ddout->share_meta(dout);
   }
+}
+
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config) {
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto softmax_rank = softmax_dims.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+  PADDLE_ENFORCE_LT(axis,
+                    softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+
+  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  for (int i = 0; i < softmax_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(
+            softmax_dims[i],
+            labels_dims[i],
+            phi::errors::InvalidArgument(
+                "Input(Logits) and Input(Label) should in same shape in "
+                "dimensions except axis."));
+      }
+    }
+  }
+
+  if (soft_label) {
+    if (config.is_runtime ||
+        (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
+      PADDLE_ENFORCE_EQ(softmax_dims[axis],
+                        labels_dims[axis],
+                        phi::errors::InvalidArgument(
+                            "If Attr(soft_label) == true, "
+                            "the axis dimension of "
+                            "Input(X) and Input(Label) should be equal."));
+    }
+  } else {
+    if (config.is_runtime || labels_dims[axis] > 0) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[axis],
+          1UL,
+          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                       "the axis dimension of "
+                                       "Input(Label) should be 1."));
+    }
+  }
+
+  logits_grad->set_dims(softmax.dims());
+  logits_grad->set_dtype(softmax.dtype());
 }
 
 void GatherNdGradInferMeta(const MetaTensor& x,
@@ -307,6 +372,47 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad) {
+  auto dy_dim = out_grad.dims();
+  int rank = dy_dim.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+
+  if (axis < 0) axis += rank;
+  PADDLE_ENFORCE_LE(
+      x_grad.size(),
+      static_cast<size_t>(dy_dim[axis]),
+      phi::errors::InvalidArgument(
+          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "at axis, but received outputs size is:%d, dy dims is:%d.",
+          x_grad.size(),
+          static_cast<size_t>(dy_dim[axis])));
+
+  auto vec = phi::vectorize<int>(dy_dim);
+  vec.erase(vec.begin() + axis);
+
+  for (size_t i = 0; i < x_grad.size(); ++i) {
+    x_grad[i]->set_dims(phi::make_ddim(vec));
+    x_grad[i]->set_dtype(out_grad.dtype());
   }
 }
 

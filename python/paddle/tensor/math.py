@@ -28,7 +28,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from paddle.static import Variable
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -98,10 +98,13 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_scale`.
     """
-    _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-    return _C_ops.scale_(x, 'scale',
-                            float(_scale), 'bias',
-                            float(bias), 'bias_after_scale', bias_after_scale)
+    if in_dygraph_mode():
+        return _C_ops.final_state_scale_(x, scale, float(bias), bias_after_scale)
+    if _in_legacy_dygraph():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        return _C_ops.scale_(x, 'scale',
+                                float(_scale), 'bias',
+                                float(bias), 'bias_after_scale', bias_after_scale)
 
 
 def pow(x, y, name=None):
@@ -150,7 +153,15 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            return _C_ops.final_state_pow(x, y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    if _in_legacy_dygraph():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
@@ -159,22 +170,21 @@ def pow(x, y, name=None):
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     # in static graph mode
+    if isinstance(y, (int, float)):
+        helper = LayerHelper('pow', **locals())
+        inputs = {'X': x}
+        attrs = {'factor': y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        return out
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+        helper = LayerHelper('elementwise_pow', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
     else:
-        if isinstance(y, (int, float)):
-            helper = LayerHelper('pow', **locals())
-            inputs = {'X': x}
-            attrs = {'factor': y}
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-            return out
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
-            helper = LayerHelper('elementwise_pow', **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
+        raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
 
 OP_NAMEMAPPING = {
@@ -182,6 +192,7 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 @dygraph_only
@@ -194,13 +205,17 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return  op_name[-1] == "_"
 
-    if in_dygraph_mode():
-        op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
-        out = op(x, y)
-
-    if _in_legacy_dygraph():
+    if op_name not in OP_NAMEMAPPING.keys():
         op = getattr(_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -719,7 +734,9 @@ def fmax(x, y, name=None):
     op_type = 'elementwise_fmax'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_fmax(x, y, axis)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -780,7 +797,9 @@ def fmin(x, y, name=None):
     op_type = 'elementwise_fmin'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_fmin(x, y, axis)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -889,7 +908,18 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return (False, src_type)
 
     dtype_flag, dtype = get_dtype(x, dtype)
-    if paddle.in_dynamic_mode():
+
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        else:
+            axis = axis if axis != None and axis != [] else [0]
+
+        out_dtype = convert_np_dtype_to_dtype_(dtype)
+        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
+        return out
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
@@ -1053,7 +1083,11 @@ def add_n(inputs, name=None):
             # [[8., 10., 12.], 
             #  [14., 16., 18.]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return _C_ops.final_state_add_n(inputs)
+    if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.sum(inputs, 'use_mkldnn', False)
@@ -1551,7 +1585,11 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_logsumexp(x, axis, keepdim, reduce_all)
+    if _in_legacy_dygraph():
         return _C_ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
@@ -1711,7 +1749,11 @@ def max(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_max(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
@@ -1811,7 +1853,12 @@ def min(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_min(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
@@ -2081,7 +2128,9 @@ def log1p(x, name=None):
             # [[0.], [0.6931472]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log1p(x)
+    if _in_legacy_dygraph():
         return _C_ops.log1p(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
@@ -2130,7 +2179,9 @@ def log2(x, name=None):
             res = paddle.log2(x_i)
             print(res) # [1.0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log2(x)
+    if _in_legacy_dygraph():
         return _C_ops.log2(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
@@ -2180,7 +2231,9 @@ def log10(x, name=None):
             res = paddle.log10(x_i)
             print(res) # [1.0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log10(x)
+    if _in_legacy_dygraph():
         return _C_ops.log10(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
@@ -2241,7 +2294,16 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = min_ if min is None else min
+        max = max_ if max is None else max
+        return _C_ops.final_state_clip(x, min, max)
+
+    if _in_legacy_dygraph():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
@@ -2301,7 +2363,12 @@ def clip_(x, min=None, max=None, name=None):
         max = max.numpy().item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
-    return _C_ops.clip_(x, "min", min, "max", max)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_(x, min, max)
+
+    if _in_legacy_dygraph():
+        return _C_ops.clip_(x, "min", min, "max", max)
 
 
 
@@ -2667,7 +2734,9 @@ def cumprod(x, dim=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cumprod(x, dim)
+    if _in_legacy_dygraph():
         return _C_ops.cumprod(x, 'dim', dim)
 
     check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')
@@ -3028,7 +3097,12 @@ def all(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_all(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         return _C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
@@ -3120,7 +3194,12 @@ def any(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_any(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         return _C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)

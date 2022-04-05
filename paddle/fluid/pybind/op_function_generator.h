@@ -52,6 +52,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
+    {"smooth_l1_loss", {"X", "Y", "InsideWeight", "OutsideWeight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
     {"repeat_interleave", {"X", "RepeatsTensor"}},
@@ -106,6 +107,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
     {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
+    {"sequence_mask", {"X", "MaxLenTensor"}},
+    {"graph_reindex",
+     {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
+    {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -239,6 +244,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"map", {"Out"}},
     {"clear_float_status", {"FloatStatusOut"}},
     {"get_float_status", {"FloatStatusOut"}},
+    {"assign", {"Out"}},
+    {"assign_value", {"Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

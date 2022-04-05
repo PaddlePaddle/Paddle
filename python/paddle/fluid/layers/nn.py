@@ -25,6 +25,7 @@ import six
 
 import paddle
 from ..layer_helper import LayerHelper
+from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
 from .. import dygraph_utils
@@ -4790,7 +4791,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
-    helper = LayerHelper('reduce_prod', **locals())
+
     if dim is not None and not isinstance(dim, list):
         if isinstance(dim, tuple):
             dim = list(dim)
@@ -4800,6 +4801,12 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
+    if in_dygraph_mode():
+        return _C_ops.final_state_reduce_prod(
+            input, dim if dim != None and dim != [] else [0], keep_dim, True if
+            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+
+    helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -5134,7 +5141,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         #  [-0.33972208 -0.43014923  0.31772556  0.76617881 -0.10761525]]
 
     """
-
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
@@ -6427,7 +6433,9 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze(input, axes)[1]
+    if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
@@ -6488,8 +6496,10 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
-        return out
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            return out
+        return _C_ops.final_state_unsqueeze(input, axes)[1]
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -8910,7 +8920,9 @@ def log(x, name=None):
             res = paddle.log(x)
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log(x)
+    if _in_legacy_dygraph():
         return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
@@ -10297,7 +10309,10 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_stack(x, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
@@ -11186,18 +11201,15 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
 
         tmp_tensor_type = core.eager.Tensor
-
         if isinstance(starts, (list, tuple)):
             starts = [
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
-            attrs += ('starts', starts)
         elif isinstance(starts, tmp_tensor_type):
-            starts_tensor = starts
-            starts.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = starts.numpy()
+            starts = [ele for ele in tensor_t]
 
         if isinstance(ends, (list, tuple)):
             ends = [
@@ -11206,12 +11218,11 @@ def slice(input, axes, starts, ends):
             ]
             attrs += ('ends', ends)
         elif isinstance(ends, tmp_tensor_type):
-            ends_tensor = ends
-            ends_tensor.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = ends.numpy()
+            ends = [ele for ele in tensor_t]
 
-        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                            'axes', axes, 'infer_flags', infer_flags, *attrs)
+        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
+                                        [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -11766,6 +11777,9 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
+    if in_dygraph_mode():
+        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -15336,7 +15350,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mish(x, threshold)
+    if _in_legacy_dygraph():
         return _C_ops.mish(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
