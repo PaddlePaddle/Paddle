@@ -1300,7 +1300,7 @@ class HingeEmbeddingLoss(Layer):
             name=self.name)
 
 
-class TripletMarginDistanceLoss(Layer):
+class TripletMarginWithDistanceLoss(Layer):
     """
     Creates a criterion that measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
@@ -1361,7 +1361,7 @@ class TripletMarginDistanceLoss(Layer):
 
     """
     def __init__(self, distance_function=None,margin: float = 1.0, swap: bool = False,reduction: str = 'mean'):
-        super(TripletMarginDistanceLoss, self).__init__()
+        super(TripletMarginWithDistanceLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "

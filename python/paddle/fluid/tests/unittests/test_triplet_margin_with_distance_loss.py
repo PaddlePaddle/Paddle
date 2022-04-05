@@ -26,7 +26,7 @@ def call_TripletMarginDistanceLoss_layer(input,
                     margin=0.3,
                     swap=False,
                     reduction='mean',):
-    triplet_margin_with_distance_loss = paddle.nn.TripletMarginDistanceLoss(distance_function=distance_function,
+    triplet_margin_with_distance_loss = paddle.nn.TripletMarginWithDistanceLoss(distance_function=distance_function,
         margin=margin,swap=swap,reduction=reduction)
     res = triplet_margin_with_distance_loss(input=input,positive=positive,negative=negative,)
     return res
@@ -130,7 +130,7 @@ def calc_triplet_margin_distance_loss(input,
 
 
 class TestTripletMarginLoss(unittest.TestCase):
-    def test_TripletMarginLoss(self):
+    def test_TripletMarginDistanceLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         positive = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
         negative = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
@@ -171,7 +171,7 @@ class TestTripletMarginLoss(unittest.TestCase):
         paddle.disable_static()
         self.assertRaises(
             ValueError,
-            paddle.nn.TripletMarginDistanceLoss,
+            paddle.nn.TripletMarginWithDistanceLoss,
             reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
@@ -220,7 +220,7 @@ class TestTripletMarginLoss(unittest.TestCase):
                         functional=True)
                     self.assertTrue(np.allclose(static_functional, dy_functional))
 
-    def test_TripletMarginLoss_dimension(self):
+    def test_TripletMarginDistanceLoss_dimension(self):
         paddle.disable_static()
 
         input = paddle.to_tensor([[0.1, 0.3], [1, 2]], dtype='float32')
@@ -229,13 +229,6 @@ class TestTripletMarginLoss(unittest.TestCase):
         self.assertRaises(
             ValueError,
             paddle.nn.functional.triplet_margin_with_distance_loss,
-            input=input,
-            positive=positive,
-            negative=negative, )
-        TMDLoss = paddle.nn.TripletMarginDistanceLoss
-        self.assertRaises(
-            ValueError,
-            TMDLoss,
             input=input,
             positive=positive,
             negative=negative, )
