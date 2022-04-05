@@ -19,9 +19,9 @@ from ..fluid import core, layers, default_main_program
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-from ..fluid.framework import _non_static_mode, in_dygraph_mode
 
 import paddle
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -1437,7 +1437,12 @@ def roi_align(x,
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(x, boxes, boxes_num, pooled_height,
+                                            pooled_width, spatial_scale,
+                                            sampling_ratio, aligned)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
