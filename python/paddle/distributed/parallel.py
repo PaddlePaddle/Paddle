@@ -236,7 +236,7 @@ def init_parallel_env():
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
-            collective._default_store,
+            default_store,
             rank,
             world_size,
             _default_group_name,
