@@ -1463,6 +1463,10 @@ def sigmoid_cross_entropy_with_logits(x,
                                                             ignore_index=-1, normalize=True)
             print(loss)
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+            x, label, normalize, int(ignore_index))
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
 

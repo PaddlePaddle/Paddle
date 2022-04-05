@@ -68,9 +68,9 @@ class GroupShardedStage2(nn.Layer):
             sharding_optimizer, list) else sharding_optimizer
         assert all(
             list(
-                map(lambda opt: isinstance(opt, ShardingOptimizerStage2),
+                map(lambda opt: isinstance(opt, GroupShardedOptimizerStage2),
                     self._sharding_optimizers))
-        ), "Please use ShardingOptimizerStage2 optimizer"
+        ), "Please use GroupShardedOptimizerStage2 optimizer"
         self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable
 
@@ -97,7 +97,7 @@ class GroupShardedStage2(nn.Layer):
         self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
-        model_size = sum([p.numel() for p in self._layer.parameters()])
+        model_size = sum([p._numel() for p in self._layer.parameters()])
         assert buffer_max_size >= 0, "buffer_max_size must be GE than 0."
         self._buffer_max_size = self._rank_buffer_size(buffer_max_size,
                                                        model_size)
@@ -242,7 +242,7 @@ class GroupShardedStage2(nn.Layer):
 
         self._trainable_params = list(
             filter(lambda x: x.trainable, self._all_params))
-        self._trainable_params.sort(key=lambda x: x.numel())
+        self._trainable_params.sort(key=lambda x: x._numel())
 
         self._trainable_param2rank = {}
         for optim in self._sharding_optimizers:

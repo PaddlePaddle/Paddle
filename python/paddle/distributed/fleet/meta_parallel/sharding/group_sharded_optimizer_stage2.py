@@ -112,7 +112,7 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
             logging.warning(
-                "While using ClipGradByGlobalNorm in ShardingOptimizer, the grad clip of original optimizer will be changed."
+                "While using ClipGradByGlobalNorm in GroupShardedOptimizerStage2, the grad clip of original optimizer will be changed."
             )
 
             self._optim._grad_clip = GroupShardedClipGrad(
@@ -226,7 +226,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
                 for rank_params in self._dtype_rank_params[dtype]:
-                    rank_params.sort(key=lambda x: x.numel())
+                    rank_params.sort(key=lambda x: x._numel())
 
         return self._dtype_rank_params
 

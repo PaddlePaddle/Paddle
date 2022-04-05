@@ -32,51 +32,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang):  the original sum grad op can support higher-level
-// differentiation,
-// but if we use this impl, it will not support. We need to be able to reuse
-// the autograd API here, which is not yet implemented
-// TODO(chenweihang): we should support call generated api in custom api impl
-std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad) {
-  auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-
-  Backend kernel_backend = kernel_key.backend();
-  DataLayout kernel_layout = kernel_key.layout();
-  DataType kernel_data_type = kernel_key.dtype();
-
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "scale", {kernel_backend, kernel_layout, kernel_data_type});
-  VLOG(6) << "add_n_grad API kernel key: [" << kernel_backend << ", "
-          << kernel_layout << ", " << kernel_data_type << "]";
-  VLOG(6) << "add_n_grad API kernel: " << kernel;
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-
-  auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
-
-  size_t out_number = x.size();
-  std::vector<Tensor> x_grad;
-  auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
-
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    const phi::Scalar&,
-                                    float,
-                                    bool,
-                                    phi::DenseTensor*);
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
-  for (auto* dense_x_grad_t : dense_x_grad) {
-    phi::MetaTensor meta_out(dense_x_grad_t);
-    phi::UnchangedInferMeta(MakeMetaTensor(*dense_out_grad), &meta_out);
-    (*kernel_fn)(
-        *dev_ctx, *dense_out_grad, phi::Scalar(1.0), 0.0, true, dense_x_grad_t);
-  }
-
-  return x_grad;
-}
+////////////////// Forward api impls //////////////////////
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
@@ -167,6 +123,183 @@ std::vector<Tensor> split_impl(const Tensor& x,
   return out;
 }
 
+////////////////// Backward(grad) api impls //////////////////////
+
+// TODO(chenweihang):  the original sum grad op can support higher-level
+// differentiation,
+// but if we use this impl, it will not support. We need to be able to reuse
+// the autograd API here, which is not yet implemented
+// TODO(chenweihang): we should support call generated api in custom api impl
+std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  Backend kernel_backend = kernel_key.backend();
+  DataLayout kernel_layout = kernel_key.layout();
+  DataType kernel_data_type = kernel_key.dtype();
+
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "add_n_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "add_n_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
+
+  size_t out_number = x.size();
+  std::vector<Tensor> x_grad;
+  auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    const phi::Scalar&,
+                                    float,
+                                    bool,
+                                    phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+  for (auto* dense_x_grad_t : dense_x_grad) {
+    phi::MetaTensor meta_out(dense_x_grad_t);
+    phi::UnchangedInferMeta(MakeMetaTensor(*dense_out_grad), &meta_out);
+    (*kernel_fn)(
+        *dev_ctx, *dense_out_grad, phi::Scalar(1.0), 0.0, true, dense_x_grad_t);
+  }
+
+  return x_grad;
+}
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  kernel_data_type = ParseDataType(x);
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "batch_norm", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "batch_norm API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "batch_norm API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_x = PrepareData(x, kernel.InputAt(0), {});
+  auto input_scale = PrepareData(scale, kernel.InputAt(1), {});
+  auto input_bias = PrepareData(bias, kernel.InputAt(2), {});
+  auto input_mean = PrepareData(mean, kernel.InputAt(3), {});
+  auto input_variance = PrepareData(variance, kernel.InputAt(4), {});
+
+  std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
+  auto kernel_out_0 = SetKernelOutput(kernel_backend, &std::get<0>(api_output));
+  std::get<1>(api_output).set_impl(mean.impl());
+  std::get<2>(api_output).set_impl(variance.impl());
+  auto kernel_out_1 = SetKernelOutput(kernel_backend, &std::get<1>(api_output));
+  auto kernel_out_2 = SetKernelOutput(kernel_backend, &std::get<2>(api_output));
+  auto kernel_out_3 = SetKernelOutput(kernel_backend, &std::get<3>(api_output));
+  auto kernel_out_4 = SetKernelOutput(kernel_backend, &std::get<4>(api_output));
+  auto kernel_out_5 = SetKernelOutput(kernel_backend, &std::get<5>(api_output));
+  phi::MetaTensor meta_out_0(kernel_out_0);
+  phi::MetaTensor meta_out_1(kernel_out_1);
+  phi::MetaTensor meta_out_2(kernel_out_2);
+  phi::MetaTensor meta_out_3(kernel_out_3);
+  phi::MetaTensor meta_out_4(kernel_out_4);
+  phi::MetaTensor meta_out_5(kernel_out_5);
+
+  phi::BatchNormInferMeta(MakeMetaTensor(*input_x),
+                          MakeMetaTensor(*input_scale),
+                          MakeMetaTensor(*input_bias),
+                          MakeMetaTensor(*input_mean),
+                          MakeMetaTensor(*input_variance),
+                          momentum,
+                          epsilon,
+                          data_layout,
+                          is_test,
+                          use_global_stats,
+                          trainable_statistics,
+                          fuse_with_relu,
+                          &meta_out_0,
+                          &meta_out_1,
+                          &meta_out_2,
+                          &meta_out_3,
+                          &meta_out_4,
+                          &meta_out_5);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    float,
+                                    float,
+                                    const std::string&,
+                                    bool,
+                                    bool,
+                                    bool,
+                                    bool,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  {
+    (*kernel_fn)(*dev_ctx,
+                 *input_x,
+                 *input_scale,
+                 *input_bias,
+                 *input_mean,
+                 *input_variance,
+                 momentum,
+                 epsilon,
+                 data_layout,
+                 is_test,
+                 use_global_stats,
+                 trainable_statistics,
+                 fuse_with_relu,
+                 kernel_out_0,
+                 kernel_out_1,
+                 kernel_out_2,
+                 kernel_out_3,
+                 kernel_out_4,
+                 kernel_out_5);
+  }
+
+  return api_output;
+}
+
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
                                      const Scalar& axis) {
@@ -228,6 +361,51 @@ std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(
       *dev_ctx, dense_x_ptr, *dense_out_grad, phi::Scalar(axis), dense_x_grad);
+
+  return x_grad;
+}
+
+std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
+                                    const Tensor& out_grad,
+                                    int axis) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  Backend kernel_backend = kernel_key.backend();
+  DataLayout kernel_layout = kernel_key.layout();
+  DataType kernel_data_type = kernel_key.dtype();
+
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "stack_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "stack_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "stack_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
+
+  size_t out_number = x.size();
+  std::vector<Tensor> x_grad;
+  auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
+  std::vector<phi::MetaTensor> meta_x_grad;
+  meta_x_grad.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_x_grad_ptrs;
+  meta_x_grad_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_x_grad.push_back(dense_x_grad[i]);
+    meta_x_grad_ptrs.push_back(&meta_x_grad.back());
+  }
+
+  phi::StackGradInferMeta(
+      MakeMetaTensor(*dense_out_grad), axis, meta_x_grad_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    int axis,
+                                    std::vector<phi::DenseTensor*>);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *dense_out_grad, axis, dense_x_grad);
 
   return x_grad;
 }
