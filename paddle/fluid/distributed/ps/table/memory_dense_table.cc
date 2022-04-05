@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/table/common_dense_table.h"
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -21,7 +21,7 @@ namespace distributed {
 
 int FLAGS_pslib_table_save_max_retry_dense = 3;
 
-void CommonDenseTable::CreateInitializer(const std::string& attr,
+void MemoryDenseTable::CreateInitializer(const std::string& attr,
                                          const std::string& name) {
   auto slices = string::split_string<std::string>(attr, "&");
 
@@ -39,7 +39,7 @@ void CommonDenseTable::CreateInitializer(const std::string& attr,
   }
 }
 
-int32_t CommonDenseTable::Initialize() {
+int32_t MemoryDenseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -54,7 +54,7 @@ int32_t CommonDenseTable::Initialize() {
   return 0;
 }
 
-int32_t CommonDenseTable::InitializeValue() {
+int32_t MemoryDenseTable::InitializeValue() {
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   values_.resize(size);
@@ -92,14 +92,14 @@ int32_t CommonDenseTable::InitializeValue() {
     param_col_ids_.insert(param_col_ids_.begin() + 1, -1);
   }
 
-  VLOG(1) << "CommonDenseTable::InitializeValue total dim: " << total_dim_
+  VLOG(1) << "MemoryDenseTable::InitializeValue total dim: " << total_dim_
           << " fixed_len_params_dim: " << fixed_len_params_dim_;
 
   pull_reservoir_ = ReservoirValue<float>(param_dim_);
   return 0;
 }
 
-int32_t CommonDenseTable::InitializeOptimizer() {
+int32_t MemoryDenseTable::InitializeOptimizer() {
   auto common = _config.common();
   auto name = common.name();
   auto attrs = common.attributes();
@@ -124,19 +124,19 @@ int32_t CommonDenseTable::InitializeOptimizer() {
   return 0;
 }
 
-int32_t CommonDenseTable::SetGlobalLR(float* lr) {
+int32_t MemoryDenseTable::SetGlobalLR(float* lr) {
   _global_lr = lr;
   optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
-int32_t CommonDenseTable::Pull(TableContext& context) {
+int32_t MemoryDenseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Dense);
   float* pull_values = context.pull_context.values;
   return PullDense(pull_values, context.num);
 }
 
-int32_t CommonDenseTable::Push(TableContext& context) {
+int32_t MemoryDenseTable::Push(TableContext& context) {
   CHECK(context.value_type == Dense);
   if (context.push_context.values != nullptr) {
     if (!context.push_context.is_param) {
@@ -148,13 +148,13 @@ int32_t CommonDenseTable::Push(TableContext& context) {
   return 0;
 }
 
-int32_t CommonDenseTable::PullDense(float* pull_values, size_t num) {
+int32_t MemoryDenseTable::PullDense(float* pull_values, size_t num) {
   std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
             pull_values);
   return 0;
 }
 
-int32_t CommonDenseTable::PushDenseParam(const float* values, size_t num) {
+int32_t MemoryDenseTable::PushDenseParam(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(
@@ -163,14 +163,14 @@ int32_t CommonDenseTable::PushDenseParam(const float* values, size_t num) {
   return 0;
 }
 
-int32_t CommonDenseTable::Pour() {
+int32_t MemoryDenseTable::Pour() {
   pull_reservoir_.avg();
   _PushDense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
   return 0;
 }
 
-int32_t CommonDenseTable::PushDense(const float* values, size_t num) {
+int32_t MemoryDenseTable::PushDense(const float* values, size_t num) {
   if (sync) {
     std::future<int> task =
         _shards_task_pool[0]->enqueue([this, &values]() -> int {
@@ -184,7 +184,7 @@ int32_t CommonDenseTable::PushDense(const float* values, size_t num) {
   return 0;
 }
 
-int32_t CommonDenseTable::_PushDense(const float* values, size_t num) {
+int32_t MemoryDenseTable::_PushDense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(
@@ -206,11 +206,11 @@ int32_t CommonDenseTable::_PushDense(const float* values, size_t num) {
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  VLOG(2) << "debug CommonDenseTable::_push_dense done";
+  VLOG(2) << "debug MemoryDenseTable::_push_dense done";
   return 0;
 }
 
-int32_t CommonDenseTable::Load(const std::string& path,
+int32_t MemoryDenseTable::Load(const std::string& path,
                                const std::string& param) {
   if (param_dim_ <= 0) {
     return 0;
@@ -281,7 +281,7 @@ int32_t CommonDenseTable::Load(const std::string& path,
               continue;
             }
             values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
-            VLOG(2) << "CommonDenseTable::load param x: "
+            VLOG(2) << "MemoryDenseTable::load param x: "
                     << param_col_ids_[col_idx] << " y: " << dim_idx
                     << " value: " << values_[param_col_ids_[col_idx]][dim_idx]
                     << " line " << file_dim_idx;
@@ -318,11 +318,11 @@ int32_t CommonDenseTable::Load(const std::string& path,
   return 0;
 }
 
-int32_t CommonDenseTable::Save(const std::string& path,
+int32_t MemoryDenseTable::Save(const std::string& path,
                                const std::string& param) {
   int save_param = atoi(param.c_str());
   uint32_t feasign_size;
-  VLOG(0) << "CommonDenseTable::save path " << path;
+  VLOG(0) << "MemoryDenseTable::save path " << path;
 
   FsChannelConfig channel_config;
   if (_config.compress_in_save()) {
@@ -356,7 +356,7 @@ int32_t CommonDenseTable::Save(const std::string& path,
     for (int x = 0; x < size; ++x) {
       auto& varname = common.params()[x];
       auto& dim = common.dims()[x];
-      VLOG(3) << "CommonDenseTable::save dim " << x << " size: " << dim;
+      VLOG(3) << "MemoryDenseTable::save dim " << x << " size: " << dim;
       for (int y = 0; y < dim; ++y) {
         os.clear();
         os.str("");

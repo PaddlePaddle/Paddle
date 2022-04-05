@@ -16,22 +16,22 @@ limitations under the License. */
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/ps/table/common_dense_table.h"
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 
 namespace paddle {
 namespace distributed {
 
-// CommonDenseTable + Adam
+// MemoryDenseTable + Adam
 class Table;
 
-TEST(CommonDenseTable, Adam) {
+TEST(MemoryDenseTable, Adam) {
   int fea_dim = 10;
   int trainers = 2;
 
   TableParameter table_config;
-  table_config.set_table_class("CommonDenseTable");
+  table_config.set_table_class("MemoryDenseTable");
   FsClientParameter fs_config;
-  Table *table = new CommonDenseTable();
+  Table *table = new MemoryDenseTable();
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CommMergeAccessor");
   CommonAccessorParameter *common_config = table_config.mutable_common();
@@ -141,15 +141,15 @@ TEST(CommonDenseTable, Adam) {
   }
 }
 
-// CommonDenseTable + Adam
-TEST(CommonDenseTable, SGD) {
+// MemoryDenseTable + Adam
+TEST(MemoryDenseTable, SGD) {
   int fea_dim = 10;
   int trainers = 2;
 
   TableParameter table_config;
-  table_config.set_table_class("CommonDenseTable");
+  table_config.set_table_class("MemoryDenseTable");
   FsClientParameter fs_config;
-  Table *table = new CommonDenseTable();
+  Table *table = new MemoryDenseTable();
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CommMergeAccessor");
   CommonAccessorParameter *common_config = table_config.mutable_common();
