@@ -207,8 +207,8 @@ def init_parallel_env():
 
     group = None
     if backend in _valid_backend_list and in_dygraph_mode():
-        if _default_group_name in _get_group_map_by_name:
-            return _get_group_map_by_name[_default_group_name]
+        if _default_group_name in _get_group_map_by_name():
+            return _get_group_map_by_name()[_default_group_name]
         _set_default_backend(backend)
         rank = int(os.getenv("PADDLE_TRAINER_ID"))
         world_size = int(os.getenv("PADDLE_TRAINERS_NUM"))
