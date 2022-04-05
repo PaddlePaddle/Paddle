@@ -111,6 +111,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
     {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
     {"crop", {"X", "Y", "Offsets"}},
+    {"batch_norm",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
     {"inplace_abn",
      {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
 };
