@@ -3,6 +3,8 @@ register_unity_group(cc
     broadcast_p_op.cc
     reduce_p_op.cc
     transpose_p_op.cc
+    split_p_op.cc
+    concat_p_op.cc
     add_p_op.cc
     sub_p_op.cc
     mul_p_op.cc

@@ -49,6 +49,7 @@ class DivPrimOpMaker : public framework::OpProtoAndCheckerMaker {
 class DivPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
+    // TODO(lml): add some check for multi input
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
@@ -62,6 +63,7 @@ class DivPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
+    // TODO(lml): add some check for multi input
     auto x_name = Input(ctx, "X")[0];
     auto z_name = Output(ctx, "Z")[0];
     SetType(ctx, z_name, GetType(ctx, x_name));
