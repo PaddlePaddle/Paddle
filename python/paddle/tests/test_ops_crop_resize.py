@@ -492,22 +492,6 @@ class TestImageCropResizeBilinearNCHW(TestImageCropResizeNearestNCHW):
 
         self.out_shape = (2, 3, 20, 30)
 
-        self._is_np_built = False
-        self.build_np_data()
-
-
-class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
-    def setUp(self):
-        self.image_shape1 = [16, 16, 3]
-        self.image_shape2 = [32, 32, 3]
-        self.size = (20, 30)
-        self.interp_method = "bilinear"
-        self.data_format = "NHWC"
-        self.align_corners = False
-        self.align_mode = 1
-
-        self.out_shape = (2, 20, 30, 3)
-
         self.build_np_data()
 
 
@@ -553,21 +537,6 @@ class TestImageCropResizeBilinearNCHWAlignCorner(
         self.align_mode = 1
 
         self.out_shape = (2, 3, 20, 30)
-
-        self.build_np_data()
-
-
-class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
-    def setUp(self):
-        self.image_shape1 = [16, 16, 3]
-        self.image_shape2 = [32, 32, 3]
-        self.size = (20, 30)
-        self.interp_method = "bilinear"
-        self.data_format = "NHWC"
-        self.align_corners = True
-        self.align_mode = 1
-
-        self.out_shape = (2, 20, 30, 3)
 
         self.build_np_data()
 

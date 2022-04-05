@@ -32,16 +32,13 @@ DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
 
 
 class TestFileLabelLoaderStatic(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
         self.shuffle = False
         self.drop_last = False
         self.dynamic = False
-
-        if not self.dynamic:
-            self.build_program()
 
     def build_program(self):
         paddle.enable_static()
@@ -63,7 +60,12 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
                                 fetch_list=[self.sample_data, self.label_data])
 
     def test_check_output(self):
-        self.setup()
+        # NOTE: only support cuda kernel currently
+        if not core.is_compiled_with_cuda():
+            return
+
+        if not self.dynamic:
+            self.build_program()
 
         data_folder = DatasetFolder(self.data_root)
         samples = [s[0] for s in data_folder.samples]
@@ -86,7 +88,7 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
 
 
 class TestFileLabelLoaderDynamic(TestFileLabelLoaderStatic):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
@@ -94,25 +96,19 @@ class TestFileLabelLoaderDynamic(TestFileLabelLoaderStatic):
         self.drop_last = False
         self.dynamic = True
 
-        if not self.dynamic:
-            self.build_program()
-
 
 class TestFileLabelLoaderStaticShuffle(TestFileLabelLoaderStatic):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
         self.shuffle = True
         self.drop_last = False
         self.dynamic = False
-
-        if not self.dynamic:
-            self.build_program()
 
 
 class TestFileLabelLoaderDynamicShuffle(TestFileLabelLoaderStatic):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
@@ -120,12 +116,9 @@ class TestFileLabelLoaderDynamicShuffle(TestFileLabelLoaderStatic):
         self.drop_last = False
         self.dynamic = True
 
-        if not self.dynamic:
-            self.build_program()
-
 
 class TestFileLabelLoaderStaticDropLast(TestFileLabelLoaderStatic):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
@@ -133,21 +126,15 @@ class TestFileLabelLoaderStaticDropLast(TestFileLabelLoaderStatic):
         self.drop_last = True
         self.dynamic = False
 
-        if not self.dynamic:
-            self.build_program()
-
 
 class TestFileLabelLoaderDynamicDropLast(TestFileLabelLoaderStatic):
-    def setup(self):
+    def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
         self.batch_size = 16
         self.shuffle = True
         self.drop_last = True
         self.dynamic = True
-
-        if not self.dynamic:
-            self.build_program()
 
 
 if __name__ == '__main__':
