@@ -10,6 +10,7 @@ endforeach()
 
 if (WIN32)
   LIST(REMOVE_ITEM TEST_OPS test_data_pipeline)
+  LIST(REMOVE_ITEM TEST_OPS test_ops_file_label_loader)
   LIST(REMOVE_ITEM TEST_OPS test_ops_decode)
   LIST(REMOVE_ITEM TEST_OPS test_ops_crop_resize)
   LIST(REMOVE_ITEM TEST_OPS test_ops_file_label_loader)
