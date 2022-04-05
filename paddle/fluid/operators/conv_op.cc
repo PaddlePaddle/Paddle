@@ -844,13 +844,10 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(conv2d, Conv2dInferShapeFunctor,
-                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
-                  ops::Conv2DGradMaker<paddle::imperative::OpBase>,
-                  Conv2dInferShapeFunctor);
+                  ops::Conv2DGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad,
                   ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
