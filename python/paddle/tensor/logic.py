@@ -282,8 +282,7 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        axis = -1  # default value
-        return _C_ops.final_state_greater_than(x, y, axis)
+        return _C_ops.final_state_greater_than(x, y, -1)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_than(x, y)
