@@ -328,7 +328,7 @@
 
 - backward_api : divide_grad
   forward : divide (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -407,7 +407,7 @@
     param : [x]
   kernel :
     func : expand_as_grad
-    
+
 - backward_api : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1011,7 +1011,7 @@
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
   output : Tensor(x_grad)
   infer_meta :
-    func : GeneralUnaryGradInferMeta
+    func : UnchangedInferMeta
     param : [x]
   kernel :
     func : roi_align_grad
@@ -1022,7 +1022,7 @@
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor arg_max, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale)
   output : Tensor(x_grad)
   infer_meta :
-    func : GeneralUnaryGradInferMeta
+    func : UnchangedInferMeta
     param : [x]
   kernel :
     func : roi_pool_grad
