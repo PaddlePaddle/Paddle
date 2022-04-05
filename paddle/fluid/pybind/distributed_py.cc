@@ -223,6 +223,8 @@ void BindDistributed(py::module *m) {
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
   py::class_<distributed::ProcessGroupHeter,
              std::shared_ptr<distributed::ProcessGroupHeter>>(
       *m, "ProcessGroupHeter", ProcessGroup)
@@ -235,6 +237,7 @@ void BindDistributed(py::module *m) {
            py::arg("switch_endpoint") = "",
            py::call_guard<py::gil_scoped_release>());
 #endif
+#endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
   py::class_<distributed::ProcessGroupHCCL,
@@ -245,6 +248,8 @@ void BindDistributed(py::module *m) {
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
   py::class_<distributed::ProcessGroupHeter,
              std::shared_ptr<distributed::ProcessGroupHeter>>(
       *m, "ProcessGroupHeter", ProcessGroup)
@@ -256,6 +261,7 @@ void BindDistributed(py::module *m) {
            py::arg("gloo_rank") = 1, py::arg("with_switch") = false,
            py::arg("switch_endpoint") = "",
            py::call_guard<py::gil_scoped_release>());
+#endif
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
