@@ -275,10 +275,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
     /* Exhaustive search mode.
       1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      2. Once turning on auto-tune, running heuristic search(default mode)
-      before
-         auto-tune process, running exhaustive_search during mentioned process.
-    */
+      2. Once turning on auto-tune, runn heuristic search(default) before
+         auto-tune process, run exhaustive_search during mentioned process.
+      3. After auto-tune process, run cached algorithm if cached, run default
+         mode for the rest. */
     bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
     if (exhaustive_search || open_tune) {
       std::string op_type("conv_fwd");
@@ -397,7 +397,12 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       return algo;
     }
 
-    // Exhaustive search mode.
+    /* Exhaustive search mode.
+    1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+    2. Once turning on auto-tune, runn heuristic search(default) before
+        auto-tune process, run exhaustive_search during mentioned process.
+    3. After auto-tune process, run cached algorithm if cached, run default
+        mode for the rest. */
     bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
     if (exhaustive_search || open_tune) {
       std::string op_type("conv_bwd");
@@ -528,7 +533,12 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       return algo;
     }
 
-    // Exhaustive search mode.
+    /* Exhaustive search mode.
+    1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+    2. Once turning on auto-tune, runn heuristic search(default) before
+        auto-tune process, run exhaustive_search during mentioned process.
+    3. After auto-tune process, run cached algorithm if cached, run default
+        mode for the rest. */
     bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
     if (exhaustive_search || open_tune) {
       std::string op_type("conv_filter");
