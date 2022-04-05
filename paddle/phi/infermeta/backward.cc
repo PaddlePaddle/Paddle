@@ -375,4 +375,45 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad) {
+  auto dy_dim = out_grad.dims();
+  int rank = dy_dim.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+
+  if (axis < 0) axis += rank;
+  PADDLE_ENFORCE_LE(
+      x_grad.size(),
+      static_cast<size_t>(dy_dim[axis]),
+      phi::errors::InvalidArgument(
+          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "at axis, but received outputs size is:%d, dy dims is:%d.",
+          x_grad.size(),
+          static_cast<size_t>(dy_dim[axis])));
+
+  auto vec = phi::vectorize<int>(dy_dim);
+  vec.erase(vec.begin() + axis);
+
+  for (size_t i = 0; i < x_grad.size(); ++i) {
+    x_grad[i]->set_dims(phi::make_ddim(vec));
+    x_grad[i]->set_dtype(out_grad.dtype());
+  }
+}
+
 }  // namespace phi
