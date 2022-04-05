@@ -1,7 +1,7 @@
 cc_library(arg_map_context SRCS arg_map_context.cc DEPS phi_enforce)
 cc_library(op_utils SRCS op_utils.cc DEPS arg_map_context enforce)
 
-set(convert_utils_deps data_type place op_utils)
+set(convert_utils_deps data_type place op_utils boost)
 
 if(WITH_GPU)
   set(convert_utils_deps ${convert_utils_deps} phi_gpu_info)
