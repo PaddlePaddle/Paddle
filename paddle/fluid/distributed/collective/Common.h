@@ -28,7 +28,6 @@ std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
 std::string GetKeyFromPlaces(const std::vector<Place>& places);
 
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
-bool CheckTensorsInCPUPlace(const std::vector<phi::DenseTensor>& tensors);
 
 }  //  namespace distributed
 }  //  namespace paddle

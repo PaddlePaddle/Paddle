@@ -160,11 +160,7 @@ void set_inputs_for_scatter(P& opts,                   // NOLINT
 
 ProcessGroupGloo::GlooTask::GlooTask(
     int rank, const std::vector<phi::DenseTensor>& inputs, CommType comm_type)
-    : ProcessGroup::Task(rank, inputs, comm_type) {
-  PADDLE_ENFORCE_EQ(CheckTensorsInCPUPlace(inputs), true,
-                    platform::errors::Fatal(
-                        "Only CPU place is supported for ProcessGroupGloo."));
-}
+    : ProcessGroup::Task(rank, inputs, comm_type) {}
 
 ProcessGroupGloo::ProcessGroupGloo(
     const std::shared_ptr<distributed::Store>& store, int rank, int world_size,

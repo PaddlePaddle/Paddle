@@ -40,24 +40,10 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places) {
   return placeList;
 }
 
-static bool CheckTensorsInPlace(const std::vector<phi::DenseTensor>& tensors,
-                                const phi::Place type) {
-  return std::all_of(
-      tensors.cbegin(), tensors.cend(),
-      [&](const phi::DenseTensor& t) { return t.place() == type; });
-}
-
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
   return std::all_of(tensors.cbegin(), tensors.cend(),
                      [&](const phi::DenseTensor& t) {
                        return platform::is_gpu_place(t.place());
-                     });
-}
-
-bool CheckTensorsInCPUPlace(const std::vector<phi::DenseTensor>& tensors) {
-  return std::all_of(tensors.cbegin(), tensors.cend(),
-                     [&](const phi::DenseTensor& t) {
-                       return platform::is_cpu_place(t.place());
                      });
 }
 
