@@ -56,7 +56,7 @@ class ProcessGroupHCCL : public ProcessGroup {
 
     void Synchronize();
 
-    void SetOutputs(std::vector<Tensor>& outputs);  // NOLINT
+    void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
 
     virtual ~HCCLTask();
 
@@ -116,11 +116,6 @@ class ProcessGroupHCCL : public ProcessGroup {
       std::vector<Tensor>& inputs,   // NOLINT
       std::vector<Tensor>& outputs,  // NOLINT
       Fn fn, CommType op_type);
-
-  template <typename Fn>
-  std::shared_ptr<ProcessGroup::Task> PointToPoint(
-      std::vector<Tensor>& tensors,  // NOLINT
-      Fn fn, int dst_rank, CommType op_type);
 
   void CreateHCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);

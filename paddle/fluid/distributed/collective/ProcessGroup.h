@@ -54,7 +54,7 @@ class ProcessGroup {
  public:
   class Task {
    public:
-    Task(int rank, const std::vector<Tensor>& inputTensors,
+    Task(int rank, const std::vector<phi::DenseTensor>& inputTensors,
          CommType opType = CommType::UNKNOWN);
 
     virtual ~Task();
@@ -79,23 +79,19 @@ class ProcessGroup {
   virtual const std::string GetBackendName() const = 0;
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<Tensor>& /* tensors */,
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
       const AllreduceOptions& = AllreduceOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support allreduce", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<Tensor>& /* tensors */,
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
       const BroadcastOptions& = BroadcastOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support broadcast", GetBackendName()));
-  }
-
-  virtual void Broadcast(const phi::DenseTensor* in, phi::DenseTensor* out) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support broadcast for static",
-        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
@@ -105,42 +101,43 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<Tensor>& tensors /* tensors */, int dst_rank) {  // NOLINT
+      std::vector<phi::DenseTensor>&, int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support send", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<Tensor>& tensors /* tensors */, int src_rank) {  // NOLINT
+      std::vector<phi::DenseTensor>& tensors, int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<Tensor>& in_tensors /* tensors */,     // NOLINT
-      std::vector<Tensor>& out_tensors /* tensors */) {  // NOLINT
+      std::vector<phi::DenseTensor>&,    // NOLINT
+      std::vector<phi::DenseTensor>&) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllGather", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<Tensor>& in /* tensors */,     // NOLINT
-      std::vector<Tensor>& out /* tensors */) {  // NOLINT
+      std::vector<phi::DenseTensor>&,    // NOLINT
+      std::vector<phi::DenseTensor>&) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<Tensor>& tensors /* tensors */,  // NOLINT
-      const ReduceOptions& opts) {                 // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      const ReduceOptions& opts) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Reduce", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<Tensor>& in_tensors /* tensors */,   // NOLINT
-      std::vector<Tensor>& out_tensors /* tensors */,  // NOLINT
-      const ScatterOptions&) {                         // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      const ScatterOptions&) {         // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
   }
