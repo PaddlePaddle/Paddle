@@ -36,8 +36,6 @@ DECLARE_bool(run_kp_kernel);
 namespace paddle {
 namespace imperative {
 
-std::vector<std::string> npu_op_black_lists = {"assign"};
-
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
     const std::shared_ptr<paddle::imperative::VarBase>& var) {
   return var->SharedVar();
@@ -162,10 +160,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (paddle::platform::is_npu_place(expected_kernel_key.place_)) {
-    if (std::find(npu_op_black_lists.begin(), npu_op_black_lists.end(), op.Type()) != npu_op_black_lists.end()) {
-      LOG(WARNING) << "find NPU kernel " << op.Type()
-              << " in black lists, expected_kernel_key:" << expected_kernel_key
-              << ", fallbacking to CPU one!";
+    if (op.Type() == "assign") {
       expected_kernel_key.place_ = platform::CPUPlace();
     }
   }
@@ -239,6 +234,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       if (expected_kernel_key.place_ != place) {
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
+
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);

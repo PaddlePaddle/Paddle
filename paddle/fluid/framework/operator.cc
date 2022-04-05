@@ -1386,10 +1386,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         }
 #endif
 
-        // LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
-        // kernel_type_->place_ = platform::NPUPlace();
-        // LOG(WARNING) << "*kernel_type_.get(): " << *kernel_type_.get();
-
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
