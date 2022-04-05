@@ -407,7 +407,7 @@
     param : [x]
   kernel :
     func : expand_as_grad
-    
+
 - backward_api : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -993,6 +993,17 @@
     data_type: out_grad
     backend: out_grad
     layout: out_grad
+
+- backward_api : roi_align_grad
+  forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : roi_align_grad
+  optional : boxes_num
 
 - backward_api : roll_grad
   forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
