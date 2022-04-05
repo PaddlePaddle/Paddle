@@ -42,6 +42,68 @@ def random_var(size, low=-1, high=1, dtype='float32'):
     return fluid.dygraph.to_variable(x_np)
 
 
+class TestDygraphTripleGradMatmul(TestCase):
+    def test_matmul_triple_grad(self):
+        input_numpy = np.ones([3, 3]) * 2
+        with _test_eager_guard():
+            x = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            y = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            out = paddle.matmul(x, y, False, False)
+
+            new_out_g = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32')
+            new_x_g, new_y_g = paddle.grad(
+                [out], [x, y], [new_out_g],
+                retain_graph=True,
+                create_graph=True)
+
+            new_x_g_g = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32')
+            new_y_g_g = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32')
+            new_a, new_b, new_c = paddle.grad(
+                [new_x_g, new_y_g], [x, y, new_out_g], [new_x_g_g, new_y_g_g],
+                retain_graph=True,
+                create_graph=True)
+
+            new_a.backward()
+
+            out_ref = np.ones([3, 3]) * 12.0
+            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+
+            new_x_g_ref = np.ones([3, 3]) * 6.0
+            new_y_g_ref = np.ones([3, 3]) * 6.0
+            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
+            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+
+            new_a_ref = np.ones([3, 3]) * 3.0
+            new_b_ref = np.ones([3, 3]) * 3.0
+            new_c_ref = np.ones([3, 3]) * 12.0
+
+            self.assertTrue(np.array_equal(new_a.numpy(), new_a_ref))
+            self.assertTrue(np.array_equal(new_b.numpy(), new_b_ref))
+            self.assertTrue(np.array_equal(new_c.numpy(), new_c_ref))
+
+            x_grad_ref = np.ones([3, 3]) * 0.0
+            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+
+            y_grad_ref = np.ones([3, 3]) * 0.0
+            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+
+            new_out_g_ref = np.ones([3, 3]) * 3.0
+            self.assertTrue(
+                np.array_equal(new_out_g.grad.numpy(), new_out_g_ref))
+
+            new_x_g_g_ref = np.ones([3, 3]) * 0.0
+            new_y_g_g_ref = np.ones([3, 3]) * 3.0
+            self.assertTrue(
+                np.array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref))
+            self.assertTrue(
+                np.array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref))
+
+
 class TestDygraphTripleGrad(TestCase):
     def setUp(self):
         self.sort_sum_gradient = False
