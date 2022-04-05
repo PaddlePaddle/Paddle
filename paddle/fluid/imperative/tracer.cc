@@ -387,7 +387,9 @@ void Tracer::SetExpectedPlace(platform::Place place) {
   expected_place_ = place;
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::SetDeviceId(place.device);
+    if (place.device) {
+      platform::SetDeviceId(place.device);
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
