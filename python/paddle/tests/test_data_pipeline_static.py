@@ -32,7 +32,7 @@ DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
 IMAGE_NUM = 100
 
 
-class TestDataPipelineCase1(unittest.TestCase):
+class TestDataPipelineStaticCase1(unittest.TestCase):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
@@ -102,7 +102,7 @@ class TestDataPipelineCase1(unittest.TestCase):
 
         self.reader = imagenet_reader
 
-    def test_static_output(self):
+    def test_output(self):
         # NOTE: only supoort CUDA kernel currently
         if not core.is_compiled_with_cuda():
             return
@@ -136,7 +136,7 @@ class TestDataPipelineCase1(unittest.TestCase):
                 loader.reset()
 
 
-class TestDataPipelineCase2(TestDataPipelineCase1):
+class TestDataPipelineStaticCase2(TestDataPipelineStaticCase1):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)

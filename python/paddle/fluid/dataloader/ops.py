@@ -116,7 +116,7 @@ def map(map_func, *args, **kwargs):
 
     """
     if _non_static_mode():
-        return map_func(inputs)
+        return map_func(*args, **kwargs)
 
     helper = LayerHelper("map", **locals())
 
