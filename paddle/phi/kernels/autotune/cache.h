@@ -104,14 +104,21 @@ class AlgorithmsCache {
     hash_[key] = algo;
   }
 
+  int64_t CacheMisses() const { return cache_misses_; }
+
+  int64_t CacheHits() const { return cache_hits_; }
+
   float CacheHitRate() const {
     int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate =
-        static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    float cache_hit_rate = 0.;
+    if (num_accesses != 0) {
+      cache_hit_rate =
+          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    }
     return cache_hit_rate;
   }
 
-  int64_t Size() { return hash_.size(); }
+  int64_t Size() const { return hash_.size(); }
 
  private:
   std::unordered_map<size_t, AlgorithmT> hash_;
@@ -142,20 +149,63 @@ class AutoTuneCache {
     return auto_tune_map_[algo_type];
   }
 
-  // The number of total config cached
-  int64_t Size() {
-    int64_t total = 0;
-    for (auto& v : auto_tune_map_) {
-      VLOG(3) << v.first << " " << v.second.Size();
-      total += v.second.Size();
+  void Clean(float miss_rate) {
+    std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
+    // Set a small tolerance to avoid performance degradation
+    // due to large cache size under dynamic shape.
+    if (miss_rate > 0.01) {
+      // auto_tune_map_.clear();
+      keep_cache_ = false;
     }
-    return total;
+  }
+
+  void UpdateStatus() {
+    int64_t size = 0;
+    int64_t cache_hits = 0;
+    int64_t cache_misses = 0;
+    for (auto& v : auto_tune_map_) {
+      VLOG(4) << "AlgoType: " << v.first << " Cache Size: " << v.second.Size()
+              << " Hits: " << v.second.CacheHits()
+              << " Misses: " << v.second.CacheMisses()
+              << " Hit Rate: " << v.second.CacheHitRate();
+      size += v.second.Size();
+      cache_hits += v.second.CacheHits();
+      cache_misses += v.second.CacheMisses();
+    }
+    total_size_ = size;
+    total_cache_hits_ = cache_hits;
+    total_cache_misses_ = cache_misses;
+  }
+
+  bool GetTuneStatus() { return keep_cache_; }
+
+  void OpenTuneStatus() { keep_cache_ = true; }
+
+  // The number of total config cached
+  int64_t Size() const { return total_size_; }
+
+  int64_t CacheHits() const { return total_cache_hits_; }
+
+  int64_t CacheMisses() const { return total_cache_misses_; }
+
+  float CacheHitRate() const {
+    float total_cache_hit_rate = 0.;
+    int64_t total_num_accesses = total_cache_hits_ + total_cache_misses_;
+    if (total_num_accesses != 0) {
+      total_cache_hit_rate = static_cast<float>(total_cache_hits_) /
+                             static_cast<float>(total_num_accesses);
+    }
+    return total_cache_hit_rate;
   }
 
  private:
   AutoTuneCache() : autotune_cache_mutex_(new std::mutex()) {}
   AlgorithmsTypeMap auto_tune_map_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
+  int64_t total_cache_hits_ = 0;
+  int64_t total_cache_misses_ = 0;
+  int64_t total_size_ = 0;
+  bool keep_cache_ = false;
 };
 
 }  // namespace autotune
