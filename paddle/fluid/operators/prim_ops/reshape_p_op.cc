@@ -43,8 +43,8 @@ class ReshapePrimOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of reshape_p op.");
     AddOutput("Y", "(Tensor), The output tensor of reshape_p op.");
-    AddAttr<std::vector<int>>(
-        "shape", "(std::vector<int>) Target shape of reshape operator.")
+    AddAttr<std::vector<int64_t>>(
+        "shape", "(std::vector<int64_t>) Target shape of reshape_p operator.");
   }
 };
 
@@ -52,7 +52,7 @@ class ReshapePrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
   }
 };
