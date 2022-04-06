@@ -236,7 +236,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
-    {"assign", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
@@ -252,6 +251,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"get_float_status", {"FloatStatusOut"}},
     {"assign", {"Out"}},
     {"assign_value", {"Out"}},
+    {"split", {"Out"}},
+    {"concat", {"Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

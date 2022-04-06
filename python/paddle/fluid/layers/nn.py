@@ -5092,7 +5092,9 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        return _C_ops.split(input, num, *attrs)
+        out = [_varbase_creator() for n in range(num)]
+        _C_ops.split(input, out, *attrs)
+        return out
 
     check_variable_and_dtype(
         input, 'input',
@@ -12872,8 +12874,10 @@ def mean(x, name=None):
             mean = fluid.layers.mean(input)
     """
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.mean(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_mean_all(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
