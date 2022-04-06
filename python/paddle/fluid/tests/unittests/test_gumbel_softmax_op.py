@@ -184,6 +184,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
             self.assertEqual(out_np.sum(), self.count_expected)
 
             with _test_eager_guard():
+                x = paddle.to_tensor(self.x)
                 y = paddle.nn.functional.gumbel_softmax(x, hard=True)
                 out_np = np.array(y)
                 self.assertEqual(out_np.sum(), self.count_expected)
