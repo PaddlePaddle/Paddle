@@ -16,22 +16,22 @@ limitations under the License. */
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/ps/table/common_dense_table.h"
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 
 namespace paddle {
 namespace distributed {
 
-// CommonDenseTable + Adam
+// MemoryDenseTable + Adam
 class Table;
 
-TEST(CommonDenseTable, Adam) {
+TEST(MemoryDenseTable, Adam) {
   int fea_dim = 10;
   int trainers = 2;
 
   TableParameter table_config;
-  table_config.set_table_class("CommonDenseTable");
+  table_config.set_table_class("MemoryDenseTable");
   FsClientParameter fs_config;
-  Table *table = new CommonDenseTable();
+  Table *table = new MemoryDenseTable();
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CommMergeAccessor");
   CommonAccessorParameter *common_config = table_config.mutable_common();
@@ -63,13 +63,19 @@ TEST(CommonDenseTable, Adam) {
   common_config->add_params("LearningRate");
   common_config->add_dims(1);
   common_config->add_initializers("fill_constant&5e-6");
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, 0);
 
   // pull parameters for create and check
   std::vector<float> init_values;
   init_values.resize(fea_dim);
-  table->pull_dense(init_values.data(), fea_dim);
+
+  TableContext table_context1;
+  table_context1.value_type = Dense;
+  table_context1.pull_context.values = init_values.data();
+  table_context1.num = fea_dim;
+  table->Pull(table_context1);
+  // table->PullDense(init_values.data(), fea_dim);
 
   // push gradient
   std::vector<std::vector<float>> trainer_gradient_values;
@@ -85,12 +91,24 @@ TEST(CommonDenseTable, Adam) {
   // for adam
   for (int i = 0; i < trainers; i++) {
     auto &push_values = trainer_gradient_values[i];
-    table->push_dense(push_values.data(), push_values.size());
+
+    TableContext table_context;
+    table_context.value_type = Dense;
+    table_context.push_context.values = push_values.data();
+    table_context.num = push_values.size();
+    table->Push(table_context);
+    // table->PushDense(push_values.data(), push_values.size());
   }
 
   std::vector<float> pull_values;
   pull_values.resize(fea_dim);
-  table->pull_dense(pull_values.data(), fea_dim);
+
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.pull_context.values = pull_values.data();
+  table_context.num = fea_dim;
+  table->Pull(table_context);
+  // table->PullDense(pull_values.data(), fea_dim);
 
   float mom_rate = 0.99;
   float decay_rate = 0.9999;
@@ -118,19 +136,20 @@ TEST(CommonDenseTable, Adam) {
     }
   }
   for (int j = 0; j < fea_dim; j++) {
+    VLOG(0) << param[j] << " " << pull_values[j];
     ASSERT_TRUE(abs(param[j] - pull_values[j]) < 1e-5);
   }
 }
 
-// CommonDenseTable + Adam
-TEST(CommonDenseTable, SGD) {
+// MemoryDenseTable + Adam
+TEST(MemoryDenseTable, SGD) {
   int fea_dim = 10;
   int trainers = 2;
 
   TableParameter table_config;
-  table_config.set_table_class("CommonDenseTable");
+  table_config.set_table_class("MemoryDenseTable");
   FsClientParameter fs_config;
-  Table *table = new CommonDenseTable();
+  Table *table = new MemoryDenseTable();
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CommMergeAccessor");
   CommonAccessorParameter *common_config = table_config.mutable_common();
@@ -143,13 +162,19 @@ TEST(CommonDenseTable, SGD) {
   common_config->add_params("LearningRate");
   common_config->add_dims(1);
   common_config->add_initializers("fill_constant&1.0");
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, 0);
 
   // pull parameters for create and check
   std::vector<float> init_values;
   init_values.resize(fea_dim);
-  table->pull_dense(init_values.data(), fea_dim);
+
+  TableContext table_context1;
+  table_context1.value_type = Dense;
+  table_context1.pull_context.values = init_values.data();
+  table_context1.num = fea_dim;
+  table->Pull(table_context1);
+  // table->PullDense(init_values.data(), fea_dim);
 
   std::vector<float> total_gradients;
   total_gradients.resize(fea_dim);
@@ -172,7 +197,12 @@ TEST(CommonDenseTable, SGD) {
   for (int i = 0; i < trainers; i++) {
     auto &push_values = trainer_gradient_values[i];
     auto task = [table, &push_values] {
-      table->push_dense(push_values.data(), push_values.size());
+      TableContext table_context;
+      table_context.value_type = Dense;
+      table_context.push_context.values = push_values.data();
+      table_context.num = push_values.size();
+      table->Push(table_context);
+      //      table->PushDense(push_values.data(), push_values.size());
     };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
@@ -182,7 +212,13 @@ TEST(CommonDenseTable, SGD) {
 
   std::vector<float> pull_values;
   pull_values.resize(fea_dim);
-  table->pull_dense(pull_values.data(), fea_dim);
+
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.pull_context.values = pull_values.data();
+  table_context.num = fea_dim;
+  table->Pull(table_context);
+  // table->PullDense(pull_values.data(), fea_dim);
   for (int j = 0; j < fea_dim; j++) {
     auto update_val = init_values[j] - 1.0 * total_gradients[j];
     ASSERT_TRUE(abs(update_val - pull_values[j]) < 1e-5);

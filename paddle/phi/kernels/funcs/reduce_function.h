@@ -33,6 +33,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -309,7 +310,7 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   // get the parameters of reduceKernel
-  void Run(const phi::GPUContext& ctx) {
+  void Run(const KPDevice& dev_ctx) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -323,7 +324,7 @@ struct ReduceConfig {
     SetBlockDim();
 
     // step5: limit the grid to prevent thead overflow
-    LimitGridDim(ctx);
+    paddle::platform::LimitGridDim(dev_ctx, &grid);
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -607,14 +608,6 @@ struct ReduceConfig {
     grid = grid_dim;
   }
 
-  void LimitGridDim(const phi::GPUContext& ctx) {
-    auto max_grid_dim =
-        reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
-    grid.x = grid.x < max_grid_dim[0] ? grid.x : max_grid_dim[0];
-    grid.y = grid.y < max_grid_dim[1] ? grid.y : max_grid_dim[1];
-    grid.z = grid.z < max_grid_dim[2] ? grid.z : max_grid_dim[2];
-  }
-
  public:
   std::vector<int> reduce_dims_origin;
   std::vector<int> reduce_dim;
@@ -807,7 +800,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                             1,
                                             1,
                                             left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -835,7 +828,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                            1,
                                            1,
                                            left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
