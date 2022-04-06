@@ -240,6 +240,18 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        if in_dygraph_mode() and self._l_type == "conv2d":
+            pre_bias = _C_ops.final_state_conv2d(
+                input, self.weight, self._stride, self._padding, "EXPLICIT",
+                self._groups if self._groups else 1, self._dilation, "NCHW",
+                False, -1, False)
+            if self.bias is not None:
+                pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
+            else:
+                pre_act = pre_bias
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
+
         if _non_static_mode() and (self._l_type == 'conv2d' or
                                    self._l_type == 'depthwise_conv2d'):
             attrs = ('strides', self._stride, 'paddings', self._padding,
