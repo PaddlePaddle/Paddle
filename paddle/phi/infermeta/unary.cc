@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -358,17 +359,6 @@ void DiagonalInferMeta(const MetaTensor& input,
     }
   }
   out->set_dims(phi::make_ddim(out_dims));
-}
-
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask) {
-  auto x_dims = x.dims();
-  out->set_dims(x_dims);
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-
-  if (mask != nullptr) {
-    mask->set_dims(x_dims);
-  }
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -1738,6 +1728,51 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims({1});
 }
 
+void SliceRawInferMeta(const MetaTensor& input,
+                       const std::vector<int64_t>& axes,
+                       const IntArray& starts_arr,
+                       const IntArray& ends_arr,
+                       const std::vector<int64_t>& infer_flags_t,
+                       const std::vector<int64_t>& decrease_axis,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument("The rank of input should be less than 7."));
+  DDim out_dims(in_dims);
+
+  std::vector<int64_t> infer_flags = infer_flags_t;
+  if (infer_flags.empty()) {
+    // Initialize infer_flags with 1.
+    // To be compatible with other op tests in which infer_flags is not set.
+    infer_flags = std::vector<int64_t>(axes.size(), 1);
+  }
+
+  // 2.1 Check attrs.
+  std::vector<int64_t> starts = starts_arr.GetData();
+  std::vector<int64_t> ends = ends_arr.GetData();
+
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
+      in_dims, axes, &starts, &ends, nullptr, &infer_flags);
+
+  auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
+      in_dims, axes, starts, ends, nullptr, &infer_flags);
+  if (config.is_runtime) {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, &infer_flags);
+  } else {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, nullptr);
+  }
+
+  out->set_dims(out_dims);
+  if (axes.size() > 0 && axes[0] != 0) {
+    out->share_lod(input);
+  }
+}
+
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
   auto dim_x = x.dims();
   auto rank_x = dim_x.size();
@@ -2100,6 +2135,52 @@ void SumRawInferMeta(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void TemporalShiftInferMeta(const MetaTensor& x,
+                            int seg_num,
+                            float shift_ratio,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(X) rank should be 4 in shape of [N*T, C, H, "
+                        "W], but received X rank(%d)",
+                        dim_x.size()));
+
+  PADDLE_ENFORCE_GT(
+      seg_num,
+      0,
+      phi::errors::InvalidArgument(
+          "Attr(seg_num) should be greater than 0, but received %d", seg_num));
+  PADDLE_ENFORCE_GT(
+      shift_ratio,
+      0.,
+      phi::errors::InvalidArgument(
+          "Attr(shift_ratio) should be greater than 0, but received %d",
+          shift_ratio));
+  PADDLE_ENFORCE_LT(
+      shift_ratio,
+      0.5,
+      phi::errors::InvalidArgument(
+          "Attr(shift_ratio) should be less than 0.5, but received %d",
+          shift_ratio));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(dim_x[0] % seg_num,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "Input(X) dimension[0] should be divided exactly "
+                          "by Attr(seg_num), but received X dimension[0](%d) "
+                          "mod seg_num(%d) != 0",
+                          dim_x[0],
+                          seg_num));
+  }
+
+  out->share_meta(x);
 }
 
 void TileInferMeta(const MetaTensor& x,

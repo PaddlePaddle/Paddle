@@ -35,25 +35,30 @@ namespace distributed {
 
 enum ValueType { Sparse = 0, Dense = 1 };
 
-struct PullContext {
-  const uint64_t *keys;
+struct TablePullContext {
+  const uint64_t *keys = nullptr;
   PullSparseValue pull_value;
-  float *values;
-  char **ptr_values;
+  float *values = nullptr;
+  char **ptr_values = nullptr;
+  std::vector<uint64_t> *geo_pull_keys = nullptr;  // for GEO
+  std::vector<float> *geo_pull_values = nullptr;   // for GEO
 };
 
 struct TablePushContext {
-  const uint64_t *keys;
-  const float *values;
-  const float **ptr_values;
+  const uint64_t *keys = nullptr;
+  const float *values = nullptr;
+  const float **ptr_values = nullptr;
+  const int64_t *push_steps = nullptr;  // for global step
+  bool is_param = false;  // true: push param, false: push gradient
 };
 
 struct TableContext {
   ValueType value_type;
-  PullContext pull_context;
+  TablePullContext pull_context;
   TablePushContext push_context;
   size_t num;
   bool use_ptr = false;
+  uint32_t trainer_id;  // for GEO and global step
 };
 
 class Table {
@@ -65,38 +70,6 @@ class Table {
 
   virtual int32_t Pull(TableContext &context) = 0;
   virtual int32_t Push(TableContext &context) = 0;
-  virtual int32_t PullDense(float *values, size_t num) = 0;
-  virtual int32_t PushDense(const float *values, size_t num) = 0;
-  // for push global_step
-  virtual int32_t PushDense(const int64_t *values, const int32_t trainer_id) {
-    return 0;
-  }
-  virtual int32_t PushDenseParam(const float *values, size_t num) { return 0; }
-
-  virtual int32_t PullSparsePtr(char **pull_values, const uint64_t *keys,
-                                size_t num) {
-    VLOG(0) << "NOT IMPLEMENT";
-    return 0;
-  }
-  virtual int32_t PullSparse(float *values,
-                             const PullSparseValue &pull_value) = 0;
-  virtual int32_t PushSparse(const uint64_t *keys, const float *values,
-                             size_t num) = 0;
-  virtual int32_t PushSparse(const uint64_t *keys, const float **values,
-                             size_t num) {
-    return 0;
-  }
-  virtual int32_t PushSparseParam(const uint64_t *keys, const float *values,
-                                  size_t num) {
-    return 0;
-  }
-
-  // only for sparse geo table
-  virtual int32_t PullGeoParam(const uint32_t trainer_id,
-                               std::vector<float> *values,
-                               std::vector<uint64_t> *keys) {
-    return 0;
-  }
 
   // only for barrier
   virtual int32_t Barrier(const uint32_t trainer_id,
@@ -162,7 +135,6 @@ class Table {
   TableParameter _config;
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
-  AccessorInfo _table_info;
   AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);

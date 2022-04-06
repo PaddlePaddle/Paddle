@@ -123,14 +123,6 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
             variance_producer);
     CHECK_NOTNULL(create_variance_tensor_op);
 
-    llvm::SmallVector<int64_t> dims;
-    mlir::ArrayAttr dims_attr = create_scale_tensor_op.dims();
-    CHECK_GT(dims_attr.size(), 0U);
-    CHECK(dims_attr[0].getType().isIntOrIndex());
-    for (size_t i = 0; i < dims_attr.size(); i++) {
-      dims[i] = dims_attr[i].cast<mlir::IntegerAttr>().getInt();
-    }
-
     llvm::SmallVector<double> scale_data;
     mlir::ArrayAttr scale_array_attr = create_scale_tensor_op.values();
     CHECK_GT(scale_array_attr.size(), 0U);
