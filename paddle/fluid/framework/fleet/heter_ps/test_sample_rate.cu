@@ -53,9 +53,11 @@ namespace distributed = paddle::distributed;
 
 std::string input_file;
 int exe_count = 100;
+int use_nv = 1;
 int fixed_key_size = 100, sample_size = 100,
     bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
     bfs_sample_edges = 20, gpu_num1 = 8, gpu_num = 8;
+std::string gpu_str;
 int64_t *key[8];
 std::vector<std::string> edges = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
@@ -171,6 +173,26 @@ void testSampleRate() {
     }
     VLOG(0) << "sum = " << tot;
   }
+  gpu_num = 0;
+  int st = 0, u = 0;
+  std::vector<int> device_id_mapping;
+  while (u < gpu_str.size()) {
+    VLOG(0) << u << " " << gpu_str[u];
+    if (gpu_str[u] == ',') {
+      auto p = gpu_str.substr(st, u - st);
+      int id = std::stoi(p);
+      VLOG(0) << "got a new device id" << id;
+      device_id_mapping.push_back(id);
+      st = u + 1;
+    }
+    u++;
+  }
+  auto p = gpu_str.substr(st, gpu_str.size() - st);
+  int id = std::stoi(p);
+  VLOG(0) << "got a new device id" << id;
+  device_id_mapping.push_back(id);
+  gpu_num = device_id_mapping.size();
+  VLOG(0) << "gpu_num = " << gpu_num;
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
   table_proto.set_shard_num(127);
@@ -178,14 +200,10 @@ void testSampleRate() {
   table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
   table_proto.set_gpups_graph_sample_args(std::to_string(init_search_size) +
                                           ",100000000,10000000,1,1");
-  std::vector<int> dev_ids;
-  for (int i = 0; i < gpu_num; i++) {
-    dev_ids.push_back(i);
-  }
   std::shared_ptr<HeterPsResource> resource =
-      std::make_shared<HeterPsResource>(dev_ids);
+      std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
-  GpuPsGraphTable g(resource);
+  GpuPsGraphTable g(resource, use_nv);
   g.init_cpu_table(table_proto);
   g.load(std::string(input_file), std::string("e>"));
   /*
@@ -219,7 +237,7 @@ void testSampleRate() {
   // NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
 */
   for (int i = 0; i < gpu_num1; i++) {
-    // platform::CUDADeviceGuard guard(i);
+    platform::CUDADeviceGuard guard(device_id_mapping[i]);
     cudaMalloc((void **)&key[i], ids.size() * sizeof(int64_t));
     cudaMemcpy(key[i], ids.data(), ids.size() * sizeof(int64_t),
                cudaMemcpyHostToDevice);
@@ -229,65 +247,32 @@ void testSampleRate() {
   cudaMemcpy(key, ids.data(), ids.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
              */
+  /*
   std::vector<std::vector<NeighborSampleResult *>> res(gpu_num1);
   for (int i = 0; i < gpu_num1; i++) {
-    /*
-      int st = ids.size()/gpu_num1 * i;
-      int size;
-      if(i == gpu_num1 - 1){
-        size = ids.size() - st;
-      } else {
-        size = ids.size()/gpu_num1;
-      }
-      */
     int st = 0;
     int size = ids.size();
     NeighborSampleResult *result = new NeighborSampleResult(sample_size, size);
-    platform::CUDAPlace place = platform::CUDAPlace(i);
-    platform::CUDADeviceGuard guard(i);
+    platform::CUDAPlace place = platform::CUDAPlace(device_id_mapping[i]);
+    platform::CUDADeviceGuard guard(device_id_mapping[i]);
     cudaMalloc((void **)&result->val, size * sample_size * sizeof(int64_t));
     cudaMalloc((void **)&result->actual_sample_size, size * sizeof(int));
     res[i].push_back(result);
   }
+  */
   start = 0;
-  auto func = [&rwlock, &g, &res, &start, &ids](int i) {
-    while (true) {
-      /*
-      int s, sn;
-      bool exit = false;
-      pthread_rwlock_wrlock(&rwlock);
-      if (start < ids.size()) {
-        s = start;
-        sn = ids.size() - start;
-        sn = min(sn, fixed_key_size);
-        start += sn;
-      } else {
-        exit = true;
-      }
-      pthread_rwlock_unlock(&rwlock);
-      if (exit) break;
-      */
-      /*
-      int st = ids.size()/gpu_num1 * i;
-      int size;
-      if(i == gpu_num1 - 1){
-        size = ids.size() - st;
-      } else {
-        size = ids.size()/gpu_num1;
-      }
-      */
-      int st = 0;
-      int size = ids.size();
-      // auto r =g.graph_neighbor_sample(i, (int64_t *)key[i], sample_size,
-      // ids.size());
-      for (int k = 0; k < exe_count; k++) {
+  auto func = [&rwlock, &g, &start, &ids](int i) {
+    int st = 0;
+    int size = ids.size();
+    for (int k = 0; k < exe_count; k++) {
+      st = 0;
+      while (st < size) {
+        int len = std::min(fixed_key_size, (int)ids.size() - st);
         auto r = g.graph_neighbor_sample(i, (int64_t *)(key[i] + st),
-                                         sample_size, size, res[i][0]);
-        //   VLOG(0)<<"call graph_neighbor_sample by "<<i<<" sample_size"<<
-        //   sample_size<< " size " <<size;
-        // res[i].push_back(r);
+                                         sample_size, len);
+        st += len;
+        delete r;
       }
-      break;
     }
   };
   auto start1 = std::chrono::steady_clock::now();
@@ -329,9 +314,14 @@ int main(int argc, char *argv[]) {
   VLOG(0) << "sample_size neighbor_size is " << sample_size;
   if (argc > 4) init_search_size = std::stoi(argv[4]);
   VLOG(0) << " init_search_size " << init_search_size;
-  if (argc > 5) gpu_num = std::stoi(argv[5]);
-  VLOG(0) << " gpu_num= " << gpu_num;
+  if (argc > 5) {
+    gpu_str = argv[5];
+  }
+  VLOG(0) << " gpu_str= " << gpu_str;
+  gpu_num = 0;
   if (argc > 6) gpu_num1 = std::stoi(argv[6]);
   VLOG(0) << " gpu_thread_num= " << gpu_num1;
+  if (argc > 7) use_nv = std::stoi(argv[7]);
+  VLOG(0) << " use_nv " << use_nv;
   testSampleRate();
 }

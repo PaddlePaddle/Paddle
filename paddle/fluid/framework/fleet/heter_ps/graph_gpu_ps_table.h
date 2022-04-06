@@ -25,12 +25,56 @@ namespace framework {
 
 class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
  public:
-  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource)
+  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
       : HeterComm<int64_t, int, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     cpu_table_status = -1;
-    topo_aware_ = 0;
+    if (topo_aware) {
+      int total_gpu = resource_->total_gpu();
+      std::map<int, int> device_map;
+      for (int i = 0; i < total_gpu; i++) {
+        device_map[resource_->dev_id(i)] = i;
+        VLOG(0) << " device " << resource_->dev_id(i) << " is stored on " << i;
+      }
+      path_.clear();
+      path_.resize(total_gpu);
+      VLOG(0) << "topo aware overide";
+      for (int i = 0; i < total_gpu; ++i) {
+        path_[i].resize(total_gpu);
+        for (int j = 0; j < total_gpu; ++j) {
+          auto &nodes = path_[i][j].nodes_;
+          nodes.clear();
+          int from = resource_->dev_id(i);
+          int to = resource_->dev_id(j);
+          int transfer_id = i;
+          if (need_transfer(from, to) &&
+              (device_map.find((from + 4) % 8) != device_map.end() ||
+               device_map.find((to + 4) % 8) != device_map.end())) {
+            transfer_id = (device_map.find((from + 4) % 8) != device_map.end())
+                              ? ((from + 4) % 8)
+                              : ((to + 4) % 8);
+            transfer_id = device_map[transfer_id];
+            nodes.push_back(Node());
+            Node &node = nodes.back();
+            node.in_stream = resource_->comm_stream(i, transfer_id);
+            node.out_stream = resource_->comm_stream(transfer_id, i);
+            node.key_storage = NULL;
+            node.val_storage = NULL;
+            node.sync = 0;
+            node.gpu_num = transfer_id;
+          }
+          nodes.push_back(Node());
+          Node &node = nodes.back();
+          node.in_stream = resource_->comm_stream(i, transfer_id);
+          node.out_stream = resource_->comm_stream(transfer_id, i);
+          node.key_storage = NULL;
+          node.val_storage = NULL;
+          node.sync = 0;
+          node.gpu_num = j;
+        }
+      }
+    }
   }
   ~GpuPsGraphTable() {
     if (cpu_table_status != -1) {
@@ -40,8 +84,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
   NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult *graph_neighbor_sample(int gpu_id, int64_t *key,
-                                              int sample_size, int len,
-                                              NeighborSampleResult *result);
+                                              int sample_size, int len);
   NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
