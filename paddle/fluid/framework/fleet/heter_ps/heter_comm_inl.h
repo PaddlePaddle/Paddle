@@ -14,7 +14,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
-#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+// #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
