@@ -802,6 +802,15 @@
     func : huber_loss
   # backward : huber_loss_grad
 
+- api : imag
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : imag
+  backward : imag_grad
+
 # increment
 - api : increment
   args : (Tensor x, float value)
@@ -1336,6 +1345,16 @@
     func : prelu
   backward : prelu_grad
 
+- api : psroi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor
+  infer_meta :
+    func : PsroiPoolInferMeta
+  kernel :
+    func : psroi_pool
+  optional : boxes_num
+  backward : psroi_pool_grad
+
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
@@ -1347,6 +1366,15 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : qr
+  args : (Tensor x, str mode)
+  output : Tensor(q), Tensor(r)
+  infer_meta :
+    func : QrInferMeta
+  kernel :
+    func : qr
+  # backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1371,6 +1399,15 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+
+- api : real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : real
+  backward : real_grad
 
 - api : reciprocal
   args : (Tensor x)
@@ -1422,6 +1459,17 @@
     func : roi_align
   optional : boxes_num
   backward : roi_align_grad
+
+- api : roi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(out), Tensor(arg_max)
+  infer_meta :
+    func : RoiPoolInferMeta
+  kernel :
+    func : roi_pool
+  optional : boxes_num
+  intermediate : arg_max
+  backward : roi_pool_grad
 
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
