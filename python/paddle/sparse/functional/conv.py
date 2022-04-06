@@ -31,6 +31,8 @@ def conv3d(x,
            name=None):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
     assert bias == None, "Currently, sparse_conv3d does not support bias"
+    assert groups == 1, "Currently, only support groups=1"
+
     # Currently, only support 'NDHWC'
     if data_format not in ["NDHWC"]:
         raise ValueError("Attr(data_format) should be 'NDHWC'. Received "

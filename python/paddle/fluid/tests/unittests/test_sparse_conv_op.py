@@ -52,8 +52,10 @@ class TestSparseConv(unittest.TestCase):
 
     def test_Conv3D(self):
         with _test_eager_guard():
+            #(4, non_zero_num), 4-D:(N, D, H, W)
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [1, 2, 3, 4]
+            #(non_zero_num, C)
+            values = [[1], [2], [3], [4]]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
@@ -61,9 +63,9 @@ class TestSparseConv(unittest.TestCase):
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
 
-            conv3d = paddle.sparse.Conv3D(1, 1, (1, 3, 3), data_format='NDHWC')
-            out = conv3d(sparse_input)
-            print(out)
+            sparse_conv3d = paddle.sparse.Conv3D(
+                1, 1, (1, 3, 3), data_format='NDHWC')
+            sparse_out = sparse_conv3d(sparse_input)
 
 
 #TODO: Add more test case

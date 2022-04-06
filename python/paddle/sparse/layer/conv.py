@@ -45,8 +45,9 @@ class Conv3D(Layer):
         self._data_format = data_format
 
         assert padding_mode == 'zeros', "Currently, only support padding_mode='zeros'"
+        assert groups == 1, "Currently, only support groups=1"
 
-        valid_format = {'NDHWC', 'NCDHW'}
+        valid_format = {'NDHWC'}
         if data_format not in valid_format:
             raise ValueError(
                 "data_format must be one of {}, but got data_format='{}'".
