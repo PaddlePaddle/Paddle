@@ -580,8 +580,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
-
-    if (grad_tensors.size() > 0) {
+    bool copy_from_grad_t =
+        grad_tensors.size() > 0 && grad_tensors[i].initialized();
+    if (copy_from_grad_t) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           paddle::platform::errors::Fatal(
@@ -594,7 +595,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // Deep copy
       node_input_buffers_dict[grad_node]->CopyValueFromTensor(
           input_info.first, input_info.second, grad_tensors[i]);
-
     } else {
       VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0

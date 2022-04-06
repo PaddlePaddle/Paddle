@@ -205,13 +205,17 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return  op_name[-1] == "_"
 
-    if in_dygraph_mode():
-        op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
-        out = op(x, y)
-
-    if _in_legacy_dygraph():
+    if op_name not in OP_NAMEMAPPING.keys():
         op = getattr(_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -1018,6 +1022,73 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     zero_tensor = paddle.zeros_like(x)
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
     return sum(tmp_tensor, axis, dtype, keepdim, name)
+
+
+def nanmean(x, axis=None, keepdim=False, name=None):
+    r"""
+    Compute the arithmetic mean along the specified axis, ignoring NaNs.
+
+    Args:
+        x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
+        axis (int|list|tuple, optional):The axis along which to perform nanmean
+            calculations. ``axis`` should be int, list(int) or tuple(int). If
+            ``axis`` is a list/tuple of dimension(s), nanmean is calculated along
+            all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
+            should be in range [-D, D), where D is the dimensions of ``x`` . If
+            ``axis`` or element(s) of ``axis`` is less than 0, it works the
+            same way as :math:`axis + D` . If ``axis`` is None, nanmean is
+            calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of arithmetic mean along ``axis`` of ``x``, with the same data
+        type as ``x``.
+
+    Examples:
+
+        .. code-block:: python
+            :name: code-example1
+
+            import paddle
+            # x is a 2-D Tensor:
+            x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, float('-nan'), 0.7]])
+            out1 = paddle.nanmean(x)
+            # [0.44999996]
+            out2 = paddle.nanmean(x, axis=0)
+            # [0.1, 0.25, 0.5, 0.79999995]
+            out3 = paddle.nanmean(x, axis=0, keepdim=True)
+            # [[0.1, 0.25, 0.5, 0.79999995]]
+            out4 = paddle.nanmean(x, axis=1)
+            # [0.56666666 0.33333334]
+            out5 = paddle.nanmean(x, axis=1, keepdim=True)
+            # [[0.56666666]
+            #  [0.33333334]]
+
+            # y is a 3-D Tensor:
+            y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
+                                   [[5, 6], [float('-nan'), 8]]])
+            out6 = paddle.nanmean(y, axis=[1, 2])
+            # [2.66666675, 6.33333349]
+            out7 = paddle.nanmean(y, axis=[0, 1])
+            # [3., 6.]
+    """
+    if isinstance(axis, int):
+        axis = [axis]
+    check_variable_and_dtype(x, 'x/input',
+                             ['uint16', 'float16', 'float32', 'float64'],
+                             'nanmean' )
+    if axis is not None:
+        check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
+
+    cnt = paddle.sum(~paddle.isnan(x), axis = axis,keepdim=keepdim)
+    return paddle.divide(paddle.nansum(x, axis=axis, keepdim=keepdim, name=name), cnt.astype(x.dtype))
 
 
 @templatedoc(op_type="sum")
@@ -2290,7 +2361,16 @@ def clip(x, min=None, max=None, name=None):
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = min_ if min is None else min
+        max = max_ if max is None else max
+        return _C_ops.final_state_clip(x, min, max)
+
+    if _in_legacy_dygraph():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
@@ -2350,7 +2430,12 @@ def clip_(x, min=None, max=None, name=None):
         max = max.numpy().item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
-    return _C_ops.clip_(x, "min", min, "max", max)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_(x, min, max)
+
+    if _in_legacy_dygraph():
+        return _C_ops.clip_(x, "min", min, "max", max)
 
 
 
@@ -2650,6 +2735,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
+        if axis is None: axis = -1
         return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
@@ -3893,7 +3979,8 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             input_list = [x, append]
             has_pend = True
         if has_pend:
-            new_input = _C_ops.concat(input_list, 'axis', axis)
+            new_input = _varbase_creator()
+            _C_ops.concat(input_list, new_input, 'axis', axis)
         else:
             new_input = x
 
@@ -3921,6 +4008,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         else:
             out = elementwise_sub(input_back, input_front, axis=axis)
         return out
+
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
         check_type(axis, 'axis', (int), 'diff')

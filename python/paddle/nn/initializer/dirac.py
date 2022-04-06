@@ -185,9 +185,10 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = _C_ops.assign_value('shape', [len(idx_list)],
-                                                 'dtype', VarDesc.VarType.INT64,
-                                                 'int64_values', idx_list)
+                tmp_tensor = framework._varbase_creator()
+                _C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
+                                    'dtype', VarDesc.VarType.INT64,
+                                    'int64_values', idx_list)
                 tmp_tensor._share_underline_tensor_to(index_tensor)
         else:
             block.append_op(
@@ -207,9 +208,10 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = _C_ops.assign_value('shape', [len(value_list)],
-                                                 'dtype', VarDesc.VarType.FP32,
-                                                 'fp32_values', value_list)
+                tmp_tensor = framework._varbase_creator()
+                _C_ops.assign_value(tmp_tensor, 'shape', [len(value_list)],
+                                    'dtype', VarDesc.VarType.FP32,
+                                    'fp32_values', value_list)
                 tmp_tensor._share_underline_tensor_to(value_tensor)
         else:
             block.append_op(

@@ -30,21 +30,22 @@ namespace distributed {
 
 class DenseOptimizer;
 
-class CommonDenseTable : public DenseTable {
+class MemoryDenseTable : public Table {
  public:
-  CommonDenseTable() {}
-  virtual ~CommonDenseTable() {}
+  MemoryDenseTable() {}
+  virtual ~MemoryDenseTable() {}
   int32_t Initialize() override;
   int32_t InitializeShard() override { return 0; }
-  virtual void CreateInitializer(const std::string& attr,
-                                 const std::string& name);
-  virtual int32_t InitializeValue();
-  virtual int32_t InitializeOptimizer();
-  virtual int32_t Pull(TableContext& context);
-  virtual int32_t Push(TableContext& context);
-  int32_t PullDense(float* pull_values, size_t num) override;
-  int32_t PushDenseParam(const float* values, size_t num) override;
-  int32_t PushDense(const float* values, size_t num) override;
+  void CreateInitializer(const std::string& attr, const std::string& name);
+  int32_t InitializeValue();
+  int32_t InitializeOptimizer();
+
+  int32_t Pull(TableContext& context) override;
+  int32_t Push(TableContext& context) override;
+
+  int32_t PullDense(float* pull_values, size_t num);
+  int32_t PushDenseParam(const float* values, size_t num);
+  int32_t PushDense(const float* values, size_t num);
   int32_t Pour() override;
   int32_t SetGlobalLR(float* lr) override;
 
@@ -54,6 +55,7 @@ class CommonDenseTable : public DenseTable {
   int32_t Flush() override { return 0; }
   int32_t Shrink(const std::string& param) override { return 0; }
   void Clear() override { return; }
+  void* GetShard(size_t shard_idx) override { return 0; }
 
  protected:
   int32_t _PushDense(const float* values, size_t num);
