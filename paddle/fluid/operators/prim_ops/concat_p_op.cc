@@ -63,12 +63,30 @@ class ConcatPrimOpShapeInference : public framework::InferShapeBase {
         BOOST_GET(framework::VarDesc *, x_var_ptrs[0]);
     auto first_x_shape = first_x_var->GetShape();
     cnt_along_axis += first_x_shape[axis];
+    size_t first_x_rank = first_x_shape.size();
     for (size_t i = 1; i < x_var_ptrs.size(); ++i) {
       framework::VarDesc *x_var =
           BOOST_GET(framework::VarDesc *, x_var_ptrs[i]);
       auto x_shape = x_var->GetShape();
       cnt_along_axis += x_shape[axis];
-      // TODO(lml): add some check for x_shape
+      size_t x_rank = x_shape.size();
+      PADDLE_ENFORCE_EQ(
+          x_rank, first_x_rank,
+          platform::errors::InvalidArgument("The dimensions of %d input tensor "
+                                            "should be same as the dimensions "
+                                            "of 1st input tensor's, "
+                                            "but get %d and %d",
+                                            i + 1, x_rank, first_x_rank));
+      for (size_t j = 0; j < x_rank; ++j) {
+        if (j != size_t(axis)) {
+          PADDLE_ENFORCE_EQ(x_shape[j], first_x_shape[j],
+                            platform::errors::InvalidArgument(
+                                "The shape of %d input tensor at dimension %d "
+                                "should be same as the 1st input tensor's, "
+                                "but get %d and %d",
+                                i + 1, j, x_shape[j], first_x_shape[j]));
+        }
+      }
     }
 
     std::vector<int64_t> y_shape(first_x_shape);
@@ -81,9 +99,28 @@ class ConcatPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // TODO(lml): add some check for multi input
-    auto first_x_name = Input(ctx, "XS")[0];
+    auto x_names = Input(ctx, "XS");
     auto y_name = Output(ctx, "Y")[0];
+    auto first_x_name = x_names[0];
+    auto first_x_type = GetType(ctx, first_x_name);
+    auto first_x_dtype = GetDataType(ctx, first_x_name);
+    for (size_t i = 1; i < x_names.size(); ++i) {
+      auto x_name = x_names[i];
+      auto x_type = GetType(ctx, x_name);
+      auto x_dtype = GetDataType(ctx, x_name);
+      PADDLE_ENFORCE_EQ(x_type, first_x_type,
+                        platform::errors::InvalidArgument(
+                            "The type of %d input tensor should be same as the "
+                            "first input tensor's, "
+                            "but get %d and %d",
+                            i + 1, x_type, first_x_type));
+      PADDLE_ENFORCE_EQ(x_dtype, first_x_dtype,
+                        platform::errors::InvalidArgument(
+                            "The datatype of %d input tensor should be same as "
+                            "the first input tensor's, "
+                            "but get %d and %d",
+                            i + 1, x_dtype, first_x_dtype));
+    }
     SetType(ctx, y_name, GetType(ctx, first_x_name));
     SetDataType(ctx, y_name, GetDataType(ctx, first_x_name));
   }
