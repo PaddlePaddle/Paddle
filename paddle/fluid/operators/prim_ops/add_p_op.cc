@@ -49,13 +49,31 @@ class AddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
 class AddPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    // TODO(lml): add some check for multi input
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
+    framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    auto x_shape = x_var->GetShape();
+    auto y_shape = y_var->GetShape();
+    size_t x_rank = x_shape.size();
+    size_t y_rank = y_shape.size();
+    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_rank, y_rank));
+    for (size_t i = 0; i < x_rank; ++i) {
+      PADDLE_ENFORCE_EQ(
+          x_shape[i], y_shape[i],
+          platform::errors::InvalidArgument(
+              "The shape of two input tensor at dimension %d should be same, "
+              "but get %d and %d",
+              i, x_rank, y_rank));
+    }
 
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_var->GetShape());
+    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
 };
 
@@ -63,11 +81,26 @@ class AddPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // TODO(lml): add some check for multi input
     auto x_name = Input(ctx, "X")[0];
+    auto y_name = Input(ctx, "Y")[0];
     auto z_name = Output(ctx, "Z")[0];
-    SetType(ctx, z_name, GetType(ctx, x_name));
-    SetDataType(ctx, z_name, GetDataType(ctx, x_name));
+    auto x_type = GetType(ctx, x_name);
+    auto y_type = GetType(ctx, y_name);
+    auto x_dtype = GetDataType(ctx, x_name);
+    auto y_dtype = GetDataType(ctx, y_name);
+    PADDLE_ENFORCE_EQ(x_type, y_type,
+                      platform::errors::InvalidArgument(
+                          "The type of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_type, y_type));
+    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                      platform::errors::InvalidArgument(
+                          "The datatype of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_dtype, y_dtype));
+
+    SetType(ctx, z_name, x_type);
+    SetDataType(ctx, z_name, x_dtype);
   }
 };
 
