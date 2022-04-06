@@ -621,7 +621,7 @@ class SparseTable(Table):
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
         super(GeoSparseTable, self).__init__(context, send_ctx)
-        self.table_class = "SparseGeoTable"
+        self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
 
@@ -665,7 +665,7 @@ class DenseTable(Table):
         table_proto.table_id = ctx.table_id()
 
         table_proto.type = the_one_ps_pb2.PS_DENSE_TABLE
-        table_proto.table_class = "CommonDenseTable"
+        table_proto.table_class = "MemoryDenseTable"
         table_proto.shard_num = 256
 
         table_proto.accessor.accessor_class = 'CommMergeAccessor'

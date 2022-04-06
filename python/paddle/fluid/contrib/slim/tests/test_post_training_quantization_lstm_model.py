@@ -173,7 +173,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  is_use_cache_file=False,
                                  is_optimize_model=False,
                                  batch_size=10,
-                                 batch_nums=10):
+                                 batch_nums=10,
+                                 onnx_format=False):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -190,14 +191,28 @@ class TestPostTrainingQuantization(unittest.TestCase):
             round_type=round_type,
             is_full_quantize=is_full_quantize,
             optimize_model=is_optimize_model,
+            onnx_format=onnx_format,
             is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model_path)
 
-    def run_test(self, model_name, model_url, model_md5, data_name, data_url,
-                 data_md5, algo, round_type, quantizable_op_type,
-                 is_full_quantize, is_use_cache_file, is_optimize_model,
-                 diff_threshold, infer_iterations, quant_iterations):
+    def run_test(self,
+                 model_name,
+                 model_url,
+                 model_md5,
+                 data_name,
+                 data_url,
+                 data_md5,
+                 algo,
+                 round_type,
+                 quantizable_op_type,
+                 is_full_quantize,
+                 is_use_cache_file,
+                 is_optimize_model,
+                 diff_threshold,
+                 infer_iterations,
+                 quant_iterations,
+                 onnx_format=False):
         fp32_model_path = self.download_model(model_url, model_md5, model_name)
         fp32_model_path = os.path.join(fp32_model_path, model_name)
 
@@ -211,10 +226,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start post training quantization for {0} on {1} samples ...".
               format(model_name, quant_iterations))
-        self.generate_quantized_model(fp32_model_path, data_path, algo,
-                                      round_type, quantizable_op_type,
-                                      is_full_quantize, is_use_cache_file,
-                                      is_optimize_model, quant_iterations)
+        self.generate_quantized_model(
+            fp32_model_path, data_path, algo, round_type, quantizable_op_type,
+            is_full_quantize, is_use_cache_file, is_optimize_model,
+            quant_iterations, onnx_format)
 
         print("Start INT8 inference for {0} on {1} samples ...".format(
             model_name, infer_iterations))
@@ -276,6 +291,43 @@ class TestPostTrainingKLForMnistAdaround(TestPostTrainingQuantization):
                       data_md5, algo, round_type, quantizable_op_type,
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold, infer_iterations, quant_iterations)
+
+
+class TestPostTrainingKLForMnistONNXFormat(TestPostTrainingQuantization):
+    def test_post_training_kl_onnx_format(self):
+        model_name = "nlp_lstm_fp32_model"
+        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
+        model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
+        data_name = "quant_lstm_input_data"
+        data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
+        data_md5 = "add84c754e9b792fea1fbd728d134ab7"
+        algo = "KL"
+        round_type = "round"
+        quantizable_op_type = ["mul", "lstm"]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = False
+        diff_threshold = 0.01
+        infer_iterations = 100
+        quant_iterations = 10
+        onnx_format = True
+        self.run_test(
+            model_name,
+            model_url,
+            model_md5,
+            data_name,
+            data_url,
+            data_md5,
+            algo,
+            round_type,
+            quantizable_op_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            diff_threshold,
+            infer_iterations,
+            quant_iterations,
+            onnx_format=onnx_format)
 
 
 if __name__ == '__main__':

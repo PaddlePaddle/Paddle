@@ -174,7 +174,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
-// modify the expected_kernel_key for KP in phi
+// NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
+// But the default library_type is Plain, so we need to modify the
+// library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
@@ -238,6 +240,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
 
+// NOTE(Liu-xiandong): If we can't find heterogeneous kernel in phi,
+// we need to select the heterogeneous kernel in fluid, but the kernel
+// registered in KP use library_type[KP], we need to modify it.
 #ifdef PADDLE_WITH_XPU_KP
   bool use_xpu_kp_kernel_rt =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
@@ -482,6 +487,11 @@ static void PreparedOpRunPtImpl(
                                           &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
+  }
+
+  if (FLAGS_check_nan_inf) {
+    framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
+        op.Type(), outs, dev_ctx->GetPlace());
   }
 
   if (FLAGS_benchmark) {
