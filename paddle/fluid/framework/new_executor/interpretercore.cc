@@ -300,8 +300,16 @@ void InterpreterCore::Convert(
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
+  bool inplaced = false;
+  for (auto inst : vec_instruction_) {
+    if (inst.OpBase()->Type() == "share_buffer" ||
+        inst.OpBase()->Type() == "share_data") {
+      VLOG(4) << "Already inplaced, skip inplace now.";
+      inplaced = true;
+    }
+  }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
 
@@ -516,6 +524,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  unfinished_op_numer_ = vec_instr.size();
+  if (unfinished_op_numer_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -523,8 +537,6 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-
-  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 
@@ -561,12 +573,11 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
-  VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " " << &(*atomic_deps)[next_id]
-            << " " << next_id;
+    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
+            << ", remain deps: " << (*atomic_deps)[next_id];
     return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
   };
 
