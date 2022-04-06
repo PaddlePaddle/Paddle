@@ -15,20 +15,25 @@
 from functools import reduce
 
 import paddle
-from paddle.fluid.framework import dygraph_only, _dygraph_tracer, _varbase_creator
+from paddle.fluid.framework import dygraph_only, _dygraph_tracer, _varbase_creator, in_dygraph_mode
 from paddle import _C_ops
 
 
 #input==output, inplace strategy of reshape has no cost almostly
 def _inplace_reshape_dygraph(x, shape):
-    x_shape = _varbase_creator(dtype=x.dtype)
-    _dygraph_tracer().trace_op(
-        type="reshape2",
-        inputs={'X': x},
-        outputs={'Out': x,
-                 'XShape': x_shape},
-        attrs={'shape': shape},
-        stop_gradient=True)
+    x_shape = _varbase_creator(dtype='int64')
+    if in_dygraph_mode():
+        with paddle.fluid.dygraph.no_grad():
+            tmp_out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+            tmp_out._share_underline_tensor_to(x)
+    else:
+        _dygraph_tracer().trace_op(
+            type="reshape2",
+            inputs={'X': x},
+            outputs={'Out': x,
+                     'XShape': x_shape},
+            attrs={'shape': shape},
+            stop_gradient=True)
 
 
 @dygraph_only
@@ -62,12 +67,18 @@ def parameters_to_vector(parameters, name=None):
         _inplace_reshape_dygraph(param, [-1])
 
     out = _varbase_creator(dtype=dtype)
-    _dygraph_tracer().trace_op(
-        type='concat',
-        inputs={'X': parameters},
-        outputs={'Out': [out]},
-        attrs={'axis': 0},
-        stop_gradient=True)
+    if in_dygraph_mode():
+        with paddle.fluid.dygraph.no_grad():
+            tmp = _varbase_creator()
+            _C_ops.concat(parameters, tmp, 'axis', 0)
+            tmp._share_underline_tensor_to(out)
+    else:
+        _dygraph_tracer().trace_op(
+            type='concat',
+            inputs={'X': parameters},
+            outputs={'Out': [out]},
+            attrs={'axis': 0},
+            stop_gradient=True)
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
     return out
@@ -109,13 +120,20 @@ def vector_to_parameters(vec, parameters, name=None):
         numel = reduce(lambda x, y: x * y, shape)
         sections.append(numel)
 
-    _dygraph_tracer().trace_op(
-        type='split',
-        inputs={'X': [vec]},
-        outputs={'Out': parameters},
-        attrs={'axis': 0,
-               'sections': sections},
-        stop_gradient=True)
+    if in_dygraph_mode():
+        with paddle.fluid.dygraph.no_grad():
+            res = [_varbase_creator() for n in range(len(parameters))]
+            _C_ops.split(vec, res, 'axis', 0, 'sections', sections)
+            for i in range(0, len(res)):
+                res[i]._share_underline_tensor_to(parameters[i])
+    else:
+        _dygraph_tracer().trace_op(
+            type='split',
+            inputs={'X': [vec]},
+            outputs={'Out': parameters},
+            attrs={'axis': 0,
+                   'sections': sections},
+            stop_gradient=True)
 
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
