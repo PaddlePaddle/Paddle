@@ -1,0 +1,728 @@
+// RUN: infrtexec -i %s
+module  {
+  func @main_graph(%arg0: !phi.dense_tensor_map, %arg1: !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW> {
+    %0 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_37.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %1 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_47.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %2 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_6.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %3 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_13.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %4 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_5.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %5 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_40.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %6 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_6.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %7 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_27.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %8 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_11.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %9 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_40.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %10 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_38.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %11 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_2.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %12 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_21.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %13 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_15.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %14 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_8.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %15 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_29.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %16 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_35.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %17 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_26.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %18 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_50.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %19 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_31.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %20 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_22.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %21 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_27.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %22 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_28.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %23 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_46.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %24 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_37.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %25 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_18.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %26 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_38.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %27 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_39.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %28 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_43.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %29 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_3.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %30 = phi_dt.tensor_map_get_tensor(%arg0) {name = "linear_0.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %31 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_34.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %32 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_49.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %33 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_52.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %34 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_8.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %35 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_45.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %36 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_43.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %37 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_5.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %38 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_29.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %39 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_33.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %40 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_10.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %41 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_43.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %42 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_9.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %43 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_7.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %44 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_7.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %45 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_50.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %46 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_40.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %47 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_42.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %48 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_42.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %49 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_31.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %50 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_7.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %51 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_12.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %52 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_39.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %53 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_30.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %54 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_13.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %55 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_46.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %56 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_36.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %57 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_29.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %58 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_36.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %59 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_49.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %60 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_29.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %61 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_28.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %62 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_51.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %63 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_27.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %64 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_47.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %65 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_30.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %66 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_33.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %67 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_24.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %68 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_22.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %69 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_1.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %70 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_32.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %71 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_20.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %72 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_16.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %73 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_23.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %74 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_11.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %75 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_30.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %76 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_37.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %77 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_16.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %78 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_36.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %79 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_1.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %80 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_31.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %81 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_0.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %82 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_10.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %83 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_1.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %84 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_13.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %85 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_12.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %86 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_0.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %87 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_30.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %88 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_13.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %89 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_3.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %90 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_52.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %91 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_26.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %92 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_48.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %93 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_25.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %94 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_33.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %95 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_30.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %96 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_35.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %97 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_8.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %98 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_18.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %99 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_4.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %100 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_15.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %101 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_16.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %102 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_32.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %103 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_50.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %104 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_44.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %105 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_24.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %106 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_11.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %107 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_2.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %108 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_20.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %109 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_15.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %110 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_44.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %111 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_23.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %112 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_17.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %113 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_25.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %114 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_3.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %115 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_0.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %116 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_38.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %117 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_20.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %118 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_47.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %119 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_50.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %120 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_48.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %121 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_14.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %122 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_47.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %123 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_46.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %124 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_34.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %125 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_45.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %126 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_25.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %127 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_22.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %128 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_21.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %129 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_17.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %130 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_19.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %131 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_1.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %132 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_52.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %133 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_21.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %134 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_9.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %135 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_4.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %136 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_9.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %137 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_45.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %138 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_8.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %139 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_35.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %140 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_39.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %141 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_44.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %142 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_19.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %143 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_27.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %144 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_2.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %145 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_19.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %146 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_23.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %147 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_32.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %148 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_51.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %149 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_17.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %150 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_2.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %151 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_15.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %152 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_23.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %153 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_18.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %154 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_1.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %155 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_21.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %156 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_37.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %157 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_28.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %158 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_31.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %159 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_3.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %160 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_19.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %161 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_38.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %162 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_7.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %163 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_33.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %164 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_44.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %165 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_25.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %166 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_32.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %167 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_26.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %168 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_4.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %169 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_40.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %170 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_17.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %171 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_5.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %172 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_28.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %173 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_27.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %174 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_20.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %175 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_15.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %176 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_18.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %177 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_41.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %178 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_42.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %179 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_25.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %180 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_22.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %181 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_35.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %182 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_24.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %183 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_49.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %184 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_22.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %185 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_26.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %186 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_12.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %187 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_43.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %188 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_38.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %189 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_0.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %190 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_50.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %191 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_10.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %192 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_19.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %193 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_41.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %194 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_10.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %195 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_14.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %196 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_14.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %197 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_12.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %198 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_9.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %199 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_16.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %200 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_29.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %201 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_42.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %202 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_2.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %203 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_48.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %204 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_14.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %205 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_3.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %206 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_6.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %207 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_20.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %208 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_39.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %209 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_34.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %210 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_16.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %211 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_36.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %212 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_48.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %213 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_7.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %214 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_32.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %215 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_52.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %216 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_18.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %217 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_44.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %218 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_6.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %219 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_10.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %220 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_47.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %221 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_51.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %222 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_9.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %223 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_52.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %224 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_45.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %225 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_8.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %226 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_13.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %227 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_46.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %228 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_49.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %229 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_12.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %230 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_4.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %231 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_5.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %232 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_51.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %233 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_33.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %234 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_46.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %235 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_45.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %236 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_6.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %237 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_48.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %238 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_37.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %239 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_14.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %240 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_21.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %241 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_28.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %242 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_26.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %243 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_23.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %244 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_49.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %245 = phi_dt.tensor_map_get_tensor(%arg0) {name = "linear_0.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %246 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_51.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %247 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_41.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %248 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_35.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %249 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_42.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %250 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_43.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %251 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_24.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %252 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_31.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %253 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_41.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %254 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_11.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %255 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_41.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %256 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_34.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %257 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_4.w_1"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %258 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_40.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %259 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_0.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %260 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_36.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %261 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_5.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %262 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_11.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %263 = phi_dt.tensor_map_get_tensor(%arg0) {name = "conv2d_17.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %264 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_39.w_2"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %265 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_34.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %266 = phi_dt.tensor_map_get_tensor(%arg0) {name = "batch_norm2d_24.b_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    %267 = "phi_dt.create_context.gpu"() : () -> !phi.context<GPU>
+    %268 = "phi_dt.memcpy.gpu"(%arg1, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %269 = "phi_dt.memcpy.gpu"(%86, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %270 = "phi_gpu.conv2d_infer.float32.any"(%267, %268, %269) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [3 : i32, 3 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %271 = "phi_dt.memcpy.gpu"(%259, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %272 = "phi_dt.memcpy.gpu"(%189, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %273 = "phi_dt.memcpy.gpu"(%115, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %274 = "phi_dt.memcpy.gpu"(%81, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0, %out1, %out2 = "phi_gpu.batch_norm_infer.float32.any"(%267, %270, %271, %272, %273, %274) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %275 = "phi_gpu.relu.float32.any"(%267, %out0) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %276 = "phi_gpu.pool2d.float32.any"(%267, %275) {adaptive = false, ceil_mode = false, data_format = "NCHW", exclusive = true, global_pooling = false, ksize = [3 : i32, 3 : i32], padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], pooling_type = "max", strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %277 = "phi_dt.memcpy.gpu"(%11, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %278 = "phi_gpu.conv2d_infer.float32.any"(%267, %276, %277) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %279 = "phi_dt.memcpy.gpu"(%150, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %280 = "phi_dt.memcpy.gpu"(%107, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %281 = "phi_dt.memcpy.gpu"(%144, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %282 = "phi_dt.memcpy.gpu"(%202, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_0, %out1_1, %out2_2 = "phi_gpu.batch_norm_infer.float32.any"(%267, %278, %279, %280, %281, %282) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %283 = "phi_gpu.relu.float32.any"(%267, %out0_0) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %284 = "phi_dt.memcpy.gpu"(%29, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %285 = "phi_gpu.conv2d_infer.float32.any"(%267, %283, %284) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %286 = "phi_dt.memcpy.gpu"(%205, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %287 = "phi_dt.memcpy.gpu"(%159, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %288 = "phi_dt.memcpy.gpu"(%89, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %289 = "phi_dt.memcpy.gpu"(%114, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_3, %out1_4, %out2_5 = "phi_gpu.batch_norm_infer.float32.any"(%267, %285, %286, %287, %288, %289) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %290 = "phi_gpu.relu.float32.any"(%267, %out0_3) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %291 = "phi_dt.memcpy.gpu"(%99, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %292 = "phi_gpu.conv2d_infer.float32.any"(%267, %290, %291) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %293 = "phi_dt.memcpy.gpu"(%168, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %294 = "phi_dt.memcpy.gpu"(%135, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %295 = "phi_dt.memcpy.gpu"(%257, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %296 = "phi_dt.memcpy.gpu"(%230, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_6, %out1_7, %out2_8 = "phi_gpu.batch_norm_infer.float32.any"(%267, %292, %293, %294, %295, %296) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %297 = "phi_dt.memcpy.gpu"(%154, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %298 = "phi_gpu.conv2d_infer.float32.any"(%267, %276, %297) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %299 = "phi_dt.memcpy.gpu"(%79, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %300 = "phi_dt.memcpy.gpu"(%131, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %301 = "phi_dt.memcpy.gpu"(%69, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %302 = "phi_dt.memcpy.gpu"(%83, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_9, %out1_10, %out2_11 = "phi_gpu.batch_norm_infer.float32.any"(%267, %298, %299, %300, %301, %302) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %303 = "phi_gpu.add_raw.float32.any"(%267, %out0_6, %out0_9) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %304 = "phi_gpu.relu.float32.any"(%267, %303) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %305 = "phi_dt.memcpy.gpu"(%231, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %306 = "phi_gpu.conv2d_infer.float32.any"(%267, %304, %305) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %307 = "phi_dt.memcpy.gpu"(%37, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %308 = "phi_dt.memcpy.gpu"(%261, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %309 = "phi_dt.memcpy.gpu"(%171, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %310 = "phi_dt.memcpy.gpu"(%4, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_12, %out1_13, %out2_14 = "phi_gpu.batch_norm_infer.float32.any"(%267, %306, %307, %308, %309, %310) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %311 = "phi_gpu.relu.float32.any"(%267, %out0_12) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %312 = "phi_dt.memcpy.gpu"(%2, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %313 = "phi_gpu.conv2d_infer.float32.any"(%267, %311, %312) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %314 = "phi_dt.memcpy.gpu"(%206, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %315 = "phi_dt.memcpy.gpu"(%218, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %316 = "phi_dt.memcpy.gpu"(%236, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %317 = "phi_dt.memcpy.gpu"(%6, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_15, %out1_16, %out2_17 = "phi_gpu.batch_norm_infer.float32.any"(%267, %313, %314, %315, %316, %317) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %318 = "phi_gpu.relu.float32.any"(%267, %out0_15) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %319 = "phi_dt.memcpy.gpu"(%44, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %320 = "phi_gpu.conv2d_infer.float32.any"(%267, %318, %319) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %321 = "phi_dt.memcpy.gpu"(%162, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %322 = "phi_dt.memcpy.gpu"(%50, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %323 = "phi_dt.memcpy.gpu"(%43, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %324 = "phi_dt.memcpy.gpu"(%213, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_18, %out1_19, %out2_20 = "phi_gpu.batch_norm_infer.float32.any"(%267, %320, %321, %322, %323, %324) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %325 = "phi_gpu.add_raw.float32.any"(%267, %out0_18, %304) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %326 = "phi_gpu.relu.float32.any"(%267, %325) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %327 = "phi_dt.memcpy.gpu"(%34, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %328 = "phi_gpu.conv2d_infer.float32.any"(%267, %326, %327) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %329 = "phi_dt.memcpy.gpu"(%97, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %330 = "phi_dt.memcpy.gpu"(%14, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %331 = "phi_dt.memcpy.gpu"(%225, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %332 = "phi_dt.memcpy.gpu"(%138, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_21, %out1_22, %out2_23 = "phi_gpu.batch_norm_infer.float32.any"(%267, %328, %329, %330, %331, %332) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %333 = "phi_gpu.relu.float32.any"(%267, %out0_21) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %334 = "phi_dt.memcpy.gpu"(%134, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %335 = "phi_gpu.conv2d_infer.float32.any"(%267, %333, %334) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %336 = "phi_dt.memcpy.gpu"(%222, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %337 = "phi_dt.memcpy.gpu"(%198, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %338 = "phi_dt.memcpy.gpu"(%42, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %339 = "phi_dt.memcpy.gpu"(%136, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_24, %out1_25, %out2_26 = "phi_gpu.batch_norm_infer.float32.any"(%267, %335, %336, %337, %338, %339) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %340 = "phi_gpu.relu.float32.any"(%267, %out0_24) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %341 = "phi_dt.memcpy.gpu"(%219, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %342 = "phi_gpu.conv2d_infer.float32.any"(%267, %340, %341) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %343 = "phi_dt.memcpy.gpu"(%40, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %344 = "phi_dt.memcpy.gpu"(%194, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %345 = "phi_dt.memcpy.gpu"(%191, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %346 = "phi_dt.memcpy.gpu"(%82, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_27, %out1_28, %out2_29 = "phi_gpu.batch_norm_infer.float32.any"(%267, %342, %343, %344, %345, %346) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %347 = "phi_gpu.add_raw.float32.any"(%267, %out0_27, %326) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %348 = "phi_gpu.relu.float32.any"(%267, %347) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %349 = "phi_dt.memcpy.gpu"(%197, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %350 = "phi_gpu.conv2d_infer.float32.any"(%267, %348, %349) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %351 = "phi_dt.memcpy.gpu"(%229, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %352 = "phi_dt.memcpy.gpu"(%85, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %353 = "phi_dt.memcpy.gpu"(%51, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %354 = "phi_dt.memcpy.gpu"(%186, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_30, %out1_31, %out2_32 = "phi_gpu.batch_norm_infer.float32.any"(%267, %350, %351, %352, %353, %354) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %355 = "phi_gpu.relu.float32.any"(%267, %out0_30) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %356 = "phi_dt.memcpy.gpu"(%84, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %357 = "phi_gpu.conv2d_infer.float32.any"(%267, %355, %356) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %358 = "phi_dt.memcpy.gpu"(%3, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %359 = "phi_dt.memcpy.gpu"(%54, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %360 = "phi_dt.memcpy.gpu"(%88, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %361 = "phi_dt.memcpy.gpu"(%226, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_33, %out1_34, %out2_35 = "phi_gpu.batch_norm_infer.float32.any"(%267, %357, %358, %359, %360, %361) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %362 = "phi_gpu.relu.float32.any"(%267, %out0_33) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %363 = "phi_dt.memcpy.gpu"(%239, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %364 = "phi_gpu.conv2d_infer.float32.any"(%267, %362, %363) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %365 = "phi_dt.memcpy.gpu"(%196, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %366 = "phi_dt.memcpy.gpu"(%121, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %367 = "phi_dt.memcpy.gpu"(%204, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %368 = "phi_dt.memcpy.gpu"(%195, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_36, %out1_37, %out2_38 = "phi_gpu.batch_norm_infer.float32.any"(%267, %364, %365, %366, %367, %368) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %369 = "phi_dt.memcpy.gpu"(%74, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %370 = "phi_gpu.conv2d_infer.float32.any"(%267, %348, %369) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %371 = "phi_dt.memcpy.gpu"(%254, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %372 = "phi_dt.memcpy.gpu"(%262, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %373 = "phi_dt.memcpy.gpu"(%8, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %374 = "phi_dt.memcpy.gpu"(%106, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_39, %out1_40, %out2_41 = "phi_gpu.batch_norm_infer.float32.any"(%267, %370, %371, %372, %373, %374) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %375 = "phi_gpu.add_raw.float32.any"(%267, %out0_36, %out0_39) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %376 = "phi_gpu.relu.float32.any"(%267, %375) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %377 = "phi_dt.memcpy.gpu"(%175, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %378 = "phi_gpu.conv2d_infer.float32.any"(%267, %376, %377) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %379 = "phi_dt.memcpy.gpu"(%151, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %380 = "phi_dt.memcpy.gpu"(%100, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %381 = "phi_dt.memcpy.gpu"(%13, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %382 = "phi_dt.memcpy.gpu"(%109, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_42, %out1_43, %out2_44 = "phi_gpu.batch_norm_infer.float32.any"(%267, %378, %379, %380, %381, %382) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %383 = "phi_gpu.relu.float32.any"(%267, %out0_42) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %384 = "phi_dt.memcpy.gpu"(%199, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %385 = "phi_gpu.conv2d_infer.float32.any"(%267, %383, %384) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %386 = "phi_dt.memcpy.gpu"(%72, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %387 = "phi_dt.memcpy.gpu"(%77, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %388 = "phi_dt.memcpy.gpu"(%210, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %389 = "phi_dt.memcpy.gpu"(%101, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_45, %out1_46, %out2_47 = "phi_gpu.batch_norm_infer.float32.any"(%267, %385, %386, %387, %388, %389) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %390 = "phi_gpu.relu.float32.any"(%267, %out0_45) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %391 = "phi_dt.memcpy.gpu"(%263, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %392 = "phi_gpu.conv2d_infer.float32.any"(%267, %390, %391) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %393 = "phi_dt.memcpy.gpu"(%129, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %394 = "phi_dt.memcpy.gpu"(%149, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %395 = "phi_dt.memcpy.gpu"(%170, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %396 = "phi_dt.memcpy.gpu"(%112, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_48, %out1_49, %out2_50 = "phi_gpu.batch_norm_infer.float32.any"(%267, %392, %393, %394, %395, %396) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %397 = "phi_gpu.add_raw.float32.any"(%267, %out0_48, %376) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %398 = "phi_gpu.relu.float32.any"(%267, %397) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %399 = "phi_dt.memcpy.gpu"(%25, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %400 = "phi_gpu.conv2d_infer.float32.any"(%267, %398, %399) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %401 = "phi_dt.memcpy.gpu"(%98, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %402 = "phi_dt.memcpy.gpu"(%176, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %403 = "phi_dt.memcpy.gpu"(%153, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %404 = "phi_dt.memcpy.gpu"(%216, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_51, %out1_52, %out2_53 = "phi_gpu.batch_norm_infer.float32.any"(%267, %400, %401, %402, %403, %404) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %405 = "phi_gpu.relu.float32.any"(%267, %out0_51) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %406 = "phi_dt.memcpy.gpu"(%160, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %407 = "phi_gpu.conv2d_infer.float32.any"(%267, %405, %406) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %408 = "phi_dt.memcpy.gpu"(%145, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %409 = "phi_dt.memcpy.gpu"(%130, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %410 = "phi_dt.memcpy.gpu"(%192, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %411 = "phi_dt.memcpy.gpu"(%142, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_54, %out1_55, %out2_56 = "phi_gpu.batch_norm_infer.float32.any"(%267, %407, %408, %409, %410, %411) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %412 = "phi_gpu.relu.float32.any"(%267, %out0_54) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %413 = "phi_dt.memcpy.gpu"(%108, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %414 = "phi_gpu.conv2d_infer.float32.any"(%267, %412, %413) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %415 = "phi_dt.memcpy.gpu"(%117, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %416 = "phi_dt.memcpy.gpu"(%207, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %417 = "phi_dt.memcpy.gpu"(%174, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %418 = "phi_dt.memcpy.gpu"(%71, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_57, %out1_58, %out2_59 = "phi_gpu.batch_norm_infer.float32.any"(%267, %414, %415, %416, %417, %418) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %419 = "phi_gpu.add_raw.float32.any"(%267, %out0_57, %398) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %420 = "phi_gpu.relu.float32.any"(%267, %419) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %421 = "phi_dt.memcpy.gpu"(%155, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %422 = "phi_gpu.conv2d_infer.float32.any"(%267, %420, %421) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %423 = "phi_dt.memcpy.gpu"(%240, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %424 = "phi_dt.memcpy.gpu"(%12, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %425 = "phi_dt.memcpy.gpu"(%133, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %426 = "phi_dt.memcpy.gpu"(%128, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_60, %out1_61, %out2_62 = "phi_gpu.batch_norm_infer.float32.any"(%267, %422, %423, %424, %425, %426) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %427 = "phi_gpu.relu.float32.any"(%267, %out0_60) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %428 = "phi_dt.memcpy.gpu"(%20, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %429 = "phi_gpu.conv2d_infer.float32.any"(%267, %427, %428) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %430 = "phi_dt.memcpy.gpu"(%184, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %431 = "phi_dt.memcpy.gpu"(%180, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %432 = "phi_dt.memcpy.gpu"(%68, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %433 = "phi_dt.memcpy.gpu"(%127, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_63, %out1_64, %out2_65 = "phi_gpu.batch_norm_infer.float32.any"(%267, %429, %430, %431, %432, %433) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %434 = "phi_gpu.relu.float32.any"(%267, %out0_63) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %435 = "phi_dt.memcpy.gpu"(%111, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %436 = "phi_gpu.conv2d_infer.float32.any"(%267, %434, %435) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %437 = "phi_dt.memcpy.gpu"(%152, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %438 = "phi_dt.memcpy.gpu"(%243, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %439 = "phi_dt.memcpy.gpu"(%73, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %440 = "phi_dt.memcpy.gpu"(%146, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_66, %out1_67, %out2_68 = "phi_gpu.batch_norm_infer.float32.any"(%267, %436, %437, %438, %439, %440) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %441 = "phi_gpu.add_raw.float32.any"(%267, %out0_66, %420) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %442 = "phi_gpu.relu.float32.any"(%267, %441) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %443 = "phi_dt.memcpy.gpu"(%113, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %444 = "phi_gpu.conv2d_infer.float32.any"(%267, %442, %443) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %445 = "phi_dt.memcpy.gpu"(%179, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %446 = "phi_dt.memcpy.gpu"(%93, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %447 = "phi_dt.memcpy.gpu"(%126, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %448 = "phi_dt.memcpy.gpu"(%165, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_69, %out1_70, %out2_71 = "phi_gpu.batch_norm_infer.float32.any"(%267, %444, %445, %446, %447, %448) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %449 = "phi_gpu.relu.float32.any"(%267, %out0_69) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %450 = "phi_dt.memcpy.gpu"(%242, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %451 = "phi_gpu.conv2d_infer.float32.any"(%267, %449, %450) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %452 = "phi_dt.memcpy.gpu"(%17, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %453 = "phi_dt.memcpy.gpu"(%91, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %454 = "phi_dt.memcpy.gpu"(%185, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %455 = "phi_dt.memcpy.gpu"(%167, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_72, %out1_73, %out2_74 = "phi_gpu.batch_norm_infer.float32.any"(%267, %451, %452, %453, %454, %455) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %456 = "phi_gpu.relu.float32.any"(%267, %out0_72) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %457 = "phi_dt.memcpy.gpu"(%21, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %458 = "phi_gpu.conv2d_infer.float32.any"(%267, %456, %457) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %459 = "phi_dt.memcpy.gpu"(%143, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %460 = "phi_dt.memcpy.gpu"(%63, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %461 = "phi_dt.memcpy.gpu"(%7, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %462 = "phi_dt.memcpy.gpu"(%173, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_75, %out1_76, %out2_77 = "phi_gpu.batch_norm_infer.float32.any"(%267, %458, %459, %460, %461, %462) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %463 = "phi_dt.memcpy.gpu"(%105, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %464 = "phi_gpu.conv2d_infer.float32.any"(%267, %442, %463) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %465 = "phi_dt.memcpy.gpu"(%182, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %466 = "phi_dt.memcpy.gpu"(%266, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %467 = "phi_dt.memcpy.gpu"(%251, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %468 = "phi_dt.memcpy.gpu"(%67, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_78, %out1_79, %out2_80 = "phi_gpu.batch_norm_infer.float32.any"(%267, %464, %465, %466, %467, %468) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %469 = "phi_gpu.add_raw.float32.any"(%267, %out0_75, %out0_78) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %470 = "phi_gpu.relu.float32.any"(%267, %469) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %471 = "phi_dt.memcpy.gpu"(%157, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %472 = "phi_gpu.conv2d_infer.float32.any"(%267, %470, %471) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %473 = "phi_dt.memcpy.gpu"(%241, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %474 = "phi_dt.memcpy.gpu"(%22, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %475 = "phi_dt.memcpy.gpu"(%61, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %476 = "phi_dt.memcpy.gpu"(%172, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_81, %out1_82, %out2_83 = "phi_gpu.batch_norm_infer.float32.any"(%267, %472, %473, %474, %475, %476) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %477 = "phi_gpu.relu.float32.any"(%267, %out0_81) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %478 = "phi_dt.memcpy.gpu"(%15, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %479 = "phi_gpu.conv2d_infer.float32.any"(%267, %477, %478) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %480 = "phi_dt.memcpy.gpu"(%60, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %481 = "phi_dt.memcpy.gpu"(%200, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %482 = "phi_dt.memcpy.gpu"(%57, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %483 = "phi_dt.memcpy.gpu"(%38, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_84, %out1_85, %out2_86 = "phi_gpu.batch_norm_infer.float32.any"(%267, %479, %480, %481, %482, %483) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %484 = "phi_gpu.relu.float32.any"(%267, %out0_84) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %485 = "phi_dt.memcpy.gpu"(%75, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %486 = "phi_gpu.conv2d_infer.float32.any"(%267, %484, %485) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %487 = "phi_dt.memcpy.gpu"(%65, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %488 = "phi_dt.memcpy.gpu"(%87, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %489 = "phi_dt.memcpy.gpu"(%53, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %490 = "phi_dt.memcpy.gpu"(%95, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_87, %out1_88, %out2_89 = "phi_gpu.batch_norm_infer.float32.any"(%267, %486, %487, %488, %489, %490) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %491 = "phi_gpu.add_raw.float32.any"(%267, %out0_87, %470) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %492 = "phi_gpu.relu.float32.any"(%267, %491) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %493 = "phi_dt.memcpy.gpu"(%158, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %494 = "phi_gpu.conv2d_infer.float32.any"(%267, %492, %493) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %495 = "phi_dt.memcpy.gpu"(%80, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %496 = "phi_dt.memcpy.gpu"(%19, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %497 = "phi_dt.memcpy.gpu"(%49, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %498 = "phi_dt.memcpy.gpu"(%252, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_90, %out1_91, %out2_92 = "phi_gpu.batch_norm_infer.float32.any"(%267, %494, %495, %496, %497, %498) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %499 = "phi_gpu.relu.float32.any"(%267, %out0_90) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %500 = "phi_dt.memcpy.gpu"(%214, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %501 = "phi_gpu.conv2d_infer.float32.any"(%267, %499, %500) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %502 = "phi_dt.memcpy.gpu"(%70, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %503 = "phi_dt.memcpy.gpu"(%166, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %504 = "phi_dt.memcpy.gpu"(%102, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %505 = "phi_dt.memcpy.gpu"(%147, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_93, %out1_94, %out2_95 = "phi_gpu.batch_norm_infer.float32.any"(%267, %501, %502, %503, %504, %505) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %506 = "phi_gpu.relu.float32.any"(%267, %out0_93) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %507 = "phi_dt.memcpy.gpu"(%233, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %508 = "phi_gpu.conv2d_infer.float32.any"(%267, %506, %507) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %509 = "phi_dt.memcpy.gpu"(%66, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %510 = "phi_dt.memcpy.gpu"(%94, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %511 = "phi_dt.memcpy.gpu"(%39, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %512 = "phi_dt.memcpy.gpu"(%163, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_96, %out1_97, %out2_98 = "phi_gpu.batch_norm_infer.float32.any"(%267, %508, %509, %510, %511, %512) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %513 = "phi_gpu.add_raw.float32.any"(%267, %out0_96, %492) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %514 = "phi_gpu.relu.float32.any"(%267, %513) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %515 = "phi_dt.memcpy.gpu"(%124, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %516 = "phi_gpu.conv2d_infer.float32.any"(%267, %514, %515) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %517 = "phi_dt.memcpy.gpu"(%256, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %518 = "phi_dt.memcpy.gpu"(%265, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %519 = "phi_dt.memcpy.gpu"(%31, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %520 = "phi_dt.memcpy.gpu"(%209, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_99, %out1_100, %out2_101 = "phi_gpu.batch_norm_infer.float32.any"(%267, %516, %517, %518, %519, %520) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %521 = "phi_gpu.relu.float32.any"(%267, %out0_99) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %522 = "phi_dt.memcpy.gpu"(%16, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %523 = "phi_gpu.conv2d_infer.float32.any"(%267, %521, %522) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %524 = "phi_dt.memcpy.gpu"(%139, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %525 = "phi_dt.memcpy.gpu"(%248, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %526 = "phi_dt.memcpy.gpu"(%96, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %527 = "phi_dt.memcpy.gpu"(%181, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_102, %out1_103, %out2_104 = "phi_gpu.batch_norm_infer.float32.any"(%267, %523, %524, %525, %526, %527) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %528 = "phi_gpu.relu.float32.any"(%267, %out0_102) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %529 = "phi_dt.memcpy.gpu"(%211, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %530 = "phi_gpu.conv2d_infer.float32.any"(%267, %528, %529) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %531 = "phi_dt.memcpy.gpu"(%260, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %532 = "phi_dt.memcpy.gpu"(%78, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %533 = "phi_dt.memcpy.gpu"(%56, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %534 = "phi_dt.memcpy.gpu"(%58, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_105, %out1_106, %out2_107 = "phi_gpu.batch_norm_infer.float32.any"(%267, %530, %531, %532, %533, %534) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %535 = "phi_gpu.add_raw.float32.any"(%267, %out0_105, %514) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %536 = "phi_gpu.relu.float32.any"(%267, %535) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %537 = "phi_dt.memcpy.gpu"(%24, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %538 = "phi_gpu.conv2d_infer.float32.any"(%267, %536, %537) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %539 = "phi_dt.memcpy.gpu"(%76, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %540 = "phi_dt.memcpy.gpu"(%156, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %541 = "phi_dt.memcpy.gpu"(%238, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %542 = "phi_dt.memcpy.gpu"(%0, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_108, %out1_109, %out2_110 = "phi_gpu.batch_norm_infer.float32.any"(%267, %538, %539, %540, %541, %542) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %543 = "phi_gpu.relu.float32.any"(%267, %out0_108) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %544 = "phi_dt.memcpy.gpu"(%26, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %545 = "phi_gpu.conv2d_infer.float32.any"(%267, %543, %544) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %546 = "phi_dt.memcpy.gpu"(%10, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %547 = "phi_dt.memcpy.gpu"(%161, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %548 = "phi_dt.memcpy.gpu"(%116, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %549 = "phi_dt.memcpy.gpu"(%188, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_111, %out1_112, %out2_113 = "phi_gpu.batch_norm_infer.float32.any"(%267, %545, %546, %547, %548, %549) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %550 = "phi_gpu.relu.float32.any"(%267, %out0_111) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %551 = "phi_dt.memcpy.gpu"(%27, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %552 = "phi_gpu.conv2d_infer.float32.any"(%267, %550, %551) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %553 = "phi_dt.memcpy.gpu"(%52, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %554 = "phi_dt.memcpy.gpu"(%208, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %555 = "phi_dt.memcpy.gpu"(%140, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %556 = "phi_dt.memcpy.gpu"(%264, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_114, %out1_115, %out2_116 = "phi_gpu.batch_norm_infer.float32.any"(%267, %552, %553, %554, %555, %556) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %557 = "phi_gpu.add_raw.float32.any"(%267, %out0_114, %536) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %558 = "phi_gpu.relu.float32.any"(%267, %557) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %559 = "phi_dt.memcpy.gpu"(%46, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %560 = "phi_gpu.conv2d_infer.float32.any"(%267, %558, %559) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %561 = "phi_dt.memcpy.gpu"(%258, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %562 = "phi_dt.memcpy.gpu"(%9, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %563 = "phi_dt.memcpy.gpu"(%5, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %564 = "phi_dt.memcpy.gpu"(%169, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_117, %out1_118, %out2_119 = "phi_gpu.batch_norm_infer.float32.any"(%267, %560, %561, %562, %563, %564) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %565 = "phi_gpu.relu.float32.any"(%267, %out0_117) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %566 = "phi_dt.memcpy.gpu"(%247, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %567 = "phi_gpu.conv2d_infer.float32.any"(%267, %565, %566) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %568 = "phi_dt.memcpy.gpu"(%177, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %569 = "phi_dt.memcpy.gpu"(%255, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %570 = "phi_dt.memcpy.gpu"(%253, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %571 = "phi_dt.memcpy.gpu"(%193, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_120, %out1_121, %out2_122 = "phi_gpu.batch_norm_infer.float32.any"(%267, %567, %568, %569, %570, %571) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %572 = "phi_gpu.relu.float32.any"(%267, %out0_120) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %573 = "phi_dt.memcpy.gpu"(%178, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %574 = "phi_gpu.conv2d_infer.float32.any"(%267, %572, %573) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %575 = "phi_dt.memcpy.gpu"(%47, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %576 = "phi_dt.memcpy.gpu"(%201, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %577 = "phi_dt.memcpy.gpu"(%48, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %578 = "phi_dt.memcpy.gpu"(%249, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_123, %out1_124, %out2_125 = "phi_gpu.batch_norm_infer.float32.any"(%267, %574, %575, %576, %577, %578) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %579 = "phi_gpu.add_raw.float32.any"(%267, %out0_123, %558) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %580 = "phi_gpu.relu.float32.any"(%267, %579) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %581 = "phi_dt.memcpy.gpu"(%104, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %582 = "phi_gpu.conv2d_infer.float32.any"(%267, %580, %581) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %583 = "phi_dt.memcpy.gpu"(%164, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %584 = "phi_dt.memcpy.gpu"(%217, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %585 = "phi_dt.memcpy.gpu"(%110, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %586 = "phi_dt.memcpy.gpu"(%141, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_126, %out1_127, %out2_128 = "phi_gpu.batch_norm_infer.float32.any"(%267, %582, %583, %584, %585, %586) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %587 = "phi_gpu.relu.float32.any"(%267, %out0_126) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %588 = "phi_dt.memcpy.gpu"(%235, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %589 = "phi_gpu.conv2d_infer.float32.any"(%267, %587, %588) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %590 = "phi_dt.memcpy.gpu"(%137, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %591 = "phi_dt.memcpy.gpu"(%125, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %592 = "phi_dt.memcpy.gpu"(%224, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %593 = "phi_dt.memcpy.gpu"(%35, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_129, %out1_130, %out2_131 = "phi_gpu.batch_norm_infer.float32.any"(%267, %589, %590, %591, %592, %593) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %594 = "phi_gpu.relu.float32.any"(%267, %out0_129) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %595 = "phi_dt.memcpy.gpu"(%234, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %596 = "phi_gpu.conv2d_infer.float32.any"(%267, %594, %595) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %597 = "phi_dt.memcpy.gpu"(%227, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %598 = "phi_dt.memcpy.gpu"(%55, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %599 = "phi_dt.memcpy.gpu"(%123, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %600 = "phi_dt.memcpy.gpu"(%23, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_132, %out1_133, %out2_134 = "phi_gpu.batch_norm_infer.float32.any"(%267, %596, %597, %598, %599, %600) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %601 = "phi_dt.memcpy.gpu"(%28, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %602 = "phi_gpu.conv2d_infer.float32.any"(%267, %580, %601) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [2 : i32, 2 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %603 = "phi_dt.memcpy.gpu"(%187, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %604 = "phi_dt.memcpy.gpu"(%36, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %605 = "phi_dt.memcpy.gpu"(%41, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %606 = "phi_dt.memcpy.gpu"(%250, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_135, %out1_136, %out2_137 = "phi_gpu.batch_norm_infer.float32.any"(%267, %602, %603, %604, %605, %606) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %607 = "phi_gpu.add_raw.float32.any"(%267, %out0_132, %out0_135) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %608 = "phi_gpu.relu.float32.any"(%267, %607) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %609 = "phi_dt.memcpy.gpu"(%64, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %610 = "phi_gpu.conv2d_infer.float32.any"(%267, %608, %609) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %611 = "phi_dt.memcpy.gpu"(%1, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %612 = "phi_dt.memcpy.gpu"(%122, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %613 = "phi_dt.memcpy.gpu"(%118, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %614 = "phi_dt.memcpy.gpu"(%220, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_138, %out1_139, %out2_140 = "phi_gpu.batch_norm_infer.float32.any"(%267, %610, %611, %612, %613, %614) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %615 = "phi_gpu.relu.float32.any"(%267, %out0_138) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %616 = "phi_dt.memcpy.gpu"(%203, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %617 = "phi_gpu.conv2d_infer.float32.any"(%267, %615, %616) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %618 = "phi_dt.memcpy.gpu"(%237, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %619 = "phi_dt.memcpy.gpu"(%120, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %620 = "phi_dt.memcpy.gpu"(%212, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %621 = "phi_dt.memcpy.gpu"(%92, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_141, %out1_142, %out2_143 = "phi_gpu.batch_norm_infer.float32.any"(%267, %617, %618, %619, %620, %621) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %622 = "phi_gpu.relu.float32.any"(%267, %out0_141) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %623 = "phi_dt.memcpy.gpu"(%32, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %624 = "phi_gpu.conv2d_infer.float32.any"(%267, %622, %623) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %625 = "phi_dt.memcpy.gpu"(%244, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %626 = "phi_dt.memcpy.gpu"(%59, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %627 = "phi_dt.memcpy.gpu"(%183, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %628 = "phi_dt.memcpy.gpu"(%228, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_144, %out1_145, %out2_146 = "phi_gpu.batch_norm_infer.float32.any"(%267, %624, %625, %626, %627, %628) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %629 = "phi_gpu.add_raw.float32.any"(%267, %out0_144, %608) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %630 = "phi_gpu.relu.float32.any"(%267, %629) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %632 = "phi_gpu.conv2d_infer.float32.any"(%267, %630, %631) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %633 = "phi_dt.memcpy.gpu"(%119, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %634 = "phi_dt.memcpy.gpu"(%103, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %635 = "phi_dt.memcpy.gpu"(%18, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %636 = "phi_dt.memcpy.gpu"(%45, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_147, %out1_148, %out2_149 = "phi_gpu.batch_norm_infer.float32.any"(%267, %632, %633, %634, %635, %636) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %637 = "phi_gpu.relu.float32.any"(%267, %out0_147) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %638 = "phi_dt.memcpy.gpu"(%246, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %639 = "phi_gpu.conv2d_infer.float32.any"(%267, %637, %638) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [1 : i32, 1 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %640 = "phi_dt.memcpy.gpu"(%148, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %641 = "phi_dt.memcpy.gpu"(%232, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %642 = "phi_dt.memcpy.gpu"(%221, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %643 = "phi_dt.memcpy.gpu"(%62, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_150, %out1_151, %out2_152 = "phi_gpu.batch_norm_infer.float32.any"(%267, %639, %640, %641, %642, %643) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %644 = "phi_gpu.relu.float32.any"(%267, %out0_150) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %645 = "phi_dt.memcpy.gpu"(%132, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %646 = "phi_gpu.conv2d_infer.float32.any"(%267, %644, %645) {data_format = "NCHW", dilations = [1 : i32, 1 : i32], groups = 1 : si32, padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %647 = "phi_dt.memcpy.gpu"(%215, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %648 = "phi_dt.memcpy.gpu"(%90, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %649 = "phi_dt.memcpy.gpu"(%33, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %650 = "phi_dt.memcpy.gpu"(%223, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %out0_153, %out1_154, %out2_155 = "phi_gpu.batch_norm_infer.float32.any"(%267, %646, %647, %648, %649, %650) {data_layout = "NCHW", epsilon = 9.99999974E-6 : f32, momentum = 0.899999976 : f32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>)
+    %651 = "phi_gpu.add_raw.float32.any"(%267, %out0_153, %630) {axis = -1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %652 = "phi_gpu.relu.float32.any"(%267, %651) : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %653 = "phi_gpu.pool2d.float32.any"(%267, %652) {adaptive = true, ceil_mode = false, data_format = "NCHW", exclusive = true, global_pooling = false, ksize = [1 : i32, 1 : i32], padding_algorithm = "EXPLICIT", paddings = [0 : i32, 0 : i32], pooling_type = "avg", strides = [1 : i32, 1 : i32]} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %654 = "phi_gpu.flatten.float32.any"(%267, %653) {start_axis = 1 : si32, stop_axis = 3 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %655 = "phi_dt.memcpy.gpu"(%245, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %656 = "phi_gpu.matmul.float32.any"(%267, %654, %655) {trans_x = false, trans_y = false} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %657 = "phi_dt.memcpy.gpu"(%30, %267) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %658 = "phi_gpu.add_raw.float32.any"(%267, %656, %657) {axis = 1 : si32} : (!phi.context<GPU>, !infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    infrt.return %658 : !infrt.dense_tensor<GPU, FP32, NCHW>
+  }
+
+  func @main() {
+    %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
+    %1 = "phi_dt.create_inited_dense_tensor.cpu.f32" (%ctx) {value = 12.0 : f32, layout=#infrt.layout<NCHW>, lod=[1:i64], dims=[1, 3, 256, 256]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
+    %map = phi_dt.load_combined_params(){model_path="@CMAKE_BINARY_DIR@/models/resnet50/model.pdmodel",params_path="@CMAKE_BINARY_DIR@/models/resnet50/model.pdiparams"}
+    %2 = infrt.call@main_graph(%map, %1) : (!phi.dense_tensor_map, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %4 = "phi_dt.create_context.gpu"() : () -> !phi.context<GPU>
+    %5 = "phi_dt.memcpy.gpu"(%2, %4) {d2h = true}:(!infrt.dense_tensor<GPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    phi_dt.print_tensor (%5 : !infrt.dense_tensor<CPU, FP32, NCHW>)
+    infrt.return
+  }
+}
