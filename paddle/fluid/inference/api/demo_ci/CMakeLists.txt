@@ -210,41 +210,47 @@ endif()
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
 if(WIN32)
+  if("${CMAKE_GENERATOR}" MATCHES "Ninja")
+    set(LIB_PATH ${CMAKE_BINARY_DIR})
+  else()
+    set(LIB_PATH ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+  endif()
+
   if(USE_TENSORRT)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_SHARED_LIBRARY_SUFFIX}
-              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+              ${LIB_PATH}
             COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
-              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+              ${LIB_PATH}
     )
     if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
       add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
               COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_SHARED_LIBRARY_SUFFIX}
-                ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+                ${LIB_PATH})
     endif()
   endif()
   if(WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll ${CMAKE_BINARY_DIR}
-          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll ${CMAKE_BINARY_DIR}
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll  ${CMAKE_BINARY_DIR}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll ${LIB_PATH}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll ${LIB_PATH}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll  ${LIB_PATH}
     )
   else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}
+          COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${LIB_PATH}
     )
   endif()
   if(WITH_ONNXRUNTIME)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.dll
-      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+      ${LIB_PATH}
     COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib/paddle2onnx.dll
-      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+      ${LIB_PATH}
     )
   endif()
   if(NOT WITH_STATIC_LIB)
       add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
-        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${CMAKE_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${LIB_PATH}
       )
   endif()
 endif()

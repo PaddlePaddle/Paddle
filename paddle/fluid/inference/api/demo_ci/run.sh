@@ -124,7 +124,7 @@ for WITH_STATIC_LIB in ON OFF; do
       -DCUDA_LIB="$CUDA_LIB"
     ninja
     for use_gpu in $use_gpu_list; do
-      simple_on_word2vec.exe \
+      ./simple_on_word2vec.exe \
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
@@ -147,7 +147,7 @@ for WITH_STATIC_LIB in ON OFF; do
     ninja
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
-        vis_demo.exe \
+        ./vis_demo.exe \
           --modeldir=$DATA_DIR/$vis_demo_name/model \
           --data=$DATA_DIR/$vis_demo_name/data.txt \
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
@@ -174,7 +174,7 @@ for WITH_STATIC_LIB in ON OFF; do
         -DCMAKE_BUILD_TYPE=Release \
         -DCUDA_LIB="$CUDA_LIB"
       ninja
-      trt_mobilenet_demo.exe \
+      ./trt_mobilenet_demo.exe \
         --modeldir=$DATA_DIR/mobilenet/model \
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
