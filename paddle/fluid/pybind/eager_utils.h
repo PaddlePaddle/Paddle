@@ -36,6 +36,7 @@ bool PyObject_CheckStr(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
+size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
@@ -50,14 +51,17 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                                ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
+std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
+    PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
-PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
+PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
@@ -69,12 +73,15 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
+PyObject* ToPyObject(const std::vector<size_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
+PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
+PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);

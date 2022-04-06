@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
@@ -206,6 +207,54 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
     dz->share_meta(z);
   }
 }
+void GeneralQuaternaryGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& z,
+                                    const MetaTensor& k,
+                                    MetaTensor* dx,
+                                    MetaTensor* dy,
+                                    MetaTensor* dz,
+                                    MetaTensor* dk) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+}
+
+void GeneralQuinaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 const MetaTensor& k,
+                                 const MetaTensor& l,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz,
+                                 MetaTensor* dk,
+                                 MetaTensor* dl) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dl) {
+    dl->share_meta(l);
+  }
+}
 
 void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
   if (dx) {
@@ -243,6 +292,20 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
+                           const std::vector<MetaTensor*>& outputs_grad,
+                           std::vector<MetaTensor*> inputs_grad) {
+  PADDLE_ENFORCE_GT(outputs_grad.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "Number of Inputs(Out@Grad) should be larger than 1."
+                        "But received Inputs(Out@Grad)' size = %d .",
+                        outputs_grad.size()));
+  for (size_t i = 0; i < inputs.size(); i++) {
+    inputs_grad[i]->share_meta(*inputs[i]);
+  }
 }
 
 void NllLossGradInferMeta(const MetaTensor& x,
@@ -340,6 +403,12 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
+  dx->set_dims(out_grad.dims());
+  dx->set_dtype(dtype::ToComplex(out_grad.dtype()));
+  dx->set_layout(out_grad.layout());
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
@@ -372,6 +441,47 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad) {
+  auto dy_dim = out_grad.dims();
+  int rank = dy_dim.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+
+  if (axis < 0) axis += rank;
+  PADDLE_ENFORCE_LE(
+      x_grad.size(),
+      static_cast<size_t>(dy_dim[axis]),
+      phi::errors::InvalidArgument(
+          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "at axis, but received outputs size is:%d, dy dims is:%d.",
+          x_grad.size(),
+          static_cast<size_t>(dy_dim[axis])));
+
+  auto vec = phi::vectorize<int>(dy_dim);
+  vec.erase(vec.begin() + axis);
+
+  for (size_t i = 0; i < x_grad.size(); ++i) {
+    x_grad[i]->set_dims(phi::make_ddim(vec));
+    x_grad[i]->set_dtype(out_grad.dtype());
   }
 }
 
