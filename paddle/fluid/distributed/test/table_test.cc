@@ -14,19 +14,19 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
-#include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
+//#include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
 
 namespace paddle {
 namespace distributed {
 
 TEST(Table, Initialize) {
   TableParameter table_config;
-  table_config.set_table_class("SparseGeoTable");
+  table_config.set_table_class("MemoryDenseTable");
   FsClientParameter fs_config;
   // case 1. no accessor
-  Table *table = new SparseGeoTable();
-  auto ret = table->initialize(table_config, fs_config);
+  Table *table = new MemoryDenseTable();
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, -1);
 }
 }  // namespace distributed
