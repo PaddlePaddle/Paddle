@@ -67,7 +67,7 @@ message(STATUS "Build with HOST_SYSROOT=" ${HOST_SYSROOT})
 message(STATUS "Build with HOST_CXX=" ${HOST_CXX})
 message(STATUS "Build with HOST_AR=" ${HOST_AR})
 
-macro(compile_kernel COMPILE_ARGS)
+macro(build_kernel COMPILE_ARGS)
   set(options "")
   set(oneValueArgs "")
   set(multiValueArgs KERNEL DIRPATH XNAME DEVICE HOST XPU DEPENDS)
@@ -75,24 +75,6 @@ macro(compile_kernel COMPILE_ARGS)
   set(kernel_path ${xpu_add_library_DIRPATH})
   set(kernel_name ${xpu_add_library_XNAME})
   set(device_o_extra_flags ${xpu_add_library_DEVICE})
-
-  set(cc_depends ${xpu_add_library_DEPENDS})
-
-  set(kernel_target ${kernel_name}_kernel)
-  add_custom_target(${kernel_target}
-    WORKING_DIRECTORY
-      ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS
-      ${kernel_name}.o
-      ${kernel_name}.device.bin.o
-    COMMENT
-      ${kernel_target}
-    VERBATIM
-    )
-
-  if(cc_depends)
-    add_dependencies(${kernel_target} ${xpu_add_library_DEPENDS})
-  endif()
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
@@ -130,8 +112,7 @@ macro(compile_kernel COMPILE_ARGS)
     VERBATIM
     )
 
-    list(APPEND xpu_kernel_depends ${kernel_name}.device.bin.o)
-    list(APPEND xpu_kernel_depends ${kernel_name}.o)
+    list(APPEND xpu_kernel_depends ${kernel_name}.device.bin.o ${kernel_name}.o)
 endmacro()
 
 ###############################################################################
@@ -156,6 +137,7 @@ macro(xpu_add_library TARGET_NAME)
     # Distinguish .xpu file from other files
     foreach(cur_xpu_src IN LISTS xpu_srcs_lists)
       get_filename_component(language_type_name ${cur_xpu_src} EXT)
+      # TODO set(target_kernel_lists $<IF:$<STREQUAL:${language_type_name},".kps">:xpu_kernel_lists, cc_kernel_lists>)
       if(${language_type_name} STREQUAL ".kps")
         list(APPEND xpu_kernel_lists ${cur_xpu_src})
       else()
@@ -172,36 +154,15 @@ macro(xpu_add_library TARGET_NAME)
             get_filename_component(kernel_name ${xpu_kernel} NAME_WE)
             get_filename_component(kernel_dir ${xpu_kernel} DIRECTORY)
             set(kernel_name ${kernel_name})
-            compile_kernel( KERNEL ${xpu_kernel} DIRPATH ${kernel_dir} XNAME ${kernel_name} DEVICE ${XPU1_DEVICE_O_EXTRA_FLAGS} HOST ${XPU1_HOST_O_EXTRA_FLAGS} XPU "xpu2" DEPENDS ${cc_srcs_depends})
+            build_kernel( KERNEL ${xpu_kernel} DIRPATH ${kernel_dir} XNAME ${kernel_name} DEVICE ${XPU1_DEVICE_O_EXTRA_FLAGS} HOST ${XPU1_HOST_O_EXTRA_FLAGS} XPU "xpu2" DEPENDS ${cc_srcs_depends})
         endforeach()
 
-        add_custom_target(${xpu_target}_src ALL
-            WORKING_DIRECTORY
-                ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS
-                ${xpu_kernel_depends}
-                ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
-            COMMENT
-                ${xpu_target}_src
-            VERBATIM
-            )
-
-        add_custom_command(
-            OUTPUT
-            ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
-            COMMAND
-                ${HOST_AR} rcs ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a ${xpu_kernel_depends}
-            WORKING_DIRECTORY
-                ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS
-                ${xpu_kernel_depends}
-            COMMENT
-                ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a
-            VERBATIM
-            )
+        set(xpu_kernels_and_wrappers ${xpu_kernel_depends})
+        add_library(${xpu_target}_xpu STATIC ${xpu_kernels_and_wrappers})
+        set_source_files_properties(${xpu_kernels_and_wrappers} PROPERTIES EXTERNAL_OBJECT true GENERATED true)
 
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
-        add_dependencies(${xpu_target} ${xpu_target}_src)
+        add_dependencies(${xpu_target} ${xpu_target}_xpu)
         target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a)
     else()
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
