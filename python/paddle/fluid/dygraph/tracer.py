@@ -40,12 +40,12 @@ final_state_name_mapping = {
         "x": "X",
         "out": "Out",
     },
-    "pool2d": {
-        "final_op_name": "final_state_pool2d",
-        "x": "X",
-        "kernel_size": "ksize",
-        "out": "Out",
-    },
+    # "pool2d": {
+    #     "final_op_name": "final_state_pool2d",
+    #     "x": "X",
+    #     "kernel_size": "ksize",
+    #     "out": "Out",
+    # },
     "abs": {
         "final_op_name": "final_state_abs",
         "x": "X",
@@ -64,12 +64,12 @@ final_state_name_mapping = {
         "axis2": "axis2",
         "out": "Out",
     },
-    "one_hot": {
-        "final_op_name": "final_state_one_hot",
-        "x": "X",
-        "num_class": "depth",
-        "out": "Out",
-    }
+    # "one_hot": {
+    #     "final_op_name": "final_state_one_hot",
+    #     "x": "X",
+    #     "num_class": "depth",
+    #     "out": "Out",
+    # }
 }
 
 
