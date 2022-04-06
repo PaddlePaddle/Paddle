@@ -292,6 +292,15 @@
   kernel :
     func : cumprod_grad
 
+- backward_api : cumsum_grad
+  forward : cumsum(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  args : (Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
+
 - backward_api : depthwise_conv2d_transpose_grad
   forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
   args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -784,6 +793,16 @@
     param: [x, y]
   kernel :
     func : maximum_grad
+
+- backward_api : mean_all_grad
+  forward : mean_all(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : mean_all_grad
 
 - backward_api : mean_grad
   forward: mean (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
