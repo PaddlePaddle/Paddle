@@ -1859,6 +1859,16 @@
     func : unfold
   backward : unfold_grad
 
+# The `axis` argument of Python API paddle.unique is not vector
+- api : unique
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueInferMeta
+  kernel :
+    func : unique
+    data_type : x
+
 - api : unsqueeze
   args : (Tensor x, IntArray axes)
   output : Tensor(xshape), Tensor(out)
