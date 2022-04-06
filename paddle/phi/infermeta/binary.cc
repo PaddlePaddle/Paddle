@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -751,6 +752,82 @@ void CrossInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
+                                      const MetaTensor& label,
+                                      bool soft_label,
+                                      bool use_softmax,
+                                      bool numeric_stable_mode,
+                                      int ignore_index,
+                                      int axis,
+                                      MetaTensor* softmax,
+                                      MetaTensor* loss,
+                                      MetaConfig config) {
+  auto logits_dims = logits.dims();
+  auto labels_dims = label.dims();
+  auto logits_rank = logits_dims.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -logits_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+  PADDLE_ENFORCE_LT(axis,
+                    logits_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+
+  axis = phi::funcs::CanonicalAxis(axis, logits_rank);
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[i],
+                          labels_dims[i],
+                          phi::errors::InvalidArgument(
+                              "Input(Logits) and Input(Label) should in "
+                              "same shape in dimensions except axis."));
+      }
+    }
+  }
+
+  if (axis != logits_rank - 1) {
+    PADDLE_ENFORCE_EQ(
+        numeric_stable_mode,
+        true,
+        phi::errors::InvalidArgument("Attr(axis) can only be -1 "
+                                     "when not in numeric_stable_mode."));
+  }
+
+  if (soft_label) {
+    if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
+      PADDLE_ENFORCE_EQ(logits_dims[axis],
+                        labels_dims[axis],
+                        phi::errors::InvalidArgument(
+                            "If Attr(soft_label) == true,  "
+                            "the axis dimension of "
+                            "Input(X) and Input(Label) should be equal."));
+    }
+  } else {
+    if (config.is_runtime || labels_dims[axis] > 0) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[axis],
+          1UL,
+          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                       "the axis dimension of "
+                                       "Input(Label) should be 1."));
+    }
+  }
+
+  softmax->set_dims(logits_dims);
+  softmax->set_dtype(logits.dtype());
+
+  logits_dims[axis] = 1;
+  loss->set_dims(logits_dims);
+  loss->set_dtype(logits.dtype());
+
+  softmax->share_lod(logits);
+  loss->share_lod(logits);
 }
 
 void DistInferMeta(const MetaTensor& x,

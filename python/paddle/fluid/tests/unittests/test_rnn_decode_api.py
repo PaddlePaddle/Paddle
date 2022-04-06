@@ -716,7 +716,6 @@ class TestBeamSearch(ModuleApiTest):
     def func_check_output(self):
         self.setUp()
         self.make_inputs()
-        self.make_inputs()
         self.check_output()
 
     def test_check_output(self):
