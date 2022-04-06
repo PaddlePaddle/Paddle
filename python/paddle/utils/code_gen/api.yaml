@@ -454,6 +454,15 @@
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
 
+- api : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
+
 - api : diag
   args : (Tensor x, int offset, float padding_value)
   output : Tensor
@@ -597,6 +606,16 @@
   kernel :
     func : erfinv
   backward : erfinv_grad
+
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
 
 # expand_as
 - api : expand_as

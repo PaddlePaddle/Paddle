@@ -1577,7 +1577,10 @@ def det(x, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_det(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
