@@ -61,7 +61,7 @@ def topo_path(xs, ys, block=None):
                 def_vars.append(op)
     if len(sink_ops) != len(ys):
         not_reachable = (var for var in ys if var not in sink_ops)
-        raise f'Output vars: {' '.join(not_reachable)} are not reachable from inputs.'
+        raise f"Output vars: {' '.join(not_reachable)} are not reachable from inputs."
     return path
 
 
@@ -86,6 +86,9 @@ class Transform(object):
 
     def set_dot2bar(self, dot, bar):
         self.dot2bar[dot] = bar
+
+    def check_dot(self, x):
+        return x in self.var2dot.values()
 
     def lower2prim(self):
         pass
@@ -125,7 +128,7 @@ class Transform(object):
         map(self.set_var2dot, xs, xs_dot)
         for op in topo_path(xs, ys):
             xs_dot = list(map(self.get_var2dot, get_input_vars(op)))
-            ys_dot = _jvp(op, *xs_dot)
+            ys_dot = _jvp(op,  *xs_dot)
             map(self.set_var2dot, op.get_output_vars(op), ys_dot)
         
         ys_dot = map(self.get_var2dot, ys)
@@ -133,18 +136,18 @@ class Transform(object):
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
         if ys_bar is None:
-            ys_bar = list(map(make_varlike, ys))
+            ys_bar = list(map(make_varlike, ys_dot))
         else:
             assert len(ys_dot) == len(ys_bar)
             for y_dot, y_bar in zip(ys_dot, ys_bar):
                 assert y_dot.shape == y_bar.shape
                 assert y_dot.dtype == y_bar.dtype
         
-        map(set_dot2bar, ys_dot, ys_bar)
+        map(self.set_dot2bar, ys_dot, ys_bar)
         for op in reversed(topo_path(xs_dot, ys_dot)):
             ys_bar = list(map(self.get_dot2bar, get_output_vars(op)))
-            xs_bar = _transpose(op, *ys_bar)
-            map(self.set_dot2bar, get_input_vars(), xs_bar)
+            xs_bar = _transpose(op, self.check_dot, *ys_bar)
+            map(self.set_dot2bar, op.get_input_vars(), xs_bar)
         if not retain_fwd:
             for op in topo_path(xs_dot, ys_dot):
                 block = op.block

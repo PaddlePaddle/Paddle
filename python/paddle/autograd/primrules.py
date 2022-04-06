@@ -42,9 +42,9 @@ def _jvp(op, *args):
     _jvprule = _primop_jvp.lookup(op.type)
     return _jvprule(op, *args)
 
-def _transpose(op, *args):
+def _transpose(op, dot_checker, *args):
     _transposerule = _primop_transpose.lookup(op.type)
-    return _transposerule(op, *args)
+    return _transposerule(op, dot_checker, *args)
 
 
 def REGISTER_JVP(op_type):
@@ -80,9 +80,9 @@ def REGISTER_TRANSPOSE(op_type):
     """
     assert isinstance(op_type, str)
     def wrapper(f):
-        def _transpose(op, *args, **kwargs): 
+        def _transpose(op, dot_checker, *args, **kwargs): 
             assert op.type == op_type
-            return f(op, *args, **kwargs)
+            return f(op, dot_checker, *args, **kwargs)
         _primop_transpose.register(op_type, _transpose)
 
     return wrapper
@@ -209,22 +209,22 @@ def scatter_add_jvp(op, x_dot, y_dot):
 ## Register transpose rules
 
 @REGISTER_TRANSPOSE('add_p')
-def add_transpose(op, z_bar):
+def add_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot and y.is_dot
+    assert check_dot(x) and check_dot(y)
     return z_bar, z_bar
 
 
-def sub_transpose(op, z_bar):
+def sub_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot and y.is_dot
+    assert check_dot(x) and check_dot(y)
     return z_bar, neg(z_bar)
 
 
 @REGISTER_TRANSPOSE('mul_p')
-def mul_transpose(op, z_bar):
+def mul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot ^ y.is_dot
+    assert check_dot(x) ^ check_dot(y)
     if x.is_dot:
         return mul(z_bar, y), None
     else:
@@ -232,23 +232,23 @@ def mul_transpose(op, z_bar):
 
 
 @REGISTER_TRANSPOSE('div_p')
-def div_transpose(op, z_bar):
+def div_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot and not y.is_dot
+    assert check_dot(x) and not check_dot(y)
     return div(z_bar, y), None
 
 
 @REGISTER_TRANSPOSE('reshape_p')
-def reshape_transpose(op, y_bar):
+def reshape_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     return reshape(y_bar, shape=x.shape)
 
 
 @REGISTER_TRANSPOSE('broadcast_p')
-def broadcast_transpose(op, y_bar):
+def broadcast_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     bat = len(y_bar.shape) - len(x.shape)
     axis = list(range(bat))
     keepdim = [(bat + i) for i, s in enumerate(x.shape) if s == 1]
@@ -257,9 +257,9 @@ def broadcast_transpose(op, y_bar):
 
 
 @REGISTER_TRANSPOSE('transpose_p')
-def transpose_transpose(op, y_bar):
+def transpose_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     axis = op.attr('axis')
     reordered = sorted((k, i) for i, k in enumerate(axis))
     axis = [i for k, i in reordered]
@@ -267,26 +267,26 @@ def transpose_transpose(op, y_bar):
 
 
 @REGISTER_TRANSPOSE('split_p')
-def split_transpose(op, ys_bar):
+def split_transpose(op, check_dot,  ys_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     return concat(ys_bar, axis=op.attr('axis'))
 
 
 @REGISTER_TRANSPOSE('concat_p')
-def concat_transpose(op, y_bar):
+def concat_transpose(op, check_dot, y_bar):
     xs = get_input_vars(op)
     for x in xs:
-        assert x.is_dot
+        assert check_dot(x)
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
     return split(y_bar, sections=sections, axis=axis)
 
 
 @REGISTER_TRANSPOSE('reduce_p')
-def reduce_transpose(op, y_bar):
+def reduce_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     shape = x.shape
     for i in op.attr('axis'):
         shape[i] = 1
@@ -295,9 +295,9 @@ def reduce_transpose(op, y_bar):
 
 
 @REGISTER_TRANSPOSE('matmul_p')
-def matmul_transpose(op, z_bar):
+def matmul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot ^ y.is_dot
+    assert check_dot(x) ^ check_dot(y)
     if x.is_dot:
         return matmul(z_bar, transpose(y)), None
     else:
@@ -305,32 +305,32 @@ def matmul_transpose(op, z_bar):
 
 
 @REGISTER_TRANSPOSE('slice_select_p')
-def slice_select_transpose(op, y_bar):
+def slice_select_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     zeros = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
     return slice_assign(zeros, y_bar, **op.all_attrs())
 
 
 @REGISTER_TRANSPOSE('slice_assign_p')
-def slice_assign_transpose(op, z_bar):
+def slice_assign_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert x.is_dot and y.is_dot
+    assert check_dot(x) and check_dot(y)
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
     return slice_assign(z_bar, zeros, **op.all_attrs()), slice_select(z_bar, **op.all_attrs())
 
 
 @REGISTER_TRANSPOSE('gather_p')
-def gather_transpose(op, y_bar):
+def gather_transpose(op, check_dot, y_bar):
     x, indextensor = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     return scatter_add(y_bar, indextensor, **op.all_attrs())
 
 
 @REGISTER_TRANSPOSE('scatter_add_p')
-def scatter_add_transpose(op, y_bar):
+def scatter_add_transpose(op, check_dot, y_bar):
     x, indextensor = get_input_vars(op)
-    assert x.is_dot
+    assert check_dot(x)
     return gather(y_bar, indextensor, **op.all_attrs())
 
 
