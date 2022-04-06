@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_HETERPS
+
+#if defined(PADDLE_WITH_CUDA)
 #include <curand_kernel.h>
+#endif
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-
-#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -133,6 +135,7 @@ class Optimizer {
                 grad.show);  // for local test
     }
   }
+
 #endif
 };
 

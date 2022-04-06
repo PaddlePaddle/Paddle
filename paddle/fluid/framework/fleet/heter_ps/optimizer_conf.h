@@ -36,21 +36,21 @@ __constant__ float mf_max_bound = 10;
 
 #elif defined(PADDLE_WITH_XPU_KP)
 
-float* nonclk_coeff;
-float* clk_coeff;
+__global_ptr__ float* nonclk_coeff;
+__global_ptr__ float* clk_coeff;
 
-float* min_bound;
-float* max_bound;
-float* learning_rate;
-float* initial_g2sum;
-float* initial_range;
+__global_ptr__ float* min_bound;
+__global_ptr__ float* max_bound;
+__global_ptr__ float* learning_rate;
+__global_ptr__ float* initial_g2sum;
+__global_ptr__ float* initial_range;
 
-float* mf_create_thresholds;
-float* mf_learning_rate;
-float* mf_initial_g2sum;
-float* mf_initial_range;
-float* mf_min_bound;
-float* mf_max_bound;
+__global_ptr__ float* mf_create_thresholds;
+__global_ptr__ float* mf_learning_rate;
+__global_ptr__ float* mf_initial_g2sum;
+__global_ptr__ float* mf_initial_range;
+__global_ptr__ float* mf_min_bound;
+__global_ptr__ float* mf_max_bound;
 
 #endif
 }  // namespace optimizer_config
