@@ -360,9 +360,10 @@ def sync_params_buffers(model,
                         is_model_parallel=False):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, ParamBase):
@@ -395,16 +396,6 @@ def sync_params_buffers(model,
             outputs={'Out': origin_vars},
             attrs={'sections': var_len,
                    'axis': 0})
-
-
-@imperative_base.no_grad
-@framework.dygraph_only
-def sync_eager_params(model, comm_group=None, src_rank=0):
-    for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.eager.Tensor):
-            raise TypeError("The data type of '%s' must be '%s'" %
-                            (param.name, core.eager.Tensor))
-        comm_group.broadcast(param, src_rank).synchronize()
 
 
 class DataParallel(layers.Layer):
@@ -574,7 +565,7 @@ class DataParallel(layers.Layer):
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
                  find_unused_parameters=False,
-                 process_group=None):
+                 group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -584,7 +575,7 @@ class DataParallel(layers.Layer):
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
-        self.process_group = process_group
+        self.group = group
         self.var_dtype = core.eager.Tensor if in_dygraph_mode(
         ) else core.VarBase
 
@@ -603,20 +594,18 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-            if self.process_group is None and in_dygraph_mode():
-                raise RuntimeError(
-                    "Process group should be built for DataParallel in eager mode."
-                )
+            if in_dygraph_mode():
+                self.group = paddle.distributed.collective._get_default_group(
+                ) if self.group is None else self.group
+
+                assert isinstance(self.group, paddle.distributed.collective.Group), \
+                    "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
             # TODO(liuyuhui) Currently not support xpu. xpu is 
             # still broadcasting parameters when calling layer
             if not paddle.is_compiled_with_xpu():
-                if in_dygraph_mode():
-                    sync_eager_params(
-                        self._layers, comm_group=self.process_group)
-                elif _in_legacy_dygraph():
-                    sync_params_buffers(self._layers)
+                sync_params_buffers(self._layers)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
@@ -677,7 +666,7 @@ class DataParallel(layers.Layer):
             self._reducer = core.EagerReducer(
                 trainable_parameters,
                 list(reversed(self.group_indices)), is_sparse_gradient,
-                self.process_group,
+                self.group.process_group,
                 [self.last_comm_buffer_size, self.comm_buffer_size],
                 self.find_unused_parameters)
         elif _in_legacy_dygraph():

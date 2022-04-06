@@ -407,10 +407,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
@@ -466,6 +462,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
       param_grad->back().set_name(t.name() + "@GRAD");
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
+    return copied_node;
   }
 
  private:

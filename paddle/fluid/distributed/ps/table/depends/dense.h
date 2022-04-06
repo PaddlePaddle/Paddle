@@ -34,9 +34,9 @@ class DenseOptimizer {
   DenseOptimizer() {}
   explicit DenseOptimizer(const CommonAccessorParameter& accessor,
                           std::vector<std::vector<float>>* values) {}
-  virtual void update(const float* update_values, size_t num, int begin,
+  virtual void Update(const float* update_values, size_t num, int begin,
                       int end) = 0;
-  virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
+  virtual void SetGlobalLR(float* lr) { global_learning_rate_ = lr; }
 
  protected:
   float* global_learning_rate_;
@@ -55,7 +55,7 @@ class DSUM : public DenseOptimizer {
     }
   }
 
-  void update(const float* update_values, size_t num, int begin,
+  void Update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
     GetBlas<float>().VADD(update_numel, update_values + begin, param + begin,
@@ -81,7 +81,7 @@ class DSGD : public DenseOptimizer {
     }
   }
 
-  void update(const float* update_values, size_t num, int begin,
+  void Update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
     std::vector<float> grads;
@@ -99,7 +99,7 @@ class DSGD : public DenseOptimizer {
 };
 
 // adam optimizer for dense tensor
-// TODO(zhaocaibei123): add CHECK(common_dense_table.task_pool_size_) == 1
+// TODO(zhaocaibei123): add CHECK(memory_dense_table.task_pool_size_) == 1
 class DAdam : public DenseOptimizer {
  public:
   explicit DAdam(const CommonAccessorParameter& accessor,
@@ -132,9 +132,9 @@ class DAdam : public DenseOptimizer {
     epsilon = 1.0e-8;
   }
 
-  // make sure common_dense_table.task_pool_size_ == 1;
+  // make sure memory_dense_table.task_pool_size_ == 1;
   // otherwise, task_pool_size_ times beta1_pow/beta2_pow multiplication
-  void update(const float* update_values, size_t num, int begin,
+  void Update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
     std::vector<float> grad, grad2, tmp;
@@ -214,7 +214,7 @@ class DAdamD2Sum : public DenseOptimizer {
     }
   }
 
-  void update(const float* update_values, size_t num, int begin,
+  void Update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
     Eigen::Map<Eigen::MatrixXf> mat_ada_g2sum(ada_g2sum + begin, 1,
@@ -276,7 +276,7 @@ class DSummary : public DenseOptimizer {
     }
   }
 
-  void update(const float* update_values, size_t num, int begin,
+  void Update(const float* update_values, size_t num, int begin,
               int end) override {
     auto update_numel = end - begin;
     Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
