@@ -33,7 +33,7 @@ function update_pd_ops() {
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
    cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j8 paddle_python print_pten_kernels kernel_signature_generator
+   make -j24 paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
    ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
    ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
@@ -94,7 +94,7 @@ function infrt_gen_and_build() {
     # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
-    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
+    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=ON -DWITH_TENSORRT=ON -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DINFRT_WITH_GPU=ON -DINFRT_WITH_TRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
