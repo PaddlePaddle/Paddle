@@ -382,6 +382,7 @@ template std::string GetExternalErrorMsg<cusparseStatus_t>(cusparseStatus_t);
 template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
 template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
 template std::string GetExternalErrorMsg<CUresult>(CUresult);
+template std::string GetExternalErrorMsg<nvjpegStatus_t>(nvjpegStatus_t);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
@@ -468,29 +469,9 @@ inline bool is_error(nvjpegStatus_t stat) {
 }
 
 inline std::string get_nvjpeg_error_str(nvjpegStatus_t stat) {
-  switch (stat) {
-    case NVJPEG_STATUS_SUCCESS:
-      return "NVJPEG_STATUS_SUCCESS";
-    case NVJPEG_STATUS_NOT_INITIALIZED:
-      return "NVJPEG_STATUS_NOT_INITIALIZED";
-    case NVJPEG_STATUS_INVALID_PARAMETER:
-      return "NVJPEG_STATUS_INVALID_PARAMETER";
-    case NVJPEG_STATUS_BAD_JPEG:
-      return "NVJPEG_STATUS_BAD_JPEG";
-    case NVJPEG_STATUS_JPEG_NOT_SUPPORTED:
-      return "NVJPEG_STATUS_JPEG_NOT_SUPPORTED";
-    case NVJPEG_STATUS_ALLOCATOR_FAILURE:
-      return "NVJPEG_STATUS_ALLOCATOR_FAILURE";
-    case NVJPEG_STATUS_EXECUTION_FAILED:
-      return "NVJPEG_STATUS_EXECUTION_FAILED";
-    case NVJPEG_STATUS_ARCH_MISMATCH:
-      return "NVJPEG_STATUS_ARCH_MISMATCH";
-    case NVJPEG_STATUS_INTERNAL_ERROR:
-      return "NVJPEG_STATUS_INTERNAL_ERROR";
-    case NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED:
-      return "NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED";
-  }
-  return "Invalid nvjpeg status code";
+  std::ostringstream sout;
+  sout << "nvJPEG error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
 }
 
 /*************** CUresult ERROR ***************/

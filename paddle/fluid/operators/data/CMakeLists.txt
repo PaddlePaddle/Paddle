@@ -17,7 +17,7 @@ if (WITH_GPU AND NOT WIN32)
     op_library(file_label_loader_op SRCS file_label_loader_op.cc DEPS ${OP_HEADER_DEPS})
 
     cc_library(random_roi_generator SRCS random_roi_generator.cc DEPS ${OP_HEADER_DEPS})
-    cc_library(image_decoder SRCS image_decoder.cc DEPS random_roi_generator ${OP_HEADER_DEPS})
+    cc_library(image_decoder SRCS image_decoder.cc DEPS random_roi_generator ${OP_HEADER_DEPS} external_error_proto device_context)
 
     op_library(batch_decode_random_crop_op SRCS batch_decode_random_crop_op.cc batch_decode_random_crop_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
     op_library(batch_decode_op SRCS batch_decode_op.cc batch_decode_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
