@@ -224,15 +224,23 @@ template void fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
     paddle::framework::FeatureValue* d_shard_vals,
     paddle::framework::FeatureValue* d_vals, int* idx, long long len,
     const cudaStream_t& stream);
+
 template void
-sort_pairs<unsigned long, paddle::framework::FeatureValue, cudaStream_t>(
+sort_pairs<unsigned long, paddle::framework::FeaturePushValue, cudaStream_t>(
     void* d_temp_storage,
     size_t& temp_storage_bytes,      // NOLINT
     const unsigned long* d_keys_in,  // NOLINT
     unsigned long* d_keys_out,
-    const paddle::framework::FeatureValue* d_values_in,
-    paddle::framework::FeatureValue* d_values_out, int num_items, int begin_bit,
-    int end_bit, cudaStream_t stream, bool debug_synchronous);
+    const paddle::framework::FeaturePushValue* d_values_in,
+    paddle::framework::FeaturePushValue* d_values_out, int num_items,
+    int begin_bit, int end_bit, cudaStream_t stream, bool debug_synchronous);
+
+template void sort_pairs<int, int, cudaStream_t>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,  // NOLINT
+    const int* d_keys_in,        // NOLINT
+    int* d_keys_out, const int* d_values_in, int* d_values_out, int num_items,
+    int begin_bit, int end_bit, cudaStream_t stream, bool debug_synchronous);
 
 template void reduce_by_key<
     unsigned long*, unsigned long*, paddle::framework::FeaturePushValue*,
