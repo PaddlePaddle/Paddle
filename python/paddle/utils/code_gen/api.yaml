@@ -800,7 +800,7 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
-  # backward : huber_loss_grad
+  backward : huber_loss_grad
 
 - api : imag
   args : (Tensor x)
@@ -903,6 +903,19 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+
+# label_smooth
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [label]
+  kernel :
+    func : label_smooth
+    data_type : label
+  optional : prior_dist
+  backward : label_smooth_grad
 
 # leaky_relu
 - api : leaky_relu
@@ -1143,7 +1156,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
