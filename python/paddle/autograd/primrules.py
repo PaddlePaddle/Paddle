@@ -38,9 +38,13 @@ _primop_jvp = Registry('primop_jvps')
 _primop_transpose = Registry('primop_vjps')
 
 
-def jvp(op, *args):
+def _jvp(op, *args):
     _jvprule = _primop_jvp.lookup(op.type)
     return _jvprule(op, *args)
+
+def _transpose(op, *args):
+    _transposerule = _primop_transpose.lookup(op.type)
+    return _transposerule(op, *args)
 
 
 def REGISTER_JVP(op_type):
@@ -328,3 +332,5 @@ def scatter_add_transpose(op, y_bar):
     x, indextensor = get_input_vars(op)
     assert x.is_dot
     return gather(y_bar, indextensor, **op.all_attrs())
+
+
