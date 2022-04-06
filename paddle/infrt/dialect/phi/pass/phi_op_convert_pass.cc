@@ -73,44 +73,29 @@ void PhiOpConvertPass::runOnFunction() {
 }
 
 void PhiOpConvertPass::convert2Gpu() {
-  LOG(INFO) << "Success! into convert2Gpu";
   mlir::Block &body = getFunction().front();
   auto loc = getFunction().getLoc();
   mlir::Operation &operation = body.front();
   mlir::MLIRContext *context = operation.getContext();
-  mlir::Type type_ = infrt::DenseTensorType::get(context,
-                                                 infrt::TargetType::CPU,
-                                                 infrt::PrecisionType::FLOAT32,
-                                                 infrt::LayoutType::ANY);
-  mlir::Type type1 = infrt::DenseTensorType::get(context,
-                                                 infrt::TargetType::GPU,
-                                                 infrt::PrecisionType::FLOAT32,
-                                                 infrt::LayoutType::NCHW);
-  std::vector<mlir::Operation *> worklist;
-  for (auto &op : body.without_terminator()) {
-    worklist.push_back(&op);
-  }
-  mlir::OpBuilder builder(&body, body.begin());
 
-  for (size_t index = 0; index < body.getNumArguments(); index++) {
+  size_t num_input = body.getNumArguments();
+  for (size_t index = 0; index < num_input; index++) {
     auto argument = body.getArgument(index);
-    if (argument.getType() == type_) {
-      mlir::Value disable_in = argument;
-      getFunction().insertArgument(index, type1, {}, loc);
-
-      // todo : replace this code with .replaceAllUsesWith
-      for (size_t i = 0; i < worklist.size(); i++) {
-        auto *op = worklist[i];
-        uint8_t in_index = op->getNumOperands();
-        for (uint8_t idx = 0; idx < in_index; idx++) {
-          if (op->getOperand(idx) == disable_in) {
-            op->setOperand(idx, getFunction().getArgument(index));
-          }
-        }
-      }
-      getFunction().eraseArgument(index + 1);
+    if(auto t = argument.getType().dyn_cast<::infrt::DenseTensorType>()){
+       mlir::Type replace_type = infrt::DenseTensorType::get(context,infrt::TargetType::GPU,  t.getPrecision(), infrt::LayoutType::NCHW);
+       getFunction().insertArgument(index, replace_type, {}, loc);
+       argument.replaceAllUsesWith(getFunction().getArgument(index));
+       getFunction().eraseArgument(index+1);
     }
   }
+
+  unsigned int num_result = getFunction().getNumResults();
+  for(unsigned int index = 0; index < num_result; index++) {
+      mlir::Type replace_type = infrt::DenseTensorType::get(context,infrt::TargetType::GPU,  infrt::PrecisionType::FLOAT32, infrt::LayoutType::NCHW);
+      getFunction().eraseResult(index);
+      getFunction().insertResult(index,replace_type,{});
+  }
+
 }
 
 void PhiOpConvertPass::convertStage() {
