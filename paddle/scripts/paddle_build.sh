@@ -953,6 +953,7 @@ function check_whl_size() {
 function generate_upstream_develop_api_spec() {
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     echo "pr_whl_size: ${pr_whl_size}"
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -974,6 +975,7 @@ function generate_upstream_develop_api_spec() {
         cmake_gen $1
         build $2
     fi
+    generate_api_spec "$1" "DEV"
 
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
