@@ -62,9 +62,12 @@ __global__ void SampleKernel(const uint64_t rand_seed,
                              const T* nodes,
                              const T* row,
                              const T* col_ptr,
+                             const T* eids,
                              T* output,
+                             T* output_eids,
                              int* output_ptr,
-                             int* output_idxs) {
+                             int* output_idxs,
+                             bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -94,6 +97,9 @@ __global__ void SampleKernel(const uint64_t rand_seed,
     if (deg <= k) {
       for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
         output[out_row_start + idx] = row[in_row_start + idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[in_row_start + idx];
+        }
       }
     } else {
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
@@ -122,6 +128,9 @@ __global__ void SampleKernel(const uint64_t rand_seed,
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
         T perm_idx = output_idxs[out_row_start + idx] + in_row_start;
         output[out_row_start + idx] = row[perm_idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[perm_idx];
+        }
       }
     }
 
@@ -148,12 +157,15 @@ template <typename T, typename Context>
 void SampleNeighbors(const Context& dev_ctx,
                      const T* row,
                      const T* col_ptr,
+                     const T* eids,
                      const thrust::device_ptr<const T> input,
                      thrust::device_ptr<T> output,
                      thrust::device_ptr<int> output_count,
+                     thrust::device_ptr<T> output_eids,
                      int sample_size,
                      int bs,
-                     int total_sample_num) {
+                     int total_sample_num,
+                     bool return_eids) {
   thrust::device_vector<int> output_ptr;
   thrust::device_vector<int> output_idxs;
   output_ptr.resize(bs);
@@ -176,9 +188,12 @@ void SampleNeighbors(const Context& dev_ctx,
       thrust::raw_pointer_cast(input),
       row,
       col_ptr,
+      eids,
       thrust::raw_pointer_cast(output),
+      thrust::raw_pointer_cast(output_eids),
       thrust::raw_pointer_cast(output_ptr.data()),
-      thrust::raw_pointer_cast(output_idxs.data()));
+      thrust::raw_pointer_cast(output_idxs.data()),
+      return_eids);
 }
 
 template <typename T>
@@ -232,9 +247,12 @@ __global__ void GatherEdge(int k,
                            const T* in_rows,
                            const T* src,
                            const T* dst_count,
+                           const T* eids,
                            T* outputs,
                            int* output_ptr,
-                           T* perm_data) {
+                           T* output_eids,
+                           T* perm_data,
+                           bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -250,8 +268,10 @@ __global__ void GatherEdge(int k,
 
     if (deg <= k) {
       for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
-        const T in_idx = in_row_start + idx;
-        outputs[out_row_start + idx] = src[in_idx];
+        outputs[out_row_start + idx] = src[in_row_start + idx];
+        if (return_eids) {
+          output_eids[out_row_start + idx] = eids[in_row_start + idx];
+        }
       }
     } else {
       int split = k;
@@ -267,6 +287,10 @@ __global__ void GatherEdge(int k,
       for (int idx = begin + threadIdx.x; idx < end; idx += WARP_SIZE) {
         outputs[out_row_start + idx - begin] =
             src[perm_data[in_row_start + idx]];
+        if (return_eids) {
+          output_eids[out_row_start + idx - begin] =
+              eids[perm_data[in_row_start + idx]];
+        }
       }
     }
     out_row += BLOCK_WARPS;
@@ -277,13 +301,16 @@ template <typename T, typename Context>
 void FisherYatesSampleNeighbors(const Context& dev_ctx,
                                 const T* row,
                                 const T* col_ptr,
+                                const T* eids,
                                 T* perm_data,
                                 const thrust::device_ptr<const T> input,
                                 thrust::device_ptr<T> output,
                                 thrust::device_ptr<int> output_count,
+                                thrust::device_ptr<T> output_eids,
                                 int sample_size,
                                 int bs,
-                                int total_sample_num) {
+                                int total_sample_num,
+                                bool return_eids) {
   thrust::device_vector<int> output_ptr;
   output_ptr.resize(bs);
   thrust::exclusive_scan(
@@ -317,9 +344,12 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
       thrust::raw_pointer_cast(input),
       row,
       col_ptr,
+      eids,
       thrust::raw_pointer_cast(output),
       thrust::raw_pointer_cast(output_ptr.data()),
-      perm_data);
+      thrust::raw_pointer_cast(output_eids),
+      perm_data,
+      return_eids);
 }
 
 template <typename T, typename Context>
@@ -354,32 +384,78 @@ void GraphSampleNeighborsKernel(
   T* out_data = dev_ctx.template Alloc<T>(out);
   thrust::device_ptr<T> output(out_data);
 
-  if (!flag_perm_buffer) {
-    SampleNeighbors<T, Context>(dev_ctx,
-                                row_data,
-                                col_ptr_data,
-                                input,
-                                output,
-                                output_count,
-                                sample_size,
-                                bs,
-                                total_sample_size);
+  if (return_eids) {
+    auto* eids_data = eids.get_ptr()->data<T>();
+    out_eids->Resize({static_cast<int>(total_sample_size)});
+    T* out_eids_data = dev_ctx.template Alloc<T>(out_eids);
+    thrust::device_ptr<T> output_eids(out_eids_data);
+    if (!flag_perm_buffer) {
+      SampleNeighbors<T, Context>(dev_ctx,
+                                  row_data,
+                                  col_ptr_data,
+                                  eids_data,
+                                  input,
+                                  output,
+                                  output_count,
+                                  output_eids,
+                                  sample_size,
+                                  bs,
+                                  total_sample_size,
+                                  return_eids);
+    } else {
+      DenseTensor perm_buffer_out(perm_buffer->type());
+      const auto* p_perm_buffer = perm_buffer.get_ptr();
+      perm_buffer_out.ShareDataWith(*p_perm_buffer);
+      T* perm_buffer_out_data =
+          perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
+      FisherYatesSampleNeighbors<T, Context>(dev_ctx,
+                                             row_data,
+                                             col_ptr_data,
+                                             eids_data,
+                                             perm_buffer_out_data,
+                                             input,
+                                             output,
+                                             output_count,
+                                             output_eids,
+                                             sample_size,
+                                             bs,
+                                             total_sample_size,
+                                             return_eids);
+    }
   } else {
-    DenseTensor perm_buffer_out(perm_buffer->type());
-    const auto* p_perm_buffer = perm_buffer.get_ptr();
-    perm_buffer_out.ShareDataWith(*p_perm_buffer);
-    T* perm_buffer_out_data =
-        perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
-    FisherYatesSampleNeighbors<T, Context>(dev_ctx,
-                                           row_data,
-                                           col_ptr_data,
-                                           perm_buffer_out_data,
-                                           input,
-                                           output,
-                                           output_count,
-                                           sample_size,
-                                           bs,
-                                           total_sample_size);
+    if (!flag_perm_buffer) {
+      SampleNeighbors<T, Context>(dev_ctx,
+                                  row_data,
+                                  col_ptr_data,
+                                  nullptr,
+                                  input,
+                                  output,
+                                  output_count,
+                                  nullptr,
+                                  sample_size,
+                                  bs,
+                                  total_sample_size,
+                                  return_eids);
+    } else {
+      DenseTensor perm_buffer_out(perm_buffer->type());
+      const auto* p_perm_buffer = perm_buffer.get_ptr();
+      perm_buffer_out.ShareDataWith(*p_perm_buffer);
+      T* perm_buffer_out_data =
+          perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
+      FisherYatesSampleNeighbors<T, Context>(dev_ctx,
+                                             row_data,
+                                             col_ptr_data,
+                                             nullptr,
+                                             perm_buffer_out_data,
+                                             input,
+                                             output,
+                                             output_count,
+                                             nullptr,
+                                             sample_size,
+                                             bs,
+                                             total_sample_size,
+                                             return_eids);
+    }
   }
 }
 
