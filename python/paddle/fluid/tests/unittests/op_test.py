@@ -704,6 +704,8 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
+                
+                NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
             class Empty:
@@ -764,7 +766,9 @@ class OpTest(unittest.TestCase):
                 api_params), "Error happens. contack xiongkun03 to solve."
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
-            input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
+            input_arguments = [
+                op_proto_ins.get(name, Empty()) for name in inputs_sig
+            ] + [
                 parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
@@ -808,16 +812,19 @@ class OpTest(unittest.TestCase):
             transform inputs by the following rules:
                 1. [Tensor] -> Tensor
                 2. [Tensor, Tensor, ...] -> list of Tensors
+                3. None -> None
+                4. Others: raise Error
 
             only support "X" is list of Tensor, currently don't support other structure like dict.
             """
-            for inp in args[:inp_num]:
+            inp_args = [[inp] if inp is None else inp
+                        for inp in args[:inp_num]]  # convert None -> [None]
+            for inp in inp_args:
                 assert isinstance(
                     inp, list
                 ), "currently only support `X` is [Tensor], don't support other structure."
-            args = [
-                inp[0] if len(inp) == 1 else inp for inp in args[:inp_num]
-            ] + args[inp_num:]
+            args = [inp[0] if len(inp) == 1 else inp
+                    for inp in inp_args] + args[inp_num:]
             return args
 
         def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
@@ -1930,6 +1937,9 @@ class OpTest(unittest.TestCase):
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
+            # ensure switch into legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set, False)
@@ -1943,6 +1953,8 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+            # ensure switch back eager dygraph
+            g_disable_legacy_dygraph()
 
         if check_eager:
             with fluid.dygraph.base.guard(place):
@@ -2080,7 +2092,6 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
-
                 loss.backward()
 
                 fetch_list_grad = []
@@ -2095,7 +2106,7 @@ class OpTest(unittest.TestCase):
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
                     grad_outputs.append(paddle.to_tensor(grad_out_value))
-                # delete the inputs which no need to calculate grad
+                # delete the inputs which no need to calculate grad                
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 

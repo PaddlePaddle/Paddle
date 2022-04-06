@@ -877,9 +877,9 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(shape), 'dtype', out_dtype,
-                                          value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(shape), 'dtype', out_dtype, value_name,
+                                values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
@@ -986,9 +986,9 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(self._value.shape), 'dtype',
-                                          out_dtype, value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(self._value.shape), 'dtype', out_dtype,
+                                value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)

@@ -43,8 +43,14 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    // be same to old dygraph
+    return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
+  }
   if (self->tensor.is_dense_tensor()) {
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
+  } else if (self->tensor.is_selected_rows()) {
+    return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
   } else {
     Py_INCREF(Py_None);
     return Py_None;
@@ -137,8 +143,11 @@ int tensor_properties_set_persistable(TensorObject* self, PyObject* value,
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_TRY
-  auto ddim = self->tensor.shape();
   std::vector<int64_t> value;
+  if (!self->tensor.defined()) {
+    return ToPyObject(value);
+  }
+  auto ddim = self->tensor.shape();
   size_t rank = static_cast<size_t>(ddim.size());
   value.resize(rank);
   for (size_t i = 0; i < rank; i++) {
@@ -165,6 +174,10 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
+  if (!self->tensor.defined()) {
+    // be same to old dygraph
+    return ToPyObject(framework::proto::VarType::FP32);
+  }
   return ToPyObject(
       paddle::framework::TransToProtoVarType(self->tensor.type()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
