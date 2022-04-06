@@ -32,6 +32,8 @@ class TestSparseUtils(unittest.TestCase):
             stop_gradient = False
             coo = core.eager.sparse_coo_tensor(dense_indices, dense_elements,
                                                dense_shape, stop_gradient)
+            # for-ci-coverage: test to_string.py
+            print(coo)
 
     def test_create_sparse_csr_tensor(self):
         with _test_eager_guard():
@@ -46,6 +48,8 @@ class TestSparseUtils(unittest.TestCase):
             csr = core.eager.sparse_csr_tensor(dense_crows, dense_cols,
                                                dense_elements, dense_shape,
                                                stop_gradient)
+            # for-ci-coverage: test to_string.py
+            print(csr)
 
     def test_to_sparse_coo(self):
         with _test_eager_guard():
@@ -97,6 +101,20 @@ class TestSparseUtils(unittest.TestCase):
 
             dense_tensor = out.to_dense()
             assert np.array_equal(dense_tensor.numpy(), x)
+
+    def test_coo_values_grad(self):
+        with _test_eager_guard():
+            indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+            values = [1.0, 2.0, 3.0, 4.0, 5.0]
+            sparse_x = core.eager.sparse_coo_tensor(
+                paddle.to_tensor(indices),
+                paddle.to_tensor(values), [3, 4], False)
+            values_tensor = sparse_x.values()
+            # random out_grad
+            out_grad = [2.0, 3.0, 5.0, 8.0, 9.0]
+            # test coo_values_grad
+            values_tensor.backward(paddle.to_tensor(out_grad))
+            assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
 
 
 if __name__ == "__main__":
