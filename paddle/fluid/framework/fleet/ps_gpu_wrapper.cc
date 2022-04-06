@@ -37,36 +37,42 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf) {
-    int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(), conf.c_str());
-    if (ret != 0) {
-        LOG(ERROR) << "AFS Init Error";
-    }
+#ifdef PADDLE_WITH_PSLIB
+void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user,
+                      const std::string& pass_wd, const std::string& conf) {
+  int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
+                              conf.c_str());
+  if (ret != 0) {
+    LOG(ERROR) << "AFS Init Error";
+  }
 }
 
 int AfsWrapper::remove(const std::string& path) {
-    return afs_handler_.remove(path);
+  return afs_handler_.remove(path);
 }
 
 int AfsWrapper::mkdir(const std::string& path) {
-    return afs_handler_.mkdir(path);
+  return afs_handler_.mkdir(path);
 }
 
 std::vector<std::string> AfsWrapper::list(const std::string& path) {
-    return afs_handler_.list(path);
+  return afs_handler_.list(path);
 }
 
 int AfsWrapper::exist(const std::string& path) {
-    return afs_handler_.exist(path);
+  return afs_handler_.exist(path);
 }
 
-int AfsWrapper::upload(const std::string& local_file, const std::string& afs_file) {
-    return afs_handler_.upload_file(local_file, afs_file);
+int AfsWrapper::upload(const std::string& local_file,
+                       const std::string& afs_file) {
+  return afs_handler_.upload_file(local_file, afs_file);
 }
 
-int AfsWrapper::download(const std::string& local_file, const std::string& afs_file) {
-    return afs_handler_.download_file(local_file, afs_file);
+int AfsWrapper::download(const std::string& local_file,
+                         const std::string& afs_file) {
+  return afs_handler_.download_file(local_file, afs_file);
 }
+#endif
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
