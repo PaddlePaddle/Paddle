@@ -750,7 +750,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
             attrs['value'] = float(value)
 
-    if in_dygraph_mode():
+    if out is None and in_dygraph_mode():
+        #Currently, final state mode don't support out is None.
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
@@ -758,7 +759,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         shape = utils.convert_shape_to_list(shape)
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        assert out is None, "Final State mode don't support out is None."
         out = _C_ops.final_state_full(shape, float(value), dtype, place)
         out.stop_gradient = True
         return out
