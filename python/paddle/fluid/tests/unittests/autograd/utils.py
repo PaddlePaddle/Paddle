@@ -1,22 +1,33 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
+import enum
+import sys
+import re
+import inspect
+import functools
+import contextlib
+import collections
 import numpy as np
 import paddle
-from paddle.autograd.functional import _tensors
+from paddle.autograd.functional import _as_tensors
 
 
+##########################################################
+# Finite Difference Utils
+##########################################################
 def _product(t):
     if isinstance(t, int):
         return t
@@ -25,7 +36,9 @@ def _product(t):
 
 
 def _get_item(t, idx):
-    assert isinstance(t, paddle.Tensor), "The first argument t must be Tensor."
+    assert isinstance(
+        t,
+        paddle.fluid.framework.Variable), "The first argument t must be Tensor."
     assert isinstance(idx,
                       int), "The second argument idx must be an int number."
     flat_t = paddle.reshape(t, [-1])
@@ -33,7 +46,9 @@ def _get_item(t, idx):
 
 
 def _set_item(t, idx, value):
-    assert isinstance(t, paddle.Tensor), "The first argument t must be Tensor."
+    assert isinstance(
+        t,
+        paddle.fluid.framework.Variable), "The first argument t must be Tensor."
     assert isinstance(idx,
                       int), "The second argument idx must be an int number."
     flat_t = paddle.reshape(t, [-1])
@@ -42,8 +57,8 @@ def _set_item(t, idx, value):
 
 
 def _compute_numerical_jacobian(func, xs, delta, np_dtype):
-    xs = _tensors(xs, "xs")
-    ys = _tensors(func(*xs), "ys")
+    xs = list(_as_tensors(xs))
+    ys = list(_as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
     jacobian = list([] for _ in range(fout_size))
@@ -59,11 +74,11 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
             orig = _get_item(xs[j], q)
             x_pos = orig + delta
             xs[j] = _set_item(xs[j], q, x_pos)
-            ys_pos = _tensors(func(*xs), "ys_pos")
+            ys_pos = _as_tensors(func(*xs))
 
             x_neg = orig - delta
             xs[j] = _set_item(xs[j], q, x_neg)
-            ys_neg = _tensors(func(*xs), "ys_neg")
+            ys_neg = _as_tensors(func(*xs))
 
             xs[j] = _set_item(xs[j], q, orig)
 
@@ -76,8 +91,8 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_hessian(func, xs, delta, np_dtype):
-    xs = _tensors(xs, "xs")
-    ys = _tensors(func(*xs), "ys")
+    xs = list(_as_tensors(xs))
+    ys = list(_as_tensors(func(*xs)))
     fin_size = len(xs)
     hessian = list([] for _ in range(fin_size))
     for i in range(fin_size):
@@ -107,10 +122,22 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
     return hessian
 
 
-def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
+def concat_to_matrix(xs, is_batched=False):
+    """Concats a tuple of tuple of Jacobian/Hessian matrix into one matrix"""
+    rows = []
+    for i in range(len(xs)):
+        rows.append(np.concatenate([x for x in xs[i]], -1))
+    return np.concatenate(rows, 1) if is_batched else np.concatenate(rows, 0)
+
+
+def _compute_numerical_batch_jacobian(func,
+                                      xs,
+                                      delta,
+                                      np_dtype,
+                                      merge_batch=True):
     no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
-    xs = _tensors(xs, "xs")
-    ys = _tensors(func(*xs), "ys")
+    xs = list(_as_tensors(xs))
+    ys = list(_as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
     bs = xs[0].shape[0]
@@ -128,7 +155,8 @@ def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
                 for b in range(bs):
                     for q in range(in_size):
                         batch_jac_i_j[p][b][q] = jac[b][p][b][q]
-            batch_jac_i_j = np.reshape(batch_jac_i_j, (out_size, -1))
+            if merge_batch:
+                batch_jac_i_j = np.reshape(batch_jac_i_j, (out_size, -1))
             batch_jac_i.append(batch_jac_i_j)
         bat_jac.append(batch_jac_i)
 
@@ -136,7 +164,7 @@ def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
-    xs = _tensors(xs, "xs")
+    xs = list(_as_tensors(xs))
     batch_size = xs[0].shape[0]
     fin_size = len(xs)
     hessian = []
@@ -175,8 +203,10 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
-    xs = _tensors(xs, "xs")
+    xs = _as_tensors(xs)
     jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))
+    if v is None:
+        v = [paddle.ones_like(x) for x in xs]
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vjp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
     for j in range(len(xs)):
@@ -188,7 +218,7 @@ def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
 
 
 def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
-    xs = _tensors(xs, "xs")
+    xs = list(_as_tensors(xs))
     hessian = np.array(_compute_numerical_hessian(func, xs, delta, np_dtype))
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vhp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
@@ -198,3 +228,166 @@ def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
                                flat_v)
     vhp = [vhp[j].reshape(xs[j].shape) for j in range(len(xs))]
     return vhp
+
+
+##########################################################
+# TestCases of different function.
+##########################################################
+def reduce(x):
+    return paddle.sum(x)
+
+
+def reduce_dim(x):
+    return paddle.sum(x, axis=0)
+
+
+def matmul(x, y):
+    return paddle.matmul(x, y)
+
+
+def mul(x, y):
+    return x * y
+
+
+def pow(x, y):
+    return paddle.pow(x, y)
+
+
+def o2(x, y):
+    return paddle.multiply(x, y), paddle.matmul(x, y.t())
+
+
+def unuse(x, y):
+    return paddle.sum(x)
+
+
+def nested(x):
+    def inner(y):
+        return x * y
+
+    return inner
+
+
+def square(x):
+    return x * x
+
+
+##########################################################
+# Parameterized Test Utils.
+##########################################################
+
+TEST_CASE_NAME = 'suffix'
+
+
+def place(devices, key='place'):
+    """A Decorator for a class which will make the class running on different 
+    devices .
+
+    Args:
+        devices (Sequence[Paddle.CUDAPlace|Paddle.CPUPlace]): Device list.
+        key (str, optional): Defaults to 'place'.
+    """
+
+    def decorate(cls):
+        module = sys.modules[cls.__module__].__dict__
+        raw_classes = {
+            k: v
+            for k, v in module.items() if k.startswith(cls.__name__)
+        }
+
+        for raw_name, raw_cls in raw_classes.items():
+            for d in devices:
+                test_cls = dict(raw_cls.__dict__)
+                test_cls.update({key: d})
+                new_name = raw_name + '.' + d.__class__.__name__
+                module[new_name] = type(new_name, (raw_cls, ), test_cls)
+            del module[raw_name]
+        return cls
+
+    return decorate
+
+
+def parameterize(fields, values=None):
+    """Decorator for a unittest class which make the class running on different 
+    test cases.
+
+    Args:
+        fields (Sequence): The feild name sequence of test cases.
+        values (Sequence, optional): The test cases sequence. Defaults to None.
+
+    """
+    fields = [fields] if isinstance(fields, str) else fields
+    params = [dict(zip(fields, vals)) for vals in values]
+
+    def decorate(cls):
+        test_cls_module = sys.modules[cls.__module__].__dict__
+        for i, values in enumerate(params):
+            test_cls = dict(cls.__dict__)
+            values = {
+                k: staticmethod(v) if callable(v) else v
+                for k, v in values.items()
+            }
+            test_cls.update(values)
+            name = cls.__name__ + str(i)
+            name = name + '.' + \
+                values.get('suffix') if values.get('suffix') else name
+
+            test_cls_module[name] = type(name, (cls, ), test_cls)
+
+        for m in list(cls.__dict__):
+            if m.startswith("test"):
+                delattr(cls, m)
+        return cls
+
+    return decorate
+
+
+##########################################################
+# Utils for transpose different Jacobian/Hessian matrix format.
+##########################################################
+
+# B is batch size, N is row size, M is column size.
+MatrixFormat = enum.Enum('MatrixFormat', ('NBM', 'BNM', 'NMB', 'NM'))
+
+
+def _np_transpose_matrix_format(src, src_format, des_format):
+    """Transpose Jacobian/Hessian matrix format."""
+    supported_format = (MatrixFormat.NBM, MatrixFormat.BNM, MatrixFormat.NMB)
+    if src_format not in supported_format or des_format not in supported_format:
+        raise ValueError(
+            f"Supported Jacobian format is {supported_format}, but got src: {src_format}, des: {des_format}"
+        )
+
+    src_axis = {c: i for i, c in enumerate(src_format.name)}
+    dst_axis = tuple(src_axis[c] for c in des_format.name)
+
+    return np.transpose(src, dst_axis)
+
+
+def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
+    """Convert a sequence of sequence of Jacobian/Hessian matrix into one huge 
+    matrix."""
+
+    def concat_col(xs):
+        if src_format in (MatrixFormat.NBM, MatrixFormat.BNM, MatrixFormat.NM):
+            return np.concatenate(xs, axis=-1)
+        else:
+            return np.concatenate(xs, axis=1)
+
+    def concat_row(xs):
+        if src_format in (MatrixFormat.NBM, MatrixFormat.NM, MatrixFormat.NMB):
+            return np.concatenate(xs, axis=0)
+        else:
+            return np.concatenate(xs, axis=1)
+
+    supported_format = (MatrixFormat.NBM, MatrixFormat.BNM, MatrixFormat.NMB,
+                        MatrixFormat.NM)
+    if src_format not in supported_format:
+        raise ValueError(
+            f"Supported Jacobian format is {supported_format}, but got {src_format}"
+        )
+    if not isinstance(src, typing.Sequence):
+        return src
+    if not isinstance(src[0], typing.Sequence):
+        src = [src]
+    return concat_row(tuple(concat_col(xs) for xs in src))
