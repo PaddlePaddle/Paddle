@@ -192,6 +192,7 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_mod': 'final_state_modulo',
     'elementwise_add': 'final_state_add',
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',

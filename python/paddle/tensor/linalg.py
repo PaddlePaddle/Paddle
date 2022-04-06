@@ -773,7 +773,8 @@ def cond(x, p=None, name=None):
         if paddle.in_dynamic_mode():
             if porder == "nuc":
                 return _C_ops.final_state_sum(s, axis, None, keepdim)
-            max_out = _C_ops.final_state_sum(s, axis, None, keepdim)
+            max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
+                                        'reduce_all', reduce_all)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             if porder == 2:
