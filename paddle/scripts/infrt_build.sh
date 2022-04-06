@@ -172,6 +172,7 @@ function main() {
         echo "      (2)bash infrt_build.sh build_only"
         echo "      (3)bash infrt_build.sh test_only"
         echo "      optional command: --update_pd_ops : pd_ops.td will be updated according to paddle's code."
+        echo "                        --target= : GPU/CPU/TensorRt, default value is CPU."
         exit 0
     fi
 
