@@ -1536,7 +1536,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
     if in_dygraph_mode():
