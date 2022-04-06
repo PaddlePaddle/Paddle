@@ -38,6 +38,7 @@ int CtrCommonAccessor::Initialize() {
   //  if (_config.ctr_accessor_param().show_scale()) {
   //    _show_scale = true;
   //  }
+  _show_scale = true;
 
   InitAccessorInfo();
   return 0;
