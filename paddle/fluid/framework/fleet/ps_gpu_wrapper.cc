@@ -343,7 +343,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->worker_ptr_->pull_sparse_ptr(
+      auto tt = fleet_ptr->worker_ptr_->PullSparsePtr(
           reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
