@@ -24,7 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -191,9 +191,11 @@ def batch_norm(x,
             x, weight, bias, running_mean, running_var, momentum, epsilon,
             data_format, not training, use_global_stats, trainable_statistics,
             False)
-        return batch_norm_out
 
-    if _in_legacy_dygraph():
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=None)
+
+    elif _in_legacy_dygraph():
         # for dygraph need tuple
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
@@ -201,8 +203,8 @@ def batch_norm(x,
                  "trainable_statistics", trainable_statistics)
 
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, mean_out, variance_out,
-            *attrs)
+            x, weight, bias, running_mean, running_var, None, mean_out,
+            variance_out, *attrs)
 
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)

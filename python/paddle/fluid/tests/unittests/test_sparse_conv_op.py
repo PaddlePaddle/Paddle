@@ -40,15 +40,32 @@ class TestSparseConv(unittest.TestCase):
             correct_out_values = [[4], [10]]
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
-            out = _C_ops.final_state_sparse_conv3d(sparse_input, dense_kernel,
-                                                   paddings, dilations, strides,
-                                                   1, False)
+            out = paddle.sparse.functional.conv3d(sparse_input, dense_kernel,
+                                                  None, strides, paddings,
+                                                  dilations, 1, "NDHWC")
             out.backward(out)
             #At present, only backward can be verified to work normally
             #TODO(zhangkaihuo): compare the result with dense conv
             print(sparse_input.grad.non_zero_elements())
             assert np.array_equal(correct_out_values,
                                   out.non_zero_elements().numpy())
+
+    def test_Conv3D(self):
+        with _test_eager_guard():
+            #(4, non_zero_num), 4-D:(N, D, H, W)
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            #(non_zero_num, C)
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 1, 3, 4, 1]
+            correct_out_values = [[4], [10]]
+            sparse_input = core.eager.sparse_coo_tensor(indices, values,
+                                                        dense_shape, False)
+
+            sparse_conv3d = paddle.sparse.Conv3D(
+                1, 1, (1, 3, 3), data_format='NDHWC')
+            sparse_out = sparse_conv3d(sparse_input)
 
 
 #TODO: Add more test case

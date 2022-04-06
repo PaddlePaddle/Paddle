@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -31,7 +30,7 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_atol(self):
-        self.atol = 1e-6
+        self.atol = 1e-4
 
     def set_data_feed(self):
         self.feed = {
@@ -45,9 +44,8 @@ class TestBase(IPUOpTest):
 
     def set_attrs(self):
         self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.0,
-            "loss_scaling": 1.0,
+            "optimizer": 'lamb',
+            "weight_decay": 2.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
@@ -90,18 +88,7 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.set_options({
-                    'loss_scaling': self.attrs["loss_scaling"]
-                })
-                if "use_no_bias_optimizer" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "use_no_bias_optimizer":
-                        self.attrs["use_no_bias_optimizer"]
-                    })
-                if "accl1_type" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "accl1_type": self.attrs["accl1_type"]
-                    })
+                ipu_strategy.set_options({"runtime_options.enable_eval": True})
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -109,111 +96,30 @@ class TestBase(IPUOpTest):
                 program = main_prog
 
             result = []
-            for epoch in range(100):
-                loss_res = exe.run(program, feed=self.feed, fetch_list=[loss])
-                result.append(loss_res)
-
+            if run_ipu:
+                for epoch in range(200):
+                    if epoch == 100:
+                        ipu_strategy.set_options({
+                            "runtime_options.enable_eval": False
+                        })
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=[loss])
+                    result.append(loss_res)
+            else:
+                for epoch in range(100):
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=[loss])
+                    result.append(loss_res)
             return np.array(result)
 
     def test(self):
         # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
-
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
-
-
-@unittest.skip('do not support L2 regularization')
-class TestSGD(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.1,
-            "loss_scaling": 2.0,
-        }
-
-
-@unittest.skip('do not support L2 regularization')
-class TestAdamCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.1,
-            "loss_scaling": 3.0,
-        }
-
-
-class TestAdamCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-        }
-
-
-@unittest.skip('cpu do not support AdamNoBias')
-class TestAdamNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "use_no_bias_optimizer": True,
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestAdamCase3(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "accl1_type": "FLOAT16",
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLambCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.0,
-            "loss_scaling": 5.0,
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLamb(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-        }
-
-
-@unittest.skip('cpu do not support LambNoBias')
-class TestLambNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "use_no_bias_optimizer": True
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestLambCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "accl1_type": "FLOAT16"
-        }
+        self.assertTrue(ipu_loss[0] == ipu_loss[99])
+        self.assertTrue(np.allclose(ipu_loss[100:], cpu_loss, atol=self.atol))
 
 
 if __name__ == "__main__":
