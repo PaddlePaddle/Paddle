@@ -99,8 +99,8 @@ def set_excluded_layers(param_names, main_program=None):
             startup_program = paddle.static.Program()
 
             with paddle.static.program_guard(main_program, startup_program):
-                input_data = paddle.static.data(name='data', shape=[None, 128])
-                label = paddle.static.data(name='label', shape=[None, 10])
+                input_data = paddle.static.data(name='data', shape=[None, 3, 224, 224])
+                label = paddle.static.data(name='label', shape=[None, 100])
                 my_layer = MyLayer()
                 prob = my_layer(input_data)
                 loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
