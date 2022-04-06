@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
@@ -62,6 +62,15 @@ _complex_dtypes = [
 _already_patch_varbase = False
 _already_patch_eager_tensor = False
 
+# Dispatch to final state Python-C functions
+_final_state_op_type_mapping = {
+    "elementwise_add": "final_state_add",
+    "elementwise_sub": "final_state_subtract",
+    "elementwise_div": "final_state_divide",
+    "elementwise_mul": "final_state_multiply",
+    "matmul_v2": "final_state_matmul",
+}
+
 
 def monkey_patch_math_varbase():
     """
@@ -72,8 +81,11 @@ def monkey_patch_math_varbase():
     @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
-        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
-                                   value, 'force_cpu', False)
+        if _in_legacy_dygraph():
+            out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
+                                       'value', value, 'force_cpu', False)
+        else:
+            out = _C_ops.final_state_full(shape, value, dtype, out.place)
         out.stop_gradient = True
         return out
 
@@ -105,10 +117,15 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+
+        if _in_legacy_dygraph():
+            return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
-        return _C_ops.scale(var, 'scale', scale, 'bias', bias)
+        if _in_legacy_dygraph():
+            return _C_ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.final_state_scale(var, scale, bias, True)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -164,7 +181,10 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
-        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(var, 'axis', perm)
+        else:
+            out = _C_ops.final_state_transpose(var, perm)
         return out
 
     def _scalar_add_(var, value):
@@ -270,8 +290,14 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            math_op = getattr(_C_ops, op_type)
-            return math_op(self, other_var, 'axis', axis)
+            if _in_legacy_dygraph():
+                math_op = getattr(_C_ops, op_type)
+                return math_op(self, other_var, 'axis', axis)
+            elif op_type in _final_state_op_type_mapping.keys():
+                math_op = getattr(_C_ops, _final_state_op_type_mapping[op_type])
+                return math_op(self, other_var)
+            else:
+                assert False, f"{op_type} not supported in eager final state yet."
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
