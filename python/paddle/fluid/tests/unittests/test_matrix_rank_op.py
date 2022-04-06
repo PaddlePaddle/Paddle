@@ -30,8 +30,13 @@ SEED = 2049
 np.random.seed(SEED)
 
 
+def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
+    return paddle.linalg.matrix_rank(x, tol, hermitian)
+
+
 class TestMatrixRankOP(OpTest):
     def setUp(self):
+        self.python_api = matrix_rank_wraper
         self.op_type = "matrix_rank"
         self.init_data()
         self.inputs = {'X': self.x}
@@ -44,7 +49,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
