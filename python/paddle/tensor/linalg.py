@@ -664,8 +664,7 @@ def cond(x, p=None, name=None):
 
         if paddle.in_dynamic_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
-                                        keepdim, 'reduce_all', reduce_all)
+            sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
             if porder == 1 or porder == np.inf:
                 return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                          keepdim, 'reduce_all', reduce_all)
@@ -721,10 +720,8 @@ def cond(x, p=None, name=None):
 
         if paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
-            sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
-                                          keepdim, 'reduce_all', reduce_all)
-            sum_out_2 = _C_ops.reduce_sum(sum_out_1, 'dim', axis, 'keepdim',
-                                          keepdim, 'reduce_all', reduce_all)
+            sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
+            sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
             return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
 
         block = LayerHelper('norm', **locals())
@@ -775,10 +772,8 @@ def cond(x, p=None, name=None):
 
         if paddle.in_dynamic_mode():
             if porder == "nuc":
-                return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
-                                         'reduce_all', reduce_all)
-            max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
-                                        'reduce_all', reduce_all)
+                return _C_ops.final_state_sum(s, axis, None, keepdim)
+            max_out = _C_ops.final_state_sum(s, axis, None, keepdim)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             if porder == 2:
@@ -2430,8 +2425,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             v, _ = _C_ops.transpose2(vt, 'axis', perm)
 
             out_1 = v * st
-            out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
-                                     True)
+            out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
             return out_2
         else:
             # combine eigh and matmul op
@@ -2454,8 +2448,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             out_1 = u * st
             u_conj = _C_ops.conj(u)
-            out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False, 'trans_y',
-                                     True)
+            out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
             return out_2
     else:
         if not hermitian:
@@ -2961,8 +2954,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                           False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                          False, 'reduce_all', False)
+            residuals = _C_ops.final_state_sum(pow_out, [-2], None, keepdim)
         else:
             residuals = paddle.empty(shape=[0], dtype=x.dtype)
 

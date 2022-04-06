@@ -399,7 +399,7 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if paddle.in_dynamic_mode():
-        outs = _C_ops.where_index(x)
+        outs = _C_ops.final_state_where_index(x)
     else:
         outs = layers.where(x)
 

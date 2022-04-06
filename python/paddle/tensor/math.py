@@ -192,7 +192,10 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
-    'elementwise_mod': 'final_state_modulo',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
 }
 
 @dygraph_only
@@ -1298,7 +1301,7 @@ def mm(input, mat2, name=None):
 
     """
     if paddle.in_dynamic_mode():
-        return _C_ops.matmul_v2(input, mat2)
+        return _C_ops.final_state_matmul(input, mat2, False, False)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -1521,7 +1524,7 @@ def inner(x, y, name=None):
         ny = y.reshape((-1, yshape[-1]))
 
         if paddle.in_dynamic_mode():
-            return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
+            return _C_ops.final_state_matmul(nx, ny.T, False, False).reshape(dstshape)
 
         def __check_input(x, y):
             var_names = {'x': x, 'y': y}
@@ -1584,7 +1587,7 @@ def outer(x, y, name=None):
     ny = y.reshape((1, -1))
 
     if paddle.in_dynamic_mode():
-        return _C_ops.matmul_v2(nx, ny)
+        return _C_ops.final_state_matmul(nx, ny, False, False)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -3698,7 +3701,7 @@ def rad2deg(x, name=None):
     if paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.scale(x, 'scale', rad2deg_scale)
+        return _C_ops.final_state_scale(x, rad2deg_scale, 0.0, True)
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg')
         helper = LayerHelper('rad2deg', **locals())
@@ -3751,7 +3754,7 @@ def deg2rad(x, name=None):
     if paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.scale(x, 'scale', deg2rad_scale)
+        return _C_ops.final_state_scale(x, deg2rad_scale, 0.0, True)
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad')
         helper = LayerHelper('deg2rad', **locals())
@@ -3993,14 +3996,22 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
-            'infer_flags', infer_flags, *attrs_1)
+        if in_dygraph_mode():
+            input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
+                                            [])
+        else:
+            input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+                'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
-            'infer_flags', infer_flags, *attrs_2)
+        if in_dygraph_mode():
+            input_back = input_front = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+                                            [])
+        else:
+            input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+                'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
             op = getattr(_C_ops, "logical_xor")

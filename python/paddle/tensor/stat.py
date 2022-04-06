@@ -242,7 +242,7 @@ def numel(x, name=None):
 
     """
     if paddle.in_dynamic_mode():
-        return _C_ops.size(x)
+        return _C_ops.final_state_size(x)
 
     if not isinstance(x, Variable):
         raise TypeError("x must be a Tensor in numel")

@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -647,15 +648,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
+    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
+                                         infer_flags.end());
+    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
+                                           decrease_axis.end());
+
     if (op_type == "slice") {
-      out = slice_dygraph_function(self->tensor, paddle::experimental::Tensor(),
-                                   paddle::experimental::Tensor(), {}, {},
-                                   std::move(attrs));
+      out = slice_final_state_dygraph_function(
+          self->tensor, slice_axes_tmp, slice_starts, slice_ends,
+          infer_flags_tmp, decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_dygraph_function(
-          self->tensor, paddle::experimental::Tensor(),
-          paddle::experimental::Tensor(), paddle::experimental::Tensor(), {},
-          {}, {}, attrs);
+      out = strided_slice_final_state_dygraph_function(
+          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
@@ -710,8 +715,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
                                         idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_dygraph_function(self->tensor, select_index,
-                                        std::move(attrs));
+    out = index_select_final_state_dygraph_function(self->tensor, select_index,
+                                                    0);
   }
 
   return ToPyObject(out);
