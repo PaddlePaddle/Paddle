@@ -16,8 +16,7 @@ import argparse
 from pathlib import Path
 
 import yaml
-from parse_utils import cross_validate
-from filters import to_named_dict
+from parse_utils import cross_validate, to_named_dict
 
 
 def main(forward_api_yaml_path, backward_api_yaml_path):

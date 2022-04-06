@@ -21,7 +21,8 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from filters import to_op_attr_type, to_opmaker_name, to_pascal_case
 from tests import is_base_api
-from filters import to_named_dict, to_input_name, to_grad_name
+from filters import to_input_name, to_grad_name
+from parse_utils import to_named_dict
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
 env = Environment(
@@ -43,11 +44,11 @@ def main(api_yaml_path, backward_yaml_path, gen_op_dir):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
     forward_api_dict = to_named_dict(apis)
-    
+
     with open(backward_yaml_path, "rt") as f:
         backward_apis = yaml.safe_load(f)
     backward_api_dict = to_named_dict(backward_apis)
-    
+
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
         forward_name = backward_api["forward"]["name"]
@@ -60,7 +61,7 @@ def main(api_yaml_path, backward_yaml_path, gen_op_dir):
             forward_api = backward_api_dict[forward_name]
             if forward_api["backward"] is None:
                 forward_api["backward"] = name
-    
+
     api_dict = {}
     api_dict.update(forward_api_dict)
     api_dict.update(backward_api_dict)
@@ -70,13 +71,15 @@ def main(api_yaml_path, backward_yaml_path, gen_op_dir):
 
     op_template = env.get_template('op.c.j2')
     with open(gen_op_dir / "generated_op.cc", "wt") as f:
-        msg = op_template.render(apis=apis, backward_apis=backward_apis, api_dict=api_dict)
+        msg = op_template.render(
+            apis=apis, backward_apis=backward_apis, api_dict=api_dict)
         f.write(msg)
-    
+
     ks_template = env.get_template('ks.c.j2')
     with open(gen_op_dir / "generated_sig.cc", 'wt') as f:
         msg = ks_template.render(apis=apis, backward_apis=backward_apis)
         f.write(msg)
+
 
 if __name__ == "__main__":
     current_dir = Path(__file__).parent

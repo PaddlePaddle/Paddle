@@ -17,7 +17,16 @@ import yaml
 from copy import copy
 from typing import Dict, Any, List, Tuple
 from tests import is_attr, is_input, is_output
-from filters import to_named_dict
+
+
+def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
+    named_dict = {}
+    for item in items:
+        if "name" not in item:
+            raise KeyError(f"name not in {item}")
+        name = item["name"]
+        named_dict[name] = item
+    return named_dict
 
 
 def parse_arg(api_name: str, s: str) -> Dict[str, str]:

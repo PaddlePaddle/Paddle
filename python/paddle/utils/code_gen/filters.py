@@ -25,16 +25,6 @@ from type_mapping import (dense_input_types_map, dense_optional_input_types_map,
                           phi_attr_types_map)
 
 
-def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
-    named_dict = {}
-    for item in items:
-        if "name" not in item:
-            raise KeyError(f"name not in {item}")
-        name = item["name"]
-        named_dict[name] = item
-    return named_dict
-
-
 # ------------------------------ attr -------------------------------------
 def to_phi_attr_type(s):
     return phi_attr_types_map[s]
@@ -84,7 +74,8 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(to_pascal_case(s.removesuffix("_grad")))
+        return 'GradVarName("{}")'.format(
+            to_pascal_case(s.removesuffix("_grad")))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
@@ -92,6 +83,7 @@ def to_opmaker_name(s):
 def to_pascal_case(s):
     words = s.split("_")
     return "".join([word.capitalize() for word in words])
+
 
 def to_input_name(s):
     """find input variable name in api yaml for higher order backward api.
@@ -104,8 +96,9 @@ def to_input_name(s):
     is more common.
     """
     match = re.match(r"(d\d*)(\w+)", s)
-    assert(match.group(1) != ""), "it should be a grad style name."
+    assert (match.group(1) != ""), "it should be a grad style name."
     return match.group(2)
+
 
 def to_grad_name(s):
     return 'GradVarName("{}")'.format(to_pascal_case(s))
