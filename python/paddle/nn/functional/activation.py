@@ -1220,7 +1220,9 @@ def mish(x, name=None):
             x = paddle.to_tensor([-5., 0., 5.])
             out = F.mish(x) # [-0.03357624, 0., 4.99955208]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mish(x, 20)
+    if _in_legacy_dygraph():
         return _C_ops.mish(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mish')

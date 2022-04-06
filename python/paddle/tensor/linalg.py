@@ -27,6 +27,9 @@ from paddle import _C_ops
 
 __all__ = []
 
+# Consistent with kDefaultDim from C++ Backend
+K_DEFAULT_DIM = 9
+
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
@@ -251,7 +254,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        if paddle.in_dynamic_mode():
+
+        if in_dygraph_mode():
+            if dim is None:
+                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+            return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
+        if _in_legacy_dygraph():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
                                              'reduce_all', True)
@@ -1118,7 +1126,7 @@ def t(input, name=None):
     return out
 
 
-def cross(x, y, axis=None, name=None):
+def cross(x, y, axis=9, name=None):
     """
     Computes the cross product between two tensors along an axis.
 
@@ -1128,7 +1136,7 @@ def cross(x, y, axis=None, name=None):
     Args:
         x (Tensor): The first input tensor.
         y (Tensor): The second input tensor.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1157,6 +1165,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
+        axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.final_state_cross(x, y, axis)
     else:
         if _in_legacy_dygraph():
