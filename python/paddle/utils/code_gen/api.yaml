@@ -727,6 +727,16 @@
   kernel :
     func : gather_tree
 
+- api : gelu
+  args : (Tensor x,  bool approximate)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : gelu
+  backward : gelu_grad
+
 - api : graph_send_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
   output : Tensor(out), Tensor(dst_count)
@@ -737,17 +747,6 @@
     data_type : x
   intermediate : dst_count
   backward : graph_send_recv_grad
-
-- api : greater
-- api : gelu
-  args : (Tensor x,  bool approximate)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : gelu
-  backward : gelu_grad
 
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
@@ -1155,7 +1154,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
