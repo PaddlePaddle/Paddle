@@ -103,7 +103,9 @@ class TestInplace(unittest.TestCase):
 
             var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
+            var_c = paddle.add(
+                var_b,
+                var_b)  # Here, the grad op of sum doesn't use the value of var_b
             loss = var_c.sum()
 
             var_b[1:2] = 3  # var_b is modified inplace after using it
@@ -111,9 +113,8 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_2(self):
-        # TODO: need to process no_need_buffer in eager mode
-        # with _test_eager_guard():
-        #     self.func_test_backward_success_2()
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 

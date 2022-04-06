@@ -1504,6 +1504,53 @@ void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
   }
 }
 
+void MomentumInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& velocity,
+                       const MetaTensor& learning_rate,
+                       paddle::optional<const MetaTensor&> master_param,
+                       float mu,
+                       bool use_nesterov,
+                       const std::string& regularization_method,
+                       float regularization_coeff,
+                       bool multi_precision,
+                       float rescale_grad,
+                       MetaTensor* param_out,
+                       MetaTensor* velocity_out,
+                       MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NE(
+      param_out,
+      nullptr,
+      errors::NotFound("Output(ParamOut) of Momentum should not be null."));
+  PADDLE_ENFORCE_NE(
+      velocity_out,
+      nullptr,
+      errors::NotFound("Output(VelocityOut) of Momentum should not be null."));
+
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      phi::product(lr_dims),
+      0,
+      errors::InvalidArgument("Maybe the Input variable LearningRate has not "
+                              "been initialized. You may need to confirm "
+                              "if you put exe.run(startup_program) "
+                              "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      errors::InvalidArgument("Learning_rate should be a scalar. But Received "
+                              "LearningRate's dim [%s]",
+                              phi::product(lr_dims)));
+
+  auto param_dim = param.dims();
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+
+  if (master_param_out) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
@@ -1907,6 +1954,13 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
   out->share_lod(*x.at(0));
+}
+
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out) {
+  for (size_t i = 0; i < x.size(); ++i) {
+    out[i]->share_meta(*x[i]);
+  }
 }
 
 void WarpctcInferMeta(const MetaTensor& logits,
