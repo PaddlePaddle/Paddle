@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -714,6 +715,62 @@ std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
       *dev_ctx, dense_x_ptr, *dense_out_grad, phi::Scalar(axis), dense_x_grad);
 
   return x_grad;
+}
+
+Tensor imag_grad_impl(const Tensor& out_grad) {
+  phi::KernelKey kernel_key{ParseBackend(out_grad),
+                            out_grad.layout(),
+                            phi::dtype::ToComplex(out_grad.dtype())};
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "imag_grad", kernel_key);
+
+  VLOG(6) << "imag_grad API kernel key: " << kernel_key;
+  VLOG(6) << "imag_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+
+  auto dense_out_grad = TensorToDenseTensor(out_grad);
+
+  Tensor out;
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  phi::MetaTensor meta_out(kernel_out);
+  phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
+
+  using kernel_signature = void (*)(
+      const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
+
+  return out;
+}
+
+Tensor real_grad_impl(const Tensor& out_grad) {
+  phi::KernelKey kernel_key{ParseBackend(out_grad),
+                            out_grad.layout(),
+                            phi::dtype::ToComplex(out_grad.dtype())};
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "real_grad", kernel_key);
+
+  VLOG(6) << "real_grad API kernel key: " << kernel_key;
+  VLOG(6) << "real_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+
+  auto dense_out_grad = TensorToDenseTensor(out_grad);
+
+  Tensor out;
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  phi::MetaTensor meta_out(kernel_out);
+  phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
+
+  using kernel_signature = void (*)(
+      const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
+
+  return out;
 }
 
 std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,

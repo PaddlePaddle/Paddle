@@ -74,6 +74,10 @@
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
+#endif
+
 namespace paddle {
 
 using inference::Singleton;
