@@ -28,6 +28,7 @@ from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
