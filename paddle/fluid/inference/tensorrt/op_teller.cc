@@ -930,10 +930,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (decrease_axis.size() > 0) {
-          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                     "is not supported in TensorRT";
-          return false;
+        if (with_dynamic_shape) {
+          if (decrease_axis.size() > 1) {
+            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 1"
+                       "is not supported in TensorRT when it's dynamic";
+            return false;
+          }
+        } else {
+          if (decrease_axis.size() > 0) {
+            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+                       "is not supported in TensorRT";
+            return false;
+          }
         }
       }
 
@@ -1054,9 +1062,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "fused_preln_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
-        VLOG(3)
-            << "fused_preln_embedding_eltwise_layernorm should run on dynamic "
-               "shape mode.";
+        VLOG(3) << "fused_preln_embedding_eltwise_layernorm should run on "
+                   "dynamic "
+                   "shape mode.";
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
@@ -1446,7 +1454,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
         VLOG(3)
-            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = "
+            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes =
+      "
             << y_shape.size();
         return false;
       }
@@ -1590,8 +1599,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 #else
       if (dtype != framework::proto::VarType::FP32) {
-        VLOG(3)
-            << "reduce op input data type must be float32 using TensorRT < 7.0";
+        VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+                   "< 7.0";
         return false;
       }
 #endif
