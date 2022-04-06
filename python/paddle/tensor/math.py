@@ -2668,6 +2668,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
+        if axis is None: axis = -1
         return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
@@ -3911,7 +3912,8 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             input_list = [x, append]
             has_pend = True
         if has_pend:
-            new_input = _C_ops.concat(input_list, 'axis', axis)
+            new_input = _varbase_creator()
+            _C_ops.concat(input_list, new_input, 'axis', axis)
         else:
             new_input = x
 
