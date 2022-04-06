@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU_KP)
 
 __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
                           float scale) {
@@ -255,15 +255,15 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
-template <typename KeyType, typename ValType>
-template <typename StreamType>
-void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, StreamType stream) {
-  if (len == 0) {
-    return;
-  }
-  // TODO(zhangminxu): to be implemented
-}
+// template <typename KeyType, typename ValType>
+// template <typename StreamType>
+// void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
+//                                      size_t len, StreamType stream) {
+//  if (len == 0) {
+//    return;
+//  }
+//  // TODO(zhangminxu): to be implemented
+// }
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
@@ -276,19 +276,19 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
-template <typename KeyType, typename ValType>
-template <typename StreamType>
-void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         char* pool, size_t start_index,
-                                         StreamType stream) {
-  if (len == 0) {
-    return;
-  }
-  if (pool == NULL) {
-    return;
-  }
-  // TODO(zhangminxu): to be implemented
-}
+// template <typename KeyType, typename ValType>
+// template <typename StreamType>
+// void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
+//                                         char* pool, size_t start_index,
+//                                         StreamType stream) {
+//  if (len == 0) {
+//    return;
+//  }
+//  if (pool == NULL) {
+//    return;
+//  }
+//  // TODO(zhangminxu): to be implemented
+// }
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
@@ -307,35 +307,37 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   update_kernel<<<4, 64, stream>>>(container_, d_keys, d_grads, len);
 }
 
-template <typename KeyType, typename ValType>
-template <typename StreamType>
-void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
-                                         const char* d_grads, size_t len,
-                                         StreamType stream) {
-  if (len == 0) {
-    return;
-  }
-  // TODO(zhangminxu): to be implemented
-}
-#endif
+// template <typename KeyType, typename ValType>
+// template <typename StreamType>
+// void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+//                                         const char* d_grads, size_t len,
+//                                         StreamType stream) {
+//  if (len == 0) {
+//    return;
+//  }
+//  // TODO(zhangminxu): to be implemented
+// }
+
+template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
     XPUStream>(const unsigned long* d_keys,
                paddle::framework::FeatureValue* d_vals, size_t len,
                XPUStream stream);
 
-template void
-HashTable<unsigned long, paddle::framework::FeatureValue>::get<XPUStream>(
-    const unsigned long* d_keys, char* d_vals, size_t len, XPUStream stream);
+// template void
+// HashTable<unsigned long, paddle::framework::FeatureValue>::get<XPUStream>(
+//    const unsigned long* d_keys, char* d_vals, size_t len, XPUStream stream);
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
     XPUStream>(const unsigned long* d_keys,
                const paddle::framework::FeatureValue* d_vals, size_t len,
                XPUStream stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
-    XPUStream>(const unsigned long* d_keys, size_t len, char* pool,
-               size_t start_index, XPUStream stream);
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::insert<
+//    XPUStream>(const unsigned long* d_keys, size_t len, char* pool,
+//               size_t start_index, XPUStream stream);
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::
     dump_to_cpu<XPUStream>(int devid, XPUStream stream);
@@ -346,10 +348,12 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
     const paddle::framework::FeaturePushValue* d_grads, size_t len,
     XPUStream stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
-    Optimizer, XPUStream>(const unsigned long* d_keys, const char* d_grads,
-                          size_t len, XPUStream stream);
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::update<
+//    Optimizer, XPUStream>(const unsigned long* d_keys, const char* d_grads,
+//                          size_t len, XPUStream stream);
 
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif
