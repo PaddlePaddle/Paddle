@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .activation import relu  # noqa: F401
+from .conv import conv3d  # noqa: F401
 
-__all__ = ['relu']
+__all__ = ['relu', 'conv3d']

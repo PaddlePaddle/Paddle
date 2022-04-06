@@ -15,5 +15,6 @@
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
 from .layer.activation import ReLU
+from .layer.conv import Conv3D
 
-__all__ = ['sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU']
+__all__ = ['sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D']

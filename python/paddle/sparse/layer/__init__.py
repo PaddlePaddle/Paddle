@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .activation import ReLU
+from .conv import Conv3D
 
 __all__ = []
