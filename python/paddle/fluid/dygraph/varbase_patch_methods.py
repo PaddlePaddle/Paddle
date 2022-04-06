@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
 from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase, in_dygraph_mode
@@ -798,10 +798,12 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        if in_dygraph_mode():
-            return _C_ops.final_state_assign(self)
         if _in_legacy_dygraph():
-            return _C_ops.assign(self)
+            output = core.VarBase()
+            return _C_ops.assign(self, output)
+        else:
+            output = core.eager.Tensor()
+            return _C_ops.final_state_assign(self, output)
 
     @framework.dygraph_only
     def value(self):
@@ -816,6 +818,25 @@ def monkey_patch_varbase():
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
+    def _uva(self, device_id=0):
+        '''
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(x)
+        '''
+        self._tensor_uva(device_id)
+
+    @framework.dygraph_only
     def cpu(self):
         if self.place.is_cpu_place():
             return self
@@ -826,11 +847,25 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id, blocking):
+    def cuda(self, device_id=0, blocking=True):
+        if device_id is None:
+            device_id = 0
+        if not isinstance(device_id, int):
+            raise ValueError("\'device_id\' must be a positive integer")
         if self.place.is_gpu_place():
             return self
         else:
             res = self._copy_to(core.CUDAPlace(device_id), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
+    @framework.dygraph_only
+    def pin_memory(self):
+        if self.place.is_cuda_pinned_place():
+            return self
+        else:
+            res = self._copy_to(core.CUDAPinnedPlace(), True)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -860,8 +895,10 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)
+        setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
+        setattr(core.eager.Tensor, "_uva", _uva)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

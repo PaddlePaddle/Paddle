@@ -448,7 +448,7 @@ int32_t GraphTable::load_graph_split_config(const std::string &path) {
   return 0;
 }
 
-int32_t GraphTable::load(const std::string &path, const std::string &param) {
+int32_t GraphTable::Load(const std::string &path, const std::string &param) {
   bool load_edge = (param[0] == 'e');
   bool load_node = (param[0] == 'n');
   if (load_edge) {
@@ -1066,11 +1066,11 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
 int32_t GraphTable::get_server_index_by_id(int64_t id) {
   return id % shard_num / shard_num_per_server;
 }
-int32_t GraphTable::initialize(const TableParameter &config,
+int32_t GraphTable::Initialize(const TableParameter &config,
                                const FsClientParameter &fs_config) {
   LOG(INFO) << "in graphTable initialize";
   _config = config;
-  if (initialize_accessor() != 0) {
+  if (InitializeAccessor() != 0) {
     LOG(WARNING) << "Table accessor initialize failed";
     return -1;
   }
@@ -1082,9 +1082,9 @@ int32_t GraphTable::initialize(const TableParameter &config,
   auto graph = config.graph_parameter();
   shard_num = _config.shard_num();
   LOG(INFO) << "in graphTable initialize over";
-  return initialize(graph);
+  return Initialize(graph);
 }
-int32_t GraphTable::initialize(const GraphParameter &graph) {
+int32_t GraphTable::Initialize(const GraphParameter &graph) {
 #ifdef PADDLE_WITH_HETERPS
   if (graph.gpups_mode()) {
     gpups_mode = true;

@@ -179,9 +179,6 @@ class EagerUtils {
   static std::vector<paddle::experimental::Tensor> RecoverTensorWrapper(
       std::vector<TensorWrapper>* tw,
       const std::shared_ptr<GradNodeBase>& grad_node);
-  static paddle::optional<const paddle::experimental::Tensor&>
-  RecoverOptionalTensorWrapper(TensorWrapper* tw,
-                               const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
   // Inner Method
@@ -203,9 +200,6 @@ class EagerUtils {
   static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
   // Construct Tensor From var
-  static void ModifyInplaceInput(
-      const std::shared_ptr<EagerVariable>& inplace_variable,
-      paddle::experimental::Tensor* inplace_tensor);
   static std::vector<paddle::experimental::Tensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
