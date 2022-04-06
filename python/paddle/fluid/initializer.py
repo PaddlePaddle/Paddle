@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import _non_static_mode, default_main_program
+from .framework import _non_static_mode, default_main_program, _current_expected_place
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -419,7 +419,8 @@ class TruncatedNormalInitializer(Initializer):
 
         if in_dygraph_mode():
             out_var = _C_ops.final_state_truncated_gaussian_random(
-                var.shape, self._mean, self._std_dev, self._seed, out_dtype)
+                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
+                _current_expected_place())
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
