@@ -151,6 +151,7 @@ void PrintMemProfiler(
             << "    Memory Profiling Report     "
             << "<-------------------------\n\n";
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int num_gpus = GetGPUDeviceCount();
   std::cout.setf(std::ios::left);
   if (num_gpus > 0) {
@@ -179,6 +180,7 @@ void PrintMemProfiler(
     }
     std::cout << "\n";
   }
+#endif
 
   // Output events table
   std::cout.setf(std::ios::left);
