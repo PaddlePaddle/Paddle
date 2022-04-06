@@ -443,6 +443,15 @@
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
 
+- api : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
+
 - api : diag
   args : (Tensor x, int offset, float padding_value)
   output : Tensor
@@ -586,6 +595,16 @@
   kernel :
     func : erfinv
   backward : erfinv_grad
+
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
 
 # expand_as
 - api : expand_as
@@ -736,6 +755,17 @@
   kernel :
     func : gelu
   backward : gelu_grad
+
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
 
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
@@ -1143,7 +1173,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]

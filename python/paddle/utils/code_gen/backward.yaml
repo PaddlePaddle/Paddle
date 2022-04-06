@@ -310,6 +310,16 @@
   kernel :
     func : depthwise_conv2d_transpose_grad
 
+- backward_api : det_grad
+  forward : det (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : determinant_grad
+
 - backward_api : diagonal_grad
   forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset = 0, int axis1 = 0, int axis2 = 1)
@@ -412,6 +422,16 @@
     param : [out]
   kernel :
     func : erfinv_grad
+
+- backward_api : exp_grad
+  forward : exp (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : exp_grad
 
 - backward_api : expand_as_grad
   forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
@@ -516,6 +536,17 @@
     param: [x]
   kernel :
     func : gelu_grad
+
+- backward_api : graph_send_recv_grad
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : graph_send_recv_grad
+  optional: out, dst_count
 
 - backward_api : hard_shrink_grad
   forward : hard_shrink (Tensor x, float threshold) -> Tensor(out)
