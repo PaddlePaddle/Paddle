@@ -206,8 +206,50 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
       debug_synchronous));
 }
 
-#endif
+template void HeterCommKernel::fill_idx<int, cudaStream_t>(
+    int* idx, long long len, const cudaStream_t& stream);
+template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
+    int* idx, int* left, int* right, long long len, int total_devs,
+    const cudaStream_t& stream);
+template void HeterCommKernel::calc_shard_index<
+    unsigned long, int, cudaStream_t>(unsigned long* d_keys, long long len,
+                                      int* shard_index, int total_gpu,
+                                      const cudaStream_t& stream);
+template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
+    unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
+    const cudaStream_t& stream) {
+  template void HeterCommKernel::fill_shard_grads<
+      unsigned long, paddle::framework::FeaturePushValue, int, cudaStream_t>(
+      unsigned long* d_shard_keys, unsigned long* d_keys,
+      paddle::framework::FeaturePushValue* d_shard_grads,
+      paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
+      const cudaStream_t& stream);
+  template void HeterCommKernel::fill_dvals<paddle::framework::FeatureValue,
+                                            int, cudaStream_t>(
+      paddle::framework::FeatureValue * d_shard_vals,
+      paddle::framework::FeatureValue * d_vals, int* idx, long long len,
+      const cudaStream_t& stream);
+  template void HeterCommKernel::sort_pairs<
+      unsigned long, paddle::framework::FeatureValue, cudaStream_t>(
+      void* d_temp_storage,
+      size_t& temp_storage_bytes,      // NOLINT
+      const unsigned long* d_keys_in,  // NOLINT
+      unsigned long* d_keys_out,
+      const paddle::framework::FeatureValue* d_values_in,
+      paddle::framework::FeatureValue* d_values_out, int num_items,
+      int begin_bit, int end_bit, cudaStream_t stream, bool debug_synchronous);
+  template void HeterCommKernel::reduce_by_key<
+      unsigned long*, unsigned long*, paddle::framework::FeaturePushValue*,
+      paddle::framework::FeaturePushValue*, int*, cudaStream_t>(
+      void* d_temp_storage,
+      size_t& temp_storage_bytes,  // NOLINT
+      unsigned long* d_keys_in, unsigned long* d_unique_out,
+      paddle::framework::FeaturePushValue* d_values_in,
+      paddle::framework::FeaturePushValue* d_aggregates_out,
+      int* d_num_runs_out, int num_items, cudaStream_t stream,
+      bool debug_synchronous);
 
-}  // end namespace framework
-}  // end namespace paddle
+#endif
+}  // namespace framework
+}  // namespace paddle
 #endif
