@@ -319,6 +319,37 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
 }
 #endif
 
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
+    XPUStream>(const unsigned long* d_keys,
+               paddle::framework::FeatureValue* d_vals, size_t len,
+               XPUStream stream);
+
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::get<XPUStream>(
+    const unsigned long* d_keys, char* d_vals, size_t len, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    XPUStream>(const unsigned long* d_keys,
+               const paddle::framework::FeatureValue* d_vals, size_t len,
+               XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    XPUStream>(const unsigned long* d_keys, size_t len, char* pool,
+               size_t start_index, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::
+    dump_to_cpu<XPUStream>(int devid, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    paddle::framework::FeaturePushValue, Optimizer, XPUStream>(
+    const unsigned long* d_keys,
+    const paddle::framework::FeaturePushValue* d_grads, size_t len,
+    XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    Optimizer, XPUStream>(const unsigned long* d_keys, const char* d_grads,
+                          size_t len, XPUStream stream);
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif
