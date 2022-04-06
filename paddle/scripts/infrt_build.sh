@@ -21,7 +21,7 @@
 set -e
 
 # TARGET: CPU/GPU/TensorRt
-TARGET=CPU
+TARGET=GPU
 
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
@@ -37,7 +37,7 @@ function update_pd_ops() {
    cd ${PADDLE_ROOT}/build
 
    INFER_WITH_GPU=OFF
-   if [ "${TARGET}" == "GPU" ] || [ "${TARGET}" == "gpu" ] || [ "${TARGET}" == "TensorRt" ]; then
+   if [ "${TARGET}" == "GPU" ] || [ "${TARGET}" == "gpu" ] || [ "${TARGET}" == "TensorRt" ] || [ "${TARGET}" == "tensorrt" ]; then
       INFER_WITH_GPU=ON
    fi
 
@@ -172,7 +172,7 @@ function main() {
         echo "      (2)bash infrt_build.sh build_only"
         echo "      (3)bash infrt_build.sh test_only"
         echo "      optional command: --update_pd_ops : pd_ops.td will be updated according to paddle's code."
-        echo "                        --target= : GPU/CPU/TensorRt, default value is CPU."
+        echo "                        --target= : GPU/gpu/CPU/cpu/TensorRt/tensorrt, default value is GPU."
         exit 0
     fi
 
