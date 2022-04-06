@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& out_grad,
                        const DenseTensor& xshape,
+                       const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());

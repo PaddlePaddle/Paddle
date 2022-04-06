@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -38,6 +38,7 @@ class MultiClassNMS3OpConverter : public OpConverter {
     std::string scores = op_desc.Input("Scores").front();
     std::string output_name = op_desc.Output("Out").front();
     std::string rois_num_name = op_desc.Output("NmsRoisNum").front();
+    std::string index_name = op_desc.Output("Index").front();
 
     auto* bboxes_tensor = engine_->GetITensor(bboxes);
     auto* scores_tensor = engine_->GetITensor(scores);
@@ -122,9 +123,19 @@ class MultiClassNMS3OpConverter : public OpConverter {
         engine_, Concatenation, concat_inputs.data(), concat_inputs.size());
     nms_concat_layer->setAxis(1);
 
+    // add fake index as output to be consistent with the outputs of
+    // multiclass_nms3
+    std::vector<uint32_t> index(1, 0);
+    auto constant_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, nvinfer1::Dims2(1, 1),
+        nvinfer1::Weights{nvinfer1::DataType::kINT32,
+                          static_cast<void*>(index.data()), 1});
+
     RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
                              {rois_num_name}, test_mode);
     RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms3", {output_name},
+                             test_mode);
+    RreplenishLayerAndOutput(constant_layer, "multiclass_nms3", {index_name},
                              test_mode);
   }
 };

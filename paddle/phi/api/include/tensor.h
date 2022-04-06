@@ -494,6 +494,7 @@ class PADDLE_API Tensor final {
    * @return AbstractAutogradMeta*
    */
   AbstractAutogradMeta* get_autograd_meta() const;
+  const std::shared_ptr<AbstractAutogradMeta>& mutable_autograd_meta() const;
 
   /**
    * @brief Set the autograd meta object
@@ -566,7 +567,7 @@ class PADDLE_API Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<phi::TensorBase> impl_;
+  std::shared_ptr<phi::TensorBase> impl_{nullptr};
 
   /**
    * [ Why need abstract AbstractAutogradMeta here? ]
