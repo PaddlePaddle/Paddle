@@ -2102,8 +2102,7 @@ def sigmoid_focal_loss(logit,
         elif reduction == "mean":
             if paddle.in_dynamic_mode():
                 return _C_ops.final_state_mean_all(loss)
-            else:
-                return _C_ops.mean(loss)
+            return _C_ops.mean(loss)
 
         return loss
 
