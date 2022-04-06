@@ -1,8 +1,23 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import re
 import yaml
 from copy import copy
 from typing import Dict, Any, List, Tuple
 from tests import is_attr, is_input, is_output
+from filters import to_named_dict
 
 
 def parse_arg(api_name: str, s: str) -> Dict[str, str]:
@@ -11,23 +26,35 @@ def parse_arg(api_name: str, s: str) -> Dict[str, str]:
     2. typename name = default_value
     """
     typename, rest = [item.strip() for item in s.split(" ", 1)]
-    assert len(typename) > 0, f"The arg typename should not be empty. Please check the args of {api_name} in yaml."
-    
-    assert rest.count("=") <= 1, f"There is more than 1 = in an arg in {api_name}"
+    assert len(
+        typename
+    ) > 0, f"The arg typename should not be empty. Please check the args of {api_name} in yaml."
+
+    assert rest.count(
+        "=") <= 1, f"There is more than 1 = in an arg in {api_name}"
     if rest.count("=") == 1:
         name, default_value = [item.strip() for item in rest.split("=", 1)]
-        assert len(name) > 0, f"The arg name should not be empty. Please check the args of {api_name} in yaml."
-        assert len(default_value) > 0, f"The default value should not be empty. Please check the args of {api_name} in yaml."
-        return {"typename": typename, "name": name, "default_value": default_value}
+        assert len(
+            name
+        ) > 0, f"The arg name should not be empty. Please check the args of {api_name} in yaml."
+        assert len(
+            default_value
+        ) > 0, f"The default value should not be empty. Please check the args of {api_name} in yaml."
+        return {
+            "typename": typename,
+            "name": name,
+            "default_value": default_value
+        }
     else:
         name = rest.strip()
-        assert len(name) > 0, f"The arg name should not be empty. Please check the args of {api_name} in yaml."
+        assert len(
+            name
+        ) > 0, f"The arg name should not be empty. Please check the args of {api_name} in yaml."
         return {"typename": typename, "name": name}
 
 
-def parse_input_and_attr(
-    api_name: str,
-    arguments: str) -> Tuple[List, List, Dict, Dict]:
+def parse_input_and_attr(api_name: str,
+                         arguments: str) -> Tuple[List, List, Dict, Dict]:
     args_str = arguments.strip()
     assert args_str.startswith('(') and args_str.endswith(')'), \
         (f"Args declaration should start with '(' and end with ')', "
@@ -39,7 +66,7 @@ def parse_input_and_attr(
     attrs = []
 
     met_attr_with_default_value = False
-    
+
     for arg in args:
         item = parse_arg(api_name, arg)
         typename = item["typename"]
@@ -106,7 +133,8 @@ def parse_plain_list(s: str, sep=",") -> List[str]:
     return items
 
 
-def parse_kernel(api_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
+def parse_kernel(api_name: str,
+                 kernel_config: Dict[str, Any]) -> Dict[str, Any]:
     # kernel :
     #    func : [], Kernel functions (example: scale, scale_sr)
     #    param : [], Input params of kernel
@@ -123,7 +151,7 @@ def parse_kernel(api_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]
     kernel['func'] = parse_plain_list(kernel_config['func'])
     if 'param' in kernel_config:
         kernel['param'] = kernel_config['param']
-        
+
     if 'backend' in kernel_config:
         kernel['backend'] = parse_candidates(kernel_config["backend"])
 
@@ -183,7 +211,6 @@ def parse_forward(api_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
-
 def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
     api_name = api_entry[name_field]
     inputs, attrs = parse_input_and_attr(api_name, api_entry["args"])
@@ -191,18 +218,18 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
 
     input_names = [item["name"] for item in inputs]
     attr_names = [item["name"] for item in attrs]
-    
+
     # add optional tag for every inputs
     for input in inputs:
         input["optional"] = False
     if "optional" in api_entry:
         optional_args = parse_plain_list(api_entry["optional"])
         for name in optional_args:
-            assert name in input_names
+            assert name in input_names, f"{api_name} has an optional input: '{name}' which is not an input."
         for input in inputs:
             if input["name"] in optional_args:
                 input["optional"] = True
-    
+
     api = {
         "name": api_name,
         "inputs": inputs,
@@ -239,20 +266,80 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
         invoke = parse_invoke(api_name, api_entry["invoke"])
         api["invoke"] = invoke
 
-    
     # backward
     if "backward" in api_entry:
         backward = api_entry["backward"]
     else:
         backward = None
     api["backward"] = backward
-    
+
     # forward for backward_apis
     is_backward_api = name_field == "backward_api"
     if is_backward_api:
         if "forward" in api_entry:
             forward = parse_forward(api_name, api_entry["forward"])
+            # validate_fb
+            validate_backward_inputs(api_name, forward["inputs"],
+                                     forward["outputs"], inputs)
+            validate_backward_attrs(api_name, forward["attrs"], attrs)
+            validate_backward_outputs(api_name, forward["inputs"], outputs)
         else:
             forward = None
         api["forward"] = forward
     return api
+
+
+def validate_backward_attrs(api, forward_attrs, backward_attrs):
+    if len(forward_attrs) >= len(backward_attrs):
+        return
+    num_exceptional_attrs = len(backward_attrs) - len(forward_attrs)
+    # this is a not-that-clean trick to allow backward api to has more attrs
+    # than the forward api, as long as they all have default value
+    for i in range(-num_exceptional_attrs, 0):
+        assert "default_value" in backward_attrs[
+            i], f"{api} has exceptional attr without default value"
+
+
+def validate_backward_inputs(api, forward_inputs, forward_outputs,
+                             backward_inputs):
+    foward_input_names = [item["name"] for item in forward_inputs]
+    forward_output_names = [item["name"] for item in forward_outputs]
+    backward_input_names = [item["name"] for item in backward_inputs]
+
+    assert len(backward_input_names) <= len(foward_input_names) + 2 * len(
+        forward_output_names), f"{api} has too many inputs."
+
+
+def validate_backward_outputs(api, forward_inputs, backward_outputs):
+    assert len(backward_outputs) <= len(
+        forward_inputs), f"{api} has too many outputs"
+
+
+def cross_validate(apis):
+    for name, api in apis.items():
+        if "forward" in api:
+            fw_call = api["forward"]
+            fw_name = fw_call["name"]
+            if fw_name not in apis:
+                print(
+                    f"Something Wrong here, this backward api({name})'s forward api({fw_name}) does not exist."
+                )
+            else:
+                fw_api = apis[fw_name]
+                if "backward" not in fw_api or fw_api["backward"] is None:
+                    print(
+                        f"Something Wrong here, {name}'s forward api({fw_name}) does not claim {name} as its backward."
+                    )
+                else:
+                    assert fw_api[
+                        "backward"] == name, f"{name}: backward and forward name mismatch"
+
+                assert len(fw_call["inputs"]) <= len(
+                    fw_api["inputs"]
+                ), f"{name}: forward call has more inputs than the api"
+                assert len(fw_call["attrs"]) <= len(
+                    fw_api["attrs"]
+                ), f"{name}: forward call has more attrs than the api"
+                assert len(fw_call["outputs"]) <= len(
+                    fw_api["outputs"]
+                ), f"{name}: forward call has more outputs than the api"

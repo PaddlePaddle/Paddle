@@ -221,10 +221,10 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
       {% if attr["typename"] == "ScalarArray" %}
-    grad_op->SetInput("{{input["name"] | to_pascal_case}}Tensor", this->Input("{{input["name"] | to_pascal_case}}Tensor"));
-    grad_op->SetInput("{{input["name"] | to_pascal_case}}TensorList", this->Input("{{input["name"] | to_pascal_case}}TensorList"));
-      {% elif  attr["typename"] == "Scalar" %}
-    grad_op->SetInput("{{input["name"] | to_pascal_case}}Tensor", this->Input("{{input["name"] | to_pascal_case}}Tensor"));
+    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
+    grad_op->SetInput("{{attr_name | to_pascal_case}}TensorList", this->Input("{{attr_name | to_pascal_case}}TensorList"));
+      {% elif attr["typename"] == "Scalar" %}
+    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
       {% endif %}
     grad_op->SetAttr({{attr_name}}, this->GetAttr({{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}));
     {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}

@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # type mapping: types in yaml -> types in c++ API
 input_types_map = {
     'Tensor': 'const Tensor&',
@@ -11,7 +25,7 @@ optional_input_types_map = {
 
 attr_types_map = {
     # special types
-    'ScalarArray': 'const ScalarArray&',
+    'IntArray': 'const ScalarArray&',
     'Scalar': 'const Scalar&',
     'Scalar(bool)': 'const Scalar&',
     'Scalar(int)': 'const Scalar&',
@@ -24,14 +38,13 @@ attr_types_map = {
     # scalar types
     'bool': 'bool',
     'int': 'int',
-    'int64': 'int64_t',
+    'int64_t': 'int64_t',
     'float': 'float',
     'double': 'double',
     'str': 'const std::string&',
     # vector types
     'bool[]': 'const std::vector<bool>&',
     'int[]': 'const std::vector<int>&',
-    'int64[]': 'const std::vector<int64_t>&',
     'int64_t[]': 'const std::vector<int64_t>&',
     'float[]': 'const std::vector<float>&',
     'double[]': 'const std::vector<double>&',
@@ -40,7 +53,7 @@ attr_types_map = {
 
 opmaker_attr_types_map = {
     # special types
-    'ScalarArray': 'std::vector<int64_t>',
+    'IntArray': 'std::vector<int64_t>',
     'Scalar': 'float',
     'Scalar(bool)': 'bool',
     'Scalar(int)': 'int',
@@ -53,14 +66,13 @@ opmaker_attr_types_map = {
     # scalar types
     'bool': 'bool',
     'int': 'int',
-    'int64': 'int64_t',
+    'int64_t': 'int64_t',
     'float': 'float',
     'double': 'double',
     'str': 'std::string',
     # vector types
     'bool[]': 'std::vector<bool>',
     'int[]': 'std::vector<int>',
-    'int64[]': 'std::vector<int64_t>',
     'int64_t[]': 'std::vector<int64_t>',
     'float[]': 'std::vector<float>',
     'double[]': 'std::vector<double>',
@@ -95,14 +107,10 @@ dense_output_types_map = {
 
 #---------------------- phi selected rows------------------------------
 # type mapping to phi, used in implementation
-sr_input_types_map = {
-    'Tensor': 'const phi::SelectedRows&',
-}
+sr_input_types_map = {'Tensor': 'const phi::SelectedRows&', }
 
 sr_optional_input_types_map = {
     'Tensor': 'paddle::optional<const phi::SelectedRows&>',
 }
 
-sr_output_types_map = {
-    'Tensor': 'phi::SelectedRows*',
-}
+sr_output_types_map = {'Tensor': 'phi::SelectedRows*', }

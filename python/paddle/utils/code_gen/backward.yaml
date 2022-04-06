@@ -8,6 +8,16 @@
 #   kernel :
 #     func : gumbel_softmax_grad
 
+# - backward_api : label_smooth_grad
+#   forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
+#   args : (Tensor out_grad, float epsilon)
+#   output : Tensor(label_grad)
+#   infer_meta :
+#     func : UnchangedInferMeta
+#     param : [out_grad]
+#   kernel :
+#     func : label_smooth_grad
+
 - backward_api : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -100,7 +110,7 @@
     func : asinh_grad
 
 - backward_api : atan2_grad
-  forward : cross (Tensor x, Tensor y) -> Tensor(out)
+  forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -193,7 +203,7 @@
     func : cholesky_grad
 
 - backward_api : cholesky_solve_grad
-  forward : cholesky (Tensor x, Tensor y, bool upper) -> Tensor(out)
+  forward : cholesky_solve (Tensor x, Tensor y, bool upper) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -360,7 +370,6 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
-  optional : seed_tensor
 
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
@@ -404,7 +413,7 @@
     data_type : out_grad
 
 - backward_api : erfinv_grad
-  forward : erf (Tensor x) -> Tensor(out)
+  forward : erfinv (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -586,17 +595,6 @@
   kernel :
     func : kthvalue_grad
 
-- backward_api : label_smooth_grad
-  forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
-  args : (Tensor out_grad, float epsilon)
-  output : Tensor(label_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : label_smooth_grad
-  optional : prior_dist
-
 - backward_api : leaky_relu_grad
   forward : leaky_relu (Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float alpha)
@@ -608,7 +606,7 @@
     func : leaky_relu_grad
 
 - backward_api : lerp_grad
-  forward : transpose (Tensor x, Tensor y, Tensor weight) -> Tensor(out)
+  forward : lerp (Tensor x, Tensor y, Tensor weight) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor weight, Tensor out, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -867,7 +865,7 @@
     func : mode_grad
 
 - backward_api : modulo_grad
-  forward : add (Tensor x, Tensor y) -> Tensor(out)
+  forward : modulo (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -1036,7 +1034,7 @@
   backward: relu_double_grad
 
 - backward_api : reshape_grad
-  forward : reshape_with_xshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
+  forward : reshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -1110,7 +1108,7 @@
   no_need_buffer : updates
 
 - backward_api : scatter_nd_add_grad
-  forward : scatter (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
+  forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
   args : (Tensor index, Tensor updates, Tensor out_grad)
   output : Tensor(x_grad), Tensor(updates_grad)
   infer_meta :
