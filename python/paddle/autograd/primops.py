@@ -75,6 +75,10 @@ def fill_const(value, shape, dtype, out=None):
     return out
 
 
+def neg(x, out=None):
+    return _simple_unop(LayerHelper('neg_p', **locals()))
+
+
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))    
 
@@ -166,6 +170,7 @@ def reduce(x, axis, keepdim, out=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
 
 def matmul(x, y, out=None):
     return _simple_binop(LayerHelper('matmul_p', **locals()))
