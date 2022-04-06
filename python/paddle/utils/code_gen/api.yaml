@@ -230,6 +230,17 @@
   kernel :
     func : bernoulli
 
+# bincount
+- api : bincount
+  args : (Tensor x, Tensor weight, int minlength)
+  output : Tensor
+  infer_meta :
+    func : BincountInferMeta
+  kernel :
+    func : bincount
+    data_type : x
+  optional : weight
+
 # bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
@@ -1143,7 +1154,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
@@ -1239,6 +1250,16 @@
     data_type : input
   optional : weight
   backward : nll_loss_grad
+
+- api : norm
+  args : (Tensor x, int axis, float epsilon, bool is_test)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+    func : norm
+  intermediate : norm
+  backward : norm_grad
 
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
@@ -1536,6 +1557,7 @@
     func : SegmentPoolInferMeta
   kernel :
     func : segment_pool
+    data_type : x
   backward : segment_pool_grad
 
 # selu
