@@ -213,9 +213,9 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             set(parameters),
             set([
                 'fc_2.b_0', 'num_good_steps_0', 'fc_2.w_0', 'loss_scaling_0',
-                'num_bad_steps_0', 'fc_2.w_0_velocity_0', 'fc_2.w_0_asp_mask',
-                'learning_rate_0', 'fc_1.b_0', 'fc_1.w_0_asp_mask',
-                'fc_0.w_0_asp_mask', 'fc_1.b_0_velocity_0',
+                'num_bad_steps_0', 'fc_2.w_0_velocity_0', 'fc_2.w_0.asp_mask',
+                'learning_rate_0', 'fc_1.b_0', 'fc_1.w_0.asp_mask',
+                'fc_0.w_0.asp_mask', 'fc_1.b_0_velocity_0',
                 'fc_2.b_0_velocity_0'
             ]))
         self.assertEqual(ops, [

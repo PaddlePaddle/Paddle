@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import ParamBase
+from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -50,7 +50,7 @@ def prepare_context(strategy=None):
         strategy.current_endpoint = Env().current_endpoint
     if strategy.nranks < 2:
         return
-    assert framework.in_dygraph_mode() is True, \
+    assert framework._non_static_mode() is True, \
         "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
@@ -128,6 +128,9 @@ class ParallelEnv(object):
         elif core.is_compiled_with_npu():
             selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
             self._device_id = int(selected_npus[0])
+        elif core.is_compiled_with_mlu():
+            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+            self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -357,9 +360,10 @@ def sync_params_buffers(model,
                         is_model_parallel=False):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, ParamBase):
@@ -561,18 +565,19 @@ class DataParallel(layers.Layer):
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
                  find_unused_parameters=False,
-                 process_group=None,
-                 gradient_as_buffer_view=False,
-                 static_graph=False):
+                 group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
+
+        assert _non_static_mode(), \
+            "It's not supported to construct DataParallel in static mode."
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
-        self.process_group = process_group
-        self.gradient_as_buffer_view = gradient_as_buffer_view
-        self.static_graph = static_graph
+        self.group = group
+        self.var_dtype = core.eager.Tensor if in_dygraph_mode(
+        ) else core.VarBase
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -588,6 +593,13 @@ class DataParallel(layers.Layer):
             assert parallel_helper.__parallel_ctx__clz__ is not None, \
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
+
+            if in_dygraph_mode():
+                self.group = paddle.distributed.collective._get_default_group(
+                ) if self.group is None else self.group
+
+                assert isinstance(self.group, paddle.distributed.collective.Group), \
+                    "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
             # TODO(liuyuhui) Currently not support xpu. xpu is 
@@ -617,9 +629,9 @@ class DataParallel(layers.Layer):
                 if param is None or param in params_set:
                     continue
                 params_set.add(param)
-                if not isinstance(param, core.VarBase):
-                    raise TypeError("The data type of '%s' must be Varbase" %
-                                    param.name)
+                if not isinstance(param, self.var_dtype):
+                    raise TypeError("The data type of '%s' must be '%s'" %
+                                    (param.name, self.var_dtype))
                 if param.trainable:
                     layers_param.append((sublayer, param))
 
@@ -646,19 +658,32 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        self.group_indices = core.assign_group_by_size(
-            trainable_parameters, is_sparse_gradient,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+        if in_dygraph_mode():
+            self.group_indices = core.eager_assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
 
-        self._reducer = core.Reducer(
-            trainable_parameters,
-            list(reversed(self.group_indices)), is_sparse_gradient,
-            parallel_helper.__parallel_ctx__clz__,
-            [self.last_comm_buffer_size, self.comm_buffer_size],
-            self.find_unused_parameters)
+            self._reducer = core.EagerReducer(
+                trainable_parameters,
+                list(reversed(self.group_indices)), is_sparse_gradient,
+                self.group.process_group,
+                [self.last_comm_buffer_size, self.comm_buffer_size],
+                self.find_unused_parameters)
+        elif _in_legacy_dygraph():
+            self.group_indices = core.assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
+
+            self._reducer = core.Reducer(
+                trainable_parameters,
+                list(reversed(self.group_indices)), is_sparse_gradient,
+                parallel_helper.__parallel_ctx__clz__,
+                [self.last_comm_buffer_size, self.comm_buffer_size],
+                self.find_unused_parameters)
 
     def _find_varbase(self, obj):
-        if isinstance(obj, core.VarBase):
+        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
+        if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
             return itertools.chain(*map(self._find_varbase, obj))

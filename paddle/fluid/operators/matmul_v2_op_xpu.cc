@@ -38,7 +38,7 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
       ColumnMatrixFromVector(y_dims), 0, trans_y);
 
-  if (x_dims.size() == 3 && y_dims.size() <= 2) {
+  if (x_dims.size() >= 3 && y_dims.size() <= 2) {
     // if transpose_X is true, the transpose cost much time
     if (!trans_x) {
       mat_dim_a.height_ *= mat_dim_a.batch_size_;

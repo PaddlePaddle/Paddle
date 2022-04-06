@@ -263,13 +263,9 @@ def to_string(var, prefix='Tensor'):
         data=data)
 
 
-def tensor_to_string(tensor, prefix='Tensor'):
-    indent = len(prefix) + 1
-
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
-
-    if not tensor._is_initialized():
-        return "Tensor(Not initialized)"
+def _format_dense_tensor(tensor, indent):
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        tensor = tensor.astype('float32')
 
     np_tensor = tensor.numpy()
 
@@ -288,12 +284,73 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     data = _format_tensor(
         np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+    return data
 
-    return _template.format(
-        prefix=prefix,
-        shape=tensor.shape,
-        dtype=tensor.dtype,
-        place=tensor._place_str,
-        stop_gradient=tensor.stop_gradient,
-        indent=' ' * indent,
-        data=data)
+
+def sparse_tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+    if tensor.is_sparse_coo():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
+        indices_tensor = tensor.non_zero_indices()
+        elements_tensor = tensor.non_zero_elements()
+        indices_data = 'indices=' + _format_dense_tensor(indices_tensor, indent
+                                                         + len('indices='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
+                                                       len('values='))
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=tensor.dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            indices=indices_data,
+            values=values_data)
+    else:
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
+        crows_tensor = tensor.non_zero_crows()
+        cols_tensor = tensor.non_zero_cols()
+        elements_tensor = tensor.non_zero_elements()
+        crows_data = 'crows=' + _format_dense_tensor(crows_tensor, indent +
+                                                     len('crows='))
+        cols_data = 'cols=' + _format_dense_tensor(cols_tensor, indent +
+                                                   len('cols='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
+                                                       len('values='))
+
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=tensor.dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            crows=crows_data,
+            cols=cols_data,
+            values=values_data)
+
+
+def tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+
+    if tensor.is_sparse():
+        return sparse_tensor_to_string(tensor, prefix)
+
+    if not tensor._is_dense_tensor_hold_allocation():
+        return "Tensor(Not initialized)"
+    else:
+        data = _format_dense_tensor(tensor, indent)
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            data=data)

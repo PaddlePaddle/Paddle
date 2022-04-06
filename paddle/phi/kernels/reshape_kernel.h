@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -24,24 +24,24 @@ namespace phi {
 template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const ScalarArray& shape,
+                   const IntArray& shape,
                    DenseTensor* out);
 
 template <typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
+                       const IntArray& shape,
+                       DenseTensor* out,
+                       DenseTensor* xshape);
 
 template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   InferMetaFromVecValue(x, shape, &meta_out);
-  ReshapeKernel<Context>(dev_ctx, x, ScalarArray(shape), &dense_out);
+  ReshapeKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
   return dense_out;
 }
 

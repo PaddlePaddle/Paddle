@@ -50,8 +50,7 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/utils/string/split.h"
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -65,10 +64,18 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#endif
+
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#endif
+
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
 #endif
 
 namespace paddle {
@@ -370,8 +377,7 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
     return PrepareFleetExecutor();
@@ -389,8 +395,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 bool AnalysisPredictor::PrepareFleetExecutor() {
   VLOG(3) << "AnalysisPredictor::PrepareFleetExecutor()";
   if (config_.dist_config().nranks() > 1 && !CommInit()) {
@@ -868,6 +873,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
   }
 
+  if (config_.gpu_fp16_enabled()) {
+    argument_.SetUseGPUFp16(true);
+    argument_.SetGpuFp16DisabledOpTypes(config_.gpu_fp16_disabled_op_types_);
+  }
+
   if (config_.lite_engine_enabled()) {
     argument_.SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1185,8 +1195,7 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope;
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
@@ -1235,8 +1244,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
   framework::Scope *scope;
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
@@ -1283,8 +1291,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
     inference::Timer timer;
@@ -1741,6 +1748,7 @@ USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
+USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(reshape);
@@ -1762,6 +1770,27 @@ namespace paddle_infer {
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
+  if (config.use_onnxruntime()) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+    if (config.use_gpu()) {
+      LOG(WARNING) << "The current ONNXRuntime backend doesn't support GPU,"
+                      "and it falls back to use Paddle Inference.";
+    } else if (!paddle::CheckConvertToONNX(config)) {
+      LOG(WARNING)
+          << "Paddle2ONNX do't support convert the Model， fall back to using "
+             "Paddle Inference.";
+    } else {
+      predictor_ = paddle::CreatePaddlePredictor<
+          Config, paddle::PaddleEngineKind::kONNXRuntime>(config);
+      return;
+    }
+#else
+    LOG(WARNING)
+        << "The onnxruntime backend isn't enabled,"
+           " and please re-compile Paddle with WITH_ONNXRUNTIME option,"
+           "fall back to using Paddle Inference.";
+#endif
+  }
   predictor_ = paddle::CreatePaddlePredictor<
       Config, paddle::PaddleEngineKind::kAnalysis>(config);
 }

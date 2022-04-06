@@ -45,7 +45,8 @@ struct GaussianGenerator {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     using MT = typename details::MPTypeTrait<T>::Type;
-    thrust::normal_distribution<MT> dist(mean_, std_);
+    thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
+                                         static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
     MT out = dist(rng);

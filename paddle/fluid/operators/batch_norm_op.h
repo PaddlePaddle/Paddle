@@ -113,23 +113,5 @@ class BatchNormOpInferVarType
   }
 };
 
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
 }  // namespace operators
 }  // namespace paddle

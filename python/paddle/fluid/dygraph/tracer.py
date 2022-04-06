@@ -30,11 +30,22 @@ final_state_name_mapping = {
         "y": "Y",
         "out": "Out",
     },
+    # "elementwise_add": {
+    #     "final_op_name": "final_state_add",
+    #     "x": "X",
+    #     "y": "Y",
+    # },
     "trunc": {
         "final_op_name": "final_state_trunc",
         "x": "X",
         "out": "Out",
     },
+    # "pool2d": {
+    #     "final_op_name": "final_state_pool2d",
+    #     "x": "X",
+    #     "kernel_size": "ksize",
+    #     "out": "Out",
+    # },
     "abs": {
         "final_op_name": "final_state_abs",
         "x": "X",
@@ -52,7 +63,13 @@ final_state_name_mapping = {
         "axis1": "axis1",
         "axis2": "axis2",
         "out": "Out",
-    }
+    },
+    # "one_hot": {
+    #     "final_op_name": "final_state_one_hot",
+    #     "x": "X",
+    #     "num_class": "depth",
+    #     "out": "Out",
+    # }
 }
 
 
@@ -93,6 +110,9 @@ class Tracer(core.Tracer):
 
         arg_list = []
         for i in range(len(op_args)):
+            # initialized with None
+            arg_to_append = None
+
             arg_name = op_args[i]
             arg_type = op_args_type[i]
             if arg_name in inputs.keys():
@@ -100,14 +120,20 @@ class Tracer(core.Tracer):
             elif arg_name in outputs.keys():
                 arg_to_append = outputs[arg_name]
             else:
-                if "Num" in arg_name:
+                if "Num" in arg_name[-3:]:
                     # Remove "Num" suffix to get out_name
                     out_name = arg_name[:-3]
                     assert out_name in outputs.keys()
                     num_outs = len(outputs[out_name])
                     arg_to_append = num_outs
-                else:
-                    arg_to_append = None
+                # NOTE(dev): For MasterParam/MasterParamOut in optimzer op
+                elif "Var" in arg_name[-3:]:
+                    out_name = arg_name[:-3]
+                    print(out_name)
+                    if out_name in outputs.keys():
+                        arg_to_append = outputs[out_name]
+                    elif out_name in inputs.keys():
+                        arg_to_append = inputs[out_name]
 
             if arg_to_append is None:
                 arg_list.append(arg_to_append)
@@ -130,6 +156,13 @@ class Tracer(core.Tracer):
             attrs_list.append(v)
         returns = function_ptr(*arg_list, *attrs_list)
 
+        if type == 'load_combine':
+            assert len(outputs.keys()) == 1
+            key = list(outputs.keys())[0]
+            for j in range(len(returns)):
+                returns[j]._share_underline_tensor_to(outputs[key][j])
+            return
+
         if isinstance(returns, tuple):
             for i in range(len(op_returns)):
                 retname = op_returns[i]
@@ -140,7 +173,12 @@ class Tracer(core.Tracer):
                             outputs[retname][j].reconstruct_from_(returns[i][j],
                                                                   False)
                     else:
-                        outputs[retname][0].reconstruct_from_(returns[i], False)
+                        if isinstance(outputs[retname], list):
+                            outputs[retname][0].reconstruct_from_(returns[i],
+                                                                  False)
+                        else:
+                            outputs[retname].reconstruct_from_(returns[i],
+                                                               False)
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
@@ -244,10 +282,9 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if framework._in_eager_mode():
+        if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-
             if type in final_state_name_mapping.keys():
                 final_state_type = final_state_name_mapping[type][
                     "final_op_name"]

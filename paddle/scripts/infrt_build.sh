@@ -32,17 +32,23 @@ function update_pd_ops() {
    # compile and install paddle
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
-   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j8 paddle_python print_pten_kernels
+   cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j24 paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
    ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
+   ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
    python3 -m pip install  *whl
    # update pd_ops.td
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
-   python3 generate_phi_kernel_dialect.py ./kernels.json
+   python3 generate_phi_kernel_dialect.py
+   # generate test model
+   cd ${PADDLE_ROOT}
+   mkdir -p ${PADDLE_ROOT}/build/models
+   python3 paddle/infrt/tests/models/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+   python3 paddle/infrt/tests/models/resnet50_model.py ${PADDLE_ROOT}/build/models/resnet50/model
 }
 
 function init() {
@@ -75,6 +81,7 @@ function init() {
 }
 
 function infrt_gen_and_build() {
+    parallel_number=24
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
@@ -87,12 +94,12 @@ function infrt_gen_and_build() {
     # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
-    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
+    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=ON -DWITH_TENSORRT=ON -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DINFRT_WITH_GPU=ON -DINFRT_WITH_TRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
 
-    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-ir-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
+    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -110,6 +117,7 @@ function create_fake_models() {
     python3 -m pip install  *whl
     cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/models/linear.py
 }
 
 function test_infrt() {

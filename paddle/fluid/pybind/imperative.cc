@@ -52,10 +52,14 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/uva_utils.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/compat/type_defs.h"
 
 namespace paddle {
 namespace pybind {
@@ -116,7 +120,11 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       return var;
     }
 
-    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+    auto res_varbase = PyObjectCast<std::shared_ptr<imperative::VarBase>>(res);
+    // Here the reference count of `res` is 2, so we decreases the reference
+    // count manually to avoid memory leaks
+    Py_DECREF(res);
+    return res_varbase->SharedVar();
   }
 
  private:
@@ -379,46 +387,6 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
   return result;
 }
 
-// cast numpy type form S to T, this may allocate new memory
-template <class T, class S>
-static py::array_t<T> CastNumpyType(py::array_t<S> array) {
-  if (std::is_same<T, S>::value) {
-    return array;
-  }
-  auto dim = array.ndim();
-  std::vector<py::ssize_t> result_shape(dim);
-  for (auto i = 0; i < dim; i++) {
-    result_shape[i] = array.shape(i);
-  }
-
-  py::array_t<T> result(result_shape);
-
-  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
-}
-
-template <class T>
-static py::array_t<T> CastNumpyArray(const py::object &array) {
-  if (py::isinstance<py::array_t<float>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<float>>());
-  } else if (py::isinstance<py::array_t<double>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<double>>());
-  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
-  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
-  } else if (py::isinstance<py::array_t<bool>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Value type error. The assign numpy value allows integer, float, "
-        "double and bool, "
-        "but received %s.",
-        Py_TYPE(array.ptr())->tp_name));
-  }
-  // can't reach here
-  return py::array_t<T>();
-}
-
 static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     const PyNameVarBaseMap &map) {
   imperative::NameVarBaseMap result;
@@ -426,6 +394,28 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     auto var_vec = GetVarBaseListFromPyHandle(pair.second);
     if (!var_vec.empty()) {
       result.emplace(pair.first, std::move(var_vec));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      PyErr_Occurred(), nullptr,
+      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
+  return result;
+}
+
+paddle::imperative::NameTensorMap ConvertToNameTensorMap(
+    const PyNameVarBaseMap &map) {
+  paddle::imperative::NameTensorMap result;
+  for (auto &pair : map) {
+    auto var_vec = CastPyArg2VectorOfTensor(pair.second.ptr(), 0);
+    if (!var_vec.empty()) {
+      // change vector<Tensor> -> vector<shared_ptr<Tensor>>
+      std::vector<std::shared_ptr<egr::EagerVariable>> dst_var_vec;
+      for (auto &v : var_vec) {
+        dst_var_vec.emplace_back(
+            std::make_shared<egr::EagerVariable>(std::move(v)));
+      }
+      result.emplace(pair.first, std::move(dst_var_vec));
     }
   }
 
@@ -632,17 +622,9 @@ void BindImperative(py::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
   m.def("_switch_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
-          if (egr::Controller::Instance().InEagerMode()) {
-            egr::Controller::Instance().SetCurrentTracer(tracer);
-          }
+          egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
-  m.def("_enable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(true); });
-  m.def("_disable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(false); });
-  m.def("_in_eager_mode",
-        []() { return egr::Controller::Instance().InEagerMode(); });
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
   g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
@@ -825,27 +807,29 @@ void BindImperative(py::module *m_ptr) {
                 py::object value = value_obj;
                 if (self->DataType() == framework::proto::VarType::FP32) {
                   if (!py::isinstance<py::array_t<float>>(value_obj)) {
-                    value = CastNumpyArray<float>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<float>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::FP64) {
                   if (!py::isinstance<py::array_t<double>>(value_obj)) {
-                    value = CastNumpyArray<double>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<double>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT32) {
                   if (!py::isinstance<py::array_t<int32_t>>(value_obj)) {
-                    value = CastNumpyArray<int32_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int32_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT64) {
                   if (!py::isinstance<py::array_t<int64_t>>(value_obj)) {
-                    value = CastNumpyArray<int64_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int64_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::BOOL) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
-                    value = CastNumpyArray<bool>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<bool>(value_obj);
                   }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1646,39 +1630,9 @@ void BindImperative(py::module *m_ptr) {
                                platform::errors::InvalidArgument(
                                    "Unified virtual addressing only support "
                                    "CPU Tensor currently."));
-             platform::DeviceContextPool &pool =
-                 platform::DeviceContextPool::Instance();
-             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
-             VLOG(4) << "Init the DeviceContext, and the place is "
-                     << dev_ctx->GetPlace();
              auto *self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             // Register the cpu memory as the cuda host memory
-             const auto &data_numel = self_tensor->numel();
-             const size_t &need_allocate_size =
-                 data_numel *
-                 framework::SizeOfType(
-                     framework::TransToProtoVarType(self_tensor->dtype()));
-             void *data_ptr = self_tensor->data();
-             auto result = cudaHostRegister(data_ptr, need_allocate_size,
-                                            cudaHostRegisterDefault);
-             if (cudaSuccess != result) {
-               VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
-                       << need_allocate_size << ", the error code:" << result;
-             }
-
-             // Get device pointer from the function of cudaHostGetDevicePointer
-             void *cuda_device_pointer = nullptr;
-             cudaHostGetDevicePointer(
-                 reinterpret_cast<void **>(&cuda_device_pointer),
-                 reinterpret_cast<void *>(data_ptr), 0);
-
-             // Reset the memory with device pointer
-             std::shared_ptr<memory::allocation::Allocation> holder =
-                 std::make_shared<memory::allocation::Allocation>(
-                     cuda_device_pointer, need_allocate_size,
-                     platform::CUDAPlace(device_id));
-             self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
+             tensor_uva(self_tensor, device_id);
            },
            py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
         Returns self tensor with the UVA(unified virtual addressing).
@@ -2072,6 +2026,26 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+           })
+      .def("_get_kernel_signature",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs) {
+             // TODO(xiongkun): move this function outside of tracer.
+             auto ins_map = ConvertToNameTensorMap(ins);
+             auto outs_map = ConvertToNameTensorMap(outs);
+             {
+               auto to_vector = [](paddle::SmallVector<std::string> &vec) {
+                 return std::vector<std::string>(vec.begin(), vec.end());
+               };
+               auto ret = self.GetExpectedKernelSignature(type, ins_map,
+                                                          outs_map, attrs);
+               auto kernelsig_ins = to_vector(std::get<0>(ret.args));
+               auto kernelsig_attrs = to_vector(std::get<1>(ret.args));
+               auto kernelsig_outs = to_vector(std::get<2>(ret.args));
+               return std::make_tuple(kernelsig_ins, kernelsig_attrs,
+                                      kernelsig_outs);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,

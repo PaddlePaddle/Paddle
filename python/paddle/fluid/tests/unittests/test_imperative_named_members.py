@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard, _non_static_mode
 
 
 class MyLayer(fluid.Layer):

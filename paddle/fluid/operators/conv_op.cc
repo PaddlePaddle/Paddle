@@ -27,6 +27,9 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+
 namespace paddle {
 namespace operators {
 

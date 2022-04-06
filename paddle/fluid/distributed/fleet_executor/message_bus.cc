@@ -67,8 +67,7 @@ bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   server_.Stop(1000);
   server_.Join();
 #endif
@@ -87,8 +86,7 @@ bool MessageBus::Send(int64_t dst_rank,
       IsInit(), true,
       platform::errors::PreconditionNotMet(
           "Using message bus since it has not been initialized."));
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   int retry_time = 0;  // message bus will retry sending for 10 times
   while (retry_time < 10) {
     ++retry_time;
@@ -173,8 +171,7 @@ void MessageBus::ListenPort() {
     LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // function keep listen the port and handle the message
   PADDLE_ENFORCE_EQ(
       server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE), 0,
@@ -203,8 +200,7 @@ void MessageBus::ListenPort() {
 #endif
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 bool MessageBus::SendInterRank(int64_t dst_rank,
                                const InterceptorMessage& interceptor_message) {
   const auto& dst_addr = GetAddr(dst_rank);

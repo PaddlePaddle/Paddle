@@ -23,6 +23,10 @@
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 TEST(TensorUtils, Test) {

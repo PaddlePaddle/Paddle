@@ -17,18 +17,17 @@ import warnings
 
 import numpy as np
 from paddle import _C_ops
+from paddle.distribution import distribution
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (check_dtype, check_type,
+                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
 
-from ..fluid import core
-from ..fluid.data_feeder import (check_dtype, check_type,
-                                 check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                            elementwise_mul, elementwise_sub, nn, ops, tensor)
-from ..tensor import arange, concat, gather_nd, multinomial
-from .distribution import Distribution
 
-
-class Normal(Distribution):
+class Normal(distribution.Distribution):
     r"""The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
@@ -90,7 +89,7 @@ class Normal(Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(loc, 'loc',
                        (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Normal')
@@ -129,6 +128,7 @@ class Normal(Distribution):
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = tensor.cast(self.loc, dtype=self.dtype)
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
+        super(Normal, self).__init__(self.loc.shape)
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
@@ -141,7 +141,7 @@ class Normal(Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
@@ -267,7 +267,7 @@ class Normal(Distribution):
             Tensor: kl-divergence between two normal distributions.The data type is float32.
 
         """
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(other, 'other', Normal, 'kl_divergence')
 
         name = self.name + '_kl_divergence'

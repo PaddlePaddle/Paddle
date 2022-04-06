@@ -129,7 +129,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   DenseTensor col_matrix;
   if (is_expand) {
     col.Resize(col_shape);
-    col.mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(&col);
     col_matrix.ShareDataWith(col);
     col_matrix.Resize(col_matrix_shape);
   }
@@ -143,7 +143,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   if (dX && ddW_in) {
     Tensor ddW;
     ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
-    dX->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(dX);
 
     DenseTensor transformed_dX(dX->type());
 
@@ -201,7 +201,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   // oH, oW)
   // dw convolution double grad:  im2col(vol2col) + gemm
   if (dW && ddX) {
-    dW->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(dW);
     set_zero(dev_ctx, dW, static_cast<T>(0));
     DenseTensor dW_arr = *dW;
     dW_arr.Resize(filter_matrix_shape);
@@ -244,7 +244,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   // w/ddw(Cout, Cin, kh, kw)
   // ddy convolution double grad: im2col(vol2col) + gemm
   if (ddY) {
-    ddY->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(ddY);
 
     DenseTensor transformed_ddY(ddY->type());
     if (channel_last) {

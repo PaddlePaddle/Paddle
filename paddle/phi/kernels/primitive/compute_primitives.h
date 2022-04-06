@@ -590,7 +590,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
     int index = (tidx + 1) * 2 * stride - 1;
     if (index < (blockDim.x * 2)) {
       temp[index + index / 32] =
-          compute(temp[index + index / 2],
+          compute(temp[index + index / 32],
                   temp[index - stride + (index - stride) / 32]);
     }
   }

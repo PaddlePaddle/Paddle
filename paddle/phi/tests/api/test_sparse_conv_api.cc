@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 
+PD_DECLARE_KERNEL(sparse_conv3d, CPU, ALL_LAYOUT);
+
 template <typename T>
 void TestConv3dBase(const std::vector<int>& indices,
                     const std::vector<T>& features,
@@ -76,7 +78,7 @@ void TestConv3dBase(const std::vector<int>& indices,
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
     auto outs = paddle::experimental::sparse::conv3d(
-        x, weight, paddings, dilations, strides, 1);
+        x, weight, paddings, dilations, strides, 1, false);
 
     auto out = std::dynamic_pointer_cast<phi::SparseCooTensor>(
         std::get<0>(outs).impl());

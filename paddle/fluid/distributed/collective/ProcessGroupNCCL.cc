@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
@@ -26,61 +27,6 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
-static ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
-  static const std::map<ReduceOp, ncclRedOp_t> red_type = {
-      {ReduceOp::MIN, ncclMin},
-      {ReduceOp::MAX, ncclMax},
-      {ReduceOp::SUM, ncclSum},
-      {ReduceOp::PRODUCT, ncclProd},
-  };
-  auto it = red_type.find(reduction);
-  PADDLE_ENFORCE_EQ(it != red_type.end(), true,
-                    platform::errors::InvalidArgument(
-                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
-  return it->second;
-}
-
-std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
-  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ncclID);
-  std::ostringstream oss;
-  for (auto i = 0; i < NCCL_UNIQUE_ID_BYTES; ++i) {
-    oss << std::hex << static_cast<int>(bytes[i]);
-  }
-  return oss.str();
-}
-
-// Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
-  std::vector<Place> places;
-  places.reserve(tensors.size());
-  for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
-  }
-  return places;
-}
-
-// Get the deviceList String from the list of devices
-std::string GetKeyFromPlaces(const std::vector<Place>& places) {
-  std::string placeList;
-  for (auto& place : places) {
-    std::stringstream tmp;
-    tmp << place;
-    if (placeList.empty()) {
-      placeList += tmp.str();
-    } else {
-      placeList += "," + tmp.str();
-    }
-  }
-  return placeList;
-}
-
-bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors) {
-  return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
-    return t.place() == PlaceType::kGPU;
-  });
-}
-
 void SyncDefaultStream(
     const std::vector<Place>& places,
     std::vector<EventManager>& ncclEvents,                       // NOLINT
@@ -88,8 +34,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    ncclEvents[i].Record(*dev_ctx[i]);
-    ncclEvents[i].Block(*default_ctx);
+    ncclEvents[i].Record(*default_ctx);
+    ncclEvents[i].Block(*dev_ctx[i]);
   }
 }
 
@@ -156,36 +102,27 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupNCCL::ProcessGroupNCCL(const ProcessGroupStrategy& strategy,
-                                   int rank, int size)
-    : ProcessGroup(rank, size), strategy_(strategy) {}
-
-void ProcessGroupNCCL::BcastNCCLId(
-    std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
-    int root, int server_fd) {
-  if (strategy_.local_rank_ == root) {
-    std::vector<std::string> other_trainers;
-    for (auto& ep : strategy_.trainer_endpoints_) {
-      if (ep != strategy_.current_endpoint_) {
-        other_trainers.push_back(ep);
-      }
-    }
-    platform::SendBroadCastCommID(other_trainers, &nccl_ids);
-  } else {
-    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
-                                  &nccl_ids);
-  }
-}
+ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+                                   int rank, int size, int gid)
+    : ProcessGroup(rank, size, gid), store_(store) {}
 
 void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     std::vector<ncclUniqueId>& nccl_ids) {  // NOLINT
-
-  int server_fd = -1;
-  if (rank_ != 0) {
-    server_fd = platform::SocketServer::GetInstance(strategy_.current_endpoint_)
-                    .socket();
+  if (rank_ == 0) {
+    for (size_t i = 0; i < nccl_ids.size(); i++) {
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto nccl_id = std::vector<uint8_t>(
+          reinterpret_cast<uint8_t*>(&nccl_ids[i]),
+          reinterpret_cast<uint8_t*>(&nccl_ids[i]) + NCCL_UNIQUE_ID_BYTES);
+      store_->set(key, nccl_id);
+    }
+  } else {
+    for (size_t i = 0; i < nccl_ids.size(); i++) {
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto ret = store_->get(key);
+      std::memcpy(&nccl_ids[i], ret.data(), ret.size());
+    }
   }
-  BcastNCCLId(nccl_ids, 0, server_fd);
 }
 
 // create NCCLManager cache for places_key
@@ -213,8 +150,8 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   }
   BroadcastUniqueNCCLID(nccl_ids);
 
-  VLOG(3) << "init nccl rank: " << strategy_.local_rank_
-          << ", nranks: " << strategy_.nranks_ << ", place: " << places_key
+  VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
+          << ", place: " << places_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
   std::vector<std::unique_ptr<CUDADeviceContext>> dev_ctx;
@@ -404,7 +341,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   platform::CUDADeviceGuard gpuGuard;
   for (auto& place : places) {
     gpuGuard.SetDeviceIndex(place.GetDeviceId());
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::Backend::GPU);
+    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::GPUPlace());
     barrierTensors.push_back(dt);
   }
   auto task = ProcessGroupNCCL::AllReduce(barrierTensors);
@@ -426,7 +363,7 @@ void CheckTensorsInDifferentDevices(const std::vector<Tensor>& tensors,
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(t.is_cuda() && t.is_dense_tensor(), true,
+    PADDLE_ENFORCE_EQ(t.is_gpu() && t.is_dense_tensor(), true,
                       platform::errors::InvalidArgument(
                           "Tensors must be CUDA and dense tensor."));
 

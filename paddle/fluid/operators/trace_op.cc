@@ -61,7 +61,7 @@ the 2-D planes specified by dim1 and dim2.
 )DOC");
   }
 };
-class TraceOpGrad : public framework::OperatorWithKernel {
+class TraceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -114,7 +114,7 @@ REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
                   ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   TraceInferShapeFunctor);
 
-REGISTER_OPERATOR(trace_grad, ops::TraceOpGrad,
+REGISTER_OPERATOR(trace_grad, ops::TraceGradOp,
                   ops::TraceGradNoNeedBufferVarsInferer);
 
 /* ==========================  register checkpoint ===========================*/

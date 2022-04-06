@@ -293,11 +293,11 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
     "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op")
-    
-            if ("${TARGET}" STREQUAL "${manual_pybind_op}")
-                set(pybind_flag 1)
-            endif()
-        endforeach()
+
+        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
@@ -394,6 +394,12 @@ function(op_library TARGET)
         if(NOT ${op_name} EQUAL "")
             file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, XPU);\n")
             set(pybind_flag 1)
+        else()
+            find_register(${xpu_src} "REGISTER_OP_XPU_KERNEL_FUNCTOR" op_name)
+            if(NOT ${op_name} EQUAL "")
+                file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, XPU);\n")
+                set(pybind_flag 1)
+            endif()
         endif()
         endforeach()
     endif()
@@ -478,7 +484,7 @@ function(op_library TARGET)
     if (${pybind_flag} EQUAL 0)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
-        file(APPEND ${pybind_file} "USE_OP(relu);\n")
+        file(APPEND ${pybind_file} "USE_OP_ITSELF(relu);\n")
       elseif(${TARGET} STREQUAL "fake_dequantize")
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "fake_quantize")
