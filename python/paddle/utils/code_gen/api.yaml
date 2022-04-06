@@ -175,6 +175,7 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
+  backward : assign_grad
 
 # atan
 - api : atan

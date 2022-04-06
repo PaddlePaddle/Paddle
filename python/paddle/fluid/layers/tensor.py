@@ -627,7 +627,12 @@ def assign(input, output=None):
                     output = core.VarBase()
                 else:
                     output = core.eager.Tensor()
-            _C_ops.assign(input, output)
+
+            if in_dygraph_mode():
+                _C_ops.final_state_assign(input, output)
+            if _in_legacy_dygraph():
+                _C_ops.assign(input, output)
+
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
