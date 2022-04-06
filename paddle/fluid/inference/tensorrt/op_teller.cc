@@ -1016,29 +1016,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_var_desc->Persistable()) {
-        return false;
-      }
-      if (x_shape.size() == 1 && !with_dynamic_shape) {
-        return false;
-      }
-      if (y_var_desc->Persistable()) {
-        if (y_shape.size() != 1 || y_shape.size() != x_shape.size() ||
-            y_shape.size() != x_shape.size() - 1) {
-          return false;
-        } else if (y_shape.size() == x_shape.size()) {
-          if (y_shape[0] != 1) {
-            return false;
-          }
-          if (y_shape[1] != x_shape[1]) {
-            return false;
-          }
-        } else if (y_shape.size() == x_shape.size() - 1) {
-          if (y_shape[0] != x_shape[1]) {
-            return false;
-          }
-        }
-      } else if (y_shape.size() == 1 && !with_dynamic_shape) {
+      if (x_shape.size() == 1 && y_shape.size() == 1) {
+        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
     }
