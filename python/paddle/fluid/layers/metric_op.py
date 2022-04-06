@@ -176,7 +176,7 @@ def auc(input,
             ins_tag_weight = fluid.data(name="ins_tag_weight", shape=[-1], dtype="float32")
             fc_out = fluid.layers.fc(input=data, size=2)
             predict = fluid.layers.softmax(input=fc_out)
-            result=fluid.layers.auc(input=predict, label=label)
+            result=fluid.layers.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -195,7 +195,6 @@ def auc(input,
     if ins_tag_weight is None:
         ins_tag_weight = tensor.fill_constant_batch_size_like(
             input=label, shape=[-1, 1], dtype="float32", value=1.0)
-
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
     check_variable_and_dtype(ins_tag_weight, 'ins_tag_weight',
