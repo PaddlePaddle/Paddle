@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+paddle.enable_static()
 
 
 class TestGumbelSoftmaxOp(OpTest):
@@ -231,5 +232,4 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
