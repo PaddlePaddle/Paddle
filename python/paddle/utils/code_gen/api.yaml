@@ -969,6 +969,12 @@
     func : selu
   backward : selu_grad
 
+- api : sgd
+  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
+  output : Tensor(param_out), Tensor(master_param_out)
+  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  optional : master_param
+
 - api : shape
   args : (Tensor input)
   output : Tensor

@@ -120,5 +120,175 @@ std::vector<Tensor> split_impl(const Tensor& x,
   return out;
 }
 
+std::tuple<Tensor, Tensor> sgd_impl(
+    const Tensor& param,
+    const Tensor& learning_rate,
+    const Tensor& grad,
+    paddle::optional<const Tensor&> master_param,
+    bool multi_precision) {
+  DataType kernel_data_type = ParseDataType(param);
+  auto kernel_key_set = ParseKernelKeyByInputArgs(param, learning_rate, grad);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+  VLOG(6) << "sgd API kernel key: [" << kernel_key.backend() << ", "
+          << kernel_key.layout() << ", " << kernel_data_type << "]";
+
+  const auto& param_tensor = param.impl();
+  std::string kernel_name = "sgd";
+  if (phi::DenseTensor::classof(param_tensor.get())) {
+    if (phi::DenseTensor::classof(grad.impl().get())) {
+      kernel_name = "sgd_dense_param_sparse_grad";
+    }
+  } else {
+    kernel_name = "sgd_sparse_param_sparse_grad";
+  }
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      kernel_name,
+      {kernel_key.backend(), kernel_key.layout(), kernel_data_type});
+  VLOG(6) << kernel_name << " API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+
+  auto in_learning_rate =
+      PrepareData(learning_rate, kernel.InputAt(1), {false, true, true, true});
+
+  std::tuple<Tensor, Tensor> out;
+  std::get<0>(out) = param;
+  if (master_param) {
+    std::get<1>(out) = *master_param;
+  }
+  phi::MetaTensor meta_out_0(std::get<0>(out).impl().get());
+  phi::MetaTensor meta_out_1(master_param ? std::get<1>(out).impl().get()
+                                          : nullptr);
+
+  if (phi::DenseTensor::classof(param_tensor.get())) {
+    auto in_param = PrepareData(param, kernel.InputAt(0), {});
+    auto in_master_param = PrepareData(master_param, kernel.InputAt(3), {});
+
+    paddle::optional<const phi::DenseTensor&> in_master_param_opt =
+        master_param
+            ? paddle::make_optional<const phi::DenseTensor&>(*in_master_param)
+            : paddle::none;
+    auto master_param_meta = MakeMetaTensor(in_master_param_opt);
+    paddle::optional<const phi::MetaTensor&> master_param_meta_opt =
+        master_param
+            ? paddle::make_optional<const phi::MetaTensor&>(*master_param_meta)
+            : paddle::none;
+
+    phi::DenseTensor* kernel_out_0 =
+        SetKernelOutput(kernel_key.backend(), &std::get<0>(out));
+    phi::DenseTensor* kernel_out_1 =
+        master_param
+            ? static_cast<phi::DenseTensor*>(std::get<1>(out).impl().get())
+            : nullptr;
+
+    if (phi::DenseTensor::classof(grad.impl().get())) {
+      auto in_grad = PrepareData(grad, kernel.InputAt(2), {});
+      SgdInferMeta(MakeMetaTensor(*in_param),
+                   MakeMetaTensor(*in_learning_rate),
+                   MakeMetaTensor(*in_grad),
+                   master_param_meta_opt,
+                   multi_precision,
+                   &meta_out_0,
+                   &meta_out_1);
+
+      using kernel_signature =
+          void (*)(const platform::DeviceContext&,
+                   const phi::DenseTensor&,
+                   const phi::DenseTensor&,
+                   const phi::DenseTensor&,
+                   paddle::optional<const phi::DenseTensor&>,
+                   bool,
+                   phi::DenseTensor*,
+                   phi::DenseTensor*);
+
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)(*dev_ctx,
+                   *in_param,
+                   *in_learning_rate,
+                   *in_grad,
+                   in_master_param_opt,
+                   multi_precision,
+                   kernel_out_0,
+                   kernel_out_1);
+    } else {
+      auto in_grad = TensorToSelectedRows(grad);
+      SgdInferMeta(MakeMetaTensor(*in_param),
+                   MakeMetaTensor(*in_learning_rate),
+                   MakeMetaTensor(*in_grad),
+                   master_param_meta_opt,
+                   multi_precision,
+                   &meta_out_0,
+                   &meta_out_1);
+
+      using kernel_signature =
+          void (*)(const platform::DeviceContext&,
+                   const phi::DenseTensor&,
+                   const phi::DenseTensor&,
+                   const phi::SelectedRows&,
+                   paddle::optional<const phi::DenseTensor&>,
+                   bool,
+                   phi::DenseTensor*,
+                   phi::DenseTensor*);
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)(*dev_ctx,
+                   *in_param,
+                   *in_learning_rate,
+                   *in_grad,
+                   in_master_param_opt,
+                   multi_precision,
+                   kernel_out_0,
+                   kernel_out_1);
+    }
+  } else {
+    auto in_param = TensorToSelectedRows(param);
+    auto in_grad = TensorToSelectedRows(grad);
+    auto in_master_param = TensorToSelectedRows(master_param);
+    auto in_master_param_opt =
+        master_param
+            ? paddle::make_optional<const phi::SelectedRows&>(*in_master_param)
+            : paddle::none;
+    auto master_param_meta = MakeMetaTensor(in_master_param_opt);
+    paddle::optional<const phi::MetaTensor&> master_param_meta_opt =
+        master_param
+            ? paddle::make_optional<const phi::MetaTensor&>(*master_param_meta)
+            : paddle::none;
+
+    phi::SelectedRows* kernel_out_0 =
+        SetSelectedRowsKernelOutput(kernel_key.backend(), &std::get<0>(out));
+    phi::SelectedRows* kernel_out_1 =
+        master_param
+            ? static_cast<phi::SelectedRows*>(std::get<1>(out).impl().get())
+            : nullptr;
+
+    SgdInferMeta(MakeMetaTensor(*in_param),
+                 MakeMetaTensor(*in_learning_rate),
+                 MakeMetaTensor(*in_grad),
+                 master_param_meta_opt,
+                 multi_precision,
+                 &meta_out_0,
+                 &meta_out_1);
+
+    using kernel_signature =
+        void (*)(const platform::DeviceContext&,
+                 const phi::SelectedRows&,
+                 const phi::DenseTensor&,
+                 const phi::SelectedRows&,
+                 paddle::optional<const phi::SelectedRows&>,
+                 bool,
+                 phi::SelectedRows*,
+                 phi::SelectedRows*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 *in_param,
+                 *in_learning_rate,
+                 *in_grad,
+                 in_master_param_opt,
+                 multi_precision,
+                 kernel_out_0,
+                 kernel_out_1);
+  }
+  return out;
+}
+
 }  // namespace experimental
 }  // namespace paddle

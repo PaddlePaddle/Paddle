@@ -42,7 +42,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor);
+    const paddle::optional<const Tensor&>& tensor);
 
 std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 

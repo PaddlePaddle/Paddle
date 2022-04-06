@@ -247,6 +247,14 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
+void SgdInferMeta(const MetaTensor& param,
+                  const MetaTensor& learning_rate,
+                  const MetaTensor& grad,
+                  paddle::optional<const MetaTensor&> master_param,
+                  bool multi_precision,
+                  MetaTensor* param_out,
+                  MetaTensor* master_param_out);
+
 void StackInferMeta(const std::vector<MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);

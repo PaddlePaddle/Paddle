@@ -26,7 +26,7 @@ std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
     const paddle::optional<Tensor>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl());
+    return std::static_pointer_cast<phi::DenseTensor>(tensor->impl());
   }
   return nullptr;
 }
@@ -45,13 +45,13 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
+  return std::static_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl());
+    return std::static_pointer_cast<phi::SelectedRows>(tensor->impl());
   }
   return nullptr;
 }

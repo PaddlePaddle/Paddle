@@ -1667,6 +1667,32 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void SgdInferMeta(const MetaTensor& param,
+                  const MetaTensor& learning_rate,
+                  const MetaTensor& grad,
+                  paddle::optional<const MetaTensor&> master_param,
+                  bool multi_precision,
+                  MetaTensor* param_out,
+                  MetaTensor* master_param_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      phi::product(lr_dims),
+      0,
+      phi::errors::NotFound("Maybe the Input variable LearningRate has not "
+                            "been initialized. You may need to confirm "
+                            "if you put exe.run(startup_program) "
+                            "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning rate should have 1 element. But received "
+                        "LearningRate dims [%s]",
+                        phi::product(lr_dims)));
+  auto param_dim = param.dims();
+  param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
+}
+
 void StackInferMeta(const std::vector<MetaTensor*>& x,
                     int axis,
                     MetaTensor* out) {
