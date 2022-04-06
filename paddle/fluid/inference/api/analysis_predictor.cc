@@ -74,6 +74,10 @@
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
+#endif
+
 namespace paddle {
 
 using inference::Singleton;
@@ -1744,6 +1748,7 @@ USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
+USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(reshape);

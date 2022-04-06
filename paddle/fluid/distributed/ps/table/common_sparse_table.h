@@ -108,31 +108,30 @@ struct Meta {
   }
 };
 
-class CommonSparseTable : public SparseTable {
+class CommonSparseTable : public Table {
  public:
   CommonSparseTable() { rwlock_.reset(new phi::RWLock); }
   virtual ~CommonSparseTable() {}
 
   // unused method begin
-  virtual int32_t pull_dense(float* pull_values, size_t num) { return 0; }
-  virtual int32_t push_dense_param(const float* values, size_t num) {
-    return 0;
-  }
-  virtual int32_t push_dense(const float* values, size_t num) { return 0; }
+  //  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
+  //  virtual int32_t PushDenseParam(const float* values, size_t num) { return
+  //  0; }
+  //  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
   // unused method end
 
   virtual int32_t Pull(TableContext& context);
   virtual int32_t Push(TableContext& context);
 
-  virtual int32_t initialize();
-  virtual int32_t initialize_shard() { return 0; }
-  virtual int32_t initialize_value();
-  virtual int32_t initialize_optimizer();
-  virtual int32_t initialize_recorder();
+  virtual int32_t Initialize();
+  virtual int32_t InitializeShard() { return 0; }
+  virtual int32_t InitializeValue();
+  virtual int32_t InitializeOptimizer();
+  virtual int32_t InitializeRecorder();
 
-  virtual int32_t load(const std::string& path, const std::string& param);
+  virtual int32_t Load(const std::string& path, const std::string& param);
 
-  virtual int32_t save(const std::string& path, const std::string& param);
+  virtual int32_t Save(const std::string& path, const std::string& param);
 
   void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
                       const size_t shard_idx, const int64_t total);
@@ -150,34 +149,35 @@ class CommonSparseTable : public SparseTable {
       const int pserver_id, const int pserver_num, const int local_shard_num,
       std::vector<std::shared_ptr<ValueBlock>>* blocks);
 
-  virtual std::pair<int64_t, int64_t> print_table_stat();
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  virtual std::pair<int64_t, int64_t> PrintTableStat();
+  virtual int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
-                                  size_t num);
+  virtual int32_t PullSparsePtr(char** pull_values, const uint64_t* keys,
+                                size_t num);
 
-  virtual int32_t push_sparse(const uint64_t* keys, const float* values,
-                              size_t num);
+  virtual int32_t PushSparse(const uint64_t* keys, const float* values,
+                             size_t num);
 
-  virtual int32_t push_sparse(const uint64_t* keys, const float** values,
-                              size_t num);
+  virtual int32_t PushSparse(const uint64_t* keys, const float** values,
+                             size_t num);
 
   // only for sparse geo table
-  virtual int32_t push_sparse_param(const uint64_t* keys, const float* values,
-                                    size_t num);
+  virtual int32_t PushSparseParam(const uint64_t* keys, const float* values,
+                                  size_t num);
+  virtual int32_t SetGlobalLR(float* lr);
 
-  virtual int32_t set_global_lr(float* lr) override;
+  virtual int32_t Pour();
+  virtual int32_t Flush();
+  virtual int32_t Shrink(const std::string& param);
+  virtual void Clear();
 
-  virtual int32_t pour();
-  virtual int32_t flush();
-  virtual int32_t shrink(const std::string& param);
-  virtual void clear();
+  virtual void* GetShard(size_t shard_idx) { return 0; }
 
  protected:
-  virtual int32_t _push_sparse(const uint64_t* keys, const float* values,
-                               size_t num);
-  virtual int32_t _push_sparse(const uint64_t* keys, const float** values,
-                               size_t num);
+  virtual int32_t _PushSparse(const uint64_t* keys, const float* values,
+                              size_t num);
+  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
+                              size_t num);
 
  protected:
   const int task_pool_size_ = 11;

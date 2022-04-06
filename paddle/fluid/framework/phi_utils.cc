@@ -87,7 +87,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
   } else if (kernel_type.library_type_ == LibraryType::kKP) {
     backend = phi::Backend::KPS;
   } else {
-    // do
+    // do nothing
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
@@ -102,7 +102,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -111,7 +111,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -120,7 +120,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #ifdef PADDLE_WITH_MLU
   if (platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -128,8 +128,18 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_IPU
   if (platform::is_ipu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "pten missing IPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
+    VLOG(3) << "phi missing IPU kernel: " << op.Type()
+            << ", phipected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << op.Type()
+            << ", phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());

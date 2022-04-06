@@ -52,6 +52,11 @@ from paddle.fluid.tests.unittests.white_list import (
     no_grad_set_white_list, )
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
+# For switch new eager mode globally
+g_is_in_eager = _in_eager_without_dygraph_check()
+g_enable_legacy_dygraph = _enable_legacy_dygraph if g_is_in_eager else lambda: None
+g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda: None
+
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
@@ -705,6 +710,8 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
+                
+                NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
             class Empty:
@@ -765,7 +772,9 @@ class OpTest(unittest.TestCase):
                 api_params), "Error happens. contack xiongkun03 to solve."
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
-            input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
+            input_arguments = [
+                op_proto_ins.get(name, Empty()) for name in inputs_sig
+            ] + [
                 parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
@@ -776,10 +785,12 @@ class OpTest(unittest.TestCase):
                 if arg_name in api_ignore_param_list:
                     results.append(get_default(idx, api_defaults))
                 else:
-                    assert idx_of_op_proto_arguments < len(
-                        input_arguments), "Assert False."
-                    tmp = input_arguments[idx_of_op_proto_arguments]
-                    idx_of_op_proto_arguments += 1
+                    if (idx_of_op_proto_arguments < len(input_arguments)):
+                        tmp = input_arguments[idx_of_op_proto_arguments]
+                        idx_of_op_proto_arguments += 1
+                    else:
+                        tmp = Empty()  # use the default value
+
                     if isinstance(tmp, Empty):
                         results.append(get_default(idx, api_defaults))
                     else:
@@ -807,16 +818,19 @@ class OpTest(unittest.TestCase):
             transform inputs by the following rules:
                 1. [Tensor] -> Tensor
                 2. [Tensor, Tensor, ...] -> list of Tensors
+                3. None -> None
+                4. Others: raise Error
 
             only support "X" is list of Tensor, currently don't support other structure like dict.
             """
-            for inp in args[:inp_num]:
+            inp_args = [[inp] if inp is None else inp
+                        for inp in args[:inp_num]]  # convert None -> [None]
+            for inp in inp_args:
                 assert isinstance(
                     inp, list
                 ), "currently only support `X` is [Tensor], don't support other structure."
-            args = [
-                inp[0] if len(inp) == 1 else inp for inp in args[:inp_num]
-            ] + args[inp_num:]
+            args = [inp[0] if len(inp) == 1 else inp
+                    for inp in inp_args] + args[inp_num:]
             return args
 
         def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
@@ -1351,6 +1365,9 @@ class OpTest(unittest.TestCase):
                 self.op_test = op_test  # stop the op_test object.
                 self.op_type = op_test.op_type
 
+            def init(self):
+                pass
+
             def convert_uint16_to_float(self, actual_np, expect_np):
                 raise NotImplementedError("base class, not implement!")
 
@@ -1382,7 +1399,7 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                         equal_nan=equal_nan),
                     "Output (" + name + ") has diff at " + str(place) + " in " +
-                    self.checker_name + " checker")
+                    self.checker_name)
 
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
@@ -1398,7 +1415,7 @@ class OpTest(unittest.TestCase):
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)
+                    self.op_test.assertTrue(actual_np.size == 0)  # }}}
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1426,10 +1443,14 @@ class OpTest(unittest.TestCase):
 
                 the main enter point of Checker class
                 """
+                self.init()
                 self.calculate_output()
                 self.compare_outputs_with_expects()
 
         class StaticChecker(Checker):
+            def init(self):
+                self.checker_name = "static checker"
+
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
                     place, no_check_set=no_check_set)
@@ -1469,6 +1490,9 @@ class OpTest(unittest.TestCase):
                     "Output (" + name + ") has different lod at " + str(place))
 
         class DygraphChecker(Checker):
+            def init(self):
+                self.checker_name = "dygraph checker"
+
             def calculate_output(self):
                 self.outputs = self.op_test._calc_dygraph_output(
                     place, no_check_set=no_check_set)
@@ -1514,18 +1538,21 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                             equal_nan=equal_nan),
                         "Output (" + name + ") has diff at " + str(place) +
-                        " in " + self.checker_name + " checker")
+                        " in " + self.checker_name)
 
         class EagerChecker(DygraphChecker):
+            def init(self):
+                self.checker_name = "eager checker"
+
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
-                self.is_python_api_test = True
                 with _test_eager_guard():
+                    self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
                         place)
                     if eager_dygraph_outs is None:
-                        # missing KernelSignature, fall back to eager middle output.
                         self.is_python_api_test = False
+                        # missing KernelSignature, fall back to eager middle output.
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set)
                 self.outputs = eager_dygraph_outs
@@ -1583,9 +1610,14 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
         if check_dygraph:
+            # always enable legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
+            # yield the original state
+            g_disable_legacy_dygraph()
         if check_eager:
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
@@ -1905,6 +1937,9 @@ class OpTest(unittest.TestCase):
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
+            # ensure switch into legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set, False)
@@ -1918,6 +1953,8 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+            # ensure switch back eager dygraph
+            g_disable_legacy_dygraph()
 
         if check_eager:
             with fluid.dygraph.base.guard(place):
@@ -2055,7 +2092,6 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
-
                 loss.backward()
 
                 fetch_list_grad = []
@@ -2070,7 +2106,7 @@ class OpTest(unittest.TestCase):
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
                     grad_outputs.append(paddle.to_tensor(grad_out_value))
-                # delete the inputs which no need to calculate grad
+                # delete the inputs which no need to calculate grad                
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 

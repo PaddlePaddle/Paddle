@@ -76,7 +76,8 @@ class ProcessGroupNCCL : public ProcessGroup {
    private:
   };
 
-  ProcessGroupNCCL(const std::shared_ptr<Store>& store, int rank, int size);
+  ProcessGroupNCCL(const std::shared_ptr<Store>& store, int rank, int size,
+                   int gid);
 
   const std::string GetBackendName() const override {
     return std::string(NCCL_BACKEND_NAME);

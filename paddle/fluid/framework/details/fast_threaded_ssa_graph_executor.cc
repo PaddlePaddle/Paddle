@@ -134,7 +134,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   if (!fetch_ops.empty()) {
     platform::RecordEvent record_wait(
         "FastThreadedSSAGraphExecutor::WaitFetchOps",
-        platform::TracerEventType::UserDefined, 1);
+        platform::TracerEventType::Operator, 1);
     ClearFetchOp(graph_, &fetch_ops);
 
     for (auto &place : places_) {
@@ -234,8 +234,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  platform::RecordEvent("WorkQueue::AddTask",
-                        platform::TracerEventType::UserDefined, 10 /*level*/);
+  platform::RecordEvent record("WorkQueue::AddTask",
+                               platform::TracerEventType::UserDefined,
+                               10 /*level*/);
   this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
