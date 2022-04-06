@@ -396,6 +396,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
    * ** name: std::string)
    *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
   if (kwargs) flag_kwargs = true;
@@ -690,7 +691,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         "make sure u call the existed constructor."));
   }
 
-  return 1;
+  return -1;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 static void TensorDealloc(TensorObject* self) {
