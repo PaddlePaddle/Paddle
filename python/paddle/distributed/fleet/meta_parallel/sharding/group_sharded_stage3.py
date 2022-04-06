@@ -20,10 +20,10 @@ from collections import OrderedDict
 
 import paddle
 from paddle import nn
-from paddle.autograd import PyLayer
+from paddle.autograd import EagerPyLayer
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import ParamBase
+from paddle.fluid.framework import EagerParamBase
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed import collective
 
@@ -38,7 +38,7 @@ def _all_gather(tensor, buffer_size, group):
     """
 
     assert group is not None
-    if in_dygraph_mode():
+    if framework.in_dygraph_mode():
         out = paddle.zeros([buffer_size], dtype=tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         return out, task
@@ -205,7 +205,7 @@ class GroupShardedStage3(nn.Layer):
             for param in list(self._unslice_params):
                 param.clear_gradient()
                 tmp_var = param.cuda(DEV_ID)
-                param._clear()
+                param._clear_data()
                 if tmp_var.dtype == Type.fp32.value and param2dtype[
                         param.name] == Type.fp16.value:
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
@@ -269,8 +269,9 @@ class GroupShardedStage3(nn.Layer):
         for param in self._unslice_params:
             # Updata optimizer master weights
             if param.dtype == Type.fp16.value and not self._offload:
-                self._optim._master_weights[param.name] = paddle.cast(
-                    param, Type.fp32.value)
+                master_tensor = paddle.cast(param, Type.fp32.value)
+                master_tensor.name = param.name
+                self._optim._master_weights[param.name] = master_tensor
             param2dtype[param.name] = param.dtype
             p_align = self._param2align(param)
             self._unslice_params2align[param.name] = p_align
@@ -368,7 +369,7 @@ class GroupShardedStage3(nn.Layer):
         tmp_var.get_tensor().set(param_cpu.get_tensor(), core.CPUPlace())
         del tmp_var
         param.get_tensor()._set_dims(param_shape)
-        param._clear()
+        param._clear_data()
 
         # Current rank param_storage
         if self._offload:
@@ -385,12 +386,13 @@ class GroupShardedStage3(nn.Layer):
 
         # Updata optimizer master weights
         if param.dtype == Type.fp16.value and not self._offload:
-            self._optim._master_weights[param.fw_storage.name] = paddle.cast(
-                param.fw_storage, Type.fp32.value)
+            master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
+            master_tensor.name = param.name
+            self._optim._master_weights[param.fw_storage.name] = master_tensor
 
     def _register_forward_hooks(self, layer):
         """
-        Register pylayer to manage memory slices.
+        Register EagerPyLayer to manage memory slices.
         There are four stages:
         FW
         1. Before the forward layers, synchronize the full parameters.
@@ -558,7 +560,7 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_param.keys():
                 if param.status == "all":
                     param.use_count = 0
-                    param._clear()
+                    param._clear_data()
                     start, end = self._param2buffer[param.name][self._rank]
                     param.fw_storage = self._task_flow.full_param[param.name][
                         0]._slice(start, end).detach().clone()
@@ -644,7 +646,7 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer_size,
     return
 
 
-class ForwardPostHooks(PyLayer):
+class ForwardPostHooks(EagerPyLayer):
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,
                 param2buffer, param2buffer_size, rank, group, sync_comm,
@@ -746,7 +748,7 @@ def _release_param(trainable_params,
         # async communicate share weight not clear
         param.use_count -= 1
         if param.use_count == 0:
-            param._clear()
+            param._clear_data()
             if param.name in task_flow.full_param.keys():
                 start, end = param2buffer[param.name][rank]
                 with paddle.amp.auto_cast(enable=False):
@@ -842,7 +844,9 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
         assert isinstance(param2buffer_size[param.name], int)
         temp_grad = paddle.zeros(
             [param2buffer_size[param.name]], dtype=param.dtype)
-        param._copy_gradient_from(temp_grad._slice(0, param._numel()))
+        param._copy_gradient_from(
+            temp_grad._slice(0, param._numel()).get_tensor()._set_dims(
+                param.shape))
         task_flow.full_grad[param.name] = temp_grad
     return task_flow
 
@@ -864,7 +868,7 @@ def _UnsliceParam(param):
 
 def _VarBaseWrapper(param):
     varbase = param.fw_storage
-    tmp_param = ParamBase(
+    tmp_param = EagerParamBase(
         shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name)
     varbase._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer

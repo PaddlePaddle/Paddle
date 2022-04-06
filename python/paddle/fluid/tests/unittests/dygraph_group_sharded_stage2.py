@@ -35,15 +35,6 @@ seed = 2022
 epoch = 2
 linear_size = 1000
 
-strategy = fleet.DistributedStrategy()
-strategy.hybrid_configs = {
-    "dp_degree": 2,
-    "mp_degree": 1,
-    "pp_degree": 1,
-    "sharding_degree": 1
-}
-fleet.init(is_collective=True, strategy=strategy)
-
 np.random.seed(seed)
 paddle.seed(seed)
 
@@ -77,7 +68,7 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.AdamW(
         parameters=[{
-            "params": model.parameters()
+            "params": model.parameters(),
         }] if opt_group else model.parameters(),
         learning_rate=0.001,
         weight_decay=0.00001,
@@ -95,11 +86,8 @@ def train_mlp(model,
               opt_group=False,
               save_model=False,
               test_minimize=False):
-    if sharding_stage == "dp":
-        hcg = fleet.get_hybrid_communicate_group()
-        group = hcg.get_check_parallel_group()
-    else:
-        group = paddle.distributed.new_group([0, 1])
+    if sharding_stage != "dp":
+        group = paddle.distributed.new_group([0, 1], backend="nccl")
     if opt_group:
         optimizer = optimizer_setting(
             model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group)
@@ -113,8 +101,7 @@ def train_mlp(model,
         model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21)
     else:
-        optimizer = fleet.distributed_optimizer(optimizer)
-        model = fleet.distributed_model(model)
+        model = paddle.DataParallel(model)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -169,6 +156,7 @@ def train_mlp(model,
 
 
 def test_dp_stage2():
+    paddle.distributed.init_parallel_env()
     mlp = MLP()
     state_dict = mlp.state_dict()
     mlp1 = MLP()

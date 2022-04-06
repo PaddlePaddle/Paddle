@@ -111,6 +111,9 @@ class GroupShardedClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
+        if paddle.device.get_device() == "cpu":
+            global_norm_var = global_norm_var.cuda(dev_id)
+
         with device_guard(dev_id, "gpu"):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
@@ -130,9 +133,9 @@ class GroupShardedClipGrad:
             origin_state = g.stop_gradient
             g.stop_gradient = True
             if p.dtype == paddle.float16:
-                g.scale_(clip_var_fp16)
+                g.scale_(clip_var_fp16.item())
             else:
-                g.scale_(clip_var)
+                g.scale_(clip_var.item())
             g.stop_gradient = origin_state
             # p._reset_grad_inplace_version(True)
 

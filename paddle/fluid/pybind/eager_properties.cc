@@ -69,7 +69,7 @@ int tensor_properties_set_name(TensorObject* self, PyObject* value,
   EAGER_TRY
   self->tensor.set_name(CastPyArg2AttrString(value, 0));
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
@@ -110,7 +110,7 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
                      "the grad inside autograd_meta"));
   grad->copy_(src, self->tensor.inner_place(), true);
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
@@ -122,7 +122,7 @@ int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
     meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
   }
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_persistable(TensorObject* self, void* closure) {
@@ -138,7 +138,7 @@ int tensor_properties_set_persistable(TensorObject* self, PyObject* value,
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {

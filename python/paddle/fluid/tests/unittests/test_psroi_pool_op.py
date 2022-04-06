@@ -95,7 +95,8 @@ class TestPSROIPoolOp(OpTest):
                                     self.pooled_width).astype('float64')
         self.inputs = {
             'X': self.x,
-            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod)
+            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod),
+            'RoisNum': self.boxes_num
         }
         self.attrs = {
             'output_channels': self.output_channels,
@@ -145,13 +146,14 @@ class TestPSROIPoolOp(OpTest):
 
     def setUp(self):
         self.op_type = 'psroi_pool'
+        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, output_channels, spatial_scale: paddle.vision.ops.psroi_pool(x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):

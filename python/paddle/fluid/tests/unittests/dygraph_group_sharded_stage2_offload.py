@@ -90,6 +90,7 @@ def train_mlp(model, offload=False):
 
 
 def test_sharding_stage2_offload():
+    paddle.distributed.init_parallel_env()
     mlp = MLP(linear_size)
     mlp_offload = MLP(linear_size)
     mlp_offload.set_state_dict(mlp.state_dict())

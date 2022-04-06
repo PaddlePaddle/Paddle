@@ -65,7 +65,7 @@ class InternalStorage:
                 self.dev_id) if device == "gpu" else self.buffer.cpu()
             for param in self._params:
                 param.clear_gradient()
-            # self.buffer._clear()
+
             del self.buffer
             self.buffer = tmp_buffer
             self._device = device
@@ -150,7 +150,7 @@ class ParamStorage(InternalStorage):
             tmp_var = self.buffer._slice(self._fill, var_end)
             if convert_gpu:
                 param_cpu = param.cpu()
-                param._clear()
+                param._clear_data()
                 tmp_var.set_value(param_cpu)
             else:
                 tmp_var.set_value(param)
@@ -306,6 +306,7 @@ class GradStorage(InternalStorage):
         # Copy the current grad value to InternalStorage
         with device_guard(self.dev_id, self._device):
             tmp_var = self.buffer._slice(self._fill, grad_end)
+            tmp_var.get_tensor()._set_dims(param.shape)
             param._copy_gradient_from(tmp_var)
             del tmp_var
 

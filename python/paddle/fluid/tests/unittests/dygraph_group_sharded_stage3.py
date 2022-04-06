@@ -34,12 +34,11 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
 
 epoch = 10
-paddle.seed(2021)
-np.random.seed(2021)
+paddle.seed(2022)
+np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -109,7 +108,11 @@ def train_mlp(model,
             model, optimizer, group=group, buffer_max_size=2**21)
     elif sharding_stage == 3:
         model = GroupShardedStage3(
-            model, optimizer=optimizer, group=group, sync_comm=sync_comm)
+            model,
+            optimizer=optimizer,
+            group=group,
+            sync_comm=sync_comm,
+            segment_size=2**15)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -174,6 +177,7 @@ def train_mlp(model,
 
 
 def test_stage2_stage3():
+    paddle.distributed.init_parallel_env()
     mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = MLP(
     ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()

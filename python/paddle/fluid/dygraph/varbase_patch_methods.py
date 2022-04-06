@@ -817,6 +817,10 @@ def monkey_patch_varbase():
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
+    def _clear_data(self):
+        self.get_tensor()._clear()
+
+    @framework.dygraph_only
     def _uva(self, device_id=0):
         '''
         Returns self tensor with the UVA(unified virtual addressing).
@@ -898,6 +902,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
         setattr(core.eager.Tensor, "_uva", _uva)
+        setattr(core.eager.Tensor, "_clear_data", _clear_data)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

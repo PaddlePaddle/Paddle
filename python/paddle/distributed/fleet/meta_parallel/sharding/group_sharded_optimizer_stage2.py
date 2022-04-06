@@ -65,7 +65,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                  pertrain_sync_models=True,
                  **kw):
 
-        super().__init__(optim._learning_rate, params, kw)
+        super().__init__(learning_rate=optim._learning_rate, parameters=params)
         assert core.is_compiled_with_cuda(), "Only GPU is supported now"
 
         # Segmentation information
@@ -77,7 +77,6 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._param2align = {}  # {param.name: align}
 
         # Default information
-        self._optim_defaults = kw
         self._optim = optim
 
         assert hasattr(self._optim, "_master_weights"
@@ -164,8 +163,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             for param in trainable_params:
                 if param.dtype == Type.fp16.value:
-                    self._optim._master_weights[param.name] = paddle.cast(
-                        param, Type.fp32.value)
+                    master_tensor = paddle.cast(param, Type.fp32.value)
+                    master_tensor.name = param.name
+                    self._optim._master_weights[param.name] = master_tensor
 
     def _update_opt_status(self):
         """Update optimizer status and parameter storage information, and special functions to be developed.
@@ -310,6 +310,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                         size=self.offload_buffer_size,
                         dtype=Type.fp32.value,
                         device=self.offload_device)
+                    self.offload_params.buffer.name = "offload_buffer"
                     self.offload_params.add_rank_params(
                         cpu_master_params, self.offload_param2align, False)
                     self.offload_params.buffer.stop_gradient = False

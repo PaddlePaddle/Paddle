@@ -34,7 +34,6 @@ np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -92,7 +91,11 @@ def train_mlp(model,
         scaler = GroupShardedScaler(scaler)
 
     model = GroupShardedStage3(
-        model, optimizer=optimizer, group=group, offload=offload)
+        model,
+        optimizer=optimizer,
+        group=group,
+        offload=offload,
+        segment_size=2**15)
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
@@ -147,6 +150,7 @@ def train_mlp(model,
 
 
 def test_stage3_offload():
+    paddle.distributed.init_parallel_env()
     mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6 = MLP(), MLP(), MLP(), MLP(), MLP(
     ), MLP(), MLP()
     state_dict = mlp.state_dict()

@@ -26,10 +26,13 @@ from types import MethodType
 import paddle
 from paddle import nn
 from paddle.distributed import collective
+from paddle.distributed.utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
 from .group_sharded_utils import Taskflow, Type, device_guard
+
+logger_ = get_logger(logging.INFO)
 
 
 def _trainable(param):
@@ -361,7 +364,7 @@ class GroupShardedStage2(nn.Layer):
                                 for p in grad_storage._params:
                                     p.clear_gradient()
 
-                                grad_storage.buffer._clear()
+                                grad_storage.buffer._clear_data()
                             elif self._offload:
                                 grad_storage.to(device=self._offload_device)
                                 for p in grad_storage._params:
@@ -372,7 +375,7 @@ class GroupShardedStage2(nn.Layer):
                                         0]._offload_acc_grad(p.name, tmp_grad)
                                     p.clear_gradient()
                                 grad_storage._device = self._default_device
-                                grad_storage.buffer._clear()
+                                grad_storage.buffer._clear_data()
 
                         # Reduce the bucket
                         grad_storage.sent = True
@@ -501,13 +504,13 @@ class GroupShardedStage2(nn.Layer):
 
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
-            logging.info(
+            logger_.info(
                 "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
                 format(rank_buffer_size[Type.fp16.value] / 2**19, model_size / 2
                        **19))
         if Type.fp32.value in rank_buffer_size.keys():
             # FP32 GradStorage and model size
-            logging.info(
+            logger_.info(
                 "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
                 format(rank_buffer_size[Type.fp32.value] / 2**18, model_size / 2
                        **18))
