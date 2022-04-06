@@ -48,7 +48,7 @@ class GatherPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "(Tensor), The output tensor of gather_p op.");
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to gather.");
     AddAttr<std::vector<int64_t>>(
-        "index", "(std::vector<int64_t>) If index of gather_p op");
+        "index", "(std::vector<int64_t>) The index of gather_p op");
   }
 };
 
@@ -63,9 +63,14 @@ class GatherPrimOpShapeInference : public framework::InferShapeBase {
           ctx->GetInputVarPtrs("IndexTensor")[0];
       framework::VarDesc *index_var =
           BOOST_GET(framework::VarDesc *, index_var_ptr);
-      num_index = index_var->GetShape()[0];
+      auto index_shape = index_var->GetShape();
+      PADDLE_ENFORCE_EQ(index_shape.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The index tensor should be a 1D tensor,"
+                            "but get rank %d",
+                            index_shape.size()));
+      num_index = index_shape[0];
     } else {
-      // TODO(lml): add some check for index attr
       num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");

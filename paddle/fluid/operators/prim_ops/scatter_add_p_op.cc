@@ -51,18 +51,60 @@ class ScatterAddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("axis",
                      "(int64_t), The axis along which to scatter and add.");
     AddAttr<std::vector<int64_t>>(
-        "index", "(std::vector<int64_t>) If index of scatter_add_p op");
+        "index", "(std::vector<int64_t>) The index of scatter_add_p op");
   }
 };
 
 class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    // TODO(lml): add some check for y's shape.
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
+    framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
+    int64_t num_index = 0;
+    if (ctx->HasInput("IndexTensor")) {
+      framework::InferShapeVarPtr index_var_ptr =
+          ctx->GetInputVarPtrs("IndexTensor")[0];
+      framework::VarDesc *index_var =
+          BOOST_GET(framework::VarDesc *, index_var_ptr);
+      auto index_shape = index_var->GetShape();
+      PADDLE_ENFORCE_EQ(index_shape.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The index tensor should be a 1D tensor,"
+                            "but get rank %d",
+                            index_shape.size()));
+      num_index = index_shape[0];
+    } else {
+      num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
+    }
+    auto axis = ctx->Attrs().Get<int64_t>("axis");
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
+    auto y_shape = y_var->GetShape();
+    size_t x_rank = x_shape.size();
+    size_t y_rank = y_shape.size();
+    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_rank, y_rank));
+    PADDLE_ENFORCE_EQ(x_shape[axis], num_index,
+                      platform::errors::InvalidArgument(
+                          "The shape of source input tensor at scatter axis "
+                          "should be  equal to num_index, "
+                          "but get %d and %d",
+                          x_shape[axis], num_index));
+    for (size_t i = 0; i < x_rank; ++i) {
+      if (i != size_t(axis)) {
+        PADDLE_ENFORCE_EQ(
+            x_shape[i], y_shape[i],
+            platform::errors::InvalidArgument(
+                "The shape of two input tensor at dimension %d should be same, "
+                "but get %d and %d",
+                i, x_rank, y_rank));
+      }
+    }
 
     BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
