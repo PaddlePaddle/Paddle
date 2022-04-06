@@ -101,73 +101,81 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
     // TODO(weishengying) : recompute this via params
     auto *scale_producer = Scale[0].getDefiningOp();
     auto create_scale_tensor_op =
-                        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(scale_producer);
+        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            scale_producer);
     CHECK_NOTNULL(create_scale_tensor_op);
 
     auto *bias_producer = Bias[0].getDefiningOp();
-    auto create_bias_tensor_op = 
-                        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(bias_producer);
+    auto create_bias_tensor_op =
+        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            bias_producer);
     CHECK_NOTNULL(create_bias_tensor_op);
 
     auto *mean_producer = Mean[0].getDefiningOp();
-    auto create_mean_tensor_op = 
-                        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(mean_producer);
+    auto create_mean_tensor_op =
+        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            mean_producer);
     CHECK_NOTNULL(create_mean_tensor_op);
 
     auto *variance_producer = Variance[0].getDefiningOp();
-    auto create_variance_tensor_op = 
-                        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(variance_producer);
+    auto create_variance_tensor_op =
+        llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            variance_producer);
     CHECK_NOTNULL(create_variance_tensor_op);
 
-    llvm::SmallVector<int64_t>dims;
+    llvm::SmallVector<int64_t> dims;
     mlir::ArrayAttr dims_attr = create_scale_tensor_op.dims();
     CHECK_GT(dims_attr.size(), 0U);
     CHECK(dims_attr[0].getType().isIntOrIndex());
-    for(size_t i = 0; i < dims_attr.size(); i++) {
+    for (size_t i = 0; i < dims_attr.size(); i++) {
       dims[i] = dims_attr[i].cast<mlir::IntegerAttr>().getInt();
     }
 
-    llvm::SmallVector<double>scale_data;
+    llvm::SmallVector<double> scale_data;
     mlir::ArrayAttr scale_array_attr = create_scale_tensor_op.values();
     CHECK_GT(scale_array_attr.size(), 0U);
     CHECK(scale_array_attr[0].getType().isF32());
     scale_data.resize(scale_array_attr.size());
-    for(size_t i = 0; i < scale_array_attr.size(); i++) {
-      scale_data[i] = scale_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < scale_array_attr.size(); i++) {
+      scale_data[i] =
+          scale_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
     }
 
-    llvm::SmallVector<double>bias_data;
+    llvm::SmallVector<double> bias_data;
     mlir::ArrayAttr bias_array_attr = create_bias_tensor_op.values();
     CHECK_GT(bias_array_attr.size(), 0U);
     CHECK(bias_array_attr[0].getType().isF32());
     bias_data.resize(bias_array_attr.size());
-    for(size_t i = 0; i < bias_array_attr.size(); i++) {
-      bias_data[i] = bias_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < bias_array_attr.size(); i++) {
+      bias_data[i] =
+          bias_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
     }
 
-    llvm::SmallVector<double>mean_data;
+    llvm::SmallVector<double> mean_data;
     mlir::ArrayAttr mean_array_attr = create_mean_tensor_op.values();
     CHECK_GT(mean_array_attr.size(), 0U);
     CHECK(mean_array_attr[0].getType().isF32());
     mean_data.resize(mean_array_attr.size());
-    for(size_t i = 0; i < mean_array_attr.size(); i++) {
-      mean_data[i] = mean_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < mean_array_attr.size(); i++) {
+      mean_data[i] =
+          mean_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
     }
 
-    llvm::SmallVector<double>variance_data;
+    llvm::SmallVector<double> variance_data;
     mlir::ArrayAttr variance_array_attr = create_variance_tensor_op.values();
     CHECK_GT(variance_array_attr.size(), 0U);
     CHECK(variance_array_attr[0].getType().isF32());
     variance_data.resize(variance_array_attr.size());
-    for(size_t i = 0; i < variance_array_attr.size(); i++) {
-      variance_data[i] = variance_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < variance_array_attr.size(); i++) {
+      variance_data[i] =
+          variance_array_attr[i].cast<mlir::FloatAttr>().getValueAsDouble();
     }
 
     double eps = casted_op.epsilonAttr().getValueAsDouble();
-    
-    llvm::SmallVector<float>combile_scale_data;
+
+    llvm::SmallVector<float> combile_scale_data;
     combile_scale_data.resize(scale_data.size());
-    llvm::SmallVector<float>combile_bias_data;
+    llvm::SmallVector<float> combile_bias_data;
     combile_bias_data.resize(bias_data.size());
 
     size_t ele_num = combile_scale_data.size();
@@ -180,30 +188,31 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
       combile_bias_data[i] = bias - mean * combile_scale_data[i];
     }
 
+    rewriter.setInsertionPoint(create_scale_tensor_op);
     auto new_scale_op =
-      rewriter.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
-          create_scale_tensor_op->getLoc(),
-          create_scale_tensor_op.output().getType(),
-          create_scale_tensor_op.context(),
-          rewriter.getI64ArrayAttr(dims),
-          ::infrt::LayoutAttr::get(rewriter.getContext(),
-                                   ::infrt::LayoutType::NCHW),
-          create_scale_tensor_op.lod(),
-          rewriter.getF32ArrayAttr(combile_scale_data));
+        rewriter.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            create_scale_tensor_op->getLoc(),
+            create_scale_tensor_op.output().getType(),
+            create_scale_tensor_op.context(),
+            create_scale_tensor_op.dims(),
+            ::infrt::LayoutAttr::get(rewriter.getContext(),
+                                     ::infrt::LayoutType::NCHW),
+            create_scale_tensor_op.lod(),
+            rewriter.getF32ArrayAttr(combile_scale_data));
     rewriter.replaceOp(create_scale_tensor_op, new_scale_op->getResults());
 
+    rewriter.setInsertionPoint(create_bias_tensor_op);
     auto new_bias_op =
-      rewriter.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
-          create_bias_tensor_op->getLoc(),
-          create_bias_tensor_op.output().getType(),
-          create_bias_tensor_op.context(),
-          rewriter.getI64ArrayAttr(dims),
-          ::infrt::LayoutAttr::get(rewriter.getContext(),
-                                   ::infrt::LayoutType::NCHW),
-          create_bias_tensor_op.lod(),
-          rewriter.getF32ArrayAttr(combile_bias_data));
+        rewriter.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
+            create_bias_tensor_op->getLoc(),
+            create_bias_tensor_op.output().getType(),
+            create_bias_tensor_op.context(),
+            create_bias_tensor_op.dims(),
+            ::infrt::LayoutAttr::get(rewriter.getContext(),
+                                     ::infrt::LayoutType::NCHW),
+            create_bias_tensor_op.lod(),
+            rewriter.getF32ArrayAttr(combile_bias_data));
     rewriter.replaceOp(create_bias_tensor_op, new_bias_op->getResults());
-
 
     trt::ScaleNdOp scaleNd_op;
     // resultTypes
@@ -213,6 +222,7 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
     }
 
     // attributes
+    rewriter.setInsertionPoint(op);
     ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
     auto result = rewriter
                       .create<trt::ScaleNdOp>(

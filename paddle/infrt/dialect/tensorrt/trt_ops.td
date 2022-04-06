@@ -99,11 +99,11 @@ def TRT_PoolingOp : TRT_Op<"Pooling", [NoSideEffect]> {
   }];
   let arguments = (ins
     DenseTensor:$input_tensor,
-    I32Attr:$pool_type,
+    SI32Attr:$pool_type,
     I32ArrayAttr:$window_size,
     I32ArrayAttr:$strides,
     I32ArrayAttr:$paddings,
-    I32Attr:$padding_mode,
+    SI32Attr:$padding_mode,
     BoolAttr:$exclusive,
     BoolAttr:$adaptive,
     StrAttr:$padding_algorithm
