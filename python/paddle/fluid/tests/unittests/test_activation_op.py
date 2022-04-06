@@ -1022,6 +1022,7 @@ class TestSqrtBF16(OpTest):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.python_api = paddle.rsqrt
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1034,7 +1035,8 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.0005, check_eager=True)
 
 
 class TestAbs(TestActivation):

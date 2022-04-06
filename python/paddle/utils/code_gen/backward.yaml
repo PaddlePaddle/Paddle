@@ -1092,6 +1092,16 @@
   kernel :
     func : round_grad
 
+- backward_api : rsqrt_grad
+  forward : rsqrt (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : rsqrt_grad
+
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
