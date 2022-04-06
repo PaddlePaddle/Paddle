@@ -92,9 +92,15 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     bool trainable_statistics,
     bool fuse_with_relu);
 
+/************************   backward api impl   ***************************/
+
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
                                      const Scalar& axis);
+
+Tensor imag_grad_impl(const Tensor& x);
+
+Tensor real_grad_impl(const Tensor& x);
 
 std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad,
