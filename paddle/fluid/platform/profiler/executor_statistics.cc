@@ -13,16 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/executor_statistics.h"
+#include <fstream>
 #include <functional>
 #include <map>
+#include <ostream>
 #include <set>
 #include <unordered_map>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
 
+/*
 uint64_t CalcOverlapGaps(const TraceEventCollector& collector) {
   std::map<uint64_t, int> m;
   for (const auto& evt : collector.HostEvents()) {
@@ -38,7 +42,7 @@ uint64_t CalcOverlapGaps(const TraceEventCollector& collector) {
   for (const auto& kv : m) {
     cur += kv.second;
     // VLOG(1) << kv.first << ":" << kv.second << "cnt:" << cur;
-    if (cur == 0) {
+  :  if (cur == 0) {
       gap_start = kv.first;
     } else if (cur > 0) {
       if (gap_start > 0) {
@@ -84,90 +88,490 @@ uint64_t CalcOverlapTotal(const TraceEventCollector& collector,
   }
   return total;
 }
+*/
 
-void StatisticsHostEvents(const TraceEventCollector& collector) {
-  std::unordered_map<std::string, int> name2idx;
-  std::vector<size_t> idx2cnt;
-  std::vector<uint64_t> idx2total_ns;
-  std::vector<std::set<uint64_t>> idx2threads;
-#define REG_EVENT(event)             \
-  name2idx[#event] = idx2cnt.size(); \
-  idx2cnt.push_back(0);              \
-  idx2total_ns.push_back(0);         \
-  idx2threads.push_back({})
-  REG_EVENT(AutoGrowthBestFitAllocator::Allocate);
+class StatisticsEngine {
+ public:
+  int Apply(const NodeTrees& tree);
+
+  void Log(const std::string& full_filename);
+
+ private:
+  // type
+  struct EventStat {
+    uint64_t total_time = 0;
+    size_t count = 0;
+    uint64_t normalization_time = 0;
+  };
+
+  struct Priority {
+    // use a smaller number to denote higher priority
+    int innerthread_priority = 0;
+    int interthread_priority = 0;
+  };
+
+  struct StdEvent {
+    size_t evt_idx;
+    uint64_t start_ns;
+    uint64_t end_ns;
+
+    StdEvent(size_t idx, uint64_t start, uint64_t end)
+        : evt_idx(idx), start_ns(start), end_ns(end) {}
+  };
+
+  using Filter = std::function<bool(const HostTraceEventNode&)>;
+
+  int Init(
+      const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes);
+
+  int Stat(
+      const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes);
+
+  void InitStdEvents();
+
+  void InitInnerthreadPriorityForStdEvents();
+
+  void InitInterthreadPriorityForStdEvents();
+
+  int InitFiltersForExecutor();
+
+  int InitFiltersForParallelExecutor();
+
+  int InitFiltersForInterpreterCore();
+
+  int RegisterEventFilter(const std::string& std_event, Filter filter) {
+    auto iter = name2idx_.find(std_event);
+    if (iter == name2idx_.end()) {
+      LOG(WARNING) << "Unsupported std_event " << std_event;
+      return -1;
+    }
+    auto idx = iter->second;
+    if (filters_[idx]) {
+      LOG(WARNING) << "Duplicate registration for std_event(" << std_event
+                   << ")";
+      return -1;
+    }
+    filters_[idx] = std::move(filter);
+    return 0;
+  }
+
+  int MergeInnerthreadEvents(std::vector<std::vector<StdEvent>>* all_evts);
+
+  int MergeInterthreadEvents(std::vector<std::vector<StdEvent>>* all_evts);
+
+  int StatNormalizationTime(const std::vector<std::vector<StdEvent>>& all_evts);
+
+  bool inited_ = false;
+  std::vector<std::string> names_;
+  std::vector<Filter> filters_;
+  std::vector<Priority> priorities_;
+  std::vector<EventStat> statistics_;
+  std::unordered_map<std::string, size_t> name2idx_;
+};
+
+int StatisticsEngine::Apply(const NodeTrees& tree) {
+  auto thread2nodes = tree.Traverse(true);
+  return Init(thread2nodes) || Stat(thread2nodes);
+}
+
+int StatisticsEngine::Init(
+    const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes) {
+  if (inited_) {
+    LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
+    return -1;
+  }
+  inited_ = true;
+  InitStdEvents();
+  InitInnerthreadPriorityForStdEvents();
+  InitInterthreadPriorityForStdEvents();
+  // determine executor type
+  for (const auto& kv : thread2nodes) {
+    for (const auto& evt : kv.second) {
+      const auto& name = evt->Name();
+      if (name.find("Executor::") == 0) {
+        VLOG(10) << "type: Executor";
+        return InitFiltersForExecutor();
+      } else if (name.find("ParallelExecutor::") == 0) {
+        VLOG(10) << "type: ParallelExecutor";
+        return InitFiltersForParallelExecutor();
+      } else if (name.find("StandaloneExecutor::") == 0) {
+        VLOG(10) << "type: InterpreterCore";
+        return InitFiltersForInterpreterCore();
+      }
+    }
+  }
+  LOG(WARNING) << "Unsupported Executor";
+  return -1;
+}
+
+void StatisticsEngine::InitStdEvents() {
+  name2idx_["Total"] = names_.size();
+  names_.push_back("Total");
+  name2idx_["PythonEnd"] = names_.size();
+  names_.push_back("PythonEnd");
+  name2idx_["CplusplusEnd"] = names_.size();
+  names_.push_back("CplusplusEnd");
+  name2idx_["RunOp"] = names_.size();
+  names_.push_back("RunOp");
+  name2idx_["LuanchKernel"] = names_.size();
+  names_.push_back("LuanchKernel");
+  name2idx_["OpCompute"] = names_.size();
+  names_.push_back("OpCompute");
+  name2idx_["OpInfershape"] = names_.size();
+  names_.push_back("OpInfershape");
+  name2idx_["DataTransform"] = names_.size();
+  names_.push_back("DataTransform");
+  name2idx_["GarbageCollect"] = names_.size();
+  names_.push_back("GarbageCollect");
+  name2idx_["CalcNextOp"] = names_.size();
+  names_.push_back("CalcNextOp");
+  name2idx_["AllocateDeviceMem"] = names_.size();
+  names_.push_back("AllocateDeviceMem");
+  name2idx_["FreeDeviceMem"] = names_.size();
+  names_.push_back("FreeDeviceMem");
+  name2idx_["ThreadpoolAddTask"] = names_.size();
+  names_.push_back("ThreadpoolAddTask");
+
+  size_t n = names_.size();
+  filters_.resize(n);
+  priorities_.resize(n);
+  statistics_.resize(n);
+}
+
+void StatisticsEngine::InitInnerthreadPriorityForStdEvents() {
+  int prio = 0;
+  priorities_[name2idx_["AllocateDeviceMem"]].innerthread_priority = ++prio;
+  priorities_[name2idx_["FreeDeviceMem"]].innerthread_priority = prio;
+  priorities_[name2idx_["ThreadpoolAddTask"]].innerthread_priority = prio;
+
+  priorities_[name2idx_["CalcNextOp"]].innerthread_priority = ++prio;
+  priorities_[name2idx_["GarbageCollect"]].innerthread_priority = prio;
+  priorities_[name2idx_["OpCompute"]].innerthread_priority = prio;
+  priorities_[name2idx_["OpInfershape"]].innerthread_priority = prio;
+  priorities_[name2idx_["DataTransform"]].innerthread_priority = prio;
+
+  priorities_[name2idx_["RunOp"]].innerthread_priority = ++prio;
+
+  priorities_[name2idx_["CplusplusEnd"]].innerthread_priority = ++prio;
+
+  priorities_[name2idx_["Total"]].innerthread_priority = ++prio;
+}
+
+void StatisticsEngine::InitInterthreadPriorityForStdEvents() {
+  int prio = 0;
+  priorities_[name2idx_["LuanchKernel"]].interthread_priority = ++prio;
+  priorities_[name2idx_["AllocateDeviceMem"]].interthread_priority = ++prio;
+  priorities_[name2idx_["FreeDeviceMem"]].interthread_priority = ++prio;
+  priorities_[name2idx_["ThreadpoolAddTask"]].interthread_priority = ++prio;
+
+  priorities_[name2idx_["CalcNextOp"]].interthread_priority = ++prio;
+  priorities_[name2idx_["GarbageCollect"]].interthread_priority = ++prio;
+  priorities_[name2idx_["OpInfershape"]].interthread_priority = ++prio;
+  priorities_[name2idx_["DataTransform"]].interthread_priority = ++prio;
+
+  priorities_[name2idx_["RunOp"]].interthread_priority = ++prio;
+  priorities_[name2idx_["CplusplusEnd"]].interthread_priority = ++prio;
+  priorities_[name2idx_["PythonEnd"]].interthread_priority = prio;
+}
+
+int StatisticsEngine::InitFiltersForExecutor() {
+  return RegisterEventFilter("Total",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name().find("ProfileStep") == 0;
+                             }) ||
+         RegisterEventFilter("CplusplusEnd",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "Executor::RunPartialPreparedContext";
+                             }) ||
+         RegisterEventFilter("RunOp",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Type() == TracerEventType::Operator;
+                             }) ||
+         RegisterEventFilter("OpCompute",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "compute" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("OpInfershape",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "infer_shape" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("GarbageCollect",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "CheckGC";
+                             }) ||
+         RegisterEventFilter("AllocateDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "AutoGrowthBestFitAllocator::Allocate";
+                             }) ||
+         RegisterEventFilter("FreeDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "AutoGrowthBestFitAllocator::Free";
+                             }) ||
+         RegisterEventFilter(
+             "DataTransform", [](const HostTraceEventNode& evt) {
+               return evt.Name() == "prepare_data" &&
+                      evt.Type() == TracerEventType::OperatorInner;
+             });
+}
+
+int StatisticsEngine::InitFiltersForParallelExecutor() { return 0; }
+
+int StatisticsEngine::InitFiltersForInterpreterCore() {
+  return RegisterEventFilter("Total",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name().find("ProfileStep") == 0;
+                             }) ||
+         RegisterEventFilter("CplusplusEnd",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "StandaloneExecutor::run";
+                             }) ||
+         RegisterEventFilter("RunOp",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Type() == TracerEventType::Operator;
+                             }) ||
+         RegisterEventFilter("OpCompute",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "compute" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("OpInfershape",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "infer_shape" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("GarbageCollect",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "CheckGC" ||
+                                      evt.Name() == "RecordStreamForGC";
+                             }) ||
+         RegisterEventFilter("AllocateDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "StreamSafeCUDAAllocator::Allocate";
+                             }) ||
+         RegisterEventFilter("FreeDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "StreamSafeCUDAAllocator::Free";
+                             }) ||
+         RegisterEventFilter("CalcNextOp",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "RunNextInstructions";
+                             }) ||
+         RegisterEventFilter("ThreadpoolAddTask",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "WorkQueue::AddTask";
+                             });
+}
+
+int StatisticsEngine::Stat(
+    const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes) {
+  // build StdEvent
+  std::vector<std::vector<StdEvent>> all_evts;
+  for (const auto& nodes : thread2nodes) {
+    if (nodes.second.size() == 0) {
+      continue;
+    }
+    std::vector<StdEvent> thr_evts;
+    thr_evts.reserve(nodes.second.size());
+    for (const auto evt : nodes.second) {
+      for (size_t idx = 0; idx < filters_.size(); ++idx) {
+        if (!filters_[idx]) {
+          continue;
+        }
+        if (filters_[idx](*evt)) {
+          thr_evts.emplace_back(idx, evt->StartNs(), evt->EndNs());
+          VLOG(10) << "name:" << evt->Name() << " type:" << names_[idx];
+          break;
+        }
+      }
+    }
+    if (thr_evts.size() == 0) {
+      continue;
+    }
+    std::sort(thr_evts.begin(), thr_evts.end(),
+              [](const StdEvent& e1, const StdEvent& e2) {
+                return e1.start_ns < e2.start_ns;
+              });
+    all_evts.push_back(std::move(thr_evts));
+  }
+  if (all_evts.size() == 0) {
+    LOG(WARNING) << "No profiler events";
+    return -1;
+  }
+
+  // statistic total_time/count
+  for (const auto& thr_evts : all_evts) {
+    for (const auto& evt : thr_evts) {
+      auto& evt_stat = statistics_[evt.evt_idx];
+      evt_stat.total_time += evt.end_ns - evt.start_ns;
+      evt_stat.count += 1;
+    }
+  }
+  auto& python_end = statistics_[name2idx_["PythonEnd"]];
+  const auto& totol = statistics_[name2idx_["Total"]];
+  const auto& cplusplus_end = statistics_[name2idx_["CplusplusEnd"]];
+  python_end.total_time = totol.total_time - cplusplus_end.total_time;
+  python_end.count = cplusplus_end.total_time + 1;
+
+  auto& luanch_kernel = statistics_[name2idx_["LuanchKernel"]];
+  const auto& op_compute = statistics_[name2idx_["OpCompute"]];
+  const auto& allocate = statistics_[name2idx_["AllocateDeviceMem"]];
+  luanch_kernel.total_time = op_compute.total_time - allocate.total_time;
+  luanch_kernel.count = op_compute.count;
+
+  // statistic normalization_time
+  return MergeInnerthreadEvents(&all_evts) ||
+         MergeInterthreadEvents(&all_evts) || StatNormalizationTime(all_evts);
+}
+
+int StatisticsEngine::MergeInnerthreadEvents(
+    std::vector<std::vector<StdEvent>>* all_evts) {
+  for (auto& thr_evts : *all_evts) {
+    std::list<StdEvent> merge_evts;
+    merge_evts.push_back(thr_evts[0]);
+    auto m_iter = merge_evts.begin();
+    for (size_t c = 1; c < thr_evts.size();) {
+      const auto& cur = thr_evts[c];
+      VLOG(10) << "cur:" << names_[cur.evt_idx] << "|" << cur.start_ns << "|"
+               << cur.end_ns;  //
+      if (m_iter == merge_evts.end()) {
+        merge_evts.push_back(cur);
+        ++c;
+        continue;
+      }
+      const auto& merge = *m_iter;
+      VLOG(10) << "merg:" << names_[merge.evt_idx] << "|" << merge.start_ns
+               << "|" << merge.end_ns;  //
+      if (cur.start_ns >= merge.end_ns) {
+        ++m_iter;
+        continue;
+      }
+      if (cur.end_ns > merge.end_ns) {
+        LOG(WARNING) << "Event " << names_[cur.evt_idx]
+                     << " starts and ends after Event "
+                     << names_[merge.evt_idx];
+        return -1;
+      }
+      auto cur_prio = priorities_[cur.evt_idx].innerthread_priority;
+      auto merge_prio = priorities_[merge.evt_idx].innerthread_priority;
+      VLOG(10) << cur_prio << " vs " << merge_prio;  //
+      if (cur_prio > merge_prio) {
+        ++c;
+        continue;
+      } else if (cur_prio == merge_prio) {
+        LOG(WARNING) << "Sub event has lower priority";
+        return -1;
+      }
+
+      StdEvent prev{merge.evt_idx, merge.start_ns, cur.start_ns};
+      StdEvent post{merge.evt_idx, cur.end_ns, merge.end_ns};
+      merge_evts.insert(m_iter, prev);
+      *(m_iter) = cur;
+      if (post.start_ns < post.end_ns) {
+        auto pos = m_iter;
+        merge_evts.insert(++pos, post);
+      }
+      ++c;
+    }
+    for (auto& evt : merge_evts) {
+      if (names_[evt.evt_idx] == "Total") {
+        evt.evt_idx = name2idx_["PythonEnd"];
+      } else if (names_[evt.evt_idx] == "OpCompute") {
+        evt.evt_idx = name2idx_["LuanchKernel"];
+      }
+    }
+
+    VLOG(10) << "new thread";
+    for (const auto& evt : merge_evts) {
+      VLOG(10) << names_[evt.evt_idx] << " " << evt.start_ns << " "
+               << evt.end_ns;
+    }  ////
+
+    thr_evts.assign(merge_evts.begin(), merge_evts.end());
+  }
+  return 0;
+}
+
+int StatisticsEngine::MergeInterthreadEvents(
+    std::vector<std::vector<StdEvent>>* all_evts) {
+  std::vector<StdEvent> base_list;
+  base_list.swap((*all_evts)[0]);
+  for (size_t i = 1; i < all_evts->size(); ++i) {
+    std::vector<StdEvent> merge;
+    auto& cur_list = (*all_evts)[i];
+    for (size_t c = 0, m = 0; c < cur_list.size(); ++c) {
+      VLOG(10) << i << c << m;
+      continue;
+    }
+  }
+  all_evts->resize(1);
+  (*all_evts)[0].swap(base_list);
+  VLOG(10) << (*all_evts)[0].size();  /////
+  return 0;
+}
+
+int StatisticsEngine::StatNormalizationTime(
+    const std::vector<std::vector<StdEvent>>& all_evts) {
+  if (all_evts.size() != 1) {
+    LOG(WARNING) << "Invalid argument";
+    return -1;
+  }
+  for (const auto& evt : all_evts[0]) {
+    statistics_[evt.evt_idx].normalization_time += evt.end_ns - evt.start_ns;
+  }
+  return 0;
+}
+
+void StatisticsEngine::Log(const std::string& full_filename) {
+  std::ofstream ofs;
+  ofs.open(full_filename, std::ofstream::out | std::ofstream::trunc);
+  if (!ofs) {
+    LOG(WARNING) << "Unable to open file " << full_filename
+                 << " for writing data.";
+    return;
+  }
+  LOG(INFO) << "writing statistics data to " << full_filename;
+  ofs << "[";
+  for (size_t idx = 0; idx < statistics_.size(); ++idx) {
+    const auto& evt_stat = statistics_[idx];
+    ofs << string_format(std::string(R"JSON(
+  { 
+    "statistical item" : "%s", 
+    "total time(ns)" : %llu, 
+    "total number of times" : %llu,
+    "normalization time(ns)" : %llu
+  },)JSON"),
+                         names_[idx].c_str(), evt_stat.total_time,
+                         evt_stat.count, evt_stat.normalization_time);
+  }
+  ofs.seekp(-1, std::ios_base::end);
+  ofs << "]";
+  ofs.close();
+}
+
+void ExecutorStatistics(const std::string& file_name, const NodeTrees& tree) {
+  StatisticsEngine engine;
+  if (engine.Apply(tree) == 0) {
+    engine.Log(file_name);
+  }
+  /*REG_EVENT(AutoGrowthBestFitAllocator::Allocate);
   REG_EVENT(AutoGrowthBestFitAllocator::Free);
   REG_EVENT(StreamSafeCUDAAllocator::Allocate);
   REG_EVENT(StreamSafeCUDAAllocator::Free);
   REG_EVENT(WorkQueue::AddTask);
-  REG_EVENT(prepare_data);
-  REG_EVENT(infer_shape);
-  REG_EVENT(compute);
-  REG_EVENT(ProfileStep);
   REG_EVENT(StandaloneExecutor::run);
-  REG_EVENT(Executor::RunPartialPreparedContext);
-  REG_EVENT(ParallelExecutor::Run);
-#undef REG_EVENT
-
-  // statistics
-  for (const auto& evt : collector.HostEvents()) {
-    // VLOG(1) << "name: " << evt.name;
-    std::string prefix = evt.name;
-    size_t split = evt.name.find('#');
-    if (split != std::string::npos) {
-      prefix = evt.name.substr(0, split);
-    }
-    auto iter = name2idx.find(prefix);
-    if (iter != name2idx.end()) {
-      int idx = iter->second;
-      ++idx2cnt[idx];
-      idx2total_ns[idx] += evt.end_ns - evt.start_ns;
-      idx2threads[idx].insert(evt.thread_id);
-    }
-  }
-
-  // Events Statistics
-  VLOG(1) << "=========Events Statistics==========";
-  for (const auto& kv : name2idx) {
-    VLOG(1) << kv.first << " cnt:" << idx2cnt[kv.second]
-            << " total(ns):" << idx2total_ns[kv.second]
-            << " threads:" << idx2threads[kv.second].size();
-  }
-
-  uint64_t total_cost = 0;
-  uint64_t python_cost = 0;
-  uint64_t cplusplus_cost = 0;
-  uint64_t run_op_cost = 0;
-/*uint64_t infershape_cost = 0;
-uint64_t luanch_kernel_cost = 0;
-uint64_t gc_cost = 0;
-uint64_t nexts_cost = 0;
-uint64_t allocator_cost = 0;
-uint64_t add_task_cost = 0;
-uint64_t data_transform = 0;*/
-
-#define GET_EVENT_TATALTIME(event) idx2total_ns[name2idx[#event]]
-#define GET_EVENT_COUNT(event) idx2cnt[name2idx[#event]]
-  std::vector<std::string> executor_type_names{
-      "Unknown", "Executor", "ParallelExecutor", "StandaloneExecutor"};
-  int executor_type = 0;
-  if (GET_EVENT_COUNT(Executor::RunPartialPreparedContext) > 0) {
-    executor_type = 1;  // executor
-  } else if (GET_EVENT_COUNT(ParallelExecutor::Run) > 0) {
-    executor_type = 2;  // PE
-  } else if (GET_EVENT_COUNT(StandaloneExecutor::run) > 0) {
-    executor_type = 3;  // new executor
-  }
-
-  VLOG(1) << "========Executor analysis(" << executor_type_names[executor_type]
-          << ")========";
-  if (executor_type == 1) {
-    total_cost = GET_EVENT_TATALTIME(ProfileStep);
-    cplusplus_cost = GET_EVENT_TATALTIME(Executor::RunPartialPreparedContext);
-    python_cost = total_cost - cplusplus_cost;
-    run_op_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
-      return evt.type == TracerEventType::Operator;
-    });
+  REG_EVENT(ParallelExecutor::Run);*/
+  /*
   } else if (executor_type == 2) {
     total_cost = GET_EVENT_TATALTIME(ProfileStep);
     cplusplus_cost = GET_EVENT_TATALTIME(ParallelExecutor::Run);
@@ -175,6 +579,12 @@ uint64_t data_transform = 0;*/
     run_op_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
       return evt.type == TracerEventType::Operator;
     });
+    infershape_cost = CalcOverlapTotal(collector, [](const HostTraceEvent&
+evt)
+{ return evt.name == "infer_shape"; });
+    allocator_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt)
+{
+return evt.name == "AutoGrowthBestFitAllocator::Allocat"; });
   } else if (executor_type == 3) {
     total_cost = GET_EVENT_TATALTIME(ProfileStep);
     cplusplus_cost = GET_EVENT_TATALTIME(StandaloneExecutor::run);
@@ -182,18 +592,15 @@ uint64_t data_transform = 0;*/
     run_op_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
       return evt.type == TracerEventType::Operator;
     });
-  }
-  VLOG(1) << "total_cost"
-          << "\t"
-          << "python_cost"
-          << "\t"
-          << "cplusplus_cost"
-          << "\t"
-          << "run_op_cost";
+    infershape_cost = CalcOverlapTotal(collector, [](const HostTraceEvent&
+evt)
+{ return evt.name == "infer_shape"; });
+    allocator_alloc = CalcOverlapTotal(collector, [](const HostTraceEvent&
+evt)
+{ return evt.name == "StreamSafeCUDAAllocator::Allocate"; });
 
-  VLOG(1) << total_cost << "\t" << python_cost << "\t" << cplusplus_cost << "\t"
-          << run_op_cost;
-/*uint64_t allocator_cost = 0;
+  }
+uint64_t allocator_cost = 0;
 if (executor_type <= 2) {
   VLOG(1) << "thread model==========";
   VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
@@ -232,24 +639,8 @@ if (executor_type <= 2) {
           << "times";
 }
 // common
-uint64_t op_run = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
-  return evt.type == TracerEventType::Operator;
-});
-VLOG(1) << "run op(overlap): " << op_run << "ns ";
-uint64_t infer_shape = CalcOverlapTotal(
-    collector,
-    [](const HostTraceEvent& evt) { return evt.name == "infer_shape"; });
-VLOG(1) << "infershape(overlap): " << infer_shape << "ns ";
-uint64_t kernel_luanch = CalcOverlapTotal(collector,
-                                          [](const HostTraceEvent& evt) {
-                                            return evt.name == "compute";
-                                          }) -
-                         allocator_cost;
 VLOG(1) << "kernel luanch(overlap): " << kernel_luanch << "ns ";
-VLOG(1) << "op count: " << GET_EVENT_COUNT(compute);
 VLOG(1) << "op gaps: " << CalcOverlapGaps(collector);*/
-#undef GET_EVENT_TATALTIME
-#undef GET_EVENT_COUNT
 }
 
 }  // namespace platform

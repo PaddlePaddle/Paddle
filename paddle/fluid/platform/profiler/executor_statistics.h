@@ -14,12 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/profiler/trace_event_collector.h"
+#include <string>
+#include "paddle/fluid/platform/profiler/event_node.h"
 
 namespace paddle {
 namespace platform {
 
-void StatisticsHostEvents(const TraceEventCollector& collector);
+void ExecutorStatistics(const std::string& file_name, const NodeTrees& tree);
 
 }  // namespace platform
 }  // namespace paddle
