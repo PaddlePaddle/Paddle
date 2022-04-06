@@ -54,5 +54,6 @@ _global_ptr_ float* mf_initial_range;
 _global_ptr_ float* mf_min_bound;
 _global_ptr_ float* mf_max_bound;
 
+
 #endif
 }  // namespace optimizer_config
