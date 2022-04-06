@@ -69,7 +69,9 @@ def parameters_to_vector(parameters, name=None):
     out = _varbase_creator(dtype=dtype)
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
-            _C_ops.concat(parameters, 'axis', 0)._share_underline_tensor_to(out)
+            tmp = _varbase_creator()
+            _C_ops.concat(parameters, tmp, 'axis', 0)
+            tmp._share_underline_tensor_to(out)
     else:
         _dygraph_tracer().trace_op(
             type='concat',
@@ -120,8 +122,8 @@ def vector_to_parameters(vec, parameters, name=None):
 
     if in_dygraph_mode():
         with paddle.fluid.dygraph.no_grad():
-            res = _C_ops.split(vec,
-                               len(parameters), 'axis', 0, 'sections', sections)
+            res = [_varbase_creator() for n in range(len(parameters))]
+            _C_ops.split(vec, res, 'axis', 0, 'sections', sections)
             for i in range(0, len(res)):
                 res[i]._share_underline_tensor_to(parameters[i])
     else:
