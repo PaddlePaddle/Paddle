@@ -36,7 +36,6 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
 from paddle.fluid.framework import _test_eager_guard
-
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
@@ -543,12 +542,6 @@ class TestParallelDyGraphRunnerBase(object):
             return batch
 
     def run_trainer(self, args):
-        if args.eager_mode:
-            self.run_trainer_in_eager_mode(args)
-        else:
-            self.run_trainer_func(args)
-
-    def run_trainer_func(self, args):
         seed = 90
         if args.update_method == 'gloo':
             place = fluid.CPUPlace()
@@ -580,6 +573,7 @@ class TestParallelDyGraphRunnerBase(object):
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
+                paddle.distributed.init_parallel_env()
                 print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
@@ -621,82 +615,7 @@ class TestParallelDyGraphRunnerBase(object):
                     model.clear_gradients()
         print_to_out(out_losses)
 
-    def run_trainer_in_eager_mode(self, args):
-        seed = 90
-        if args.update_method == 'gloo':
-            place = fluid.CPUPlace()
-        elif fluid.core.is_compiled_with_cuda():
-            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
-            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
-        elif fluid.core.is_compiled_with_npu():
-            device_id = int(os.getenv("FLAGS_selected_npus", "0"))
-            place = fluid.NPUPlace(device_id)
-        else:
-            assert ("Only support CUDAPlace or XPUPlace or CPU(Gloo) for now.")
-
-        with _test_eager_guard():
-            with fluid.dygraph.guard(place):
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                np.random.seed(seed)
-                import random
-                random.seed(seed)
-
-                model, train_reader, opt = self.get_model()
-
-                #if args.update_method == "nccl2":
-                if args.update_method in ["nccl2", "gloo"]:
-                    paddle.distributed.init_parallel_env()
-                    nranks = ParallelEnv().nranks
-                    rank = ParallelEnv().local_rank
-                    is_master = True if rank == 0 else False
-                    store = paddle.fluid.core.TCPStore(
-                        "127.0.0.1", args.dist_port, is_master, nranks)
-                    if args.update_method == "nccl2":
-                        group = core.ProcessGroupNCCL(store, rank, nranks)
-                    elif args.update_method == "gloo":
-                        group = core.ProcessGroupGloo(store, rank, nranks)
-
-                    print_to_err(
-                        type(self).__name__,
-                        "begin to prepare context in dygraph with nccl2")
-                    model = dygraph.parallel.DataParallel(
-                        model,
-                        process_group=group,
-                        find_unused_parameters=args.find_unused_parameters)
-                    print_to_err(type(self).__name__, "model built in dygraph")
-
-                out_losses = []
-                print_to_err(
-                    type(self).__name__, "begin to run dygraph training")
-                for step_id, data in enumerate(train_reader()):
-                    data = self._get_data(data, args)
-                    if step_id == RUN_STEP:
-                        break
-                    loss = self.run_one_loop(model, opt, data)
-                    if step_id % 10 == 0:
-                        print_to_err(
-                            type(self).__name__,
-                            "loss at step %d: %f" % (step_id, loss.numpy()))
-                    out_losses.append(loss.numpy())
-
-                    loss.backward()
-
-                    opt.minimize(loss)
-                    if not args.accumulate_gradient:
-                        model.clear_gradients()
-            print_to_out(out_losses)
-
     def run_trainer_with_spawn(self, args):
-        if args.eager_mode:
-            return self.run_trainer_with_spawn_in_eager_mode(args)
-        else:
-            return self.run_trainer_with_spawn_func(args)
-
-    def run_trainer_with_spawn_func(self, args):
         # 1. enable dygraph
         paddle.disable_static()
 
@@ -733,64 +652,7 @@ class TestParallelDyGraphRunnerBase(object):
             model.clear_gradients()
         return out_losses
 
-    def run_trainer_with_spawn_in_eager_mode(self, args):
-        # 1. enable dygraph
-        paddle.disable_static()
-
-        # 2. init seed
-        seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
-        np.random.seed(seed)
-        random.seed(seed)
-        # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
-
-        # 3. init parallel env
-        if args.update_method in ["nccl2", "gloo"]:
-            paddle.distributed.init_parallel_env()
-
-            # 4. build process group
-            nranks = ParallelEnv().nranks
-            rank = ParallelEnv().local_rank
-            is_master = True if rank == 0 else False
-            store = paddle.fluid.core.TCPStore("127.0.0.1", args.dist_port,
-                                               is_master, nranks)
-            if args.update_method == "nccl2":
-                group = core.ProcessGroupNCCL(store, rank, nranks)
-            elif args.update_method == "gloo":
-                group = core.ProcessGroupGloo(store, rank, nranks)
-
-        # 5. train model
-        with _test_eager_guard():
-            model, train_reader, opt = self.get_model()
-            if args.update_method in ["nccl2", "gloo"]:
-                model = paddle.DataParallel(
-                    model,
-                    process_group=group,
-                    find_unused_parameters=args.find_unused_parameters)
-
-            out_losses = []
-            for step_id, data in enumerate(train_reader()):
-                data = self._get_data(data, args)
-                if step_id == RUN_STEP:
-                    break
-                loss = self.run_one_loop(model, opt, data)
-                out_losses.append(loss.numpy())
-
-                loss.backward()
-
-                opt.minimize(loss)
-                model.clear_gradients()
-        return out_losses
-
     def run_use_fleet_api_trainer(self, args):
-        if args.eager_mode:
-            self.run_use_fleet_api_trainer_in_eager_mode(args)
-        else:
-            self.run_use_fleet_api_trainer_func(args)
-
-    def run_use_fleet_api_trainer_func(self, args):
         import paddle.distributed.fleet as fleet
         import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
@@ -835,52 +697,6 @@ class TestParallelDyGraphRunnerBase(object):
                 opt.clear_grad()
         print_to_out(out_losses)
 
-    def run_use_fleet_api_trainer_in_eager_mode(self, args):
-        import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
-        # 1. enable dygraph
-        paddle.disable_static()
-
-        # 2. init seed
-        seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
-        np.random.seed(seed)
-        random.seed(seed)
-        # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
-
-        # set strategy
-        strategy = fleet.DistributedStrategy()
-        if args.find_unused_parameters:
-            strategy.find_unused_parameters = True
-
-        # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
-            fleet.init(is_collective=True, strategy=strategy)
-
-        # 4. train model
-        with _test_eager_guard():
-            model, train_reader, opt = self.get_model()
-            if args.update_method == "nccl2" or "bkcl" or "hccl":
-                opt = fleet.distributed_optimizer(opt)
-                model = fleet.distributed_model(model)
-
-            out_losses = []
-            for step_id, data in enumerate(train_reader()):
-                data = self._get_data(data, args)
-                if step_id == RUN_STEP:
-                    break
-                loss = self.run_one_loop(model, opt, data)
-                out_losses.append(loss.numpy())
-
-                loss.backward()
-
-                opt.step()
-                if not args.accumulate_gradient:
-                    opt.clear_grad()
-        print_to_out(out_losses)
-
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run dist test.')
@@ -911,8 +727,6 @@ def runtime_main(test_class):
     parser.add_argument(
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
-    parser.add_argument('--eager_mode', action='store_true')
-    parser.add_argument('--dist_port', type=int, required=False, default=6175)
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
@@ -1005,8 +819,6 @@ class TestDistBase(unittest.TestCase):
         self._port_set = set()
         self._python_interp = sys.executable
         self._sync_mode = True
-        self._dist_port = 6175
-        self._eager_mode = False
         self._hogwild_mode = False
         self._enforce_place = None
         self._use_reduce = False
@@ -1168,10 +980,6 @@ class TestDistBase(unittest.TestCase):
         if len(devices) > 1 and self._use_dgc:
             cmd += " --use_dgc"
 
-        if self._eager_mode:
-            cmd += " --eager_mode"
-            cmd += " --dist_port {}".format(self._dist_port)
-
         if self._accumulate_gradient:
             cmd += " --accumulate_gradient"
 
@@ -1245,11 +1053,6 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
-        if self._eager_mode:
-            tr0_cmd += " --eager_mode"
-            tr1_cmd += " --eager_mode"
-            tr0_cmd += " --dist_port {}".format(self._dist_port)
-            tr1_cmd += " --dist_port {}".format(self._dist_port)
         if self._hogwild_mode:
             tr0_cmd += " --hogwild"
             tr1_cmd += " --hogwild"
@@ -1356,10 +1159,6 @@ class TestDistBase(unittest.TestCase):
 
         assert self._use_dgc == False, "gloo not support use dgc"
 
-        if self._eager_mode:
-            tr_cmd += " --eager_mode"
-            tr_cmd += " --dist_port {}".format(self._dist_port)
-
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
 
@@ -1436,10 +1235,6 @@ class TestDistBase(unittest.TestCase):
 
         if self._use_dgc:
             tr_cmd += " --use_dgc"
-
-        if self._eager_mode:
-            tr_cmd += " --eager_mode"
-            tr_cmd += " --dist_port {}".format(self._dist_port)
 
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
@@ -1665,7 +1460,34 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
+            with _test_eager_guard():
+                self.check_with_place_func(
+                    model_file=model_file,
+                    delta=delta,
+                    check_error_log=check_error_log,
+                    need_envs=need_envs,
+                    log_name=log_name)
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
+        else:
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
 
+    def check_with_place_func(self,
+                              model_file,
+                              delta=1e-3,
+                              check_error_log=False,
+                              need_envs={},
+                              log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         if self._gloo_mode:

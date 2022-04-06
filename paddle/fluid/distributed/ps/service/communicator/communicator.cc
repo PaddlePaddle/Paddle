@@ -39,7 +39,7 @@ inline double GetCurrentUS() {
 
 Communicator::Communicator() {}
 
-void Communicator::init_gflag(const std::string &gflags) {
+void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
@@ -73,7 +73,7 @@ void Communicator::InitBrpcClient(
 }
 
 std::vector<uint64_t> Communicator::GetClientInfo() {
-  std::vector<uint64_t> res = _ps_env.get_client_info();
+  std::vector<uint64_t> res = _ps_env.GetClientInfo();
   for (auto rr : res) {
     VLOG(2) << "Communicator::GetClientInfo " << rr;
   }
@@ -82,7 +82,7 @@ std::vector<uint64_t> Communicator::GetClientInfo() {
 
 int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
   int node = host_sign_list.size();
-  return _ps_env.set_ps_clients(host_sign_list.data(), node);
+  return _ps_env.SetPsClients(host_sign_list.data(), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
@@ -114,7 +114,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     }
   }
   auto status =
-      _worker_ptr->pull_dense(regions.data(), regions.size(), table_id);
+      _worker_ptr->PullDense(regions.data(), regions.size(), table_id);
   status.wait();
 
   for (auto &t : varnames) {
@@ -177,7 +177,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
     }
   }
   auto status =
-      _worker_ptr->push_dense_param(regions.data(), regions.size(), table_id);
+      _worker_ptr->PushDenseParam(regions.data(), regions.size(), table_id);
   status.wait();
   VLOG(4) << "RPC Send Dense Param " << table_id << " done!";
   return;
@@ -190,9 +190,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   uint32_t num_per_shard =
-      dense_dim_per_shard(ctx.height_sections[0], request_call_num);
+      DenseDimPerShard(ctx.height_sections[0], request_call_num);
   dense_data->resize(num_per_shard *
                      request_call_num);  // accessor->update_dim() = 1
   float *data = dense_data->data();
@@ -222,8 +222,8 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_dense_raw_gradient(
-      table_id, data, dense_data->size(), closure);
+  auto status = _worker_ptr->PushDenseRawGradient(table_id, data,
+                                                  dense_data->size(), closure);
   status.wait();
   return;
 }
@@ -233,7 +233,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
   platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
                                      platform::TracerEventType::Communication,
                                      1);
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(varname);
@@ -260,9 +260,9 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
         }
         closure->set_promise_value(ret);
       });
-  auto status = _worker_ptr->push_sparse_param(
-      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
-      sparse_push_keys.size(), closure);
+  auto status = _worker_ptr->PushSparseParam(table_id, sparse_push_keys.data(),
+                                             (const float **)push_g_vec.data(),
+                                             sparse_push_keys.size(), closure);
   status.wait();
   return;
 }
@@ -272,7 +272,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   platform::RecordEvent record_event("Communicator->RpcSendSparse",
                                      platform::TracerEventType::Communication,
                                      1);
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
 
@@ -313,7 +313,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_sparse_raw_gradient(
+  auto status = _worker_ptr->PushSparseRawGradient(
       table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
       sparse_push_keys.size(), closure);
   status.wait();
@@ -340,7 +340,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
 
   bool training = true;
 
-  auto status = _worker_ptr->pull_sparse_param(
+  auto status = _worker_ptr->PullSparseParam(
       (float **)push_g_vec.data(), table_id,  // NOLINT
       sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
@@ -376,11 +376,11 @@ void Communicator::RpcProfilerControl() {
     if (!do_server_profiler_ && platform::IsProfileEnabled()) {
       // send profiler start flag
       do_server_profiler_ = true;
-      auto start_status = _worker_ptr->start_profiler();
+      auto start_status = _worker_ptr->StartProfiler();
       start_status.wait();
     } else if (do_server_profiler_ && !platform::IsProfileEnabled()) {
       // send profiler end flag
-      auto stop_status = _worker_ptr->stop_profiler();
+      auto stop_status = _worker_ptr->StopProfiler();
       stop_status.wait();
       do_server_profiler_ = false;
     }
@@ -396,7 +396,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
                                      platform::TracerEventType::Communication,
                                      1);
   auto &table_id = ctx.table_id;
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
@@ -416,7 +416,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
         }
         closure->set_promise_value(ret);
       });
-  auto status = _worker_ptr->push_global_step(table_id, data, closure);
+  auto status = _worker_ptr->PushGlobalStep(table_id, data, closure);
   status.wait();
   return;
 }
@@ -605,8 +605,8 @@ void AsyncCommunicator::PullSparseToTensorSync(
     }
   }
   auto status =
-      _worker_ptr->pull_sparse(pull_result_ptr.data(), table_id,
-                               fea_keys.data(), fea_keys.size(), is_training);
+      _worker_ptr->PullSparse(pull_result_ptr.data(), table_id, fea_keys.data(),
+                              fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -738,9 +738,9 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
       this->Check(table_id), true,
       platform::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
-  auto status = _worker_ptr->push_sparse(table_id, push_keys.data(),
-                                         (const float **)push_g_vec.data(),
-                                         push_keys.size());
+  auto status = _worker_ptr->PushSparse(table_id, push_keys.data(),
+                                        (const float **)push_g_vec.data(),
+                                        push_keys.size());
 }
 
 void HalfAsyncCommunicator::MainThread() {
@@ -813,7 +813,7 @@ void AsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    // _worker_ptr->finalize_worker();
+    // _worker_ptr->FinalizeWorker();
     VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
@@ -1327,7 +1327,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
     closure->set_promise_value(ret);
     --_async_call_num;
   });
-  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+  auto status = _worker_ptr->PushSparseRawGradientPartial(
       table_id, (const uint64_t *)sparse_ids.data(),
       (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
   status.wait();
@@ -1345,7 +1345,7 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
-  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys, ep_idx);
+  auto status = _worker_ptr->PullGeoParam(table_id, &values, &keys, ep_idx);
   status.wait();
 
   std::string param = SplitedGradToParam(varname);
