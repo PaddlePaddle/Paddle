@@ -1057,12 +1057,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--cudnn_deterministic=True");
       }
 
-      // TODO(wilber): jetson tx2 may fail to run the model due to insufficient
-      // memory under the native_best_fit strategy. Modify the default
-      // allocation strategy to auto_growth. todo, find a more appropriate
-      // way to solve the problem.
-      gflags.push_back("--allocator_strategy=auto_growth");
-
       // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
       // allocator when multi-stream is enabled.
       if (config.thread_local_stream_enabled()) {
