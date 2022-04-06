@@ -2668,6 +2668,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
+        if axis is None: axis = -1
         return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
