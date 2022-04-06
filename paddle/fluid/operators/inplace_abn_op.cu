@@ -140,10 +140,10 @@ class InplaceABNGradKernel
       phi::BatchNormGradRawKernel<T>(
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
-          mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,
-          use_global_stats, trainable_statistics, fuse_with_relu, true, d_x,
-          scale_grad, bias_grad);
+          *y, *scale, *bias, mean_opt, variance_opt, *saved_mean,
+          *saved_variance, space_opt, *d_y, momentum, epsilon, data_layout,
+          is_test, use_global_stats, trainable_statistics, fuse_with_relu, true,
+          d_x, scale_grad, bias_grad);
     }
   }
 };
