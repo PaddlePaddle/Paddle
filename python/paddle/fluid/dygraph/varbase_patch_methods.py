@@ -805,7 +805,7 @@ def monkey_patch_varbase():
             output = core.VarBase()
         else:
             output = core.eager.Tensor()
-            return _C_ops.assign(self, output)
+        return _C_ops.assign(self, output)
 
     @framework.dygraph_only
     def value(self):
