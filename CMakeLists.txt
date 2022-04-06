@@ -246,6 +246,7 @@ option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
+option(USE_CXX11_ABI "Compile PaddlePaddle with _GLIBCXX_USE_CXX11_ABI=1"    ON)
 
 if(WITH_RECORD_BUILDTIME)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
@@ -270,6 +271,10 @@ endif()
 
 if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
 set(WITH_CUSTOM_DEVICE ON)
+endif()
+
+if(NOT USE_CXX11_ABI)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
 if(WIN32)
