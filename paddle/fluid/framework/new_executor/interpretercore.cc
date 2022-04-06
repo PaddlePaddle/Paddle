@@ -578,12 +578,9 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
-<<<<<<< HEAD
   platform::RecordEvent record("RunNextInstructions",
                                platform::TracerEventType::UserDefined, 10);
   VLOG(4) << "atomic 1:" << atomic_deps;
-=======
->>>>>>> 55e26637d191c58bd543aabbaf69b432d8cb8691
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
