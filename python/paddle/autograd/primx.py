@@ -148,10 +148,26 @@ class Transform(object):
             ys_bar = list(map(self.get_dot2bar, get_output_vars(op)))
             xs_bar = _transpose(op, self.check_dot, *ys_bar)
             map(self.set_dot2bar, op.get_input_vars(), xs_bar)
+
+        xs_bar = list(map(self.get_dot2bar, xs_dot))
+
         if not retain_fwd:
+            dots_to_remove = set()
             for op in topo_path(xs_dot, ys_dot):
+                for var in get_input_vars(op):
+                    if self.check_dot(var):
+                        dots_to_remove.add(var)
                 block = op.block
+                op_idx = block.ops.index(op)
+                block._remove_op(op_idx)
                 # remove this op and input dots
-        
-        return list(map(self.get_dot2bar, xs_dot))
+            for k, v in self.var2dot:
+                if v in dots_to_remove:
+                    del self.var2dot[k] 
+            for k, v in self.dot2bar:
+                if k in dots_to_remove:
+                    del self.dot2bar[k]
+       
+        return xs_bar
+
 
