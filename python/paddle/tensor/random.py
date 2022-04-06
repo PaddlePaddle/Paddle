@@ -241,9 +241,11 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
         return _C_ops.final_state_gaussian_random(shape,
                                                   float(mean),
-                                                  float(std), seed, dtype)
+                                                  float(std), seed, dtype,
+                                                  place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)

@@ -335,8 +335,10 @@ class NormalInitializer(Initializer):
             self._seed = block.program.random_seed
 
         if in_dygraph_mode():
+            place = _current_expected_place()
             out_var = _C_ops.final_state_gaussian_random(
-                var.shape, self._mean, self._std_dev, self._seed, var.dtype)
+                var.shape, self._mean, self._std_dev, self._seed, var.dtype,
+                place)
             out_var._share_underline_tensor_to(var)
             return None
 
@@ -562,8 +564,9 @@ class XavierInitializer(Initializer):
                                                 self._seed, 'dtype', out_dtype)
             else:
                 std = np.sqrt(2.0 / float(fan_in + fan_out))
+                place = _current_expected_place()
                 out_var = _C_ops.final_state_gaussian_random(
-                    out_var.shape, 0.0, std, self._seed, out_dtype)
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
@@ -734,9 +737,9 @@ class MSRAInitializer(Initializer):
                                                 int(out_dtype))
             else:
                 std = np.sqrt(2.0 / float(fan_in))
-                out_var = _C_ops.final_state_gaussian_random(out_var.shape, 0.0,
-                                                             std, self._seed,
-                                                             int(out_dtype))
+                place = _current_expected_place()
+                out_var = _C_ops.final_state_gaussian_random(
+                    out_var.shape, 0.0, std, self._seed, int(out_dtype), place)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
