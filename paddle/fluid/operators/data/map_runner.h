@@ -14,7 +14,6 @@
 #include <memory>
 #include <mutex>
 #include <vector>
-#include "ThreadPool.h"
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"

@@ -361,6 +361,52 @@ def parsing(externalErrorDesc):
                                                       desc.strip())
 
     CUFFTHTMLParser().feed(html)
+    #*************************************************************************************************#
+
+    #*********************************** nvJPEG Error Message **************************************#
+    nvjpegStatus_t = {
+        "NVJPEG_STATUS_SUCCESS": 0,
+        "NVJPEG_STATUS_NOT_INITIALIZED": 1,
+        "NVJPEG_STATUS_INVALID_PARAMETER": 2,
+        "NVJPEG_STATUS_BAD_JPEG": 3,
+        "NVJPEG_STATUS_JPEG_NOT_SUPPORTED": 4,
+        "NVJPEG_STATUS_ALLOCATOR_FAILURE": 5,
+        "NVJPEG_STATUS_EXECUTION_FAILED": 6,
+        "NVJPEG_STATUS_ARCH_MISMATCH": 7,
+        "NVJPEG_STATUS_INTERNAL_ERROR": 8,
+        "NVJPEG_STATUS_IMPLEMENTATION_NOT_SUPPORTED": 9,
+        "NVJPEG_STATUS_INCOMPLETE_BITSTREAM": 10,
+    }
+
+    print("start crawling errorMessage for nvidia nvJPEG API--->")
+    url = 'https://docs.nvidia.com/cuda/nvjpeg/#nvjpeg-api-return-codes'
+
+    allMessageDesc = externalErrorDesc.errors.add()
+    allMessageDesc.type = external_error_pb2.NVJPEG
+
+    html = urllib.request.urlopen(url).read().decode('utf-8')
+
+    res_div = r'Description of the returned error codes:.*?<div class="tablenoborder">(.*?)</div>'
+    m_div = re.findall(res_div, html, re.S | re.M)[0]
+
+    res_dt = r'<samp class="ph codeph">(.*?)</samp></td>.*?colspan="1">(.*?)</td>'
+    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+
+    for error in m_dt:
+        m_code = error[0]
+        m_code = m_code.split()[0].strip()
+
+        m_message = error[1]
+        m_message = re.sub(r'\t', ' ', m_message)
+        m_message = re.sub(r'\n +', ' ', m_message)
+        m_message = re.sub(r'<.*?>', '', m_message)
+
+        _Messages = allMessageDesc.messages.add()
+        _Messages.code = int(nvjpegStatus_t[m_code])
+        _Messages.message = "'%s'. %s" % (m_code, m_message)
+
+    print("End crawling errorMessage for nvidia NVJPEG API!\n")
+    #*************************************************************************************************#
 
 
 def main(argv):
