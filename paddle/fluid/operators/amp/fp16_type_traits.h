@@ -28,6 +28,18 @@ class MPTypeTrait {
 };
 
 template <>
+class MPTypeTrait<int> {
+ public:
+  using Type = float;
+};
+
+template <>
+class MPTypeTrait<int64_t> {
+ public:
+  using Type = float;
+};
+
+template <>
 class MPTypeTrait<platform::float16> {
  public:
   using Type = float;
