@@ -1430,7 +1430,7 @@
     func : trunc_grad
 
 - backward_api : unbind_grad
-  forward : unbind (Tensor input, int axis)
+  forward : unbind (Tensor input, int axis) -> Tensor[](out)
   args : (Tensor[] out_grad, int axis)
   output : Tensor(input_grad)
   invoke : stack(out_grad, axis)

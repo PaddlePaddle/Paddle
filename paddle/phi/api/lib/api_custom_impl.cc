@@ -928,7 +928,6 @@ std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs) {
                                     std::vector<phi::DenseTensor*>&);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(*dev_ctx, input_inputs, dense_outs);
->>>>>>> 5c6e4bff80ec4c1c013db7819b2f552dd4e83fac
 
   return out;
 }

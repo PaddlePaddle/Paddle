@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
@@ -46,14 +47,18 @@ class TestUnbind(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             x.stop_gradient = False
             [res_1, res_2] = paddle.unbind(x, 0)
-            assert np.array_equal(res_1, np_x[0, 0:100])
-            assert np.array_equal(res_2, np_x[1, 0:100])
+            self.assertTrue(np.array_equal(res_1, np_x[0, 0:100]))
+            self.assertTrue(np.array_equal(res_2, np_x[1, 0:100]))
 
-            res = paddle.add_n([res_1, res_2])
-            out = paddle.mean(res)
+            out = paddle.add_n([res_1, res_2])
 
+            np_grad = np.ones(x.shape, np.float32)
             out.backward()
-            print(x.grad)
+            self.assertTrue(np.array_equal(x.grad.numpy(), np_grad))
+
+    def test_unbind_dygraph_final_state(self):
+        with _test_eager_guard():
+            self.test_unbind_dygraph()
 
 
 class TestLayersUnbind(unittest.TestCase):
@@ -86,7 +91,6 @@ class TestUnbindOp(OpTest):
 
     def setUp(self):
         self._set_op_type()
-        self.python_api = paddle.unbind
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
@@ -174,6 +178,7 @@ class TestUnbindOp4(TestUnbindOp):
 class TestUnbindBF16Op(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.unbind
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
