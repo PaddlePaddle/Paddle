@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import _current_expected_place, convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place, convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode, _get_paddle_place
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -750,7 +750,20 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
             attrs['value'] = float(value)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+
+        shape = utils.convert_shape_to_list(shape)
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        assert out is None, "Final State mode don't support out is None."
+        out = _C_ops.final_state_full(shape, float(value), dtype, place)
+        out.stop_gradient = True
+        return out
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
