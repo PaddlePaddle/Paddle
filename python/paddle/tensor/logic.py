@@ -182,8 +182,8 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_equal(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.equal(x, y)
@@ -232,8 +232,8 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_greater_equal(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_greater_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_equal(x, y)
@@ -383,8 +383,8 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_less_than(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_less_than(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_than(x, y)
