@@ -494,7 +494,7 @@ def embedding(input,
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'],
                              'fluid.layers.embedding')
-    check_dtype(dtype, 'dtype', [bfloat16, 'float16', 'float32', 'float64'],
+    check_dtype(dtype, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
 
     if is_distributed:
