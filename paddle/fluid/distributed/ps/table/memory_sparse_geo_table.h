@@ -34,39 +34,43 @@ namespace distributed {
 
 class GeoRecorder;
 
-class MemorySparseGeoTable : public SparseTable {
+class MemorySparseGeoTable : public Table {
  public:
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
   MemorySparseGeoTable() { _geo_recorder = nullptr; }
   virtual ~MemorySparseGeoTable() {}
 
-  virtual int32_t initialize();
-  virtual int32_t initialize_shard() { return 0; }
-  virtual int32_t load(const std::string& path, const std::string& param) {
+  int32_t Initialize() override;
+  int32_t InitializeShard() override { return 0; }
+  int32_t Load(const std::string& path, const std::string& param) override {
     return 0;
   }
-  virtual int32_t save(const std::string& path, const std::string& param) {
+  int32_t Save(const std::string& path, const std::string& param) override {
     return 0;
   }
-  virtual int32_t Pull(TableContext& context) { return 0; }
-  virtual int32_t Push(TableContext& context) { return 0; }
-  virtual int32_t flush() { return 0; }
-  virtual int32_t shrink(const std::string& param) { return 0; }
-  virtual void clear() { return; }
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  int32_t Pull(TableContext& context) override;
+  int32_t Push(TableContext& context) override;
+  int32_t Flush() override { return 0; }
+  int32_t Shrink(const std::string& param) override { return 0; }
+  void Clear() override { return; }
 
-  int32_t push_sparse_param(const uint64_t* keys, const float* values,
-                            size_t num);
-  // TODO(zhaocaibei123): change to pull_sparse, and rename pull_sparse
-  int32_t pull_geo_param(const uint32_t trainer_id, std::vector<float>* values,
-                         std::vector<uint64_t>* keys);
+  int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  int32_t push_sparse(const uint64_t* keys, const float* values,
-                      size_t num) override;
+  int32_t PushSparseParam(const uint64_t* keys, const float* values,
+                          size_t num);
 
-  int32_t _push_sparse(const uint64_t* keys, const float* values, size_t num);
+  int32_t PullGeoParam(const uint32_t trainer_id, std::vector<float>* values,
+                       std::vector<uint64_t>* keys);
+
+  int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
+
+  int32_t _PushSparse(const uint64_t* keys, const float* values, size_t num);
   // int32_t _pull_sparse(float* pull_values, const PullSparseValue&
   // pull_value);
+
+  void* GetShard(size_t shard_idx) override {
+    return &_local_shards[shard_idx];
+  }
 
  private:
   std::shared_ptr<GeoRecorder> _geo_recorder;

@@ -114,4 +114,7 @@ PD_REGISTER_KERNEL(accuracy,
                    phi::AccuracyRawKernel,
                    phi::dtype::float16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+}

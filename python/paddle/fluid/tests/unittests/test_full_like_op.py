@@ -21,6 +21,7 @@ import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestFullOp(unittest.TestCase):
@@ -90,6 +91,46 @@ class TestFullOpError(unittest.TestCase):
                 x=input_data,
                 fill_value=2,
                 dtype='uint4')
+
+
+class TestFullLikeOp1(OpTest):
+    # test basic
+    def setUp(self):
+        self.op_type = "fill_any_like"
+        self.python_api = paddle.full_like
+        self.init_data()
+
+        x = np.zeros(self.shape)
+        out = np.full_like(x, self.fill_value, self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'value': self.fill_value,
+            'dtype': convert_np_dtype_to_dtype_(self.dtype)
+        }
+
+    def init_data(self):
+        self.fill_value = 5
+        self.shape = [10, 10]
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestFullLikeOp2(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 1000
+        self.shape = [1024, 1024]
+        self.dtype = np.float64
+
+
+class TestFullLikeOp3(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 8888
+        self.shape = [5000, 5000]
+        self.dtype = np.int64
 
 
 if __name__ == "__main__":
