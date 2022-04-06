@@ -1997,7 +1997,7 @@ set -x
 }
 
 function parallel_test_base_custom_device() {
-    echo "IN custom device CI"
+    echo "IN custom device CI now"
     parallel_test_base_npu
 }
 
