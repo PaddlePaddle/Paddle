@@ -1324,7 +1324,7 @@ def complex(real, imag, name=None):
     helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
     return out
 
-def tril_indices(rows,cols,offset=0, dtype=None):
+def tril_indices(rows,cols,offset=0, dtype='int64'):
     """
     This op returns the indices of the lower triangular part of the 2-D matrix 
     whose rows and cols is knowed.Indices are ordered based on rows and then columns. 
@@ -1361,27 +1361,39 @@ def tril_indices(rows,cols,offset=0, dtype=None):
             data1 = paddle.tril_indices(4,4,0)
             print(data1.numpy())
             # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
-               [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
+            #  [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
 
             # example 2, positive offset value
             data2 = paddle.tril_indices(4,4,2)
             print(data2.numpy())
             # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
-               [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
+            #  [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
 
             # example 3, negative offset value
             data3 = paddle.tril_indices(4,4,-1)
             print(data3.numpy())
             # [[ 1, 2, 2, 3, 3, 3],
             #  [ 0, 0, 1, 0, 1, 2]]
-
     """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
     if paddle.in_dynamic_mode():
         op = getattr(_C_ops, 'tril_indices')
-        return op(rows, cols, 'offset', offset, "dtype", dtype)
+        return op('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
 
     check_type(rows, 'rows', (int), 'tril_indices')
     check_type(cols, 'cols', (int), 'tril_indices')
     check_type(offset, 'offset', (int), 'tril_indices')
 
-    return _tril_indices_op(LayerHelper('tril_indices', **locals()))
+    helper = LayerHelper("tril_indices", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='tril_indices',
+        inputs={},
+        outputs={'out': out},
+        attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
+
+    return out
