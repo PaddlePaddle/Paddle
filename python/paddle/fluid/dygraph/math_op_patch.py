@@ -287,14 +287,13 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            if _in_legacy_dygraph():
-                math_op = getattr(_C_ops, op_type)
-                return math_op(self, other_var, 'axis', axis)
-            elif op_type in _final_state_op_type_mapping.keys():
+            if in_dygraph_mode(
+            ) and op_type in _final_state_op_type_mapping.keys():
                 math_op = getattr(_C_ops, _final_state_op_type_mapping[op_type])
                 return math_op(self, other_var)
             else:
-                assert False, f"{op_type} not supported in eager final state yet."
+                math_op = getattr(_C_ops, op_type)
+                return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
