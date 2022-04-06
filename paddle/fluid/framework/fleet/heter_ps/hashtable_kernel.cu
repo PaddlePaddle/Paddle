@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
-
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 namespace paddle {
 namespace framework {
 
@@ -291,6 +291,37 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
 }
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
+    cudaStream_t>(const unsigned long* d_keys,
+                  paddle::framework::FeatureValue* d_vals, size_t len,
+                  cudaStream_t stream);
+
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::get<cudaStream_t>(
+    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    cudaStream_t>(const unsigned long* d_keys,
+                  const paddle::framework::FeatureValue* d_vals, size_t len,
+                  cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
+                  size_t start_index, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::
+    dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    paddle::framework::FeaturePushValue, Optimizer, cudaStream_t>(
+    const unsigned long* d_keys,
+    const paddle::framework::FeaturePushValue* d_grads, size_t len,
+    Optimizer sgd, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    Optimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads,
+                             size_t len, Optimizer sgd, cudaStream_t stream);
 
 #endif
 }  // end namespace framework
