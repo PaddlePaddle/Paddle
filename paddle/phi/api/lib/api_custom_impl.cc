@@ -490,7 +490,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
   const auto& param_tensor = param.impl();
   std::string kernel_name = "sgd";
   if (phi::DenseTensor::classof(param_tensor.get())) {
-    if (phi::DenseTensor::classof(grad.impl().get())) {
+    if (!phi::DenseTensor::classof(grad.impl().get())) {
       kernel_name = "sgd_dense_param_sparse_grad";
     }
   } else {
