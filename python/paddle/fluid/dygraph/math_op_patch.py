@@ -81,11 +81,8 @@ def monkey_patch_math_varbase():
     @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
-        if _in_legacy_dygraph():
-            out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
-                                       'value', value, 'force_cpu', False)
-        else:
-            out = _C_ops.final_state_full(shape, value, dtype, out.place)
+        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
+                                   value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 

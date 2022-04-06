@@ -346,6 +346,12 @@
   kernel :
     func : conj
 
+- api : conv2d
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor
+  invoke : conv2d_impl(input, filter, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : conv2d_grad
+
 - api : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -419,14 +425,14 @@
     func : cumprod
   backward : cumprod_grad
 
-# cumsum
 - api : cumsum
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CumsumInferMeta
   kernel :
     func : cumsum
+  backward : cumsum_grad
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -796,6 +802,15 @@
     func : huber_loss
   # backward : huber_loss_grad
 
+- api : imag
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : imag
+  backward : imag_grad
+
 # increment
 - api : increment
   args : (Tensor x, float value)
@@ -1120,6 +1135,15 @@
     func : mean
   backward : mean_grad
 
+- api : mean_all
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : MeanAllInferMeta
+  kernel :
+    func : mean_all
+  backward : mean_all_grad
+  
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
@@ -1171,6 +1195,12 @@
   kernel :
     func : modulo
   backward : modulo_grad
+
+- api : momentum
+  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
+  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
+  optional : master_param
 
 # multinomial
 - api : multinomial
@@ -1315,6 +1345,16 @@
     func : prelu
   backward : prelu_grad
 
+- api : psroi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor
+  infer_meta :
+    func : PsroiPoolInferMeta
+  kernel :
+    func : psroi_pool
+  optional : boxes_num
+  backward : psroi_pool_grad
+
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
@@ -1326,6 +1366,15 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : qr
+  args : (Tensor x, str mode)
+  output : Tensor(q), Tensor(r)
+  infer_meta :
+    func : QrInferMeta
+  kernel :
+    func : qr
+  # backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1350,6 +1399,15 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+
+- api : real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : real
+  backward : real_grad
 
 - api : reciprocal
   args : (Tensor x)
@@ -1401,6 +1459,17 @@
     func : roi_align
   optional : boxes_num
   backward : roi_align_grad
+
+- api : roi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(out), Tensor(arg_max)
+  infer_meta :
+    func : RoiPoolInferMeta
+  kernel :
+    func : roi_pool
+  optional : boxes_num
+  intermediate : arg_max
+  backward : roi_pool_grad
 
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
