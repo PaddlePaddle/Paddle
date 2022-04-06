@@ -630,8 +630,7 @@ def assign(input, output=None):
                     output = core.VarBase()
                 else:
                     output = core.eager.Tensor()
-                _C_ops.assign(input, output)
-
+            _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
