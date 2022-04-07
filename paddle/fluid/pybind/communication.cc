@@ -145,6 +145,7 @@ void BindTCPStore(py::module *m) {
                        size_t world_size, std::chrono::seconds timeout) {
              return std::make_shared<TCPStore>(hostname, port, is_master,
                                                world_size, timeout);
+           }),
            py::arg("hostname"), py::arg("port"), py::arg("is_master"),
            py::arg("world_size"),
            py::arg("timeout") = distributed::tcputils::kNoTimeout,
