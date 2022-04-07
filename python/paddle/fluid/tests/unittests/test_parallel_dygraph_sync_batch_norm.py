@@ -36,21 +36,5 @@ class TestParallelDygraphMnist(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphMnistEager(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._eager_mode = True
-        self._nccl2_mode = True
-        self._dygraph = True
-
-    def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_sync_batch_norm.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
-
-
 if __name__ == "__main__":
     unittest.main()

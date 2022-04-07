@@ -56,13 +56,13 @@ Node *reduce_prod_handler(Graph *graph, Node *node) {
   return reduce_op_handler(graph, node, "popart_reduceprod");
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(reduce_min, reduce_min_handler);
 REGISTER_HANDLER(reduce_sum, reduce_sum_handler);
 REGISTER_HANDLER(reduce_max, reduce_max_handler);
 REGISTER_HANDLER(reduce_prod, reduce_prod_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle
