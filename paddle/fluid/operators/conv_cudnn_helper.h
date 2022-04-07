@@ -64,7 +64,7 @@ static inline double ToMegaBytes(size_t bytes) {
 }
 
 static inline bool UseFixedWorkspace() {
-  return FLAGS_conv_workspace_size_limit > 0;
+  return FLAGS_conv_workspace_size_limit >= 0;
 }
 
 static size_t CaclWorkspaceLimitInBytes(const phi::GPUContext& ctx) {
@@ -104,9 +104,10 @@ std::string GetPerfResultString(std::string prefix,
   return out.str();
 }
 
-template <typename PerfT, typename SearchResultT>
+template <typename PerfT, typename AlgoT>
 void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
-                           size_t workspace_limit, SearchResultT* algo_result) {
+                           size_t workspace_limit,
+                           SearchResult<AlgoT>* algo_result) {
   for (size_t i = 0; i < perf_results.size(); ++i) {
     auto result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
@@ -153,14 +154,14 @@ static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
 template <>
 struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   using PerfT = cudnnConvolutionFwdAlgoPerf_t;
-  using SearchResultT = SearchResult<cudnnConvolutionFwdAlgo_t>;
+  using AlgoT = cudnnConvolutionFwdAlgo_t;
 
   template <typename T>
-  static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
-                            bool deterministic, const phi::GPUContext& ctx) {
-    SearchResultT result;
+  static SearchResult<AlgoT> Find(const ConvArgs& args, bool exhaustive_search,
+                                  bool deterministic,
+                                  const phi::GPUContext& ctx) {
+    SearchResult<AlgoT> result;
     auto dtype = platform::CudnnDataType<T>::type;
-    size_t workspace_size = 0;
     size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
@@ -175,13 +176,13 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
               args.cdesc.desc(), args.odesc.desc(), kNUM_CUDNN_FWD_ALGS,
               &actual_perf_count, perf_results.data()));
       result.algo = perf_results[best_algo_idx].algo;
-      workspace_size = perf_results[best_algo_idx].memory;
+      result.workspace_size = perf_results[best_algo_idx].memory;
 
-      if (workspace_size > workspace_size_limit) {
+      if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
         // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<PerfT, SearchResultT>(
-            perf_results, workspace_size_limit, &result);
+        ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                            &result);
 #else
         VLOG(3) << "Fallback to non-v7 method to find conv algorithm "
                    "becasue the workspace size request("
@@ -204,7 +205,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
               workspace_size_limit, &(result.algo)));
 #endif
     } else if (deterministic) {
-      result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
+      result.algo = static_cast<AlgoT>(1);
     } else {
       auto workspace_handle = ctx.cudnn_workspace_handle();
       auto x_dims = phi::vectorize(args.x->dims());
@@ -213,7 +214,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
-      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
+      AlgorithmsCache<AlgoT>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetForward());
 
       result.algo = algo_cache.GetAlgorithm(
@@ -246,8 +247,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             return perf_results[0].algo;
           });
     }
-    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
-            << ", workspace="
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo << ", workspace="
             << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
@@ -288,14 +290,14 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 template <>
 struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   using PerfT = cudnnConvolutionBwdDataAlgoPerf_t;
-  using SearchResultT = SearchResult<cudnnConvolutionBwdDataAlgo_t>;
+  using AlgoT = cudnnConvolutionBwdDataAlgo_t;
 
   template <typename T>
-  static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
-                            bool deterministic, const phi::GPUContext& ctx) {
-    SearchResultT result;
+  static SearchResult<AlgoT> Find(const ConvArgs& args, bool exhaustive_search,
+                                  bool deterministic,
+                                  const phi::GPUContext& ctx) {
+    SearchResult<AlgoT> result;
     auto dtype = platform::CudnnDataType<T>::type;
-    size_t workspace_size = 0;
     size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
@@ -322,12 +324,12 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         result.algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       }
 #endif
-      workspace_size = GetWorkspaceSize(args, result.algo);
-      if (workspace_size > workspace_size_limit) {
+      result.workspace_size = GetWorkspaceSize(args, result.algo);
+      if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
         // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<PerfT, SearchResultT>(
-            perf_results, workspace_size_limit, &result);
+        ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                            &result);
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
@@ -359,9 +361,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
-      AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>& algo_cache =
+      AlgorithmsCache<AlgoT>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardData());
-
       result.algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0,
           static_cast<int64_t>(args.cudnn_dtype), [&]() {
@@ -394,8 +395,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
             return perf_results[0].algo;
           });
     }
-    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
-            << ", workspace="
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo << ", workspace="
             << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
@@ -437,15 +439,15 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 template <>
 struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   using PerfT = cudnnConvolutionBwdFilterAlgoPerf_t;
-  using SearchResultT = SearchResult<cudnnConvolutionBwdFilterAlgo_t>;
+  using AlgoT = cudnnConvolutionBwdFilterAlgo_t;
 
   template <typename T>
-  static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
-                            bool deterministic, const phi::GPUContext& ctx) {
-    SearchResultT result;
+  static SearchResult<AlgoT> Find(const ConvArgs& args, bool exhaustive_search,
+                                  bool deterministic,
+                                  const phi::GPUContext& ctx) {
     platform::CUDAGraphCaptureModeGuard guard;
+    SearchResult<AlgoT> result;
     auto dtype = platform::CudnnDataType<T>::type;
-    size_t workspace_size = 0;
     size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
@@ -460,14 +462,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               args.cdesc.desc(), args.wdesc.desc(), kNUM_CUDNN_BWD_FILTER_ALGS,
               &actual_perf_count, perf_results.data()));
       result.algo = perf_results[best_algo_idx].algo;
-      workspace_size = perf_results[best_algo_idx].memory;
+      result.workspace_size = perf_results[best_algo_idx].memory;
 
-      if (workspace_size > workspace_size_limit) {
-        workspace_size = workspace_size_limit;
+      if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
         // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
-        ChooseAlgoByWorkspace<PerfT, SearchResultT>(
-            perf_results, workspace_size_limit, &result);
+        ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                            &result);
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
@@ -499,7 +500,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
-      AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>& algo_cache =
+      AlgorithmsCache<AlgoT>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
       if (dtype != CUDNN_DATA_HALF) {
@@ -538,7 +539,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         result.algo = algo_cache.GetAlgorithm(
             x_dims, w_dims, args.s, args.p, args.d, 0,
             static_cast<int64_t>(args.cudnn_dtype), [&]() {
-              SearchResultT algo_result;
+              SearchResult<AlgoT> algo_result;
               int actual_algos = 0;
               std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
 
@@ -556,8 +557,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             });
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
-            << ", workspace="
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo << ", workspace="
             << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
@@ -597,7 +599,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
   static void ChooseAlgo(const std::vector<PerfT>& perf_results,
-                         size_t workspace_limit, SearchResultT* algo_result) {
+                         size_t workspace_limit,
+                         SearchResult<AlgoT>* algo_result) {
     VLOG(3) << GetPerfResultString<PerfT>(
         "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
         perf_results.size(), workspace_limit);
