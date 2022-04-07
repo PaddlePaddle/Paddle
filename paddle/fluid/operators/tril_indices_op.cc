@@ -28,7 +28,7 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
   protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(paddle::framework::proto::VarType::INT64,
+    return framework::OpKernelType(framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
                                    ctx.device_context());
   }
 };
@@ -36,12 +36,12 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
 class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddOutput("out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
     AddAttr<int>("rows", "int number, the input of tril_indices op").SetDefault(0);
     AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);
     AddAttr<int>("offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
     AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(framework::proto::VarType::INT64);
-    AddOutput("out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
-  
+    
     AddComment(R"DOC(
   TrilIndices Operator.
 

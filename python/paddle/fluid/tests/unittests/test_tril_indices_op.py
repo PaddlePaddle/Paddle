@@ -17,13 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.tensor as tensor
 import paddle
-
-
+from paddle.fluid import Program, program_guard
+'''
 class TestTrilIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "tril_indices"
@@ -36,8 +32,8 @@ class TestTrilIndicesOp(OpTest):
 
     def init_config(self):
         self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
-        self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
-
+        #self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
+        self.target = np.tril_indices(0,0,0)
 
 class TestTrilIndicesOpCase1(TestTrilIndicesOp):
     def init_config(self):
@@ -50,23 +46,62 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
         self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
 
-
+'''
 class TestTrilIndicesAPICase(unittest.TestCase):
-    def test_case1(self):
+    
+    def test_static(self):
         
-        out1 = paddle.tril_indices(4,4,0)
-        out2 = paddle.tril_indices(4,4,2)
+        
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),paddle.static.Program()):
+            data = paddle.tril_indices(4,4,2)
+            print("^^^^^^^^^",data)
+           
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            result, = exe.run(program=paddle.static.Program(),
+                              feed={},
+                              fetch_list=[data])
+            print(result)
+        expected_result = np.tril_indices(4,2,4)
+        print(expected_result)
+        self.assertEqual((result == expected_result).all(), True)
+    '''    
+    def test_dygraph(self):
+        paddle.disable_static()
+        out =  paddle.tril_indices(4,4,2)
+        #print(out)
+        expected_result = np.tril_indices(4,2,4)
+        #print(expected_result)
+        paddle.enable_static()
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+      
+    def test_case_error(self):
+        def test_num_rows_type_check():
+            out1 = paddle.tril_indices(1.0,1,2)
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        results = exe.run(fluid.default_main_program(),
-                          fetch_list=[out1, out2],
-                          return_numpy=True)
-        target1 = np.tril_indices(4,0,4)
-        target2 = np.tril_indices(4,2,4)
-        self.assertTrue(np.allclose(results[0], target1))
-        self.assertTrue(np.allclose(results[1], target2))
+        self.assertRaises(TypeError, test_num_rows_type_check)
 
+        def test_num_columns_type_check():
+            out2 =  paddle.tril_indices(4,-1,2)
+
+        self.assertRaises(TypeError, test_num_columns_type_check)
+
+        def test_num_offset_type_check():
+            out3 = paddle.tril_indices(4,4,2.0)
+
+        self.assertRaises(TypeError, test_num_offset_type_check)   
+        
+    def test_case_default(self):        
+        
+        out =  paddle.tril_indices(4,None,2)
+        expected_result = np.tril_indices(4,2)
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+    '''
+        
+
+       
+
+        
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

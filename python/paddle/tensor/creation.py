@@ -31,7 +31,7 @@ from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
 from ..framework import _in_eager_mode
-
+from ..fluid.framework import in_dygraph_mode
 __all__ = []
 
 
@@ -1375,25 +1375,37 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
             # [[ 1, 2, 2, 3, 3, 3],
             #  [ 0, 0, 1, 0, 1, 2]]
     """
+    if not isinstance(rows, int) or rows < 0:
+            raise TypeError("rows should be a non-negative int")
+
+    if cols is not None:
+        if not isinstance(cols, int) or cols < 0:
+            raise TypeError("cols should be a non-negative int")
+    else:
+        cols = rows
+
+    if not isinstance(offset, int) :
+            raise TypeError("offset should be a  int")
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+    # if dtype != 2 and dtype != 3:
+    #     dtype = 3
+    if in_dygraph_mode():
+        out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
+       
+    
+    else:
+        print("!!!!!!!!!!!!tril_indice static begin!!!")
+        helper = LayerHelper("tril_indices", **locals())
+        
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        
+        helper.append_op(
+            type='tril_indices',
+            inputs={},
+            outputs={'out': [out]},
+            attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
 
-    if paddle.in_dynamic_mode():
-        op = getattr(_C_ops, 'tril_indices')
-        return op('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
-
-    check_type(rows, 'rows', (int), 'tril_indices')
-    check_type(cols, 'cols', (int), 'tril_indices')
-    check_type(offset, 'offset', (int), 'tril_indices')
-
-    helper = LayerHelper("tril_indices", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type='tril_indices',
-        inputs={},
-        outputs={'out': out},
-        attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
-
+        print("!!!!!!!!!!!!tril_indice static end!!!")
     return out
