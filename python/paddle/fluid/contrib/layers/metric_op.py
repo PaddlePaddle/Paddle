@@ -23,11 +23,12 @@ from paddle.fluid.initializer import Normal, Constant
 from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import nn
+from paddle.fluid.layers import tensor
 
 __all__ = ['ctr_metric_bundle']
 
 
-def ctr_metric_bundle(input, label):
+def ctr_metric_bundle(input, label, ins_tag_weight=None):
     """
     ctr related metric layer
 
@@ -48,6 +49,9 @@ def ctr_metric_bundle(input, label):
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
+        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
+                         data. 1 means real data, 0 means fake data. 
+                         A LoDTensor or Tensor with type float32,float64.
 
     Returns:
         local_sqrerr(Variable): Local sum of squared error
@@ -61,9 +65,14 @@ def ctr_metric_bundle(input, label):
             import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             label = fluid.layers.data(name="label", shape=[1], dtype="int32")
+            ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[1], dtype="float32")
             predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
-            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label)
+            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
     """
+    if ins_tag_weight is None:
+        ins_tag_weight = tensor.fill_constant(
+            shape=[1, 1], dtype="float32", value=1.0)
+
     assert input.shape == label.shape
     helper = LayerHelper("ctr_metric_bundle", **locals())
 
@@ -198,5 +207,16 @@ def ctr_metric_bundle(input, label):
                          "Y": [local_ins_num]
                      },
                      outputs={"Out": [local_ins_num]})
+
+    #if data is fake, return 0
+    ins_tag_weight_np = ins_tag_weight.to_string(False, False)
+    if ins_tag_weight_np[0] == '0':
+        local_ins_num = tensor.fill_constant_batch_size_like(
+            input=local_ins_num,
+            shape=local_ins_num.shape,
+            dtype="float32",
+            value=0.0)
+        local_q = tensor.fill_constant_batch_size_like(
+            input=local_q, shape=local_q.shape, dtype="float32", value=0.0)
 
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num

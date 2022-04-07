@@ -193,8 +193,8 @@ def auc(input,
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant_batch_size_like(
-            input=label, shape=[-1, 1], dtype="float32", value=1.0)
+        ins_tag_weight = tensor.fill_constant(
+            shape=[1, 1], dtype="float32", value=1.0)
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
     check_variable_and_dtype(ins_tag_weight, 'ins_tag_weight',
