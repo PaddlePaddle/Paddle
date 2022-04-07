@@ -147,10 +147,8 @@ class _ConvNd(Layer):
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
-            if is_compiled_with_rocm():
-                self._use_cudnn = True
-            else:
-                self._use_cudnn = False
+            # TODO(wangran16): use_cudnn on rocm
+            self._use_cudnn = False
 
         if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
                 "FLAGS_conv2d_disable_cudnn"]):
