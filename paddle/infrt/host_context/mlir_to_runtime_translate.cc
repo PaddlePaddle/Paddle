@@ -246,17 +246,32 @@ PROCESS_ARRAY_INT(int64_t, 64);
 template <>
 boost::optional<std::vector<float>> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!attr.isa<mlir::ArrayAttr>()) return boost::none;
-  auto array = attr.cast<mlir::ArrayAttr>();
-  CHECK(!array.empty());
+  if (!(attr.isa<mlir::ArrayAttr>() || attr.isa<mlir::DenseElementsAttr>()))
+    return boost::none;
 
-  if (!array[0].getType().isF32()) return boost::none;
+  // if (!attr.isa<mlir::ArrayAttr>()) return boost::none;
+  if (attr.isa<mlir::ArrayAttr>()) {
+    auto array = attr.cast<mlir::ArrayAttr>();
+    CHECK(!array.empty());
 
-  std::vector<float> res;
-  for (auto& v : array) {
-    res.push_back(v.cast<mlir::FloatAttr>().getValueAsDouble());
+    if (!array[0].getType().isF32()) return boost::none;
+
+    std::vector<float> res;
+    for (auto& v : array) {
+      res.push_back(v.cast<mlir::FloatAttr>().getValueAsDouble());
+    }
+    return res;
+  } else if (attr.isa<mlir::DenseElementsAttr>()) {
+    auto array = attr.cast<mlir::DenseElementsAttr>();
+    CHECK(!array.empty());
+    if (!array.getElementType().isF32()) return boost::none;
+    const float* data =
+        reinterpret_cast<const float*>(array.getRawData().data());
+    std::vector<float> res(data, data + array.size());
+    return res;
+  } else {
+    return boost::none;
   }
-  return res;
 }
 
 template <>

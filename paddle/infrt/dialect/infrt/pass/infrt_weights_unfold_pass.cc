@@ -14,15 +14,19 @@
 
 #include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Casting.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinAttributes.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/UseDefLists.h"
-#include "mlir/IR/Value.h"
+#include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Casting.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinAttributes.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Operation.h>
+#include <mlir/IR/UseDefLists.h>
+#include <mlir/IR/Value.h>
+#include <string>
+#include <unordered_map>
 #include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
@@ -53,6 +57,8 @@ class InfrtWeightsFoldPass
 };
 
 void InfrtWeightsFoldPass::runOnFunction() {
+  static std::unordered_map<std::string, ::infrt::phi::DenseTensorMap>
+      weight_maps;
   mlir::Block& block = getFunction().body().front();
   mlir::OpBuilder builder(&block, block.begin());
 
@@ -71,8 +77,11 @@ void InfrtWeightsFoldPass::runOnFunction() {
       params_path = op.params_path();
 
       // Load params.
-      auto map = ::infrt::kernel::phi::LoadCombinedParameters(
-          model_path.str(), params_path.str());
+      weight_maps.emplace(model_path.str() + params_path.str(),
+                          ::infrt::kernel::phi::LoadCombinedParameters(
+                              model_path.str(), params_path.str()));
+      auto& map = weight_maps[model_path.str() + params_path.str()];
+
       bool delete_load_combined_op{false};
       // Find all use of map.
       for (auto map_arg : op.getODSResults(0)) {
@@ -87,6 +96,13 @@ void InfrtWeightsFoldPass::runOnFunction() {
             }
 
             builder.setInsertionPoint(tensor_map_get_op);
+
+            auto vec_type = mlir::VectorType::get(
+                {tensor->dims().Get(),
+                 tensor->dims().Get() + tensor->dims().size()},
+                mlir::Float32Type::get(builder.getContext()));
+            llvm::ArrayRef<float> vals(tensor->data<float>(), tensor->numel());
+            auto vals_attr = mlir::DenseElementsAttr::get(vec_type, vals);
             auto inited_weight_op =
                 builder.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
                     tensor_map_get_op.getLoc(),
@@ -98,9 +114,7 @@ void InfrtWeightsFoldPass::runOnFunction() {
                     ::infrt::LayoutAttr::get(builder.getContext(),
                                              ::infrt::LayoutType::NCHW),
                     builder.getI64ArrayAttr({0}),
-                    builder.getF32ArrayAttr(
-                        {tensor->data<float>(),
-                         static_cast<size_t>(tensor->numel())}));
+                    vals_attr);
             tensor_map_get_op.replaceAllUsesWith(inited_weight_op.output());
             delete_load_combined_op = true;
             delete_op_list.push_back(tensor_map_get_op);

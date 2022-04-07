@@ -14,6 +14,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/include/mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
@@ -164,26 +165,27 @@ static mlir::Value createTRTConv2dOp(mlir::PatternRewriter &rewriter,  // NOLINT
       conv_op->getLoc(), resultTypes, operands, attributes);
 }
 
-static inline mlir::ArrayAttr TransposeWeight(
+static inline std::vector<float> TransposeWeight(
     mlir::PatternRewriter &builder,  // NOLINT
-    const mlir::ArrayAttr &weight,
+    const mlir::DenseElementsAttr &weight,
     const mlir::ArrayAttr &dims) {
   CHECK_EQ(dims.size(), 2U);
   CHECK(!dims.empty());
   CHECK(dims[0].getType().isInteger(64));
   CHECK(!weight.empty());
-  CHECK(weight[0].getType().isF32());
+  CHECK(weight.getElementType().isF32());
+  const float *data =
+      reinterpret_cast<const float *>(weight.getRawData().data());
 
   int row = dims[0].cast<mlir::IntegerAttr>().getInt();
   int col = dims[1].cast<mlir::IntegerAttr>().getInt();
   std::vector<float> trans_weight(weight.size());
   for (int i = 0; i < row; ++i) {
     for (int j = 0; j < col; ++j) {
-      trans_weight[j * row + i] =
-          weight[i * col + j].cast<mlir::FloatAttr>().getValueAsDouble();
+      trans_weight[j * row + i] = data[i * col + j];
     }
   }
-  return builder.getF32ArrayAttr(trans_weight);
+  return trans_weight;
 }
 
 // matmul_y and elt_y is weights.
@@ -211,6 +213,13 @@ inline ::llvm::SmallVector<::mlir::Value, 4> createTrtFcOp(
   }
   auto insert_point = builder.saveInsertionPoint();
   builder.setInsertionPoint(create_inited_tensor_op);
+
+  auto vec_type = mlir::VectorType::get(
+      new_dims, mlir::Float32Type::get(builder.getContext()));
+  auto trans_data =
+      TransposeWeight(builder, create_inited_tensor_op.values(), dims);
+  auto vals_attr =
+      mlir::DenseElementsAttr::get(vec_type, llvm::ArrayRef<float>(trans_data));
   auto new_inited_op =
       builder.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
           create_inited_tensor_op->getLoc(),
@@ -220,7 +229,7 @@ inline ::llvm::SmallVector<::mlir::Value, 4> createTrtFcOp(
           ::infrt::LayoutAttr::get(builder.getContext(),
                                    ::infrt::LayoutType::NCHW),
           create_inited_tensor_op.lod(),
-          TransposeWeight(builder, create_inited_tensor_op.values(), dims));
+          vals_attr);
   builder.replaceOp(create_inited_tensor_op, new_inited_op->getResults());
   builder.restoreInsertionPoint(insert_point);
 
