@@ -418,8 +418,9 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             out_shape[axis] = 1
 
     mask = x.isnan()
-    valid_counts = mask.logical_not().sum(
-        axis=axis, keepdim=True, dtype='float64')
+    valid_counts = mask.logical_not().sum(axis=axis,
+                                          keepdim=True,
+                                          dtype='float64')
 
     indices = []
 
@@ -471,7 +472,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 def quantile(x, q, axis=None, keepdim=False):
     """
     Compute the quantile of the input along the specified axis.
-    If any values in a reduced row are NaN then the quantiles for that reduction will be NaN.
+    If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64.
@@ -499,25 +500,30 @@ def quantile(x, q, axis=None, keepdim=False):
 
             import numpy as np
             import paddle
-            x = np.random.randn(2, 3)
-            x[0][0] = float('nan')
-            # [[        nan  0.41205737  0.36599339]
-            #  [ 0.84388305 -1.21257817  0.25973139]]
 
-            x = paddle.to_tensor(x)
-            y1 = paddle.quantile(x, q=0.5, axis=[0, 1])
-            # nan
+            x = np.arange(0, 8, dtype=np.float32).reshape(4, 2)
+            # [[0 1]
+            #  [2 3]
+            #  [4 5]
+            #  [6 7]]
+            y = paddle.to_tensor(x)
+            y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
+            # 3.5
 
-            y2 = paddle.quantile(x, q=0.5, axis=1)
-            # [       nan 0.25973139]
+            y2 = paddle.quantile(y, q=0.5, axis=1)
+            # [0.5 2.5 4.5 6.5]
 
-            y3 = paddle.quantile(x, q=[0.3, 0.5], axis=1)
-            # [[        nan -0.32919244]
-            #  [        nan  0.25973139]]
+            y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
+            # [[1.8 2.8]
+            #  [3.  4. ]]
 
-            y4 = paddle.quantile(x, q=0.8, axis=1, keepdim=True)
-            # [[       nan]
-            #  [0.61022238]]
+            x[0][0] = np.nan
+            y = paddle.to_tensor(x)
+            y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
+            # [[nan]
+            #  [2.8]
+            #  [4.8]
+            #  [6.8]]
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
@@ -526,7 +532,7 @@ def quantile(x, q, axis=None, keepdim=False):
 def nanquantile(x, q, axis=None, keepdim=False):
     """
     Compute the quantile of the input as if NaN values in input did not exist.
-    If all values in a reduced row are NaN then the quantiles for that reduction will be NaN.
+    If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64.
@@ -555,25 +561,32 @@ def nanquantile(x, q, axis=None, keepdim=False):
             import numpy as np
             import paddle
 
-            x = np.random.randn(2, 3)
-            x[0][0] = float('nan')
-            # [[        nan  1.26085129 -0.35944291]
-            #  [-0.62427785  1.73718584  1.06024497]]
+            x = np.array(
+                [[0, 1, 2, 3, 4],
+                 [5, 6, 7, 8, 9]],
+                dtype=np.float32
+            )
+            x[0][0] = np.nan
 
             x = paddle.to_tensor(x)
             y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
-            # 1.0602449747672356
+            # 5.0
 
             y2 = paddle.nanquantile(x, q=0.5, axis=1)
-            # [0.45070419 1.06024497]
+            # [2.5 7. ]
 
-            y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=1)
-            # [[0.12664535 0.38643585]
-            #  [0.45070419 1.06024497]]
+            y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
+            # [[5.  2.5 3.5 4.5 5.5]
+            #  [5.  3.5 4.5 5.5 6.5]
 
             y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
-            # [[0.93679245]
-            #  [1.4664095 ]]
+            # [[3.4]
+            #  [8.2]]
+
+            nan = paddle.full(shape=[2, 3], fill_value=np.nan)
+            y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
+            # [[nan]
+            #  [nan]]
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)
