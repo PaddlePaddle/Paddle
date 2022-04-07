@@ -325,15 +325,6 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
-  /*#ifdef PADDLE_WITH_HIP
-    int block = 256;
-  #else
-    int block = 1024;
-  #endif
-    int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int grid_tmp = (bs + block - 1) / block;
-    int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;*/
-
   constexpr int WARP_SIZE = 32;
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
