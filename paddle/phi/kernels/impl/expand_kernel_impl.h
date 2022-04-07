@@ -27,7 +27,7 @@ using Tensor = DenseTensor;
 template <typename Context, typename T, int Rank>
 void Expand(const Context& ctx,
             const DenseTensor& x,
-            const ScalarArray& shape,
+            const IntArray& shape,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
@@ -107,7 +107,7 @@ void Expand(const Context& ctx,
 template <typename T, typename Context>
 void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const ScalarArray& shape,
+                  const IntArray& shape,
                   DenseTensor* out) {
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(

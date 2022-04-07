@@ -20,15 +20,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void StridedSliceKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const std::vector<int>& axes,
-                        const ScalarArray& starts,
-                        const ScalarArray& ends,
-                        const ScalarArray& strides,
-                        const std::vector<int>& infer_flags,
-                        const std::vector<int>& decrease_axis,
-                        DenseTensor* out) {
+void StridedSliceRawKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<int>& axes,
+                           const IntArray& starts,
+                           const IntArray& ends,
+                           const IntArray& strides,
+                           const std::vector<int>& infer_flags,
+                           const std::vector<int>& decrease_axis,
+                           DenseTensor* out) {
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                        \
   case Rank:                                                    \
@@ -58,9 +58,9 @@ template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
                              const std::vector<const DenseTensor*>& x,
                              const std::vector<int>& axes,
-                             const ScalarArray& starts,
-                             const ScalarArray& ends,
-                             const ScalarArray& strides,
+                             const IntArray& starts,
+                             const IntArray& ends,
+                             const IntArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
                              std::vector<DenseTensor*> out) {
