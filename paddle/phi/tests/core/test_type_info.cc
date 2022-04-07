@@ -53,9 +53,9 @@ void check_type_info() {
   EXPECT_EQ(DerivedB<T>::classof(derived_a.get()), false);
   EXPECT_EQ(DerivedA<T>::classof(derived_b.get()), false);
 
-  EXPECT_EQ(base->type_info().id(), 0);
-  EXPECT_EQ(derived_a->type_info().id(), 1);
-  EXPECT_EQ(derived_b->type_info().id(), 2);
+  EXPECT_EQ(base->type_info().id(), std::size_t(0));
+  EXPECT_EQ(derived_a->type_info().id(), std::size_t(1));
+  EXPECT_EQ(derived_b->type_info().id(), std::size_t(2));
 
   EXPECT_EQ(base->type_info().name(), "Unknown");
   EXPECT_EQ(derived_a->type_info().name(), "DerivedA");
