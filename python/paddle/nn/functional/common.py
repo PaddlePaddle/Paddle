@@ -1531,38 +1531,51 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dynamic_mode():
-        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
-                                    False)
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_matmul(x, weight, 'trans_x', False,
+                                             'trans_y', False)
 
         if bias is None:
             return pre_bias
 
-        return _C_ops.elementwise_add(pre_bias, bias)
+        return _C_ops.final_state_add(pre_bias, bias)
     else:
-        helper = LayerHelper('linear', **locals())
-        dtype = x.dtype
+        if _in_legacy_dygraph():
+            pre_bias = _C_ops.final_state_matmul(x, weight, 'trans_x', False,
+                                                 'trans_y', False)
 
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'linear')
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+            if bias is None:
+                return pre_bias
 
-        inputs = {'X': [x], 'Y': [weight]}
-        attrs = {'trans_x': False, 'trans_y': False}
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
-        if bias is not None:
-            res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [tmp],
-                        'Y': [bias]},
-                outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1})
+            return _C_ops.final_state_add(pre_bias, bias)
         else:
-            res = tmp
-        return res
+            helper = LayerHelper('linear', **locals())
+            dtype = x.dtype
+
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     'linear')
+            check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                        'linear')
+
+            inputs = {'X': [x], 'Y': [weight]}
+            attrs = {'trans_x': False, 'trans_y': False}
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs=inputs,
+                outputs={'Out': tmp},
+                attrs=attrs)
+            if bias is not None:
+                res = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [tmp],
+                            'Y': [bias]},
+                    outputs={'Out': [res]},
+                    attrs={'axis': len(x.shape) - 1})
+            else:
+                res = tmp
+            return res
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
