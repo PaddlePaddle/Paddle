@@ -106,9 +106,15 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
     {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
+    {"sequence_mask", {"X", "MaxLenTensor"}},
     {"graph_reindex",
      {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
     {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
+    {"crop", {"X", "Y", "Offsets"}},
+    {"batch_norm",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
+    {"inplace_abn",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -123,6 +129,9 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"batch_norm",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
+    {"inplace_abn",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"fused_attention", {"LnMean",         "LnVariance",
@@ -210,6 +219,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"inplace_abn", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
@@ -226,7 +236,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
-    {"assign", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
@@ -240,6 +249,10 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"run_program", {"Out", "DOut", "OutScope"}},
     {"clear_float_status", {"FloatStatusOut"}},
     {"get_float_status", {"FloatStatusOut"}},
+    {"assign", {"Out"}},
+    {"assign_value", {"Out"}},
+    {"split", {"Out"}},
+    {"concat", {"Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

@@ -66,14 +66,6 @@ phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
   return phi::MetaTensor(tensor);
 }
 
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::DenseTensor&>& tensor) {
-  if (tensor) {
-    return {phi::MetaTensor(*tensor)};
-  }
-  return {paddle::none};
-}
-
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
@@ -86,14 +78,6 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
   return phi::MetaTensor(tensor);
-}
-
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::SelectedRows&>& tensor) {
-  if (tensor) {
-    return {phi::MetaTensor(*tensor)};
-  }
-  return {paddle::none};
 }
 
 phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {

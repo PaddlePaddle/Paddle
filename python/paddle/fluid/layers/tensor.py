@@ -323,13 +323,23 @@ def concat(input, axis=0, name=None):
                 #  [14 15 16]]
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.concat(input, 'axis', axis)
+        return _C_ops.final_state_concat(input, axis)
+
+    if _in_legacy_dygraph():
+        if isinstance(axis, Variable):
+            axis = axis.numpy()
+            axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if t.shape.count(0) == 0]
+        out = _varbase_creator()
+        _C_ops.concat(input, out, 'axis', axis)
+        return out
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
     if not isinstance(input, Variable):
@@ -1433,10 +1443,6 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
-        return _C_ops.final_state_arange(start, end, step, dtype,
-                                         _current_expected_place())
-
     if not isinstance(start, Variable):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
@@ -1454,6 +1460,10 @@ def range(start, end, step, dtype, name=None):
             step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = cast(step, dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_arange(start, end, step, dtype,
+                                         _current_expected_place())
 
     if _in_legacy_dygraph():
         out = _C_ops.range(start, end, step)
@@ -1714,10 +1724,12 @@ def eye(num_rows,
     else:
         num_columns = num_rows
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                     _current_expected_place())
+    elif _in_legacy_dygraph():
         out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
                          num_columns)
-
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',

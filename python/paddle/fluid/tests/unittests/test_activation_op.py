@@ -50,7 +50,8 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
-        self.check_eager = False
+        self.check_eager = True
+        self.python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -1022,6 +1023,7 @@ class TestSqrtBF16(OpTest):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.python_api = paddle.rsqrt
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1034,7 +1036,8 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.0005, check_eager=True)
 
 
 class TestAbs(TestActivation):
@@ -2326,7 +2329,7 @@ class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
         self.python_api = paddle.pow
-        self.check_eager = False
+        self.check_eager = True
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2336,6 +2339,9 @@ class TestPow(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {'factor': 3.0}
         self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
