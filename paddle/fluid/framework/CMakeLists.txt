@@ -117,12 +117,14 @@ endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 set(BRPC_DEPS "")
-if(WITH_PSLIB OR WITH_PSCORE)
-    if(NOT WITH_HETERPS)
-        set(BRPC_DEPS brpc ssl crypto)
-    endif()
+if(WITH_PSCORE)
+    set(BRPC_DEPS brpc ssl crypto)
+endif()
+if(WITH_PSLIB)
     if(WITH_PSLIB_BRPC)
         set(BRPC_DEPS pslib_brpc)
+    elseif(NOT WITH_HETERPS)
+        set(BRPC_DEPS brpc ssl crypto)
     endif()
 endif()
 
@@ -300,7 +302,7 @@ if(WITH_DISTRIBUTE)
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto fleet_executor ${BRPC_DEP})
-    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
         set(DISTRIBUTE_COMPILE_FLAGS
                 "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -320,7 +322,7 @@ if(WITH_DISTRIBUTE)
             index_sampler index_wrapper sampler index_dataset_proto
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
-    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
         set(DISTRIBUTE_COMPILE_FLAGS
                 "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")

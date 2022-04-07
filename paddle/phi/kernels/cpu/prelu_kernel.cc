@@ -23,8 +23,8 @@ template <typename T, typename Context>
 void PReluKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& alpha,
-                 const std::string& mode,
                  const std::string& data_format,
+                 const std::string& mode,
                  DenseTensor* out) {
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
