@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,18 +15,16 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace phi {
+namespace sparse {
 
-template <typename Context>
-void ReshapeGradKernel(const Context& dev_ctx,
-                       const DenseTensor& out_grad,
-                       DenseTensor* x_grad);
+template <typename T, typename Context>
+void SparseMaskKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out);
 
-template <typename Context>
-void ReshapeDoubleGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
-                             const DenseTensor& x_grad_grad,
-                             DenseTensor* out_grad_grad);
-
+}  // namespace sparse
 }  // namespace phi

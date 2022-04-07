@@ -850,7 +850,7 @@ endif()
 
 # dist xpu tests:
 if (WITH_XPU_BKCL)
-    py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
+    #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
 endif()
 

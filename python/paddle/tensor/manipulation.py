@@ -1215,11 +1215,16 @@ def unique(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
-        out, inverse, indices, counts = _C_ops.unique(
-            x, 'dtype', attr_dtype, 'return_index', return_index,
-            'return_inverse', return_inverse, 'return_counts', return_counts,
-            'axis', axis, "is_sorted", True)
+    if _non_static_mode():
+        if in_dygraph_mode():
+            out, indices, inverse, counts = _C_ops.final_state_unique(
+                x, return_index, return_inverse, return_counts, axis,
+                attr_dtype)
+        if _in_legacy_dygraph():
+            out, inverse, indices, counts = _C_ops.unique(
+                x, 'dtype', attr_dtype, 'return_index', return_index,
+                'return_inverse', return_inverse, 'return_counts',
+                return_counts, 'axis', axis, "is_sorted", True)
         outs = [out]
         if return_index:
             outs.append(indices)
