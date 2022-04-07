@@ -246,6 +246,7 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
       __syncwarp();
 #endif
     }
+    out_row += BLOCK_WARPS;
   }
 
   /*CUDA_KERNEL_LOOP(out_row, num_rows) {
