@@ -1182,14 +1182,9 @@ class AFSClient(FS):
         self._bd_err_re = re.compile(
             r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
-    def init(self,
-            fs_name,
-            fs_user,
-            fs_passwd,
-            fs_conf):
+    def init(self, fs_name, fs_user, fs_passwd, fs_conf):
         self._fs.init(fs_name, fs_user, fs_passwd, fs_conf)
 
-    @_handle_errors()
     def list_dirs(self, fs_path):
         """	
         Only list directorys under `fs_path` .
@@ -1221,7 +1216,6 @@ class AFSClient(FS):
         dirs, files = self._ls_dir(fs_path)
         return dirs
 
-    @_handle_errors()
     def ls_dir(self, fs_path):
         """	
         List directorys and files under `fs_path` .
@@ -1254,12 +1248,11 @@ class AFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        
+
         files = self._fs.list(fs_path)
         dirs = [fs_path]
         return dirs, files
 
-    @_handle_errors()
     def is_dir(self, fs_path):
         """
         Whether the remote HDFS path is a directory.
@@ -1328,7 +1321,6 @@ class AFSClient(FS):
 
         return not self._is_dir(fs_path)
 
-    @_handle_errors()
     def is_exist(self, fs_path):
         """
         Whether the remote HDFS path exists.
@@ -1432,34 +1424,33 @@ class AFSClient(FS):
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
         self._try_upload(local_path, fs_path)
-        
+
         # upload_dir
-        if local.is_dir(local_path):
-            self.upload_dir(local_path, fs_path, overwrite=overwrite)
-            return
-        # upload files
-        all_files = get_local_files(local_path)
-        if not all_files:
-            print("there are nothing need to upload, function exit")
-            return
+        # if local.is_dir(local_path):
+        #     self.upload_dir(local_path, fs_path, overwrite=overwrite)
+        #     return
+        # # upload files
+        # all_files = get_local_files(local_path)
+        # if not all_files:
+        #     print("there are nothing need to upload, function exit")
+        #     return
 
-        if self.is_exist(fs_path) and overwrite:
-            self.delete(fs_path)
-            self.mkdirs(fs_path)
+        # if self.is_exist(fs_path) and overwrite:
+        #     self.delete(fs_path)
+        #     self.mkdirs(fs_path)
 
-        procs = []
-        for i in range(multi_processes):
-            process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_upload, args=(fs_path, process_datas))
-            procs.append(p)
-            p.start()
+        # procs = []
+        # for i in range(multi_processes):
+        #     process_datas = self._split_files(all_files, i, multi_processes)
+        #     p = multiprocessing.Process(
+        #         target=__subprocess_upload, args=(fs_path, process_datas))
+        #     procs.append(p)
+        #     p.start()
 
-        # complete the processes
-        for proc in procs:
-            proc.join()
+        # # complete the processes
+        # for proc in procs:
+        #     proc.join()
 
-    @_handle_errors()
     def _try_upload(self, local_path, fs_path):
         return self._fs.upload(local_path, fs_path)
 
@@ -1520,11 +1511,9 @@ class AFSClient(FS):
         for proc in procs:
             proc.join()
 
-    @_handle_errors()
     def _try_download(self, fs_path, local_path):
         self._fs.download(local_path, fs_path)
-        
-    @_handle_errors()
+
     def mkdirs(self, fs_path):
         """
         Create a remote HDFS directory.
@@ -1550,7 +1539,6 @@ class AFSClient(FS):
         if self.is_exist(fs_path):
             return
         self._fs.mkdir(fs_path)
-
 
     def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
         """
@@ -1592,8 +1580,7 @@ class AFSClient(FS):
 
     # @_handle_errors()
     # def _try_mv(self, fs_src_path, fs_dst_path):
-        
-        
+
     #     ret = 0
     #     try:
     #         ret, _ = self._run_cmd(cmd)
@@ -1617,7 +1604,6 @@ class AFSClient(FS):
     #     if ret != 0:
     #         raise ExecuteError(cmd)
 
-    @_handle_errors()
     def delete(self, fs_path):
         """
         Delete a remote HDFS path, whether it's a file or directory.
@@ -1644,7 +1630,6 @@ class AFSClient(FS):
             return
 
         self._fs.remove(fs_path)
-
 
     def touch(self, fs_path, exist_ok=True):
         """
@@ -1677,7 +1662,6 @@ class AFSClient(FS):
 
         return self._fs.touchz(fs_path)
 
-
     def need_upload_download(self):
         return True
 
@@ -1707,15 +1691,15 @@ class AFSClient(FS):
                 client.cat("hdfs:/test_hdfs_client")
         """
         if self.is_file(fs_path):
-            output = self._try_cat(fs_path)
-            return "\n".join(output)
+
+            return self._fs.cat(fs_path)
+            # output = self._try_cat(fs_path)
+            # return "\n".join(output)
         else:
             return ""
 
-    @_handle_errors()
-    def _try_cat(self, fs_path):
-       return self._fs.cat(fs_path)
-
+    # def _try_cat(self, fs_path):
+    #    return self._fs.cat(fs_path)
 
     def _split_files(self, files, trainer_id, trainers):
         """

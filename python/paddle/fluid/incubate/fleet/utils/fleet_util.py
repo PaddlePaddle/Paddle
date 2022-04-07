@@ -29,7 +29,7 @@ from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, AFSClient
 from . import utils
 OpRole = core.op_proto_and_checker_maker.OpRole
 
-__all__ = ["FleetUtil"]
+__all__ = ["FleetUtil", "GPUPSUtil"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s')
@@ -1735,16 +1735,18 @@ class GPUPSUtil(FleetUtil):
           fleet_util.rank0_print("my log")
     """
 
-    def __init__(self, fs_client):
+    def __init__(self, fs_client=None):
         super(GPUPSUtil, self).__init__("pslib")
         self._afs = fs_client
         # self._afs = fs_client._fs
-        
-    def init(self, fs_name, fs_user, fs_passwd, fs_conf):
-         self.afs_client.init(fs_name, fs_user, fs_passwd, fs_conf)
 
-    def get_last_save_xbox_base(self,
-                                output_path):
+    def init(self, fs_name, fs_user, fs_passwd, fs_conf):
+        self._afs.init(fs_name, fs_user, fs_passwd, fs_conf)
+
+    def set_fsclient(self, fs_client):
+        self._afs = fs_client
+
+    def get_last_save_xbox_base(self, output_path):
         r"""
         get last saved base xbox info from xbox_base_done.txt
 
@@ -1768,7 +1770,7 @@ class GPUPSUtil(FleetUtil):
 
         """
         donefile_path = output_path + "/xbox_base_done.txt"
-       
+
         if not self._afs.is_file(donefile_path):
             return [-1, -1, int(time.time())]
         pre_content = self._afs.cat(donefile_path)
@@ -1778,8 +1780,7 @@ class GPUPSUtil(FleetUtil):
         xbox_base_key = int(last_dict["key"])
         return [last_day, last_path, xbox_base_key]
 
-    def get_last_save_xbox(self,
-                           output_path):
+    def get_last_save_xbox(self, output_path):
         r"""
         get last saved xbox info from xbox_patch_done.txt
 
@@ -1803,7 +1804,7 @@ class GPUPSUtil(FleetUtil):
 
         """
         donefile_path = output_path + "/xbox_patch_done.txt"
-       
+
         if not self._afs.is_file(donefile_path):
             return [-1, -1, "", int(time.time())]
         pre_content = self._afs.cat(donefile_path)
@@ -1814,8 +1815,7 @@ class GPUPSUtil(FleetUtil):
         xbox_base_key = int(last_dict["key"])
         return [last_day, last_pass, last_path, xbox_base_key]
 
-    def get_last_save_model(self,
-                            output_path):
+    def get_last_save_model(self, output_path):
         r"""
         get last saved model info from donefile.txt
 
@@ -1934,6 +1934,8 @@ class GPUPSUtil(FleetUtil):
                             pass_id,
                             xbox_base_key,
                             data_path,
+                            hadoop_fs_name,
+                            hadoop_fs_ugi,
                             monitor_data={},
                             hadoop_home="$HADOOP_HOME",
                             donefile_name=None):
@@ -1984,7 +1986,7 @@ class GPUPSUtil(FleetUtil):
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_base_done.txt"
-        
+
         if isinstance(data_path, list):
             data_path = ",".join(data_path)
         if fleet.worker_index() == 0:
@@ -1992,12 +1994,20 @@ class GPUPSUtil(FleetUtil):
             xbox_str = self._get_xbox_str(output_path, day, model_path, \
                     xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
                     mode=mode)
-       
-            if self._afs.exist(donefile_path):
-                pre_content = self._afs.cat(donefile_path)
+
+            if self._afs.is_exist(donefile_path):
+                self.rank0_info("exist %s succeed" % (donefile_path))
+                self._afs.download(donefile_path, "./")
+                pre_content = ""
+                with open(donefile_name, "r") as f:
+                    pre_content = f.read()
+                # pre_content = self._afs.cat(donefile_path)
                 last_dict = json.loads(pre_content.split("\n")[-1])
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
+
+                os.remove(donefile_name)
+                self.rank0_info("remove %s succeed" % (donefile_name))
                 exist = False
                 if int(day) < int(last_day) or \
                         int(day) == int(last_day) and \
@@ -2007,20 +2017,21 @@ class GPUPSUtil(FleetUtil):
                     with open(donefile_name, "w") as f:
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
-                    self._afs.remove(donefile_path)
+                    self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, output_path)
-                    self.rank0_error("write %s/%s %s succeed" % \
+                    self.rank0_info("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
-                    self.rank0_error("not write %s because %s/%s already "
-                                     "exists" % (donefile_name, day, pass_id))
+                    self.rank0_info("not write %s because %s/%s already "
+                                    "exists" % (donefile_name, day, pass_id))
             else:
+                self.rank0_info("write xbox %s" % \
+                                      (xbox_str))
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 self._afs.upload(donefile_name, output_path)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
-
 
     def write_cache_donefile(self,
                              output_path,
@@ -2072,7 +2083,7 @@ class GPUPSUtil(FleetUtil):
 
         if fleet.worker_index() == 0:
             donefile_path = model_path + "/" + donefile_name
-           
+
             if self._afs.is_file(donefile_path):
                 self.rank0_error( \
                     "not write because %s already exists" % donefile_path)
