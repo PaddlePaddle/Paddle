@@ -3960,9 +3960,12 @@ def frac(x, name=None):
     op_type = 'elementwise_sub'
     axis = -1
     act = None
+    if x.dtype not in [paddle.int32, paddle.int64, paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {}".format(x.dtype))
     if in_dygraph_mode():
         y = _C_ops.final_state_trunc(x)
-        return _C_ops.final_state_substract(x, y)
+        return _C_ops.final_state_subtract(x, y)
     else:
         if _in_legacy_dygraph():
             y = _C_ops.trunc(x)
