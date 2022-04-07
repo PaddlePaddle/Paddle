@@ -77,6 +77,8 @@ class DnnWorkspaceHandle {
 class GPUContext : public DeviceContext {
  public:
   GPUContext();
+  GPUContext(GPUContext&&);
+  GPUContext& operator=(GPUContext&&);
 
   explicit GPUContext(const GPUPlace& place);
 

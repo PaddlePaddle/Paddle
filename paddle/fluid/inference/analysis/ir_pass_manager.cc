@@ -43,6 +43,7 @@ IRPassManager::IRPassManager(Argument *argument) {
                                 "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
+  disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   CreatePasses(argument, argument->ir_analysis_passes());
@@ -189,6 +190,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->dlnne_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+    } else if (pass_name == "mixed_precision_configure_pass") {
+      pass->Set("gpu_fp16_disabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->gpu_fp16_disabled_op_types()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =

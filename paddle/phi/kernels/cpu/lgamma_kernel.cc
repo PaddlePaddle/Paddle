@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/lgamma_kernel.h"
+
+#include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"

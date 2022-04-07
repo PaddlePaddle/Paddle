@@ -52,4 +52,7 @@ loss = exe = fluid.Executor(cpu)
 exe.run(fluid.default_startup_program())
 
 fluid.io.save_inference_model("./multi_fc_model", [a.name], [fc_out], exe)
+fluid.io.save_inference_model("./multi_fc_model", [a.name], [fc_out], exe, None,
+                              "fc.pdmodel", "fc.pdiparams")
+
 print('output name', fc_out.name)

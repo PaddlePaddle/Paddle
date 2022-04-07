@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,80 +26,6 @@ namespace operators {
 class LogsumexpOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "logsumexp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "logsumexp");
-    auto x_dims = ctx->GetInputDim("X");
-    auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimensions of logsumexp "
-                          "should be less or equal than 4. But received X's "
-                          "dimensions = %d, X's shape = [%s].",
-                          x_rank, x_dims));
-    auto axis = ctx->Attrs().Get<std::vector<int>>("axis");
-    PADDLE_ENFORCE_GT(
-        axis.size(), 0,
-        platform::errors::InvalidArgument(
-            "The size of axis of logsumexp "
-            "should be greater than 0. But received the size of axis "
-            "of logsumexp is %d.",
-            axis.size()));
-
-    for (size_t i = 0; i < axis.size(); i++) {
-      PADDLE_ENFORCE_LT(axis[i], x_rank,
-                        platform::errors::InvalidArgument(
-                            "axis[%d] should be in the "
-                            "range [-D, D), where D is the dimensions of X and "
-                            "D is %d. But received axis[%d] = %d.",
-                            i, x_rank, i, axis[i]));
-      PADDLE_ENFORCE_GE(axis[i], -x_rank,
-                        platform::errors::InvalidArgument(
-                            "axis[%d] should be in the "
-                            "range [-D, D), where D is the dimensions of X and "
-                            "D is %d. But received axis[%d] = %d.",
-                            i, x_rank, i, axis[i]));
-      if (axis[i] < 0) {
-        axis[i] += x_rank;
-      }
-    }
-
-    bool keepdim = ctx->Attrs().Get<bool>("keepdim");
-    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
-    auto dims_vector = vectorize(x_dims);
-    if (reduce_all) {
-      if (keepdim)
-        ctx->SetOutputDim("Out",
-                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
-      else
-        ctx->SetOutputDim("Out", {1});
-    } else {
-      auto dims_vector = vectorize(x_dims);
-      if (keepdim) {
-        for (size_t i = 0; i < axis.size(); ++i) {
-          dims_vector[axis[i]] = 1;
-        }
-      } else {
-        const int kDelFlag = -1;
-        for (size_t i = 0; i < axis.size(); ++i) {
-          dims_vector[axis[i]] = kDelFlag;
-        }
-        dims_vector.erase(
-            std::remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
-            dims_vector.end());
-      }
-      if (!keepdim && dims_vector.size() == 0) {
-        dims_vector.push_back(1);
-      }
-      auto out_dims = phi::make_ddim(dims_vector);
-      ctx->SetOutputDim("Out", out_dims);
-      if (axis.size() > 0 && axis[0] != 0) {
-        // Only pass LoD when not reducing on the first dim.
-        ctx->ShareLoD("X", /*->*/ "Out");
-      }
-    }
-  }
 };
 
 class LogsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -164,16 +93,10 @@ class LogsumexpGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
+DECLARE_INFER_SHAPE_FUNCTOR(logsumexp, LogsumexpInferShapeFunctor,
+                            PD_INFER_META(phi::LogsumexpInferMeta));
 REGISTER_OPERATOR(logsumexp, ops::LogsumexpOp, ops::LogsumexpOpMaker,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>,
+                  LogsumexpInferShapeFunctor);
 REGISTER_OPERATOR(logsumexp_grad, ops::LogsumexpGrapOp);
-
-REGISTER_OP_CPU_KERNEL(
-    logsumexp, ops::LogsumexpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogsumexpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    logsumexp_grad,
-    ops::LogsumexpGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogsumexpGradKernel<paddle::platform::CPUDeviceContext, double>);

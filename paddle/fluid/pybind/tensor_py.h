@@ -52,6 +52,46 @@ constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 
+// cast numpy type form S to T, this may allocate new memory
+template <class T, class S>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  if (std::is_same<T, S>::value) {
+    return array;
+  }
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <class T>
+static py::array_t<T> CastNumpyArray(const py::object &array) {
+  if (py::isinstance<py::array_t<float>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<float>>());
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<double>>());
+  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Value type error. The assign numpy value allows integer, float, "
+        "double and bool, "
+        "but received %s.",
+        Py_TYPE(array.ptr())->tp_name));
+  }
+  // can't reach here
+  return py::array_t<T>();
+}
+
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
@@ -489,11 +529,10 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array, int device_id) {
+void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
+                                 const py::array_t<T> &array, int device_id) {
 #if defined(PADDLE_WITH_CUDA)
-  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   int64_t numel = 1;
@@ -519,6 +558,38 @@ void SetUVATensorFromPyArray(
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
                                    framework::TransToPhiDataType(data_type));
+#endif
+}
+
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
+#endif
+}
+
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::experimental::Tensor> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      meta);
+  self.get()->set_impl(tmp_t);
+  auto *self_tensor =
+      static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
+
+  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
 

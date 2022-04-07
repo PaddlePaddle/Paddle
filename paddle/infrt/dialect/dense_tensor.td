@@ -106,7 +106,7 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
 
   // input path of model params.
   let arguments = (ins StrAttr:$path);
-  let results = (outs DenseTensorMap:$out);
+  let results = (outs DenseHostTensorMap:$out);
 
   let assemblyFormat = "`(``)`attr-dict";
 }
@@ -121,7 +121,7 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
 
   // input path of model params.
   let arguments = (ins
-          DenseTensorMap:$map,
+          DenseHostTensorMap:$map,
           StrAttr:$name
           );
   let results = (outs DenseTensor:$output);
@@ -130,15 +130,41 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
 }
 
 def TensorMapGetSizeOp : DT_Op<"tensor_map_get_size", [NoSideEffect]> {
-  let summary = "ddt.tensor_map_get_size operation";
+  let summary = "dt.tensor_map_get_size operation";
 
   let description = [{
     An operation that get the size of a TensorMap.
   }];
 
-  let arguments = (ins DenseTensorMap:$map);
+  let arguments = (ins DenseHostTensorMap:$map);
   let results = (outs I32:$size);
   let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
+}
+
+def Infrt_TensorListGetTensorOp : DT_Op<"tensor_list_get_tensor", [NoSideEffect]> {
+  let summary = "dt.tensor_list_get_tensor operation";
+
+  let description = [{
+    An operation that can get a tensor from a TensorList.
+  }];
+
+  let arguments = (ins
+          DenseTensorList:$l,
+          I32Attr:$id
+          );
+  let results = (outs DenseTensor:$output);
+  let verifier = ?;
+}
+
+def TensorListGetSizeOp : DT_Op<"tensor_list_get_size", [NoSideEffect]> {
+  let summary = "dt.tensor_list_get_size operation";
+
+  let description = [{
+    An operation that get the size of a TensorList.
+  }];
+
+  let arguments = (ins DenseTensorList:$map);
+  let results = (outs I32:$size);
 }
 
 def GetTensorShapeOp : DT_Op<"get_tensor_shape", [NoSideEffect]> {

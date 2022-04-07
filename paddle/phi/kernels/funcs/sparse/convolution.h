@@ -33,28 +33,30 @@ struct Dims4D {
 };
 
 // Judge whether the current position x is in (lower, upper)
-inline HOSTDEVICE bool Check(const int& x,
+template <typename IntT = int>
+inline HOSTDEVICE bool Check(const IntT& x,
                              const int& kx,
                              const int& pad,
                              const int& stride,
                              const int dilation,
                              const int kdim,
                              const int xdim) {
-  const int lower = x - dilation * kx + pad;
-  const int uper = x + (kdim - kx - 1) * dilation - pad;
+  const IntT lower = x - dilation * kx + pad;
+  const IntT uper = x + (kdim - kx - 1) * dilation - pad;
   return (lower >= 0 && lower % stride == 0 && uper < xdim);
 }
 
 // Check whether the current position(x, y, z) is legal:
 // Judge the minimum and maximum values at each latitude
+template <typename IntT = int>
 inline HOSTDEVICE bool Check(const Dims4D& dims,
                              const Dims4D& kernel_dims,
                              const Dims4D& paddings,
                              const Dims4D& dilations,
                              const Dims4D& strides,
-                             const int x,
-                             const int y,
-                             const int z,
+                             const IntT x,
+                             const IntT y,
+                             const IntT z,
                              const int kx,
                              const int ky,
                              const int kz) {
@@ -67,22 +69,22 @@ inline HOSTDEVICE bool Check(const Dims4D& dims,
   return (x_valid && y_valid && z_valid);
 }
 
-template <typename Dim>
-inline HOSTDEVICE int PointToIndex(const int& batch,
-                                   const int& x,
-                                   const int& y,
-                                   const int& z,
-                                   const Dim& dims) {
+template <typename Dim, typename IntT = int>
+inline HOSTDEVICE IntT PointToIndex(const IntT& batch,
+                                    const IntT& x,
+                                    const IntT& y,
+                                    const IntT& z,
+                                    const Dim& dims) {
   return batch * dims[1] * dims[2] * dims[3] + z * dims[2] * dims[3] +
          y * dims[3] + x;
 }
 
 // TODO(zhangkaihuo): use division and multiply to optimize
 // modulo operation
-template <typename Dim>
+template <typename Dim, typename IntT = int>
 inline HOSTDEVICE void IndexToPoint(
-    const int index, const Dim& dims, int* batch, int* x, int* y, int* z) {
-  int n = index;
+    const IntT index, const Dim& dims, IntT* batch, IntT* x, IntT* y, IntT* z) {
+  IntT n = index;
   *x = n % dims[3];
   n /= dims[3];
   *y = n % dims[2];
@@ -93,7 +95,7 @@ inline HOSTDEVICE void IndexToPoint(
 }
 
 inline void GetOutShape(const DDim& x_dims,
-                        const DDim& kernel_dims,
+                        const std::vector<int>& kernel_sizes,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -102,17 +104,17 @@ inline void GetOutShape(const DDim& x_dims,
       x_dims.size(),
       5,
       phi::errors::InvalidArgument("the shape of x should be (N, D, H, W, C)"));
-  PADDLE_ENFORCE_EQ(kernel_dims.size(),
+  PADDLE_ENFORCE_EQ(kernel_sizes.size(),
                     5,
                     phi::errors::InvalidArgument(
                         "the shape of kernel should be (D, H, W, C, OC)"));
 
   // infer out shape
   (*out_dims)[0] = x_dims[0];
-  (*out_dims)[4] = kernel_dims[4];
+  (*out_dims)[4] = kernel_sizes[4];
   for (int i = 1; i < 4; i++) {
     (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
-                      dilations[i - 1] * (kernel_dims[i - 1] - 1) - 1) /
+                      dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
                          strides[i - 1] +
                      1;
   }
@@ -131,7 +133,7 @@ template <typename T, typename Context>
 inline void SubmPreProcess(const Context& dev_ctx,
                            const SparseCooTensor& x,
                            const DenseTensor& kernel,
-                           const SparseCooTensor& out_grad,
+                           const DenseTensor& out_grad,
                            const int in_channels,
                            const int out_channels,
                            const int half_kernel_size,
@@ -142,11 +144,11 @@ inline void SubmPreProcess(const Context& dev_ctx,
   blas.GEMM(CblasTrans,
             CblasNoTrans,
             x.non_zero_elements().dims()[1],
-            out_grad.non_zero_elements().dims()[1],
+            out_grad.dims()[1],
             x.non_zero_elements().dims()[0],
             static_cast<T>(1),
             x.non_zero_elements().data<T>(),
-            out_grad.non_zero_elements().data<T>(),
+            out_grad.data<T>(),
             static_cast<T>(0),
             d_kernel_ptr + half_kernel_size * in_channels * out_channels);
 
@@ -155,14 +157,35 @@ inline void SubmPreProcess(const Context& dev_ctx,
   T* x_grad_ptr = x_grad->data<T>();
   blas.GEMM(CblasNoTrans,
             CblasTrans,
-            out_grad.non_zero_elements().dims()[0],
+            out_grad.dims()[0],
             in_channels,
-            out_grad.non_zero_elements().dims()[1],
+            out_grad.dims()[1],
             static_cast<T>(1),
-            out_grad.non_zero_elements().data<T>(),
+            out_grad.data<T>(),
             kernel.data<T>() + half_kernel_size * in_channels * out_channels,
             static_cast<T>(0),
             x_grad_ptr);
+}
+
+inline const std::vector<int> PoolResetKernel(
+    const std::vector<int>& kernel_sizes,
+    const int in_channels,
+    const int out_channels) {
+  std::vector<int> res(kernel_sizes);
+  res.resize(5);
+  res[3] = in_channels;
+  res[4] = out_channels;
+  return res;
+}
+
+template <typename T>
+inline void PrefixSum(const T* counter, T* offsets, const int n) {
+  T offset = 0;
+  for (int i = 0; i < n; i++) {
+    offsets[i] = offset;
+    offset += counter[i];
+  }
+  offsets[n] = offset;
 }
 
 }  // namespace sparse

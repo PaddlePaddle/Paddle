@@ -452,11 +452,12 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
             def train(print_result=False):
                 # 1. initialize parallel environment
-                dist.init_parallel_env()
+                group = dist.init_parallel_env()
+                process_group = group.process_group if group else None
 
                 # 2. create data parallel layer & optimizer
                 layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer)
+                dp_layer = paddle.DataParallel(layer, process_group=process_group)
 
                 loss_fn = nn.MSELoss()
                 adam = opt.Adam(

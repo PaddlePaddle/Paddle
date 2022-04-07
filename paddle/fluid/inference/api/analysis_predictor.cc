@@ -50,8 +50,7 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/utils/string/split.h"
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
@@ -73,6 +72,10 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#endif
+
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
 #endif
 
 namespace paddle {
@@ -374,8 +377,7 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
     return PrepareFleetExecutor();
@@ -393,8 +395,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 bool AnalysisPredictor::PrepareFleetExecutor() {
   VLOG(3) << "AnalysisPredictor::PrepareFleetExecutor()";
   if (config_.dist_config().nranks() > 1 && !CommInit()) {
@@ -872,6 +873,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
   }
 
+  if (config_.gpu_fp16_enabled()) {
+    argument_.SetUseGPUFp16(true);
+    argument_.SetGpuFp16DisabledOpTypes(config_.gpu_fp16_disabled_op_types_);
+  }
+
   if (config_.lite_engine_enabled()) {
     argument_.SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -1052,15 +1058,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                            std::to_string(fraction_of_gpu_memory);
         VLOG(3) << "set flag: " << flag;
         gflags.push_back(flag);
-        gflags.push_back("--cudnn_deterministic=True");
       }
-
-// TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
-// under the native_best_fit strategy. Modify the default allocation strategy to
-// auto_growth. todo, find a more appropriate way to solve the problem.
-#ifdef WITH_NV_JETSON
-      gflags.push_back("--allocator_strategy=auto_growth");
-#endif
 
       // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
       // allocator when multi-stream is enabled.
@@ -1189,8 +1187,7 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope;
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
@@ -1239,8 +1236,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
   framework::Scope *scope;
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
@@ -1287,8 +1283,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
     inference::Timer timer;
@@ -1745,6 +1740,7 @@ USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
+USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(reshape);

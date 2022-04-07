@@ -491,8 +491,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 "x_num_col_dims": 2,
                                 "y_num_col_dims": 1,
                                 "enable_int8": True,
-                                "X_scale": 1.0,
-                                "weight_scale": [1.0],
+                                "Input_scale": 1.0,
                             }, {
                                 "axis": 2,
                                 "out_threshold": 1.0,
@@ -504,8 +503,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 "x_num_col_dims": 2,
                                 "y_num_col_dims": 1,
                                 "enable_int8": True,
-                                "X_scale": 1.0,
-                                "weight_scale": [1.0],
+                                "Input_scale": 1.0,
                             }, {
                                 "axis": 2,
                                 "out_threshold": 1.0,
@@ -517,8 +515,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 "x_num_col_dims": 2,
                                 "y_num_col_dims": 1,
                                 "enable_int8": True,
-                                "X_scale": 1.0,
-                                "weight_scale": [1.0],
+                                "Input_scale": 1.0,
                             }, {
                                 "axis": 2,
                                 "out_threshold": 1.0,

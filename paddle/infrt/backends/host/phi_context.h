@@ -13,14 +13,15 @@ limitations under the License. */
 
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace infrt {
 namespace backends {
 
-class CpuPhiContext : public phi::CPUContext {
+class CpuPhiContext : public ::phi::CPUContext {
  public:
-  using Base = phi::CPUContext;
-  using phi::CPUContext::SetEigenDevice;
+  using Base = ::phi::CPUContext;
+  using ::phi::CPUContext::SetEigenDevice;
 
   CpuPhiContext() {
     Init();
@@ -28,7 +29,18 @@ class CpuPhiContext : public phi::CPUContext {
   }
 
  private:
-  std::unique_ptr<phi::Allocator> alloc_{std::make_unique<CpuPhiAllocator>()};
+  std::unique_ptr<::phi::Allocator> alloc_{std::make_unique<CpuPhiAllocator>()};
+};
+
+class GpuPhiContext : public ::phi::GPUContext {
+ public:
+  using Base = ::phi::GPUContext;
+  using ::phi::GPUContext::SetStream;
+  using ::phi::GPUContext::SetEigenDevice;
+  using ::phi::GPUContext::SetBlasHandle;
+  using ::phi::GPUContext::SetDnnHandle;
+  using ::phi::GPUContext::SetSolverHandle;
+  using ::phi::GPUContext::SetSparseHandle;
 };
 
 }  // namespace backends

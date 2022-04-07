@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import paddle
+from paddle.distribution import distribution
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
-from ..fluid.framework import in_dygraph_mode
-from .distribution import Distribution
 
-
-class ExponentialFamily(Distribution):
+class ExponentialFamily(distribution.Distribution):
     r""" 
     ExponentialFamily is the base class for probability distributions belonging 
     to exponential family, whose probability mass/density function has the 
@@ -62,7 +61,7 @@ class ExponentialFamily(Distribution):
 
         log_norm = self._log_normalizer(*natural_parameters)
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             grads = paddle.grad(
                 log_norm.sum(), natural_parameters, create_graph=True)
         else:

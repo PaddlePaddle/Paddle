@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -27,8 +27,14 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
-void CreateInferMeta(const ScalarArray& shape, DataType dtype, MetaTensor* out);
+void AssignValueInferMeta(const std::vector<int>& shape,
+                          DataType dtype,
+                          MetaTensor* out);
+
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
@@ -40,12 +46,17 @@ void EyeInferMeta(int64_t num_rows,
                   DataType dtype,
                   MetaTensor* out);
 
-void GaussianRandomInferMeta(const ScalarArray& shape,
+void GaussianRandomInferMeta(const IntArray& shape,
                              float mean,
                              float std,
                              int seed,
                              DataType dtype,
                              MetaTensor* out);
+
+void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
+
+void RandintInferMeta(
+    int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
