@@ -1610,6 +1610,10 @@ def huber_loss(input, label, delta):
         HuberLoss, = exe.run(feed={'input':input_data ,'label':label_data}, fetch_list=[loss.name])
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
+    if in_dygraph_mode():
+        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        return out
+
     helper = LayerHelper('huber_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'huber_loss')
