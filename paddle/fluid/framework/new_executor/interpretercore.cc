@@ -276,6 +276,11 @@ void InterpreterCore::Convert(
 
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
+  // For example,
+  // b = op1(a)
+  // c = op2(a, b)
+  // in this case, a is the input of op1 and op2, we only need to check
+  // a after op2, because op2 always uses a after op1.
   for (size_t i = 0; i < last_live_ops_.size(); ++i) {
     std::set<size_t> minumum_last_live_ops;
     for (size_t item : last_live_ops_[i]) {
