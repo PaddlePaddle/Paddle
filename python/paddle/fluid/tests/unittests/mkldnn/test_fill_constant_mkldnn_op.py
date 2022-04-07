@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 import paddle
 
 
-@OpTestTool.skip_if_not_cpu()
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFillConstant2DOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "fill_constant"
@@ -30,17 +30,17 @@ class TestFillConstant2DOneDNNOp(OpTest):
         self.shape_tensor = None
         self.str_value = ""
         real_shape = []
-        value = 0.0
+        self.value = 0.1
 
         self.set_inputs()
         self.set_attrs()
 
         if 'value' in self.attrs:
-            value = self.attrs['value']
+            self.value = self.attrs['value']
         if self.str_value != "":
-            value = float(self.str_value)
+            self.value = float(self.str_value)
         if 'ValueTensor' in self.inputs:
-            value = self.inputs['ValueTensor']
+            self.value = self.inputs['ValueTensor']
 
         if 'shape' in self.attrs:
             real_shape = self.attrs['shape']
@@ -51,13 +51,13 @@ class TestFillConstant2DOneDNNOp(OpTest):
             for shape_tensor in self.inputs['ShapeTensorList']:
                 real_shape.append(shape_tensor[1].item())
 
-        self.outputs = {'Out': np.full(real_shape, value)}
+        self.outputs = {'Out': np.full(real_shape, self.value)}
 
     def set_inputs(self):
         self.inputs = {}
 
     def set_attrs(self):
-        self.attrs = {'shape': (10, 13), 'use_mkldnn': True}
+        self.attrs = {'shape': (3, 5), 'use_mkldnn': True, 'value': self.value}
 
     def test_check_output(self):
         self.check_output()
