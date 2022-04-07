@@ -321,7 +321,7 @@ void Tracer::TraceOpImpl(const std::string& type,
             "use_default_attr_map is true, however we got not null "
             "passed_default_attrs_. Please check your usage of trace_op. "));
     CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                      inplace_map);
+                     inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

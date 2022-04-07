@@ -186,7 +186,8 @@ std::string GenerateOpFunctionsBody(
   }
   // Add python_c event record
   std::string event_name = op_type + " pybind_imperative_func";
-  pythonc_record_str = paddle::string::Sprintf(PYTHONC_RECORD_TEMPLATE, event_name);
+  pythonc_record_str =
+      paddle::string::Sprintf(PYTHONC_RECORD_TEMPLATE, event_name);
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
