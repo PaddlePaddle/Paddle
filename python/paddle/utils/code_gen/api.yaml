@@ -718,6 +718,18 @@
     data_type : dtype
     backend : place
 
+- api : full_batch_size_like
+  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
+  output: Tensor
+  infer_meta :
+    func : FullBatchSizeLikeInferMeta
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+  kernel :
+    func : full_batch_size_like
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+    data_type : dtype
+    backend : place
+
 - api : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
