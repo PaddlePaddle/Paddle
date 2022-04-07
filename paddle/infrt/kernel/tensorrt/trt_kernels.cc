@@ -147,6 +147,10 @@ namespace tensorrt {
     } else if (trt::ScaleNdOp op = llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
       ScaleNdFunc(
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ElementWiseOp op =
+                   llvm::dyn_cast<trt::ElementWiseOp>(operation)) {
+      EltwiseFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";
     }

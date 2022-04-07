@@ -31,6 +31,18 @@ limitations under the License. */
 
 namespace phi {
 
+namespace detail {
+// Used in MatrixRankInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = phi::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return phi::make_ddim({1});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return phi::make_ddim(x_vec);
+}
+}  // namespace detail
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
@@ -899,6 +911,29 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void MatrixRankInferMeta(const MetaTensor& x,
+                         bool use_default_tol,
+                         bool hermitian,
+                         MetaTensor* out) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+
+  if (hermitian) {
+    int rows = dim_x[dim_x.size() - 2];
+    int cols = dim_x[dim_x.size() - 1];
+    PADDLE_ENFORCE_EQ(rows,
+                      cols,
+                      phi::errors::InvalidArgument(
+                          "if hermitian == true, matrix should be n*n"));
+  }
+  DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+  out->set_dims(dim_x_batch);
+  out->share_lod(x);
 }
 
 void MaxOutInferMeta(const MetaTensor& x,
@@ -2429,7 +2464,7 @@ void TransposeGradInferMeta(const MetaTensor& x,
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
-                     std::vector<MetaTensor>* outs) {
+                     std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
   std::vector<int> out_dim;
   axis = axis < 0 ? in_dims.size() + axis : axis;
@@ -2438,11 +2473,11 @@ void UnbindInferMeta(const MetaTensor& x,
   }
   auto out_dims = phi::make_ddim(out_dim);
 
-  for (size_t i = 0; i < outs->size(); ++i) {
-    (*outs)[i].set_dtype(x.dtype());
-    (*outs)[i].set_dims(out_dims);
-    (*outs)[i].set_layout(x.layout());
-    (*outs)[i].share_lod(x);
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->set_dtype(x.dtype());
+    outs[i]->set_dims(out_dims);
+    outs[i]->set_layout(x.layout());
+    outs[i]->share_lod(x);
   }
 }
 

@@ -1878,12 +1878,17 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaExpFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  // exp(x) = expf(x)
+  __device__ __forceinline__ T operator()(const T x) const {
+    return static_cast<T>(expf(static_cast<float>(x)));
+  }
+};
 
+template <>
+struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
   // exp(x) = exp(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(exp(x));
+  __device__ __forceinline__ double operator()(const double x) const {
+    return exp(x);
   }
 };
 
