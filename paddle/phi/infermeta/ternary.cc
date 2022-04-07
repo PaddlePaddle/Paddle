@@ -141,6 +141,56 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void ArangeInferMeta(const MetaTensor& start,
+                     const MetaTensor& end,
+                     const MetaTensor& step,
+                     MetaTensor* out) {
+  auto start_dims = start.dims();
+  auto end_dims = end.dims();
+  auto step_dims = step.dims();
+  PADDLE_ENFORCE_EQ(
+      start_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Start) should be 1, but got %d",
+          start_dims.size()));
+
+  PADDLE_ENFORCE_EQ(start_dims[0],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The first dim of the shape of Input(Start) should "
+                        "be 1, but got %d",
+                        start_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      end_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(End) should be 1, but got %d",
+          end_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      end_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dim of the shape of "
+                                   "Input(End) should be 1, but got %d",
+                                   end_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      step_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Step) should be 1, but got %d",
+          step_dims.size()));
+
+  PADDLE_ENFORCE_EQ(step_dims[0],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The first dim of the shape of Input(Step) should "
+                        "be 1, but got %d",
+                        step_dims[0]));
+  out->set_dims({-1});
+  out->set_dtype(start.dtype());
+}
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
@@ -333,6 +383,16 @@ void NllLossRawInferMeta(const MetaTensor& input,
   total_weight->set_dims({1});
   out->set_dtype(input.dtype());
   total_weight->set_dtype(input.dtype());
+}
+
+void PutAlongAxisInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& value,
+                           int axis,
+                           const std::string& reduce,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void RoiAlignInferMeta(const MetaTensor& x,

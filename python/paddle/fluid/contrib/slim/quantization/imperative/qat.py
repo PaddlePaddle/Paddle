@@ -28,6 +28,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
+from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
 from . import utils
@@ -431,7 +432,12 @@ class ImperativeQuantizeOutputs(object):
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self, model, path, input_spec=None, **config):
+    def save_quantized_model(self,
+                             model,
+                             path,
+                             input_spec=None,
+                             onnx_format=False,
+                             **config):
         """
         Save the quantized model for the inference.
 
@@ -444,6 +450,8 @@ class ImperativeQuantizeOutputs(object):
                 InputSpec or example Tensor. If None, all input variables of 
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
+            onnx_format (bool, optional): Whether to export the quantized model 
+                with format of ONNX. Default is False.
             **configs (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
@@ -498,6 +506,18 @@ class ImperativeQuantizeOutputs(object):
 
         self._set_skip_quant_attr(infer_program)
 
+        clip_extra = False
+        if onnx_format:
+            graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+            transform_pass = ReplaceFakeQuantDequantPass(scope, place)
+            transform_pass.apply(graph)
+
+            quant_weight_pass = QuantWeightPass(scope, place)
+            quant_weight_pass.apply(graph)
+            infer_program = graph.to_program()
+
+            clip_extra = True
+
         save_inference_model(
             dirname=dirname,
             feeded_var_names=feed_target_names,
@@ -506,7 +526,7 @@ class ImperativeQuantizeOutputs(object):
             main_program=infer_program.clone(),
             model_filename=model_filename,
             params_filename=params_filename,
-            clip_extra=False)
+            clip_extra=clip_extra)
 
         if is_dynamic_mode:
             paddle.disable_static()

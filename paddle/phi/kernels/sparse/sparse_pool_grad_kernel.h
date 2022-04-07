@@ -26,20 +26,18 @@ void MaxPoolGradKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const DenseTensor& rulebook,
                        const SparseCooTensor& out,
-                       const DenseTensor& out_grad,
+                       const SparseCooTensor& out_grad,
                        const std::vector<int>& kernel_sizes,
-                       DenseTensor* x_grad);
+                       SparseCooTensor* x_grad);
 
 template <typename T, typename Context>
-DenseTensor MaxPoolGrad(const Context& dev_ctx,
-                        const SparseCooTensor& x,
-                        const DenseTensor& rulebook,
-                        const SparseCooTensor& out,
-                        const DenseTensor& out_grad,
-                        const std::vector<int>& kernel_sizes) {
-  DenseTensor x_grad = phi::Empty<Context>(
-      dev_ctx,
-      DenseTensorMeta(x.dtype(), x.non_zero_elements().dims(), x.layout()));
+SparseCooTensor MaxPoolGrad(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& rulebook,
+                            const SparseCooTensor& out,
+                            const SparseCooTensor& out_grad,
+                            const std::vector<int>& kernel_sizes) {
+  SparseCooTensor x_grad;
   MaxPoolGradKernel<T, Context>(
       dev_ctx, x, rulebook, out, out_grad, kernel_sizes, &x_grad);
   return x_grad;

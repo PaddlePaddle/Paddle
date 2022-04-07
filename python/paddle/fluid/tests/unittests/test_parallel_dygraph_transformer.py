@@ -41,13 +41,6 @@ class TestParallelDygraphTransformer(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphTransformerSpawn(TestDistSpawnRunner):
-    def test_transformer_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-            self.check_dist_result_with_spawn(
-                test_class=TestTransformer, delta=1e-5)
-
-
 class TestParallelDygraphTransformerAccGrad(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
