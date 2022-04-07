@@ -4623,8 +4623,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
-        if paddle.in_dynamic_mode():
-            return _C_ops.final_state_sum(input, dim, None, keep_dim)
+        # if paddle.in_dynamic_mode():
+        #     return _C_ops.final_state_sum(input, dim, None, keep_dim)
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
     attrs = {
