@@ -163,20 +163,20 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
 PSGPUWrapper::~PSGPUWrapper() {
   delete HeterPs_;
 
-  xpu_free(optimizer_config::nonclk_coeff);
-  xpu_free(optimizer_config::clk_coeff);
-  xpu_free(optimizer_config::min_bound);
-  xpu_free(optimizer_config::max_bound);
-  xpu_free(optimizer_config::learning_rate);
-  xpu_free(optimizer_config::initial_g2sum);
-  xpu_freee(optimizer_config::initial_range);
+  xpu_free((void*)optimizer_config::nonclk_coeff);
+  xpu_free((void*)optimizer_config::clk_coeff);
+  xpu_free((void*)optimizer_config::min_bound);
+  xpu_free((void*)optimizer_config::max_bound);
+  xpu_free((void*)optimizer_config::learning_rate);
+  xpu_free((void*)optimizer_config::initial_g2sum);
+  xpu_freee((void*)optimizer_config::initial_range);
 
-  xpu_free(optimizer_config::mf_create_thresholds);
-  xpu_free(optimizer_config::mf_learning_rate);
-  xpu_free(optimizer_config::mf_initial_g2sum);
-  xpu_free(optimizer_config::mf_initial_range);
-  xpu_free(optimizer_config::mf_min_bound);
-  xpu_free(optimizer_config::mf_max_bound);
+  xpu_free((void*)optimizer_config::mf_create_thresholds);
+  xpu_free((void*)optimizer_config::mf_learning_rate);
+  xpu_free((void*)optimizer_config::mf_initial_g2sum);
+  xpu_free((void*)optimizer_config::mf_initial_range);
+  xpu_free((void*)optimizer_config::mf_min_bound);
+  xpu_free((void*)optimizer_config::mf_max_bound);
 }
 
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,

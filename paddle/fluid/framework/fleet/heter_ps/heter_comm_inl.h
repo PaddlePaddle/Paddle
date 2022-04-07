@@ -38,7 +38,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
       storage_[i].init(feanum_, resource_->dev_id(i));
     }
   }
-  // heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
+  heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
 }
 
@@ -415,15 +415,16 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
 
   // heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
-  sort_pairs(NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_grads,
-             d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
+  heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
+                                 d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
+                                 len, 0, 8 * sizeof(KeyType), stream, false);
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // heter_comm_kernel_->sort_pairs(
-  sort_pairs(d_temp_storage->ptr(), temp_storage_bytes, d_keys,
-             d_merge_keys_ptr, d_grads, d_merge_grads_ptr, len, 0,
-             8 * sizeof(KeyType), stream, false);
+  heter_comm_kernel_->sort_pairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
+      d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
   temp_storage_bytes = 0;
 
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
@@ -431,8 +432,9 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
   // heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes,
   // d_merge_keys_ptr,
-  reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys,
-                d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
+  heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
+                                    d_keys, d_merge_grads_ptr, d_grads,
+                                    d_num_runs_out, len, stream, false);
 
   if (d_temp_storage->size() < temp_storage_bytes) {
     d_temp_storage = NULL;
@@ -440,9 +442,9 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   }
 
   // heter_comm_kernel_->reduce_by_key(
-  reduce_by_key(d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr,
-                d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream,
-                false);
+  heter_comm_kernel_->reduce_by_key(
+      d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
+      d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
 
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
@@ -474,26 +476,29 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   // int grid_size = (len - 1) / block_size_ + 1;
 
   // heter_comm_kernel_->fill_idx(d_idx_tmp_ptr, len, stream);
-  fill_idx(d_idx_tmp_ptr, len, stream);
+  heter_comm_kernel_->fill_idx(d_idx_tmp_ptr, len, stream);
   // heter_comm_kernel_->calc_shard_index(d_keys, len, d_shard_index_tmp_ptr,
-  calc_shard_index(d_keys, len, d_shard_index_tmp_ptr, total_device, stream);
+  heter_comm_kernel_->calc_shard_index(d_keys, len, d_shard_index_tmp_ptr,
+                                       total_device, stream);
 
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_device);
 
   // heter_comm_kernel_->sort_pairs(
-  sort_pairs(NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
-             d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+  heter_comm_kernel_->sort_pairs(
+      NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
+      d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // heter_comm_kernel_->sort_pairs(
-  sort_pairs(d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
-             d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits,
-             stream);
+  heter_comm_kernel_->sort_pairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
+      d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   // heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
-  calc_shard_offset(d_shard_index_ptr, left, right, len, total_device, stream);
+  heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
+                                        total_device, stream);
   sync_stream(stream);
 }
 
@@ -555,7 +560,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   // heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr,
   // len,
-  fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len, stream);
+  heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len,
+                                     stream);
 
   sync_stream(stream);
 
@@ -610,7 +616,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 
   // heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
-  fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len, stream);
+  heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
+                                 stream);
 
   sync_stream(stream);
 
@@ -685,8 +692,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                        dev_num);
 
   // heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
-  fill_shard_grads(d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads,
-                   d_idx_ptr, uniq_len, stream);
+  heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
+                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                       uniq_len, stream);
 
   sync_stream(stream);
 
@@ -800,8 +808,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                        dev_num);
 
   // heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
-  fill_shard_grads(d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads,
-                   d_idx_ptr, (long long)uniq_len, stream);
+  heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
+                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                       (long long)uniq_len, stream);
 
   sync_stream(stream);
 
@@ -968,10 +977,11 @@ int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(
 
     // int grid_size = (h_node_len[i] - 1) / block_size_ + 1;
     // heter_comm_kernel_->fill_shard_grads(
-    fill_shard_grads(storage.local_keys + merge_num, storage.all_keys + index,
-                     storage.local_grads + merge_num, storage.all_grads + index,
-                     d_idx_ptr + h_left[gpu_num],
-                     h_right[gpu_num] - h_left[gpu_num] + 1, stream);
+    heter_comm_kernel_->fill_shard_grads(
+        storage.local_keys + merge_num, storage.all_keys + index,
+        storage.local_grads + merge_num, storage.all_grads + index,
+        d_idx_ptr + h_left[gpu_num], h_right[gpu_num] - h_left[gpu_num] + 1,
+        stream);
     merge_num = merge_num + h_right[gpu_num] - h_left[gpu_num] + 1;
   }
 

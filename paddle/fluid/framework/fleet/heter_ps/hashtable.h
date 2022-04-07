@@ -25,7 +25,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
+#ifdef PADDLE_WITH_PSLIB
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#endif
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #if defined(PADDLE_WITH_CUDA)
@@ -50,23 +52,19 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-    for (size_t i = 0; i < capacity; i++) {
-      xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-      xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
-    }
+    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
+    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
 
   virtual ~XPUCacheArray() {
-    for (int i = 0; i < capacity_; i++) {
-      xpu_free(keys[i]);
-      xpu_free(vals[i]);
-    }
+    xpu_free(keys[i]);
+    xpu_free(vals[i]);
   }
 
   void print() {}

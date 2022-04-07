@@ -273,9 +273,8 @@ template <typename KeyT, typename ValueT, typename StreamType>
 void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                 const KeyT* d_keys_in,                             // NOLINT
                 KeyT* d_keys_out, const ValueT* d_values_in,
-                ValueT* d_values_out, int num_items, int begin_bit = 0,
-                int end_bit = sizeof(KeyT) * 8, StreamType stream = 0,
-                bool debug_synchronous = false) {}
+                ValueT* d_values_out, int num_items, int begin_bit, int end_bit,
+                StreamType stream, bool debug_synchronous) {}
 
 template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
           typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
@@ -287,7 +286,7 @@ void reduce_by_key(void* d_temp_storage,
                    ValuesInputIteratorT d_values_in,
                    AggregatesOutputIteratorT d_aggregates_out,
                    NumRunsOutputIteratorT d_num_runs_out, int num_items,
-                   StreamType stream = 0, bool debug_synchronous = false) {}
+                   StreamType stream, bool debug_synchronous) {}
 
 template void fill_idx<int, XPUStream>(int* idx, long long len,
                                        const XPUStream& stream);

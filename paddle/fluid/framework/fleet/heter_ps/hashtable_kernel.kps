@@ -237,7 +237,7 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
-  xpu_free(container_);
+  xpu_free((void*)container_);
 }
 
 template <typename KeyType, typename ValType>
@@ -343,14 +343,14 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::
     dump_to_cpu<XPUStream>(int devid, XPUStream stream);
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
-    paddle::framework::FeaturePushValue, Optimizer, XPUStream>(
+    paddle::framework::FeaturePushValue, XPUStream>(
     const unsigned long* d_keys,
     const paddle::framework::FeaturePushValue* d_grads, size_t len,
     XPUStream stream);
 
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<
-//    Optimizer, XPUStream>(const unsigned long* d_keys, const char* d_grads,
+//    XPUStream>(const unsigned long* d_keys, const char* d_grads,
 //                          size_t len, XPUStream stream);
 
 #endif
