@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
+#include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -82,6 +83,8 @@ std::tuple<Tensor, Tensor> sgd_impl(
     paddle::optional<const Tensor&> master_param,
     bool multi_precision);
 
+std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
+
 ////////////////// Backward(grad) api impls //////////////////////
 
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
@@ -100,8 +103,6 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     bool use_global_stats,
     bool trainable_statistics,
     bool fuse_with_relu);
-
-/************************   backward api impl   ***************************/
 
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
