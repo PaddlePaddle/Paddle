@@ -23,9 +23,36 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-#define REGISTER_HANDLER(name, func) \
-  static bool __UNUSED_##name =      \
-      paddle::platform::ipu::RegisterHandler(#name, func)
+#define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
+  struct __test_global_namespace_##uniq_name##__ {};                          \
+  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
+                             __test_global_namespace_##uniq_name##__>::value, \
+                msg)
+
+#define REGISTER_HANDLER(op_type, handler)                         \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                  \
+      __reg_ipu_op_handler__##op_type,                             \
+      "REGISTER_HANDLER must be called in global namespace");      \
+  struct __PaddleRegisterIpuOpHandler_##op_type {                  \
+    __PaddleRegisterIpuOpHandler_##op_type() {                     \
+      ::paddle::platform::ipu::RegisterHandler(                    \
+          #op_type, paddle::platform::ipu::handler);               \
+    }                                                              \
+    int Touch() const { return 0; }                                \
+  };                                                               \
+  static __PaddleRegisterIpuOpHandler_##op_type                    \
+      __PaddleRegisterIpuOpHandler_instance##op_type;              \
+  int TouchPaddleIpuOpHandlerRegister_##op_type() {                \
+    return __PaddleRegisterIpuOpHandler_instance##op_type.Touch(); \
+  }
+
+#define USE_HANDLER(op_type)                              \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                         \
+      __use_ipu_op_handler__##op_type,                    \
+      "USE_HANDLER must be called in global namespace");  \
+  extern int TouchPaddleIpuOpHandlerRegister_##op_type(); \
+  UNUSED static int use_handler__itself_##op_type##_ =    \
+      TouchPaddleIpuOpHandlerRegister_##op_type()
 
 using SymbolHandler = std::function<Node *(Graph *, Node *)>;
 

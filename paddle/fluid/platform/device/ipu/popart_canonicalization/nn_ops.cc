@@ -324,6 +324,11 @@ Node *dropout_handler(Graph *graph, Node *node) {
   }
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(pool2d, pool2d_handler);
 REGISTER_HANDLER(max_pool2d_with_index, max_pool2d_with_index_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
@@ -332,8 +337,3 @@ REGISTER_HANDLER(instance_norm, instance_norm_handler);
 REGISTER_HANDLER(layer_norm, layer_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
 REGISTER_HANDLER(dropout, dropout_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

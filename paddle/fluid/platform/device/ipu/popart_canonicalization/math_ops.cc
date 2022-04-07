@@ -366,6 +366,11 @@ Node *arg_max_handler(Graph *graph, Node *node) {
                       {{"axis", axis}, {"keepdims", int64_t{0}}});
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
@@ -377,8 +382,3 @@ REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
 REGISTER_HANDLER(arg_max, arg_max_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

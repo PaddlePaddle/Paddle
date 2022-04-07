@@ -346,6 +346,12 @@
   kernel :
     func : conj
 
+- api : conv2d
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor
+  invoke : conv2d_impl(input, filter, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : conv2d_grad
+
 - api : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -419,14 +425,14 @@
     func : cumprod
   backward : cumprod_grad
 
-# cumsum
 - api : cumsum
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CumsumInferMeta
   kernel :
     func : cumsum
+  backward : cumsum_grad
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -436,6 +442,15 @@
   kernel :
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
+
+- api : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
 
 - api : diag
   args : (Tensor x, int offset, float padding_value)
@@ -581,6 +596,16 @@
     func : erfinv
   backward : erfinv_grad
 
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
+
 # expand_as
 - api : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
@@ -601,6 +626,18 @@
   kernel :
     func : expm1
   backward : expm1_grad
+
+- api : eye
+  args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
+  kernel :
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
+    backend : place
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
@@ -681,6 +718,18 @@
     data_type : dtype
     backend : place
 
+- api : full_batch_size_like
+  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
+  output: Tensor
+  infer_meta :
+    func : FullBatchSizeLikeInferMeta
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+  kernel :
+    func : full_batch_size_like
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+    data_type : dtype
+    backend : place
+
 - api : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
@@ -730,6 +779,17 @@
   kernel :
     func : gelu
   backward : gelu_grad
+
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
 
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
@@ -794,7 +854,16 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
-  # backward : huber_loss_grad
+  backward : huber_loss_grad
+
+- api : imag
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : imag
+  backward : imag_grad
 
 # increment
 - api : increment
@@ -888,6 +957,19 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+
+# label_smooth
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [label]
+  kernel :
+    func : label_smooth
+    data_type : label
+  optional : prior_dist
+  backward : label_smooth_grad
 
 # leaky_relu
 - api : leaky_relu
@@ -1128,7 +1210,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
@@ -1330,6 +1412,16 @@
     func : prelu
   backward : prelu_grad
 
+- api : psroi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor
+  infer_meta :
+    func : PsroiPoolInferMeta
+  kernel :
+    func : psroi_pool
+  optional : boxes_num
+  backward : psroi_pool_grad
+
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
@@ -1341,6 +1433,15 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : qr
+  args : (Tensor x, str mode)
+  output : Tensor(q), Tensor(r)
+  infer_meta :
+    func : QrInferMeta
+  kernel :
+    func : qr
+  # backward : qr_grad
 
 - api : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1365,6 +1466,15 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+
+- api : real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : real
+  backward : real_grad
 
 - api : reciprocal
   args : (Tensor x)
@@ -1417,6 +1527,17 @@
   optional : boxes_num
   backward : roi_align_grad
 
+- api : roi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(out), Tensor(arg_max)
+  infer_meta :
+    func : RoiPoolInferMeta
+  kernel :
+    func : roi_pool
+  optional : boxes_num
+  intermediate : arg_max
+  backward : roi_pool_grad
+
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
   output : Tensor(out)
@@ -1434,6 +1555,16 @@
   kernel :
     func : round
   backward : round_grad
+
+- api : rsqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : rsqrt
+  inplace : (x -> out)
+  backward : rsqrt_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -1795,6 +1926,25 @@
     func : trunc
   backward : trunc_grad
 
+# python API: paddle.nn.initializer.TruncatedNormal
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    backend : place
+    data_type : dtype
+
+- api : unbind
+  args : (Tensor input, int axis)
+  output : Tensor[]
+  invoke : unbind_impl(input, axis)
+  backward : unbind_grad
+
 # unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
@@ -1804,6 +1954,16 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+# The `axis` argument of Python API paddle.unique is not vector
+- api : unique
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueInferMeta
+  kernel :
+    func : unique
+    data_type : x
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)

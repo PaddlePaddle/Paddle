@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
@@ -27,6 +29,32 @@ namespace experimental {
 // NOTE: The api_impl in this file are arranged in alphabetic order.
 
 ////////////////// Forward api impls //////////////////////
+
+Tensor conv2d_impl(const Tensor& input,
+                   const Tensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::string& paddding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search);
+
+std::vector<std::vector<Tensor>> conv2d_grad_impl(
+    const Tensor& input,
+    const Tensor& filter,
+    const Tensor& out_grad,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& paddding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search);
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
@@ -47,6 +75,8 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     bool multi_precision,
     float rescale_grad);
 
+std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
+
 ////////////////// Backward(grad) api impls //////////////////////
 
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
@@ -66,9 +96,15 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     bool trainable_statistics,
     bool fuse_with_relu);
 
+/************************   backward api impl   ***************************/
+
 std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
                                      const Tensor& out_grad,
                                      const Scalar& axis);
+
+Tensor imag_grad_impl(const Tensor& x);
+
+Tensor real_grad_impl(const Tensor& x);
 
 std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad,
