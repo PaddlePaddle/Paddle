@@ -117,6 +117,10 @@ void AdamwInferMeta(const MetaTensor& param,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs);
 
+void AddNInferMeta(const std::vector<MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -226,6 +230,21 @@ void InterpolateInferMeta(
 void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
+void MomentumInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& velocity,
+                       const MetaTensor& learning_rate,
+                       paddle::optional<const MetaTensor&> master_param,
+                       float mu,
+                       bool use_nesterov,
+                       const std::string& regularization_method,
+                       float regularization_coeff,
+                       bool multi_precision,
+                       float rescale_grad,
+                       MetaTensor* param_out,
+                       MetaTensor* velocity_out,
+                       MetaTensor* master_param_out);
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
@@ -284,6 +303,9 @@ void SGDInferMeta(const MetaTensor& param,
 void StackInferMeta(const std::vector<MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);
+
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out);
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
