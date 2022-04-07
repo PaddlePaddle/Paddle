@@ -107,12 +107,13 @@ reduce_func get_function(const ReduceOp& r) {
 }
 
 template <typename T>
-T* get_data(const phi::DenseTensor& tensor) {
-  return static_cast<T*>(const_cast<void*>(tensor.data()));
+T* get_data(phi::DenseTensor& tensor) {  // NOLINT
+  return reinterpret_cast<T*>(tensor.data());
 }
 
 template <typename T>
-std::vector<T*> get_multi_data(const std::vector<phi::DenseTensor>& tensors) {
+std::vector<T*> get_multi_data(
+    std::vector<phi::DenseTensor>& tensors) {  // NOLINT
   std::vector<T*> ret;
   ret.reserve(tensors.size());
   for (size_t i = 0; i < tensors.size(); i++) {
@@ -122,24 +123,24 @@ std::vector<T*> get_multi_data(const std::vector<phi::DenseTensor>& tensors) {
 }
 
 template <typename T, typename P>
-void set_output(P& opts, const phi::DenseTensor& tensor) {  // NOLINT
+void set_output(P& opts, phi::DenseTensor& tensor) {  // NOLINT
   opts.setOutput(get_data<T>(tensor), tensor.numel());
 }
 
 template <typename T, typename P>
-void set_input(P& opts, const phi::DenseTensor& tensor) {  // NOLINT
+void set_input(P& opts, phi::DenseTensor& tensor) {  // NOLINT
   opts.setInput(get_data<T>(tensor), tensor.numel());
 }
 
 template <typename T, typename P>
-void set_outputs(P& opts,  // NOLINT
-                 const std::vector<phi::DenseTensor>& tensors) {
+void set_outputs(P& opts,                                   // NOLINT
+                 std::vector<phi::DenseTensor>& tensors) {  // NOLINT
   opts.setOutputs(get_multi_data<T>(tensors), tensors[0].numel());
 }
 
 template <typename T, typename P>
-void set_inputs(P& opts,  // NOLINT
-                const std::vector<phi::DenseTensor>& tensors) {
+void set_inputs(P& opts,                                   // NOLINT
+                std::vector<phi::DenseTensor>& tensors) {  // NOLINT
   opts.setInputs(get_multi_data<T>(tensors), tensors[0].numel());
 }
 
@@ -149,7 +150,7 @@ void set_inputs_for_scatter(P& opts,                   // NOLINT
                             int nranks) {
   std::vector<T*> ret;
   ret.reserve(nranks);
-  T* raw_pointer = static_cast<T*>(tensor.data());
+  T* raw_pointer = reinterpret_cast<T*>(tensor.data());
   size_t offset = 0;
   for (int i = 0; i < nranks; i++) {
     ret.push_back(raw_pointer + offset);
@@ -196,8 +197,7 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   std::vector<phi::DenseTensor> _outputs{};
   const uint32_t _tag;
 
-  void _do_broadcast(const phi::DenseTensor& in,
-                     phi::DenseTensor& out) {  // NOLINT
+  void _do_broadcast(phi::DenseTensor& in, phi::DenseTensor& out) {  // NOLINT
     gloo::BroadcastOptions opts(_context);
     const auto& dtype = in.dtype();
     if (rank_ == _root) {
