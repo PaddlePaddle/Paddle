@@ -16,7 +16,11 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -28,70 +32,6 @@ using framework::Tensor;
 class ExpandV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandV2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandV2");
-    auto x_dims = ctx->GetInputDim("X");
-    auto expand_shape = ctx->Attrs().Get<std::vector<int>>("shape");
-
-    if (expand_shape.size() == 0) {
-      expand_shape = std::vector<int>(x_dims.size(), -1);
-    }
-
-    PADDLE_ENFORCE_GE(
-        expand_shape.size(), static_cast<size_t>(x_dims.size()),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'shape' for "
-            "expand_v2 op must be greater than or equal to the rank "
-            "(%d) of the input.",
-            expand_shape.size(), static_cast<size_t>(x_dims.size())));
-    PADDLE_ENFORCE_LE(expand_shape.size(), MAX_RANK_SUPPORTED,
-                      platform::errors::InvalidArgument(
-                          "The number of elements (%d) of 'shape' for "
-                          "must not be greater than %d.",
-                          expand_shape.size(), MAX_RANK_SUPPORTED));
-    PADDLE_ENFORCE_GE(expand_shape.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "The number of elements (%d) of 'shape' for "
-                          "must be a positive integer.",
-                          expand_shape.size()));
-
-    auto out_rank =
-        std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
-    std::vector<int64_t> out_shape(out_rank);
-    auto x_dim_vec = phi::vectorize<int>(x_dims);
-    auto diff = expand_shape.size() - x_dim_vec.size();
-    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
-    for (size_t i = 0; i < expand_shape.size(); ++i) {
-      if (x_dims[i] == -1) {
-        out_shape[i] = -1;
-      } else if (expand_shape[i] == -1) {
-        if (static_cast<size_t>(x_dims.size()) > i) {
-          out_shape[i] = x_dims[i];
-        } else {
-          out_shape[i] = -1;
-        }
-      } else if (expand_shape[i] == -2) {
-        // We use -2 to represent the element in expand_shape is a var.
-        out_shape[i] = -1;
-      } else {
-        PADDLE_ENFORCE_GT(
-            expand_shape[i], 0,
-            platform::errors::InvalidArgument(
-                "The %uth element of 'shape' for expand_v2 op must be "
-                "greater than 0, but the value given is %d.",
-                i, expand_shape[i]));
-        out_shape[i] = expand_shape[i];
-      }
-    }
-
-    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
-    if (out_shape[0] == x_dims[0]) {
-      ctx->ShareLoD("X", "Out");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -291,10 +231,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandV2GradNoNeedBufVarsInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(expand_v2, ExpandInferShapeFunctor,
+                            PD_INFER_META(phi::ExpandInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_v2, ops::ExpandV2Op, ops::ExpandV2OpMaker,
                   ops::ExpandV2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandV2GradOpMaker<paddle::imperative::OpBase>);
+                  ops::ExpandV2GradOpMaker<paddle::imperative::OpBase>,
+                  ExpandInferShapeFunctor);
 REGISTER_OPERATOR(expand_v2_grad, ops::ExpandV2GradOp,
                   ops::ExpandV2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2DoubleGradOpMaker<paddle::imperative::OpBase>,
