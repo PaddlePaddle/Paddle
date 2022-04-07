@@ -63,8 +63,8 @@ class XPUCacheArray {
   }
 
   virtual ~XPUCacheArray() {
-    xpu_free(keys[i]);
-    xpu_free(vals[i]);
+    xpu_free(keys);
+    xpu_free(vals);
   }
 
   void print() {}
