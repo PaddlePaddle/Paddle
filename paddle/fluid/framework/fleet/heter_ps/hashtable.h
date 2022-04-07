@@ -25,9 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
-#ifdef PADDLE_WITH_PSLIB
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#endif
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #if defined(PADDLE_WITH_CUDA)
