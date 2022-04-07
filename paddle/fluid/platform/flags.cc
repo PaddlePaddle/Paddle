@@ -364,11 +364,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
