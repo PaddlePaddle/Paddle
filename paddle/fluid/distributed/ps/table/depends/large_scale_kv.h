@@ -26,7 +26,11 @@
 #include <vector>
 #include "gflags/gflags.h"
 
-#include "butil/object_pool.h"
+#ifdef PADDLE_WITH_ARM_BRPC
+#include "base/endpoint.h"
+#else
+#include "butil/endpoint.h"
+#endif
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
