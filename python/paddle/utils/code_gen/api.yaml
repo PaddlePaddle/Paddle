@@ -1849,6 +1849,19 @@
     func : trunc
   backward : trunc_grad
 
+# python API: paddle.nn.initializer.TruncatedNormal
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    backend : place
+    data_type : dtype
+
 # unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
