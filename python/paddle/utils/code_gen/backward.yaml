@@ -1,13 +1,3 @@
-# - backward_api : gumbel_softmax_grad
-#   forward : gumbel_softmax (Tensor x, float temperature, bool hard, int axis) -> Tensor(out)
-#   args : (Tensor out, Tensor out_grad, int axis)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : GumbelSoftmaxGradInferMeta
-#     param : [out, out_grad, axis]
-#   kernel :
-#     func : gumbel_softmax_grad
-
 - backward_api : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -516,6 +506,27 @@
     param: [x]
   kernel :
     func : gelu_grad
+
+- backward_api : graph_send_recv_grad
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : graph_send_recv_grad
+  optional: out, dst_count
+
+- backward_api : gumbel_softmax_grad
+  forward : gumbel_softmax (Tensor x, float temperature, bool hard, int axis) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GumbelSoftmaxGradInferMeta
+    param : [out, out_grad, axis]
+  kernel :
+    func : gumbel_softmax_grad
 
 - backward_api : hard_shrink_grad
   forward : hard_shrink (Tensor x, float threshold) -> Tensor(out)
