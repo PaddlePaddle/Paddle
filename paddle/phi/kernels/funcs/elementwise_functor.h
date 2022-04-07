@@ -497,7 +497,6 @@ template <typename T, typename Enable = void>
 struct ModuloFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = a % b;
-
     // Accoding to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
     if ((res != 0) && ((b ^ res) < 0)) res += b;
@@ -542,7 +541,9 @@ struct InverseModuloFunctor<
 template <typename T>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(std::trunc(a / b));
   }
 };
@@ -550,7 +551,9 @@ struct FloorDivideFunctor {
 template <typename T>
 struct InverseFloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(std::trunc(b / a));
   }
 };
