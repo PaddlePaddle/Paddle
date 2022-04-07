@@ -90,9 +90,9 @@ class TestGraphKhopSampler(unittest.TestCase):
             row = None
             if fluid.framework.in_dygraph_mode():
                 row = paddle.fluid.core.eager.to_uva_tensor(
-                    self.row.astype(self.row.dtype))
+                    self.row.astype(self.row.dtype), 0)
                 sorted_eid = paddle.fluid.core.eager.to_uva_tensor(
-                    self.sorted_eid.astype(self.sorted_eid.dtype))
+                    self.sorted_eid.astype(self.sorted_eid.dtype), 0)
             else:
                 row = paddle.fluid.core.to_uva_tensor(
                     self.row.astype(self.row.dtype))
