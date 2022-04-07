@@ -60,11 +60,55 @@ class SliceAssignPrimOpMaker : public framework::OpProtoAndCheckerMaker {
 class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    // TODO(lml): add some check for Y.
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
+    framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_var->GetShape());
+    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    auto x_shape = x_var->GetShape();
+    auto y_shape = y_var->GetShape();
+    size_t x_rank = x_shape.size();
+    size_t y_rank = y_shape.size();
+    auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
+    auto starts = ctx->Attrs().Get<std::vector<int64_t>>("starts");
+    auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
+    auto strides = ctx->Attrs().Get<std::vector<int64_t>>("strides");
+    PADDLE_ENFORCE_EQ(
+        starts.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of starts attribute and axis attribute should be same, "
+            "but get %d and %d",
+            starts.size(), axis.size()));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of ends attribute and axis attribute should be same, "
+            "but get %d and %d",
+            ends.size(), axis.size()));
+    PADDLE_ENFORCE_EQ(
+        strides.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of strides attribute and axis attribute should be same, "
+            "but get %d and %d",
+            strides.size(), axis.size()));
+    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_rank, y_rank));
+    std::vector<int64_t> y_target_shape(x_shape);
+    for (size_t i = 0; i < axis.size(); ++i) {
+      y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
+    }
+    for (size_t i = 0; i < x_rank; ++i) {
+      PADDLE_ENFORCE_EQ(y_target_shape[i], y_shape[i],
+                        platform::errors::InvalidArgument(
+                            "The shape of source tensor of slice_assign_p op "
+                            "at dimension %d should be %d, "
+                            "but get %d",
+                            i, y_target_shape[i], y_shape[i]));
+    }
+    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
 };
 

@@ -63,11 +63,28 @@ class SliceSelectPrimOpShapeInference : public framework::InferShapeBase {
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
-    // TODO(lml) add some check for starts, ends, and strides
     auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto starts = ctx->Attrs().Get<std::vector<int64_t>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int64_t>>("strides");
+    PADDLE_ENFORCE_EQ(
+        starts.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of starts attribute and axis attribute should be same, "
+            "but get %d and %d",
+            starts.size(), axis.size()));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of ends attribute and axis attribute should be same, "
+            "but get %d and %d",
+            ends.size(), axis.size()));
+    PADDLE_ENFORCE_EQ(
+        strides.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Number of strides attribute and axis attribute should be same, "
+            "but get %d and %d",
+            strides.size(), axis.size()));
     for (size_t i = 0; i < axis.size(); ++i) {
       x_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
     }
