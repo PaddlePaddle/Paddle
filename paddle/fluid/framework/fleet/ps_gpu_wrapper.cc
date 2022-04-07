@@ -37,47 +37,51 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf) {
-    int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(), conf.c_str());
-    if (ret != 0) {
-        VLOG(0) << "AFS Init Error";
-    }
+void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user,
+                      const std::string& pass_wd, const std::string& conf) {
+  int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
+                              conf.c_str());
+  if (ret != 0) {
+    VLOG(0) << "AFS Init Error";
+  }
 }
 
 int AfsWrapper::remove(const std::string& path) {
-    return afs_handler_.remove(path);
+  return afs_handler_.remove(path);
 }
 
 int AfsWrapper::mkdir(const std::string& path) {
-    return afs_handler_.mkdir(path);
+  return afs_handler_.mkdir(path);
 }
 
 std::vector<std::string> AfsWrapper::list(const std::string& path) {
-    return afs_handler_.list(path);
+  return afs_handler_.list(path);
 }
 
 int AfsWrapper::exist(const std::string& path) {
-    return afs_handler_.exist(path);
+  return afs_handler_.exist(path);
 }
 
-int AfsWrapper::upload(const std::string& local_file, const std::string& afs_file) {
-    return afs_handler_.upload_file(local_file, afs_file);
+int AfsWrapper::upload(const std::string& local_file,
+                       const std::string& afs_file) {
+  return afs_handler_.upload_file(local_file, afs_file);
 }
 
-int AfsWrapper::download(const std::string& local_file, const std::string& afs_file) {
-    return afs_handler_.download_file(local_file, afs_file);
+int AfsWrapper::download(const std::string& local_file,
+                         const std::string& afs_file) {
+  return afs_handler_.download_file(local_file, afs_file);
 }
 
 int AfsWrapper::touchz(const std::string& path) {
-    return afs_handler_.touchz(path);
+  return afs_handler_.touchz(path);
 }
 
 std::string AfsWrapper::cat(const std::string& path) {
-    return afs_handler_.cat(path);
+  return afs_handler_.cat(path);
 }
 
 int AfsWrapper::mv(const std::string& old_path, const std::string& dest_path) {
-    return afs_handler_.mv(old_path, dest_path);
+  return afs_handler_.mv(old_path, dest_path);
 }
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
@@ -90,7 +94,7 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
   int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
                               conf.c_str());
   if (ret != 0) {
-    LOG(ERROR) << "AFS Init Error";
+    VLOG(0) << "AFS Init Error";
   }
   use_afs_api_ = 1;
 }
