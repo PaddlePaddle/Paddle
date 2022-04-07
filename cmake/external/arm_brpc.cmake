@@ -28,7 +28,7 @@ INCLUDE(ExternalProject)
 IF((NOT DEFINED ARM_BRPC_NAME) OR (NOT DEFINED ARM_BRPC_URL))
   SET(ARM_BRPC_VER "0.1.0" CACHE STRING "" FORCE)
   SET(ARM_BRPC_NAME "arm_brpc" CACHE STRING "" FORCE)
-  SET(ARM_BRPC_URL "https://arm_brpc.bj.bcebos.com/arm_brpc.tar.gz" CACHE STRING "" FORCE)
+  SET(ARM_BRPC_URL "https://arm_brpc.bj.bcebos.com/output.tar.gz" CACHE STRING "" FORCE)
 ENDIF()
 
 MESSAGE(STATUS "ARM_BRPC_NAME: ${ARM_BRPC_NAME}, ARM_BRPC_URL: ${ARM_BRPC_URL}")
@@ -44,7 +44,7 @@ SET(ARM_BRPC_LIB_DIR       ${ARM_BRPC_ROOT}/lib)
 SET(ARM_BRPC_LIB           ${ARM_BRPC_LIB_DIR}/libbdrpc.a)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${ARM_BRPC_ROOT}/lib")
 
-INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/${ARM_BRPC_NAME}/base/output/include)
+INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/${ARM_BRPC_NAME}/output/include)
 
 FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n"
@@ -58,9 +58,9 @@ ExternalProject_Add(
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
-    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz . 
+    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/output.tar.gz . 
     #                       && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ${ARM_BRPC_INSTALL_ROOT}
-                          && tar zxvf arm_brpc.tar.gz
+                          && tar zxvf output.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
