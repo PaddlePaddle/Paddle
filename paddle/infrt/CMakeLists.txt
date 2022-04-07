@@ -115,9 +115,6 @@ if (INFRT_WITH_PHI)
 endif()
 
 cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive)
-if (INFRT_WITH_TRT)
-  target_link_libraries(infrt infrt_trt)
-endif()
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 
