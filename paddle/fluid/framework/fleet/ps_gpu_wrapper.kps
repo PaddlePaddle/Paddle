@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include <algorithm>
 #include <ctime>
 #include <memory>
 #include <numeric>
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 // #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>  // NOLINT
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -281,20 +281,20 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::initial_range),
              sizeof(float));
 
-  xpu_memory(optimizer_config::nonclk_coeff, &nonclk_coeff, sizeof(float),
+  xpu_memcpy((void*)optimizer_config::nonclk_coeff, &nonclk_coeff,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
+  xpu_memcpy((void*)optimizer_config::min_bound, &min_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::min_bound, &min_bound, sizeof(float),
+  xpu_memcpy((void*)optimizer_config::max_bound, &max_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::max_bound, &max_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::learning_rate, &learning_rate, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::initial_g2sum, &initial_g2sum, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::initial_range, &initial_range, sizeof(float),
-             XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::learning_rate, &learning_rate,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::initial_g2sum, &initial_g2sum,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::initial_range, &initial_range,
+             sizeof(float), XPU_HOST_TO_DEVICE);
 }
 
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
@@ -314,17 +314,17 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_max_bound),
              sizeof(float));
 
-  xpu_memory(optimizer_config::mf_create_thresholds, &mf_create_thresholds, ,
+  xpu_memcpy((void*)optimizer_config::mf_create_thresholds,
+             &mf_create_thresholds, , sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
+  xpu_memcpy((void*)optimizer_config::mf_initial_range, &mf_initial_range,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_initial_range, &mf_initial_range,
+  xpu_memcpy((void*)optimizer_config::mf_min_bound, &mf_min_bound,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_min_bound, &mf_min_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_max_bound, &mf_max_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_learning_rate, &mf_learning_rate,
+  xpu_memcpy((void*)optimizer_config::mf_max_bound, &mf_max_bound,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::mf_learning_rate, &mf_learning_rate,
              sizeof(float), XPU_HOST_TO_DEVICE);
 }
 
