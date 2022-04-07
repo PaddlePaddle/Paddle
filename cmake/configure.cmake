@@ -75,7 +75,7 @@ if(WITH_PSLIB)
 endif()
 
 if(WITH_ARM_BRPC)
-    add_definitions(-DPADDLE_WITH_ARM_BRPC)
+    #add_definitions(-DPADDLE_WITH_ARM_BRPC)
 endif()
 
 if(WITH_GLOO)
