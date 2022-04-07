@@ -477,8 +477,8 @@
     layout: out_grad
 
 - backward_api : flip_grad
-  forward : flip (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
+  forward : flip (Tensor x, int[] axis) -> Tensor(out)
+  args : (Tensor out_grad, int[] axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -978,6 +978,15 @@
     param: [x]
   kernel :
     func : pad3d_grad
+
+- backward_api : pixel_shuffle_grad
+  forward : pixel_shuffle (Tensor x, int upscale_factor, str data_format) -> Tensor(out)
+  args : (Tensor out_grad, int upscale_factor, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PixelShuffleGradInferMeta
+  kernel :
+    func : pixel_shuffle_grad
 
 - backward_api : pool2d_grad
   forward : pool2d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)

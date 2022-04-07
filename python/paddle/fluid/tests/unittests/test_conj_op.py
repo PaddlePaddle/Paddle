@@ -54,14 +54,15 @@ class TestConjOp(OpTest):
         self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.grad_in],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestComplexConjOp(unittest.TestCase):
