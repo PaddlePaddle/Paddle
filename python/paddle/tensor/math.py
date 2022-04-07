@@ -2674,9 +2674,10 @@ ${comment}
             #         [12, 15, 18, 16, 20, 24],
             #         [21, 24, 27, 28, 32, 36]])
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.kron(x, y)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_kron(x, y)
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
@@ -3525,9 +3526,10 @@ def logit(x, eps=None, name=None):
 
     if eps == None:
         eps = 0.0
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.logit(x, 'eps', eps)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_logit(x, eps)
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
     helper = LayerHelper("logit", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
