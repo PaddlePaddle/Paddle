@@ -1292,7 +1292,7 @@ class OpTest(unittest.TestCase):
         if hasattr(self, 'attrs') and bool(self.attrs.get('use_xpu', False)):
             return
         for op_desc, father_op_desc in reversed(need_run_ops):
-            # The first one is the forward op
+            # The first ones is the forward op
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
             if op_desc.type() == self.op_type:
                 if has_infer_inplace:
