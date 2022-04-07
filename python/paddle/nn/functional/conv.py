@@ -127,8 +127,11 @@ def _conv_nd(x,
             x, weight, stride, padding, padding_algorithm, groups, dilation,
             data_format, False, -1, False)
         if bias is not None:
-            tmp_bias = _C_ops.final_state_unsqueeze(
-                bias, [i for i in range(channel_dim)])[1]
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.final_state_reshape(
+                bias, bias.shape +
+                [1 for i in range(len(x.shape) - channel_dim - 1)])
             return _C_ops.final_state_add(pre_bias, tmp_bias)
         else:
             return pre_bias
