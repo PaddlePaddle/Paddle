@@ -32,6 +32,7 @@ paddle.enable_static()
 class TestConjOp(OpTest):
     def setUp(self):
         self.op_type = "conj"
+        self.python_api = paddle.tensor.conj
         self.init_dtype_type()
         self.init_input_output()
         self.init_grad_input_output()

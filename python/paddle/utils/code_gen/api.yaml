@@ -345,6 +345,7 @@
     func : UnchangedInferMeta
   kernel :
     func : conj
+  backward : conj_grad
 
 - api : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
@@ -647,6 +648,7 @@
     func : FlipInferMeta
   kernel :
     func : flip
+  backward : flip_grad
 
 - api : floor
   args : (Tensor x)
@@ -1327,7 +1329,7 @@
     func : PixelShuffleInferMeta
   kernel :
     func : pixel_shuffle
-  # backward : pixel_shuffle_grad
+  #backward : pixel_shuffle_grad
 
 # poisson  // no need grad
 - api : poisson
