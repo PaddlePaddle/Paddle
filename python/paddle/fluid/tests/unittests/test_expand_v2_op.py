@@ -27,6 +27,7 @@ class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
+        self.python_api = paddle.expand
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
