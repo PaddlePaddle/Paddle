@@ -48,7 +48,10 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-from .framework import VarBase as Tensor  # noqa: F401
+if fluid.framework._in_eager_mode_:
+    Tensor = framework.core.eager.Tensor
+else:
+    from .framework import VarBase as Tensor  # noqa: F401
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
@@ -72,6 +75,7 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.sparse  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -210,6 +214,7 @@ from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
+from .tensor.math import nanmean  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -542,6 +547,7 @@ __all__ = [  # noqa
            'not_equal',
            'sum',
            'nansum',
+           'nanmean',
            'tile',
            'greater_equal',
            'isfinite',

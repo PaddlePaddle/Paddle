@@ -35,7 +35,7 @@ struct FullFuctor {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
@@ -132,6 +132,7 @@ PD_REGISTER_KERNEL(full_like,
                    phi::FullLikeKernel,
                    float,
                    double,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

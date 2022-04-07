@@ -23,7 +23,7 @@ from codegen_utils import ParseYamlForward, GetInplacedFunctionName
 ###########################
 ## Global Configurations ##
 ###########################
-skipped_forward_api_names = set(["scale"])
+skipped_forward_api_names = set([])
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -45,7 +45,7 @@ atype_to_parsing_function = {
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
-    "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
+    "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::experimental::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
@@ -140,7 +140,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include  "paddle/phi/common/backend.h"
 #include  "paddle/phi/common/data_type.h"
 #include  "paddle/phi/common/scalar.h"
-#include  "paddle/phi/common/scalar_array.h"
+#include  "paddle/phi/common/int_array.h"
 #include  "paddle/phi/api/include/sparse_api.h"
 #include  "paddle/phi/api/include/strings_api.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
