@@ -53,6 +53,7 @@ class PhiOpConvertPass
   void getDependentDialects(mlir::DialectRegistry &registry) const override;
 
  private:
+  void updateInputsAndResults(infrt::TargetType target);
   void convertStage();
   void dispatchStage();
 
@@ -66,8 +67,37 @@ class PhiOpConvertPass
 };
 // Implementation of the PhiOpConvertPass.
 void PhiOpConvertPass::runOnFunction() {
+  updateInputsAndResults(valid_places_[0].target);
   convertStage();
   dispatchStage();
+}
+
+void PhiOpConvertPass::updateInputsAndResults(infrt::TargetType target) {
+  mlir::Block &body = getFunction().front();
+  auto loc = getFunction().getLoc();
+  mlir::Operation &operation = body.front();
+  mlir::MLIRContext *context = operation.getContext();
+  size_t num_input = body.getNumArguments();
+  for (size_t index = 0; index < num_input; index++) {
+    auto argument = body.getArgument(index);
+    if (auto t = argument.getType().dyn_cast<::infrt::DenseTensorType>()) {
+      mlir::Type replace_type = infrt::DenseTensorType::get(
+          context, target, t.getPrecision(), infrt::LayoutType::NCHW);
+      getFunction().insertArgument(index, replace_type, {}, loc);
+      argument.replaceAllUsesWith(getFunction().getArgument(index));
+      getFunction().eraseArgument(index + 1);
+    }
+  }
+  unsigned int num_result = getFunction().getNumResults();
+  for (unsigned int index = 0; index < num_result; index++) {
+    mlir::Type replace_type =
+        infrt::DenseTensorType::get(context,
+                                    target,
+                                    infrt::PrecisionType::FLOAT32,
+                                    infrt::LayoutType::NCHW);
+    getFunction().eraseResult(index);
+    getFunction().insertResult(index, replace_type, {});
+  }
 }
 
 void PhiOpConvertPass::convertStage() {
@@ -156,6 +186,7 @@ void PhiOpConvertPass::dispatchStage() {
 
   mlir::OpBuilder builder(&block, block.begin());
   std::map<infrt::TargetType, mlir::Value> phi_context;
+
   for (infrt::KernelOp kernel_op : worklist) {
     std::string kernel_name = kernel_op.name().str();
     std::vector<infrt::PhiKernelDesc> candidates =
@@ -191,7 +222,17 @@ void PhiOpConvertPass::dispatchStage() {
                   .output();
           phi_context[infrt::TargetType::CPU] = context_value;
         } break;
-        case infrt::TargetType::GPU:
+        case infrt::TargetType::GPU: {
+          auto context_value =
+              builder
+                  .create<infrt::phi::CreateGPUContextOp>(
+                      kernel_op.getLoc(),
+                      infrt::phi::ContextType::get(kernel_op.getContext(),
+                                                   infrt::TargetType::GPU))
+                  .output();
+          phi_context[infrt::TargetType::GPU] = context_value;
+        } break;
+
         case infrt::TargetType::UNK:
         default:
           LOG(FATAL) << "Unsupported TargetType";
@@ -204,15 +245,25 @@ void PhiOpConvertPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.input_types.size();
          ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(),
-          infrt::DenseTensorType::get(
-              kernel_op.getContext(),
-              phi_kernel_desc.input_types[index].target,
-              phi_kernel_desc.input_types[index].precision,
-              phi_kernel_desc.input_types[index].layout),
-          input);
-      operation_state.addOperands(cvt_tensor_type_op.output());
+      if (input.getType().dyn_cast<::infrt::DenseTensorType>().getTarget() ==
+              ::infrt::TargetType::CPU &&
+          phi_kernel_desc.input_types[index].target ==
+              ::infrt::TargetType::GPU) {
+        auto cvt_tensor_type_op = builder.create<infrt::phi::GpuMemCopyOp>(
+            kernel_op.getLoc(),
+            infrt::DenseTensorType::get(
+                kernel_op.getContext(),
+                phi_kernel_desc.input_types[index].target,
+                phi_kernel_desc.input_types[index].precision,
+                phi_kernel_desc.input_types[index].layout),
+            input,
+            phi_context[infrt::TargetType::GPU],
+            mlir::BoolAttr::get(kernel_op.getContext(), /*d2h*/ false));
+
+        operation_state.addOperands(cvt_tensor_type_op.output());
+      } else {
+        operation_state.addOperands(input);
+      }
     }
 
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
@@ -227,11 +278,8 @@ void PhiOpConvertPass::dispatchStage() {
     mlir::Operation *phi_operation = builder.createOperation(operation_state);
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
-      mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
-          cvt_tensor_type_op.output());
+          phi_operation->getResult(index));
     }
     kernel_op.erase();
   }
