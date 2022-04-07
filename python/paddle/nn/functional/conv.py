@@ -582,10 +582,8 @@ def conv2d(x,
     if (num_channels == groups and num_channels != 1 and
             num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
-        if is_compiled_with_rocm():
-            use_cudnn = True
-        else:
-            use_cudnn = False
+        # TODO(wangran16): use_cudnn on rocm
+        use_cudnn = False
     else:
         if in_dygraph_mode():
             pre_bias = _C_ops.final_state_conv2d(
