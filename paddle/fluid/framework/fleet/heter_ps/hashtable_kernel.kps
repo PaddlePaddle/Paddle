@@ -122,8 +122,8 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
 }
 
 template <typename KeyType, typename ValType, typename Table>
-__global__ void insert_kernel(Table* table, const KeyType* const keys,
-                              const ValType* const vals, size_t len) {
+__global__ void insert_kernel(Table* table, const KeyType* keys,
+                              const ValType* vals, size_t len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -167,7 +167,7 @@ __global__ void insert_kernel(Table* table, const KeyType* const keys,
 // }
 
 template <typename KeyType, typename ValType, typename Table>
-__global__ void search_kernel(Table* table, const KeyType* const keys,
+__global__ void search_kernel(Table* table, const KeyType* keys,
                               ValType* const vals, size_t len) {
   int cid = core_id();
   int ncores = core_num();
@@ -222,7 +222,7 @@ __global__ void update_kernel(Table* table, const KeyType* const keys,
     for (int k = 0; k < read_len; k++) {
       ValType* val = table->find(local_keys[k]);
       if (val != NULL) {
-        update_value(*val, grads[i]);
+        update_value(val, &local_grads[k]);
       }
     }
   }
@@ -255,7 +255,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   if (len == 0) {
     return;
   }
-  search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  search_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
 // template <typename KeyType, typename ValType>
@@ -271,12 +271,12 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
-                                         const ValType* d_vals, size_t len,
+                                        const ValType* d_vals, size_t len,
                                          StreamType stream) {
   if (len == 0) {
     return;
   }
-  insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  insert_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
 // template <typename KeyType, typename ValType>
@@ -307,7 +307,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
-  update_kernel<<<4, 64, stream>>>(container_, d_keys, d_grads, len);
+  update_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>, GradType><<<4, 64, stream>>>(container_, d_keys, d_grads, len);
 }
 
 // template <typename KeyType, typename ValType>
@@ -346,7 +346,7 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::
     dump_to_cpu<XPUStream>(int devid, XPUStream stream);
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
-    paddle::framework::FeaturePushValue, Optimizer, XPUStream>(
+    paddle::framework::FeaturePushValue, XPUStream>(
     const unsigned long* d_keys,
     const paddle::framework::FeaturePushValue* d_grads, size_t len,
     XPUStream stream);

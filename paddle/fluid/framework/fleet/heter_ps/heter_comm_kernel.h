@@ -30,11 +30,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// class HeterCommKernel {
+class HeterCommKernel {
 
-// public:
-//  HeterCommKernel() {}
-//  HeterCommKernel(const int block_size) : block_size_(block_size) {}
+public:
+ HeterCommKernel() {}
+ HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
 template <typename T, typename StreamType>
 void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -80,10 +80,10 @@ void reduce_by_key(void* d_temp_storage,
                    NumRunsOutputIteratorT d_num_runs_out, int num_items,
                    StreamType stream = 0, bool debug_synchronous = false);
 
-//  private:
-//    int block_size_{256};
-//
-//};
+private:
+   int block_size_{256};
+
+};
 
 }  // end namespace framework
 }  // end namespace paddle

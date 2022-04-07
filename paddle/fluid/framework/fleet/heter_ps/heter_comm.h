@@ -217,7 +217,7 @@ class HeterComm {
   // int block_size_{256};
 
  private:
-  // std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
   std::vector<LocalStorage> storage_;
   int topo_aware_{0};
   int feanum_{1800 * 2048};

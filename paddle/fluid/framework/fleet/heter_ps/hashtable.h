@@ -56,30 +56,27 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
-#elif defined(PADDLE_WITH_XPU_KP)
+#endif
 
+#if defined(__xpu__)
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-    for (size_t i = 0; i < capacity; i++) {
       xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
       xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
-    }
   }
 
   virtual ~XPUCacheArray() {
-    for (int i = 0; i < capacity_; i++) {
-      xpu_free(keys[i]);
-      xpu_free(vals[i]);
-    }
+      xpu_free(keys);
+      xpu_free(vals);
   }
 
   void print() {}
 
-  ValType* find(const KeyType& key) { return NULL; }
+  __device__ ValType* find(const KeyType& key) { return &vals[0]; }
 
-  bool insert(const KeyType& key, const ValType& val) { return true; }
+  __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
 
   size_t size() {
     return 0;
@@ -88,7 +85,7 @@ class XPUCacheArray {
   }
 
  private:
-  long long capacity_;  // NOLINT
+  long long capacity_ = 1;  // NOLINT
   long long size_;      // NOLINT
   KeyType* keys;
   ValType* vals;
