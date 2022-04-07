@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -34,7 +35,8 @@ class LogspaceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -43,23 +45,24 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Start",
              "Exponent of first entry in the sequence. It is a tensor of "
-             "shape [1], should be of type float32 or float64.");
+             "shape [1], should be of type int32, int64, float32 or float64.");
     AddInput("Stop",
              "Exponent of last entry in the sequence. It is a tensor of "
-             "shape [1], should be of type float32 or float64.");
+             "shape [1], should be of type int32, int64, float32 or float64.");
     AddInput("Num",
              "Number of entry in the sequence. It is a tensor of shape [1], "
              "should be of type int32.");
     AddInput("Base",
              "Base of the logarithm function. It is a tensor of shape [1], "
-             "should be of type int32.");
+             "should be of type int32, int64, float32 or float64.");
     AddAttr<int>("dtype", "The output data type.");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
         Return fixed number of logarithmical-evenly spaced values within a given 
         interval. First entry is exponential of Start with base Base, and last 
         entry is exponential of Stop with base Base. In the case when Num is 1, 
-        only exponential of Start with base Base is returned. 
+        only exponential of Start with base Base is returned. If dtype is int32 
+        or int64, the decimal part of values will be truncated. 
         Like logspace function of numpy.
     )DOC");
   }
