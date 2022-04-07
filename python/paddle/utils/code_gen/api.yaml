@@ -443,6 +443,15 @@
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
 
+- api : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
+
 - api : diag
   args : (Tensor x, int offset, float padding_value)
   output : Tensor
@@ -587,6 +596,16 @@
     func : erfinv
   backward : erfinv_grad
 
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
+
 # expand_as
 - api : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
@@ -607,6 +626,18 @@
   kernel :
     func : expm1
   backward : expm1_grad
+
+- api : eye
+  args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
+  kernel :
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
+    backend : place
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
@@ -737,6 +768,17 @@
     func : gelu
   backward : gelu_grad
 
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
+
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -810,7 +852,7 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
-  # backward : huber_loss_grad
+  backward : huber_loss_grad
 
 - api : imag
   args : (Tensor x)
@@ -922,6 +964,19 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+
+# label_smooth
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [label]
+  kernel :
+    func : label_smooth
+    data_type : label
+  optional : prior_dist
+  backward : label_smooth_grad
 
 # leaky_relu
 - api : leaky_relu

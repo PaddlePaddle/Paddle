@@ -51,7 +51,8 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
-        self.check_eager = False
+        self.check_eager = True
+        self.python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
