@@ -46,8 +46,8 @@ class TestSparseConv(unittest.TestCase):
             out.backward(out)
             #At present, only backward can be verified to work normally
             #TODO(zhangkaihuo): compare the result with dense conv
-            assert np.array_equal(correct_out_values,
-                                  out.non_zero_elements().numpy())
+            print(sparse_input.grad.values())
+            assert np.array_equal(correct_out_values, out.values().numpy())
 
     def test_Conv3D(self):
         with _test_eager_guard():
@@ -89,8 +89,7 @@ class TestSparseConv(unittest.TestCase):
 
             sparse_out = subm_conv3d(sparse_input)
             # the output shape of subm_conv is same as input shape
-            assert np.array_equal(indices,
-                                  sparse_out.non_zero_indices().numpy())
+            assert np.array_equal(indices, sparse_out.indices().numpy())
 
             #test errors
             with self.assertRaises(ValueError):
