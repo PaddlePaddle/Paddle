@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/ir/shuffle_channel_detect_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/shuffle_channel_mkldnn_detect_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -30,7 +30,7 @@ namespace ir {
   GET_IR_NODE(reshape2_op);   \
   GET_IR_NODE(reshape2_out);
 
-ShuffleChannelDetectPass::ShuffleChannelDetectPass() {
+ShuffleChannelMKLDNNDetectPass::ShuffleChannelMKLDNNDetectPass() {
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -68,7 +68,7 @@ ShuffleChannelDetectPass::ShuffleChannelDetectPass() {
       .End();
 }
 
-void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
+void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "shufflechannel_pattern";
   FusePassBase::Init(pattern_name, graph);
 
@@ -204,6 +204,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Out", {output_name});
 
     new_op_desc.SetAttr("group", group);
+    new_op_desc.SetAttr("use_mkldnn", true);
     new_op_desc.Flush();
 
     // Create a new node for the fused op.
@@ -227,9 +228,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(shuffle_channel_detect_pass,
-              paddle::framework::ir::ShuffleChannelDetectPass);
-REGISTER_PASS_CAPABILITY(shuffle_channel_detect_pass)
+REGISTER_PASS(shuffle_channel_mkldnn_detect_pass,
+              paddle::framework::ir::ShuffleChannelMKLDNNDetectPass);
+REGISTER_PASS_CAPABILITY(shuffle_channel_mkldnn_detect_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)
