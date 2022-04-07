@@ -70,8 +70,8 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
     """
     if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant_batch_size_like(
-            input=label, shape=[-1, 1], dtype="float32", value=1.0)
+        ins_tag_weight = tensor.fill_constant(
+            shape=[1, 1], dtype="float32", value=1.0)
 
     assert input.shape == label.shape
     helper = LayerHelper("ctr_metric_bundle", **locals())
