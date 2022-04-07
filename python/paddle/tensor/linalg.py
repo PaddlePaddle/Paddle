@@ -3005,8 +3005,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
 
 def corrcoef(x, rowvar=True, name=None):
     """
-    Return Pearson product-moment correlation coefficients.
-
+    
     A correlation coefficient matrix indicate the ccorrelation of each pair variables in the input matrix.
     For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
     element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.
@@ -3014,7 +3013,7 @@ def corrcoef(x, rowvar=True, name=None):
     The relationship between the correlation coefficient matrix `R` and the
     covariance matrix `C`, is
 
-    .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
+    .. math:: R_{ij} = C_{ij} / sqrt{ C_{ii} * C_{jj} }
 
     The values of `R` are between -1 and 1.
 
@@ -3026,23 +3025,22 @@ def corrcoef(x, rowvar=True, name=None):
 
     Returns:
 
-        Tensor: The correlation coefficient matrix of the variables.
+        The correlation coefficient matrix of the variables.
 
     Examples:
 
     .. code-block:: python
-
+        :name: code-example1
+        
         import paddle
 
         xt = paddle.rand((3,4))
-        paddle.linalg.corrcoef(xt)
+        print(paddle.linalg.corrcoef(xt))
 
-        '''
-        Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [[ 1.        , -0.73702252,  0.66228950],
-        [-0.73702258,  1.        , -0.77104872],
-        [ 0.66228974, -0.77104825,  1.        ]])
-        '''
+       # Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+       # [[ 1.        , -0.73702252,  0.66228950],
+       # [-0.73702258,  1.        , -0.77104872],
+       # [ 0.66228974, -0.77104825,  1.        ]])
 
     """
     if len(x.shape) > 2 or len(x.shape) < 1:
