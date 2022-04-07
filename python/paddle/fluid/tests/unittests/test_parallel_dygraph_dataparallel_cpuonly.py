@@ -70,6 +70,9 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "MASTER_ADDR": "127.0.0.1",
+            "MASTER_PORT": "6170",
+            "NCCL_DEBUG": "INFO",
             "PADDLE_DISTRI_BACKEND":
             "gloo",  # make init_parallel_env get 'gloo' argument.
         }
@@ -133,7 +136,7 @@ class TestDataParallelGradientCheck(TestMultipleGpus):
 
 class TestDataParallelGradientCheckInEagerMode(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
+        self.run_mnist_2gpu('parallel_dygraph_gradient_check_in_eager_mode.py')
 
 
 if __name__ == "__main__":
