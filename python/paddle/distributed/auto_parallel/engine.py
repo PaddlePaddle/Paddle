@@ -265,8 +265,8 @@ class Engine:
             config["dist_context"] = dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
-            config["inputs"] = self._feed_vars[self.mode][
-                'input'] + self._feed_vars[self.mode]['label']
+            config["inputs"] = self._feed_vars[self._mode][
+                'input'] + self._feed_vars[self._mode]['label']
             auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
             auto_parallel_amp_pass.apply([main_program], [startup_program],
                                          pass_context)
@@ -323,22 +323,21 @@ class Engine:
         train_dataloader = self._create_dataloader(
             train_data, batch_size, epochs, steps_per_epoch, sample_generator)
 
-        # cbks = config_callbacks(
-        #     callbacks,
-        #     model=self,
-        #     epochs=epochs,
-        #     steps=train_dataloader.steps,
-        #     log_freq=log_freq,
-        #     save_freq=save_freq,
-        #     save_dir=save_dir,
-        #     verbose=verbose,
-        #     metrics=self.metrics_name()
-        # )
+        cbks = config_callbacks(
+            callbacks,
+            model=self,
+            epochs=epochs,
+            steps=train_dataloader.steps,
+            log_freq=log_freq,
+            save_freq=save_freq,
+            save_dir=save_dir,
+            verbose=verbose,
+            metrics=self.metrics_name())
 
-        # cbks.on_begin('train')
+        cbks.on_begin('train')
         outputs = []
         for epoch in range(epochs):
-            # cbks.on_epoch_begin(epoch)
+            cbks.on_epoch_begin(epoch)
             for step, data in enumerate(train_dataloader):
                 logs, loss = self._train_step(data)
                 outputs.append(loss)
@@ -376,7 +375,6 @@ class Engine:
         loss = self._fetch_vars[self._mode]["loss"][0]
         fetch_var = self._fetch_vars[self._mode]["loss"] + self._fetch_vars[
             self._mode]["output"]
-        # print_program_with_dist_attr(dist_main_prog, self._dist_contexts[self.mode])
         if loss.name not in dist_main_prog.global_block().vars:
             res = self._executor.run(dist_main_prog)
             logs["loss"] = None

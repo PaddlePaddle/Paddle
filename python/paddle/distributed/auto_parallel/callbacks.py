@@ -39,3 +39,20 @@ class ModelCheckpoint(Callback):
     def on_train_end(self, logs=None):
         path = '{}/final'.format(self.save_dir)
         print('save checkpoint at {}'.format(os.path.abspath(path)))
+
+
+# class Record(Callback):
+
+#     def __init__(self):
+
+
+class EngineContext:
+    """
+    information about engine
+    """
+
+    def __init__(self, args):
+        if not isinstance(args, dict):
+            raise TypeError("")
+
+        self._args = args
