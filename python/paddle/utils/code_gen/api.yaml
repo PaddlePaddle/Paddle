@@ -602,9 +602,9 @@
 - api : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : ReduceInferMetaBase
-  kernel : 
+  kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
 
@@ -758,9 +758,9 @@
 - api : index_select
   args : (Tensor x, Tensor index,  int dim)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : IndexSelectInferMeta
-  kernel : 
+  kernel :
     func : index_select
     data_type : x
   backward : index_select_grad
@@ -1219,7 +1219,7 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
-  backward : pool2d_grad 
+  backward : pool2d_grad
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1317,9 +1317,9 @@
 - api : roll
   args : (Tensor x, IntArray shifts, int64_t[] axis)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : RollInferMeta
-  kernel : 
+  kernel :
     func : roll
   backward : roll_grad
 
@@ -1662,9 +1662,9 @@
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : TrilTriuInferMeta
-  kernel : 
+  kernel :
     func : tril_triu
   backward : tril_triu_grad
 
@@ -1687,6 +1687,18 @@
     func : unfold
   backward : unfold_grad
   # no_need_buffer : x
+
+- api : uniform_random
+  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype, min, max, seed]
+  kernel :
+    func : uniform_random
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype
+    backend : place
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)

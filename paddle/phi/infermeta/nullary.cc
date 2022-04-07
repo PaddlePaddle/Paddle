@@ -63,6 +63,18 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
   out->set_dtype(dtype);
 }
 
+void UniformRandomInferMeta(const IntArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(DataLayout::NCHW);
+}
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,

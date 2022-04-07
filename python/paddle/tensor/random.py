@@ -23,6 +23,7 @@ import paddle
 from paddle import _C_ops
 from paddle.static import Variable
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place
 
 __all__ = []
 
@@ -548,7 +549,14 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype,
+                                                 float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min',
                                      float(min), 'max',
