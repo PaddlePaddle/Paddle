@@ -223,26 +223,6 @@ class XPUTestLogicalNot(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
-    # class XPUTestLogicalNotBool(XPUTestLogicalNotBase):
-    #     def setUp(self):
-    #         self.place = paddle.XPUPlace(0)
-    #         self.init_case()
-    #         self.set_case()
-
-    #     def set_case(self):
-    #         self.op_type = 'logical_not'
-
-    #         x = np.random.choice([True, False], self.x_shape)
-    #         out = np.logical_not(x)
-
-    #         self.attrs = {'use_xpu': True}
-    #         self.inputs = {'X': x}
-    #         self.outputs = {'Out': out}
-
-    #     def init_case(self):
-    #         self.dtype = np.bool
-    #         self.x_shape = [2, 3, 4, 5]
-
 
 support_types = get_xpu_op_support_types('logical_not')
 for stype in support_types:

@@ -35,7 +35,6 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-// #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -45,11 +44,8 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"  // struct dim3
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
-
-// #include "paddle/phi/kernels/primitive/compute_primitives.h" //
-// 不应该在xpu中include
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -90,7 +86,7 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 
 #ifndef PADDLE_WITH_XPU_KP
 // get blockDim for reduceLastDim and reduceAny
-static inline int GetBlockDim(int block_dim) {  // 不应该在XPU时编译到
+static inline int GetBlockDim(int block_dim) {
   return block_dim >= kps::details::kReduceMaxThread
              ? kps::details::kReduceMaxThread
              : GetLastPow2(block_dim);
@@ -583,11 +579,10 @@ struct ReduceConfig {
       grid_dim->y = details::AlignUp(reduce_num, blocking_size);
     }
   }
-#endif  // SetBlockDimForReduceAny() #ifndef PADDLE_WITH_XPU_KP
+#endif
 
   void SetBlockDim() {
     // init
-    // int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
     dim3 block_dim;
     dim3 grid_dim(left_num, 1, 1);

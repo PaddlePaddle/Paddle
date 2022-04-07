@@ -12,55 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Please do not modify the following code
-// #if defined(__CUDA_ARCH__)
-// #undef __CUDA_ARCH__
-// #endif
-
-// #if defined(__CUDACC__)
-// #undef __CUDACC__
-// #endif
-
-// #if defined(__CUDA__)
-// #undef __CUDA__
-// #endif
-
-// #if defined(__NVCC__)
-// #undef __NVCC__
-// #endif
-/*
-#include <xpu/runtime.h>                // NOLINT
-#include "xpu/kernel/cluster_header.h"  // NOLINT
-#include "xpu/kernel/debug.h"           // NOLINT
-#include "xpu/kernel/math.h"            // NOLINT
-
-// #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
-
-#include <vector>
-// #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
-
-// #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-// #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-
-// #include "paddle/phi/kernels/funcs/broadcast_function.h"
-// #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"  // __umulhi CUDA
-#include "paddle/phi/kernels/gpu/reduce.h"             // cuda or hip or xpu
-*/
-
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
-// #include "paddle/phi/kernels/funcs/compare_functors.h"
-// #include "paddle/phi/kernels/funcs/broadcast_function.h"
-// #include "paddle/phi/kernels/funcs/reduce_function.h"  // ReduceKernel()
 #else
 #include <thrust/fill.h>
 #include <vector>
@@ -69,7 +26,6 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
-// #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
 namespace phi {
