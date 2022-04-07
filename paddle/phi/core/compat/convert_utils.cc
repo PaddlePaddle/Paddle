@@ -128,10 +128,7 @@ dnnl::memory::data_type TransToMKLDNNDataType(
     case DataType::INT32:
       return dnnl::memory::data_type::s32;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported data type `%s` when casting it into "
-          "mkldnn data type.",
-          dtype));
+      return dnnl::memory::data_type::undef;
   }
 }
 #endif
