@@ -718,6 +718,18 @@
     data_type : dtype
     backend : place
 
+- api : full_batch_size_like
+  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
+  output: Tensor
+  infer_meta :
+    func : FullBatchSizeLikeInferMeta
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+  kernel :
+    func : full_batch_size_like
+    param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+    data_type : dtype
+    backend : place
+
 - api : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
@@ -1544,6 +1556,16 @@
     func : round
   backward : round_grad
 
+- api : rsqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : rsqrt
+  inplace : (x -> out)
+  backward : rsqrt_grad
+
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
   output : Tensor
@@ -1904,6 +1926,19 @@
     func : trunc
   backward : trunc_grad
 
+# python API: paddle.nn.initializer.TruncatedNormal
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    backend : place
+    data_type : dtype
+
 # unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
@@ -1913,6 +1948,16 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+# The `axis` argument of Python API paddle.unique is not vector
+- api : unique
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueInferMeta
+  kernel :
+    func : unique
+    data_type : x
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)

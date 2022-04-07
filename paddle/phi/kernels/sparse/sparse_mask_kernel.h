@@ -14,20 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace phi {
-class StringTensorUtils {
- public:
-  static StringTensorMeta* GetMutableMeta(StringTensor* tensor) {
-    return &(tensor->meta_);
-  }
+namespace sparse {
 
-  static const std::shared_ptr<phi::Allocation>& GetHolder(
-      const StringTensor& tensor) {
-    return tensor.holder_;
-  }
-};
+template <typename T, typename Context>
+void SparseMaskKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out);
 
+}  // namespace sparse
 }  // namespace phi
