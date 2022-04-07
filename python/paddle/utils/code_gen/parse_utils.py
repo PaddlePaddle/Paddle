@@ -192,6 +192,7 @@ def parse_invoke(api_name: str, invoke_config: str) -> Dict[str, Any]:
 
 
 def extract_type_and_name(records: List[Dict]) -> List[Dict]:
+    """extract type and name from forward call, it is simpler than forward api."""
     extracted = [{
         "name": item["name"],
         "typename": item["typename"]
@@ -227,8 +228,9 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
 
     input_names = [item["name"] for item in inputs]
     attr_names = [item["name"] for item in attrs]
+    output_names = [item["name"] for item in outputs]
 
-    # add optional tag for every inputs
+    # add optional tag for every input
     for input in inputs:
         input["optional"] = False
     if "optional" in api_entry:
@@ -238,6 +240,30 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
         for input in inputs:
             if input["name"] in optional_args:
                 input["optional"] = True
+
+    # add intermediate tag for every output
+    for output in outputs:
+        output["intermediate"] = False
+    if "intermediate" in api_entry:
+        intermediate_outs = parse_plain_list(api_entry["intermediate"])
+        for name in intermediate_outs:
+            assert name in output_names, f"{api_name} has an intermediate output: '{name}' which is not an output."
+        for output in outputs:
+            if output["name"] in intermediate_outs:
+                output["intermediate"] = True
+
+    # add no_need_buffer for every input
+    for input in inputs:
+        input["no_need_buffer"] = False
+    if "no_need_buffer" in api_entry:
+        no_buffer_args = parse_plain_list(api_entry["no_need_buffer"])
+        for name in no_buffer_args:
+            assert name in input_names, f"{api_name} has an no buffer input: '{name}' which is not an input."
+        for input in inputs:
+            if input["name"] in no_buffer_args:
+                input["no_need_buffer"] = True
+
+    # TODO(chenfeiyu): data_transform
 
     api = {
         "name": api_name,
