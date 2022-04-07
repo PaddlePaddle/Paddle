@@ -202,9 +202,13 @@ void print_data(const std::vector<T>& vec, std::stringstream& sstr,
     max_val = std::max(max_val, static_cast<double>(vec1[i]));
     min_val = std::min(min_val, static_cast<double>(vec1[i]));
   }
-  sstr << " max: " << max_val << " min: " << min_val << " data100: ";
+  char output[512];
+  snprintf(output, sizeof(output), " max: %.16f min: %.16f data100: ", max_val,
+           min_val);
+  sstr << output;
   for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
-    sstr << static_cast<double>(vec1[i]) << " ";
+    snprintf(output, sizeof(output), "%.16f ", static_cast<double>(vec1[i]));
+    sstr << output;
   }
 }
 
@@ -280,7 +284,7 @@ void show_var(const std::string& var_name, VarBaseType* var_base) {
         }
       }
     }
-    bool show_whole = true;
+    bool show_whole = false;
     print_data<int64_t>(vec_int64, sstr, show_whole);
     print_data<int>(vec_int, sstr, show_whole);
     print_data<float>(vec_float, sstr, show_whole);
