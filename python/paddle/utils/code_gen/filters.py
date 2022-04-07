@@ -74,7 +74,7 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'framework::GradVarName("{}")'.format(
+        return 'GradVarName("{}")'.format(
             to_pascal_case(s.removesuffix("_grad")))
     else:
         return '"{}"'.format(to_pascal_case(s))

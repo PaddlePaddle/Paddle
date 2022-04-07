@@ -13,6 +13,9 @@
 
 namespace paddle {
 namespace operators {
+
+using paddle::framework::GradVarName;
+
 {% for api in apis %}
   {% if api is base_api %}
 
