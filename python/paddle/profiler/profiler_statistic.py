@@ -278,7 +278,6 @@ class DistributedSummary:
             for hostnode in hostnodes[1:]:  #skip root node
                 # case 1: TracerEventType is Communication
                 if hostnode.type == TracerEventType.Communication:
-                    print(hostnode.name)
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns))
                     device_nodes = get_device_nodes(hostnode)
@@ -292,7 +291,6 @@ class DistributedSummary:
                         name in hostnode.name.lower()
                         for name in _CommunicationOpName
                 ]):
-                    print(hostnode.name)
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns))
                     device_nodes = get_device_nodes(hostnode)
@@ -307,7 +305,6 @@ class DistributedSummary:
                         for devicenode in runtimenode.device_node:
                             if devicenode.type == TracerEventType.Kernel:
                                 if 'nccl' in devicenode.name.lower():
-                                    print(devicenode.name)
                                     self.gpu_communication_range.append((
                                         devicenode.start_ns, devicenode.end_ns))
                                 else:
