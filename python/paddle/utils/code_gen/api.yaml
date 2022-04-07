@@ -1862,6 +1862,12 @@
     backend : place
     data_type : dtype
 
+- api : unbind
+  args : (Tensor input, int axis)
+  output : Tensor[]
+  invoke : unbind_impl(input, axis)
+  backward : unbind_grad
+
 # unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
