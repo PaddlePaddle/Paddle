@@ -46,7 +46,6 @@ class TestSparseConv(unittest.TestCase):
             out.backward(out)
             #At present, only backward can be verified to work normally
             #TODO(zhangkaihuo): compare the result with dense conv
-            print(sparse_input.grad.non_zero_elements())
             assert np.array_equal(correct_out_values,
                                   out.non_zero_elements().numpy())
 
@@ -60,12 +59,44 @@ class TestSparseConv(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
             correct_out_values = [[4], [10]]
-            sparse_input = core.eager.sparse_coo_tensor(indices, values,
-                                                        dense_shape, False)
+            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
+                                                           dense_shape, False)
 
             sparse_conv3d = paddle.sparse.Conv3D(
                 1, 1, (1, 3, 3), data_format='NDHWC')
             sparse_out = sparse_conv3d(sparse_input)
+            #test errors
+            with self.assertRaises(ValueError):
+                #Currently, only support data_format='NDHWC'
+                conv3d = paddle.sparse.SubmConv3D(
+                    1, 1, (1, 3, 3), data_format='NCDHW')
+
+    def test_SubmConv3D(self):
+        with _test_eager_guard():
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 1, 3, 4, 1]
+            correct_out_values = [[4], [10]]
+            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
+                                                           dense_shape, False)
+
+            subm_conv3d = paddle.sparse.SubmConv3D(
+                1, 1, (1, 3, 3), data_format='NDHWC')
+            # test extra_repr
+            print(subm_conv3d.extra_repr())
+
+            sparse_out = subm_conv3d(sparse_input)
+            # the output shape of subm_conv is same as input shape
+            assert np.array_equal(indices,
+                                  sparse_out.non_zero_indices().numpy())
+
+            #test errors
+            with self.assertRaises(ValueError):
+                #Currently, only support data_format='NDHWC'
+                conv3d = paddle.sparse.SubmConv3D(
+                    1, 1, (1, 3, 3), data_format='NCDHW')
 
 
 #TODO: Add more test case

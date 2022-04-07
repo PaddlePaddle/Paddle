@@ -46,8 +46,17 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
   }
+
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
+
   phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
@@ -65,11 +74,6 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
-  std::vector<int> subm_paddings(paddings), subm_strides(strides);
-  if (subm) {
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
-        kernel.dims(), &subm_paddings, &subm_strides);
-  }
   int n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
                                                x,
                                                kernel_sizes,

@@ -15,4 +15,4 @@
 from .activation import relu  # noqa: F401
 from .conv import conv3d  # noqa: F401
 
-__all__ = ['relu', 'conv3d']
+__all__ = ['relu', 'conv3d', 'subm_conv3d']

@@ -17,21 +17,23 @@ __all__ = []
 from paddle import _C_ops, in_dynamic_mode
 from ...fluid.layers.utils import convert_to_list
 from paddle.nn.functional.conv import _update_padding_nd
-from paddle.fluid.layers.nn import transpose
 
 
-def conv3d(x,
-           weight,
-           bias=None,
-           stride=1,
-           padding=0,
-           dilation=1,
-           groups=1,
-           data_format="NCDHW",
-           name=None):
+def _conv3d(x,
+            weight,
+            bias=None,
+            stride=1,
+            padding=0,
+            dilation=1,
+            groups=1,
+            subm=False,
+            data_format="NCDHW",
+            name=None):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
     assert bias == None, "Currently, sparse_conv3d does not support bias"
     assert groups == 1, "Currently, only support groups=1"
+
+    dims = 3
 
     # Currently, only support 'NDHWC'
     if data_format not in ["NDHWC"]:
@@ -54,10 +56,36 @@ def conv3d(x,
             "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(x.shape, num_channels))
 
-    padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
-    stride = convert_to_list(stride, 3, 'stride')
-    dilation = convert_to_list(dilation, 3, 'dilation')
+    padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
+    stride = convert_to_list(stride, dims, 'stride')
+    dilation = convert_to_list(dilation, dims, 'dilation')
     op_type = "conv3d"
 
     return _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
-                                            stride, groups, False)
+                                            stride, groups, subm)
+
+
+def conv3d(x,
+           weight,
+           bias=None,
+           stride=1,
+           padding=0,
+           dilation=1,
+           groups=1,
+           data_format="NCDHW",
+           name=None):
+    return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
+                   data_format, name)
+
+
+def subm_conv3d(x,
+                weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                dilation=1,
+                groups=1,
+                data_format="NCDHW",
+                name=None):
+    return _conv3d(x, weight, bias, stride, padding, dilation, groups, True,
+                   data_format, name)

@@ -14,5 +14,6 @@
 
 from .activation import ReLU
 from .conv import Conv3D
+from .conv import SubmConv3D
 
 __all__ = []
