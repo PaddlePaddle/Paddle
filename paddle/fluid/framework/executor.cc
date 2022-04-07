@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -72,7 +73,7 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_, this);
+  platform::ClearMKLDNNCache(place_, this);
 #endif
 }
 
@@ -171,12 +172,15 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc, bool keep_kid_scopes) {
+  platform::RecordEvent record_run("Executor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ctx->ops_, place_);
 #endif
-  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
 }
@@ -299,6 +303,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
+  platform::RecordEvent record_run("Executor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_MKLDNN
@@ -426,6 +432,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          int64_t end_op_index,
                                          bool create_local_scope,
                                          bool create_vars, bool keep_kids) {
+  platform::RecordEvent record_run("Executor::RunPartialPreparedContext",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope shouldn't be null"));
@@ -443,45 +451,71 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
       } else {
-        gc.reset(new DefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+        gc.reset(new DefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
     } else if (platform::is_cpu_place(place_)) {
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+      gc.reset(new CPUGarbageCollector(place_, max_memory_size));
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      gc.reset(new XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place_), max_memory_size));
+      gc.reset(new XPUGarbageCollector(place_, max_memory_size));
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
+#endif
+    } else if (platform::is_ipu_place(place_)) {
+#ifdef PADDLE_WITH_IPU
+      gc.reset(new IPUGarbageCollector(place_, max_memory_size));
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       if (IsFastEagerDeletionModeEnabled()) {
         VLOG(4) << "Use unsafe fast gc for NPU.";
-        gc.reset(new NPUUnsafeFastGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUUnsafeFastGarbageCollector(place_, max_memory_size));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Please set FLAGS_fast_eager_deletion_mode=true to use "
             "GarbageCollector on NPU."));
         // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
         VLOG(4) << "Use default stream gc for NPU.";
-        gc.reset(new NPUDefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+        gc.reset(new NPUDefaultStreamGarbageCollector(place_, max_memory_size));
       }
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
+#endif
+    } else if (platform::is_mlu_place(place_)) {
+#ifdef PADDLE_WITH_MLU
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new MLUUnsafeFastGarbageCollector(place_, max_memory_size));
+      } else {
+        gc.reset(new MLUDefaultStreamGarbageCollector(place_, max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
+#endif
+    } else if (platform::is_custom_place(place_)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for " << place_ << ".";
+        gc.reset(new CustomDeviceUnsafeFastGarbageCollector(place_,
+                                                            max_memory_size));
+      } else {
+        VLOG(4) << "Use default stream gc for " << place_ << ".";
+        gc.reset(
+            new CustomDefaultStreamGarbageCollector(place_, max_memory_size));
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));
 #endif
     }
   }
@@ -490,6 +524,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
+      platform::RecordEvent record("CheckGC",
+                                   platform::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }

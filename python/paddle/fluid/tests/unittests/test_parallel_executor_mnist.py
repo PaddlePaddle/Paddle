@@ -65,16 +65,17 @@ def fc_with_batchnorm(use_feed):
     return loss
 
 
+def init_data():
+    np.random.seed(5)
+    img = np.random.random(size=[32, 784]).astype(np.float32)
+    label = np.ones(shape=[32, 1], dtype='int64')
+    return img, label
+
+
 class TestMNIST(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
-
-    def _init_data(self):
-        np.random.seed(5)
-        img = np.random.random(size=[32, 784]).astype(np.float32)
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
 
     def _compare_reduce_and_allreduce(self,
                                       model,
@@ -87,7 +88,7 @@ class TestMNIST(TestParallelExecutorBase):
         if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
 
-        img, label = self._init_data()
+        img, label = init_data()
 
         all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
             model,
@@ -116,7 +117,7 @@ class TestMNIST(TestParallelExecutorBase):
         if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
 
-        img, label = self._init_data()
+        img, label = init_data()
 
         self.check_network_convergence(
             simple_fc_net,
@@ -144,7 +145,7 @@ class TestMNIST(TestParallelExecutorBase):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
-        img, label = self._init_data()
+        img, label = init_data()
 
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
@@ -175,7 +176,7 @@ class TestMNIST(TestParallelExecutorBase):
             return
         if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
-        img, label = self._init_data()
+        img, label = init_data()
 
         self.check_network_convergence(
             fc_with_batchnorm,
@@ -197,6 +198,84 @@ class TestMNIST(TestParallelExecutorBase):
                                            1e-5, 1e-2)
         self._compare_reduce_and_allreduce(fc_with_batchnorm, DeviceType.CPU,
                                            1e-5, 1e-2)
+
+
+class TestMNISTNoReduce(unittest.TestCase):
+    def run_program(self, device_type):
+        if device_type == DeviceType.CUDA:
+            if not paddle.is_compiled_with_cuda():
+                return
+            places = paddle.static.cuda_places()
+        else:
+            self.assertEqual(device_type, DeviceType.CPU)
+            places = paddle.static.cpu_places(4)
+
+        paddle.seed(10)
+        with paddle.fluid.unique_name.guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                loss = simple_fc_net(use_feed=True)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.0)
+                optimizer.minimize(loss)
+
+        grads = [p.name + '@GRAD' for p in main.all_parameters()]
+        no_reduce = paddle.static.BuildStrategy.ReduceStrategy._NoReduce
+
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.reduce_strategy = no_reduce
+        main_multi_place = paddle.static.CompiledProgram(
+            main).with_data_parallel(
+                loss_name=loss.name,
+                build_strategy=build_strategy,
+                places=places)
+
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.reduce_strategy = no_reduce
+        main_single_place = paddle.static.CompiledProgram(main.clone(
+        )).with_data_parallel(
+            loss_name=loss.name,
+            build_strategy=build_strategy,
+            places=places[0])
+
+        image, label = init_data()
+        feed = {'image': image, 'label': label}
+        exe = paddle.static.Executor(places[0])
+        scope = paddle.static.Scope()
+        with paddle.static.scope_guard(scope):
+            exe.run(startup)
+            grads_multi_place = exe.run(main_multi_place,
+                                        feed=feed,
+                                        fetch_list=[grads])
+
+            feeds = self.split_feed(feed, len(places))
+            grads_single_place = [list() for _ in range(len(grads))]
+            for f in feeds:
+                gs = exe.run(main_single_place, feed=f, fetch_list=[grads])
+                for i, g in enumerate(gs):
+                    grads_single_place[i].append(g)
+
+            for i in range(len(grads)):
+                grads_single_place[i] = np.concatenate(
+                    grads_single_place[i], axis=0) / len(places)
+
+        self.assertEqual(len(grads_multi_place), len(grads_single_place))
+        for g1, g2 in zip(grads_multi_place, grads_single_place):
+            self.assertTrue(
+                np.allclose(g1, g2), 'g1 = {}\ng2 = {}\n'.format(g1, g2))
+
+    def split_feed(self, feed, n):
+        image = feed['image']
+        label = feed['label']
+        self.assertEqual(image.shape[0] % n, 0)
+        self.assertEqual(label.shape[0] % n, 0)
+        images = np.split(image, n)
+        labels = np.split(label, n)
+        return [{'image': images[i], 'label': labels[i]} for i in range(n)]
+
+    def test_main(self):
+        self.run_program(DeviceType.CUDA)
+        self.run_program(DeviceType.CPU)
 
 
 if __name__ == '__main__':

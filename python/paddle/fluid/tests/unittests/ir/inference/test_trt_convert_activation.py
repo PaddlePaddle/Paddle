@@ -126,18 +126,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dims == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When input dims is 2, pulgin will product a 4 dims output.")
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

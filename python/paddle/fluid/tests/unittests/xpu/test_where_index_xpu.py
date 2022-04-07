@@ -16,71 +16,77 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-import paddle
 import sys
 sys.path.append("..")
-from op_test import OpTest
-from op_test_xpu import XPUOpTest
-from paddle.fluid.op import Operator
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class TestWhereIndexOp(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.op_type = "where_index"
-        self.place = paddle.XPUPlace(0)
-        self.init_config()
+class XPUTestWhereIndexOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'where_index'
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+    class TestWhereIndexOp(XPUOpTest):
+        def setUp(self):
+            self.init_config()
+            self.init_data()
 
-    def test_check_grad(self):
-        pass
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def init_config(self):
-        self.inputs = {'Condition': np.array([True, False, True]), }
-        self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
+        def init_data(self):
+            self.inputs = {
+                'Condition': np.array([True, False, True]).astype(self.dtype),
+            }
+            self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+        def init_config(self):
+            self.op_type = "where_index"
+            self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
+            self.__class__.no_need_check_grad = True
+
+    class TestAllFalse(TestWhereIndexOp):
+        def init_data(self):
+            self.inputs = {
+                'Condition': np.array([False, False, False]).astype(self.dtype),
+            }
+            self.outputs = {'Out': np.array([], dtype='int64')}
+
+    class TestRank2(TestWhereIndexOp):
+        def init_data(self):
+            self.inputs = {
+                'Condition':
+                np.array([[True, False], [False, True]]).astype(self.dtype),
+            }
+            self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
+
+    class TestRank3(TestWhereIndexOp):
+        def init_data(self):
+            self.inputs = {
+                'Condition':
+                np.array([[[True, False], [False, True]],
+                          [[False, True], [True, False]],
+                          [[False, False], [False, True]]]).astype(self.dtype),
+            }
+
+            self.outputs = {
+                'Out': np.array(
+                    [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                    dtype='int64')
+            }
 
 
-class TestNotBool(TestWhereIndexOp):
-    def init_config(self):
-        self.inputs = {'Condition': np.array([1, 0, 8]), }
-
-        self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
-
-
-class TestAllFalse(TestWhereIndexOp):
-    def init_config(self):
-        self.inputs = {'Condition': np.array([False, False, False]), }
-        self.outputs = {'Out': np.array([], dtype='int64')}
-
-
-class TestRank2(TestWhereIndexOp):
-    def init_config(self):
-        self.inputs = {'Condition': np.array([[True, False], [False, True]]), }
-        self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
-
-
-class TestRank3(TestWhereIndexOp):
-    def init_config(self):
-        self.inputs = {
-            'Condition': np.array([[[True, False], [False, True]],
-                                   [[False, True], [True, False]],
-                                   [[False, False], [False, True]]]),
-        }
-
-        self.outputs = {
-            'Out': np.array(
-                [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
-                dtype='int64')
-        }
+support_types = get_xpu_op_support_types('where_index')
+for stype in support_types:
+    create_test_class(globals(), XPUTestWhereIndexOp, stype)
 
 
 class TestWhereOpError(unittest.TestCase):

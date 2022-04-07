@@ -14,9 +14,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
 #include <gflags/gflags.h>
 #include <iostream>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,8 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_xpu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   return tensor_data[0];

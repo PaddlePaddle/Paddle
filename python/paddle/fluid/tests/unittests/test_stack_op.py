@@ -16,7 +16,8 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
+import paddle.fluid.core as core
 
 
 class TestStackOpBase(OpTest):
@@ -39,6 +40,7 @@ class TestStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -54,20 +56,20 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 16
+        self.num_inputs = 8
 
 
 class TestStackOp2(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 20
+        self.num_inputs = 10
 
 
 class TestStackOp3(TestStackOpBase):
@@ -88,6 +90,50 @@ class TestStackOp5(TestStackOpBase):
 class TestStackOp6(TestStackOpBase):
     def initParameters(self):
         self.axis = 3
+
+
+class TestStackBF16Op(OpTest):
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (5, 6, 7)
+        self.axis = 0
+        self.dtype = np.uint16
+
+    def initParameters(self):
+        pass
+
+    def get_x_names(self):
+        x_names = []
+        for i in range(self.num_inputs):
+            x_names.append('x{}'.format(i))
+        return x_names
+
+    def setUp(self):
+        self.initDefaultParameters()
+        self.initParameters()
+        self.op_type = 'stack'
+        self.python_api = paddle.stack
+        self.x = []
+        for i in range(self.num_inputs):
+            self.x.append(
+                np.random.random(size=self.input_dim).astype(np.float32))
+
+        out = np.stack(self.x, axis=self.axis)
+
+        tmp = []
+        x_names = self.get_x_names()
+        for i in range(self.num_inputs):
+            tmp.append((x_names[i], convert_float_to_uint16(self.x[i])))
+
+        self.inputs = {'X': tmp}
+        self.outputs = {'Y': convert_float_to_uint16(out)}
+        self.attrs = {'axis': self.axis}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -106,9 +107,9 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 
         // Get data from fin to tensor
-        DeserializeFromStream(*buffer, tensor, dev_ctx);
+        paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-        auto in_dtype = tensor->type();
+        auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
         auto out_dtype =
             load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/randperm_op.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -35,7 +34,7 @@ class RandpermOp : public framework::OperatorWithKernel {
                   "But received %d.",
                   n));
 
-    ctx->SetOutputDim("Out", framework::make_ddim({n}));
+    ctx->SetOutputDim("Out", phi::make_ddim({n}));
   }
 
  protected:
@@ -89,10 +88,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::RandpermOpVarTypeInference);
-
-template <typename T>
-using kernel =
-    paddle::operators::RandpermKernel<paddle::platform::CPUDeviceContext, T>;
-
-REGISTER_OP_CPU_KERNEL(randperm, kernel<int64_t>, kernel<int>, kernel<float>,
-                       kernel<double>);

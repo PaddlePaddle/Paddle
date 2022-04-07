@@ -21,7 +21,7 @@ from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
 class PassContext:
     def __init__(self):
         self._applied_passes = []
-        self._attrs = []
+        self._attrs = {}
 
     def set_attr(self, key, value):
         self._attrs[key] = value
@@ -40,9 +40,22 @@ class PassContext:
         del self._applied_passes[-1]
 
 
+class PassType:
+    UNKNOWN = 0
+    COMM_OPT = 1
+    CALC_OPT = 2
+    PARALLEL_OPT = 3
+    FUSION_OPT = 4
+
+
 class PassBase(ABC):
     _REGISTERED_PASSES = {}
     _COMMON_RULES = []
+
+    _BEFORE_WHITE_LISTS_DICT = {}
+    _AFTER_WHITE_LISTS_DICT = {}
+
+    name = None
 
     @staticmethod
     def _register(pass_name, pass_class):
@@ -66,6 +79,9 @@ class PassBase(ABC):
     @abstractmethod
     def _check_conflict(self, other_pass):
         pass
+
+    def _type(self):
+        return PassType.UNKNOWN
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
@@ -142,40 +158,69 @@ class CPPPassWrapper(PassBase):
                         self._attrs, self.cpp_attr_types)
 
 
-# Like AutoParallel/HybridParallel, etc. 
-class ParallelOptPass(PassBase):
-    def __init__(self):
-        super(ParallelOptPass, self).__init__()
-
-
-# Like AMP, Recompute, etc.
-class CalcOptPass(PassBase):
-    def __init__(self):
-        super(CalcOptPass, self).__init__()
-
-
-# Like FuseAllReduce, FuseGradientMerge, etc. 
-class CommOptPass(PassBase):
-    def __init__(self):
-        super(CommOptPass, self).__init__()
-
-
-def _make_pass_order_rule(pass_class_before, pass_class_after):
-    def impl(pass_obj_before, pass_obj_after):
-        if isinstance(pass_obj_before, pass_class_after) \
-            and isinstance(pass_obj_after, pass_class_before):
-            return False
+def _fusion_opt_last_rule(pass_before, pass_after):
+    if pass_before._type() == PassType.FUSION_OPT and pass_after._type(
+    ) != PassType.FUSION_OPT:
+        return False
+    else:
         return True
 
-    return impl
 
+def _make_rule_from_white_lists_dict(before_white_lists_dict,
+                                     after_white_lists_dict):
+    def collect_pass_names(white_lists_dict, result):
+        for k, v in white_lists_dict.items():
+            result.add(k)
+            assert isinstance(v, (list, tuple))
+            for pass_name in v:
+                assert isinstance(pass_name, (bytes, str))
+                result.add(pass_name)
+
+    all_pass_names = set()
+    collect_pass_names(before_white_lists_dict, all_pass_names)
+    collect_pass_names(after_white_lists_dict, all_pass_names)
+
+    compatible_pass_dict = {}
+    for pass_name in all_pass_names:
+        compatible_pass_dict[pass_name] = set()
+
+    for k, v in before_white_lists_dict.items():
+        for pass_name in v:
+            compatible_pass_dict[k].add(pass_name)
+
+    for k, v in after_white_lists_dict.items():
+        for pass_name in v:
+            compatible_pass_dict[pass_name].add(k)
+
+    def rule(pass_before, pass_after):
+        all_passes_after = compatible_pass_dict.get(pass_before.name)
+        if all_passes_after is None or pass_after.name not in compatible_pass_dict:
+            return True
+        else:
+            return pass_after.name in all_passes_after
+
+    return rule
+
+
+# The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be 
+# applied before any of pass [v1, v2, ..., vn] is applied 
+PassBase._BEFORE_WHITE_LISTS_DICT = {
+    "fuse_gradient_merge": ["fuse_all_reduce"],
+    # Add more white lists here
+}
+
+# The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
+# applied after any of pass [v1, v2, ..., vn] is applied
+PassBase._AFTER_WHITE_LISTS_DICT = {
+    # Add more white lists here 
+}
 
 PassBase._COMMON_RULES = [
-    _make_pass_order_rule(CalcOptPass, CommOptPass),
-    _make_pass_order_rule(ParallelOptPass, CPPPassWrapper),
-    _make_pass_order_rule(CalcOptPass, CPPPassWrapper),
-    _make_pass_order_rule(CommOptPass, CPPPassWrapper),
+    _fusion_opt_last_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
+    _make_rule_from_white_lists_dict(PassBase._BEFORE_WHITE_LISTS_DICT,
+                                     PassBase._AFTER_WHITE_LISTS_DICT),
+    # Add more common rules here
 ]
 
 
@@ -270,4 +315,8 @@ class PassManager:
 
     @property
     def names(self):
-        return [p.name for p in self._passes]
+        return [p.name for p in self.passes]
+
+    @property
+    def passes(self):
+        return tuple(self._passes)

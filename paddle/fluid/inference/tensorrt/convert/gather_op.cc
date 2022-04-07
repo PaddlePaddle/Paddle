@@ -56,6 +56,8 @@ class GatherOpConverter : public OpConverter {
     index_shape.d[0] = -1;
 
     reshape_layer->setReshapeDimensions(index_shape);
+    reshape_layer->setName(
+        ("Gather: Shuffle: (Output: " + output_name + ")").c_str());
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_tensor,
                                       *reshape_layer->getOutput(0), axis);

@@ -17,7 +17,7 @@ from .asp_optimizer import ASPOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
-from .parameter_server_optimizer import ParameterServerOptimizer
+from .ps_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
@@ -28,6 +28,7 @@ from .lamb_optimizer import LambOptimizer
 from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .sharding_optimizer import ShardingOptimizer
 from .dygraph_optimizer import HybridParallelOptimizer
+from .dygraph_optimizer import HeterParallelOptimizer
 from .dygraph_optimizer import HybridParallelGradScaler
 from .tensor_parallel_optimizer import TensorParallelOptimizer
 from .raw_program_optimizer import RawProgramOptimizer

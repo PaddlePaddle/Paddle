@@ -61,6 +61,10 @@ class ProgramDescTracer {
                 const NameVarBaseMap &outputs,
                 const framework::AttributeMap &attrs);
 
+  void InsertOp(const std::string &type, const NameTensorMap &inputs,
+                const NameTensorMap &outputs,
+                const framework::AttributeMap &attrs);
+
   TracedProgramTuple CreateProgramDesc(
       const std::vector<std::shared_ptr<VarBase>> &feed_vars,
       const std::string &feed_prefix,

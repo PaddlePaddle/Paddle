@@ -154,17 +154,6 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
                            "Trt does not support 1-dimensional input.")
 
-        def teller2(program_config, predictor_config):
-            if (len(self.dynamic_shape.min_input_shape) == 0):
-                if self.dim1 != 0 and self.dim2 == 0 and self.dim3 == 0:
-                    return True
-            return False
-
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: the output of GPU and tensorrt has diff when the input dimension is 2 in static shape mode."
-        )
-
     def test(self):
         self.add_skip_trt_case()
         self.run_test()

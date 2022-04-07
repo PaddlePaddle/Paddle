@@ -18,9 +18,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag hipfft_dso_flag;
-void *hipfft_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 HIPFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);

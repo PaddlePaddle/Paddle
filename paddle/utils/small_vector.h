@@ -18,8 +18,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PADDLE_UTILS_SMALL_VECTOR_H_
-#define PADDLE_UTILS_SMALL_VECTOR_H_
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -31,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -1460,7 +1460,7 @@ static_assert(sizeof(SmallVectorSizeType<char>) == sizeof(uint32_t),
               "Expected SmallVectorBase<uint32_t> variant to be in use.");
 #endif
 
-}  // end namespace paddle
+}  // namespace paddle
 
 namespace std {
 
@@ -1478,6 +1478,4 @@ inline void swap(paddle::SmallVector<T, N> &LHS,
   LHS.swap(RHS);
 }
 
-}  // end namespace std
-
-#endif  // PADDLE_UTILS_SMALL_VECTOR_H_
+}  // namespace std

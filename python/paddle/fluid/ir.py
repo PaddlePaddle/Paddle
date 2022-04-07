@@ -201,6 +201,12 @@ class RegisterPassHelper(object):
         return vars, program.current_block().ops
 
     def _convert_vars_to_pass_desc(self, patterns, replaces, desc):
+        def _add_element_conditions(conditions, elements):
+            for element in elements:
+                if element._condition:
+                    conditions.append(element._condition)
+                _add_element_conditions(conditions, element._elements)
+
         for (pattern, replace) in zip(patterns, replaces):
             # Convert maps of inputs and outputs.
             var_map = desc.var_maps.add()
@@ -218,10 +224,7 @@ class RegisterPassHelper(object):
             # Convert attr conditions.
             if PassDesc.VarHelper == pattern.__class__:
                 for attr in pattern._attrs.values():
-                    if attr._condition is not None:
-                        conditions.append(attr._condition)
-                    conditions.extend(
-                        [e._condition for e in attr._elements if e._condition])
+                    _add_element_conditions(conditions, [attr])
 
     def _convert_ops_to_pass_desc(self, patterns, replaces, desc):
         for replace in replaces:
@@ -324,6 +327,10 @@ class PassDesc(object):
             return self._clone_with_operation(
                 pass_desc_pb2.PassDesc.OperationType.kAdd, value)
 
+        def Mod(self, value):
+            return self._clone_with_operation(
+                pass_desc_pb2.PassDesc.OperationType.kMod, value)
+
         def Size(self):
             return self._clone_with_operation(
                 pass_desc_pb2.PassDesc.OperationType.kSize)
@@ -336,13 +343,20 @@ class PassDesc(object):
                 value._to_pass_desc_attr(condition.condition_attr)
             else:
                 self._to_op_desc_attr(value, condition.condition_value)
+            if self._operation:
+                condition.operation.CopyFrom(self._operation)
             self._condition = condition
 
         def EQ(self, value):
             self._set_with_condition(pass_desc_pb2.PassDesc.ConditionType.kEQ,
                                      value)
 
-        def MappedPattern(self, var=None, op=None, index=0, name=None):
+        def MappedPattern(self,
+                          var=None,
+                          op=None,
+                          index=0,
+                          name=None,
+                          element_index=None):
             if all([var, op]):
                 raise ValueError("Only mapped one of which var or op.")
 
@@ -356,7 +370,8 @@ class PassDesc(object):
                     raise ValueError(
                         "Index '{}' of operator '{}' is incorrect.".format(
                             index, op))
-                return PassDesc.AttrHelper(ops[index], name)
+                return PassDesc.AttrHelper(
+                    ops[index], name, element_index=element_index)
 
             self._mapped = mapped_op if var is None else mapped_var
 
@@ -459,6 +474,13 @@ class PassDesc(object):
 
         def Outputs(self):
             return self._outputs
+
+        def SetOutputs(self, **kwargs):
+            for param, arg in kwargs.items():
+                if arg is None:
+                    self._desc.remove_output(param)
+                else:
+                    self._desc.set_output(param, [arg.name])
 
     OP = OpHelper()
 

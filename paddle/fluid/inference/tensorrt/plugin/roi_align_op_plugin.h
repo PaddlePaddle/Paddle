@@ -31,7 +31,7 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
   explicit RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                                  const int pooled_height,
                                  const int pooled_width, float spatial_scale,
-                                 int sampling_ratio);
+                                 int sampling_ratio, bool aligned);
   RoiAlignPluginDynamic(void const* data, size_t length);
   ~RoiAlignPluginDynamic() = default;
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
@@ -66,6 +66,7 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
   void destroy() TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
 
  private:
   template <typename T, typename OutT>
@@ -80,6 +81,7 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
   float spatial_scale_;
   int sampling_ratio_;
   int smem_per_block_;
+  bool aligned_;
   std::string namespace_;
 };
 

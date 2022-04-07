@@ -130,6 +130,32 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
+
+    // Only support 2D-Tensor as weight for FC
+    std::vector<int64_t> w_shape = w->Var()->GetShape();
+    size_t w_rank = w_shape.size();
+    if (w_rank != 2) return;
+
+    // axis of elementwise_add should be -1 or x_num_col_dims
+    auto x_num_col_dims =
+        BOOST_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
+    auto axis = BOOST_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
+    if (axis != -1 && axis != x_num_col_dims) return;
+
+    // Shape of bias should be [1, out_size] or [out_size]
+    std::vector<int64_t> b_shape = bias->Var()->GetShape();
+    if (b_shape.size() == 1) {
+      if (b_shape[0] != w_shape[1]) {
+        return;
+      }
+    } else if (b_shape.size() == 2) {
+      if (b_shape[0] != 1 || b_shape[1] != w_shape[1]) {
+        return;
+      }
+    } else {
+      return;
+    }
+
     Node* relu = nullptr;
     Node* relu_out = nullptr;
     if (with_relu) {
@@ -200,23 +226,34 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     // For anakin subgraph int8
     // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
     // fake_dequant" can be detected by the quant_dequant_fuse_pass. This pass
-    // will add "input_scale", "weight_scale" which are extracted from
+    // will add "input_scale" which are extracted from
     // fake_quant op and fake_dequant op to mul op, and then delete the
     // fake_quant op and fake_dequant op in the graph. If the mul op has the
     // scale info, we should add those to the fused fc.
     auto* mul_op_desc = mul->Op();
+    auto* elementwise_add_op_desc = elementwise_add->Op();
+
     if (mul_op_desc->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));
-      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("X_scale"));
-      desc.SetAttr("weight_scale", mul_op_desc->GetAttr("weight_scale"));
-      if (mul_op_desc->HasAttr("out_scale"))
-        desc.SetAttr("out_scale", mul_op_desc->GetAttr("out_scale"));
-      auto elementwise_desc = elementwise_add->Op();
-      if (elementwise_desc->HasAttr("out_scale"))
-        desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
 
-    auto* elementwise_add_op_desc = elementwise_add->Op();
+    if (mul_op_desc->HasAttr("Input_scale")) {
+      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("Input_scale"));
+    }
+
+    bool inscale_flag = false;
+    bool outscale_flag = false;
+
+    if (mul_op_desc->HasAttr("X")) {
+      desc.SetAttr("X", mul_op_desc->GetAttr("X"));
+      inscale_flag = true;
+    }
+    if (elementwise_add_op_desc->HasAttr("Out")) {
+      desc.SetAttr("Out", elementwise_add_op_desc->GetAttr("Out"));
+      outscale_flag = true;
+    }
+    desc.SetAttr("support_int8", inscale_flag && outscale_flag);
+
     // if we can find out_threshold in elementwise_add, then set it as the
     // out_thrshold of fc
     auto out_threshold_attr =

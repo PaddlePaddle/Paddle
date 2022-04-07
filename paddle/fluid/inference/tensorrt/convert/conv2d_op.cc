@@ -49,18 +49,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    float in_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
-    auto weight_scale =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
-    weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
-                                           true, weight_scale);
+    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
-  } else {
-    weight_data =
-        engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
   }
+  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
                     platform::errors::InvalidArgument(
@@ -76,12 +69,17 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
-  const std::vector<int> paddings =
+  std::vector<int> paddings =
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
         BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+  if (padding_algorithm == "VALID") {
+    for (size_t i = 0; i < paddings.size(); i++) {
+      paddings[i] = 0;
+    }
+  }
 
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
@@ -110,7 +108,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
     bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         bias_tensor_data, false);
+                                         bias_tensor_data);
     bias_size = static_cast<size_t>(bias_tensor_data->numel());
   }
 
@@ -139,6 +137,8 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+    nv_dilations.d[0] = 1;
+    nv_dilations.d[1] = 1;
   }
   // set dilations
   fset_dilation(layer, nv_dilations);

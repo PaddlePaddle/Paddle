@@ -37,6 +37,15 @@ def convert_uint16_to_float(in_list):
     return numpy.reshape(out, in_list.shape)
 
 
+def convert_float_to_uint16(in_list):
+    out = []
+    for x in numpy.nditer(in_list):
+        out.append(
+            numpy.uint16(struct.unpack('<I', struct.pack('<f', x))[0] >> 16))
+    out = numpy.reshape(out, in_list.shape).view(numpy.uint16)
+    return out
+
+
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -158,6 +167,10 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         test_data = next(test_reader())
         test_feat = numpy.array(
             [data[0] for data in test_data]).astype("float32")
+
+        if use_bf16:
+            test_feat = convert_float_to_uint16(test_feat)
+
         test_label = numpy.array(
             [data[1] for data in test_data]).astype("float32")
 

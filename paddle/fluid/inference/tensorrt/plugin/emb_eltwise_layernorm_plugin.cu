@@ -32,9 +32,7 @@ namespace plugin {
 
 template <typename T>
 EmbEltwiseLayernormPluginDynamicImpl<
-    T>::~EmbEltwiseLayernormPluginDynamicImpl() {
-  this->terminate();
-}
+    T>::~EmbEltwiseLayernormPluginDynamicImpl() {}
 
 inline half fp32tofp16(float x) { return static_cast<half>(x); }
 

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -36,12 +36,12 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
-    auto cast_out_dtype = x->type();
+    auto cast_out_dtype = framework::TransToProtoVarType(x->dtype());
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
@@ -75,7 +75,8 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    if (x->type() == framework::proto::VarType::INT64) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::INT64) {
       auto op_func = [](const std::vector<Tensor>& inputs,
                         const std::vector<Tensor>& outputs,
                         const NPUAttributeMap& attrs,
@@ -94,7 +95,7 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},

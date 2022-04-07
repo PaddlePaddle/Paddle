@@ -19,7 +19,7 @@
 #include <memory>
 #include <numeric>
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace framework {

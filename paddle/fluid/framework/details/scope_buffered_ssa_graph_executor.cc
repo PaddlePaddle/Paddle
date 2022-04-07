@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -75,7 +75,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 #endif
 
   if (drop_scope_counter_ == 0) {
-    platform::RecordEvent e("InitLocalVars");
+    platform::RecordEvent e("InitLocalVars",
+                            platform::TracerEventType::UserDefined, 2);
     InitVariables();
   }
 
@@ -164,7 +165,8 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
 }
 
 void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes(bool need_wait) {
-  platform::RecordEvent drop_scope_event("DropLocalExeScopes");
+  platform::RecordEvent drop_scope_event(
+      "DropLocalExeScopes", platform::TracerEventType::UserDefined, 2);
   drop_scope_counter_ = 0;
   if (need_wait) {
     for (auto &p : places_) {

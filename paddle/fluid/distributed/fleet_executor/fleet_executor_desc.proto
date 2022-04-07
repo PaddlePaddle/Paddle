@@ -21,7 +21,6 @@ message RankInfo {
 }
 
 message FleetExecutorDesc {
-  optional string grain = 1 [ default = "coarse" ];
-  optional int64 cur_rank = 2 [ default = 0 ]; // Rank id of current processor
-  repeated RankInfo cluster_info = 3;
+  optional int64 cur_rank = 1 [ default = 0 ]; // Rank id of current processor
+  repeated RankInfo cluster_info = 2;
 }

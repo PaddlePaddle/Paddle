@@ -32,6 +32,9 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 }  // namespace platform
 }  // namespace paddle
 
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
+
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
  */
@@ -361,11 +364,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -433,8 +432,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -545,6 +545,8 @@ PADDLE_DEFINE_EXPORTED_double(
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
+PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
+
 /**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
@@ -652,6 +654,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
                             "Disable cudnn in conv2d");
+
+PADDLE_DEFINE_EXPORTED_bool(use_fast_math, false,
+                            "Whether to use fast math GPU functions.");
 #endif
 
 /**
@@ -662,8 +667,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif
@@ -682,16 +688,16 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
- * Pt kernel related FLAG
- * Name: FLAGS_run_pten_kernel
+ * KP kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
  * Value Range: bool, default=false
- * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in the
  * Op.
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
-                            "It controls whether to use pten kernel");
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
+                            "It controls whether to run PaddlePaddle using KP");
 
 /**
  * Distributed related FLAG
@@ -754,3 +760,15 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: nccl_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif

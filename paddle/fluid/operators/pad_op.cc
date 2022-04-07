@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pad_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,37 +30,6 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
-
-    auto x_dim = ctx->GetInputDim("X");
-    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(
-        static_cast<int>(paddings.size()), x_dim.size() * 2,
-        platform::errors::InvalidArgument(
-            "Size of 'paddings' dimension should be equal to 2 * size of "
-            "Input(X)'s dimension, but received (size of 'paddings' dimension "
-            "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
-            static_cast<int>(paddings.size()), x_dim.size() * 2));
-    for (size_t i = 0; i < paddings.size(); ++i) {
-      PADDLE_ENFORCE_GE(paddings[i], 0,
-                        platform::errors::InvalidArgument(
-                            "The element of 'paddings' should >= 0, but "
-                            "received %d for index %d.",
-                            paddings[i], static_cast<int>(i)));
-    }
-    std::vector<int64_t> out_dims(x_dim.size());
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if ((!ctx->IsRuntime()) && (x_dim[i] == -1)) {
-        out_dims[i] = -1;
-      } else {
-        out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
-      }
-    }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (out_dims[0] == x_dim[0]) {
-      // Only pass LoD when the first dimension is equal between
-      // output and input.
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
   }
 };
 
@@ -160,47 +131,13 @@ class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(pad, PadInferShapeFunctor,
+                            PD_INFER_META(phi::PadInferMeta));
 
 REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
-                  ops::PadOpGradMaker<paddle::imperative::OpBase>);
+                  ops::PadOpGradMaker<paddle::imperative::OpBase>,
+                  PadInferShapeFunctor);
 REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PadGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::PadGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>);
-
-REGISTER_OP_CUDA_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::float16>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PadGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::float16>,
-    ops::PadGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::PadGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::complex<double>>);

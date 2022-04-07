@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -26,11 +26,6 @@ class Variable;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

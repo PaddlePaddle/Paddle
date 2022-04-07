@@ -21,7 +21,9 @@ _g_tensor_dist_attr_field_keys = [
     "process_mesh", "dims_mapping", "shard_sizes", "device_placement"
 ]
 
-_g_op_dist_attr_field_keys = ["process_mesh", "impl_type", "impl_idx"]
+_g_op_dist_attr_field_keys = [
+    "process_mesh", "impl_type", "impl_idx", "is_recompute"
+]
 
 _g_op_input_suffix = "@input"
 
@@ -173,11 +175,13 @@ class TensorDistributedAttribute:
 class OperatorDistributedAttribute:
     def __init__(self):
         self._process_mesh = None
+        self._op_type = None
         self._impl_type = None
         self._impl_idx = None
         self._inputs_dist_attrs = {}
         self._outputs_dist_attrs = {}
         self._is_annotated = {}
+        self._is_recompute = False
 
     @property
     def process_mesh(self):
@@ -191,10 +195,22 @@ class OperatorDistributedAttribute:
             if isinstance(process_mesh, list):
                 process_mesh = ProcessMesh(process_mesh)
             self._process_mesh = copy.deepcopy(process_mesh)
+            # In while op, the proess mesh is not shared by all inputs and outputs 
+            if self._op_type == "while":
+                return None
             for dist_attr in self._inputs_dist_attrs.values():
                 dist_attr.process_mesh = process_mesh
             for dist_attr in self._outputs_dist_attrs.values():
                 dist_attr.process_mesh = process_mesh
+
+    @property
+    def op_type(self):
+        return self._op_type
+
+    @op_type.setter
+    def op_type(self, op_type):
+        if op_type is not None:
+            self._op_type = op_type
 
     @property
     def impl_type(self):
@@ -213,6 +229,15 @@ class OperatorDistributedAttribute:
     def impl_idx(self, impl_idx):
         if impl_idx is not None:
             self._impl_idx = impl_idx
+
+    @property
+    def is_recompute(self):
+        return self._is_recompute
+
+    @is_recompute.setter
+    def is_recompute(self, is_recompute):
+        assert isinstance(is_recompute, bool)
+        self._is_recompute = is_recompute
 
     @property
     def inputs_dist_attrs(self):
@@ -314,6 +339,8 @@ class OperatorDistributedAttribute:
                     assert False, "No setter for {} in args {}.".format(
                         key, dist_attr)
         # Make sure proscess_meshes in dist op be same
+        if self.op_type == "while":
+            return None
         process_meshes = []
         process_meshes.append(self.process_mesh)
         for tensor_dist_attr in self.inputs_dist_attrs.values():

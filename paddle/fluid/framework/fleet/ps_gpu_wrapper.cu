@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -113,10 +113,9 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                const int hidden_size,
                                const int64_t total_length) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(
-                        BOOST_GET_CONST(platform::CUDAPlace, place)))
+                    platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
-  auto buf_value = memory::AllocShared(place, values.size() * sizeof(float*));
+  auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
   cudaMemcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              cudaMemcpyHostToDevice);
@@ -132,8 +131,7 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             const int64_t* gpu_len, int slot_num,
                             int total_len) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(
-                        BOOST_GET_CONST(platform::CUDAPlace, place)))
+                    platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   CopyKeysKernel<<<(total_len + 1024 - 1) / 1024, 1024, 0, stream>>>(
       origin_keys, total_keys, gpu_len, slot_num, total_len);
@@ -148,19 +146,17 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const int64_t total_length,
                                const int batch_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(
-                        BOOST_GET_CONST(platform::CUDAPlace, place)))
+                    platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
   auto buf_grad_value =
-      memory::AllocShared(place, grad_values.size() * sizeof(float*));
-  auto buf_length =
-      memory::AllocShared(place, slot_lengths.size() * sizeof(int64_t));
+      memory::Alloc(place, grad_values.size() * sizeof(float*));
+  auto buf_length = memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
   auto buf_slot_vector =
-      memory::AllocShared(place, slot_lengths_lod.size() * sizeof(int));
+      memory::Alloc(place, slot_lengths_lod.size() * sizeof(int));
 
   float** gpu_values = reinterpret_cast<float**>(buf_grad_value->ptr());
   int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());

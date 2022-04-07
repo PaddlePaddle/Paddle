@@ -35,7 +35,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
                                             x_dims.size()));
 
     if (ctx->IsRuntime() ||
-        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
+        (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,
           platform::errors::InvalidArgument(

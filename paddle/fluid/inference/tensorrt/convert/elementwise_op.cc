@@ -50,8 +50,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
                                         op_desc.Input("Y").front().c_str()));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     float* weight_data = nullptr;
-    weight_data =
-        engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
+    auto output_name = op_desc.Output("Out")[0];
+    weight_data = engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t);
     nvinfer1::Dims dims_x = X->getDimensions();
 
     auto regist_eltwise_weight = [&](nvinfer1::ScaleMode scale_mode) {
@@ -80,6 +80,10 @@ class ElementwiseWeightOpConverter : public OpConverter {
         expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
         expand_layer->setReshapeDimensions(expand_shape);
         X = expand_layer->getOutput(0);
+        expand_layer->getOutput(0)->setName(
+            ("elementwise_reshape_out: " + output_name).c_str());
+        expand_layer->setName(
+            ("Elewise: Shuffle: (Output: " + output_name + ")").c_str());
       }
       if (op_type_ == "add") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
@@ -101,17 +105,11 @@ class ElementwiseWeightOpConverter : public OpConverter {
         squeeze_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
         squeeze_layer->setReshapeDimensions(squeeze_shape);
-        layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
-      }
-      auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
-                               test_mode);
-      if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-        CHECK(op_desc.HasAttr("X_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
-        engine_->SetTensorDynamicRange(X, x_scale);
-#endif
+        RreplenishLayerAndOutput(squeeze_layer, "elementwise_" + op_type_,
+                                 {output_name}, test_mode);
+      } else {
+        RreplenishLayerAndOutput(layer, "elementwise_" + op_type_,
+                                 {output_name}, test_mode);
       }
     };
 
@@ -141,7 +139,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
-    std::vector<int> dims_y = framework::vectorize<int>(Y_t->dims());
+    std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
     if (dims_y.size() == no_batch_dims.size() + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }
@@ -216,19 +214,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
     auto common_func = [&](nvinfer1::ILayer* layer) {
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-      if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-        CHECK(op_desc.HasAttr("X_scale"));
-        CHECK(op_desc.HasAttr("Y_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
-        float y_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Y_scale"));
-        engine_->SetTensorDynamicRange(X, x_scale);
-        engine_->SetTensorDynamicRange(Y, y_scale);
-#endif
-      }
     };
 
-    if (CheckDims(dims_x, dims_y)) {
+    if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer =

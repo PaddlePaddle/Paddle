@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/top_k_v2_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 
     if (k_tensor != nullptr) {
       std::vector<int> v_tmp(1);
-      TensorToVector(
+      paddle::framework::TensorToVector(
           *k_tensor,
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &v_tmp);
@@ -57,7 +57,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
-    framework::Tensor indices_int32(framework::proto::VarType::INT32);
+    framework::Tensor indices_int32(experimental::DataType::INT32);
     indices_int32.Resize(output_dims);
     indices_int32.mutable_data<int32_t>(context.GetPlace());
 
@@ -77,7 +77,8 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
         .Run(npu_stream);
 
     // Cast 'indices_int32' to 'indices', from INT32 to INT64
-    auto dst_dtype = ConvertToNpuDtype(indices->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(indices->type()));
     const auto& npu_op_runner_cast =
         NpuOpRunner("Cast", {indices_int32}, {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

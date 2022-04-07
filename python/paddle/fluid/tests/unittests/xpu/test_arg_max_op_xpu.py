@@ -18,118 +18,93 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
+
+import paddle
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid.core as core
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class XPUBaseTestCase(XPUOpTest):
-    def initTestCase(self):
-        self.dims = (3, 4)
-        self.dtype = 'float32'
-        self.axis = 1
+class XPUTestArgMax(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'arg_max'
 
-    def setUp(self):
-        self.initTestCase()
-        self.__class__.op_type = 'arg_max'
-        self.__class__.use_xpu = True
-        np.random.seed(2021)
-        self.x = (np.random.random(self.dims)).astype(self.dtype)
-        self.inputs = {'X': self.x}
-        self.attrs = {'axis': self.axis, 'use_xpu': True}
-        if self.op_type == "arg_min":
-            self.outputs = {'Out': np.argmin(self.x, axis=self.axis)}
-        else:
+    class XPUBaseTestCase(XPUOpTest):
+        def initTestCase(self):
+            self.dims = (3, 4)
+            self.axis = 1
+
+        def setUp(self):
+            self.op_type = 'arg_max'
+            self.dtype = self.in_type
+            self.initTestCase()
+
+            self.x = (np.random.random(self.dims)).astype(self.dtype)
+            self.inputs = {'X': self.x}
+            self.attrs = {'axis': self.axis, 'use_xpu': True}
             self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
+
+    class TestArgMaxCase1(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4, 5)
+            self.axis = -1
+
+    class TestArgMaxCase2(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4, 5)
+            self.axis = 0
+
+    class TestArgMaxCase3(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4, 5)
+            self.axis = 1
+
+    class TestArgMaxCase4(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4, 5)
+            self.axis = 2
+
+    class TestArgMaxCase5(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4)
+            self.axis = -1
+
+    class TestArgMaxCase6(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4)
+            self.axis = 0
+
+    class TestArgMaxCase7(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, 4)
+            self.axis = 1
+
+    class TestArgMaxCase8(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (1, )
+            self.axis = 0
+
+    class TestArgMaxCase9(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (2, )
+            self.axis = 0
+
+    class TestArgMaxCase10(XPUBaseTestCase):
+        def initTestCase(self):
+            self.dims = (3, )
+            self.axis = 0
 
 
-# test argmax, dtype: float32
-class TestArgMaxFloat32Case1(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4, 5)
-        self.dtype = 'float32'
-        self.axis = -1
-
-
-class TestArgMaxFloat32Case2(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4, 5)
-        self.dtype = 'float32'
-        self.axis = 0
-
-
-class TestArgMaxFloat32Case3(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4, 5)
-        self.dtype = 'float32'
-        self.axis = 1
-
-
-class TestArgMaxFloat32Case4(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4, 5)
-        self.dtype = 'float32'
-        self.axis = 2
-
-
-class TestArgMaxFloat32Case5(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4)
-        self.dtype = 'float32'
-        self.axis = -1
-
-
-class TestArgMaxFloat32Case6(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4)
-        self.dtype = 'float32'
-        self.axis = 0
-
-
-class TestArgMaxFloat32Case7(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4)
-        self.dtype = 'float32'
-        self.axis = 1
-
-
-class TestArgMaxFloat32Case8(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (1, )
-        self.dtype = 'float32'
-        self.axis = 0
-
-
-class TestArgMaxFloat32Case9(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (2, )
-        self.dtype = 'float32'
-        self.axis = 0
-
-
-class TestArgMaxFloat32Case10(XPUBaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, )
-        self.dtype = 'float32'
-        self.axis = 0
+support_types = get_xpu_op_support_types('arg_max')
+for stype in support_types:
+    create_test_class(globals(), XPUTestArgMax, stype)
 
 
 class TestArgMaxAPI(unittest.TestCase):

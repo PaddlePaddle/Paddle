@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/one_hot_v2_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,26 +26,6 @@ namespace operators {
 class OneHotV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "one_hot_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "one_hot_v2");
-
-    auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Rank of Input(X) should be at least 1."));
-
-    int depth = ctx->Attrs().Get<int>("depth");
-    if (ctx->HasInput("depth_tensor")) {
-      depth = -1;
-    }
-
-    auto out_dims_vec = framework::vectorize(x_dims);
-    out_dims_vec.push_back(depth);
-    auto out_dims = framework::make_ddim(out_dims_vec);
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /* --> */ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -52,7 +36,7 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
@@ -114,10 +98,12 @@ Out is a LoDTensor:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(one_hot_v2, OneHotInferShapeFunctor,
+                            PD_INFER_META(phi::OneHotRawInferMeta));
+
 REGISTER_OPERATOR(
     one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    one_hot_v2, ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    OneHotInferShapeFunctor);

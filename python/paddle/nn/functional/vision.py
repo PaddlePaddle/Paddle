@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from ...device import get_cudnn_version
-from ...fluid.framework import core, in_dygraph_mode
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
 import numpy as np
 from paddle import _C_ops
+from ...device import is_compiled_with_rocm
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -83,14 +84,14 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
         use_cudnn = True
     else:
         use_cudnn = False
-    if core.is_compiled_with_rocm():
+    if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
             isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Tensor.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
         return _C_ops.affine_grid(theta, "output_shape", _out_shape,
@@ -263,7 +264,7 @@ def grid_sample(x,
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if not core.is_compiled_with_rocm() and (
+    if not is_compiled_with_rocm() and (
             cudnn_version is not None
     ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
@@ -271,7 +272,7 @@ def grid_sample(x,
         x.stop_gradient = False
         grid.stop_gradient = False
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
         out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
@@ -329,7 +330,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                          "But recevie Attr(data_format): {} ".format(
                              data_format))
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
                                     "data_format", data_format)
 

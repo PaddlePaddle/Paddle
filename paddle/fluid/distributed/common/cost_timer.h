@@ -75,9 +75,8 @@ class CostTimer {
   }
   ~CostTimer() {
     if (_is_print_cost) {
-      LOG(INFO) << "CostTimer label:" << _label
-                << ", cost:" << butil::gettimeofday_ms() - _start_time_ms
-                << "ms";
+      VLOG(3) << "CostTimer label:" << _label
+              << ", cost:" << butil::gettimeofday_ms() - _start_time_ms << "ms";
     } else {
       *(_profiler_node->recorder) << butil::gettimeofday_ms() - _start_time_ms;
     }

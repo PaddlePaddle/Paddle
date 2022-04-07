@@ -16,17 +16,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-
 namespace framework {
 class Variable;
 }  // namespace framework
-
 }  // namespace paddle
 
 namespace paddle {
@@ -55,6 +51,8 @@ class ParallelContext {
   virtual void AllReduceByStream(const framework::Variable& src,
                                  framework::Variable* dst, int ring_id,
                                  bool use_calc_stream) = 0;
+
+  virtual void Broadcast(framework::Variable* src, int ring_id) = 0;
 
   virtual paddle::platform::DeviceContext* GetDeviceContext(int ring_id) = 0;
 

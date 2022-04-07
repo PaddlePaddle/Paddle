@@ -94,7 +94,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse",
+            "pull_gpups_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"

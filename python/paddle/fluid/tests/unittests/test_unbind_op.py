@@ -16,10 +16,12 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
+import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
@@ -38,6 +40,25 @@ class TestUnbind(unittest.TestCase):
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
+
+    def test_unbind_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.random.random([2, 3]).astype("float32")
+            x = paddle.to_tensor(np_x)
+            x.stop_gradient = False
+            [res_1, res_2] = paddle.unbind(x, 0)
+            self.assertTrue(np.array_equal(res_1, np_x[0, 0:100]))
+            self.assertTrue(np.array_equal(res_2, np_x[1, 0:100]))
+
+            out = paddle.add_n([res_1, res_2])
+
+            np_grad = np.ones(x.shape, np.float32)
+            out.backward()
+            self.assertTrue(np.array_equal(x.grad.numpy(), np_grad))
+
+    def test_unbind_dygraph_final_state(self):
+        with _test_eager_guard():
+            self.test_unbind_dygraph()
 
 
 class TestLayersUnbind(unittest.TestCase):
@@ -152,6 +173,33 @@ class TestUnbindOp4(TestUnbindOp):
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
         self.out[1] = self.out[1].reshape((3, 2))
+
+
+class TestUnbindBF16Op(OpTest):
+    def setUp(self):
+        self._set_op_type()
+        self.python_api = paddle.unbind
+        self.dtype = self.get_dtype()
+        self.axis = 0
+        self.num = 3
+        x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        self.out = np.split(x, self.num, self.axis)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(self.out[i])) \
+            for i in range(len(self.out))]}
+
+    def get_dtype(self):
+        return np.uint16
+
+    def _set_op_type(self):
+        self.op_type = "unbind"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
 
 
 class TestUnbindAxisError(unittest.TestCase):

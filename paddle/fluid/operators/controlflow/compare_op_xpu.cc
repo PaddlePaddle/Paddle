@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -28,8 +28,8 @@ void XPUCompare(
   auto* y = ctx.Input<framework::Tensor>("Y");
   auto* z = ctx.Output<framework::Tensor>("Out");
 
-  auto x_shape = framework::vectorize<int>(x->dims());
-  auto y_shape = framework::vectorize<int>(y->dims());
+  auto x_shape = phi::vectorize<int>(x->dims());
+  auto y_shape = phi::vectorize<int>(y->dims());
 
   auto x_data = reinterpret_cast<const XPUType*>(x->data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y->data<T>());

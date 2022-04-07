@@ -17,56 +17,41 @@ from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDA
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
     from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
-
-    class CUDAGraph:
-        def __init__(self, place=None, mode="thread_local"):
-            ALL_MODES = ["global", "thread_local", "relaxed"]
-            self._graph = None
-            if place is None:
-                device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-                place = CUDAPlace(device_id)
-            self._place = place
-            assert mode in ALL_MODES
-            self._mode = ALL_MODES.index(mode)
-
-        def capture_begin(self):
-            CoreCUDAGraph.begin_capture(self._place, self._mode)
-
-        def capture_end(self):
-            self._graph = CoreCUDAGraph.end_capture()
-
-        def replay(self):
-            self._graph.replay()
-
-        def reset(self):
-            self._graph.reset()
-
-        def print_to_dot_files(self, dirname, flags=None):
-            if not isinstance(dirname, (str, bytes)):
-                dirname = dirname.name
-            os.makedirs(name=dirname, exist_ok=True)
-            assert os.path.isdir(
-                dirname), "The dirname {} should be a directory".format(dirname)
-            if flags is None:
-                flags = 2047  # only all information. It can be any integer inside [1, 2048)  
-            self._graph.print_to_dot_files(dirname, flags)
 else:
+    CoreCUDAGraph = None
 
-    class CUDAGraph:
-        def __init__(self, place=None, mode="thread_local"):
-            raise NotImplementedError()
 
-        def capture_begin(self):
-            raise NotImplementedError()
+class CUDAGraph:
+    def __init__(self, place=None, mode="thread_local"):
+        assert CoreCUDAGraph is not None, "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
 
-        def capture_end(self):
-            raise NotImplementedError()
+        ALL_MODES = ["global", "thread_local", "relaxed"]
+        self._graph = None
+        if place is None:
+            device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+            place = CUDAPlace(device_id)
+        self._place = place
+        assert mode in ALL_MODES
+        self._mode = ALL_MODES.index(mode)
 
-        def replay(self):
-            raise NotImplementedError()
+    def capture_begin(self):
+        CoreCUDAGraph.begin_capture(self._place, self._mode)
 
-        def reset(self):
-            raise NotImplementedError()
+    def capture_end(self):
+        self._graph = CoreCUDAGraph.end_capture()
 
-        def print_to_dot_files(self, dirname, flags=None):
-            raise NotImplementedError()
+    def replay(self):
+        self._graph.replay()
+
+    def reset(self):
+        self._graph.reset()
+
+    def print_to_dot_files(self, dirname, flags=None):
+        if not isinstance(dirname, (str, bytes)):
+            dirname = dirname.name
+        os.makedirs(name=dirname, exist_ok=True)
+        assert os.path.isdir(
+            dirname), "The dirname {} should be a directory".format(dirname)
+        if flags is None:
+            flags = 2047  # only all information. It can be any integer inside [1, 2048)  
+        self._graph.print_to_dot_files(dirname, flags)

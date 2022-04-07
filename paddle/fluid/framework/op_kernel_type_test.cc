@@ -27,7 +27,7 @@ TEST(OpKernelType, ToString) {
                               LibraryType::kCUDNN);
 
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
-            "data_type[float]:data_layout[NCHW]:place[CPUPlace]:library_type["
+            "data_type[float]:data_layout[NCHW]:place[Place(cpu)]:library_type["
             "CUDNN]");
 
   using CUDAPlace = paddle::platform::CUDAPlace;
@@ -35,7 +35,7 @@ TEST(OpKernelType, ToString) {
                                LibraryType::kCUDNN);
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type2),
             "data_type[::paddle::platform::float16]:data_layout[NCHW]:place["
-            "CUDAPlace(0)]:library_"
+            "Place(gpu:0)]:library_"
             "type[CUDNN]");
 }
 

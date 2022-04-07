@@ -54,6 +54,7 @@ class OverlapAddOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape;
     int n_frames;
     int frame_length;
+    int seq_length;
 
     int start_axis;
     int end_axis;
@@ -69,14 +70,22 @@ class OverlapAddOp : public framework::OperatorWithKernel {
       end_axis = x_rank - 3;
     }
 
-    PADDLE_ENFORCE_LE(
-        hop_length, frame_length,
-        platform::errors::InvalidArgument(
-            "Attribute(hop_length) of OverlapAddOp should be less or equal "
-            "than frame_length, but got hop_length(%s) > frame_length(%s).",
-            hop_length, frame_length));
+    bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+    bool check = ctx->IsRuntime() || !contain_unknown_dim;
+    if (check) {
+      PADDLE_ENFORCE_LE(
+          hop_length, frame_length,
+          platform::errors::InvalidArgument(
+              "Attribute(hop_length) of OverlapAddOp should be less or equal "
+              "than frame_length, but got hop_length(%s) > frame_length(%s).",
+              hop_length, frame_length));
+    }
 
-    const int seq_length = (n_frames - 1) * hop_length + frame_length;
+    if (n_frames == -1) {
+      seq_length = -1;
+    } else {
+      seq_length = (n_frames - 1) * hop_length + frame_length;
+    }
 
     // It won't go into for loop when x_rank == 2U.
     for (int i = start_axis; i <= end_axis; i++) {
@@ -91,7 +100,7 @@ class OverlapAddOp : public framework::OperatorWithKernel {
       output_shape.push_back(seq_length);
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
 
  protected:

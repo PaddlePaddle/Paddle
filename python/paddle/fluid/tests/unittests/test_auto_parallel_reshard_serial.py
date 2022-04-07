@@ -29,7 +29,7 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
@@ -166,8 +166,6 @@ def get_dist_prog_with_parallelizer(train_program, startup_program,
         grad_clip=None)
     optimizer = fleet.distributed_optimizer(optimizer)
 
-    # fake a comm group
-    pg = new_process_group([3, 4])
     _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
         loss, startup_program)
 

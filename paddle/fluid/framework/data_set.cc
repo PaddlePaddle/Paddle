@@ -14,10 +14,18 @@
 
 #include "paddle/fluid/framework/data_set.h"
 #include "google/protobuf/text_format.h"
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+#endif
 #include "paddle/fluid/framework/data_feed_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
+
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -49,6 +57,8 @@ DatasetImpl<T>::DatasetImpl() {
   parse_logkey_ = false;
   preload_thread_num_ = 0;
   global_index_ = 0;
+  shuffle_by_uid_ = false;
+  parse_uid_ = false;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -143,6 +153,12 @@ void DatasetImpl<T>::SetMergeBySid(bool is_merge) {
 }
 
 template <typename T>
+void DatasetImpl<T>::SetShuffleByUid(bool enable_shuffle_uid) {
+  shuffle_by_uid_ = enable_shuffle_uid;
+  parse_uid_ = true;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetEnablePvMerge(bool enable_pv_merge) {
   enable_pv_merge_ = enable_pv_merge;
 }
@@ -208,13 +224,17 @@ void DatasetImpl<T>::CreateChannel() {
 // if sent message between workers, should first call this function
 template <typename T>
 void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
-  auto fleet_ptr = FleetWrapper::GetInstance();
-  VLOG(3) << "RegisterClientToClientMsgHandler";
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+  VLOG(1) << "RegisterClientToClientMsgHandler";
   fleet_ptr->RegisterClientToClientMsgHandler(
       0, [this](int msg_type, int client_id, const std::string& msg) -> int {
         return this->ReceiveFromClient(msg_type, client_id, msg);
       });
-  VLOG(3) << "RegisterClientToClientMsgHandler done";
+  VLOG(1) << "RegisterClientToClientMsgHandler done";
 }
 static void compute_left_batch_num(const int ins_num, const int thread_num,
                                    std::vector<std::pair<int, int>>* offset,
@@ -451,6 +471,11 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 // release memory data
 template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
+  release_thread_ = new std::thread(&DatasetImpl<T>::ReleaseMemoryFun, this);
+}
+
+template <typename T>
+void DatasetImpl<T>::ReleaseMemoryFun() {
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
   if (input_channel_) {
     input_channel_->Clear();
@@ -523,7 +548,7 @@ void DatasetImpl<T>::LocalShuffle() {
     VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, no data to shuffle";
     return;
   }
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   input_channel_->Close();
   std::vector<T> data;
   input_channel_->ReadAll(data);
@@ -539,12 +564,92 @@ void DatasetImpl<T>::LocalShuffle() {
           << timeline.ElapsedSec() << " seconds";
 }
 
+// do tdm sample
+void MultiSlotDataset::TDMSample(const std::string tree_name,
+                                 const std::string tree_path,
+                                 const std::vector<uint16_t> tdm_layer_counts,
+                                 const uint16_t start_sample_layer,
+                                 const bool with_hierachy, const uint16_t seed_,
+                                 const uint16_t sample_slot) {
+#if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
+  // init tdm tree
+  auto wrapper_ptr = paddle::distributed::IndexWrapper::GetInstance();
+  wrapper_ptr->insert_tree_index(tree_name, tree_path);
+  auto tree_ptr = wrapper_ptr->get_tree_index(tree_name);
+  auto _layer_wise_sample = paddle::distributed::LayerWiseSampler(tree_name);
+  _layer_wise_sample.init_layerwise_conf(tdm_layer_counts, start_sample_layer,
+                                         seed_);
+
+  VLOG(0) << "DatasetImpl<T>::Sample() begin";
+  platform::Timer timeline;
+  timeline.Start();
+
+  std::vector<std::vector<Record>> data;
+  std::vector<std::vector<Record>> sample_results;
+  if (!input_channel_ || input_channel_->Size() == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      std::vector<Record> tmp_data;
+      data.push_back(tmp_data);
+      if (!multi_output_channel_[i] || multi_output_channel_[i]->Size() == 0) {
+        continue;
+      }
+      multi_output_channel_[i]->Close();
+      multi_output_channel_[i]->ReadAll(data[i]);
+    }
+  } else {
+    input_channel_->Close();
+    std::vector<Record> tmp_data;
+    data.push_back(tmp_data);
+    input_channel_->ReadAll(data[data.size() - 1]);
+  }
+
+  VLOG(1) << "finish read src data, data.size = " << data.size()
+          << "; details: ";
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  for (unsigned int i = 0; i < data.size(); i++) {
+    VLOG(1) << "data[" << i << "]: size = " << data[i].size();
+    std::vector<Record> tmp_results;
+    _layer_wise_sample.sample_from_dataset(sample_slot, &data[i], &tmp_results);
+    VLOG(1) << "sample_results(" << sample_slot << ") = " << tmp_results.size();
+    VLOG(0) << "start to put sample in vector!";
+    // sample_results.push_back(tmp_results);
+    for (unsigned int j = 0; j < tmp_results.size(); j++) {
+      std::vector<Record> tmp_vec;
+      tmp_vec.emplace_back(tmp_results[j]);
+      sample_results.emplace_back(tmp_vec);
+    }
+    VLOG(0) << "finish to put sample in vector!";
+  }
+
+  auto output_channel_num = multi_output_channel_.size();
+  for (unsigned int i = 0; i < sample_results.size(); i++) {
+    auto output_idx = fleet_ptr->LocalRandomEngine()() % output_channel_num;
+    multi_output_channel_[output_idx]->Open();
+    // vector?
+    multi_output_channel_[output_idx]->Write(std::move(sample_results[i]));
+  }
+
+  data.clear();
+  sample_results.clear();
+  data.shrink_to_fit();
+  sample_results.shrink_to_fit();
+
+  timeline.Pause();
+  VLOG(0) << "DatasetImpl<T>::Sample() end, cost time=" << timeline.ElapsedSec()
+          << " seconds";
+#endif
+  return;
+}
+
 void MultiSlotDataset::GlobalShuffle(int thread_num) {
-#ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
-  auto fleet_ptr = FleetWrapper::GetInstance();
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
 
   if (!input_channel_ || input_channel_->Size() == 0) {
     VLOG(3) << "MultiSlotDataset::GlobalShuffle() end, no data to shuffle";
@@ -567,16 +672,24 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
           << input_channel_->Size();
 
   auto get_client_id = [this, fleet_ptr](const Record& data) -> size_t {
-    if (!this->merge_by_insid_) {
-      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
-    } else {
+    if (this->merge_by_insid_) {
       return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
              this->trainer_num_;
+    } else if (this->shuffle_by_uid_) {
+      return XXH64(data.uid_.data(), data.uid_.length(), 0) %
+             this->trainer_num_;
+    } else {
+      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
     }
   };
 
   auto global_shuffle_func = [this, get_client_id]() {
-    auto fleet_ptr = FleetWrapper::GetInstance();
+#ifdef PADDLE_WITH_PSCORE
+    auto fleet_ptr = distributed::FleetWrapper::GetInstance();
+#else
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
+#endif
+    // auto fleet_ptr = framework::FleetWrapper::GetInstance();
     std::vector<Record> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
@@ -633,7 +746,6 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
-#endif
 }
 
 template <typename T>
@@ -801,6 +913,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFeaNum(&total_fea_num_);
     readers_[i]->SetFileList(filelist_);
     readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseUid(parse_uid_);
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
@@ -871,6 +984,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
     preload_readers_[i]->SetFeaNum(&total_fea_num_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetParseUid(parse_uid_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);
     preload_readers_[i]->SetEnablePvMerge(enable_pv_merge_);
@@ -936,7 +1050,7 @@ int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
   }
   CHECK(ar.Cursor() == ar.Finish());
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   // not use random because it doesn't perform well here.
   // to make sure each channel get data equally, we just put data to
   // channel one by one.
@@ -976,7 +1090,7 @@ void MultiSlotDataset::DynamicAdjustReadersNum(int thread_num) {
 void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
   if (enable_pv_merge_) {
-    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
     std::shuffle(input_records_.begin(), input_records_.end(),
                  fleet_ptr->LocalRandomEngine());
     input_channel_->Open();
@@ -1014,7 +1128,7 @@ void MultiSlotDataset::PreprocessInstance() {
   if (!enable_pv_merge_) {  // means to use Record
     this->LocalShuffle();
   } else {  // means to use Pv
-    auto fleet_ptr = FleetWrapper::GetInstance();
+    auto fleet_ptr = framework::FleetWrapper::GetInstance();
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
@@ -1073,7 +1187,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   }
 
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  auto fleet_ptr_ = framework::FleetWrapper::GetInstance();
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
       local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
@@ -1315,7 +1429,7 @@ void MultiSlotDataset::MergeByInsId() {
   LOG(WARNING) << "total drop ins num: " << drop_ins_num;
   results.shrink_to_fit();
 
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
   std::shuffle(results.begin(), results.end(), fleet_ptr->LocalRandomEngine());
   channel_data->Open();
   channel_data->Write(std::move(results));

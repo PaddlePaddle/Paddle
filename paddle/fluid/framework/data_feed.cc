@@ -18,6 +18,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
 #include <sys/mman.h>
@@ -340,6 +341,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_uid_ = false;
   this->parse_content_ = false;
   this->parse_logkey_ = false;
   this->enable_pv_merge_ = false;
@@ -499,6 +501,11 @@ void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
 }
 
 template <typename T>
+void InMemoryDataFeed<T>::SetParseUid(bool parse_uid) {
+  parse_uid_ = parse_uid;
+}
+
+template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemory() {
 #ifdef _LINUX
   if (!so_parser_name_.empty()) {
@@ -549,10 +556,13 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
+  int buf_len = 1024 * 1024 * 10;
+  char* buf = (char*)malloc(buf_len + 10);
+  auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
-  string::LineFileReader reader;
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
 
@@ -560,34 +570,34 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
-    int err_no = 0;
-    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
-    CHECK(this->fp_ != nullptr);
-    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-
-    paddle::framework::ChannelWriter<T> writer(input_channel_);
-    T instance;
     platform::Timer timeline;
     timeline.Start();
-
-    while (1) {
-      if (!reader.getline(&*(fp_.get()))) {
-        break;
-      } else {
-        const char* str = reader.get();
-        ParseOneInstanceFromSo(str, &instance, parser);
+    if (ps_gpu_ptr->UseAfsApi()) {
+      auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+      int read_len = 0;
+      char* cursor = buf;
+      int remain = 0;
+      while ((read_len = afs_reader->read(cursor, buf_len - remain)) > 0) {
+        std::vector<T> instances;
+        read_len += remain;
+        remain = ParseInstanceFromSo(read_len, buf, &instances, parser);
+        input_channel_->Write(std::move(instances));
+        instances = std::vector<T>();
+        if (remain) {
+          memmove(buf, buf + read_len - remain, remain);
+        }
+        cursor = buf + remain;
       }
-
-      writer << std::move(instance);
-      instance = T();
+    } else {
+      VLOG(0) << "Should Call InitAfsApi First";
     }
 
-    writer.Flush();
     timeline.Pause();
     VLOG(3) << "LoadIntoMemoryFromSo() read all lines, file=" << filename
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_;
   }
+  free(buf);
   VLOG(3) << "LoadIntoMemoryFromSo() end, thread_id=" << thread_id_;
 #endif
 }
@@ -986,7 +996,7 @@ void MultiSlotDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1047,6 +1057,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_shape_.push_back(local_shape);
     }
   }
+  uid_slot_ = multi_slot_desc.uid_slot();
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
@@ -1081,10 +1092,11 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
 }
 
-void MultiSlotInMemoryDataFeed::ParseOneInstanceFromSo(const char* str,
-                                                       Record* instance,
-                                                       CustomParser* parser) {
-  parser->ParseOneInstance(str, instance);
+int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
+    int len, const char* str, std::vector<Record>* instances,
+    CustomParser* parser) {
+  // VLOG(0) << "parser: " << parser;
+  return parser->ParseInstance(len, str, instances);
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
@@ -1160,6 +1172,19 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+#ifdef PADDLE_WITH_PSLIB
+      if (parse_uid_ && all_slots_[i] == uid_slot_) {
+        PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                       platform::errors::PreconditionNotMet(
+                           "The uid has to be uint64 and single.\n"
+                           "please check this error line: %s",
+                           str));
+
+        char* uidptr = endptr;
+        uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
+        instance->uid_ = feasign;
+      }
+#endif
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
@@ -1362,7 +1387,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1462,7 +1487,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1504,7 +1529,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
               "The actual data size of slot is %lld"
               ", and its declaration is %lld.",
               use_slots_[i].c_str(), total_dims, total_instance));
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 }
@@ -1924,7 +1949,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -2058,7 +2083,8 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
@@ -2091,21 +2117,31 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
     int lines = 0;
     bool is_ok = true;
+    auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
-      int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      if (ps_gpu_ptr->UseAfsApi()) {
+        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+        is_ok = parser->ParseFileInstance(
+            [this, afs_reader](char* buf, int len) {
+              return afs_reader->read(buf, len);
+            },
+            pull_record_func, lines);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
 
-      CHECK(this->fp_ != nullptr);
-      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-      is_ok = parser->ParseFileInstance(
-          [this](char* buf, int len) {
-            return fread(buf, sizeof(char), len, this->fp_.get());
-          },
-          pull_record_func, lines);
+        CHECK(this->fp_ != nullptr);
+        __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+        is_ok = parser->ParseFileInstance(
+            [this](char* buf, int len) {
+              return fread(buf, sizeof(char), len, this->fp_.get());
+            },
+            pull_record_func, lines);
 
-      if (!is_ok) {
-        LOG(WARNING) << "parser error, filename=" << filename
-                     << ", lines=" << lines;
+        if (!is_ok) {
+          LOG(WARNING) << "parser error, filename=" << filename
+                       << ", lines=" << lines;
+        }
       }
     } while (!is_ok);
     timeline.Pause();
@@ -2455,7 +2491,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(framework::make_ddim(info.local_shape));
+      feed->Resize(phi::make_ddim(info.local_shape));
     } else {
       LoD data_lod{slot_offset};
       feed_vec_[j]->set_lod(data_lod);
