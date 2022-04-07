@@ -750,7 +750,7 @@ class MSRAInitializer(Initializer):
                 std = np.sqrt(2.0 / float(fan_in))
                 place = _current_expected_place()
                 out_var = _C_ops.final_state_gaussian_random(
-                    out_var.shape, 0.0, std, self._seed, int(out_dtype), place)
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
