@@ -1157,6 +1157,23 @@
     func : matrix_power
   backward : matrix_power_grad
 
+- api : matrix_rank
+  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankInferMeta
+    param : [x, use_default_tol, hermitian]
+  kernel :
+    func : matrix_rank
+
+- api : matrix_rank_tol
+  args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankTolInferMeta
+  kernel :
+    func : matrix_rank_tol
+
 - api : max
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1938,6 +1955,12 @@
     param : [shape, mean, std, seed, dtype]
     backend : place
     data_type : dtype
+
+- api : unbind
+  args : (Tensor input, int axis)
+  output : Tensor[]
+  invoke : unbind_impl(input, axis)
+  backward : unbind_grad
 
 # unfold
 - api : unfold
