@@ -196,13 +196,19 @@ void SampleNeighbors(const Context& dev_ctx,
       return_eids);
 }
 
-template <typename T>
+template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
 __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                                         int k,
                                         const int64_t num_rows,
                                         const T* in_rows,
                                         T* src,
                                         const T* dst_count) {
+  assert(blockDim.x == WARP_SIZE);
+  assert(blockDim.y == BLOCK_WARPS);
+
+  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  const int64_t last_row =
+      min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
 #ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(
@@ -212,12 +218,41 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
   curand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #endif
-  CUDA_KERNEL_LOOP(out_row, num_rows) {
+
+  while (out_row < last_row) {
     const T row = in_rows[out_row];
     const T in_row_start = dst_count[row];
     const int deg = dst_count[row + 1] - in_row_start;
     int split;
-    T tmp;
+    if (k < deg) {
+      if (deg < 2 * k) {
+        split = k;
+      } else {
+        split = deg - k;
+      }
+      for (int idx = split + threadIdx.x; idx <= deg - 1; idx += WARP_SIZE) {
+#ifdef PADDLE_WITH_HIP
+        const int num = hiprand(&rng) % (idx + 1);
+#else
+        const int num = curand(&rng) % (idx + 1);
+#endif
+        src[in_row_start + idx] = static_cast<T>(
+            atomicExch(reinterpret_cast<unsigned long long int*>(  // NOLINT
+                           src + in_row_start + num),
+                       static_cast<unsigned long long int>(  //  NOLINT
+                           src[in_row_start + idx])));
+      }
+#ifdef PADDLE_WITH_CUDA
+      __syncwarp();
+#endif
+    }
+  }
+
+  /*CUDA_KERNEL_LOOP(out_row, num_rows) {
+    const T row = in_rows[out_row];
+    const T in_row_start = dst_count[row];
+    const int deg = dst_count[row + 1] - in_row_start;
+    int split;
 
     if (k < deg) {
       if (deg < 2 * k) {
@@ -238,7 +273,7 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                            src[in_row_start + idx])));
       }
     }
-  }
+  }*/
 }
 
 template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
@@ -316,29 +351,31 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
-  int block = 1024;
-#endif
-  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid_tmp = (bs + block - 1) / block;
-  int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
+  /*#ifdef PADDLE_WITH_HIP
+    int block = 256;
+  #else
+    int block = 1024;
+  #endif
+    int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int grid_tmp = (bs + block - 1) / block;
+    int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;*/
 
-  FisherYatesSampleKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+  constexpr int WARP_SIZE = 32;
+  constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+  constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+  const dim3 block(WARP_SIZE, BLOCK_WARPS);
+  const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
+
+  FisherYatesSampleKernel<T,
+                          WARP_SIZE,
+                          BLOCK_WARPS,
+                          TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
       0, sample_size, bs, thrust::raw_pointer_cast(input), perm_data, col_ptr);
 
-  constexpr int GATHER_WARP_SIZE = 32;
-  constexpr int GATHER_BLOCK_WARPS = 128 / GATHER_WARP_SIZE;
-  constexpr int GATHER_TILE_SIZE = GATHER_BLOCK_WARPS * 16;
-  const dim3 gather_block(GATHER_WARP_SIZE, GATHER_BLOCK_WARPS);
-  const dim3 gather_grid((bs + GATHER_TILE_SIZE - 1) / GATHER_TILE_SIZE);
-
-  GatherEdge<
-      T,
-      GATHER_WARP_SIZE,
-      GATHER_BLOCK_WARPS,
-      GATHER_TILE_SIZE><<<gather_grid, gather_block, 0, dev_ctx.stream()>>>(
+  GatherEdge<T,
+             WARP_SIZE,
+             BLOCK_WARPS,
+             TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
       sample_size,
       bs,
       thrust::raw_pointer_cast(input),
