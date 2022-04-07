@@ -147,7 +147,6 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
-                     pOpKernelType(vartype::BF16, XPUPlace()),
                      pOpKernelType(vartype::COMPLEX64, XPUPlace()),
                      pOpKernelType(vartype::COMPLEX128, XPUPlace())})},
       {"flatten2_grad",
