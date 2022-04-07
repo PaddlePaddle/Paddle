@@ -21,6 +21,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ARM_BRPC
 #include "baidu/rpc/channel.h"
 #include "base/iobuf.h"
+#define butil base
 #else
 #include "brpc/channel.h"
 #endif
