@@ -594,6 +594,13 @@ foreach(TEST_OP ${TEST_OPS_WITH_GC})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
+# Switch some dy2st UT to eager mode
+set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
+foreach(TEST_OP ${TEST_EAGER_OPS})
+  list(REMOVE_ITEM TEST_OPS ${TEST_OP})
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
+endforeach()
+
 if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
     list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
     list(REMOVE_ITEM TEST_OPS "test_gen_nccl_id_op")
@@ -848,7 +855,7 @@ endif()
 
 # dist xpu tests:
 if (WITH_XPU_BKCL)
-    py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
+    #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
 endif()
 
