@@ -2660,6 +2660,80 @@ def cumprod(x, dim=None, dtype=None, name=None):
     helper.append_op(type='cumprod', inputs={'X': x}, outputs={'Out': out}, attrs={'dim': dim})
     return out
 
+
+def cummax(x, axis=None, dtype=None, name=None):
+    """
+    Compute the cumulative maximum of the input tensor x along a given axis.
+
+    **Note**:
+    The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): the input tensor need to be cummaxed.
+        axis (int): the axis along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank), where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of cummax operator.
+        Tensor, the index location of each maximum value found in the axis.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.array([ 5,  1,  9,  8, 10,  2, 11,  4,  6,  0,  3,  7])
+            data = paddle.reshape(data, (3, 4))
+            # [[ 5,  1,  9,  8],
+            #  [10,  2, 11,  4],
+            #  [ 6,  0,  3,  7]]
+
+            y = paddle.cummax(data, axis=0)
+            # [[ 5,  1,  9,  8],
+            #  [10,  2, 11,  8],
+            #  [10,  2, 11,  8]]
+            # [[ 0,  0,  0,  0],
+            #  [ 1,  1,  1,  0],
+            #  [ 1,  1,  1,  0]]
+
+
+            y = paddle.cummax(data, axis=-1)
+            # [[ 5,  5,  9,  9],
+            #  [10, 10, 11, 11],
+            #  [ 6,  6,  6,  7]]
+            # [[ 0,  0,  2,  2],
+            #  [ 0,  0,  2,  2],
+            #  [ 0,  0,  0,  3]]
+
+            y = paddle.cummax(data, axis=1, dtype='float64')
+            # [[ 5., 5., 9., 9.],
+            #  [10.,10.,11.,11.],
+            #  [ 6., 6., 6., 7.]
+            # [[ 0,  0,  2,  2],
+            #  [ 0,  0,  2,  2],
+            #  [ 0,  0,  0,  3]]
+
+            print(y.dtype)
+            # paddle.float64
+
+    """
+
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast(x, dtype)
+
+    if paddle.in_dynamic_mode():
+        return _C_ops.cummax(x, 'axis', axis)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')
+    check_type(axis, 'axis', int, 'cummax')
+
+    helper = LayerHelper('cummax', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+    helper.append_op(type='cummax', inputs={'X': x}, outputs={'Out': out, 'Indices': indices}, attrs={'axis': axis})
+    return out, indices
+
 def isfinite(x, name=None):
     """
 

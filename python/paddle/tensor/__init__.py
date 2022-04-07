@@ -138,6 +138,7 @@ from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import cumprod  # noqa: F401
+from .math import cummax  # noqa: F401
 from .math import logit  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
@@ -303,6 +304,7 @@ tensor_method_func  = [ #noqa
            'cosh',
            'cumsum',
            'cumprod',
+           'cummax',
            'logit',
            'exp',
            'exp_',
