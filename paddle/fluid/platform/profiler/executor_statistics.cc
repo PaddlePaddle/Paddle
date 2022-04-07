@@ -26,70 +26,6 @@
 namespace paddle {
 namespace platform {
 
-/*
-uint64_t CalcOverlapGaps(const TraceEventCollector& collector) {
-  std::map<uint64_t, int> m;
-  for (const auto& evt : collector.HostEvents()) {
-    if (evt.type != TracerEventType::Operator) {
-      continue;
-    }
-    ++m[evt.start_ns];
-    --m[evt.end_ns];
-  }
-  uint64_t gaps = 0;
-  int cur = 0;
-  uint64_t gap_start = 0;
-  for (const auto& kv : m) {
-    cur += kv.second;
-    // VLOG(1) << kv.first << ":" << kv.second << "cnt:" << cur;
-  :  if (cur == 0) {
-      gap_start = kv.first;
-    } else if (cur > 0) {
-      if (gap_start > 0) {
-        gaps += (kv.first - gap_start);
-        // VLOG(1) << "gap:" << gap_start << "->" << kv.first << " add " <<
-        // kv.first - gap_start;
-        gap_start = 0;
-      }
-    } else {
-      VLOG(1) << "cnt < 0, fatal error";
-    }
-  }
-  return gaps;
-}
-
-uint64_t CalcOverlapTotal(const TraceEventCollector& collector,
-                          std::function<bool(const HostTraceEvent&)> filter) {
-  std::map<uint64_t, int> m;
-  for (const auto& evt : collector.HostEvents()) {
-    if (filter(evt) == false) {
-      continue;
-    }
-    ++m[evt.start_ns];
-    --m[evt.end_ns];
-  }
-  uint64_t total = 0;
-  int cur = 0;
-  uint64_t overlap_start = 0;
-  for (const auto& kv : m) {
-    cur += kv.second;
-    if (cur > 0) {
-      if (overlap_start == 0) {
-        overlap_start = kv.first;
-      }
-    } else if (cur == 0) {
-      total += (kv.first - overlap_start);
-      // VLOG(1) << "slice:" << overlap_start << "->" << kv.first << " add "
-      //         << kv.first - overlap_start;
-      overlap_start = 0;
-    } else {
-      VLOG(1) << "cnt < 0, fatal error";
-    }
-  }
-  return total;
-}
-*/
-
 class StatisticsEngine {
  public:
   int Apply(const NodeTrees& tree);
@@ -154,6 +90,9 @@ class StatisticsEngine {
     filters_[idx] = std::move(filter);
     return 0;
   }
+
+  void MergeEvents(std::function<size_t(size_t, size_t)> merger,
+                   std::vector<StdEvent>* in_out_evts);
 
   int MergeInnerthreadEvents(std::vector<std::vector<StdEvent>>* all_evts);
 
@@ -321,7 +260,56 @@ int StatisticsEngine::InitFiltersForExecutor() {
              });
 }
 
-int StatisticsEngine::InitFiltersForParallelExecutor() { return 0; }
+int StatisticsEngine::InitFiltersForParallelExecutor() {
+  return RegisterEventFilter("Total",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name().find("ProfileStep") == 0;
+                             }) ||
+         RegisterEventFilter("CplusplusEnd",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "ParallelExecutor::Run";
+                             }) ||
+         RegisterEventFilter("RunOp",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Type() == TracerEventType::Operator;
+                             }) ||
+         RegisterEventFilter("OpCompute",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "compute" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("OpInfershape",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "infer_shape" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("GarbageCollect",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "eager_deletion";
+                             }) ||
+         RegisterEventFilter("AllocateDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "AutoGrowthBestFitAllocator::Allocate";
+                             }) ||
+         RegisterEventFilter("FreeDeviceMem",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() ==
+                                      "AutoGrowthBestFitAllocator::Free";
+                             }) ||
+         RegisterEventFilter("DataTransform",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "prepare_data" &&
+                                      evt.Type() ==
+                                          TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("ThreadpoolAddTask",
+                             [](const HostTraceEventNode& evt) {
+                               return evt.Name() == "WorkQueue::AddTask";
+                             });
+}
 
 int StatisticsEngine::InitFiltersForInterpreterCore() {
   return RegisterEventFilter("Total",
@@ -390,7 +378,6 @@ int StatisticsEngine::Stat(
         }
         if (filters_[idx](*evt)) {
           thr_evts.emplace_back(idx, evt->StartNs(), evt->EndNs());
-          VLOG(10) << "name:" << evt->Name() << " type:" << names_[idx];
           break;
         }
       }
@@ -421,7 +408,7 @@ int StatisticsEngine::Stat(
   const auto& totol = statistics_[name2idx_["Total"]];
   const auto& cplusplus_end = statistics_[name2idx_["CplusplusEnd"]];
   python_end.total_time = totol.total_time - cplusplus_end.total_time;
-  python_end.count = cplusplus_end.total_time + 1;
+  python_end.count = cplusplus_end.count + 1;
 
   auto& luanch_kernel = statistics_[name2idx_["LuanchKernel"]];
   const auto& op_compute = statistics_[name2idx_["OpCompute"]];
@@ -434,89 +421,91 @@ int StatisticsEngine::Stat(
          MergeInterthreadEvents(&all_evts) || StatNormalizationTime(all_evts);
 }
 
+void StatisticsEngine::MergeEvents(std::function<size_t(size_t, size_t)> merger,
+                                   std::vector<StdEvent>* in_out_evts) {
+  auto evts = *in_out_evts;
+  std::sort(evts.begin(), evts.end(),
+            [](const StdEvent& e1, const StdEvent& e2) {
+              return e1.start_ns < e2.start_ns;
+            });
+
+  std::list<StdEvent> merged;
+  auto iter = merged.begin();
+  for (size_t i = 0; i < evts.size();) {
+    if (iter == merged.end()) {
+      iter = merged.insert(iter, evts[i]);
+      ++i;
+    } else if (iter->end_ns <= evts[i].start_ns) {
+      ++iter;
+    } else if (iter->evt_idx == evts[i].evt_idx) {
+      iter->end_ns = std::max(iter->end_ns, evts[i].end_ns);
+      ++i;
+    } else {
+      auto merged_type = merger(iter->evt_idx, evts[i].evt_idx);
+      if (merged_type == iter->evt_idx) {
+        if (evts[i].end_ns > iter->end_ns) {
+          evts[i].start_ns = iter->end_ns;
+          ++iter;
+        } else {
+          ++i;
+        }
+      } else {
+        StdEvent back = *iter;
+        if (back.start_ns != evts[i].start_ns) {
+          merged.insert(iter, {back.evt_idx, back.start_ns, evts[i].start_ns});
+        }
+        *iter = evts[i];
+        if (back.end_ns > evts[i].end_ns) {
+          auto pos = iter;
+          merged.insert(++pos, {back.evt_idx, evts[i].end_ns, back.end_ns});
+        }
+        ++i;
+      }
+    }
+  }
+  in_out_evts->assign(merged.begin(), merged.end());
+}
+
 int StatisticsEngine::MergeInnerthreadEvents(
     std::vector<std::vector<StdEvent>>* all_evts) {
+  auto merger = [& priorities = priorities_](size_t idx1, size_t idx2) {
+    return priorities[idx1].innerthread_priority <=
+                   priorities[idx2].innerthread_priority
+               ? idx1
+               : idx2;
+  };
   for (auto& thr_evts : *all_evts) {
-    std::list<StdEvent> merge_evts;
-    merge_evts.push_back(thr_evts[0]);
-    auto m_iter = merge_evts.begin();
-    for (size_t c = 1; c < thr_evts.size();) {
-      const auto& cur = thr_evts[c];
-      VLOG(10) << "cur:" << names_[cur.evt_idx] << "|" << cur.start_ns << "|"
-               << cur.end_ns;  //
-      if (m_iter == merge_evts.end()) {
-        merge_evts.push_back(cur);
-        ++c;
-        continue;
-      }
-      const auto& merge = *m_iter;
-      VLOG(10) << "merg:" << names_[merge.evt_idx] << "|" << merge.start_ns
-               << "|" << merge.end_ns;  //
-      if (cur.start_ns >= merge.end_ns) {
-        ++m_iter;
-        continue;
-      }
-      if (cur.end_ns > merge.end_ns) {
-        LOG(WARNING) << "Event " << names_[cur.evt_idx]
-                     << " starts and ends after Event "
-                     << names_[merge.evt_idx];
-        return -1;
-      }
-      auto cur_prio = priorities_[cur.evt_idx].innerthread_priority;
-      auto merge_prio = priorities_[merge.evt_idx].innerthread_priority;
-      VLOG(10) << cur_prio << " vs " << merge_prio;  //
-      if (cur_prio > merge_prio) {
-        ++c;
-        continue;
-      } else if (cur_prio == merge_prio) {
-        LOG(WARNING) << "Sub event has lower priority";
-        return -1;
-      }
-
-      StdEvent prev{merge.evt_idx, merge.start_ns, cur.start_ns};
-      StdEvent post{merge.evt_idx, cur.end_ns, merge.end_ns};
-      merge_evts.insert(m_iter, prev);
-      *(m_iter) = cur;
-      if (post.start_ns < post.end_ns) {
-        auto pos = m_iter;
-        merge_evts.insert(++pos, post);
-      }
-      ++c;
-    }
-    for (auto& evt : merge_evts) {
+    MergeEvents(merger, &thr_evts);
+    for (auto& evt : thr_evts) {
       if (names_[evt.evt_idx] == "Total") {
         evt.evt_idx = name2idx_["PythonEnd"];
       } else if (names_[evt.evt_idx] == "OpCompute") {
         evt.evt_idx = name2idx_["LuanchKernel"];
       }
     }
-
-    VLOG(10) << "new thread";
-    for (const auto& evt : merge_evts) {
-      VLOG(10) << names_[evt.evt_idx] << " " << evt.start_ns << " "
-               << evt.end_ns;
-    }  ////
-
-    thr_evts.assign(merge_evts.begin(), merge_evts.end());
   }
   return 0;
 }
 
 int StatisticsEngine::MergeInterthreadEvents(
     std::vector<std::vector<StdEvent>>* all_evts) {
+  auto merger = [& priorities = priorities_](size_t idx1, size_t idx2) {
+    return priorities[idx1].interthread_priority <=
+                   priorities[idx2].interthread_priority
+               ? idx1
+               : idx2;
+  };
+  // K-way merge, just simplest impl
   std::vector<StdEvent> base_list;
-  base_list.swap((*all_evts)[0]);
+  base_list.swap(all_evts->at(0));
   for (size_t i = 1; i < all_evts->size(); ++i) {
-    std::vector<StdEvent> merge;
-    auto& cur_list = (*all_evts)[i];
-    for (size_t c = 0, m = 0; c < cur_list.size(); ++c) {
-      VLOG(10) << i << c << m;
-      continue;
-    }
+    auto& cur_list = all_evts->at(i);
+    base_list.reserve(base_list.size() + cur_list.size());
+    base_list.insert(base_list.end(), cur_list.begin(), cur_list.end());
+    MergeEvents(merger, &base_list);
   }
   all_evts->resize(1);
   (*all_evts)[0].swap(base_list);
-  VLOG(10) << (*all_evts)[0].size();  /////
   return 0;
 }
 
@@ -528,6 +517,17 @@ int StatisticsEngine::StatNormalizationTime(
   }
   for (const auto& evt : all_evts[0]) {
     statistics_[evt.evt_idx].normalization_time += evt.end_ns - evt.start_ns;
+  }
+  // verify
+  uint64_t total = statistics_[name2idx_["Total"]].total_time;
+  uint64_t normalization_sum = 0;
+  for (size_t idx = 0; idx < statistics_.size(); ++idx) {
+    normalization_sum += statistics_[idx].normalization_time;
+  }
+  if (total - normalization_sum != 0) {
+    LOG(WARNING) << "total: " << total
+                 << "is greater than normalization_sum:" << normalization_sum;
+    return -1;
   }
   return 0;
 }
@@ -564,83 +564,6 @@ void ExecutorStatistics(const std::string& file_name, const NodeTrees& tree) {
   if (engine.Apply(tree) == 0) {
     engine.Log(file_name);
   }
-  /*REG_EVENT(AutoGrowthBestFitAllocator::Allocate);
-  REG_EVENT(AutoGrowthBestFitAllocator::Free);
-  REG_EVENT(StreamSafeCUDAAllocator::Allocate);
-  REG_EVENT(StreamSafeCUDAAllocator::Free);
-  REG_EVENT(WorkQueue::AddTask);
-  REG_EVENT(StandaloneExecutor::run);
-  REG_EVENT(ParallelExecutor::Run);*/
-  /*
-  } else if (executor_type == 2) {
-    total_cost = GET_EVENT_TATALTIME(ProfileStep);
-    cplusplus_cost = GET_EVENT_TATALTIME(ParallelExecutor::Run);
-    python_cost = total_cost - cplusplus_cost;
-    run_op_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
-      return evt.type == TracerEventType::Operator;
-    });
-    infershape_cost = CalcOverlapTotal(collector, [](const HostTraceEvent&
-evt)
-{ return evt.name == "infer_shape"; });
-    allocator_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt)
-{
-return evt.name == "AutoGrowthBestFitAllocator::Allocat"; });
-  } else if (executor_type == 3) {
-    total_cost = GET_EVENT_TATALTIME(ProfileStep);
-    cplusplus_cost = GET_EVENT_TATALTIME(StandaloneExecutor::run);
-    python_cost = total_cost - cplusplus_cost;
-    run_op_cost = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
-      return evt.type == TracerEventType::Operator;
-    });
-    infershape_cost = CalcOverlapTotal(collector, [](const HostTraceEvent&
-evt)
-{ return evt.name == "infer_shape"; });
-    allocator_alloc = CalcOverlapTotal(collector, [](const HostTraceEvent&
-evt)
-{ return evt.name == "StreamSafeCUDAAllocator::Allocate"; });
-
-  }
-uint64_t allocator_cost = 0;
-if (executor_type <= 2) {
-  VLOG(1) << "thread model==========";
-  VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
-          << "ns " << GET_EVENT_COUNT(WorkQueue::AddTask) << "times";
-  allocator_cost = GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Allocate) +
-                   GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Free);
-  VLOG(1) << "Allocator: " << allocator_cost << "ns "
-          << GET_EVENT_COUNT(StreamSafeCUDAAllocator::Allocate) +
-                 GET_EVENT_COUNT(StreamSafeCUDAAllocator::Free)
-          << "times";
-  uint64_t autogrowth_allocator_cost =
-      GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Allocate) +
-      GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Free);
-  VLOG(1) << "AutoGrowth Allocator: " << autogrowth_allocator_cost << "ns "
-          << GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Allocate) +
-                 GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Free)
-          << "times";
-  uint64_t kernel_luanch = CalcOverlapTotal(collector,
-                                            [](const HostTraceEvent& evt) {
-                                              return evt.name == "compute";
-                                            }) -
-                           allocator_cost;
-  VLOG(1) << "kernel luanch: " << kernel_luanch << "ns ";
-} else {  // old executor
-  VLOG(1) << "static kernel=========";
-  VLOG(1) << "data transform: " << GET_EVENT_TATALTIME(prepare_data) << "ns "
-          << GET_EVENT_COUNT(prepare_data) << "times";
-  VLOG(1) << "thread model==========";
-  VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
-          << "ns " << GET_EVENT_COUNT(WorkQueue::AddTask) << "times";
-  allocator_cost = GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Allocate) +
-                   GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Free);
-  VLOG(1) << "Allocator: " << allocator_cost << "ns "
-          << GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Allocate) +
-                 GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Free)
-          << "times";
-}
-// common
-VLOG(1) << "kernel luanch(overlap): " << kernel_luanch << "ns ";
-VLOG(1) << "op gaps: " << CalcOverlapGaps(collector);*/
 }
 
 }  // namespace platform
