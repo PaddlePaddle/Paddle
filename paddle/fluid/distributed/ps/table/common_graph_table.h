@@ -204,7 +204,7 @@ class RandomSampleLRU {
   }
 
   void process_redundant(int process_size) {
-    size_t length = std::min(remove_count, process_size);
+    int length = std::min(remove_count, process_size);
     while (length--) {
       remove(node_head);
       remove_count--;
@@ -280,7 +280,7 @@ class ScaledLRU {
           }
         }
         auto status =
-            thread_pool->enqueue([this]() -> int { return shrink(); });
+            thread_pool->enqueue([this]() -> int { return Shrink(); });
         status.wait();
       }
     });
@@ -298,7 +298,7 @@ class ScaledLRU {
   LRUResponse insert(size_t index, K *keys, V *data, size_t length) {
     return lru_pool[index].insert(keys, data, length);
   }
-  int shrink() {
+  int Shrink() {
     int node_size = 0;
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size - lru_pool[i].remove_count;
@@ -306,12 +306,10 @@ class ScaledLRU {
 
     if ((size_t)node_size <= size_t(1.1 * size_limit) + 1) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
-      // VLOG(0)<"in shrink\n";
       global_count = 0;
       for (size_t i = 0; i < lru_pool.size(); i++) {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
-      // VLOG(0)<<"global_count "<<global_count<<"\n";
       if ((size_t)global_count > size_limit) {
         size_t remove = global_count - size_limit;
         for (size_t i = 0; i < lru_pool.size(); i++) {
@@ -319,7 +317,6 @@ class ScaledLRU {
           lru_pool[i].remove_count +=
               1.0 * (lru_pool[i].node_size - lru_pool[i].remove_count) /
               global_count * remove;
-          // VLOG(0)<<i<<" "<<lru_pool[i].remove_count<<std::endl;
         }
       }
       pthread_rwlock_unlock(&rwlock);
@@ -332,9 +329,7 @@ class ScaledLRU {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
       if (global_count > int(1.25 * size_limit)) {
-        // VLOG(0)<<"global_count too large "<<global_count<<" enter start
-        // shrink task\n";
-        thread_pool->enqueue([this]() -> int { return shrink(); });
+        thread_pool->enqueue([this]() -> int { return Shrink(); });
       }
     }
   }
@@ -409,7 +404,7 @@ class GraphSampler {
 };
 #endif
 
-class GraphTable : public SparseTable {
+class GraphTable : public Table {
  public:
   GraphTable() {
     use_cache = false;
@@ -420,6 +415,23 @@ class GraphTable : public SparseTable {
     rw_lock.reset(new pthread_rwlock_t());
   }
   virtual ~GraphTable();
+
+  virtual void *GetShard(size_t shard_idx) { return 0; }
+
+  static int32_t sparse_local_shard_num(uint32_t shard_num,
+                                        uint32_t server_num) {
+    if (shard_num % server_num == 0) {
+      return shard_num / server_num;
+    }
+    size_t local_shard_num = shard_num / server_num + 1;
+    return local_shard_num;
+  }
+
+  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+                                 uint64_t key) {
+    return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
+  }
+
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
                                   int &actual_size, bool need_feature,
@@ -435,11 +447,11 @@ class GraphTable : public SparseTable {
 
   virtual int32_t get_nodes_ids_by_ranges(
       std::vector<std::pair<int, int>> ranges, std::vector<int64_t> &res);
-  virtual int32_t initialize() { return 0; }
-  virtual int32_t initialize(const TableParameter &config,
+  virtual int32_t Initialize() { return 0; }
+  virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
-  virtual int32_t initialize(const GraphParameter &config);
-  int32_t load(const std::string &path, const std::string &param);
+  virtual int32_t Initialize(const GraphParameter &config);
+  int32_t Load(const std::string &path, const std::string &param);
   int32_t load_graph_split_config(const std::string &path);
 
   int32_t load_edges(const std::string &path, bool reverse);
@@ -457,26 +469,16 @@ class GraphTable : public SparseTable {
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
 
-  virtual int32_t pull_sparse(float *values,
-                              const PullSparseValue &pull_value) {
-    return 0;
-  }
-
-  virtual int32_t push_sparse(const uint64_t *keys, const float *values,
-                              size_t num) {
-    return 0;
-  }
-
   virtual int32_t clear_nodes();
-  virtual void clear() {}
-  virtual int32_t flush() { return 0; }
-  virtual int32_t shrink(const std::string &param) { return 0; }
+  virtual void Clear() {}
+  virtual int32_t Flush() { return 0; }
+  virtual int32_t Shrink(const std::string &param) { return 0; }
   //指定保存路径
-  virtual int32_t save(const std::string &path, const std::string &converter) {
+  virtual int32_t Save(const std::string &path, const std::string &converter) {
     return 0;
   }
-  virtual int32_t initialize_shard() { return 0; }
-  virtual int32_t set_shard(size_t shard_idx, size_t server_num) {
+  virtual int32_t InitializeShard() { return 0; }
+  virtual int32_t SetShard(size_t shard_idx, size_t server_num) {
     _shard_idx = shard_idx;
     /*
     _shard_num is not used in graph_table, this following operation is for the
@@ -547,6 +549,8 @@ class GraphTable : public SparseTable {
   std::unordered_set<int64_t> extra_nodes;
   std::unordered_map<int64_t, size_t> extra_nodes_to_thread_index;
   bool use_cache, use_duplicate_nodes;
+  int cache_size_limit;
+  int cache_ttl;
   mutable std::mutex mutex_;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
@@ -593,7 +597,7 @@ class BasicBfsGraphSampler : public GraphSampler {
   std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<int64_t>> sample_neighbors;
   size_t gpu_num;
-  int node_num_for_each_shard, edge_num_for_each_node;
+  int init_search_size, node_num_for_each_shard, edge_num_for_each_node;
   int rounds, interval;
   std::vector<std::unordered_map<int64_t, std::vector<int64_t>>>
       sample_neighbors_map;

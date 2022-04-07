@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
     def func(self, place):
         self.config()
 

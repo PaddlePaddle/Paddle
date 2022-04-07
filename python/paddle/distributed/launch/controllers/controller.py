@@ -75,8 +75,9 @@ class ControllerBase(object):
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            if self.ctx.continous_log():
-                self.pod.logs()
+            #if self.ctx.continous_log():
+            # default to print log
+            self.pod.logs()
 
             # completed
             if status == self.ctx.status.COMPLETED:
@@ -210,6 +211,8 @@ class Controller(ControllerBase):
 
         if self.ctx.args.nproc_per_node:
             return int(self.ctx.args.nproc_per_node)
+        elif self.ctx.args.devices:
+            return len(self.ctx.args.devices.split(','))
         else:
             return self.ctx.node.device.count
 

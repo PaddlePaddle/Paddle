@@ -209,6 +209,9 @@ function cmake_base() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -262,6 +265,9 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -1018,6 +1024,9 @@ function generate_api_spec() {
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
     deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
 }
 
 function check_approvals_of_unittest() {
@@ -1356,6 +1365,7 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
+
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
@@ -1513,7 +1523,7 @@ set +x
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_forth_high_parallel" 1 5          # run cases 5 job each time with single GPU
         card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
         card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
@@ -2768,7 +2778,8 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 gpu; example_error=$?
+        SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -2918,6 +2929,41 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+function check_coverage_build() {
+    if [ ! "${buildSize}" ];then
+        echo "build size not found"
+        exit 1
+    fi
+
+    if [ ${WITH_COVERAGE} != "ON" ];then
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+        exit 1
+    fi
+
+    rm -f build_size
+    curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    dev_coverage_build_size=`cat build_size|sed 's#G##g'`
+    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+
+    diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
+
+    set +x
+    if [ ${diff_coverage_build_size} -gt 3 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917 43953930`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
+           echo "Then you must have one RD (tianshuo78520a (Recommend) or luotao1 or phlrain) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -3044,6 +3090,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1

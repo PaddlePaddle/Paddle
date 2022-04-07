@@ -18,7 +18,7 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
-from ..framework import _in_eager_mode
+from .. import framework
 
 import numpy as np
 import warnings
@@ -221,7 +221,7 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if _in_eager_mode():
+            if framework._in_eager_mode_:
                 other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
@@ -264,9 +264,16 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
+            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # 4. calculation
             axis = -1
-            math_op = getattr(_C_ops, op_type)
+            if framework._in_eager_mode_ and op_type == 'elementwise_add':
+                math_op = getattr(_C_ops, 'final_state_add')
+            else:
+                math_op = getattr(_C_ops, op_type)
             return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -340,7 +347,7 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if core._in_eager_mode():
+    if framework._in_eager_mode_:
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
         local_tensor = core.eager.Tensor

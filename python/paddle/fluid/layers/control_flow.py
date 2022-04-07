@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
+from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -897,7 +897,9 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
-        parameters = [parent_block.var(name) for name in set(params)]
+        parameters = [
+            parent_block._find_var_recursive(name) for name in set(params)
+        ]
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -972,6 +974,19 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
     :return: inner_inputs, inner_outputs
     """
 
+    def is_ignore_vars(op, var_name):
+        # NOTE(dev): There are some persistable var created in some non-standard API
+        # such as "contrib.layers.shuffle_batch". It create a "Seed" used both in
+        # Input and Output. This var shall not be considered as a loop_var in
+        # control_flow.
+        IGNORE_VAR_NAMES = {"shuffle_batch": ["shuffle_batch_seed"]}
+        if op.type in IGNORE_VAR_NAMES:
+            var_names = IGNORE_VAR_NAMES[op.type]
+            for name in var_names:
+                if name in var_name:
+                    return True
+        return False
+
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
     # but some variables are created without appendding a real op.
@@ -980,7 +995,8 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
         assert isinstance(op, Operator)
         for iname in op.input_names:
             for in_var_name in op.input(iname):
-                if in_var_name not in inner_outputs:
+                if in_var_name not in inner_outputs and not is_ignore_vars(
+                        op, in_var_name):
                     inner_inputs.add(in_var_name)
 
         for oname in op.output_names:
@@ -1213,7 +1229,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         now_cond = pre_cond.numpy()[0]
         while (now_cond):
             output_vars = body(*loop_vars)
@@ -1526,7 +1542,7 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             x, Variable
         ), "The input data 'x' in array_write must be Variable in dygraph mode"
@@ -1611,7 +1627,7 @@ def create_array(dtype, initialized_list=None):
                 "All values in `initialized_list` should be Variable, but recevied {}.".
                 format(type(val)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return array
 
     helper = LayerHelper("array", **locals())
@@ -1998,7 +2014,7 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_read must be list in dygraph mode"
@@ -2112,7 +2128,7 @@ def array_length(array):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_write must be a list in dygraph mode"
@@ -2430,9 +2446,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]            
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
-        assert pred.numpy().size == 1, "condition input's numel should be 1"
+        assert pred.size == 1, "condition input's numel should be 1"
         pred = pred.numpy()[0]
         if pred:
             if true_fn is not None:
@@ -3852,6 +3868,8 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
+        return _C_ops.final_state_is_empty(x)
+    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
