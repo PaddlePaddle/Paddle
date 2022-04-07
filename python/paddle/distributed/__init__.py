@@ -87,4 +87,5 @@ __all__ = [  # noqa
       "wait",
       "get_rank",
       "ProbabilityEntry",
+      "ParallelMode",
 ]
