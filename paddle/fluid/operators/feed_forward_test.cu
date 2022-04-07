@@ -292,6 +292,10 @@ class TestFeedForward {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place_)
             .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     size_src_ = bsz_seq_ * dim_embed_;         // src: [bs, seq_len, em_dim]

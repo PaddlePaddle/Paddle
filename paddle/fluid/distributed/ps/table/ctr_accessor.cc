@@ -23,86 +23,34 @@ namespace distributed {
 int CtrCommonAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
-  _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
+  _embed_sgd_rule->LoadConfig(_config.embed_sgd_param(), 1);
 
   name = _config.embedx_sgd_param().name();
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
-  _embedx_sgd_rule->load_config(_config.embedx_sgd_param(),
-                                _config.embedx_dim());
+  _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
+                               _config.embedx_dim());
 
-  common_feature_value.embed_sgd_dim = _embed_sgd_rule->dim();
+  common_feature_value.embed_sgd_dim = _embed_sgd_rule->Dim();
   common_feature_value.embedx_dim = _config.embedx_dim();
-  common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
+  common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->Dim();
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
 
+  InitAccessorInfo();
   return 0;
 }
 
-void CtrCommonAccessor::SetTableInfo(AccessorInfo& info) {
-  info.dim = Dim();
-  info.size = Size();
-  info.select_dim = SelectDim();
-  info.select_size = SelectSize();
-  info.update_dim = UpdateDim();
-  info.update_size = UpdateSize();
-  info.mf_size = MFSize();
-}
+void CtrCommonAccessor::InitAccessorInfo() {
+  _accessor_info.dim = common_feature_value.Dim();
+  _accessor_info.size = common_feature_value.Size();
 
-size_t CtrCommonAccessor::GetTableInfo(InfoKey key) {
-  switch (key) {
-    case DIM:
-      return Dim();
-    case SIZE:
-      return Size();
-    case SELECT_DIM:
-      return SelectDim();
-    case SELECT_SIZE:
-      return SelectSize();
-    case UPDATE_DIM:
-      return UpdateDim();
-    case UPDATE_SIZE:
-      return UpdateSize();
-    case MF_SIZE:
-      return MFSize();
-    default:
-      return 0;
-  }
-  return 0;
-}
-
-size_t CtrCommonAccessor::Dim() { return common_feature_value.Dim(); }
-
-size_t CtrCommonAccessor::DimSize(size_t dim) {
   auto embedx_dim = _config.embedx_dim();
-  return common_feature_value.DimSize(dim, embedx_dim);
+  _accessor_info.select_dim = 3 + embedx_dim;
+  _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
+  _accessor_info.update_dim = 4 + embedx_dim;
+  _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
+  _accessor_info.mf_size =
+      (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
 }
-
-size_t CtrCommonAccessor::Size() { return common_feature_value.Size(); }
-
-size_t CtrCommonAccessor::MFSize() {
-  return (_config.embedx_dim() + common_feature_value.embedx_sgd_dim) *
-         sizeof(float);  // embedx embedx_g2sum
-}
-
-// pull value
-size_t CtrCommonAccessor::SelectDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 3 + embedx_dim;
-}
-
-size_t CtrCommonAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
-
-size_t CtrCommonAccessor::SelectSize() { return SelectDim() * sizeof(float); }
-
-// push value
-size_t CtrCommonAccessor::UpdateDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 4 + embedx_dim;
-}
-
-size_t CtrCommonAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
-
-size_t CtrCommonAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
 bool CtrCommonAccessor::Shrink(float* value) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
@@ -116,9 +64,9 @@ bool CtrCommonAccessor::Shrink(float* value) {
   common_feature_value.Click(value) *= _show_click_decay_rate;
 
   // shrink after
-  auto score = show_click_score(common_feature_value.Show(value),
-                                common_feature_value.Click(value));
-  auto unseen_days = common_feature_value.unseen_days(value);
+  auto score = ShowClickScore(common_feature_value.Show(value),
+                              common_feature_value.Click(value));
+  auto unseen_days = common_feature_value.UnseenDays(value);
   if (score < delete_threshold || unseen_days > delete_after_unseen_days) {
     return true;
   }
@@ -141,14 +89,13 @@ bool CtrCommonAccessor::Save(float* value, int param) {
     case 1:
     // save xbox base
     case 2: {
-      if (show_click_score(common_feature_value.Show(value),
-                           common_feature_value.Click(value)) >=
-              base_threshold &&
-          common_feature_value.delta_score(value) >= delta_threshold &&
-          common_feature_value.unseen_days(value) <= delta_keep_days) {
+      if (ShowClickScore(common_feature_value.Show(value),
+                         common_feature_value.Click(value)) >= base_threshold &&
+          common_feature_value.DeltaScore(value) >= delta_threshold &&
+          common_feature_value.UnseenDays(value) <= delta_keep_days) {
         // do this after save, because it must not be modified when retry
         if (param == 2) {
-          common_feature_value.delta_score(value) = 0;
+          common_feature_value.DeltaScore(value) = 0;
         }
         return true;
       } else {
@@ -158,7 +105,7 @@ bool CtrCommonAccessor::Save(float* value, int param) {
     // already decayed in shrink
     case 3: {
       // do this after save, because it must not be modified when retry
-      // common_feature_value.unseen_days(value)++;
+      // common_feature_value.UnseenDays(value)++;
       return true;
     }
     // save revert batch_model
@@ -179,17 +126,16 @@ void CtrCommonAccessor::UpdateStatAfterSave(float* value, int param) {
   }
   switch (param) {
     case 1: {
-      if (show_click_score(common_feature_value.Show(value),
-                           common_feature_value.Click(value)) >=
-              base_threshold &&
-          common_feature_value.delta_score(value) >= delta_threshold &&
-          common_feature_value.unseen_days(value) <= delta_keep_days) {
-        common_feature_value.delta_score(value) = 0;
+      if (ShowClickScore(common_feature_value.Show(value),
+                         common_feature_value.Click(value)) >= base_threshold &&
+          common_feature_value.DeltaScore(value) >= delta_threshold &&
+          common_feature_value.UnseenDays(value) <= delta_keep_days) {
+        common_feature_value.DeltaScore(value) = 0;
       }
     }
       return;
     case 3: {
-      common_feature_value.unseen_days(value)++;
+      common_feature_value.UnseenDays(value)++;
     }
       return;
     default:
@@ -201,17 +147,16 @@ int32_t CtrCommonAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
-    value[common_feature_value.unseen_days_index()] = 0;
-    value[common_feature_value.delta_score_index()] = 0;
+    value[common_feature_value.UnseenDaysIndex()] = 0;
+    value[common_feature_value.DeltaScoreIndex()] = 0;
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
-    _embed_sgd_rule->init_value(
-        value + common_feature_value.Embed_W_Index(),
-        value + common_feature_value.embed_g2sum_index());
-    _embedx_sgd_rule->init_value(
-        value + common_feature_value.Embedx_W_Index(),
-        value + common_feature_value.embedx_g2sum_index(), false);
+    _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
+                               value + common_feature_value.EmbedG2SumIndex());
+    _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
+                                value + common_feature_value.EmbedxG2SumIndex(),
+                                false);
   }
   return 0;
 }
@@ -225,7 +170,7 @@ bool CtrCommonAccessor::NeedExtendMF(float* value) {
 }
 
 bool CtrCommonAccessor::HasMF(size_t size) {
-  return size > common_feature_value.embedx_g2sum_index();
+  return size > common_feature_value.EmbedxG2SumIndex();
 }
 
 // from CommonFeatureValue to CtrCommonPullValue
@@ -239,10 +184,10 @@ int32_t CtrCommonAccessor::Select(float** select_values, const float** values,
         value[common_feature_value.ShowIndex()];
     select_value[CtrCommonPullValue::ClickIndex()] =
         value[common_feature_value.ClickIndex()];
-    select_value[CtrCommonPullValue::Embed_W_Index()] =
-        value[common_feature_value.Embed_W_Index()];
-    memcpy(select_value + CtrCommonPullValue::Embedx_W_Index(),
-           value + common_feature_value.Embedx_W_Index(),
+    select_value[CtrCommonPullValue::EmbedWIndex()] =
+        value[common_feature_value.EmbedWIndex()];
+    memcpy(select_value + CtrCommonPullValue::EmbedxWIndex(),
+           value + common_feature_value.EmbedxWIndex(),
            embedx_dim * sizeof(float));
   }
   return 0;
@@ -283,18 +228,19 @@ int32_t CtrCommonAccessor::Update(float** update_values,
     update_value[common_feature_value.ShowIndex()] += push_show;
     update_value[common_feature_value.ClickIndex()] += push_click;
     update_value[common_feature_value.SlotIndex()] = slot;
-    update_value[common_feature_value.delta_score_index()] +=
+    update_value[common_feature_value.DeltaScoreIndex()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
-    update_value[common_feature_value.unseen_days_index()] = 0;
-    _embed_sgd_rule->update_value(
-        update_value + common_feature_value.Embed_W_Index(),
-        update_value + common_feature_value.embed_g2sum_index(),
-        push_value + CtrCommonPushValue::Embed_G_Index());
-    _embedx_sgd_rule->update_value(
-        update_value + common_feature_value.Embedx_W_Index(),
-        update_value + common_feature_value.embedx_g2sum_index(),
-        push_value + CtrCommonPushValue::Embedx_G_Index());
+    update_value[common_feature_value.UnseenDaysIndex()] = 0;
+    // TODO(zhaocaibei123): add configure show_scale
+    _embed_sgd_rule->UpdateValue(
+        update_value + common_feature_value.EmbedWIndex(),
+        update_value + common_feature_value.EmbedG2SumIndex(),
+        push_value + CtrCommonPushValue::EmbedGIndex(), push_show);
+    _embedx_sgd_rule->UpdateValue(
+        update_value + common_feature_value.EmbedxWIndex(),
+        update_value + common_feature_value.EmbedxG2SumIndex(),
+        push_value + CtrCommonPushValue::EmbedxGIndex(), push_show);
   }
   return 0;
 }
@@ -308,7 +254,7 @@ bool CtrCommonAccessor::CreateValue(int stage, const float* value) {
     // operation
     auto show = CtrCommonPushValue::Show(const_cast<float*>(value));
     auto click = CtrCommonPushValue::Click(const_cast<float*>(value));
-    auto score = show_click_score(show, click);
+    auto score = ShowClickScore(show, click);
     if (score <= 0) {
       return false;
     }
@@ -322,7 +268,7 @@ bool CtrCommonAccessor::CreateValue(int stage, const float* value) {
   }
 }
 
-float CtrCommonAccessor::show_click_score(float show, float click) {
+float CtrCommonAccessor::ShowClickScore(float show, float click) {
   auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
   auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
@@ -334,16 +280,16 @@ std::string CtrCommonAccessor::ParseToString(const float* v, int param) {
   os.str("");
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4] << " "
      << v[5];
-  for (int i = common_feature_value.embed_g2sum_index();
-       i < common_feature_value.Embedx_W_Index(); i++) {
+  for (int i = common_feature_value.EmbedG2SumIndex();
+       i < common_feature_value.EmbedxWIndex(); i++) {
     os << " " << v[i];
   }
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
-  auto score = show_click_score(show, click);
+  auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() &&
-      param > common_feature_value.Embedx_W_Index()) {
-    for (auto i = common_feature_value.Embedx_W_Index();
+      param > common_feature_value.EmbedxWIndex()) {
+    for (auto i = common_feature_value.EmbedxWIndex();
          i < common_feature_value.Dim(); ++i) {
       os << " " << v[i];
     }
@@ -354,9 +300,8 @@ std::string CtrCommonAccessor::ParseToString(const float* v, int param) {
 int CtrCommonAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
 
-  _embedx_sgd_rule->init_value(
-      value + common_feature_value.Embedx_W_Index(),
-      value + common_feature_value.embedx_g2sum_index());
+  _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
+                              value + common_feature_value.EmbedxG2SumIndex());
   auto ret = paddle::string::str_to_float(str.data(), value);
   CHECK(ret >= 6) << "expect more than 6 real:" << ret;
   return ret;

@@ -25,37 +25,37 @@ namespace sparse {
 template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
-                      const DenseTensor& rulebook,
                       const DenseTensor& kernel,
-                      const DenseTensor& out_grad,
+                      const DenseTensor& rulebook,
+                      const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
                       const bool subm,
-                      DenseTensor* x_grad,
+                      SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad);
 
 template <typename T, typename Context>
-std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
-                                    const SparseCooTensor& x,
-                                    const DenseTensor& rulebook,
-                                    const DenseTensor& kernel,
-                                    const DenseTensor& out_grad,
-                                    const std::vector<int>& paddings,
-                                    const std::vector<int>& dilations,
-                                    const std::vector<int>& strides,
-                                    const int groups,
-                                    const bool subm) {
-  DenseTensor x_grad =
-      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
-  DenseTensor kernel_grad = phi::Empty<Context>(
-      dev_ctx, DenseTensorMeta(kernel.dtype(), {1}, kernel.layout()));
+std::tuple<SparseCooTensor, DenseTensor> Conv3dGrad(
+    const Context& dev_ctx,
+    const SparseCooTensor& x,
+    const DenseTensor& kernel,
+    const DenseTensor& rulebook,
+    const SparseCooTensor& out_grad,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const int groups,
+    const bool subm) {
+  SparseCooTensor x_grad;
+  DenseTensor kernel_grad;
+
   // TODO(zhangkaihuo): call InferMeta func here
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,
-                               rulebook,
                                kernel,
+                               rulebook,
                                out_grad,
                                paddings,
                                dilations,
@@ -64,10 +64,7 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                subm,
                                &x_grad,
                                &kernel_grad);
-  std::vector<DenseTensor> out(2);
-  out[0] = x_grad;
-  out[1] = kernel_grad;
-  return out;
+  return std::make_tuple(x_grad, kernel_grad);
 }
 
 }  // namespace sparse

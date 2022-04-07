@@ -47,6 +47,8 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 class EagerGroup {
  public:
   Tensor dense_contents_;
+  Tensor sparse_contents_;
+  bool is_sparse_ = false;
 
   // for concat kernel
   std::vector<phi::DenseTensor> dense_tensors_;
@@ -104,6 +106,7 @@ class EagerReducer {
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
   void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
+  void AllReduceSparse(EagerGroup *group, const int curr_group_index);
   void FinalizeBackward();
   void TraverseBackwardGraph(const std::vector<Tensor> &outputs);
   void ProcessUnusedDenseVars();
