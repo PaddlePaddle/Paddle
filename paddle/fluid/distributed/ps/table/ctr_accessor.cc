@@ -35,11 +35,6 @@ int CtrCommonAccessor::Initialize() {
   common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->Dim();
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
 
-  //  if (_config.ctr_accessor_param().show_scale()) {
-  //    _show_scale = true;
-  //  }
-  _show_scale = true;
-
   InitAccessorInfo();
   return 0;
 }
@@ -238,9 +233,6 @@ int32_t CtrCommonAccessor::Update(float** update_values,
         push_click * _config.ctr_accessor_param().click_coeff();
     update_value[common_feature_value.UnseenDaysIndex()] = 0;
     // TODO(zhaocaibei123): add configure show_scale
-    if (!_show_scale) {
-      push_show = 1;
-    }
     _embed_sgd_rule->UpdateValue(
         update_value + common_feature_value.EmbedWIndex(),
         update_value + common_feature_value.EmbedG2SumIndex(),
