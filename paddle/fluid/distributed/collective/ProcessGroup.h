@@ -148,6 +148,7 @@ class ProcessGroup {
  protected:
   const int rank_;
   const int size_;
+  const int gid_;
 };
 
 class ProcessGroupMapFromGid {
