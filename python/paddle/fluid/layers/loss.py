@@ -21,7 +21,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
@@ -1101,6 +1101,25 @@ def sampled_softmax_with_cross_entropy(logits,
             out = fluid.layers.sampled_softmax_with_cross_entropy(
                       logits=fc, label=label, num_samples=25)
     """
+    if _non_static_mode():
+        sample_logits_attrs = ('use_customized_samples', use_customized_samples,
+                               'uniq', True, 'remove_accidental_hits',
+                               remove_accidental_hits, 'num_samples',
+                               num_samples, 'seed', seed)
+        _, _, _, _, sampled_logits_out, sampled_label_out = _C_ops.sample_logits(
+            logits, label, *sample_logits_attrs)
+        depth = num_samples + 1
+        sampled_softlabel_out = _C_ops.one_hot(sampled_label_out, 'depth',
+                                               depth)
+
+        softmax_with_cross_entropy_attrs = ('soft_label', True,
+                                            'numeric_stable_mode', False)
+
+        _, loss = _C_ops.softmax_with_cross_entropy(
+            sampled_logits_out, sampled_softlabel_out,
+            *softmax_with_cross_entropy_attrs)
+        return loss / num_true
+
     helper = LayerHelper('sample_logits', **locals())
     samples = customized_samples if use_customized_samples else helper.create_variable_for_type_inference(
         dtype='int64')
@@ -1267,10 +1286,15 @@ def softmax_with_cross_entropy(logits,
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)
         else:
-            softmax, loss = _C_ops.softmax_with_cross_entropy(
-                logits, label, 'soft_label', soft_label, 'ignore_index',
-                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
-                'axis', axis)
+            if in_dygraph_mode():
+                softmax, loss = _C_ops.final_state_cross_entropy_with_softmax(
+                    logits, label, soft_label, True, numeric_stable_mode,
+                    ignore_index, axis)
+            if _in_legacy_dygraph():
+                softmax, loss = _C_ops.softmax_with_cross_entropy(
+                    logits, label, 'soft_label', soft_label, 'ignore_index',
+                    ignore_index, 'numeric_stable_mode', numeric_stable_mode,
+                    'axis', axis)
         if not return_softmax:
             return loss
         else:
@@ -1458,6 +1482,10 @@ def sigmoid_cross_entropy_with_logits(x,
                                                             ignore_index=-1, normalize=True)
             print(loss)
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+            x, label, normalize, int(ignore_index))
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
 
@@ -1582,6 +1610,10 @@ def huber_loss(input, label, delta):
         HuberLoss, = exe.run(feed={'input':input_data ,'label':label_data}, fetch_list=[loss.name])
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
+    if in_dygraph_mode():
+        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        return out
+
     helper = LayerHelper('huber_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'huber_loss')

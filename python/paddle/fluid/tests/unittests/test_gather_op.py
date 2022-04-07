@@ -33,6 +33,7 @@ def gather_numpy(x, index, axis):
 class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
+        self.python_api = paddle.gather
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
@@ -42,10 +43,10 @@ class TestGatherOp(OpTest):
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def config(self):
         """
@@ -120,6 +121,7 @@ class TestCase6(TestGatherOp):
 class TestGatherBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gather"
+        self.python_api = paddle.gather
         self.dtype = np.uint16
         self.config()
         xnp = np.random.random(self.x_shape).astype(np.float32)
@@ -134,10 +136,10 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_eager=True)
 
     def config(self):
         """
@@ -153,6 +155,7 @@ class TestGatherBF16Op(OpTest):
 class TestGatherOp1(OpTest):
     def setUp(self):
         self.op_type = "gather"
+        self.python_api = paddle.gather
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         axis_np = np.array(self.axis).astype(self.index_type)
@@ -162,10 +165,10 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def config(self):
         """
