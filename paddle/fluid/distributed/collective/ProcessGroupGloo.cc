@@ -116,7 +116,7 @@ std::vector<T*> get_multi_data(const std::vector<phi::DenseTensor>& tensors) {
   std::vector<T*> ret;
   ret.reserve(tensors.size());
   for (size_t i = 0; i < tensors.size(); i++) {
-    ret[i] = get_data<T>(tensors[i]);
+    ret.push_back(get_data<T>(tensors[i]));
   }
   return ret;
 }
@@ -152,7 +152,7 @@ void set_inputs_for_scatter(P& opts,                   // NOLINT
   T* raw_pointer = static_cast<T*>(tensor.data());
   size_t offset = 0;
   for (int i = 0; i < nranks; i++) {
-    ret[i] = raw_pointer + offset;
+    ret.push_back(raw_pointer + offset);
     offset += tensor.numel() / nranks;
   }
   opts.setInputs(ret, tensor.numel() / nranks);
