@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
@@ -72,6 +74,8 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     float regularization_coeff,
     bool multi_precision,
     float rescale_grad);
+
+std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
 
 ////////////////// Backward(grad) api impls //////////////////////
 
