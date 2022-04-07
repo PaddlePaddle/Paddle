@@ -1795,7 +1795,7 @@ def greater_than(x, y, cond=None, name=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_greater_than(x, y, -1)
     else:
         helper.append_op(

@@ -1301,8 +1301,10 @@ def mm(input, mat2, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_matmul(input, mat2, False, False)
+    elif paddle.in_dynamic_mode():
+        return _C_ops.matmul_v2(input, mat2)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -1524,8 +1526,10 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
             return _C_ops.final_state_matmul(nx, ny.T, False, False).reshape(dstshape)
+        elif paddle.in_dynamic_mode():
+            return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
 
         def __check_input(x, y):
             var_names = {'x': x, 'y': y}
@@ -1587,8 +1591,10 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_matmul(nx, ny, False, False)
+    elif paddle.in_dynamic_mode():
+        return _C_ops.matmul_v2(nx, ny)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -3699,10 +3705,14 @@ def rad2deg(x, name=None):
             #         [57.29578018])
     """
     rad2deg_scale = 180 / np.pi
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.final_state_scale(x, rad2deg_scale, 0.0, True)
+    elif paddle.in_dynamic_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', rad2deg_scale)
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg')
         helper = LayerHelper('rad2deg', **locals())

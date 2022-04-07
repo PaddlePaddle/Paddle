@@ -404,7 +404,7 @@ def hsigmoid_loss(input,
             #  [2.2407534]]
     """
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(
             input, weight, label, path_table, path_code, bias, 'num_classes',
             num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)
@@ -581,7 +581,7 @@ def margin_ranking_loss(input,
         raise ValueError(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         out = _C_ops.final_state_subtract(other, input)
         out = _C_ops.final_state_multiply(out, label)
         if margin != 0.0:
@@ -592,6 +592,18 @@ def margin_ranking_loss(input,
             return _C_ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == 'mean':
             return _C_ops.final_state_mean_all(out)
+        return out
+    elif _in_legacy_dygraph():
+        out = _C_ops.elementwise_sub(other, input)
+        out = _C_ops.elementwise_mul(out, label)
+        if margin != 0.0:
+            margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
+            out = _C_ops.elementwise_add(out, margin)
+        out = _C_ops.relu(out)
+        if reduction == 'sum':
+            return _C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == 'mean':
+            return _C_ops.mean(out)
         return out
 
     helper = LayerHelper("margin_ranking_loss", **locals())
@@ -697,7 +709,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         unreduced = _elementwise_op_in_dygraph(
             input, label, axis=-1, act='abs', op_name='elementwise_sub')
         if reduction == 'mean':
@@ -707,7 +719,16 @@ def l1_loss(input, label, reduction='mean', name=None):
                                      'reduce_all', True)
         else:
             return unreduced
-
+    elif in_dynamic_mode():
+        unreduced = _elementwise_op_in_dygraph(
+            input, label, axis=-1, act='abs', op_name='elementwise_sub')
+        if reduction == 'mean':
+            return _C_ops.mean(unreduced)
+        elif reduction == 'sum':
+            return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
+                                     'reduce_all', True)
+        else:
+            return unreduced
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
     fluid.data_feeder.check_variable_and_dtype(
@@ -1818,7 +1839,7 @@ def cross_entropy(input,
                                                  'reduce_all', True)
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
-                if paddle.in_dynamic_mode():
+                if in_dygraph_mode():
                     return _C_ops.final_state_mean_all(out)
                 else:
                     return _C_ops.mean(out)
@@ -2066,7 +2087,7 @@ def sigmoid_focal_loss(logit,
         if reduction == "sum":
             return _C_ops.reduce_sum(loss, 'reduce_all', True)
         elif reduction == "mean":
-            if paddle.in_dynamic_mode():
+            if in_dygraph_mode():
                 return _C_ops.final_state_mean_all(loss)
             return _C_ops.mean(loss)
 
@@ -2183,7 +2204,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not in_dynamic_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'hinge_embedding_loss')
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
