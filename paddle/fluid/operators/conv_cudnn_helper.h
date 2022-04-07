@@ -186,7 +186,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 #else
         VLOG(3) << "Fallback to non-v7 method to find conv algorithm "
                    "becasue the workspace size request("
-                << workspace_size << ") exceeds the limit("
+                << result.workspace_size << ") exceeds the limit("
                 << workspace_size_limit << ")";
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnGetConvolutionForwardAlgorithm(
@@ -333,7 +333,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
-                << workspace_size << ") exceeds the limit("
+                << result.workspace_size << ") exceeds the limit("
                 << workspace_size_limit << ")";
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
@@ -472,7 +472,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
-                << workspace_size << ") exceeds the limit("
+                << result.workspace_size << ") exceeds the limit("
                 << workspace_size_limit << ")";
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
