@@ -7121,6 +7121,10 @@ def label_smooth(label,
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
@@ -8870,8 +8874,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(ref, index, updates)
+        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')

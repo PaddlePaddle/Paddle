@@ -1630,6 +1630,10 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 

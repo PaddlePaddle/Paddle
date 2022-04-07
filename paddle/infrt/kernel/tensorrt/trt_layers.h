@@ -151,6 +151,77 @@ inline void FcFunc(trt::FullyConnectedOp& op,  // NOLINT
   nvinfer1::ITensor* out_tensor = layer->getOutput(0);
   value_to_trt_tensor_map[out_repr] = out_tensor;
 }
+
+inline void ShuffleFunc(trt::ShuffleOp& op,  // NOLINT
+                        nvinfer1::INetworkDefinition* network,
+                        ValueToITensorMap& value_to_trt_tensor_map,  // NOLINT
+                        ValueToTensorMap& value_to_tensor_map) {     // NOLINT
+  mlir::Value input_tensor_repr = op.input_tensor();
+  nvinfer1::ITensor* input = value_to_trt_tensor_map[input_tensor_repr];
+  int dims = input->getDimensions().nbDims;
+
+  int start_axis = op.start_axisAttr().getInt();
+  int stop_axis = op.start_axisAttr().getInt();
+
+  nvinfer1::IShuffleLayer* layer = nullptr;
+  if (start_axis < 0) start_axis += dims + 1;
+  if (stop_axis < 0) stop_axis += dims + 1;
+
+  int dim_prod = 1;
+  nvinfer1::Dims flatten_dim;
+  flatten_dim.nbDims = dims - (stop_axis - start_axis);
+  for (int i = 0, j = 0; i < dims; ++i) {
+    if (start_axis <= i + 1 && i + 1 <= stop_axis) {
+      int dim_i = input->getDimensions().d[i];
+      CHECK_GT(dim_i, 0);
+      dim_prod *= dim_i;
+      if (i + 1 == stop_axis) {
+        flatten_dim.d[j++] = dim_prod;
+      }
+    } else {
+      flatten_dim.d[j++] = input->getDimensions().d[i];
+    }
+  }
+  layer = network->addShuffle(*value_to_trt_tensor_map[input_tensor_repr]);
+  CHECK_NOTNULL(layer);
+  layer->setReshapeDimensions(flatten_dim);
+
+  for (size_t i = 0; i < op->getNumResults(); ++i) {
+    nvinfer1::ITensor* out_tensor = layer->getOutput(i);
+    mlir::Value out_value = op->getResult(i);
+    value_to_trt_tensor_map[out_value] = out_tensor;
+  }
+}
+
+inline void ScaleNdFunc(trt::ScaleNdOp& op,  // NOLINT
+                        nvinfer1::INetworkDefinition* network,
+                        ValueToITensorMap& value_to_trt_tensor_map,  // NOLINT
+                        ValueToTensorMap& value_to_tensor_map) {     // NOLINT
+  mlir::Value input_tensor_repr = op.input_tensor();
+  nvinfer1::ITensor* input = value_to_trt_tensor_map[input_tensor_repr];
+
+  mlir::Value shift_tensor_repr = op.shift();
+  nvinfer1::Weights shift =
+      TensorToWeights(value_to_tensor_map[shift_tensor_repr]);
+
+  mlir::Value scale_tensor_repr = op.scale();
+
+  nvinfer1::Weights scale =
+      TensorToWeights(value_to_tensor_map[scale_tensor_repr]);
+
+  nvinfer1::Weights power_weights{nvinfer1::DataType::kFLOAT, nullptr, 0};
+
+  nvinfer1::IScaleLayer* layer = nullptr;
+  layer = network->addScaleNd(
+      *input, nvinfer1::ScaleMode::kCHANNEL, shift, scale, power_weights, 0);
+  CHECK_NOTNULL(layer);
+
+  for (size_t i = 0; i < op->getNumResults(); ++i) {
+    nvinfer1::ITensor* out_tensor = layer->getOutput(i);
+    mlir::Value out_value = op->getResult(i);
+    value_to_trt_tensor_map[out_value] = out_tensor;
+  }
+}
 }  // namespace tensorrt
 }  // namespace kernel
 }  // namespace infrt
