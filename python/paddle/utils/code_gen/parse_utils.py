@@ -372,9 +372,27 @@ def cross_validate(apis):
                 assert len(fw_call["inputs"]) <= len(
                     fw_api["inputs"]
                 ), f"{name}: forward call has more inputs than the api"
+                for (input, input_) in zip(fw_call["inputs"], fw_api["inputs"]):
+                    assert input["typename"] == input_[
+                        "typename"], f"type mismatch in {name} and {fw_name}"
+
                 assert len(fw_call["attrs"]) <= len(
                     fw_api["attrs"]
                 ), f"{name}: forward call has more attrs than the api"
-                assert len(fw_call["outputs"]) <= len(
+                for (attr, attr_) in zip(fw_call["attrs"], fw_api["attrs"]):
+                    if attr["typename"] == "Scalar":
+                        # special case for Scalar, fw_call can omit the type
+                        assert re.match(
+                            r"Scalar(\(\w+\))*", attr_["typename"]
+                        ), f"type mismatch in {name} and {fw_name}"
+                    else:
+                        assert attr["typename"] == attr_[
+                            "typename"], f"type mismatch in {name} and {fw_name}"
+
+                assert len(fw_call["outputs"]) == len(
                     fw_api["outputs"]
                 ), f"{name}: forward call has more outputs than the api"
+                for (output, output_) in zip(fw_call["outputs"],
+                                             fw_api["outputs"]):
+                    assert output["typename"] == output_[
+                        "typename"], f"type mismatch in {name} and {fw_name}"
