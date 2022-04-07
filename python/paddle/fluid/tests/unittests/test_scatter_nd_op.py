@@ -77,10 +77,10 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -101,10 +101,10 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -128,10 +128,10 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
@@ -154,10 +154,10 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
 #Test Python API
