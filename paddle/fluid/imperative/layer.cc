@@ -191,22 +191,20 @@ template <typename T>
 void print_data(const std::vector<T>& vec, std::stringstream& sstr,
                 bool whole = false) {
   auto& vec1 = vec;
-  // size_t step = vec1.size() / 1;
   size_t step = 1;
   step = step < 1 ? 1 : step;
   if (vec.size() <= 0) {
     return;
   }
-  T max_val, min_val;
-  max_val = vec[0];
-  min_val = vec[0];
+  double max_val, min_val;
+  min_val = max_val = static_cast<double>(vec[0]);
   for (size_t i = 1; i < vec1.size(); i++) {
-    max_val = std::max(max_val, vec1[i]);
-    min_val = std::min(min_val, vec1[i]);
+    max_val = std::max(max_val, static_cast<double>(vec1[i]));
+    min_val = std::min(min_val, static_cast<double>(vec1[i]));
   }
   sstr << " max: " << max_val << " min: " << min_val << " data100: ";
   for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
-    sstr << vec1[i] << " ";
+    sstr << static_cast<double>(vec1[i]) << " ";
   }
 }
 
