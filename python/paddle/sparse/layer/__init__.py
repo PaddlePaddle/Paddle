@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .activation import ReLU
+from .norm import BatchNorm
 
 __all__ = []
