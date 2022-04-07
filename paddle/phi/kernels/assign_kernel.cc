@@ -23,15 +23,22 @@
 namespace phi {
 
 template <typename Context>
+void AssignRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out) {
+  Copy<Context>(dev_ctx, x, x.place(), false, out);
+}
+
+template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   paddle::optional<const DenseTensor&> x,
                   DenseTensor* out) {
-  if (x.get_ptr()) {
-    if (!x.is_initialized()) {
+  if (x) {
+    if (!x->IsInitialized()) {
       return;
     }
     auto& x_tensor = *x.get_ptr();
-    Copy<Context>(dev_ctx, x_tensor, x_tensor.place(), false, out);
+    AssignRawKernel<Context>(dev_ctx, x_tensor, out);
   }
 }
 
@@ -104,6 +111,14 @@ void AssignValueKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::CPUContext>,
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
 PD_REGISTER_GENERAL_KERNEL(
     assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
@@ -123,6 +138,13 @@ PD_REGISTER_KERNEL(assign_value,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::GPUContext>,
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_GENERAL_KERNEL(
     assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

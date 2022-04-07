@@ -622,7 +622,7 @@ def assign(input, output=None):
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
         if _non_static_mode():
-            if in_dygraph_mode():
+            if in_dygraph_mode() and output is None:
                 output = _C_ops.final_state_assign(input)
             else:
                 if output is None:
