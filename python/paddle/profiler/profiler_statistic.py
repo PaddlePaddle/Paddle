@@ -1093,7 +1093,7 @@ def _build_table(statistic_data,
                                     total_time))
                         ]
                         all_row_values.append(row_values)
-                        for device_node_name, devicenode in innerop_node.devices.items(
+                        for device_node_name, device_node in innerop_node.devices.items(
                         ):
                             if len(device_node_name) + 4 > name_column_width:
                                 device_node_name = device_node_name[:
@@ -1102,21 +1102,21 @@ def _build_table(statistic_data,
                                 device_node_name += "..."
                             row_values = [
                                 '    {}'.format(device_node_name),
-                                devicenode.call, '- / - / - / - / -',
+                                device_node.call, '- / - / - / - / -',
                                 '{} / {} / {} / {} / {}'.format(
                                     format_time(
-                                        devicenode.gpu_time, unit=time_unit),
+                                        device_node.gpu_time, unit=time_unit),
                                     format_time(
-                                        devicenode.avg_gpu_time,
+                                        device_node.avg_gpu_time,
                                         unit=time_unit),
                                     format_time(
-                                        devicenode.max_gpu_time,
+                                        device_node.max_gpu_time,
                                         unit=time_unit),
                                     format_time(
-                                        devicenode.min_gpu_time,
+                                        device_node.min_gpu_time,
                                         unit=time_unit),
                                     format_ratio(
-                                        float(devicenode.gpu_time) /
+                                        float(device_node.gpu_time) /
                                         total_time))
                             ]
                             all_row_values.append(row_values)
@@ -1127,19 +1127,19 @@ def _build_table(statistic_data,
                                                                 - 5]
                             device_node_name += "..."
                         row_values = [
-                            '  {}'.format(device_node_name), devicenode.call,
+                            '  {}'.format(device_node_name), device_node.call,
                             '- / - / - / - / -',
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
-                                    devicenode.gpu_time, unit=time_unit),
+                                    device_node.gpu_time, unit=time_unit),
                                 format_time(
-                                    devicenode.avg_gpu_time, unit=time_unit),
+                                    device_node.avg_gpu_time, unit=time_unit),
                                 format_time(
-                                    devicenode.max_gpu_time, unit=time_unit),
+                                    device_node.max_gpu_time, unit=time_unit),
                                 format_time(
-                                    devicenode.min_gpu_time, unit=time_unit),
+                                    device_node.min_gpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(devicenode.gpu_time) / total_time))
+                                    float(device_node.gpu_time) / total_time))
                         ]
                         all_row_values.append(row_values)
         # Calculate the column width
