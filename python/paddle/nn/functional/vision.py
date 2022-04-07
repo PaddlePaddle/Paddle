@@ -17,11 +17,11 @@ from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
-from ...fluid.framework import _non_static_mode
 import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
+from paddle.framework import _non_static_mode
 
 __all__ = []
 
