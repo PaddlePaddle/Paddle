@@ -1480,6 +1480,12 @@
   kernel :
     func : trunc_grad
 
+- backward_api : unbind_grad
+  forward : unbind (Tensor input, int axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(input_grad)
+  invoke : stack(out_grad, axis)
+
 - backward_api : unfold_grad
   forward : unfold (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
