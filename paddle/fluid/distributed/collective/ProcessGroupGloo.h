@@ -101,7 +101,7 @@ class ProcessGroupGloo : public ProcessGroup {
 
   explicit ProcessGroupGloo(
       const std::shared_ptr<paddle::distributed::Store>& store, int rank,
-      int world_size, std::shared_ptr<GlooOptions> options);
+      int world_size, int gid, std::shared_ptr<GlooOptions> options);
 
   ~ProcessGroupGloo() = default;
 

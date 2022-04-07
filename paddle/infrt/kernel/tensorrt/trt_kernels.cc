@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
 #include <string>
+#include <unordered_set>
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
 #include "NvInferRuntimeCommon.h"
@@ -68,7 +69,7 @@ namespace tensorrt {
   auto& region = operation.getRegion(0);
   auto& block = region.getBlocks().front();
 
-  std::unordered_map<std::string, phi::DenseTensor*> trt_bind_inputs;
+  std::unordered_map<std::string, ::phi::DenseTensor*> trt_bind_inputs;
   ValueToITensorMap value_to_trt_tensor_map;
   ValueToTensorMap value_to_tensor_map;
 
@@ -79,7 +80,7 @@ namespace tensorrt {
     const std::string input_name = "input_" + std::to_string(idx);
     auto* v = symbol_table->GetValue(std::to_string(idx));
     CHECK_NOTNULL(v);
-    auto* t = &v->get<phi::DenseTensor>();
+    auto* t = &v->get<::phi::DenseTensor>();
     value_to_tensor_map[operand] = t;
 
     // TODO(wilber): get input info from mlir.
@@ -93,7 +94,7 @@ namespace tensorrt {
     if (operand.isa<mlir::BlockArgument>()) {
       // TODO(wilber): A trick: the weights are CPU tensor and inputs are GPU
       // tensor, so we treat all GPU tensors as inputs to trt.
-      if (t->place().GetType() == phi::AllocationType::GPU) {
+      if (t->place().GetType() == ::phi::AllocationType::GPU) {
         trt_bind_inputs[input_name] = t;
         nvinfer1::Dims dims;
         dims.nbDims = t->dims().size() - 1;
@@ -106,8 +107,13 @@ namespace tensorrt {
       }
     } else {
       // TODO(wilber): Replace with the op name that generates the weights.
-      if (operand.getDefiningOp()->getName().getStringRef() !=
-          "phi_dt.create_dense_tensor.cpu") {
+      std::unordered_set<std::string> weight_flags{
+          "phi_dt.tensor_map_get_tensor",
+          "phi_dt.create_dense_tensor.cpu",
+          "phi_dt.create_inited_dense_tensor.cpu.f32",
+          "phi_dt.create_host_inited_dense_tensor.f32"};
+      if (!weight_flags.count(
+              operand.getDefiningOp()->getName().getStringRef().str())) {
         trt_bind_inputs[input_name] = t;
         nvinfer1::Dims dims;
         dims.nbDims = t->dims().size() - 1;
@@ -123,6 +129,7 @@ namespace tensorrt {
 
   // TODO(wilber): Find a way to add layer.
   for (auto& operation : block.without_terminator()) {
+    VLOG(1) << "process " << operation.getName().getStringRef().str() << " ...";
     if (trt::ActivationOp op = llvm::dyn_cast<trt::ActivationOp>(operation)) {
       ActivationFunc(
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
@@ -132,6 +139,18 @@ namespace tensorrt {
     } else if (trt::ConvolutionOp op =
                    llvm::dyn_cast<trt::ConvolutionOp>(operation)) {
       ConvFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::PoolingOp op = llvm::dyn_cast<trt::PoolingOp>(operation)) {
+      PoolFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ShuffleOp op = llvm::dyn_cast<trt::ShuffleOp>(operation)) {
+      ShuffleFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ScaleNdOp op = llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
+      ScaleNdFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ElementWiseOp op =
+                   llvm::dyn_cast<trt::ElementWiseOp>(operation)) {
+      EltwiseFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";
     }
@@ -167,10 +186,10 @@ void PrintTrtLayer(backends::tensorrt::TrtEngine* engine) {
   engine->GetEngineInfo();
 }
 
-std::vector<phi::DenseTensor*> TrtEngineCompute(
-    backends::tensorrt::TrtEngine* engine, const phi::GPUContext& context) {
+std::vector<::phi::DenseTensor*> TrtEngineCompute(
+    backends::tensorrt::TrtEngine* engine, const ::phi::GPUContext& context) {
   engine->Run(context);
-  std::vector<phi::DenseTensor*> res;
+  std::vector<::phi::DenseTensor*> res;
   for (size_t i = 0; i < engine->GetOutputNum(); ++i) {
     res.push_back(engine->GetOutput("output_" + std::to_string(i)));
   }

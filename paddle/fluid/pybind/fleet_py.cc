@@ -77,6 +77,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
       .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("set_clients", &FleetWrapper::SetClients)
+      .def("get_client_info", &FleetWrapper::GetClientsInfo)
       .def("create_client2client_connection",
            &FleetWrapper::CreateClient2ClientConnection);
 }
@@ -84,11 +86,11 @@ void BindDistFleetWrapper(py::module* m) {
 void BindPSHost(py::module* m) {
   py::class_<distributed::PSHost>(*m, "PSHost")
       .def(py::init<const std::string&, uint32_t, uint32_t>())
-      .def("serialize_to_string", &distributed::PSHost::serialize_to_string)
-      .def("parse_from_string", &distributed::PSHost::parse_from_string)
-      .def("to_uint64", &distributed::PSHost::serialize_to_uint64)
-      .def("from_uint64", &distributed::PSHost::parse_from_uint64)
-      .def("to_string", &distributed::PSHost::to_string);
+      .def("serialize_to_string", &distributed::PSHost::SerializeToString)
+      .def("parse_from_string", &distributed::PSHost::ParseFromString)
+      .def("to_uint64", &distributed::PSHost::SerializeToUint64)
+      .def("from_uint64", &distributed::PSHost::ParseFromUint64)
+      .def("to_string", &distributed::PSHost::ToString);
 }
 
 void BindSparseShardingTools(py::module* m) {
@@ -222,7 +224,7 @@ void BindGraphPyClient(py::module* m) {
            &GraphPyClient::use_neighbors_sample_cache)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
-      .def("stop_server", &GraphPyClient::stop_server)
+      .def("stop_server", &GraphPyClient::StopServer)
       .def("get_node_feat",
            [](GraphPyClient& self, std::string node_type,
               std::vector<int64_t> node_ids,

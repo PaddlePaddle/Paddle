@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from __future__ import division
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -113,6 +114,11 @@ class TestCase1(TestMeanIOUOp):
         self.in_correct_num = 2
         self.in_mean_iou_num = 2
 
+    # NOTE(dev): Skip check_dygraph becuase Python API doesn't expose
+    # in_wrong_num/in_correct_num/in_mean_iou_num argument
+    def test_check_output(self):
+        self.check_output(check_dygraph=False, check_eager=False)
+
 
 class TestMeanIOUOpError(unittest.TestCase):
     def test_errors(self):
@@ -130,5 +136,4 @@ class TestMeanIOUOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

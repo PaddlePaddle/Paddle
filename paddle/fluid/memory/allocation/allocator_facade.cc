@@ -22,6 +22,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+#include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -34,6 +35,7 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
@@ -83,7 +85,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory, false,
@@ -144,6 +146,14 @@ class CUDAGraphAllocator
 };
 #endif
 
+static bool IsCUDAGraphCapturing() {
+#ifdef PADDLE_WITH_CUDA
+  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+#else
+  return false;
+#endif
+}
+
 class AllocatorFacadePrivate {
  public:
   using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
@@ -156,6 +166,8 @@ class AllocatorFacadePrivate {
 
   explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
     strategy_ = GetAllocatorStrategy();
+    is_stream_safe_cuda_allocator_used_ = false;
+
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
@@ -165,12 +177,6 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        PADDLE_ENFORCE_EQ(
-            FLAGS_use_stream_safe_cuda_allocator, false,
-            paddle::platform::errors::Unimplemented(
-                "StreamSafeCUDAAllocator is only implemented for auto_growth "
-                "strategy, not support naive_best_fit strategy"));
-
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
@@ -210,13 +216,31 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCPUAllocator();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         allow_free_idle_chunk_ = allow_free_idle_chunk;
-        if (!FLAGS_use_stream_safe_cuda_allocator) {
-          for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount();
-               ++dev_id) {
-            InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id),
-                                        allow_free_idle_chunk_);
-          }
+        for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
+          InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id),
+                                      allow_free_idle_chunk_);
         }
+
+        // Note(Ruibiao): For GPU multi-stream case without CUDA graph
+        // capturing, the 'allocators_' map(place -> Allocator) hold the
+        // StreamSafeCUDAAllocator releate to defaultstream (i.e., the stream
+        // directly got from DeviceContex), while the 'cuda_allocators_' map
+        // (place -> map(stream -> Allocator)) hold the StreamSafeCUDAAllocator
+        // releate to non-default stream (i.e., the stream users pass in). The
+        // default stream Allocator is built in the structure of
+        // AllocatorFacadePrivate, while the non-default stream is build in a
+        // manner in GetAllocator function with 'create_if_not_found = ture'.
+        // We make special treatment for the default stream for performance
+        // reasons. Since most Alloc calls are for default stream in
+        // application, treating it separately can avoid lots of overhead of
+        // acquiring default stream and applying read-write lock.
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          if (LIKELY(!IsCUDAGraphCapturing())) {
+            WrapStreamSafeCUDAAllocatorForDefault();
+          }
+          is_stream_safe_cuda_allocator_used_ = true;
+        }
+
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -267,12 +291,6 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        PADDLE_ENFORCE_EQ(
-            FLAGS_use_stream_safe_cuda_allocator, false,
-            paddle::platform::errors::Unimplemented(
-                "StreamSafeCUDAAllocator is only implemented for auto_growth "
-                "strategy, not support thread_local strategy"));
-
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
@@ -298,10 +316,14 @@ class AllocatorFacadePrivate {
       WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
     }
 
+    WrapStatAllocator();
+
     CheckAllocThreadSafe();
 
 #ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+    // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
+    if (!is_stream_safe_cuda_allocator_used_ &&
+        UNLIKELY(IsCUDAGraphCapturing())) {
       WrapCUDAGraphAllocator();
     }
 #endif
@@ -326,9 +348,13 @@ class AllocatorFacadePrivate {
     return static_cast<Allocation*>(allocation.get())->base_ptr();
   }
 
+  bool IsStreamSafeCUDAAllocatorUsed() {
+    return is_stream_safe_cuda_allocator_used_ &&
+           LIKELY(FLAGS_use_system_allocator == false);
+  }
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  bool HasCUDAAllocator(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream) {
+  bool HasCUDAAllocator(const platform::CUDAPlace& place, gpuStream_t stream) {
     auto it = cuda_allocators_.find(place);
     if (it == cuda_allocators_.end()) {
       return false;
@@ -339,9 +365,16 @@ class AllocatorFacadePrivate {
   }
 
   const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::CUDAPlace& place, const gpuStream_t& stream,
+      const platform::CUDAPlace& place, gpuStream_t stream,
       bool create_if_not_found = false) {
-    {  // shared_lock_guard
+    if (LIKELY(!IsCUDAGraphCapturing())) {
+      if (stream == GetDefaultStream(place)) {
+        VLOG(7) << "Get Allocator by passing in a default stream";
+        return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+      }
+    }
+
+    /* shared_lock_guard */ {
       std::shared_lock<std::shared_timed_mutex> lock_guard(
           cuda_allocator_mutex_);
       if (LIKELY(HasCUDAAllocator(place, stream))) {
@@ -355,7 +388,7 @@ class AllocatorFacadePrivate {
       }
     }
 
-    {  // unique_lock_guard
+    /* unique_lock_guard */ {
       std::unique_lock<std::shared_timed_mutex> lock_guard(
           cuda_allocator_mutex_);
       InitStreamSafeCUDAAllocator(place, stream);
@@ -363,37 +396,55 @@ class AllocatorFacadePrivate {
     }
   }
 
-  gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
+  const std::shared_ptr<StreamSafeCUDAAllocator>
+  GetDefaultStreamSafeCUDAAllocator(const platform::CUDAPlace& place) const {
+    const auto iter = default_stream_safe_cuda_allocators_.find(place);
+    PADDLE_ENFORCE_NE(
+        iter, default_stream_safe_cuda_allocators_.end(),
+        platform::errors::NotFound(
+            "No StreamSafeCUDAAllocator found for the place, %s", place));
+    return iter->second;
+  }
+
+  gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) const {
+    const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
+        GetDefaultStreamSafeCUDAAllocator(place);
+    return allocator->GetDefaultStream();
+  }
+
+  void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
+    const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
+        GetDefaultStreamSafeCUDAAllocator(place);
+    allocator->SetDefaultStream(stream);
+    VLOG(8) << "Set default stream to " << stream
+            << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
+            << place;
   }
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
-                    const gpuStream_t& stream) {
-    if (allocation->size() == 0) {
-      return;
+                    gpuStream_t stream) {
+    std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
+        std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
+    if (stream_safe_cuda_allocation != nullptr) {
+      stream_safe_cuda_allocation->RecordStream(stream);
+    } else {
+      VLOG(6) << "RecordStream for a non-StreamSafeCUDAAllocation";
     }
-
-    StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
-        dynamic_cast<StreamSafeCUDAAllocation*>(allocation.get());
-    PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
-                            platform::errors::InvalidArgument(
-                                "Failed to dynamic cast %p from Allocation* to "
-                                "StreamSafeCUDAAllocation*",
-                                allocation.get()));
-    stream_safe_cuda_allocation->RecordStream(stream);
   }
 
-  const gpuStream_t& GetStream(
+  gpuStream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
-    const StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
-        dynamic_cast<const StreamSafeCUDAAllocation*>(allocation.get());
-    PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
-                            platform::errors::InvalidArgument(
-                                "Failed to dynamic cast %p from Allocation* to "
-                                "StreamSafeCUDAAllocation*",
-                                allocation.get()));
-    return stream_safe_cuda_allocation->GetOwningStream();
+    const std::shared_ptr<StreamSafeCUDAAllocation>
+        stream_safe_cuda_allocation =
+            std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
+    if (stream_safe_cuda_allocation != nullptr) {
+      return stream_safe_cuda_allocation->GetOwningStream();
+    }
+
+    VLOG(6) << "GetStream for a non-StreamSafeCUDAAllocation";
+    return static_cast<phi::GPUContext*>(
+               platform::DeviceContextPool::Instance().Get(allocation->place()))
+        ->stream();
   }
 #endif
 
@@ -471,6 +522,7 @@ class AllocatorFacadePrivate {
       InitAutoGrowthCUDAAllocator(p, stream);
       WrapStreamSafeCUDAAllocator(p, stream);
       WrapCUDARetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
+      WrapStatAllocator(p, stream);
     }
   }
 
@@ -635,6 +687,26 @@ class AllocatorFacadePrivate {
         /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
   }
 
+  void WrapStreamSafeCUDAAllocatorForDefault() {
+    for (auto& pair : allocators_) {
+      auto& place = pair.first;
+      if (platform::is_gpu_place(place)) {
+        std::shared_ptr<StreamSafeCUDAAllocator>&& allocator =
+            std::make_shared<StreamSafeCUDAAllocator>(
+                pair.second, place, /* default_stream = */ nullptr,
+                /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
+        pair.second = allocator;
+
+        // NOTE(Ruibiao): A tricky implement to give StreamSafeCUDAAllocator an
+        // ability to interact with the outside world, i.e., change default
+        // stream from outside
+        default_stream_safe_cuda_allocators_[place] = allocator;
+        VLOG(8) << "WrapStreamSafeCUDAAllocator for " << place
+                << ", allocator address = " << pair.second.get();
+      }
+    }
+  }
+
   void WrapCUDARetryAllocator(platform::CUDAPlace p, gpuStream_t stream,
                               size_t retry_time) {
     PADDLE_ENFORCE_GT(
@@ -643,6 +715,11 @@ class AllocatorFacadePrivate {
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+  }
+
+  void WrapStatAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
+    allocator = std::make_shared<StatAllocator>(allocator);
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -807,13 +884,12 @@ class AllocatorFacadePrivate {
     CheckAllocThreadSafe(zero_size_allocators_);
     CheckAllocThreadSafe(system_allocators_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (FLAGS_use_stream_safe_cuda_allocator) {
+    if (is_stream_safe_cuda_allocator_used_) {
       CheckCUDAAllocThreadSafe(cuda_allocators_);
     }
 #endif
   }
 
-  // NOTE(Ruibiao): Old single-stream version, will be removed later
   void WrapCUDARetryAllocator(size_t retry_time) {
     PADDLE_ENFORCE_GT(
         retry_time, 0,
@@ -826,8 +902,19 @@ class AllocatorFacadePrivate {
     }
   }
 
+  void WrapStatAllocator() {
+    for (auto& pair : allocators_) {
+      // Now memory stats is only supported for GPU
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<StatAllocator>(pair.second);
+      }
+    }
+  }
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // a standalone CUDA allocator to support multi-stream GC in new executor
+  std::map<platform::Place, std::shared_ptr<StreamSafeCUDAAllocator>>
+      default_stream_safe_cuda_allocators_;
   CUDAAllocatorMap cuda_allocators_;
   std::shared_timed_mutex cuda_allocator_mutex_;
 #endif
@@ -836,6 +923,7 @@ class AllocatorFacadePrivate {
   static AllocatorMap zero_size_allocators_;
   static AllocatorMap system_allocators_;
   bool allow_free_idle_chunk_;
+  bool is_stream_safe_cuda_allocator_used_;
 };
 AllocatorFacadePrivate::AllocatorMap
     AllocatorFacadePrivate::zero_size_allocators_;
@@ -854,7 +942,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
     auto id = platform::CUDAGraph::CapturingID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
@@ -870,15 +958,6 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
-    AllocatorFacadePrivate* m = GetPrivate();
-    platform::CUDAPlace cuda_place(place.GetDeviceId());
-    return m->GetAllocator(cuda_place, m->GetDefaultStream(cuda_place));
-  }
-#endif
-
   return GetPrivate()->GetAllocator(
       place, /* A non-zero num to choose allocator_ */ 1);
 }
@@ -898,19 +977,6 @@ void* AllocatorFacade::GetBasePtr(
   return GetPrivate()->GetBasePtr(allocation);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place, const gpuStream_t& stream) {
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
-    return GetPrivate()->GetAllocator(place, stream,
-                                      /*create_if_not_found=*/true);
-  }
-  return GetPrivate()->GetAllocator(
-      place, /* A non-zero num to choose allocator_ */ 1);
-}
-#endif
-
 const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
     const platform::Place& place) {
   return GetPrivate()->GetAllocator(place, /* zero size */ 0);
@@ -923,26 +989,10 @@ std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      size > 0 && FLAGS_use_system_allocator == false) {
-    platform::CUDAPlace cuda_place(place.GetDeviceId());
-    phi::Stream default_stream = phi::Stream(reinterpret_cast<phi::StreamId>(
-        GetPrivate()->GetDefaultStream(cuda_place)));
-    return Alloc(cuda_place, size, default_stream);
-  }
-#endif
   return GetPrivate()->GetAllocator(place, size)->Allocate(size);
 }
 
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
-    platform::CUDAPlace cuda_place(place.GetDeviceId());
-    return Release(cuda_place, GetPrivate()->GetDefaultStream(cuda_place));
-  }
-#endif
   return GetPrivate()
       ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
@@ -950,35 +1000,25 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, const phi::Stream& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'AllocaShared' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'Alloc' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
+  AllocatorFacadePrivate* m = GetPrivate();
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
+    return Alloc(place, size);
+  }
 
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
-    return GetPrivate()
-        ->GetAllocator(p, s, /* create_if_not_found = */ true)
+    return m->GetAllocator(p, s, /* create_if_not_found = */ true)
         ->Allocate(size);
   } else {
-    return GetPrivate()->GetAllocator(p, size)->Allocate(size);
+    return m->GetAllocator(p, size)->Allocate(size);
   }
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
@@ -989,13 +1029,6 @@ bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'InSameStream' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return s == GetStream(allocation);
 #else
@@ -1003,41 +1036,53 @@ bool AllocatorFacade::InSameStream(
 #endif
 }
 
+bool AllocatorFacade::IsStreamSafeCUDAAllocatorUsed() {
+  return GetPrivate()->IsStreamSafeCUDAAllocatorUsed();
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
-                                  const gpuStream_t& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'Release' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
-  return GetPrivate()->GetAllocator(place, stream)->Release(place);
+                                  gpuStream_t stream) {
+  AllocatorFacadePrivate* m = GetPrivate();
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
+    return Release(place);
+  }
+
+  return m->GetAllocator(place, stream)->Release(place);
 }
 
 void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
-                                   const gpuStream_t& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "'RecordStream' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
+                                   gpuStream_t stream) {
   GetPrivate()->RecordStream(allocation, stream);
 }
 
-const gpuStream_t& AllocatorFacade::GetStream(
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place, gpuStream_t stream) {
+  AllocatorFacadePrivate* m = GetPrivate();
+
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
+    return GetAllocator(place);
+  }
+
+  if (platform::is_gpu_place(place) && FLAGS_use_system_allocator == false) {
+    return m->GetAllocator(place, stream,
+                           /*create_if_not_found=*/true);
+  }
+  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+
+gpuStream_t AllocatorFacade::GetStream(
     const std::shared_ptr<phi::Allocation>& allocation) const {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "'GetStream' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
   return GetPrivate()->GetStream(allocation);
+}
+
+void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
+                                       gpuStream_t stream) {
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
+  }
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -1055,6 +1100,7 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
           "The memory pool of the CUDA Graph with ID %d have been prepared.",
           id));
   allocator.reset(new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
+
   VLOG(10) << "Prepare memory pool for CUDA Graph with ID " << id;
 }
 

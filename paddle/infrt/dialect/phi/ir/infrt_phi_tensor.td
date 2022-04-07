@@ -28,6 +28,24 @@ class CreateDenseTensorOp<string target>
   let results = (outs DenseTensor:$output);
 }
 
+def CreateHostInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32", [NoSideEffect]> {
+  let arguments = (ins
+    Context:$context,
+    I64ArrayAttr:$dims,
+    LayoutAttr:$layout,
+    I64ArrayAttr:$lod,
+    F32ArrayAttr:$values
+  );
+  let results = (outs DenseTensor:$output);
+}
+
+def CreateInitedCpuFLOAT32DenseTensorOp
+      : PDT_Op<"create_inited_dense_tensor.cpu.f32", [NoSideEffect]> {
+  let arguments = (ins Context:$context, I64ArrayAttr:$dims, 
+    LayoutAttr:$layout, I64ArrayAttr:$lod, F32Attr:$value);
+  let results = (outs DenseTensor:$output);
+}
+
 class FillDenseTensorOp<Attr attr_type, string dtype> :
       PDT_Op<"fill_dense_tensor." # dtype> {
   let arguments = (ins
@@ -94,6 +112,19 @@ def PDT_TensorMapGetTensorOp: TensorMapGetTensorOp;
 
 def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
   let arguments = (ins Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
+  let results = (outs DenseTensor:$output);
+}
+
+// TODO(wilber): Add a infrt_gpu dialect.
+def PDT_GpuMemCopyOp : PDT_Op<"memcpy.gpu", [NoSideEffect]> {
+  let summary = "phi_dt.gpu.memcpy";
+  let description = [{gpu memcpy d2h or h2d}];
+  // TODO(wilber): add context argument to support stream.
+  let arguments = (ins
+    DenseTensor:$input,
+    Context:$context,
+    BoolAttr:$d2h
+  );
   let results = (outs DenseTensor:$output);
 }
 

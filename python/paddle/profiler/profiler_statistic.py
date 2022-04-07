@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,7 +33,25 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    Sorted keys for printing summary table.
+    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
+
+    The meaning of each SortedKeys is as following
+
+    - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
+
+    - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
+
+    - **SortedKeys.CPUMax**  : Sorted by CPU max time.
+
+    - **SortedKeys.CPUMin**  : Sorted by CPU min time.
+
+    - **SortedKeys.GPUTotal**  : Sorted by GPU total time.
+
+    - **SortedKeys.GPUAvg**  : Sorted by GPU average time.
+
+    - **SortedKeys.GPUMax**  : Sorted by GPU max time.
+
+    - **SortedKeys.GPUMin**  : Sorted by GPU min time.
     """
     CPUTotal = 0
     CPUAvg = 1
@@ -103,6 +121,23 @@ def traverse_tree(nodetrees):
     return results
 
 
+def get_device_nodes(hostnode):
+    '''
+    Get all device nodes called in the time range of hostnode.
+    '''
+    stack = []
+    device_nodes = []
+    stack.append(hostnode)
+    while stack:
+        current_node = stack.pop()
+        for childnode in current_node.children_node:
+            stack.append(childnode)
+        for runtimenode in current_node.runtime_node:
+            for devicenode in runtimenode.device_node:
+                device_nodes.append(devicenode)
+    return device_nodes
+
+
 def wrap_tree(nodetrees):
     '''
     Using HostStatisticNode to wrap original profiler result tree, and calculate node statistic metrics.
@@ -170,16 +205,6 @@ class TimeRangeSummary:
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns))
                 self.call_times[hostnode.type] += 1
-                if hostnode.type == TracerEventType.Operator and any([
-                        name in hostnode.name for name in _CommunicationOpName
-                ]):  # special case, communication op
-                    CPUTimeRange[TracerEventType.Communication].append(
-                        (hostnode.start_ns, hostnode.end_ns))
-                    self.call_times[TracerEventType.Communication] += 1
-                is_communication_node = (
-                    hostnode.type == TracerEventType.Communication
-                ) or (hostnode.type == TracerEventType.Operator and any(
-                    [name in hostnode.name for name in _CommunicationOpName]))
                 for runtimenode in hostnode.runtime_node:
                     CPUTimeRange[runtimenode.type].append(
                         (runtimenode.start_ns, runtimenode.end_ns))
@@ -189,12 +214,6 @@ class TimeRangeSummary:
                             devicenode.stream_id].append(
                                 (devicenode.start_ns, devicenode.end_ns))
                         self.call_times[devicenode.type] += 1
-                        if is_communication_node:  # gpu activity for communication node
-                            GPUTimeRange[devicenode.device_id][
-                                TracerEventType.Communication][
-                                    devicenode.stream_id].append((
-                                        devicenode.start_ns, devicenode.end_ns))
-                            self.call_times[TracerEventType.Communication] += 1
 
             for event_type, time_ranges in CPUTimeRange.items():
                 time_ranges = merge_self_ranges(time_ranges, is_sorted=False)
@@ -225,6 +244,74 @@ class TimeRangeSummary:
 
     def get_cpu_range_sum(self, event_type):
         return self.CPUTimeRangeSum[event_type]
+
+
+class DistributedSummary:
+    r"""
+    Analysis communication and computation time range, and their overlap.
+    The computation time is all kernel except kernels for communication like nccl.
+    """
+
+    def __init__(self):
+        self.cpu_communication_range = []
+        self.gpu_communication_range = []
+        self.communication_range = []
+        self.computation_range = []
+        self.overlap_range = []
+
+    def parse(self, nodetrees):
+        '''
+        Collect all communication and computation time ranges.
+        '''
+        thread2hostnodes = traverse_tree(nodetrees)
+        for threadid, hostnodes in thread2hostnodes.items():
+            for hostnode in hostnodes[1:]:  #skip root node
+                # case 1: TracerEventType is Communication
+                if hostnode.type == TracerEventType.Communication:
+                    self.cpu_communication_range.append(
+                        (hostnode.start_ns, hostnode.end_ns))
+                    device_nodes = get_device_nodes(hostnode)
+                    for device_node in device_nodes:
+                        if device_node.type == TracerEventType.Kernel:
+                            self.gpu_communication_range.append(
+                                (device_node.start_ns, device_node.end_ns))
+
+                #case 2: TracerEventType is Operator but is communication op
+                elif hostnode.type == TracerEventType.Operator and any([
+                        name in hostnode.name.lower()
+                        for name in _CommunicationOpName
+                ]):
+                    self.cpu_communication_range.append(
+                        (hostnode.start_ns, hostnode.end_ns))
+                    device_nodes = get_device_nodes(hostnode)
+                    for device_node in device_nodes:
+                        if device_node.type == TracerEventType.Kernel:
+                            self.gpu_communication_range.append(
+                                (device_node.start_ns, device_node.end_ns))
+
+                #case 3: Others, filter kernels named with nccl
+                else:
+                    for runtimenode in hostnode.runtime_node:
+                        for devicenode in runtimenode.device_node:
+                            if devicenode.type == TracerEventType.Kernel:
+                                if 'nccl' in devicenode.name.lower():
+                                    self.gpu_communication_range.append((
+                                        devicenode.start_ns, devicenode.end_ns))
+                                else:
+                                    self.computation_range.append((
+                                        devicenode.start_ns, devicenode.end_ns))
+        self.cpu_communication_range = merge_self_ranges(
+            self.cpu_communication_range, is_sorted=False)
+        self.gpu_communication_range = merge_self_ranges(
+            self.gpu_communication_range, is_sorted=False)
+        self.communication_range = merge_ranges(
+            self.cpu_communication_range,
+            self.gpu_communication_range,
+            is_sorted=True)
+        self.computation_range = merge_self_ranges(
+            self.computation_range, is_sorted=False)
+        self.overlap_range = intersection_ranges(
+            self.communication_range, self.computation_range, is_sorted=True)
 
 
 class EventSummary:
@@ -394,6 +481,12 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
+        have_inner = False
+        for child in operator_node.children_node:
+            if child.type == TracerEventType.OperatorInner:
+                have_inner = True
+        if have_inner == False:
+            return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)
@@ -457,8 +550,10 @@ class StatisticData:
         self.extra_info = extra_info
         self.time_range_summary = TimeRangeSummary()
         self.event_summary = EventSummary()
+        self.distributed_summary = DistributedSummary()
         self.time_range_summary.parse(node_trees)
         self.event_summary.parse(node_trees)
+        self.distributed_summary.parse(node_trees)
 
 
 def _build_table(statistic_data,
@@ -557,7 +652,7 @@ def _build_table(statistic_data,
     append(
         "Note:\nCPU(Process) Utilization = Current process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
         "CPU(System) Utilization = All processes CPU time over all cpu cores(busy time) / (busy time + idle time).\n"
-        "GPU Utilization = Current process GPU time / elapsed time")
+        "GPU Utilization = Current process GPU time / elapsed time.")
     append('-' * line_length)
     append('')
     append('')
@@ -594,7 +689,11 @@ def _build_table(statistic_data,
     gpu_type_time = collections.defaultdict(int)
     for event_type, value in statistic_data.time_range_summary.CPUTimeRangeSum.items(
     ):
-        cpu_type_time[event_type] = value
+        if event_type != TracerEventType.Communication:
+            cpu_type_time[event_type] = value
+    if statistic_data.distributed_summary.cpu_communication_range:
+        cpu_type_time[TracerEventType.Communication] = sum_ranges(
+            statistic_data.distributed_summary.cpu_communication_range)
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
@@ -604,6 +703,9 @@ def _build_table(statistic_data,
                 gpu_time_range[event_type], time_range, is_sorted=True)
     for event_type, time_range in gpu_time_range.items():
         gpu_type_time[event_type] = sum_ranges(time_range)
+    if statistic_data.distributed_summary.gpu_communication_range:
+        gpu_type_time[TracerEventType.Communication] = sum_ranges(
+            statistic_data.distributed_summary.gpu_communication_range)
 
     sorted_items = sorted(
         cpu_type_time.items(), key=lambda x: x[1], reverse=True)
@@ -628,7 +730,7 @@ def _build_table(statistic_data,
     append(
         "Note:\nIn this table, We sum up all collected events in terms of event type.\n"
         "The time of events collected on host are presented as CPU Time, and as GPU Time if on device.\n"
-        "ratio = CPU(GPU) Time / Total Time."
+        "Ratio = CPU(GPU) Time / Total Time.\n"
         "Events with different types may overlap or inclusion, e.g. Operator includes OperatorInner, so the sum of ratios is not 100%.\n"
         "The time of events in the same type with overlap will not calculate twice, and all time is summed after merged.\n"
         "Example:\n"
@@ -642,8 +744,68 @@ def _build_table(statistic_data,
     append('')
     append('')
 
-    ###### Print Operator Summary Report ######
-    if statistic_data.event_summary.items:
+    ###### Print Model Summary Report ######
+    model_perspective_items = statistic_data.event_summary.model_perspective_items
+    if model_perspective_items:
+        all_row_values = []
+        row_values = [
+            'Total Time', '-', '{} / - / - / - / {}'.format(
+                format_time(
+                    total_time, unit=time_unit), format_ratio(1)),
+            '- / - / - / -/ -'
+        ]
+        all_row_values.append(row_values)
+        accmulation_time = 0
+        for name in ['Dataloader', 'Forward', 'Backward', 'Optimization']:
+            if name in model_perspective_items:
+                item = model_perspective_items[name]
+                row_values = [
+                    '  {}'.format(name), item.call,
+                    '{} / {} / {} / {} / {}'.format(
+                        format_time(
+                            item.cpu_time, unit=time_unit),
+                        format_time(
+                            item.avg_cpu_time, unit=time_unit),
+                        format_time(
+                            item.max_cpu_time, unit=time_unit),
+                        format_time(
+                            item.min_cpu_time, unit=time_unit),
+                        format_ratio(float(item.cpu_time) / total_time)),
+                    '{} / {} / {} / {} / {}'.format(
+                        format_time(
+                            item.gpu_time, unit=time_unit),
+                        format_time(
+                            item.avg_gpu_time, unit=time_unit),
+                        format_time(
+                            item.max_gpu_time, unit=time_unit),
+                        format_time(
+                            item.min_gpu_time, unit=time_unit),
+                        format_ratio(float(item.gpu_time) / total_time))
+                ]
+                all_row_values.append(row_values)
+                accmulation_time += item.cpu_time
+
+        other_time = total_time - accmulation_time
+        row_values = [
+            '  Others', '-', '{} / - / - / - / {}'.format(
+                format_time(
+                    other_time, unit=time_unit),
+                format_ratio(float(other_time) / total_time)),
+            '- / - / - / - / -'
+        ]
+        all_row_values.append(row_values)
+        # Calculate the column width
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
         headers = [
             'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
             'GPU Total / Avg / Max / Min / Ratio(%)'
@@ -651,22 +813,105 @@ def _build_table(statistic_data,
         row_format_list = [""]
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
-        name_column_width = 50
+        name_column_width = 15
         add_column(name_column_width)
-        add_column(6)
-        add_column(40)
-        add_column(40)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
 
         row_format = row_format_list[0]
         header_sep = header_sep_list[0]
         line_length = line_length_list[0]
 
         # construct table string
-        append(add_title(line_length, "Operator Summary"))
+        append(add_title(line_length, "Model Summary"))
         append('Time unit: {}'.format(time_unit))
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
+        for row_values in all_row_values:
+            append(row_format.format(*row_values))
+        append(header_sep)
+        append(
+            "Note:\nIn this table, GPU time is the sum of all device(GPU) events called in the phase.\n"
+            "Unlike overview summary, if two device(GPU) events execute on different streams with overlap time, we sum them directly here.\n"
+        )
+        append('-' * line_length)
+        append('')
+        append('')
+
+    ###### Print Distribution Summary Report ######
+    if statistic_data.distributed_summary.communication_range:
+        headers = [
+            'Name',
+            'Total Time',
+            'Ratio (%)',
+        ]
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+
+        DEFAULT_COLUMN_WIDTH = 25
+        for _ in headers:
+            add_column(DEFAULT_COLUMN_WIDTH)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "Distribution Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        communication_time = sum_ranges(
+            statistic_data.distributed_summary.communication_range)
+        computation_time = sum_ranges(
+            statistic_data.distributed_summary.computation_range)
+        overlap_time = sum_ranges(
+            statistic_data.distributed_summary.overlap_range)
+        row_values = [
+            'Communication', format_time(
+                communication_time, unit=time_unit),
+            format_ratio(float(communication_time) / total_time)
+        ]
+        append(row_format.format(*row_values))
+
+        row_values = [
+            'Computation', format_time(
+                computation_time, unit=time_unit),
+            format_ratio(float(computation_time) / total_time)
+        ]
+        append(row_format.format(*row_values))
+
+        row_values = [
+            'Overlap', format_time(
+                overlap_time, unit=time_unit),
+            format_ratio(float(overlap_time) / total_time)
+        ]
+        append(row_format.format(*row_values))
+        append(header_sep)
+        append(
+            "Note:\nCommunication time: Communication Event time, Communication Op time and its kernel time on gpu.\n"
+            "Computation time: Kernel time, except kernels belong to communication(nccl kernels).\n"
+            "Overlap time: Communication time intersects with computation time.\n"
+            "Example:\n"
+            "Communication:\n"
+            "  CPU:              |_________________|\n"
+            "  GPU:                                  |______________|\n"
+            "  Total:            |_________________| |______________|\n"
+            "Computation time(Kernel):\n"
+            "  GPU:         |________________|\n"
+            "Overlap time:       |___________|\n")
+        append('-' * line_length)
+        append('')
+        append('')
+
+    ###### Print Operator Summary Report ######
+    if statistic_data.event_summary.items:
+        all_row_values = []
+        name_column_width = 52
         if thread_sep == True:
             thread_items = statistic_data.event_summary.thread_items
         else:
@@ -674,7 +919,7 @@ def _build_table(statistic_data,
                 'All threads merged': statistic_data.event_summary.items
             }
         for thread_id, items in thread_items.items():
-            append(add_title(line_length, "Thread: {}".format(thread_id)))
+            all_row_values.append("Thread: {}".format(thread_id))
             if sorted_by == SortedKeys.CPUTotal:
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].cpu_time, reverse=True)
@@ -708,11 +953,6 @@ def _build_table(statistic_data,
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].min_gpu_time)
 
-            total_cpu_time = 0
-            total_gpu_time = 0
-            for name, item in sorted_items:
-                total_cpu_time += item.cpu_time
-                total_gpu_time += item.gpu_time
             for name, item in sorted_items:
                 row_values = [
                     name, item.call, '{} / {} / {} / {} / {}'.format(
@@ -724,7 +964,7 @@ def _build_table(statistic_data,
                             item.max_cpu_time, unit=time_unit),
                         format_time(
                             item.min_cpu_time, unit=time_unit),
-                        format_ratio(float(item.cpu_time) / total_cpu_time)),
+                        format_ratio(float(item.cpu_time) / total_time)),
                     '{} / {} / {} / {} / {}'.format(
                         format_time(
                             item.gpu_time, unit=time_unit),
@@ -734,12 +974,15 @@ def _build_table(statistic_data,
                             item.max_gpu_time, unit=time_unit),
                         format_time(
                             item.min_gpu_time, unit=time_unit),
-                        format_ratio(float(item.gpu_time) / total_gpu_time))
+                        format_ratio(float(item.gpu_time) / total_time))
                 ]
-                append(row_format.format(*row_values))
+                all_row_values.append(row_values)
                 if op_detail:
                     for innerop_name, innerop_node in item.operator_inners.items(
                     ):
+                        if len(innerop_name) + 2 > name_column_width:
+                            innerop_name = innerop_name[:name_column_width - 5]
+                            innerop_name += "..."
                         row_values = [
                             '  {}'.format(innerop_name), innerop_node.call,
                             '{} / {} / {} / {} / {}'.format(
@@ -752,8 +995,7 @@ def _build_table(statistic_data,
                                 format_time(
                                     innerop_node.min_cpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(innerop_node.cpu_time) /
-                                    total_cpu_time)),
+                                    float(innerop_node.cpu_time) / total_time)),
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
                                     innerop_node.gpu_time, unit=time_unit),
@@ -764,10 +1006,9 @@ def _build_table(statistic_data,
                                 format_time(
                                     innerop_node.min_gpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(innerop_node.gpu_time) /
-                                    total_gpu_time))
+                                    float(innerop_node.gpu_time) / total_time))
                         ]
-                        append(row_format.format(*row_values))
+                        all_row_values.append(row_values)
                         for device_node_name, devicenode in innerop_node.devices.items(
                         ):
                             if len(device_node_name) + 4 > name_column_width:
@@ -792,9 +1033,9 @@ def _build_table(statistic_data,
                                         unit=time_unit),
                                     format_ratio(
                                         float(devicenode.gpu_time) /
-                                        total_gpu_time))
+                                        total_time))
                             ]
-                            append(row_format.format(*row_values))
+                            all_row_values.append(row_values)
                     for device_node_name, device_node in item.devices.items():
                         if len(device_node_name) + 2 > name_column_width:
                             device_node_name = device_node_name[:
@@ -802,7 +1043,7 @@ def _build_table(statistic_data,
                                                                 - 5]
                             device_node_name += "..."
                         row_values = [
-                            '    {}'.format(device_node_name), devicenode.call,
+                            '  {}'.format(device_node_name), devicenode.call,
                             '- / - / - / - / -',
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
@@ -814,11 +1055,247 @@ def _build_table(statistic_data,
                                 format_time(
                                     devicenode.min_gpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(devicenode.gpu_time) /
-                                    total_gpu_time))
+                                    float(devicenode.gpu_time) / total_time))
                         ]
-                        append(row_format.format(*row_values))
+                        all_row_values.append(row_values)
+        # Calculate the column width
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                continue
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+        headers = [
+            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
+            'GPU Total / Avg / Max / Min / Ratio(%)'
+        ]
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "Operator Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                append(add_title(line_length, row_values))
+            else:
+                append(row_format.format(*row_values))
         append(header_sep)
         append('')
         append('')
+
+    ###### Print Memory Manipulation Summary Report ######
+    if statistic_data.event_summary.memory_manipulation_items:
+        all_row_values = []
+        memory_manipulation_items = statistic_data.event_summary.memory_manipulation_items
+        for name, item in memory_manipulation_items.items():
+            row_values = [
+                name,
+                item.call,
+                '{} / {} / {} / {} / {}'.format(
+                    format_time(
+                        item.cpu_time, unit=time_unit),
+                    format_time(
+                        item.avg_cpu_time, unit=time_unit),
+                    format_time(
+                        item.max_cpu_time, unit=time_unit),
+                    format_time(
+                        item.min_cpu_time, unit=time_unit),
+                    format_ratio(float(item.cpu_time) / total_time)),
+                '{} / {} / {} / {} / {}'.format(
+                    format_time(
+                        item.gpu_time, unit=time_unit),
+                    format_time(
+                        item.avg_gpu_time, unit=time_unit),
+                    format_time(
+                        item.max_gpu_time, unit=time_unit),
+                    format_time(
+                        item.min_gpu_time, unit=time_unit),
+                    format_ratio(float(item.gpu_time) / total_time)),
+            ]
+            all_row_values.append(row_values)
+
+        headers = [
+            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
+            'GPU Total / Avg / Max / Min / Ratio(%)'
+        ]
+        # Calculate the column width
+        name_column_width = 0
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if len(row_values[0]) > name_column_width:
+                name_column_width = len(row_values[0])
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "Memory Manipulation Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            append(row_format.format(*row_values))
+        append(header_sep)
+        append('')
+        append('')
+    ###### Print UserDefined Summary Report ######
+    if statistic_data.event_summary.userdefined_items:
+        all_row_values = []
+        if thread_sep == True:
+            userdefined_thread_items = statistic_data.event_summary.userdefined_thread_items
+        else:
+            userdefined_thread_items = {
+                'All threads merged':
+                statistic_data.event_summary.userdefined_items
+            }
+        for thread_id, items in userdefined_thread_items.items():
+            all_row_values.append("Thread: {}".format(thread_id))
+            if sorted_by == SortedKeys.CPUTotal:
+                sorted_items = sorted(
+                    items.items(), key=lambda x: x[1].cpu_time, reverse=True)
+            elif sorted_by == SortedKeys.CPUAvg:
+                sorted_items = sorted(
+                    items.items(),
+                    key=lambda x: x[1].avg_cpu_time,
+                    reverse=True)
+            elif sorted_by == SortedKeys.CPUMax:
+                sorted_items = sorted(
+                    items.items(),
+                    key=lambda x: x[1].max_cpu_time,
+                    reverse=True)
+            elif sorted_by == SortedKeys.CPUMin:
+                sorted_items = sorted(
+                    items.items(), key=lambda x: x[1].min_cpu_time)
+            elif sorted_by == SortedKeys.GPUTotal:
+                sorted_items = sorted(
+                    items.items(), key=lambda x: x[1].gpu_time, reverse=True)
+            elif sorted_by == SortedKeys.GPUAvg:
+                sorted_items = sorted(
+                    items.items(),
+                    key=lambda x: x[1].avg_gpu_time,
+                    reverse=True)
+            elif sorted_by == SortedKeys.GPUMax:
+                sorted_items = sorted(
+                    items.items(),
+                    key=lambda x: x[1].max_gpu_time,
+                    reverse=True)
+            elif sorted_by == SortedKeys.GPUMin:
+                sorted_items = sorted(
+                    items.items(), key=lambda x: x[1].min_gpu_time)
+
+            for name, item in sorted_items:
+                row_values = [
+                    name,
+                    item.call,
+                    '{} / {} / {} / {} / {}'.format(
+                        format_time(
+                            item.cpu_time, unit=time_unit),
+                        format_time(
+                            item.avg_cpu_time, unit=time_unit),
+                        format_time(
+                            item.max_cpu_time, unit=time_unit),
+                        format_time(
+                            item.min_cpu_time, unit=time_unit),
+                        format_ratio(float(item.cpu_time) / total_time)),
+                    '{} / {} / {} / {} / {}'.format(
+                        format_time(
+                            item.gpu_time, unit=time_unit),
+                        format_time(
+                            item.avg_gpu_time, unit=time_unit),
+                        format_time(
+                            item.max_gpu_time, unit=time_unit),
+                        format_time(
+                            item.min_gpu_time, unit=time_unit),
+                        format_ratio(float(item.gpu_time) / total_time)),
+                ]
+                all_row_values.append(row_values)
+
+        # Calculate the column width
+        name_column_width = 0
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                continue
+            if len(row_values[0]) > name_column_width:
+                name_column_width = len(row_values[0])
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+
+        headers = [
+            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
+            'GPU Total / Avg / Max / Min / Ratio(%)'
+        ]
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "UserDefined Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                append(add_title(line_length, row_values))
+            else:
+                append(row_format.format(*row_values))
+        append('')
+        append('')
+
     return ''.join(result)
