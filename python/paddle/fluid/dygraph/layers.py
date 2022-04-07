@@ -540,9 +540,8 @@ class Layer(object):
 
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
-                include_sublayers=include_sublayers)
+            param for _, param in
+            self.named_parameters(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -798,9 +797,8 @@ class Layer(object):
 
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
-                include_sublayers=include_sublayers)
+            buffer for _, buffer in
+            self.named_buffers(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -1170,6 +1168,9 @@ class Layer(object):
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
                     _buffers[name] = value
+                    if not _buffers[name].name:
+                        _buffers[name].name = unique_name.generate(
+                            '_generated_var')
                 elif _buffers is not None and name in _buffers:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
