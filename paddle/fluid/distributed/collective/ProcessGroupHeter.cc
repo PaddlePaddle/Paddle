@@ -116,56 +116,52 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
       if (local_rank_ == 0) {
         HeterClient* client_ =
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
-        auto dense_cpu_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[0].impl());
+        auto dense_cpu_tensor = cpu_tensors[0];
         std::vector<int> send_size;
-        send_size.push_back(dense_cpu_tensor->numel());
+        send_size.push_back(dense_cpu_tensor.numel());
         int ret = client_->Send(
-            gid_, {dense_cpu_tensor->name()}, send_size,
-            dense_cpu_tensor->data(),
-            dense_cpu_tensor->numel() *
-                framework::DataTypeSize(dense_cpu_tensor->dtype()));
+            gid_, {dense_cpu_tensor.name()}, send_size, dense_cpu_tensor.data(),
+            dense_cpu_tensor.numel() *
+                framework::DataTypeSize(dense_cpu_tensor.dtype()));
         PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                       "Send to the switch module error."));
         phi::DenseTensorMeta meta = phi::DenseTensorMeta(
-            dense_cpu_tensor->dtype(), dense_cpu_tensor->dims());
+            dense_cpu_tensor.dtype(), dense_cpu_tensor.dims());
         std::shared_ptr<phi::DenseTensor> dense_cpu_tensor2 =
             std::make_shared<phi::DenseTensor>(
                 std::make_unique<paddle::experimental::DefaultAllocator>(
                     paddle::platform::CPUPlace())
                     .get(),
                 meta);
-        dense_cpu_tensor2->ResizeAndAllocate(dense_cpu_tensor->dims());
-        Tensor cpu_tensor_temp =
-            paddle::experimental::Tensor(dense_cpu_tensor2);
+        dense_cpu_tensor2->ResizeAndAllocate(dense_cpu_tensor.dims());
         ret = client_->Recv(
-            gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor2->data(),
+            gid_, {dense_cpu_tensor.name()}, dense_cpu_tensor2->data(),
             dense_cpu_tensor2->numel() *
                 framework::DataTypeSize(dense_cpu_tensor2->dtype()));
         PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                       "Recv from the switch module error."));
 
-        switch (dense_cpu_tensor->dtype()) {
+        switch (dense_cpu_tensor.dtype()) {
           case DataType::FLOAT32:
-            _do_add<float>(reinterpret_cast<float*>(dense_cpu_tensor->data()),
+            _do_add<float>(reinterpret_cast<float*>(dense_cpu_tensor.data()),
                            reinterpret_cast<float*>(dense_cpu_tensor2->data()),
-                           dense_cpu_tensor->numel());
+                           dense_cpu_tensor.numel());
             break;
           case DataType::FLOAT64:
             _do_add<double>(
-                reinterpret_cast<double*>(dense_cpu_tensor->data()),
+                reinterpret_cast<double*>(dense_cpu_tensor.data()),
                 reinterpret_cast<double*>(dense_cpu_tensor2->data()),
-                dense_cpu_tensor->numel());
+                dense_cpu_tensor.numel());
             break;
           case DataType::INT32:
-            _do_add<int>(reinterpret_cast<int*>(dense_cpu_tensor->data()),
+            _do_add<int>(reinterpret_cast<int*>(dense_cpu_tensor.data()),
                          reinterpret_cast<int*>(dense_cpu_tensor2->data()),
-                         dense_cpu_tensor->numel());
+                         dense_cpu_tensor.numel());
             break;
           default:
             PADDLE_THROW(platform::errors::PreconditionNotMet(
                 "Unsupported data type (%s) to do add.",
-                framework::DataType2String(dense_cpu_tensor->dtype())));
+                framework::DataType2String(dense_cpu_tensor.dtype())));
         }
       }
     } else {
@@ -219,30 +215,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
       if (local_rank_ == 0) {
         HeterClient* client_ =
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
-        auto dense_cpu_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[0].impl());
+        auto dense_cpu_tensor = cpu_tensors[0];
         if (gloo_rank_ == 0) {
           std::vector<int> send_size;
-          send_size.push_back(dense_cpu_tensor->numel());
+          send_size.push_back(dense_cpu_tensor.numel());
           int ret = client_->Send(
-              gid_, {dense_cpu_tensor->name()}, send_size,
-              dense_cpu_tensor->data(),
-              dense_cpu_tensor->numel() *
-                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+              gid_, {dense_cpu_tensor.name()}, send_size,
+              dense_cpu_tensor.data(),
+              dense_cpu_tensor.numel() *
+                  framework::DataTypeSize(dense_cpu_tensor.dtype()));
           PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                         "Send to the switch module error."));
         } else {
           int ret = client_->Recv(
-              gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor->data(),
-              dense_cpu_tensor->numel() *
-                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+              gid_, {dense_cpu_tensor.name()}, dense_cpu_tensor.data(),
+              dense_cpu_tensor.numel() *
+                  framework::DataTypeSize(dense_cpu_tensor.dtype()));
           PADDLE_ENFORCE_EQ(ret, 0,
                             platform::errors::PreconditionNotMet(
                                 "Receive from the switch module error."));
           ret = client_->Recv(
-              gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor->data(),
-              dense_cpu_tensor->numel() *
-                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+              gid_, {dense_cpu_tensor.name()}, dense_cpu_tensor.data(),
+              dense_cpu_tensor.numel() *
+                  framework::DataTypeSize(dense_cpu_tensor.dtype()));
           PADDLE_ENFORCE_EQ(ret, 0,
                             platform::errors::PreconditionNotMet(
                                 "Receive from the switch module error."));
