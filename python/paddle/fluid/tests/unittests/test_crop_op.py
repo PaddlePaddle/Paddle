@@ -71,10 +71,10 @@ class TestCropOp(OpTest):
         self.offsets = [1, 2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestCase1(TestCropOp):
@@ -125,4 +125,6 @@ class TestCase6(TestCropOp):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()
