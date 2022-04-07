@@ -1394,9 +1394,7 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
     if in_dygraph_mode():
         out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
        
-    
     else:
-        print("!!!!!!!!!!!!tril_indice static begin!!!")
         helper = LayerHelper("tril_indices", **locals())
         
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1406,6 +1404,4 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
             inputs={},
             outputs={'out': [out]},
             attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
-
-        print("!!!!!!!!!!!!tril_indice static end!!!")
     return out

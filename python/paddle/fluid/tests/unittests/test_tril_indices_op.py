@@ -50,23 +50,16 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 class TestTrilIndicesAPICase(unittest.TestCase):
     
     def test_static(self):
-        
-        
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),paddle.static.Program()):
             data = paddle.tril_indices(4,4,2)
-            print("^^^^^^^^^",data)
-           
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(program=paddle.static.Program(),
-                              feed={},
-                              fetch_list=[data])
-            print(result)
+            result = exe.run(feed={},
+                            fetch_list=[data])
         expected_result = np.tril_indices(4,2,4)
-        print(expected_result)
-        self.assertEqual((result == expected_result).all(), True)
-    '''    
+        self.assertTrue(np.allclose(result, expected_result))
+        
     def test_dygraph(self):
         paddle.disable_static()
         out =  paddle.tril_indices(4,4,2)
@@ -97,7 +90,7 @@ class TestTrilIndicesAPICase(unittest.TestCase):
         out =  paddle.tril_indices(4,None,2)
         expected_result = np.tril_indices(4,2)
         self.assertEqual((out.numpy() == expected_result).all(), True)
-    '''
+    
         
 
        
