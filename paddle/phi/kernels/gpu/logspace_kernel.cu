@@ -29,21 +29,21 @@ __global__ void LogspaceKernelInner(
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(pow(
-          static_cast<double>(base),
-          static_cast<double>(start + step * index)));
+      out[index] =
+          static_cast<T>(pow(static_cast<double>(base),
+                             static_cast<double>(start + step * index)));
     } else {
-      out[index] = static_cast<T>(pow(
-          static_cast<double>(base),
-          static_cast<double>(stop - step * (size - index - 1))));
+      out[index] = static_cast<T>(
+          pow(static_cast<double>(base),
+              static_cast<double>(stop - step * (size - index - 1))));
     }
   }
 }
 
 template <typename T>
 __global__ void LogspaceSpecialKernel(T start, T base, T* out) {
-  out[0] = static_cast<T>(pow(
-      static_cast<double>(base), static_cast<double>(start)));
+  out[0] = static_cast<T>(
+      pow(static_cast<double>(base), static_cast<double>(start)));
 }
 
 template <typename T, typename Context>
