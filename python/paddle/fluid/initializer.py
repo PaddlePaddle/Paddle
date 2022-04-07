@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import _non_static_mode, default_main_program
+from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -417,7 +417,18 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            out_var = _C_ops.final_state_truncated_gaussian_random(
+                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
+                _current_expected_place())
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
+            return None
+
+        if _in_legacy_dygraph():
             out_var = _C_ops.truncated_gaussian_random(
                 'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed)
@@ -876,9 +887,9 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(shape), 'dtype', out_dtype,
-                                          value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(shape), 'dtype', out_dtype, value_name,
+                                values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
@@ -985,9 +996,9 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(self._value.shape), 'dtype',
-                                          out_dtype, value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(self._value.shape), 'dtype', out_dtype,
+                                value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)

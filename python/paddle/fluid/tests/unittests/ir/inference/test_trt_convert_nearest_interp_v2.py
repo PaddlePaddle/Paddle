@@ -41,7 +41,9 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
                 "data_layout": "NCHW",
                 "interp_method": "nearest",
                 "align_corners": False,
+                "align_mode": 1,
                 "scale": [2., 2.],
+                "out_d": 0,
                 "out_h": 0,
                 "out_w": 0
             }

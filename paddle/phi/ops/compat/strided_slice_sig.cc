@@ -57,14 +57,14 @@ KernelSignature StridedSliceOpArgumentMapping(
                                             "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {"Out"};
 
-  std::string op_type;
+  std::string kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
-    op_type = "strided_slice_array";
+    kernel_name = "strided_slice_array";
   } else {
-    op_type = "strided_slice";
+    kernel_name = "strided_slice_raw";
   }
   // NOTE(dev): Use this to avoid regularization.
-  KernelSignature sig(op_type, inputs, attrs, outputs);
+  KernelSignature sig(kernel_name, inputs, attrs, outputs);
   return sig;
 }
 
@@ -106,15 +106,15 @@ KernelSignature StridedSliceGradOpArgumentMapping(
                                             "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {GradVarName("Input")};
 
-  std::string op_type;
+  std::string kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
-    op_type = "strided_slice_array_grad";
+    kernel_name = "strided_slice_array_grad";
   } else {
-    op_type = "strided_slice_grad";
+    kernel_name = "strided_slice_raw_grad";
   }
 
   // NOTE(dev): Use this to avoid regularization.
-  KernelSignature sig(op_type, inputs, attrs, outputs);
+  KernelSignature sig(kernel_name, inputs, attrs, outputs);
   return sig;
 }
 
@@ -132,573 +132,273 @@ NOTE: The following codes are for 'get_compat_kernel_signature.py'
 
 ############################  Forward ############################
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensor",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensor",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "ends", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensor", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "starts","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "ends",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "StartsTensorList", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensor", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensor", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensorList", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "EndsTensorList", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "ends", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice}", {"Input"},
+return KernelSignature("strided_slice_raw", {"Input"},
               {"axes", "starts", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensor",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensor",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "EndsTensorList", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "ends", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensor", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "StartsTensor","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "EndsTensorList",
 "starts","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "ends",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "StartsTensorList", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensor", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensor", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensor", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensorList", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensorList",
 "StartsTensorList","infer_flags", "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "EndsTensorList", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "ends", "StartsTensor","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "ends", "StartsTensorList","infer_flags",
 "decrease_axis"},
               {"Out"});
 
-return KernelSignature("{strided_slice_array}", {"Input"},
+return KernelSignature("strided_slice_array", {"Input"},
               {"axes", "starts", "ends", "starts","infer_flags",
 "decrease_axis"},
               {"Out"});
-
-############################  Backward ############################
-
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"starts","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "ends", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_grad}", {"Input", GradVarName("Out")},
-              {"axes", "starts", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "EndsTensorList", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensor", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"StartsTensor","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "EndsTensorList",
-"starts","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "StartsTensorList", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensor", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList",
-"StartsTensorList","infer_flags", "decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "EndsTensorList", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "ends", "StartsTensor","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "ends", "StartsTensorList","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
-
-return KernelSignature("{strided_slice_array_grad}", {"Input",
-GradVarName("Out")},
-              {"axes", "starts", "ends", "starts","infer_flags",
-"decrease_axis"},
-              {GradVarName("Input")});
 */

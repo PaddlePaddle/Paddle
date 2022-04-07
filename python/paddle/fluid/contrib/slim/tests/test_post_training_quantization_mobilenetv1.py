@@ -243,7 +243,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  round_type="round",
                                  is_full_quantize=False,
                                  is_use_cache_file=False,
-                                 is_optimize_model=False):
+                                 is_optimize_model=False,
+                                 onnx_format=False):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
@@ -265,13 +266,23 @@ class TestPostTrainingQuantization(unittest.TestCase):
             round_type=round_type,
             is_full_quantize=is_full_quantize,
             optimize_model=is_optimize_model,
+            onnx_format=onnx_format,
             is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
-    def run_test(self, model, algo, round_type, data_urls, data_md5s,
-                 quantizable_op_type, is_full_quantize, is_use_cache_file,
-                 is_optimize_model, diff_threshold):
+    def run_test(self,
+                 model,
+                 algo,
+                 round_type,
+                 data_urls,
+                 data_md5s,
+                 quantizable_op_type,
+                 is_full_quantize,
+                 is_use_cache_file,
+                 is_optimize_model,
+                 diff_threshold,
+                 onnx_format=False):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
         sample_iterations = self.sample_iterations
@@ -285,9 +296,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(
-            model_cache_folder + "/model", quantizable_op_type, algo,
-            round_type, is_full_quantize, is_use_cache_file, is_optimize_model)
+        self.generate_quantized_model(model_cache_folder + "/model",
+                                      quantizable_op_type, algo, round_type,
+                                      is_full_quantize, is_use_cache_file,
+                                      is_optimize_model, onnx_format)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
@@ -515,6 +527,39 @@ class TestPostTrainingEMDForMobilenetv1(TestPostTrainingQuantization):
         self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
+
+
+class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_onnx_format_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "avg"
+        round_type = "round"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = True
+        onnx_format = True
+        diff_threshold = 0.05
+        self.run_test(
+            model,
+            algo,
+            round_type,
+            data_urls,
+            data_md5s,
+            quantizable_op_type,
+            is_full_quantize,
+            is_use_cache_file,
+            is_optimize_model,
+            diff_threshold,
+            onnx_format=onnx_format)
 
 
 if __name__ == '__main__':
