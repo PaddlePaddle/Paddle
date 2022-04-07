@@ -1,4 +1,4 @@
-{# --------------------------------------- op maker ---------------------------------------------- #}
+{# ----------------------------- op maker ----------------------------------- #}
 {% macro op_maker(api) %}
   {% set api_name = api["name"] %}
 class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndCheckerMaker {
@@ -6,17 +6,17 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
   void Make() override {
   {% filter indent(4, True) %}
     {% for input in api["inputs"] %}
-      {% if input["name"] in api["kernel"]["param"] %}
+      {# {% if input["name"] in api["kernel"]["param"] %} #}
 {{add_input(loop.index0, input, api_name)}};
-      {% endif %}
+      {# {% endif %} #}
     {% endfor %}
     {% for output in api["outputs"] %}
 {{add_output(loop.index0, output, api_name)}};
     {% endfor %}
     {% for attr in api["attrs"] %}
-      {% if attr["name"] in api["kernel"]["param"] %}
+      {# {% if attr["name"] in api["kernel"]["param"] %} #}
 {{add_attr(loop.index0, attr, api_name)}};
-      {% endif %}
+      {# {% endif %} #}
     {% endfor %}
   {% endfilter %}
     AddComment(R"DOC(
@@ -27,12 +27,12 @@ TODO: Documentation of {{api_name}} op.
 {% endmacro %}
 
 
+{# add input, it could be duplicable or dispensable #}
 {% macro add_input(i, input, op_name) %}{# inline #}
   {% set name = input["name"] %}
   {% set typename = input["typename"] %}
-  {% set is_vec = typename.endswith("[]") %}
 AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
-  {%- if is_vec +%}
+  {%- if typename is vec +%}
     .AsDuplicable()
   {%- endif %}
   {%- if input["optional"] +%}
@@ -40,26 +40,31 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
   {%- endif %}
 {%- endmacro %}
 
+{# add output, it could be duplicable or intermediate, however, optional output is not supported #}
 {% macro add_output(i, output, op_name) %}{# inline #}
   {% set name = output["name"] %}
   {% set typename = output["typename"] %}
-  {% set is_vec = typename.endswith("[]") %}
+  {% set is_intermediate = output["intermediate"] %}
 AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
-  {%- if is_vec +%}
+  {%- if typename is vec +%}
     .AsDuplicable()
+  {%- endif %}
+  {%- if is_intermediate +%}
+    .AsIntermediate()
   {%- endif %}
 {%- endmacro %}
 
+{# add attribute, and process default value if needed #}
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["name"] %}
   {% set typename = attr["typename"] %}
   {% if typename == "Scalar "%}
 AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
-  {% elif typename == "ScalarArray" %}
-AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 1D Tensor.")
+  {% elif typename == "IntArray" %}{# the type has been renamed #}
+AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
-AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}} op from list fo 0D Tensors.")
+AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
     .AsDuplicable()
     .AsDispensable();
   {% endif %}
@@ -69,18 +74,19 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
   {%- endif %}
 {%- endmacro %}
 
+{# process default value for attributes, some attribute has different types and different default values in api & opmaker #}
 {% macro process_default_value(attr) %}{# inline #}
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
   {% if typename == "DataType" %}{# convert back to VarType #}
 static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
-  {%- elif typename == "DataLayout" %}
+  {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
-static_cast<int>(phi::Place({{default_value}}.GetType()))
+static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
   {%- elif typename == "str" %}{# warp string #}
 "{{default_value}}"
-  {%- else %}
+  {%- else %}{# pass through as-is #}
 {{default_value}}
   {%- endif %}
 {%- endmacro %}
@@ -126,7 +132,7 @@ attrs.emplace_back(
   ? "{{name | to_pascal_case}}"
   : "{{name}}"
 )
-{%- elif typename == "ScalarArray" %}
+{%- elif typename == "IntArray" %}
 attrs.emplace_back(
   ctx.HasInput("{{name | to_pascal_case}}Tensor")
   ? "{{name | to_pascal_case}}Tensor"
@@ -159,25 +165,40 @@ DECLARE_INFER_SHAPE_FUNCTOR({{api["name"]}}, {{api["name"] | to_pascal_case}}Inf
                             PD_INFER_META(phi::{{api["infer_meta"]["func"]}}));
 {# inplace inferer #}
 {% if api["inplace"] is not none %}
-{% for source, target in api["inplace"].items() %}
+  {% set inplace_map %}
+  {% for source, target in api["inplace"].items() %}
+{{"{"}}{{source | to_opmaker_name}}, {{target | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
+  {%- endfor %}
+  {%- endset %}
 DECLARE_INPLACE_OP_INFERER({{api["name"] | to_pascal_case}}InplaceInferer,
-                           {{source | to_opmaker_name}}, {{target | to_opmaker_name}});
-{% endfor %}
+                           {{inplace_map}});
+{% endif %}
+
+{# no_need_buffer inferer #}
+{% if api["no_need_buffer"] is not none %}
+DECLARE_NO_NEED_BUFFER_VARS_INFERER({{api["name"] | to_pascal_case}}NoNeedBufferVarInferer,
+                                    {{api["no_need_buffer"] | map("to_opmaker_name") | join(", ")}});
 {% endif %}
 {% endmacro%}
 
 {% macro register_op_with_components(api) %}
 {% set name = api["name"] %}
-{% if "backward" in api and api["backward"] is not none %}
-{% set backward_name = api["backward"] %}
-REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_pascal_case}}OpMaker,
+REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
+{% if not "forward" in api %}{# it is a forward api #}
+                  ops::{{name | to_pascal_case}}OpMaker,
+{% endif %}
+{% if "backward" in api and api["backward"] is not none %}{# backward #}
+  {% set backward_name = api["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
-                  ops::{{name | to_pascal_case}}InferShapeFunctor);
-{% else %}
-REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_pascal_case}}OpMaker,
-                  ops::{{name | to_pascal_case}}InferShapeFunctor);
 {% endif %}
+{% if api is supports_inplace %}{# inplace#}
+                  ops::{{name | to_pascal_case}}InplaceInferer,
+{% endif %}
+{% if api is supports_no_need_buffer %}{# no_need_buffer #}
+                  ops::{{name | to_pascal_case}}NoNeedBufferVarInferer,
+{% endif %}
+                  ops::{{name | to_pascal_case}}InferShapeFunctor);
 {% endmacro %}
 
 
@@ -220,7 +241,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   {% for attr in api["attrs"] %}
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
-      {% if attr["typename"] == "ScalarArray" %}
+      {% if attr["typename"] == "IntArray" %}
     grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
     grad_op->SetInput("{{attr_name | to_pascal_case}}TensorList", this->Input("{{attr_name | to_pascal_case}}TensorList"));
       {% elif attr["typename"] == "Scalar" %}

@@ -226,6 +226,21 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
     inputs, attrs = parse_input_and_attr(api_name, api_entry["args"])
     outputs = parse_outputs(api_name, api_entry["output"])
 
+    # validate default value of DataType and DataLayout
+    for attr in attrs:
+        if "default_value" in attr:
+            typename = attr["typename"]
+            default_value = attr["default_value"]
+            if typename == "DataType":
+                assert "DataType" in default_value, f"invalid DataType default value in {api_name}"
+                # remove namespace
+                default_value = default_value[default_value.find("DataType"):]
+                attr["default_value"] = default_value
+            elif typename == "DataLayout":
+                assert "DataLayout" in default_value, f"invalid DataLayout default value in {api_name}"
+                default_value = default_value[default_value.find("DataLayout"):]
+                attr["default_value"] = default_value
+
     input_names = [item["name"] for item in inputs]
     attr_names = [item["name"] for item in attrs]
     output_names = [item["name"] for item in outputs]
@@ -262,6 +277,8 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
         for input in inputs:
             if input["name"] in no_buffer_args:
                 input["no_need_buffer"] = True
+    else:
+        no_buffer_args = None
 
     # TODO(chenfeiyu): data_transform
 
@@ -269,7 +286,8 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
         "name": api_name,
         "inputs": inputs,
         "attrs": attrs,
-        "outputs": outputs
+        "outputs": outputs,
+        "no_need_buffer": no_buffer_args
     }
 
     # invokes another api?
