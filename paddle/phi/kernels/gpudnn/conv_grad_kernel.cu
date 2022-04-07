@@ -43,9 +43,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnGradKernel(const Context& ctx,
-                         const DenseTensor& output_grad,
                          const DenseTensor& input,
                          const DenseTensor& filter,
+                         const DenseTensor& output_grad,
                          const std::vector<int>& strides_t,
                          const std::vector<int>& paddings_t,
                          const std::string& padding_algorithm,
@@ -58,10 +58,10 @@ void ConvCudnnGradKernel(const Context& ctx,
                          DenseTensor* input_grad,
                          DenseTensor* filter_grad) {
   if (input_grad) {
-    input_grad->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(input_grad);
   }
   if (filter_grad) {
-    filter_grad->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(filter_grad);
   }
 
   std::vector<int> dilations = dilations_t;
@@ -204,12 +204,12 @@ void ConvCudnnGradKernel(const Context& ctx,
     }
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
-    transformed_input.mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(&transformed_input);
 
     transformed_input_grad.Resize(new_input_shape);
 
     if (input_grad) {
-      transformed_input_grad.mutable_data<T>(ctx.GetPlace());
+      ctx.template Alloc<T>(&transformed_input_grad);
     }
     // pad for input
     const int rank = transformed_input_channel.dims().size();
@@ -427,7 +427,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     if (use_addto) {
       DenseTensor temp_tensor(transformed_input_grad.type());
       temp_tensor.Resize(transformed_input_grad.dims());
-      T* temp_tensor_data = temp_tensor.mutable_data<T>(ctx.GetPlace());
+      T* temp_tensor_data = ctx.template Alloc<T>(&temp_tensor);
       workspace_handle.RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
@@ -513,7 +513,7 @@ void ConvCudnnGradKernel(const Context& ctx,
         axes[i] = i;
       }
 
-      transformed_input_grad_channel.mutable_data(ctx.GetPlace());
+      ctx.template Alloc<T>(&transformed_input_grad_channel);
       if (transformed_input_channel.dims().size() == 4) {
         paddle::operators::RemovePaddingSlice<Context, T, 4>(
             ctx,
@@ -595,9 +595,9 @@ void ConvCudnnGradKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void Conv3DCudnnGradKernel(const Context& dev_ctx,
-                           const DenseTensor& out_grad,
                            const DenseTensor& input,
                            const DenseTensor& filter,
+                           const DenseTensor& out_grad,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
                            const std::string& paddding_algorithm,
@@ -610,9 +610,9 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
                            DenseTensor* input_grad,
                            DenseTensor* filter_grad) {
   ConvCudnnGradKernel<T>(dev_ctx,
-                         out_grad,
                          input,
                          filter,
+                         out_grad,
                          strides,
                          paddings,
                          paddding_algorithm,

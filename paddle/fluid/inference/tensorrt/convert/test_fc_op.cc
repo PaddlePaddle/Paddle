@@ -43,4 +43,4 @@ TEST(fc_op, test) {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-USE_OP(mul);
+USE_OP_ITSELF(mul);

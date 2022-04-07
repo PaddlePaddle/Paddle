@@ -28,7 +28,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import _varbase_creator
+from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 
 from ...fluid import dygraph_utils
 from ...fluid import layers
@@ -38,6 +38,7 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
 from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.static import default_main_program
 
 __all__ = []
@@ -894,9 +895,15 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        if in_dynamic_mode():
+        if _non_static_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
+
+            if in_dygraph_mode():
+                out, mask = _C_ops.final_state_dropout( x, None, p, not training, mode, \
+                    seed if seed is not None else 0, seed is not None)
+
+                return out
             out, mask = _C_ops.dropout(
                 x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
                 seed is not None, 'seed', seed
@@ -1352,8 +1359,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
-        out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                           "data_format", data_format, "name", name)
+        if _in_legacy_dygraph():
+            out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                               "data_format", data_format, "name", name)
+        else:
+            out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
         inputs = {'X': [x]}
@@ -1613,10 +1623,14 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
@@ -1651,16 +1665,21 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     .. hint::
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
-    
+
         The API supports CPU, single GPU and multi GPU.
+
+        For data parallel mode, set ``group=False``.
+
+        For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
 
     Args:
         label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
         num_classes (int): A positive integer to specify the number of classes at local rank.
             Note that num_classes of each GPU can be different.
         num_samples (int): A positive integer to specify the number of class center to sample.
-        group (Group, optional): The abstract representation of group.
-            See paddle.distributed.collective.Group. Default is ``None``.
+        group (Group, optional): The group instance return by paddle.distributed.new_group 
+            or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
+            Default is ``None``.
 
     Returns:
         Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
@@ -1733,18 +1752,25 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if group is not None and not group.is_member():
+    if not (group == False or group is None or hasattr(group, 'is_member')):
+        raise ValueError(
+            'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {})'.format(group))
         return
 
-    ring_id = 0 if group is None else group.id
+    if hasattr(group, 'is_member') and not group.is_member():
+        return
+
+    ring_id = 0
     rank = 0
     nranks = 1
-    if core.is_compiled_with_dist():
-        parallel_env = paddle.distributed.ParallelEnv()
-        global_rank = parallel_env.rank
-        rank = global_rank if group is None else group.get_group_rank(
-            global_rank)
-        nranks = parallel_env.world_size if group is None else group.nranks
+    if group != False:
+        if core.is_compiled_with_dist():
+            parallel_env = paddle.distributed.ParallelEnv()
+            global_rank = parallel_env.rank
+            rank = global_rank if group is None else group.get_group_rank(
+                global_rank)
+            nranks = parallel_env.world_size if group is None else group.nranks
 
     if num_samples > num_classes:
         raise ValueError(

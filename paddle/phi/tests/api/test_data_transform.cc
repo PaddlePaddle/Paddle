@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -39,10 +40,10 @@ TEST(API, data_transform_same_place) {
   auto x = paddle::experimental::full({3, 3},
                                       1.0,
                                       experimental::DataType::COMPLEX128,
-                                      experimental::Backend::CPU);
+                                      experimental::CPUPlace());
 
   auto y = paddle::experimental::full(
-      {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
+      {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::CPUPlace());
 
   std::vector<phi::dtype::complex<double>> sum(9, 6.0);
 
@@ -74,10 +75,10 @@ TEST(API, data_transform_same_place) {
 TEST(Tensor, data_transform_diff_place) {
   // 1. create tensor
   auto x = paddle::experimental::full(
-      {3, 3}, 1.0, experimental::DataType::FLOAT64, experimental::Backend::CPU);
+      {3, 3}, 1.0, experimental::DataType::FLOAT64, experimental::CPUPlace());
 
   auto y = paddle::experimental::full(
-      {3, 3}, 2.0, experimental::DataType::FLOAT64, experimental::Backend::GPU);
+      {3, 3}, 2.0, experimental::DataType::FLOAT64, experimental::GPUPlace());
 
   std::vector<float> sum(9, 6.0);
 
@@ -95,7 +96,7 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.impl()->place(),
             phi::TransToPhiPlace(experimental::Backend::GPU));
 
-  auto ref_out = experimental::copy_to(out, experimental::Backend::CPU, true);
+  auto ref_out = experimental::copy_to(out, experimental::CPUPlace(), true);
 
   auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(ref_out.impl());
   for (size_t i = 0; i < 9; i++) {

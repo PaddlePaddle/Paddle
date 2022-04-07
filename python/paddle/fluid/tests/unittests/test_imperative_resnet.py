@@ -26,7 +26,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 from paddle.fluid.dygraph import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 #NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -61,7 +61,7 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -164,7 +164,7 @@ class BottleneckBlock(fluid.Layer):
 
 
 class ResNet(fluid.Layer):
-    def __init__(self, layers=50, class_dim=102, use_cudnn=False):
+    def __init__(self, layers=50, class_dim=102, use_cudnn=True):
         super(ResNet, self).__init__()
 
         self.layers = layers
@@ -285,7 +285,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and not _in_eager_mode():
+                if batch_id % 5 == 0 and _in_legacy_dygraph():
                     out, traced_layer = TracedLayer.trace(resnet, img)
                     if program is not None:
                         self.assertTrue(
@@ -438,4 +438,5 @@ class TestDygraphResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

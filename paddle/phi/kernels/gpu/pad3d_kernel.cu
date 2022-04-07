@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -326,7 +327,7 @@ __global__ void Pad3DCircularNDHWC(const int nthreads,
 template <typename T, typename Context>
 void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& paddings,
+                 const IntArray& paddings,
                  const std::string& mode,
                  float pad_value,
                  const std::string& data_format,
@@ -585,4 +586,6 @@ PD_REGISTER_KERNEL(pad3d,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

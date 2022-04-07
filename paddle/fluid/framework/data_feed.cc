@@ -18,6 +18,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
 #include <sys/mman.h>
@@ -555,10 +556,13 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
+  int buf_len = 1024 * 1024 * 10;
+  char* buf = (char*)malloc(buf_len + 10);
+  auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
-  string::LineFileReader reader;
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
 
@@ -566,34 +570,34 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
-    int err_no = 0;
-    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
-    CHECK(this->fp_ != nullptr);
-    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-
-    paddle::framework::ChannelWriter<T> writer(input_channel_);
-    T instance;
     platform::Timer timeline;
     timeline.Start();
-
-    while (1) {
-      if (!reader.getline(&*(fp_.get()))) {
-        break;
-      } else {
-        const char* str = reader.get();
-        ParseOneInstanceFromSo(str, &instance, parser);
+    if (ps_gpu_ptr->UseAfsApi()) {
+      auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+      int read_len = 0;
+      char* cursor = buf;
+      int remain = 0;
+      while ((read_len = afs_reader->read(cursor, buf_len - remain)) > 0) {
+        std::vector<T> instances;
+        read_len += remain;
+        remain = ParseInstanceFromSo(read_len, buf, &instances, parser);
+        input_channel_->Write(std::move(instances));
+        instances = std::vector<T>();
+        if (remain) {
+          memmove(buf, buf + read_len - remain, remain);
+        }
+        cursor = buf + remain;
       }
-
-      writer << std::move(instance);
-      instance = T();
+    } else {
+      VLOG(0) << "Should Call InitAfsApi First";
     }
 
-    writer.Flush();
     timeline.Pause();
     VLOG(3) << "LoadIntoMemoryFromSo() read all lines, file=" << filename
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_;
   }
+  free(buf);
   VLOG(3) << "LoadIntoMemoryFromSo() end, thread_id=" << thread_id_;
 #endif
 }
@@ -1088,10 +1092,11 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
 }
 
-void MultiSlotInMemoryDataFeed::ParseOneInstanceFromSo(const char* str,
-                                                       Record* instance,
-                                                       CustomParser* parser) {
-  parser->ParseOneInstance(str, instance);
+int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
+    int len, const char* str, std::vector<Record>* instances,
+    CustomParser* parser) {
+  // VLOG(0) << "parser: " << parser;
+  return parser->ParseInstance(len, str, instances);
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
@@ -2078,7 +2083,8 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
@@ -2111,21 +2117,31 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
     int lines = 0;
     bool is_ok = true;
+    auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
-      int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      if (ps_gpu_ptr->UseAfsApi()) {
+        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+        is_ok = parser->ParseFileInstance(
+            [this, afs_reader](char* buf, int len) {
+              return afs_reader->read(buf, len);
+            },
+            pull_record_func, lines);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
 
-      CHECK(this->fp_ != nullptr);
-      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-      is_ok = parser->ParseFileInstance(
-          [this](char* buf, int len) {
-            return fread(buf, sizeof(char), len, this->fp_.get());
-          },
-          pull_record_func, lines);
+        CHECK(this->fp_ != nullptr);
+        __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+        is_ok = parser->ParseFileInstance(
+            [this](char* buf, int len) {
+              return fread(buf, sizeof(char), len, this->fp_.get());
+            },
+            pull_record_func, lines);
 
-      if (!is_ok) {
-        LOG(WARNING) << "parser error, filename=" << filename
-                     << ", lines=" << lines;
+        if (!is_ok) {
+          LOG(WARNING) << "parser error, filename=" << filename
+                       << ", lines=" << lines;
+        }
       }
     } while (!is_ok);
     timeline.Pause();

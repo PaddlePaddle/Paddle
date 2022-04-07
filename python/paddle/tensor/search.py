@@ -17,7 +17,8 @@ import paddle
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
-from ..framework import core, _in_eager_mode
+from ..framework import core
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -90,7 +91,11 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [1 1 0 2]
             #  [0 2 1 1]]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        _, ids, = _C_ops.final_state_argsort(x, axis, descending)
+        return ids
+
+    if _in_legacy_dygraph():
         _, ids = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
         return ids
     check_variable_and_dtype(
@@ -123,7 +128,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Keep the axis that selecting max. The defalut value is False.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str|np.dtype, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
@@ -144,12 +149,15 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
                                      [6,9,2,4]])
             out1 = paddle.argmax(x)
             print(out1) # 2
-            out2 = paddle.argmax(x, axis=1)
+            out2 = paddle.argmax(x, axis=0)
             print(out2) 
-            # [2 3 1]
+            # [2, 2, 0, 1]
             out3 = paddle.argmax(x, axis=-1)
             print(out3) 
-            # [2 3 1]
+            # [2, 3, 1]
+            out4 = paddle.argmax(x, axis=0, keepdim=True)
+            print(out4)
+            # [[2, 2, 0, 1]]
     """
     if axis is not None and not isinstance(axis, int):
         raise TypeError(
@@ -167,7 +175,9 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
+    if _in_legacy_dygraph():
         out = _C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
         return out
@@ -200,7 +210,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Keep the axis that selecting min. The defalut value is False.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
@@ -221,12 +231,15 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
                                      [6,9,2,4]])
             out1 = paddle.argmin(x)
             print(out1) # 4
-            out2 = paddle.argmin(x, axis=1)
+            out2 = paddle.argmin(x, axis=0)
             print(out2) 
-            # [0 0 2]
+            # [1, 1, 1, 2]
             out3 = paddle.argmin(x, axis=-1)
             print(out3) 
-            # [0 0 2]
+            # [0, 0, 2]
+            out4 = paddle.argmin(x, axis=0, keepdim=True)
+            print(out4)
+            # [[1, 1, 1, 2]]
     """
     if axis is not None and not isinstance(axis, int):
         raise TypeError(
@@ -244,7 +257,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_argmin(x, axis, keepdim, flatten, var_dtype)
+    if _in_legacy_dygraph():
         out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
         return out
@@ -304,7 +319,10 @@ def index_select(x, index, axis=0, name=None):
             # [ 9. 10. 10.]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_index_select(x, index, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.index_select(x, index, 'dim', axis)
 
     helper = LayerHelper("index_select", **locals())
@@ -503,7 +521,9 @@ def mode(x, axis=-1, keepdim=False, name=None):
            #    [1, 0]]))
            
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mode(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
     helper = LayerHelper("mode", **locals())
@@ -620,25 +640,26 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_where(broadcast_condition, broadcast_x,
-                                            broadcast_y)
-        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+    if in_dygraph_mode():
+        return _C_ops.final_state_where(broadcast_condition, broadcast_x,
+                                        broadcast_y)
     else:
-        helper = LayerHelper("where", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if _in_legacy_dygraph():
+            return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+        else:
+            helper = LayerHelper("where", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        helper.append_op(
-            type='where',
-            inputs={
-                'Condition': broadcast_condition,
-                'X': broadcast_x,
-                'Y': broadcast_y
-            },
-            outputs={'Out': [out]})
+            helper.append_op(
+                type='where',
+                inputs={
+                    'Condition': broadcast_condition,
+                    'X': broadcast_x,
+                    'Y': broadcast_y
+                },
+                outputs={'Out': [out]})
 
-        return out
+            return out
 
 
 def index_sample(x, index):
@@ -714,24 +735,26 @@ def index_sample(x, index):
             # [1200 1100]]
 
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_index_sample(x, index)
-        return _C_ops.index_sample(x, index)
+    if in_dygraph_mode():
+        return _C_ops.final_state_index_sample(x, index)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.index_sample(x, index)
+        else:
+            helper = LayerHelper("index_sample", **locals())
+            check_variable_and_dtype(x, 'x',
+                                     ['float32', 'float64', 'int32', 'int64'],
+                                     'paddle.tensor.search.index_sample')
+            check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                                     'paddle.tensor.search.index_sample')
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper = LayerHelper("index_sample", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='index_sample',
-        inputs={'X': x,
-                'Index': index},
-        outputs={'Out': out})
-    return out
+            helper.append_op(
+                type='index_sample',
+                inputs={'X': x,
+                        'Index': index},
+                outputs={'Out': out})
+            return out
 
 
 def masked_select(x, mask, name=None):
@@ -764,7 +787,10 @@ def masked_select(x, mask, name=None):
             #[1.0 5.0 6.0 9.0]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_masked_select(x, mask)
+
+    if _in_legacy_dygraph():
         return _C_ops.masked_select(x, mask)
 
     helper = LayerHelper("masked_select", **locals())
@@ -834,8 +860,14 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
            # [[1 1 0 0]]
 
     """
-    if paddle.in_dynamic_mode():
-        k = k.numpy().item(0) if isinstance(k, Variable) else k
+
+    if in_dygraph_mode():
+        if axis == None:
+            axis = -1
+        out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
+        return out, indices
+
+    if _non_static_mode():
         if axis is None:
             out, indices = _C_ops.top_k_v2(x, 'k',
                                            int(k), 'largest', largest, 'sorted',
@@ -917,8 +949,11 @@ def searchsorted(sorted_sequence,
             #         [1, 3, 4, 5]])
             
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_searchsorted(sorted_sequence, values,
+                                               out_int32, right)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
                                    out_int32, "right", right)
 
@@ -981,11 +1016,16 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             #  [[0, 2],
             #  [1, 2]]))
     """
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if axis is not None:
-            return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim",
+                                       keepdim)
+            return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
         else:
-            return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
     inputs = {"X": [x]}

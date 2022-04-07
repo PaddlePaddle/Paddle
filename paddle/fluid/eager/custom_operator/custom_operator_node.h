@@ -36,9 +36,11 @@ class RunCustomOpNode : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-      bool create_graph) override;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>>
+  operator()(                                                         // NOLINT
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+      bool create_graph = false)                                      // NOLINT
+      override;
 
   std::string name() {
     return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
@@ -63,12 +65,14 @@ class RunCustomOpNode : public GradNodeBase {
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<RunCustomOpNode>(new RunCustomOpNode(*this));
+    return copied_node;
+  }
 
  public:
   std::unordered_map<int, std::vector<egr::TensorWrapper>> fwd_outs;
