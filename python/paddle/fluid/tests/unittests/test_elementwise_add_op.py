@@ -28,6 +28,7 @@ class TestElementwiseAddOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_add"
+        self.python_api = paddle.add
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
@@ -41,8 +42,7 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def check_eager(self):
-        return False
-        #return (self.use_mkldnn == False and self.axis == -1)
+        return (self.use_mkldnn == False and self.axis == -1)
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

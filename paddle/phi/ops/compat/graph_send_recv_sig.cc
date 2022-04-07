@@ -28,7 +28,7 @@ KernelSignature GraphSendRecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "graph_send_recv_grad",
-      {GradVarName("Out"), "X", "Out", "Src_index", "Dst_index", "Dst_count"},
+      {"X", "Src_index", "Dst_index", "Out", "Dst_count", GradVarName("Out")},
       {"pool_type"},
       {GradVarName("X")});
 }

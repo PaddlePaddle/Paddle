@@ -47,6 +47,11 @@ void AddmmInferMeta(const MetaTensor& input,
                     float beta,
                     MetaTensor* out);
 
+void ArangeInferMeta(const MetaTensor& start,
+                     const MetaTensor& end,
+                     const MetaTensor& step,
+                     MetaTensor* out);
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
@@ -73,6 +78,13 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* out,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
+
+void PutAlongAxisInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& value,
+                           int axis,
+                           const std::string& reduce,
+                           MetaTensor* out);
 
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,

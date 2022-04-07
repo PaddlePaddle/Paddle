@@ -12,55 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-set +x
-NIGHTLY_MODE=$1
-PRECISION_TEST=$2
-WITH_GPU=$3
 
-export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
-if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
-    nightly_label=""
-else
-    nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
-    echo "========================================="
-    echo "Unittests with nightly labels  are only run at night"
-    echo "========================================="
-fi
-
-if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-    echo "========================================="
-    echo "The following unittests have been disabled:"
-    echo ${disable_ut_quickly}
-    echo "========================================="
-else
-    disable_ut_quickly=''
-fi
-
-# check added ut
-
-set +e
-cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
-bash $PADDLE_ROOT/tools/check_added_ut_win.sh
-rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
-if [ -f "$PADDLE_ROOT/added_ut" ];then
-    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-    ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
-    rm -f $PADDLE_ROOT/added_ut
-    if [ "$added_ut_error" != 0 ];then
-        echo "========================================"
-        echo "Added UT should pass three additional executions"
-        echo "========================================"
-        exit 8;
-    fi
-    if nvcc --version | grep 11.2; then
-        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-        exit 0;
-    fi
-fi
-set -e
-
-# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
+# /*================Fixed Disabled Windows CUDA10.x MKL(PR-CI-Windows) unittests===========================*/
 # TODO: fix these unittest that is bound to fail
 disable_wingpu_test="^test_model$|\
 ^test_dataloader_early_reset$|\
@@ -97,7 +50,7 @@ disable_wingpu_test="^test_model$|\
 ^test_bilinear_interp_op$|\
 ^disable_wingpu_test$"
 
-# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
+# /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
 # TODO: fix these unittest that is bound to fail
 disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_conv2d_fusion$|\
@@ -119,7 +72,13 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_matmul$|\
 ^test_trt_convert_scale$"
 
-# /*==================Fixed Disabled Windows GPU inference_api_test unittests==============================*/
+# /*=============Fixed Disabled Windows CUDA11.x MKL(PR-CI-Windows-Inference) unittests=================*/
+# TODO: fix these unittest that is bound to fail
+disable_wingpu11_test="^test_autograd_functional_dynamic$|\
+^disable_wingpu_test$"
+
+
+# /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
 disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_dynamic_shape_ernie$|\
 ^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
@@ -128,9 +87,8 @@ disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_mul_model_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
-# /*============================================================================*/
 
-# /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
+# /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 disable_wincpu_test="^jit_kernel_test$|\
 ^test_analyzer_transformer$|\
@@ -188,6 +146,58 @@ long_time_test="^test_gru_op$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
+
+
+# /*============================================================================*/
+
+set -e
+set +x
+NIGHTLY_MODE=$1
+PRECISION_TEST=$2
+WITH_GPU=$3
+
+export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
+if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
+    nightly_label=""
+else
+    nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
+    echo "========================================="
+    echo "Unittests with nightly labels  are only run at night"
+    echo "========================================="
+fi
+
+if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+    echo "========================================="
+    echo "The following unittests have been disabled:"
+    echo ${disable_ut_quickly}
+    echo "========================================="
+else
+    disable_ut_quickly=''
+fi
+
+# check added ut
+
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+if [ -f "$PADDLE_ROOT/added_ut" ];then
+    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+    ctest -R "(${added_uts})" -E "$disable_wingpu11_test" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    rm -f $PADDLE_ROOT/added_ut
+    if [ "$added_ut_error" != 0 ];then
+        echo "========================================"
+        echo "Added UT should pass three additional executions"
+        echo "========================================"
+        exit 8;
+    fi
+    if nvcc --version | grep 11.2; then
+        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
+        exit 0;
+    fi
+fi
+set -e
+
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
