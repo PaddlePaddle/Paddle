@@ -614,10 +614,11 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
 }
 
 std::map<int, std::list<int>> get_downstream_map(
-    const std::map<int, std::set<int>>& op2dependences) {
+    const std::map<int, std::set<int>>& op2dependences,
+    std::vector<std::vector<bool>>* op_happens_before) {
   // step1: convert op2dependences to downstream_map directly
-  // op2dependences is op -> it's dependences. we want to get op -> [next ops]
-  // map,
+  // op2dependences is op -> it's dependences.
+  // we want to get op -> [next ops] map,
   // where ops is the next instruction of op.
   std::map<int, std::list<int>> downstream;
   for (auto& item : op2dependences) {
@@ -661,8 +662,13 @@ std::map<int, std::list<int>> get_downstream_map(
   // since there are some ops that have no downstream-op.
   auto op_num = op2dependences.size();
   // happens_before[i][j] means i should be executed before j
-  std::vector<std::vector<bool>> happens_before(
-      op_num, std::vector<bool>(op_num, false));
+  op_happens_before->reserve(op_num);
+  for (size_t i = 0; i < op_num; ++i) {
+    (*op_happens_before)[i].reserve(op_num);
+    std::fill((*op_happens_before)[i].begin(), (*op_happens_before)[i].end(),
+              false);
+  }
+
   // bfs to get all next ops
   auto bfs = [&](size_t op_idx) {
     std::queue<size_t> q;
@@ -677,12 +683,12 @@ std::map<int, std::list<int>> get_downstream_map(
       }
       for (auto next : downstream[op]) {
         if (!visited[next]) {
-          PADDLE_ENFORCE_EQ(happens_before[next][op_idx], false,
+          PADDLE_ENFORCE_EQ((*op_happens_before)[next][op_idx], false,
                             paddle::platform::errors::AlreadyExists(
                                 "There exists circle in graph, expected "
                                 "%d->%d, but already got %d->%d",
                                 op_idx, next, next, op_idx));
-          happens_before[op_idx][next] = true;
+          (*op_happens_before)[op_idx][next] = true;
           VLOG(8) << "happens before: " << op_idx << " " << next;
           q.push(next);
         }
@@ -693,13 +699,14 @@ std::map<int, std::list<int>> get_downstream_map(
   for (size_t i = 0; i < op_num; ++i) {
     bfs(i);
   }
-
+  // shrink, find the downstream op that has no other op in the
+  // downstream list happens before it
   for (size_t i = 0; i < op_num; ++i) {
     std::list<int> minumum_nexts;
     for (size_t item : downstream[i]) {
       bool not_before_any = true;
       for (size_t other_item : downstream[i]) {
-        if (happens_before[other_item][item]) {
+        if ((*op_happens_before)[other_item][item]) {
           VLOG(8) << "happens_before: " << other_item << " " << item
                   << ", so skip " << item;
           not_before_any = false;
@@ -720,7 +727,8 @@ std::map<int, std::list<int>> get_downstream_map(
 }
 
 std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction) {
+    const std::vector<Instruction>& vec_instruction,
+    std::vector<std::vector<bool>>* op_happens_before) {
   auto var2min_rw_op = std::map<
       int, std::list<int>>();  // # map from variable id to read / write op id.
   auto var2recent_write_op =
@@ -969,7 +977,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
               std::ostream_iterator<int>(oss, " "));
     VLOG(10) << oss.str();
   }
-  return std::move(get_downstream_map(op2dependences));
+  return std::move(get_downstream_map(op2dependences, op_happens_before));
 }
 
 }  // namespace interpreter

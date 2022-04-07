@@ -192,7 +192,8 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(vec_instruction_);
+  auto op2downstream = interpreter::build_op_downstream_map(
+      vec_instruction_, &op_happens_before_);
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -213,18 +214,21 @@ void InterpreterCore::Convert(
 
   auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
-
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
-    auto& instr = vec_instruction_.back();
+  }
 
+  BuildOperatorDependences();
+
+  // calculate last_live_ops_
+  for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
+    auto& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
-    std::vector<size_t> gc_check_input_list;
+    std::set<size_t> gc_check_inputs;
 
-    for (auto& item : op_func_node.input_index) {
+    for (auto& item : instr.Inputs()) {
       for (auto id : item.second) {
         if (id == kEmptyVarIndex) {
           continue;
@@ -232,38 +236,24 @@ void InterpreterCore::Convert(
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_func_node.operator_base_.get());
+          info.Build(instr.OpBase());
         }
         auto* var_desc = global_scope_->VarDesc(id);
         if (var_desc) {
           if (info.IsInArgBufferNeeded(var_desc->Name())) {
-            gc_check_input_list.push_back(id);
+            gc_check_inputs.insert(id);
           }
         } else {
-          gc_check_input_list.push_back(id);
+          gc_check_inputs.insert(id);
         }
       }
     }
-    std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
-    auto last =
-        std::unique(gc_check_input_list.begin(), gc_check_input_list.end());
-    gc_check_input_list.erase(last, gc_check_input_list.end());
 
-    for (auto var_id : gc_check_input_list) {
+    for (auto var_id : gc_check_inputs) {
       paddle::framework::Variable* var = global_scope_->Var(var_id);
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
-        vec_meta_info[var_id].var_ref_count_++;
-        // TODO(zhiqiu): not all var needs to be checked, var need to be checked
-        // only
-        // after the last_live_op. For example,
-        // b = op1(a)
-        // c = op2(a, b)
-        // in this case, a is the input of op1 and op2, we only need to check
-        // a after op2, because op2 always uses a after op1.
-        instr.AddGCCheckVar(var_id);
-        VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
-                << instr.OpBase()->Type();
+        last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear " << global_scope_->GetNameById(var_id)
                 << " after " << instr.OpBase()->Type()
@@ -276,19 +266,37 @@ void InterpreterCore::Convert(
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     // checkout ouput
     for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        if (input_var2op_info_.at(id).size() == 0) {
-          // output var not be used by any kernel
-          vec_instruction_[i].AddGCCheckVar(id);
-          VLOG(4) << "clear " << global_scope_->GetNameById(id) << " after "
-                  << vec_instruction_[i].OpBase()->Type();
-          vec_meta_info[id].var_ref_count_++;
+      for (auto var_id : item.second) {
+        if (input_var2op_info_.at(var_id).size() == 0) {
+          last_live_ops_[var_id].insert(i);
         }
       }
     }
   }
 
-  BuildOperatorDependences();
+  // shrink, find the downstream op that has no other op in the
+  // downstream list happens before it
+  for (size_t i = 0; i < last_live_ops_.size(); ++i) {
+    std::set<size_t> minumum_last_live_ops;
+    for (size_t item : last_live_ops_[i]) {
+      bool not_before_any = true;
+      for (size_t other_item : last_live_ops_[i]) {
+        if (op_happens_before_[other_item][item]) {
+          VLOG(8) << "happens_before: " << other_item << " " << item
+                  << ", so skip " << item;
+          not_before_any = false;
+          break;
+        }
+      }
+      if (not_before_any) {
+        VLOG(8) << "last live op of var " << i << ": " << item;
+        minumum_last_live_ops.insert(item);
+        vec_instruction_[item].AddGCCheckVar(i);
+      }
+    }
+    last_live_ops_[i] = minumum_last_live_ops;
+    vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
+  }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
