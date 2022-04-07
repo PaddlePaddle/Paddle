@@ -217,7 +217,7 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return op_name[-1] == "_"
 
-    if op_name not in OP_NAMEMAPPING.keys():
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
         op = getattr(_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     else:
