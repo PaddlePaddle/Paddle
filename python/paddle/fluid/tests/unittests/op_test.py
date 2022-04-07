@@ -1330,7 +1330,7 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None,
-                                check_eager=True):
+                                check_eager=False):
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1545,7 +1545,7 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "eager checker"
 
             def calculate_output(self):
-                # we only check end2end api when check_eager=True
+                # we only check end2end api when check_eager=False
                 with _test_eager_guard():
                     self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
@@ -1717,7 +1717,7 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=True,
                      inplace_atol=None,
-                     check_eager=True):
+                     check_eager=False):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1810,7 +1810,7 @@ class OpTest(unittest.TestCase):
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
                    check_dygraph=True,
-                   check_eager=True):
+                   check_eager=False):
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1839,7 +1839,7 @@ class OpTest(unittest.TestCase):
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
                               numeric_place=None,
-                              check_eager=True):
+                              check_eager=False):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1988,7 +1988,7 @@ class OpTest(unittest.TestCase):
                           output_names,
                           user_defined_grad_outputs=None,
                           no_grad_set=None,
-                          check_eager=True):
+                          check_eager=False):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
