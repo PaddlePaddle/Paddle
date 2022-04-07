@@ -248,33 +248,6 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
     }
     out_row += BLOCK_WARPS;
   }
-
-  /*CUDA_KERNEL_LOOP(out_row, num_rows) {
-    const T row = in_rows[out_row];
-    const T in_row_start = dst_count[row];
-    const int deg = dst_count[row + 1] - in_row_start;
-    int split;
-
-    if (k < deg) {
-      if (deg < 2 * k) {
-        split = k;
-      } else {
-        split = deg - k;
-      }
-      for (int idx = deg - 1; idx >= split; idx--) {
-#ifdef PADDLE_WITH_HIP
-        const int num = hiprand(&rng) % (idx + 1);
-#else
-        const int num = curand(&rng) % (idx + 1);
-#endif
-        src[in_row_start + idx] = static_cast<T>(
-            atomicExch(reinterpret_cast<unsigned long long int*>(  // NOLINT
-                           src + in_row_start + num),
-                       static_cast<unsigned long long int>(  //  NOLINT
-                           src[in_row_start + idx])));
-      }
-    }
-  }*/
 }
 
 template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
