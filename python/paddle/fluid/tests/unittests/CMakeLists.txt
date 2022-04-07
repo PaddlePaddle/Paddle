@@ -850,7 +850,7 @@ endif()
 
 # dist xpu tests:
 if (WITH_XPU_BKCL)
-    py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
+    #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
 endif()
 
@@ -1074,7 +1074,7 @@ set_tests_properties(test_matrix_nms_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_generator_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_optimizer_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(test_softmax_with_cross_entropy_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_softmax_with_cross_entropy_op PROPERTIES TIMEOUT 220)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_adam_optimizer_fp32_fp64 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_nn_grad PROPERTIES TIMEOUT 120)

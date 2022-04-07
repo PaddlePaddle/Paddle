@@ -145,6 +145,7 @@ class ProcessGroup {
  protected:
   const int rank_;
   const int size_;
+  const int gid_;
 };
 
 class ProcessGroupMapFromGid {
@@ -155,17 +156,20 @@ class ProcessGroupMapFromGid {
   }
 
   void insert(int gid, ProcessGroup* pg) {
+    // TODO(sandyhouse): address ut and uncomment the following codes
     // PADDLE_ENFORCE_EQ(has(gid), false,
-    //                  platform::errors::PreconditionNotMet(
-    //                      "The process group with id %d does exist.", gid));
+    //                   platform::errors::PreconditionNotMet(
+    //                       "The process group with id %d doesnot exist.",
+    //                       gid));
     map_[gid] = pg;
   }
 
   ProcessGroup* get(int gid) {
+    // TODO(sandyhouse): address ut and uncomment the following codes
     // PADDLE_ENFORCE_EQ(has(gid), true,
-    //                  platform::errors::PreconditionNotMet(
-    //                      "The process group with id %d doesnot exist.",
-    //                      gid));
+    //                   platform::errors::PreconditionNotMet(
+    //                       "The process group with id %d doesnot exist.",
+    //                       gid));
     return map_.find(gid)->second;
   }
 

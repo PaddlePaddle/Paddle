@@ -959,7 +959,11 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     assert len(x.shape) == 4, \
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_psroi_pool(x, boxes, boxes_num, pooled_height,
+                                             pooled_width, output_channels,
+                                             spatial_scale)
+    if _in_legacy_dygraph():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
                                  spatial_scale, "pooled_height", pooled_height,
@@ -1069,7 +1073,11 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_pool(x, boxes, boxes_num, pooled_height,
+                                           pooled_width, spatial_scale)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",

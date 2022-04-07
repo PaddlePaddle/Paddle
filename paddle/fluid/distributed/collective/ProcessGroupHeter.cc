@@ -56,7 +56,8 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
       local_size_(local_size),
       gloo_rank_(gloo_rank),
       gloo_size_(gloo_size),
-      with_switch_(with_switch) {
+      with_switch_(with_switch),
+      switch_endpoint_(switch_endpoint) {
 #if defined(PADDLE_WITH_NCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
                                                  IGNORE_ID);
@@ -64,7 +65,7 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(store, local_rank, local_size,
                                                  IGNORE_ID);
 #else
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(platform::errors::Fatal(
       "ProcessGroupHeter only supports NCCL and HCCL now.");
 #endif
   if (local_rank_ == 0 && !with_switch_) {
@@ -72,6 +73,15 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
     opts->device = ProcessGroupGloo::createDefaultDevice();
     inter_pg_ = std::make_shared<ProcessGroupGloo>(store, gloo_rank_,
                                                    gloo_size_, IGNORE_ID, opts);
+  }
+}
+
+template <typename T>
+static void _do_add(T* dst, T* src, size_t size) {
+  for (size_t i = 0; i < size; i++) {
+    *dst += *src;
+    dst++;
+    src++;
   }
 }
 
@@ -103,13 +113,66 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
     }
     // Step3: do inter cluster allreduce
     if (with_switch_) {
-      // TODO(sandyhouse) send to and recv from switch, and do add
+      if (local_rank_ == 0) {
+        HeterClient* client_ =
+            HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
+        auto dense_cpu_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[0].impl());
+        std::vector<int> send_size;
+        send_size.push_back(dense_cpu_tensor->numel());
+        int ret = client_->Send(
+            gid_, {dense_cpu_tensor->name()}, send_size,
+            dense_cpu_tensor->data(),
+            dense_cpu_tensor->numel() *
+                framework::DataTypeSize(dense_cpu_tensor->dtype()));
+        PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                      "Send to the switch module error."));
+        phi::DenseTensorMeta meta = phi::DenseTensorMeta(
+            dense_cpu_tensor->dtype(), dense_cpu_tensor->dims());
+        std::shared_ptr<phi::DenseTensor> dense_cpu_tensor2 =
+            std::make_shared<phi::DenseTensor>(
+                std::make_unique<paddle::experimental::DefaultAllocator>(
+                    paddle::platform::CPUPlace())
+                    .get(),
+                meta);
+        dense_cpu_tensor2->ResizeAndAllocate(dense_cpu_tensor->dims());
+        Tensor cpu_tensor_temp =
+            paddle::experimental::Tensor(dense_cpu_tensor2);
+        ret = client_->Recv(
+            gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor2->data(),
+            dense_cpu_tensor2->numel() *
+                framework::DataTypeSize(dense_cpu_tensor2->dtype()));
+        PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                      "Recv from the switch module error."));
+
+        switch (dense_cpu_tensor->dtype()) {
+          case DataType::FLOAT32:
+            _do_add<float>(reinterpret_cast<float*>(dense_cpu_tensor->data()),
+                           reinterpret_cast<float*>(dense_cpu_tensor2->data()),
+                           dense_cpu_tensor->numel());
+            break;
+          case DataType::FLOAT64:
+            _do_add<double>(
+                reinterpret_cast<double*>(dense_cpu_tensor->data()),
+                reinterpret_cast<double*>(dense_cpu_tensor2->data()),
+                dense_cpu_tensor->numel());
+            break;
+          case DataType::INT32:
+            _do_add<int>(reinterpret_cast<int*>(dense_cpu_tensor->data()),
+                         reinterpret_cast<int*>(dense_cpu_tensor2->data()),
+                         dense_cpu_tensor->numel());
+            break;
+          default:
+            PADDLE_THROW(platform::errors::PreconditionNotMet(
+                "Unsupported data type (%s) to do add.",
+                framework::DataType2String(dense_cpu_tensor->dtype())));
+        }
+      }
     } else {
       auto gloo_task = inter_pg_->AllReduce(cpu_tensors, cpu_tensors, opts);
       gloo_task->Wait();
     }
     // Step4: copy cpu tensors to gpu
-    // TODO(sandyhouse)
     // copy cpu tensors to gpu
     for (size_t i = 0; i < in_tensors.size(); i++) {
       auto gpu_tensor = out_tensors[i];
@@ -153,7 +216,38 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
       framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
     }
     if (with_switch_) {
-      // TODO(sandyhouse) send to and recv
+      if (local_rank_ == 0) {
+        HeterClient* client_ =
+            HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
+        auto dense_cpu_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensors[0].impl());
+        if (gloo_rank_ == 0) {
+          std::vector<int> send_size;
+          send_size.push_back(dense_cpu_tensor->numel());
+          int ret = client_->Send(
+              gid_, {dense_cpu_tensor->name()}, send_size,
+              dense_cpu_tensor->data(),
+              dense_cpu_tensor->numel() *
+                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+          PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                        "Send to the switch module error."));
+        } else {
+          int ret = client_->Recv(
+              gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor->data(),
+              dense_cpu_tensor->numel() *
+                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+          PADDLE_ENFORCE_EQ(ret, 0,
+                            platform::errors::PreconditionNotMet(
+                                "Receive from the switch module error."));
+          ret = client_->Recv(
+              gid_, {dense_cpu_tensor->name()}, dense_cpu_tensor->data(),
+              dense_cpu_tensor->numel() *
+                  framework::DataTypeSize(dense_cpu_tensor->dtype()));
+          PADDLE_ENFORCE_EQ(ret, 0,
+                            platform::errors::PreconditionNotMet(
+                                "Receive from the switch module error."));
+        }
+      }
     } else {
       auto gloo_task = inter_pg_->Broadcast(cpu_tensors, cpu_tensors, opts);
       gloo_task->Wait();
