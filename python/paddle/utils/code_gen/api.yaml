@@ -1536,6 +1536,7 @@
     func : SegmentPoolInferMeta
   kernel :
     func : segment_pool
+    data_type : x
   backward : segment_pool_grad
 
 # selu
