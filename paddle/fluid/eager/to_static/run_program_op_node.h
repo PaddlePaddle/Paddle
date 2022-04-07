@@ -185,7 +185,13 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOpKernel Compute";
   auto start_op_index = BOOST_GET_CONST(int64_t, attrs.at("start_op_index"));
   auto end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
-  auto is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  // In the original run_program OP, the default value of the is_test
+  // attribute is false, we should check if there is is_test parameter
+  // in attrs
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  }
   auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -382,7 +388,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       x_grad_ptr.emplace_back(&i);
     }
     for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
+      if (i.defined()) {
+        params_grad_ptr.emplace_back(&i);
+      }
     }
 
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(), fwd_out_names_.size(),
@@ -399,10 +407,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
@@ -445,12 +449,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       const std::vector<paddle::experimental::Tensor> &param,
       std::vector<paddle::experimental::Tensor> *param_grad) {
     for (auto &t : param) {
-      auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
       // In eager mode, the number of param_grad should be the same as
       // param, so here an empty Tensor is added for the param with
       // stop_gradient=True
-      if (t_meta->StopGradient()) {
+      if (!t_grad.defined()) {
         param_grad->emplace_back();
       } else if (t_grad.is_dense_tensor()) {
         param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
@@ -459,6 +462,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
       param_grad->back().set_name(t.name() + "@GRAD");
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
+    return copied_node;
   }
 
  private:

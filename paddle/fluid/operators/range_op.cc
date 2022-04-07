@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/range_op.h"
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,51 +25,6 @@ namespace operators {
 class RangeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->HasInput("Start")) {
-      auto s_dims = ctx->GetInputDim("Start");
-      PADDLE_ENFORCE_EQ(
-          s_dims.size(), 1,
-          platform::errors::InvalidArgument(
-              "The dim of the shape of Input(Start) should be 1, but got %d",
-              s_dims.size()));
-
-      PADDLE_ENFORCE_EQ(s_dims[0], 1,
-                        platform::errors::InvalidArgument(
-                            "The first dim of the shape of Input(Start) should "
-                            "be 1, but got %d",
-                            s_dims[0]));
-    }
-    if (ctx->HasInput("End")) {
-      auto e_dims = ctx->GetInputDim("End");
-      PADDLE_ENFORCE_EQ(
-          e_dims.size(), 1,
-          platform::errors::InvalidArgument(
-              "The dim of the shape of Input(End) should be 1, but got %d",
-              e_dims.size()));
-
-      PADDLE_ENFORCE_EQ(e_dims[0], 1, platform::errors::InvalidArgument(
-                                          "The first dim of the shape of "
-                                          "Input(End) should be 1, but got %d",
-                                          e_dims[0]));
-    }
-    if (ctx->HasInput("Step")) {
-      auto step_dims = ctx->GetInputDim("Step");
-      PADDLE_ENFORCE_EQ(
-          step_dims.size(), 1,
-          platform::errors::InvalidArgument(
-              "The dim of the shape of Input(Step) should be 1, but got %d",
-              step_dims.size()));
-
-      PADDLE_ENFORCE_EQ(step_dims[0], 1,
-                        platform::errors::InvalidArgument(
-                            "The first dim of the shape of Input(Step) should "
-                            "be 1, but got %d",
-                            step_dims[0]));
-    }
-    ctx->SetOutputDim("Out", {-1});
-  }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
@@ -101,7 +60,7 @@ class RangeOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(range, ops::RangeOp, ops::RangeOpMaker);
-REGISTER_OP_CPU_KERNEL(range, ops::CPURangeKernel<int>,
-                       ops::CPURangeKernel<float>, ops::CPURangeKernel<double>,
-                       ops::CPURangeKernel<int64_t>);
+DECLARE_INFER_SHAPE_FUNCTOR(range, RangeInferMetaFunctor,
+                            PD_INFER_META(phi::ArangeInferMeta));
+REGISTER_OP_WITHOUT_GRADIENT(range, ops::RangeOp, ops::RangeOpMaker,
+                             RangeInferMetaFunctor);

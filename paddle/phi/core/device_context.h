@@ -81,6 +81,13 @@ class DeviceContext {
   void SetZeroAllocator(const Allocator*);
 
   /**
+  * @brief Set the zero-size Allocator object.
+  *
+  * @param allocator
+  */
+  void SetPinnedAllocator(const Allocator*);
+
+  /**
    * @brief Get the const Allocator object.
    *
    * @return Allocator
@@ -96,13 +103,20 @@ class DeviceContext {
 
   const Allocator& GetZeroAllocator() const;
 
+  const Allocator& GetPinnedAllocator() const;
+
   /**
    * @brief Allocate device memory for tensor.
    */
-  void* Alloc(TensorBase*, DataType dtype, size_t requested_size = 0) const;
+  void* Alloc(TensorBase*,
+              DataType dtype,
+              size_t requested_size = 0,
+              bool pinned = false) const;
 
   template <typename T>
-  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const;
+  T* Alloc(TensorBase* tensor,
+           size_t requested_size = 0,
+           bool pinned = false) const;
 
   /**
    * @brief Allocate host memory for tensor.

@@ -41,6 +41,7 @@ void CastKernel(const Context& dev_ctx,
                      int64_t,                           \
                      int16_t,                           \
                      bool,                              \
+                     int8_t,                            \
                      uint8_t,                           \
                      phi::dtype::float16,               \
                      phi::dtype::complex<float>,        \
