@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 
-#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
+// #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
