@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/mkldnn_utils.h"
 #endif
 
@@ -361,13 +360,10 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 
 #ifdef PADDLE_WITH_MKLDNN
 dnnl::memory::desc DenseTensor::mem_desc() const {
-  return mem_desc_
-             ? mem_desc_
-             : dnnl::memory::desc(
-                   phi::vectorize(meta_.dims),
-                   paddle::framework::ToMKLDNNDataType(
-                       paddle::framework::TransToProtoVarType(meta_.dtype)),
-                   format_);
+  return mem_desc_ ? mem_desc_
+                   : dnnl::memory::desc(phi::vectorize(meta_.dims),
+                                        phi::TransToMKLDNNDataType(meta_.dtype),
+                                        format_);
 }
 
 dnnl::memory::format_tag DenseTensor::format() const {

@@ -128,13 +128,7 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-  dnnl::memory::desc mem_desc() const;// {
-  // for now some ops are using format and some are using mem_desc, so
-  // temporarily supporting both is needed
-//   return mem_desc_ ? mem_desc_
-//                    : dnnl::memory::desc(phi::vectorize(meta_.dims),
-//                                         paddle::framework::ToMKLDNNDataType(paddle::framework::TransToProtoVarType(meta_.dtype)), format_);
-// }
+  dnnl::memory::desc mem_desc() const;
 
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;

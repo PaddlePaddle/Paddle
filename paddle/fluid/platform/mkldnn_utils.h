@@ -12,7 +12,7 @@ limitations under the License. */
 #pragma once
 
 // NOTE:
-// GetMKLDNNFormat and ToMKLDNNDataType functions are here temporarily. They are
+// GetMKLDNNFormat function is here temporarily. It is
 // needed because without them forward declaration was causing an error when
 // building with "-DWITH_TESTING=ON". This file will be deleted after completing
 // md-related refactoring
@@ -163,21 +163,4 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
 }
 
 }  // namespace platform
-namespace framework {
-
-using MKLDNNDataType = dnnl::memory::data_type;
-
-inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
-  static std::unordered_map<int, MKLDNNDataType> dict{
-      {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
-      {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
-      {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
-      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32},
-      {DataTypeTrait<platform::bfloat16>::DataType(), MKLDNNDataType::bf16}};
-  auto iter = dict.find(static_cast<int>(type));
-  if (iter != dict.end()) return iter->second;
-  return MKLDNNDataType::undef;
-}
-
-}  // namespace framework
 }  // namespace paddle
