@@ -67,19 +67,25 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     // kernel's device type is decided by input tensor place
     auto *in = ctx.InputVar("X");
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
-    PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
-                      platform::errors::PreconditionNotMet(
-                          "The tensor of Input(X) is not initialized."));
+    // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
+    // op
+    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+      PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The tensor of Input(X) is not initialized."));
+    }
+    auto place =
+        in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
+
     // dtype is not important
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   in_tensor->place());
+    return framework::OpKernelType(framework::proto::VarType::FP32, place);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(),
+                                   expected_kernel_type.place_,
                                    expected_kernel_type.data_layout_);
   }
 };
@@ -99,7 +105,9 @@ class TransferLayoutKernel {
     auto &dev_ctx = ctx.device_context();
     auto src_layout = ctx.Attr<int>("src_layout");
     auto dst_layout = ctx.Attr<int>("dst_layout");
-    TransferLayoutFunctor(x, out, dev_ctx, src_layout, dst_layout)();
+    auto input_name = ctx.InputName("X");
+    TransferLayoutFunctor(x, out, dev_ctx, src_layout, dst_layout,
+                          input_name)();
   }
 };
 

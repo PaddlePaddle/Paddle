@@ -1,0 +1,66 @@
+
+name: 🐛 报BUG Bug Report
+description: 报告一个可复现的BUG帮助我们修复框架。 Report a bug to help us reproduce and fix it.
+labels: [type/bug-report, status/new-issue]
+
+body:
+- type: markdown
+  attributes:
+    value: >
+      #### 在向Paddle报bug之前，请先查询[历史issue](https://github.com/PaddlePaddle/Paddle/issues)是否报过同样的bug。
+      
+      #### Before submitting a bug, please make sure the issue hasn't been already addressed by searching through [the existing and past issues](https://github.com/PaddlePaddle/Paddle/issues).
+
+- type: textarea
+  id: code
+  attributes:
+    label: bug描述 Describe the Bug 
+    description:  | 
+      请清晰简洁的描述这个bug，最好附上bug复现环境、bug复现步骤及最小代码集，以便我们可以通过运行代码来重现错误。代码片段需要尽可能简洁，请花些时间去掉不相关的代码以帮助我们有效地调试。我们希望通过复制代码并运行得到与你相同的结果，请避免任何外部数据或包含相关的导入等。例如：
+      ```python
+      # 导入所有必要的库。 All necessary imports at the beginning.
+      # paddlepaddle <= 2.1.2
+      import paddle
+
+      # 一个简洁的片段，能够定位到bug。 A succinct reproducing example trimmed down to the essential parts.
+      a = paddle.rand(shape=[1,4])
+      b = paddle.rand(shape=[1,4])
+      a.stop_gradient = False
+      b.stop_gradient = False
+      
+      c = paddle.zeros((4, 4))
+      c[0, :] = a/b
+      
+      print('Is c requires grad: ', not c.stop_gradient) # 注意：这里出现了bug，期望requires_grad=True
+      ```
+      如果代码太长，请将可执行代码放到[AIStudio](https://aistudio.baidu.com/aistudio/index)中并将项目设置为公开（或者放到github gist上），请在项目中描述清楚bug复现步骤，在issue中描述期望结果与实际结果。
+      如果你报告的是一个报错信息，请将完整回溯的报错贴在这里，并使用 ` ```三引号块``` `展示错误信息。
+      
+      
+    placeholder: |
+      请清晰简洁的描述这个bug。A clear and concise description of what the bug is.
+
+      ```python
+      # 最小可复现代码。 Sample code to reproduce the problem.
+      ```
+
+      ```shell
+      带有完整回溯的报错信息。 The error message you got, with the full traceback.
+      ```
+  validations:
+    required: true 
+    
+- type: textarea
+  id: others
+  attributes:
+    label: 其他补充信息 Additional Supplementary Information
+    description: |
+      如果你还有其他需要补充的内容，请写在这里。
+      If you have anything else to add, please write it here.
+  validations:
+    required: false
+    
+- type: markdown
+  attributes:
+    value: >
+      感谢你的贡献 🎉！Thanks for your contribution 🎉!
