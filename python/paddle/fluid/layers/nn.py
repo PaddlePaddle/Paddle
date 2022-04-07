@@ -42,7 +42,6 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -2949,6 +2948,38 @@ def batch_norm(input,
     mean_out = mean
     # variance and variance_out share the same memory
     variance_out = variance
+
+    if in_dygraph_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs_ = ()
+        if attrs_has_momentum:
+            attrs_ = ('momentum', momentum, 'epsilon', epsilon, 'is_test',
+                      is_test, 'data_layout', data_layout, 'use_mkldnn', False,
+                      'fuse_with_relu', False, 'use_global_stats',
+                      use_global_stats)
+        else:
+            attrs_ = ('epsilon', epsilon, 'is_test', is_test, 'data_layout',
+                      data_layout, 'use_mkldnn', False, 'fuse_with_relu', False,
+                      'use_global_stats', use_global_stats)
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                input, scale, bias, mean, variance, momentum, mean_out,
+                variance_out, *attrs_)
+        else:
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                input, scale, bias, mean, variance, None, mean_out,
+                variance_out, *attrs_)
+
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=act, use_mkldnn=False)
+
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
@@ -2966,7 +2997,9 @@ def batch_norm(input,
         "Scale": scale,
         "Bias": bias,
         "Mean": mean,
-        "Variance": variance
+        "Variance": variance,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out
     }
     attrs = {
         "epsilon": epsilon,
@@ -3144,13 +3177,46 @@ def inplace_abn(input,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
+    # batch_norm_out and input share the same memory
+    batch_norm_out = input
+
+    if in_dygraph_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs__ = ()
+        if attrs_has_momentum:
+            attrs__ = ('momentum', momentum, 'epsilon', epsilon, 'is_test',
+                       is_test, 'data_layout', data_layout, 'use_mkldnn', False,
+                       'fuse_with_relu', False, 'use_global_stats',
+                       use_global_stats, 'activation', act, 'alpha', act_alpha)
+        else:
+            attrs__ = ('epsilon', epsilon, 'is_test', is_test, 'data_layout',
+                       data_layout, 'use_mkldnn', False, 'fuse_with_relu',
+                       False, 'use_global_stats', use_global_stats,
+                       'activation', act, 'alpha', act_alpha)
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+                input, scale, bias, mean, variance, momentum, mean_out,
+                variance_out, *attrs__)
+            return batch_norm_out
+        else:
+            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+                input, scale, bias, mean, variance, None, mean_out,
+                variance_out, *attrs__)
+            return batch_norm_out
+
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     reserve_space = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-    batch_norm_out = input
 
     inputs = {
         "X": input,
@@ -7030,6 +7096,10 @@ def label_smooth(label,
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
@@ -8774,8 +8844,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(ref, index, updates)
+        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
