@@ -143,11 +143,11 @@ void BindTCPStore(py::module *m) {
   py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
       .def(py::init([](std::string hostname, uint16_t port, bool is_master,
                        size_t world_size, std::chrono::seconds timeout) {
-    return std::make_shared<TCPStore>(hostname, port, is_master, world_size,
-                                      timeout);
-           }),
+             return std::make_shared<TCPStore>(hostname, port, is_master,
+                                               world_size, timeout);
            py::arg("hostname"), py::arg("port"), py::arg("is_master"),
-           py::arg("world_size"), py::arg("timeout") = distributed::tcputils::kNoTimeout,
+           py::arg("world_size"),
+           py::arg("timeout") = distributed::tcputils::kNoTimeout,
            py::call_guard<py::gil_scoped_release>(), R"DOC(
           The OP is to realize the storage of TCP distributed key-value. By the 
           initialization of the server storage, the client will connect to the 
