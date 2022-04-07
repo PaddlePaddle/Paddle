@@ -28,6 +28,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -383,8 +384,10 @@ def hardswish(x, name=None):
             out = F.hardswish(x) # [0., 5., 0.666667]
     """
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.hard_swish(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_hard_swish(x, 6, 6, 3)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
