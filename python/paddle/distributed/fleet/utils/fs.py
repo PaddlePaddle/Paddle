@@ -1423,6 +1423,7 @@ class AFSClient(FS):
         local = LocalFS()
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
+
         self._try_upload(local_path, fs_path)
 
         # upload_dir

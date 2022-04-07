@@ -1773,6 +1773,7 @@ class GPUPSUtil(FleetUtil):
 
         if not self._afs.is_file(donefile_path):
             return [-1, -1, int(time.time())]
+        self._afs.download(donefile_path, "./xbox_base_done.txt")
         pre_content = self._afs.cat(donefile_path)
         last_dict = json.loads(pre_content.split("\n")[-1])
         last_day = int(last_dict["input"].split("/")[-3])
@@ -1807,12 +1808,17 @@ class GPUPSUtil(FleetUtil):
 
         if not self._afs.is_file(donefile_path):
             return [-1, -1, "", int(time.time())]
-        pre_content = self._afs.cat(donefile_path)
+        self._afs.download(donefile_path, "xbox_patch_done.txt")
+        pre_content = ""
+        with open("xbox_patch_done.txt", "r") as f:
+            pre_content = f.read()
+        pre_content = pre_content.strip()
         last_dict = json.loads(pre_content.split("\n")[-1])
         last_day = int(last_dict["input"].split("/")[-3])
         last_pass = int(last_dict["input"].split("/")[-2].split("-")[-1])
         last_path = "/".join(last_dict["input"].split("/")[:-1])
         xbox_base_key = int(last_dict["key"])
+        os.remove("xbox_patch_done.txt")
         return [last_day, last_pass, last_path, xbox_base_key]
 
     def get_last_save_model(self, output_path):
@@ -1844,12 +1850,16 @@ class GPUPSUtil(FleetUtil):
         donefile_path = output_path + "/donefile.txt"
         if not self._afs.is_file(donefile_path):
             return [-1, -1, "", int(time.time())]
-        content = self._afs.cat(donefile_path)
-        content = content.split("\n")[-1].split("\t")
+        self._afs.download(donefile_path, "./donefile.txt")
+        content = ""
+        with open("donefile.txt", "r") as f:
+            content = f.read()
+        content = content.strip().split("\n")[-1].split("\t")
         last_save_day = int(content[0])
         last_save_pass = int(content[3])
         last_path = content[2]
         xbox_base_key = int(content[1])
+        os.remove("donefile.txt")
         return [last_save_day, last_save_pass, last_path, xbox_base_key]
 
     def write_model_donefile(self,
@@ -1900,7 +1910,7 @@ class GPUPSUtil(FleetUtil):
             content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
                                                 model_path, pass_id, 0)
             if self._afs.is_file(donefile_path):
-                pre_content = self._afs.cat(donefile_path)
+                pre_content = self._afs.cat(donefile_path).strip()
                 pre_content_list = pre_content.split("\n")
                 day_list = [i.split("\t")[0] for i in pre_content_list]
                 pass_list = [i.split("\t")[3] for i in pre_content_list]
@@ -1915,7 +1925,7 @@ class GPUPSUtil(FleetUtil):
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
                     self._afs.delete(donefile_path)
-                    self._afs.upload(donefile_name, output_path)
+                    self._afs.upload(donefile_name, donefile_path)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -1924,7 +1934,7 @@ class GPUPSUtil(FleetUtil):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
-                self._afs.upload(donefile_name, output_path)
+                self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
 
@@ -1997,12 +2007,11 @@ class GPUPSUtil(FleetUtil):
 
             if self._afs.is_exist(donefile_path):
                 self.rank0_info("exist %s succeed" % (donefile_path))
-                self._afs.download(donefile_path, "./")
+                self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
                 with open(donefile_name, "r") as f:
                     pre_content = f.read()
-                # pre_content = self._afs.cat(donefile_path)
-                last_dict = json.loads(pre_content.split("\n")[-1])
+                last_dict = json.loads(pre_content.strip().split("\n")[-1])
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
 
@@ -2015,10 +2024,10 @@ class GPUPSUtil(FleetUtil):
                     exist = True
                 if not exist:
                     with open(donefile_name, "w") as f:
-                        f.write(pre_content + "\n")
+                        f.write(pre_content.strip() + "\n")
                         f.write(xbox_str + "\n")
                     self._afs.delete(donefile_path)
-                    self._afs.upload(donefile_name, output_path)
+                    self._afs.upload(donefile_name, donefile_path)
                     self.rank0_info("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -2029,7 +2038,7 @@ class GPUPSUtil(FleetUtil):
                                       (xbox_str))
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
-                self._afs.upload(donefile_name, output_path)
+                self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
 
@@ -2092,5 +2101,5 @@ class GPUPSUtil(FleetUtil):
                            % (file_num, key_num)
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
-                self._afs.upload(donefile_name, model_path)
+                self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error("write %s succeed" % donefile_path)
