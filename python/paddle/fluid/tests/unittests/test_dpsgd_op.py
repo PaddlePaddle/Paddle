@@ -45,7 +45,7 @@ class TestDpsgdOp(OpTest):
         self.outputs = {'ParamOut': param_out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 def dpsgd_step(inputs, attributes):
@@ -70,4 +70,6 @@ def dpsgd_step(inputs, attributes):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
     unittest.main()

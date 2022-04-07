@@ -53,7 +53,7 @@ void InfrtOpFusePass::runOnFunction() {
 
 }  // namespace
 
-std::unique_ptr<mlir::Pass> infrt::createInfrtOpFusePass() {
+std::unique_ptr<mlir::Pass> infrt::CreateInfrtOpFusePass() {
   return std::make_unique<InfrtOpFusePass>();
 }
 
