@@ -28,6 +28,7 @@
 
 #ifdef PADDLE_WITH_ARM_BRPC
 #include "base/endpoint.h"
+#include "base/object_pool.h"
 #define butil base
 #else
 #include "butil/endpoint.h"
