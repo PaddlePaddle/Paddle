@@ -3762,10 +3762,14 @@ def deg2rad(x, name=None):
             #         [3.14159274])
     """
     deg2rad_scale = np.pi / 180.0
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.final_state_scale(x, deg2rad_scale, 0.0, True)
+    elif paddle.in_dynamic_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.scale(x, 'scale', deg2rad_scale)
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad')
         helper = LayerHelper('deg2rad', **locals())

@@ -17,7 +17,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -718,10 +718,17 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
             sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+        elif paddle.in_dynamic_mode():
+            pow_out = _C_ops.pow(input, 'factor', porder)
+            sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
+                                          keepdim, 'reduce_all', reduce_all)
+            sum_out_2 = _C_ops.reduce_sum(sum_out_1, 'dim', axis, 'keepdim',
+                                          keepdim, 'reduce_all', reduce_all)
             return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
 
         block = LayerHelper('norm', **locals())
@@ -2405,7 +2412,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # or              out * x * out = x ;
     """
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2429,7 +2436,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             v, _ = _C_ops.transpose2(vt, 'axis', perm)
 
             out_1 = v * st
-            out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
+                                         True)
             return out_2
         else:
             # combine eigh and matmul op
@@ -2452,7 +2463,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             out_1 = u * st
             u_conj = _C_ops.conj(u)
-            out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
+                                         'trans_y', True)
             return out_2
     else:
         if not hermitian:
@@ -2949,7 +2964,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:
@@ -2958,7 +2973,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                           False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            residuals = _C_ops.final_state_sum(pow_out, [-2], None, keepdim)
+            if in_dygraph_mode():
+                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
+            else:
+                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
+                                              False, 'reduce_all', False)
         else:
             residuals = paddle.empty(shape=[0], dtype=x.dtype)
 
