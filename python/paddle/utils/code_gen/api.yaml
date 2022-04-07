@@ -230,17 +230,6 @@
   kernel :
     func : bernoulli
 
-# bincount
-- api : bincount
-  args : (Tensor x, Tensor weight, int minlength)
-  output : Tensor
-  infer_meta :
-    func : BincountInferMeta
-  kernel :
-    func : bincount
-    data_type : x
-  optional : weight
-
 # bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
@@ -767,6 +756,17 @@
     func : gelu
   backward : gelu_grad
 
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
+
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -830,7 +830,7 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
-  # backward : huber_loss_grad
+  backward : huber_loss_grad
 
 - api : imag
   args : (Tensor x)
@@ -933,6 +933,19 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+
+# label_smooth
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [label]
+  kernel :
+    func : label_smooth
+    data_type : label
+  optional : prior_dist
+  backward : label_smooth_grad
 
 # leaky_relu
 - api : leaky_relu
