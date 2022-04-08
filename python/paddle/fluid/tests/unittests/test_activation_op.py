@@ -25,6 +25,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -50,7 +51,8 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
-        self.check_eager = False
+        self.check_eager = True
+        self.python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -1022,6 +1024,7 @@ class TestSqrtBF16(OpTest):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.python_api = paddle.rsqrt
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1034,7 +1037,8 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.0005, check_eager=True)
 
 
 class TestAbs(TestActivation):
@@ -1752,7 +1756,7 @@ class TestHardSwish(TestActivation):
     def setUp(self):
         self.op_type = 'hard_swish'
         self.init_dtype()
-
+        self.python_api = paddle.nn.functional.hardswish
         skip_check_grad_ci(reason="not implemented yet")
 
         np.random.seed(1024)
@@ -1774,7 +1778,10 @@ class TestHardSwish(TestActivation):
             return
 
         return  # not implemented yet
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestHardswishAPI(unittest.TestCase):
@@ -1834,6 +1841,11 @@ class TestHardswishAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardswish(x_fp16)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+            self.test_errors()
 
 
 class TestSoftRelu(TestActivation):
@@ -2928,7 +2940,9 @@ def ref_swish(x):
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
+        self.python_api = paddle.nn.functional.swish
         self.init_dtype()
+        self.check_eager = True
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -2940,7 +2954,10 @@ class TestSwish(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
 class TestSwishAPI(unittest.TestCase):
@@ -2974,6 +2991,10 @@ class TestSwishAPI(unittest.TestCase):
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
 
     def test_fluid_api(self):
         paddle.enable_static()

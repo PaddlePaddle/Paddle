@@ -94,6 +94,105 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
+class TestEnableFp16(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {"x": np.array([1, 200, 3000, 40000]).astype('int32'), }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+    def _test_base(self, run_ipu=True):
+        scope = paddle.static.Scope()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
+
+        with paddle.static.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype=self.feed_dtype[0])
+                out = paddle.cast(x, **self.attrs)
+                fetch_list = [out.name]
+
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            if run_ipu:
+                feed_list = self.feed_list
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                ipu_strategy.set_precision_config(enable_fp16=True)
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
+
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            return result[0]
+
+
+class TestDisableTransferCast(TestEnableFp16):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {"x": np.array([1, 200, 3000, 40000]).astype('int32'), }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+    def _test_base(self, run_ipu=True):
+        scope = paddle.static.Scope()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
+
+        with paddle.static.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype=self.feed_dtype[0])
+                out = paddle.cast(x, **self.attrs)
+                fetch_list = [out.name]
+
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            if run_ipu:
+                feed_list = self.feed_list
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                ipu_strategy.set_precision_config(enable_fp16=True)
+                ipu_strategy.set_options({"transfer_cast_op": False})
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
+
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            return result[0]
+
+
 class TestCase2(TestBase):
     def set_atol(self):
         self.atol = 1e-10

@@ -90,7 +90,9 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
+                ipu_strategy.set_options({
+                    'loss_scaling': self.attrs["loss_scaling"]
+                })
                 if "use_no_bias_optimizer" in self.attrs.keys():
                     ipu_strategy.set_options({
                         "use_no_bias_optimizer":
