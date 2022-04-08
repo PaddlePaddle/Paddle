@@ -29,22 +29,53 @@ class Registry(object):
     def register(self, name, value):
         assert name not in self.tab
         self.tab[name] = value
-    
+
     def lookup(self, name):
         assert name in self.tab, f'No registry entry is found with name: {name}'
         return self.tab[name]
 
+
+_primop_lower = Registry('primop_lowers')
 _primop_jvp = Registry('primop_jvps')
 _primop_transpose = Registry('primop_vjps')
+
+
+def _lower(op):
+    _lowerrule = _primop_lower.lookup(op.type)
+    return _lowerrule(op)
 
 
 def _jvp(op, *args):
     _jvprule = _primop_jvp.lookup(op.type)
     return _jvprule(op, *args)
 
+
 def _transpose(op, dot_checker, *args):
     _transposerule = _primop_transpose.lookup(op.type)
     return _transposerule(op, dot_checker, *args)
+
+
+def REGISTER_LOWER(op_type):
+    """Decorator for registering the lower function for an original op.
+    
+    Usage:
+    .. code-block:: python
+        @Register_LOWER('elementwise_add')
+        def elementwise_add_lower(op):
+            x, y = get_op_inputs(op)
+            return primops.add(x, y)
+
+    """
+    assert isinstance(op_type, str)
+
+    def wrapper(f):
+        def _lower(op, *args, **kwargs):
+            assert op.type == op_type
+            return f(op, *args, **kwargs)
+
+        _primop_lower.register(op_type, _lower)
+
+    return wrapper
 
 
 def REGISTER_JVP(op_type):
@@ -52,16 +83,18 @@ def REGISTER_JVP(op_type):
     
     Usage:
     .. code-block:: python
-        @RegisterJVP('add')
+        @Register_JVP('add')
         def add_jvp(op, x_dot, y_dot):
             return primops.add(x_dot, y_dot)
     
     """
     assert isinstance(op_type, str)
+
     def wrapper(f):
-        def _jvp(op, *args, **kwargs): 
+        def _jvp(op, *args, **kwargs):
             assert op.type == op_type
             return f(op, *args, **kwargs)
+
         _primop_jvp.register(op_type, _jvp)
 
     return wrapper
@@ -79,10 +112,12 @@ def REGISTER_TRANSPOSE(op_type):
     
     """
     assert isinstance(op_type, str)
+
     def wrapper(f):
-        def _transpose(op, dot_checker, *args, **kwargs): 
+        def _transpose(op, dot_checker, *args, **kwargs):
             assert op.type == op_type
             return f(op, dot_checker, *args, **kwargs)
+
         _primop_transpose.register(op_type, _transpose)
 
     return wrapper
@@ -100,7 +135,39 @@ def linear_jvp(op, *args):
     out_dot = op(*args, **op.all_attrs())
     return out_dot
 
+
+## Register lower rules
+
+## TODO(lml): add lower rules for ops used in laplace2d demo.
+"""
+matmul_v2
+elementwise_add
+tanh
+reshape2
+concat
+slice
+fill_zeros_like
+sum
+p_norm
+index_select
+elementwise_sub
+scale
+assign
+
+how to deal with shape and fill_constant?
+"""
+
+
+@REGISTER_LOWER('elementwise_add')
+def elementwise_add_lower(op):
+    x, y = get_op_inputs(op)
+    if x.shape != y.shape:
+        y = primops.broadcast(y, shape=x.shape)
+    return primops.add(x, y)
+
+
 ## Register linearize rules
+
 
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
@@ -108,13 +175,13 @@ def add_jvp(op, x_dot, y_dot):
 
 
 @REGISTER_JVP('sub_p')
-def sub_jvp(op, x_dot, y_dot): 
+def sub_jvp(op, x_dot, y_dot):
     return linear_jvp(op, x_dot, y_dot)
 
 
 @REGISTER_JVP('mul_p')
 def mul_jvp(op, x_dot, y_dot):
-    assert op.type == 'mul_p' 
+    assert op.type == 'mul_p'
     x, y = get_input_vars(op)
     t1, t2 = mul(x_dot, y), mul(x, y_dot)
     z_dot = add(t1, t2)
@@ -208,6 +275,7 @@ def scatter_add_jvp(op, x_dot, y_dot):
 
 ## Register transpose rules
 
+
 @REGISTER_TRANSPOSE('add_p')
 def add_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
@@ -267,7 +335,7 @@ def transpose_transpose(op, check_dot, y_bar):
 
 
 @REGISTER_TRANSPOSE('split_p')
-def split_transpose(op, check_dot,  ys_bar):
+def split_transpose(op, check_dot, ys_bar):
     x, = get_input_vars(op)
     assert check_dot(x)
     return concat(ys_bar, axis=op.attr('axis'))
@@ -317,7 +385,8 @@ def slice_assign_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) and check_dot(y)
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
-    return slice_assign(z_bar, zeros, **op.all_attrs()), slice_select(z_bar, **op.all_attrs())
+    return slice_assign(z_bar, zeros, **op.all_attrs()), slice_select(
+        z_bar, **op.all_attrs())
 
 
 @REGISTER_TRANSPOSE('gather_p')
@@ -332,5 +401,3 @@ def scatter_add_transpose(op, check_dot, y_bar):
     x, indextensor = get_input_vars(op)
     assert check_dot(x)
     return gather(y_bar, indextensor, **op.all_attrs())
-
-

@@ -16,21 +16,22 @@ from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primrules import get_input_vars, get_output_vars, _jvp, _transpose
 
+
 def make_var(dtype, shape, block=None, namekey='', stop_gradient=False):
     """ Create a type inferred variable. """
 
     if block is None:
         block = default_main_program().current_block()
-        
+
     name = unique_name.generate_with_ignorable_key(namekey + '%')
 
     return block.create_var(
-            name=name,
-            dtype=dtype,
-            shape=shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=stop_gradient)
+        name=name,
+        dtype=dtype,
+        shape=shape,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=stop_gradient)
 
 
 def make_varlike(x, block=None, namekey='', stop_gradient=False):
@@ -74,7 +75,7 @@ class Transform(object):
         self.varuses = {}
         self.var2dot = {}
         self.dot2bar = {}
-    
+
     def get_var2dot(self, var):
         return getattr(self.var2dot, var, None)
 
@@ -90,8 +91,39 @@ class Transform(object):
     def check_dot(self, x):
         return x in self.var2dot.values()
 
-    def lower2prim(self):
+    ## TODO(lml): finish these function
+    def get_var_lookup_tab(self, block):
         pass
+
+    def bind(self):
+        pass
+
+    def need_lower(self):
+        pass
+
+    def update_vlt(self):
+        pass
+
+    def lower2prim(self, block=None):
+        if block is None:
+            block = default_main_program().current_block()
+        vlt = get_var_lookup_tab(block)
+        ops_to_remove = []
+        for op_idx in range(len(block.ops)):
+            op = block.ops(op_idx)
+            if need_lower(op):
+                for name in op.input_arg_names():
+                    if name in to_bind:
+                        bind(name, to_bind[name])
+                    update_vlt(vlt, to_bind[name], name)
+                ops_to_remove.append(op_idx)
+                for out_name, new_out in zip(get_output_names(op), _lower(op)):
+                    to_bind[out_name] = new_out
+
+        for op_idx in reversed(ops_to_remove):
+            block.desc._remove_op(op_idx, op_idx + 1)
+        ## TODO(lml): call correct interface to infer shape and dtype
+        block.infer_shape()
 
     def update_defuse(self, op):
         for var in get_input_vars(op):
@@ -101,7 +133,7 @@ class Transform(object):
                 self.varuses[var].add(op)
         for var in get_output_vars(op):
             if var in self.vardefs:
-                assert self.vardefs[var] == op, f'{var} is doubly assigned.'  
+                assert self.vardefs[var] == op, f'{var} is doubly assigned.'
             else:
                 self.vardefs[var] = op
 
@@ -124,13 +156,13 @@ class Transform(object):
             for x, x_dot in zip(xs, xs_dot):
                 assert x.shape == x_dot.shape
                 assert x.dtype == x_dot.dtype
-        
+
         map(self.set_var2dot, xs, xs_dot)
         for op in topo_path(xs, ys):
             xs_dot = list(map(self.get_var2dot, get_input_vars(op)))
-            ys_dot = _jvp(op,  *xs_dot)
+            ys_dot = _jvp(op, *xs_dot)
             map(self.set_var2dot, op.get_output_vars(op), ys_dot)
-        
+
         ys_dot = map(self.get_var2dot, ys)
         return ys_dot
 
@@ -142,7 +174,7 @@ class Transform(object):
             for y_dot, y_bar in zip(ys_dot, ys_bar):
                 assert y_dot.shape == y_bar.shape
                 assert y_dot.dtype == y_bar.dtype
-        
+
         map(self.set_dot2bar, ys_dot, ys_bar)
         for op in reversed(topo_path(xs_dot, ys_dot)):
             ys_bar = list(map(self.get_dot2bar, get_output_vars(op)))
@@ -163,11 +195,9 @@ class Transform(object):
                 # remove this op and input dots
             for k, v in self.var2dot:
                 if v in dots_to_remove:
-                    del self.var2dot[k] 
+                    del self.var2dot[k]
             for k, v in self.dot2bar:
                 if k in dots_to_remove:
                     del self.dot2bar[k]
-       
+
         return xs_bar
-
-
