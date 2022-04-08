@@ -14,7 +14,7 @@
 
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers.layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 from ..static import Variable
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 # TODO: define logic functions of a tensor
