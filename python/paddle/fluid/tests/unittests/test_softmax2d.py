@@ -75,14 +75,6 @@ class TestSoftmax2DCPU(TestSoftmax2DAPI):
         self.place = paddle.CPUPlace()
 
 
-class TestSoftmax2DGPU(TestSoftmax2DAPI):
-    def setUp(self):
-        self.shape = [2, 5, 4]
-        self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
-        self.axis = -3
-        self.place = paddle.CUDAPlace(0)
-
-
 class TestSoftmax2DRepr(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
