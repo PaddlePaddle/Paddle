@@ -537,7 +537,7 @@ class FCPrimitiveFactory {
       const ExecutionContext& ctx, Tensor* output) {
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Input<Tensor>("ResidualData");
+      auto* residual_param = ctx.Output<Tensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
           output->dims(), residual_param->dims(),
