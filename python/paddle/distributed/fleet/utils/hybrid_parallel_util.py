@@ -147,7 +147,7 @@ def fused_allreduce_gradients(parameter_list, hcg):
         with framework.no_grad():
             _apply_collective_grads(parameter_list, data_parallel_group)
     elif in_dygraph_mode():
-        assert hcg is None, "It's not support to use hcg in EagerDygraph now."
+        assert hcg is None, "It's not supported to use hcg in EagerDygraph now."
         data_parallel_group = paddle.distributed.collective._get_default_group()
         with framework.no_grad():
             _apply_collective_grads_eager(parameter_list, data_parallel_group)
