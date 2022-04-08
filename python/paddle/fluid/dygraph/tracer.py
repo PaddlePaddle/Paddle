@@ -72,6 +72,17 @@ final_state_name_mapping = {
         "axis2": "axis2",
         "out": "Out",
     },
+    "roi_align": {
+        "final_op_name": "final_state_roi_align",
+        "x": "X",
+        "boxes": "ROIs",
+        "boxes_num": "RoisNum",
+        "pooled_height": "pooled_height",
+        "pooled_width": "pooled_width",
+        "spatial_scale": "spatial_scale",
+        "sampling_ratio": "sampling_ratio",
+        "aligned": "aligned",
+    },
     # "one_hot": {
     #     "final_op_name": "final_state_one_hot",
     #     "x": "X",

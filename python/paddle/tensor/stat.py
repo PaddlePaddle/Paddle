@@ -241,7 +241,9 @@ def numel(x, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.size(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.size(x)
 
     if not isinstance(x, Variable):

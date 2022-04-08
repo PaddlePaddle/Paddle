@@ -2843,7 +2843,11 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 if framework._non_static_mode():
-                    tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
+                    if framework.in_dygraph_mode():
+                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
+                                                       self._beta1, 0.0, True)
+                    else:
+                        tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(

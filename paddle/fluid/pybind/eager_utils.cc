@@ -1146,11 +1146,7 @@ paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "data_type, but got %s",
-        op_type, arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return paddle::experimental::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

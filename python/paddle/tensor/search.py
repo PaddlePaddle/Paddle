@@ -398,7 +398,9 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        outs = _C_ops.final_state_where_index(x)
+    elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
         outs = layers.where(x)
