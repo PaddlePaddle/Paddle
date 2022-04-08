@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -52,10 +51,11 @@ class StridedSliceOpConverter : public OpConverter {
 
     nvinfer1::Dims start;
     start.nbDims = input_dims.nbDims;
+    int axes_size = axes.size();
     for (int i = 0; i < start.nbDims; i++) {
       start.d[i] = 0;
     }
-    for (int i = 0; i < axes.size(); i++) {
+    for (int i = 0; i < axes_size; i++) {
       start.d[axes[i]] = starts[i];
     }
 
@@ -64,7 +64,7 @@ class StridedSliceOpConverter : public OpConverter {
     for (int i = 0; i < stride.nbDims; i++) {
       stride.d[i] = 1;
     }
-    for (int i = 0; i < axes.size(); i++) {
+    for (int i = 0; i < axes_size; i++) {
       stride.d[axes[i]] = strides[i];
     }
 
@@ -79,9 +79,10 @@ class StridedSliceOpConverter : public OpConverter {
     auto create_weights = [&](const std::vector<int>& data,
                               const std::string& type) -> int* {
       std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
-      tmp_tensor->Resize({data.size()});
+      int data_size = data.size();
+      tmp_tensor->Resize({data_size});
       auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());
-      for (int i = 0; i < data.size(); i++) {
+      for (int i = 0; i < data_size; i++) {
         tmp_data[i] = data[i];
       }
 
@@ -91,7 +92,7 @@ class StridedSliceOpConverter : public OpConverter {
     };
 
     std::vector<int> const_weight(input_dims.nbDims, 1);
-    for (int i = 0; i < axes.size(); i++) {
+    for (int i = 0; i < axes_size; i++) {
       const_weight[axes[i]] = strides[i];
     }
 
