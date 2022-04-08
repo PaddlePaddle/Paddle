@@ -1730,7 +1730,7 @@ class GPUPSUtil(FleetUtil):
     Examples:
         .. code-block:: python
 
-          from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+          from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
           fleet_util = GPUPSUtil()
           fleet_util.rank0_print("my log")
     """
@@ -1741,9 +1741,46 @@ class GPUPSUtil(FleetUtil):
         # self._afs = fs_client._fs
 
     def init(self, fs_name, fs_user, fs_passwd, fs_conf):
+        r"""
+        init for fs config
+
+        Args:
+            fs_name(str): fs name
+            fs_user(str): fs user
+            fs_passwd(str): fs password
+            fs_conf(str): fs and afs conf path
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              fleet_util = GPUPSUtil()
+              fleet_util.init(20190722, 88, 88, "./afs.conf")
+        """
         self._afs.init(fs_name, fs_user, fs_passwd, fs_conf)
 
     def set_fsclient(self, fs_client):
+        r"""
+        set fs_client for fs config
+
+        Args:
+            fs_client(AFSClient): fs_client object
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+        """
         self._afs = fs_client
 
     def get_last_save_xbox_base(self, output_path):
@@ -1762,11 +1799,13 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               last_save_day, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox_base("hdfs:/my/path", 20190722,
-                                                     88)
+                  fleet_util.get_last_save_xbox_base("hdfs:/my/path")
 
         """
         donefile_path = output_path + "/xbox_base_done.txt"
@@ -1798,10 +1837,13 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_xbox("hdfs:/my/path", 20190722, 88)
+                  fleet_util.get_last_save_xbox("hdfs:/my/path")
 
         """
         donefile_path = output_path + "/xbox_patch_done.txt"
@@ -1838,10 +1880,13 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               last_save_day, last_save_pass, last_path, xbox_base_key = \
-                  fleet_util.get_last_save_model("hdfs:/my/path", 20190722, 88)
+                  fleet_util.get_last_save_model("hdfs:/my/path")
 
         """
         last_save_day = -1
@@ -1867,7 +1912,6 @@ class GPUPSUtil(FleetUtil):
                              day,
                              pass_id,
                              xbox_base_key,
-                             hadoop_home="$HADOOP_HOME",
                              donefile_name="donefile.txt"):
         """
         write donefile when save model
@@ -1877,21 +1921,21 @@ class GPUPSUtil(FleetUtil):
             day(str|int): training day
             pass_id(str|int): training pass id
             xbox_base_key(str|int): xbox base key
-            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
             donefile_name(str): donefile name, default is "donefile.txt"
 
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               fleet_util.write_model_donefile(output_path="hdfs:/my/output",
                                               model_path="hdfs:/my/model",
                                               day=20190723,
                                               pass_id=66,
-                                              xbox_base_key=int(time.time()),
-                                              hadoop_fs_name="hdfs://xxx",
-                                              hadoop_fs_ugi="user,passwd")
+                                              xbox_base_key=int(time.time()))
 
         """
         day = str(day)
@@ -1965,8 +2009,11 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               fleet_util.write_xbox_donefile(
                   output_path="hdfs:/my/output/",
                   model_path="hdfs:/my/output/20190722/01",
@@ -1974,10 +2021,7 @@ class GPUPSUtil(FleetUtil):
                   pass_id=1,
                   xbox_base_key=int(time.time()),
                   data_path="hdfs:/my/data/",
-                  hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
-                  monitor_data={}
-                  )
+                  monitor_data={})
 
         """
         day = str(day)
@@ -2065,16 +2109,16 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-              fleet_util = FleetUtil()
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
               fleet_util.write_cache_donefile(
                   output_path="hdfs:/my/output/",
                   day=20190722,
                   pass_id=1,
-                  key_num=123456,
-                  hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
-                  )
+                  key_num=123456)
 
         """
         day = str(day)
