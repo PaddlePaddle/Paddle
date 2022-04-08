@@ -37,7 +37,7 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode, _current_expected_place
 __all__ = []
 
 
@@ -260,29 +260,33 @@ def binary_cross_entropy_with_logits(logit,
             % reduction)
 
     if _non_static_mode():
-        one = _varbase_creator(dtype=logit.dtype)
-        _C_ops.fill_constant(one, 'value',
-                             float(1.0), 'force_cpu', False, 'dtype', one.dtype,
-                             'str_value', '1.0', 'shape', [1])
         if in_dygraph_mode():
+            one = _C_ops.final_state_full([1],
+                                          float(1.0), core.VarDesc.VarType.FP32,
+                                          _current_expected_place())
             out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
         else:
+            one = _varbase_creator(dtype=logit.dtype)
+            _C_ops.fill_constant(one, 'value',
+                                 float(1.0), 'force_cpu', False, 'dtype',
+                                 one.dtype, 'str_value', '1.0', 'shape', [1])
             out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
-            if pos_weight is not None:
-                log_weight = _C_ops.elementwise_add(
-                    _C_ops.elementwise_mul(
-                        label, _C_ops.elementwise_sub(pos_weight, one)), one)
-                out = _C_ops.elementwise_mul(out, log_weight)
-            if weight is not None:
-                out = _C_ops.elementwise_mul(out, weight)
+        if pos_weight is not None:
+            log_weight = _C_ops.elementwise_add(
+                _C_ops.elementwise_mul(label,
+                                       _C_ops.elementwise_sub(pos_weight, one)),
+                one)
+            out = _C_ops.elementwise_mul(out, log_weight)
+        if weight is not None:
+            out = _C_ops.elementwise_mul(out, weight)
 
-            if reduction == "sum":
-                return _C_ops.reduce_sum(out, 'reduce_all', True)
-            elif reduction == "mean":
-                return _C_ops.mean(out)
-            else:
-                return out
+        if reduction == "sum":
+            return _C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            return _C_ops.mean(out)
+        else:
+            return out
 
     fluid.data_feeder.check_variable_and_dtype(
         logit, 'logit', ['float32', 'float64'],

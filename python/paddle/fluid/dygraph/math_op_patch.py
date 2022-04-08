@@ -71,9 +71,13 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        out = _varbase_creator(dtype=dtype)
-        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
-                                   value, 'force_cpu', False)
+        if framework._in_eager_mode_:
+            out = _C_ops.final_state_full(shape, value, dtype,
+                                          framework._current_expected_place())
+        else:
+            out = _varbase_creator(dtype=dtype)
+            out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
+                                       'value', value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
