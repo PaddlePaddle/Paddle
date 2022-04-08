@@ -130,10 +130,10 @@ class ThreadPoolTempl {
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
       if (num_tasks > num_threads_ - blocked_) {
-        VLOG(6) << "Add task, Nodify";
+        VLOG(6) << "Add task, Notify";
         ec_.Notify(false);
       } else {
-        VLOG(6) << "Add task, No Nodify";
+        VLOG(6) << "Add task, No Notify";
       }
     } else {
       num_tasks_.fetch_sub(1, std::memory_order_relaxed);
