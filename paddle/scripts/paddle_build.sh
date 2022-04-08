@@ -239,7 +239,7 @@ function cmake_base() {
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_CUSTOM_DEVICE=${WITH_CUSTOM_DEVICE:-OFF}
-        -DUSE_CXX11_ABI=${USE_CXX11_ABI:-ON}
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS:-""}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
@@ -297,7 +297,7 @@ EOF
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_CUSTOM_DEVICE=${WITH_CUSTOM_DEVICE:-OFF} \
-        -DUSE_CXX11_ABI=${USE_CXX11_ABI:-ON} \
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS:-""} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
@@ -1994,11 +1994,6 @@ set -x
     fi   
 }
 
-function parallel_test_base_custom_device() {
-    echo "IN custom device CI now"
-    parallel_test_base_npu
-}
-
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
@@ -2398,8 +2393,6 @@ function parallel_test() {
         parallel_test_base_gpu
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
-    elif [ "$WITH_CUSTOM_DEVICE" == "ON" ];then
-        parallel_test_base_custom_device
     elif [ "$WITH_ASCEND_CL" == "ON" ];then
         parallel_test_base_npu
     elif [ "$WITH_MLU" == "ON" ];then
