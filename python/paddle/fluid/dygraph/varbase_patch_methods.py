@@ -99,7 +99,7 @@ def monkey_patch_varbase():
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
-        attr_not_need_keys = ['grad', 'T']
+        attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
         else:
@@ -872,6 +872,38 @@ def monkey_patch_varbase():
             res.persistable = self.persistable
             return res
 
+    @framework.dygraph_only
+    def values(self):
+        if self.is_sparse_coo():
+            return _C_ops.final_state_sparse_coo_values(self)
+        elif self.is_sparse_csr():
+            return _C_ops.final_state_sparse_csr_values(self)
+        else:
+            raise ValueError(
+                "only SparseCooTensor and SparseCsrTensor have method values")
+
+    @framework.dygraph_only
+    def to_dense(self):
+        if self.is_sparse_coo():
+            return _C_ops.final_state_sparse_coo_to_dense(self)
+        elif self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_dense(self)
+        else:
+            return self
+
+    @framework.dygraph_only
+    def to_sparse_coo(self, sparse_dim):
+        if self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
+        elif self.is_sparse_coo():
+            return self
+        elif self.is_selected_rows():
+            raise ValueError(
+                "SelectedRows does not support to_sparse_coo method")
+        else:
+            #is dense tensor
+            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -884,7 +916,8 @@ def monkey_patch_varbase():
         ("__repr__", __str__), ("__deepcopy__", __deepcopy__),
         ("__module__", "paddle"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__), ("_to", _to)):
+        ("__setitem__", __setitem__), ("_to", _to), ("values", values),
+        ("to_dense", to_dense), ("to_sparse_coo", to_sparse_coo)):
         if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:

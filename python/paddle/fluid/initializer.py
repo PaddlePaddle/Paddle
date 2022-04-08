@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import _non_static_mode, default_main_program
+from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -417,7 +417,18 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            out_var = _C_ops.final_state_truncated_gaussian_random(
+                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
+                _current_expected_place())
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
+            return None
+
+        if _in_legacy_dygraph():
             out_var = _C_ops.truncated_gaussian_random(
                 'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed)
@@ -550,12 +561,12 @@ class XavierInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype', out_dtype)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
                 out_var = _C_ops.gaussian_random(
                     'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
                     'std', std, 'seed', self._seed)
@@ -570,7 +581,7 @@ class XavierInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -584,7 +595,7 @@ class XavierInitializer(Initializer):
                     },
                     stop_gradient=True)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -702,13 +713,13 @@ class MSRAInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype',
                                                 int(out_dtype))
             else:
-                std = np.sqrt(2.0 / float(fan_in))
+                std = math.sqrt(2.0 / float(fan_in))
                 out_var = _C_ops.gaussian_random(
                     'shape', out_var.shape, 'dtype',
                     int(out_dtype), 'mean', 0.0, 'std', std, 'seed', self._seed)
@@ -723,7 +734,7 @@ class MSRAInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -738,7 +749,7 @@ class MSRAInitializer(Initializer):
                     stop_gradient=True)
 
             else:
-                std = np.sqrt(2.0 / float(fan_in))
+                std = math.sqrt(2.0 / float(fan_in))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},

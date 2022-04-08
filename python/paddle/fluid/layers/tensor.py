@@ -849,6 +849,18 @@ def fill_constant_batch_size_like(input,
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        out = _C_ops.final_state_full_batch_size_like(
+            input, shape, dtype, value, input_dim_idx, output_dim_idx, place)
+        out.stop_gradient = True
+        return out
+
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs = {
@@ -1539,10 +1551,12 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_linspace(tensor_start, tensor_stop,
+                                           tensor_num, dtype)
     helper = LayerHelper("linspace", **locals())
 
     start_dtype = convert_dtype(tensor_start.dtype)
@@ -1727,10 +1741,12 @@ def eye(num_rows,
     else:
         num_columns = num_rows
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                     _current_expected_place())
+    elif _in_legacy_dygraph():
         out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
                          num_columns)
-
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',
