@@ -40,7 +40,7 @@ if(WITH_ARM_BRPC)
         extern_gflags
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        PREFIX          ${PROTOBUF_PREFIX_DIR}
+        PREFIX          ${GFLAGS_PREFIX_DIR}
         DOWNLOAD_DIR          ${GFLAGS_SOURCE_DIR}
         DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
                             && tar zxvf arm_gflags.tar.gz
