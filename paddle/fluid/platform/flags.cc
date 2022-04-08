@@ -770,3 +770,8 @@ DEFINE_bool(enable_ins_parser_file, false,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
+
+#ifdef PADDLE_WITH_CUDA
+PADDLE_DEFINE_EXPORTED_bool(enable_nvtx, false, "");
+PADDLE_DEFINE_EXPORTED_bool(log_nvtx_error, false, "");
+#endif

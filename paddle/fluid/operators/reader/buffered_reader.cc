@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/nvtx_guard.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -100,6 +101,7 @@ void BufferedReader::ReadTillBufferFullAsync() {
 
 void BufferedReader::ReadAsync(size_t i) {
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
+    platform::NVTXGuard guard("DataLoader");
     TensorVec &cpu = cpu_buffer_[i];
     reader_->ReadNext(&cpu);
 

@@ -55,6 +55,8 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
+#include "paddle/fluid/platform/nvtx_guard.h"
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -258,6 +260,25 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
+      auto nvtx_string = [this]() -> std::string {
+        if (!platform::NVTXGuard::IsEnabled()) {
+          return "";
+        }
+        for (const auto& pair : Inputs()) {
+          if (!pair.second.empty()) {
+            return Type() + "|" + pair.first + ":" + pair.second[0];
+          }
+        }
+        for (const auto& pair : Outputs()) {
+          if (!pair.second.empty()) {
+            return Type() + "|" + pair.first + ":" + pair.second[0];
+          }
+        }
+        return Type();
+      };
+
+      platform::NVTXGuard guard(nvtx_string());
+
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
