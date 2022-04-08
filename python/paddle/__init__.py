@@ -601,6 +601,7 @@ __all__ = [  # noqa
            'concat',
            'check_shape',
            'trunc',
+           'frac',
            'digamma',
            'standard_normal',
            'diagonal',
