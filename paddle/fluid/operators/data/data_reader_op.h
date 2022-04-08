@@ -85,7 +85,7 @@ class Sampler {
 
     for (int64_t i = 0; i < batch_size_; i++) {
       int cur_idx = start_idx + i * world_size_;
-      if (cur_idx >= num_samples_)  return;
+      if (cur_idx >= num_samples_) return;
       indices->emplace_back(sample_ids_[cur_idx]);
     }
   }

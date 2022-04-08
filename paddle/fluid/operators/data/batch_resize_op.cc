@@ -107,7 +107,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(batch_resize,
-                       ops::data::BatchResizeCPUKernel<uint8_t>,
+REGISTER_OP_CPU_KERNEL(batch_resize, ops::data::BatchResizeCPUKernel<uint8_t>,
                        ops::data::BatchResizeCPUKernel<float>,
                        ops::data::BatchResizeCPUKernel<double>)

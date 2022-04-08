@@ -41,7 +41,6 @@ MapRunner::MapRunner(
       output_var_names_(output_var_names),
       input_queues_(input_queues),
       output_queues_(output_queues) {
-
   PADDLE_ENFORCE_EQ(
       input_var_names_.size(), input_queues_.size(),
       platform::errors::InvalidArgument(

@@ -32,7 +32,7 @@ extern ImageDecoderThreadPool* decode_pool;
 void ShutDownAllDataLoaders() {
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDown();
-  
+
 #ifdef PADDLE_WITH_GPU
   // step 2: shutdown decoder
   if (decode_pool) decode_pool->ShutDown();

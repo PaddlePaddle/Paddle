@@ -128,20 +128,20 @@ The values of the output tensor are uint8 between 0 and 255.
         "Specify that the data format of the input and output data is "
         "channel_first or channel_last.")
         .SetDefault("NCHW");
-    AddAttr<float>("aspect_ratio_min", 
-        "(float) The minimum aspect ratio of random cropping boxes")
+    AddAttr<float>("aspect_ratio_min",
+                   "(float) The minimum aspect ratio of random cropping boxes")
         .SetDefault(3. / 4.);
     AddAttr<float>("aspect_ratio_max",
-        "(float) The maximum aspect ratio of random cropping boxes")
+                   "(float) The maximum aspect ratio of random cropping boxes")
         .SetDefault(4. / 3.);
     AddAttr<float>("area_min",
-        "(float) The min area ratio of random cropping boxes")
+                   "(float) The min area ratio of random cropping boxes")
         .SetDefault(0.08);
     AddAttr<float>("area_max",
-        "(float) The max area ratio of random cropping boxes")
+                   "(float) The max area ratio of random cropping boxes")
         .SetDefault(1.);
     AddAttr<int64_t>("num_attempts",
-        "(int) The max attempt number of random cropping boxes")
+                     "(int) The max attempt number of random cropping boxes")
         .SetDefault(10);
     AddAttr<int64_t>("program_id",
                      "(int64_t)"
