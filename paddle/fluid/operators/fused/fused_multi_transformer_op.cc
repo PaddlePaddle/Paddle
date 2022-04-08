@@ -44,6 +44,10 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     CHECK_INPUTS(QKVW);
     CHECK_INPUTS(OutLinearW);
 
+    if (ctx->HasInput("TimeStep")) {
+      CHECK_INPUTS(CacheKV);
+    }
+
     if (ctx->HasInputs("CacheKV")) {
       CHECK_OUTPUTS(CacheKVOut);
     }
@@ -88,10 +92,8 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "(num_head * dim_head == dim_embed)"));
     }
 
-    // cache_seq_len + seq_len if cache else seq_len
-    auto out_seq_len = x_dim[1];
     if (ctx->HasInputs("CacheKV")) {
-      // [2, batch_size, num_head, cache_seq_len, head_size]
+      // [2, batch_size, num_head, max_seq_len, head_size]
       const auto &c_dims = ctx->GetInputsDim("CacheKV");
       const auto &c_dim = c_dims[0];
 
@@ -113,7 +115,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             y_dim[1], c_dim[2]));  // num_head
-      PADDLE_ENFORCE_GE(
+      PADDLE_ENFORCE_GT(
           c_dim[3], 0,
           paddle::platform::errors::InvalidArgument(
               "The forth dim of CacheKV must be greater than 0, but got %d",
@@ -123,15 +125,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
                             y_dim[2], c_dim[4]));  // head_size
-
-      out_seq_len += c_dim[3];
-
-      auto out_dims = c_dims;
-      for (auto &out_dim : out_dims) {
-        out_dim[3] = out_seq_len;
-      }
-      // [2, batch_size, num_head, cache_seq_len + seq_len, head_size]
-      ctx->SetOutputsDim("CacheKVOut", out_dims);
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -142,6 +135,17 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "TimeStep") {
+      VLOG(10) << "var_name:" << var_name << " need not to transform";
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -163,6 +167,9 @@ class FusedMultiTransformerOpOpMaker
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
         .AsDispensable()
         .AsDuplicable();
+    AddInput("TimeStep",
+             "(optional, int) The time step for generation inference.")
+        .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
     AddInput("OutLinearW", "The out_linear weight tensor.").AsDuplicable();
@@ -185,7 +192,9 @@ class FusedMultiTransformerOpOpMaker
         .AsDispensable()
         .AsDuplicable();
 
-    AddOutput("CacheKVOut", "The udpated cache KV.").AsDuplicable();
+    AddOutput("CacheKVOut", "The updated cache KV. Inplace with CacheKV")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("Out", "Result after multi .");
 
     AddAttr<bool>("pre_layer_norm",

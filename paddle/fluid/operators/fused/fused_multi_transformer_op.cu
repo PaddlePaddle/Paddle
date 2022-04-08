@@ -38,6 +38,9 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// for debug
+// #define _DEBUG_FUSED_MULTI_TRANSFORMER
+
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
@@ -446,6 +449,7 @@ inline __device__ Float8_ fma(float a, Float8_ b, Float8_ c) {
   d.y = fma(a, b.y, c.y);
   d.z = fma(a, b.z, c.z);
   d.w = fma(a, b.w, c.w);
+  return d;
 }
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
@@ -578,6 +582,15 @@ inline __device__ void zero(T &dst) {  // NOLINT
   dst = tmp.raw;
 }
 
+template <typename T>
+__global__ void print_kernel(const T *tensor_data, int num) {
+  printf("in kernel");
+  for (int i = 0; i < num; ++i) {
+    printf("%f ", static_cast<float>(tensor_data[i]));
+  }
+  printf("\n");
+}
+
 template <typename T, int Dh, int THREADS_PER_KEY, int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK>
 __global__ void masked_multihead_attention_kernel(
@@ -608,20 +621,21 @@ __global__ void masked_multihead_attention_kernel(
 
   float qk_max = -FLT_MAX;
 
-  int qkv_base_offset = bhi * Dh;
+  // qkv [B, S=1, 3, num_head, head_dim]
+  int qkv_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
 
   using Qk_vec = typename Qk_vec_<T, Dh>::Type;
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh % QK_VEC_SIZE == 0 && Dh / QK_VEC_SIZE <= WARP_SIZE, "");
   constexpr int QK_VECS_PER_WARP = Dh / QK_VEC_SIZE;
 
-  // cachek, [B, num_head, head_dim / x, max_seq_len, x]
+  // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
   // x == 4/8 for FP32/FP16, 128bit, 16Byte
   constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
   constexpr int QK_VECS_IN_16B = 16 / sizeof(Qk_vec);
 
   const T *q_base = params.qkv;
-  const T *k_base = params.qkv + params.batch_size * params.num_head * Dh;
+  const T *k_base = params.qkv + params.num_head * Dh;
   const T *q_bias_base = params.qkv_bias;
   const T *k_bias_base = params.qkv_bias + params.num_head * Dh;
 
@@ -652,8 +666,9 @@ __global__ void masked_multihead_attention_kernel(
     float qk = dot<Qk_vec, Qk_vec>(q, k);
 #pragma unroll
     for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
-      qk + __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+      qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
     }
+
     qk *= params.inv_sqrt_dh;
     if (tid == 0) {
       qk_max = qk;
@@ -661,6 +676,15 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
   __syncthreads();
+
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("=======q_out=======\n");
+    for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
+    printf("\n");
+  }
+  __syncthreads();
+#endif
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
@@ -726,6 +750,15 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("=======qk_out=======\n");
+    for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
+    printf("qk_max=%f\n", qk_max);
+  }
+  __syncthreads();
+#endif
+
   float sum = 0.f;
   for (int ti = tid; ti <= params.timestep; ti += THREADS_PER_BLOCK) {
     // TODO(wangxi): mask
@@ -776,10 +809,18 @@ __global__ void masked_multihead_attention_kernel(
 #endif
   }
 
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("======logits_out=====\n");
+    for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
+    printf("\n");
+  }
+  __syncthreads();
+#endif
+
   if (vo == (params.timestep % V_PER_ITER)) {
     V_vec v = *reinterpret_cast<const V_vec *>(
-        &params.qkv[2 * params.batch_size * params.num_head * Dh +
-                    qkv_base_offset + vi]);
+        &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v_bias = *reinterpret_cast<const V_vec *>(
         &params.qkv_bias[2 * params.num_head * Dh + hi * Dh + vi]);
     v = add(v, v_bias);
@@ -822,6 +863,16 @@ __global__ void masked_multihead_attention_kernel(
     *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
 #endif
   }
+
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+  __syncthreads();
+  if (bi == 0 && hi == 0 && tid == 0) {
+    printf("======fmha_out=====\n");
+    for (int i = 0; i < Dh; ++i)
+      printf("%f ", static_cast<float>(params.out[i]));
+    printf("\n");
+  }
+#endif
 }
 
 template <typename T>
@@ -958,12 +1009,16 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<Tensor>("CacheKVOut");
+    auto *time_step = ctx.Input<Tensor>("TimeStep");
 
     auto out_seq_len = seq_len;
-    if (cache_kvs.size() > 0) {
-      // [2, batch_size, num_head, cache_seq_len, head_size]
-      const auto cache_kv_dims = cache_kvs[0]->dims();
-      out_seq_len += cache_kv_dims[3];
+    if (time_step) {
+      assert(time_step->place() == platform::CPUPlace());
+      // cache_seq_len
+      int time_step_value = time_step->data<int>()[0];
+      assert(time_step_value > 0);
+      assert(seq_len == 1);
+      out_seq_len += time_step_value;
     }
 
     Tensor transpose_out_2, qk_out;
@@ -1099,12 +1154,21 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       // step3. fmha
       const Tensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
       Tensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
-      if (cache_kv_out) {
-        cache_kv_out->mutable_data<T>(place);
+
+      if (time_step) {  // generation decoder stage
+        // [2, batch_size, num_head, max_seq_len, head_size]
+        int max_seq_len = cache_kv->dims()[3];
 
         fmha<T>(dev_ctx, qkv_out, *qkv_bias, *src_mask, cache_kv_out, &fmha_out,
-                bsz, seq_len, num_head, dim_head, 128, 1. / 8);
-      } else {
+                bsz, max_seq_len, num_head, dim_head, time_step->data<int>()[0],
+                1. / sqrt(dim_head));
+      } else if (cache_kv_out) {  // generation context stage
+        // TODO(wangxi): can remove dropout in inference
+        fmha_compute.ComputeForward(
+            qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
+            &qk_out, &src_mask_out, &softmax_out, &attn_dropout_mask_out,
+            &attn_dropout_out, &qktv_out, &fmha_out);
+      } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(
             qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,

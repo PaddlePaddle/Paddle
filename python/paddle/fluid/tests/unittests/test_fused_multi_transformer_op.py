@@ -65,6 +65,7 @@ def fused_multi_transformer(x,
                             pre_layer_norm=True,
                             epsilon=1e-05,
                             cache_kvs=None,
+                            time_step=None,
                             attn_mask=None,
                             dropout_rate=0.5,
                             training=False,
@@ -86,13 +87,12 @@ def fused_multi_transformer(x,
 
         cache_kv_out, final_out = _C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
-            attn_mask, linear_weights, linear_biases, ffn_ln_scales,
+            time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
-            0 if cache_kvs is None else len(cache_kvs), 'pre_layer_norm',
-            pre_layer_norm, 'epsilon', epsilon, 'attn_dropout_rate',
-            dropout_rate, 'attn_dropout_is_test', not training,
-            'attn_dropout_implementation', mode, 'dropout_implementation', mode,
-            'ring_id', ring_id)
+            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
+            'attn_dropout_rate', dropout_rate, 'attn_dropout_is_test',
+            not training, 'attn_dropout_implementation', mode,
+            'dropout_implementation', mode, 'ring_id', ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -348,10 +348,17 @@ class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
         self.config()
         self.generate_input_data()
+
+        self.rtol = 1e-5
+        self.atol = 1e-4
+        if self.x_type is np.float16:
+            self.atol = 1e-1
+
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_multi_transformer"
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = False
+
         self.q_proj = Linear(
             self.embed_dim,
             self.embed_dim,
@@ -372,6 +379,7 @@ class TestFusedMultiTransformerOp(OpTest):
             self.embed_dim,
             self.weight_attr,
             bias_attr=self.bias_attr)
+
         self.ffn1_proj = Linear(
             self.embed_dim,
             4 * self.embed_dim,
@@ -382,14 +390,19 @@ class TestFusedMultiTransformerOp(OpTest):
             self.embed_dim,
             self.weight_attr,
             bias_attr=self.bias_attr)
+
         paddle.set_default_dtype(np.float32)
         self.norm = LayerNorm(self.embed_dim)
         self.ffn_norm = LayerNorm(self.embed_dim)
+
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
         self.activation = getattr(F, self.act_method)
 
     def config(self):
+        # for debug
+        self.debug = False
+
         self.x_type = np.float32
         self.attn_mask_type = np.float64
         self.pre_layer_norm = True
@@ -423,6 +436,7 @@ class TestFusedMultiTransformerOp(OpTest):
             self.cache_kv = np.random.rand(2, self.batch_size, self.num_heads,
                                            self.cache_length,
                                            self.head_dim).astype(self.x_type)
+            # self.cache_kv[:] = 0
             out_seq_len += self.cache_length
         else:
             self.cache_kv = None
@@ -440,6 +454,7 @@ class TestFusedMultiTransformerOp(OpTest):
             else:
                 raise ValueError(
                     "'attn_mask_type' should be 'int64' or 'float64'.")
+            self.attn_mask[:] = 0.0
         else:
             self.attn_mask = None
         self.key, self.value = self.query, self.query
@@ -483,6 +498,11 @@ class TestFusedMultiTransformerOp(OpTest):
                 cache_v = paddle.squeeze(cache_v, axis=0)
                 # [B, n_head, cache_seq_len + seq_len, head_dim]
                 # out_seq_len = cache_seq_len + seq_len
+                if self.debug:
+                    print('q out is')
+                    print(q_out[0, 0, :, :])
+                    print('cache k out seq=128')
+                    print(k_out[0, 0, :, :])
                 k_out = paddle.concat([cache_k, k_out], axis=-2)
                 v_out = paddle.concat([cache_v, v_out], axis=-2)
 
@@ -491,13 +511,23 @@ class TestFusedMultiTransformerOp(OpTest):
             qk_out = layers.matmul(
                 x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5)
 
+            if self.debug:
+                print('qk out is')
+                print(qk_out[0][0][0])
+
             if attn_mask is not None:
                 attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
                 attn_mask_out = qk_out + attn_mask
+                if self.debug:
+                    print('attn mask out is')
+                    print(attn_mask_out[0][0][0])
                 softmax_out = F.softmax(attn_mask_out)
             else:
                 softmax_out = F.softmax(qk_out)
 
+            if self.debug:
+                print('softmax out is')
+                print(softmax_out[0][0][0])
             if self.dropout_prob:
                 dropout_out = F.dropout(
                     softmax_out,
@@ -511,6 +541,9 @@ class TestFusedMultiTransformerOp(OpTest):
                 qktv_out = tensor.matmul(softmax_out, v_out)
 
             fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
+            if self.debug:
+                print('fmha out is')
+                print(fmha_out[0][0][0])
             out_linear_in = tensor.reshape(
                 x=fmha_out,
                 shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
@@ -591,9 +624,42 @@ class TestFusedMultiTransformerOp(OpTest):
 
         x = paddle.to_tensor(self.query, stop_gradient=False)
         cache_kvs, cache_kv = None, None
+        time_step = None
         if self.has_cache_kv:
             cache_kvs = []
-            cache_kv = paddle.to_tensor(self.cache_kv, stop_gradient=False)
+
+            max_seq_length = (self.cache_length + 128) // 128 * 128
+            cache_kv = np.zeros(
+                [
+                    2, self.batch_size, self.num_heads, max_seq_length,
+                    self.head_dim
+                ],
+                dtype=self.x_type)
+
+            elems = 4
+            if self.x_type is np.float16:
+                elems = 8
+
+            assert self.head_dim % elems == 0
+            v_elems = self.head_dim // elems
+
+            # [B, num_head, 128, head_dim]
+            # cache_k_tmp = self.cache_kv[0, :]
+            # [B, num_head, 128, head_dim / 4, 4]
+            cache_k_tmp = self.cache_kv[0].reshape([
+                self.batch_size, self.num_heads, self.cache_length, v_elems,
+                elems
+            ])
+            # [B, num_head, head_dim / 4, 128, 4]
+            cache_k_tmp = cache_k_tmp.transpose([0, 1, 3, 2, 4])
+
+            cache_kv[0, :].reshape([
+                self.batch_size, self.num_heads, v_elems, max_seq_length, elems
+            ])[:, :, :, :self.cache_length, :] = cache_k_tmp
+
+            cache_kv[1, :, :, :self.cache_length, :] = self.cache_kv[1]
+            time_step = paddle.to_tensor(
+                [self.cache_length], dtype='int32', place=paddle.CPUPlace())
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
@@ -625,7 +691,9 @@ class TestFusedMultiTransformerOp(OpTest):
             ffn_ln_scales.append(ffn_ln_scale)
             ffn_ln_biases.append(ffn_ln_bias)
             if self.has_cache_kv:
-                cache_kvs.append(cache_kv)
+                cache_kvs.append(
+                    paddle.to_tensor(
+                        cache_kv, stop_gradient=False))
 
         final_out = fused_multi_transformer(
             x,
@@ -644,6 +712,7 @@ class TestFusedMultiTransformerOp(OpTest):
             pre_layer_norm=self.pre_layer_norm,
             epsilon=epsilon,
             cache_kvs=cache_kvs,
+            time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_prob,
             training=self.training)
@@ -656,59 +725,50 @@ class TestFusedMultiTransformerOp(OpTest):
     def test_fused_multi_transformer_op(self):
         final_out_ref = self.GetBaselineOut()
         final_out = self.GetFusedMultiTransformerOut()
-        print(type(final_out[0]), type(final_out[1]))
-        print(len(final_out[1]))
-        print(final_out[1])
+        if self.has_cache_kv:
+            final_out, cache_kv_out = final_out
+            if self.debug:
+                s = cache_kv_out[0].shape
+                bsz = s[1]
+                num_head = s[2]
+                max_seq_len = s[3]
+                head_dim = s[4]
+                elems = 8 if self.x_type is np.float16 else 4
+                v_elems = head_dim // elems
+
+                print("cache_k out timestep=128")
+                print(cache_kv_out[0].reshape([
+                    2, bsz, num_head, v_elems, max_seq_len, elems
+                ])[0, 0, 0, :, self.cache_length, :])
+
+                print("cache_v out timestep=128")
+                print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
+
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
+            final_out_ref, final_out, rtol=self.rtol, atol=self.atol)
 
 
-# class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):
-#     def config(self):
-#         super().config()
-#         self.bias_attr = False
-# 
-# 
-# class TestFusedAttentionOpPreLn(TestFusedAttentionOp):
-#     def config(self):
-#         super().config()
-#         self.pre_layer_norm = True
-# 
-# 
-# class TestFusedAttentionOpNoneAttnMask(TestFusedAttentionOp):
-#     def config(self):
-#         super().config()
-#         self.pre_layer_norm = True
-#         self.has_attn_mask = False
-# 
-# 
-# class TestFusedAttentionOpFp16(TestFusedAttentionOp):
-#     def config(self):
-#         super().config()
-#         self.x_type = np.float16
-# 
-#     def test_fused_attention_op(self):
-#         final_out_ref, x_grad_ref = self.GetBaselineOut()
-#         final_out, x_grad = self.GetFusedAttentionOut()
-#         np.testing.assert_allclose(
-#             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
-# 
-# 
+class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+
+
 class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
         self.has_cache_kv = True
-        self.training = False
         self.query_length = 1
         self.key_length, self.value_length = 1, 1
 
-    def test_fused_multi_transformer_op(self):
-        final_out_ref = self.GetBaselineOut()
-        final_out, cache_kv_out = self.GetFusedMultiTransformerOut()
-        np.testing.assert_allclose(
-            final_out_ref, final_out, rtol=1e-5, atol=1e-4)
+
+class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
 
 
 if __name__ == "__main__":
