@@ -222,7 +222,7 @@ def segment_max(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_segment_pool(data, segment_ids, "MAX")[0]
+        out, tmp = _C_ops.final_state_segment_pool(data, segment_ids, "MAX")
         return out
 
     if _non_static_mode():
