@@ -90,5 +90,6 @@ void BindAfsWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>());
 }
 #endif
+#endif
 }  // end namespace pybind
 }  // end namespace paddle

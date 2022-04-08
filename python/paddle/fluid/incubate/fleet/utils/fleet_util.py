@@ -1954,10 +1954,15 @@ class GPUPSUtil(FleetUtil):
             content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
                                                 model_path, pass_id, 0)
             if self._afs.is_file(donefile_path):
-                pre_content = self._afs.cat(donefile_path).strip()
-                pre_content_list = pre_content.split("\n")
+                self._afs.download(donefile_path, donefile_name)
+                pre_content = ""
+                with open(donefile_name, "r") as f:
+                    pre_content = f.read()
+                last_dict = json.loads(pre_content.strip().split("\n")[-1])
+                pre_content_list = pre_content.strip().split("\n")
                 day_list = [i.split("\t")[0] for i in pre_content_list]
                 pass_list = [i.split("\t")[3] for i in pre_content_list]
+                os.remove(donefile_name)
                 exist = False
                 for i in range(len(day_list)):
                     if int(day) == int(day_list[i]) and \
@@ -1966,7 +1971,7 @@ class GPUPSUtil(FleetUtil):
                         break
                 if not exist:
                     with open(donefile_name, "w") as f:
-                        f.write(pre_content + "\n")
+                        f.write(pre_content.strip() + "\n")
                         f.write(content + "\n")
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
