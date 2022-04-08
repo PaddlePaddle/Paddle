@@ -1876,6 +1876,17 @@
     data_type : x
   backward : sum_grad
 
+# The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
+- api : swish
+  args : (Tensor x, float beta=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : swish
+  backward : swish_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
