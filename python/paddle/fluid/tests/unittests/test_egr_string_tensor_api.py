@@ -44,8 +44,7 @@ class EagerStringTensorTestCase(unittest.TestCase):
                     ST2.numpy(), np.empty(
                         shape, dtype=np.unicode_)))
 
-            ST3 = core.eager.StringTensor(self.str_arr, False,
-                                          "ST3")  # constructor 3
+            ST3 = core.eager.StringTensor(self.str_arr, "ST3")  # constructor 3
             self.assertEqual(ST3.name, "ST3")
             self.assertEqual(ST3.shape, list(self.str_arr.shape))
             self.assertTrue(np.array_equal(ST3.numpy(), self.str_arr))
@@ -82,7 +81,7 @@ class EagerStringTensorTestCase(unittest.TestCase):
                         shape, dtype=np.unicode_)))
 
             ST2 = core.eager.StringTensor(
-                self.str_arr, zero_copy=False, name="ST2")  # constructor 3
+                self.str_arr, name="ST2")  # constructor 3
             self.assertEqual(ST2.name, "ST2")
             self.assertEqual(ST2.shape, list(self.str_arr.shape))
             self.assertTrue(np.array_equal(ST2.numpy(), self.str_arr))

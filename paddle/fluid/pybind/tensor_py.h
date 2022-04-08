@@ -532,7 +532,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
 
 template <typename P>
 void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
-                                const P &place, bool zero_copy) {
+                                const P &place) {
   bool is_string_pyarray =
       array.dtype().kind() == 'S' || array.dtype().kind() == 'U';
   PADDLE_ENFORCE_EQ(is_string_pyarray, true,
