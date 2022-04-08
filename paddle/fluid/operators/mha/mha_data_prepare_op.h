@@ -15,6 +15,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <numeric>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -29,26 +30,49 @@ class MHADataPrepKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     platform::Place host_pinned_place = platform::CUDAPinnedPlace();
 
-    const Tensor* qkvo_seqlen = context.Input<Tensor>("qo_kv_seqlen");
-    const int* qo_kv_slen_data = qkvo_seqlen->data<int>();
-    Tensor* qkvo_seqlen_host = context.Output<Tensor>("qo_kv_seqlen_host");
-    qkvo_seqlen_host->mutable_data<T>(host_pinned_place);
-    int* qkvo_seqlen_host_data = qkvo_seqlen_host->data<int>();
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
-        reinterpret_cast<void*>(qkvo_seqlen_host_data),
-        reinterpret_cast<const void*>(qo_kv_slen_data),
-        qkvo_seqlen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+    const Tensor* attn_mask = context.Input<Tensor>("attn_mask");
+    // TODO(Ming Huang): Use reduce_sum kernel to compute qkvo seqlen in GPU
+    // buffer.
+    // That could remove this DtoH data movement.
+    size_t attn_mask_size = attn_mask->numel() * sizeof(int);
+    memory::allocation::AllocationPtr attn_mask_host =
+        memory::Alloc(host_pinned_place, attn_mask_size);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpy(attn_mask_host->ptr(),
+                   reinterpret_cast<const void*>(attn_mask->data<int>()),
+                   attn_mask_size, cudaMemcpyDeviceToHost));
 
-    const Tensor* low_high_windows = context.Input<Tensor>("low_high_windows");
-    const int* low_high_windows_data = low_high_windows->data<int>();
+    Tensor* qo_kv_seqlen = context.Output<Tensor>("qo_kv_seqlen");
+    qo_kv_seqlen->mutable_data<T>(context.GetPlace());
+
+    Tensor* qo_kv_seqlen_host = context.Output<Tensor>("qo_kv_seqlen_host");
+    qo_kv_seqlen_host->mutable_data<T>(host_pinned_place);
+    int* qo_kv_seqlen_host_ptr = qo_kv_seqlen_host->data<int>();
+
+    int batch = attn_mask->dims()[0];
+    int seqlen = attn_mask->dims()[3];
+    int stride = phi::product(attn_mask->dims()) / batch;
+
+    int* attn_mask_host_ptr = reinterpret_cast<int*>(attn_mask_host->ptr());
+    for (int i = 0; i < batch; ++i) {
+      int* begin = attn_mask_host_ptr + stride * i;
+      int* end = begin + seqlen;
+      qo_kv_seqlen_host_ptr[i] = std::accumulate(begin, end, 0);
+      qo_kv_seqlen_host_ptr[i + batch] = qo_kv_seqlen_host_ptr[i];
+    }
+
+    size_t seqlen_array_size = qo_kv_seqlen_host->numel() * sizeof(int);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpy(reinterpret_cast<void*>(qo_kv_seqlen->data<int>()),
+                   reinterpret_cast<const void*>(qo_kv_seqlen_host_ptr),
+                   seqlen_array_size, cudaMemcpyHostToDevice));
+
     Tensor* low_high_windows_host =
         context.Output<Tensor>("low_high_windows_host");
     low_high_windows_host->mutable_data<T>(host_pinned_place);
-    int* low_high_windows_host_data = low_high_windows_host->data<int>();
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
-        reinterpret_cast<void*>(low_high_windows_host_data),
-        reinterpret_cast<const void*>(low_high_windows_data),
-        low_high_windows->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+    int* low_high_windows_host_ptr = low_high_windows_host->data<int>();
+    std::fill_n(low_high_windows_host_ptr, seqlen, 0);
+    std::fill_n(low_high_windows_host_ptr + seqlen, seqlen, seqlen);
   }
 };
 

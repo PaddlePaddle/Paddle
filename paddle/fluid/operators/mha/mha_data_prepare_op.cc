@@ -26,23 +26,16 @@ class MHADataPrepOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("qo_kv_seqlen"), "Input", "qo_kv_seqlen",
+    OP_INOUT_CHECK(ctx->HasInput("attn_mask"), "Input", "attn_mask",
                    "MHADataPrepOp");
-    OP_INOUT_CHECK(ctx->HasInput("low_high_windows"), "Input",
-                   "low_high_windows", "MHADataPrepOp");
 
-    auto qkvo_input_dims = ctx->GetInputDim("qo_kv_seqlen");
-    std::vector<int64_t> qkvo_output_dims;
-    for (int i = 0; i < qkvo_input_dims.size(); ++i) {
-      qkvo_output_dims.push_back(qkvo_input_dims[i]);
-    }
+    auto attn_mask_dims = ctx->GetInputDim("attn_mask");
+
+    std::vector<int64_t> qkvo_output_dims(1, attn_mask_dims[0] * 2);
+    ctx->SetOutputDim("qo_kv_seqlen", phi::make_ddim(qkvo_output_dims));
     ctx->SetOutputDim("qo_kv_seqlen_host", phi::make_ddim(qkvo_output_dims));
 
-    auto lo_hi_input_dims = ctx->GetInputDim("low_high_windows");
-    std::vector<int64_t> lo_hi_output_dims;
-    for (int i = 0; i < lo_hi_input_dims.size(); ++i) {
-      lo_hi_output_dims.push_back(lo_hi_input_dims[i]);
-    }
+    std::vector<int64_t> lo_hi_output_dims(1, attn_mask_dims[3] * 2);
     ctx->SetOutputDim("low_high_windows_host",
                       phi::make_ddim(lo_hi_output_dims));
   }
@@ -51,9 +44,9 @@ class MHADataPrepOp : public framework::OperatorWithKernel {
 class MHADataPrepOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("qo_kv_seqlen", "");
-    AddInput("low_high_windows", "");
+    AddInput("attn_mask", "[batch, heads, seqlen, seqlen]");
 
+    AddOutput("qo_kv_seqlen", "");
     AddOutput("qo_kv_seqlen_host", "");
     AddOutput("low_high_windows_host", "");
 

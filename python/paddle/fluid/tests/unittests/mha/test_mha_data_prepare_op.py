@@ -29,23 +29,31 @@ class TestMHADataPrepareOp(OpTest):
         self.op_type = "mha_data_prepare"
         self.init_dtype_type()
 
-        batch_size = 128
-        qo_seqlen = np.full((batch_size, ), 128, dtype=np.int32)
-        kv_seqlen = np.full((batch_size, ), 128, dtype=np.int32)
-
+        batch_size = 32
+        nheads = 64
         max_seqlen = 128
-        lo_windows = np.full((max_seqlen, ), 0, dtype=np.int32)
-        high_windows = np.full((max_seqlen, ), max_seqlen, dtype=np.int32)
+        min_seqlen = 100
+        seqlen = np.random.randint(
+            low=min_seqlen,
+            high=max_seqlen + 1,
+            size=(batch_size, ),
+            dtype=np.int32)
+        attn_mask = np.ones(
+            (batch_size, nheads, max_seqlen, max_seqlen), dtype=np.int32)
+        for i in range(batch_size):
+            attn_mask[0, :, :, seqlen[i]:] = 0
 
+        qo_seqlen = np.sum(attn_mask[:, 0, 0, :] == 1, axis=1, dtype='int32')
+        kv_seqlen = qo_seqlen
         qo_kv_seqlen = np.concatenate((qo_seqlen, kv_seqlen))
-        low_high_windows = np.concatenate((lo_windows, high_windows))
 
-        self.inputs = {
-            'qo_kv_seqlen': qo_kv_seqlen,
-            'low_high_windows': low_high_windows
-        }
+        low_windows = np.full((max_seqlen, ), 0, dtype=np.int32)
+        high_windows = np.full((max_seqlen, ), max_seqlen, dtype=np.int32)
+        low_high_windows = np.concatenate((low_windows, high_windows))
+        self.inputs = {'attn_mask': attn_mask}
 
         self.outputs = {
+            'qo_kv_seqlen': qo_kv_seqlen,
             'qo_kv_seqlen_host': qo_kv_seqlen,
             'low_high_windows_host': low_high_windows
         }
