@@ -30,8 +30,9 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
 if(WITH_ARM_BRPC)
-    FILE(WRITE ${PROTOBUF_SOURCE_DIR}/CMakeLists.txt
-    "PROJECT(ARM_PROTOBUF)\n"
+    set(GFLAGS_SOURCE_DIR ${THIRD_PARTY_PATH}/gflags/src/extern_gflags)
+    FILE(WRITE ${GFLAGS_SOURCE_DIR}/CMakeLists.txt
+    "PROJECT(ARM_GFLAGS)\n"
     "cmake_minimum_required(VERSION 3.0)\n"
     "install(DIRECTORY arm_gflags/bin  arm_gflags/include arm_gflags/lib \n"
     "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
@@ -40,7 +41,7 @@ if(WITH_ARM_BRPC)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
         PREFIX          ${PROTOBUF_PREFIX_DIR}
-        DOWNLOAD_DIR          ${PROTOBUF_SOURCE_DIR}
+        DOWNLOAD_DIR          ${GFLAGS_SOURCE_DIR}
         DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
                             && tar zxvf arm_gflags.tar.gz
         UPDATE_COMMAND  ""
