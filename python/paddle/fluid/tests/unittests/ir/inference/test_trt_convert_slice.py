@@ -58,8 +58,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
-            for starts in [[0, 1], [-4, -3]]:
-                for ends in [[2, 2], [-1, -2], [5, 5]]:
+            for starts in [[0, 1]]:
+                for ends in [[2, 2], [5, 5]]:
                     for decrease_axis in [[], [1], [2], [-1], [-100]]:
                         for infer_flags in [[-1]]:
                             dics = [{
@@ -107,7 +107,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             inputs = program_config.inputs
-            if len(attrs[0]["decrease_axis"]) != 0:
+            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) == 0:
+                return 1, 2
+            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) != 1:
+                return 0, 3
+            if dynamic_shape == False and len(attrs[0]["decrease_axis"]) != 0:
                 return 0, 3
             if dynamic_shape:
                 for i in range(len(attrs[0]["starts"])):
@@ -146,7 +150,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # TODO(inference): fix.
         # trt6 and trt7.1 has bug.
         # trt7.2 deserialize has bug.
-        # self.run_test()
+        self.run_test()
         pass
 
 
