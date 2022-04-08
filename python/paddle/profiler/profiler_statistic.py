@@ -743,9 +743,15 @@ def _build_table(statistic_data,
             TracerEventType.
             Communication] = statistic_data.distributed_summary.cpu_calls
 
-    if TracerEventType.Forward in cpu_call_times:
-        cpu_call_times[TracerEventType.Forward] = cpu_call_times[
-            TracerEventType.ProfileStep]
+    for event_type in [
+            TracerEventType.Dataloader, TracerEventType.Forward,
+            TracerEventType.Backward, TracerEventType.Optimization
+    ]:
+        event_type_name = str(event_type).split('.')[1]
+        if event_type in cpu_call_times and event_type_name in statistic_data.event_summary.model_perspective_items:
+            cpu_call_times[
+                event_type] = statistic_data.event_summary.model_perspective_items[
+                    event_type_name]
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
