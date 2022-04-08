@@ -55,11 +55,13 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
+#ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
  public:
   AfsWrapper() {}
   virtual ~AfsWrapper() {}
-  void init(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf);
+  void init(const std::string& fs_name, const std::string& fs_user,
+            const std::string& pass_wd, const std::string& conf);
   int remove(const std::string& path);
   int mkdir(const std::string& path);
   std::vector<std::string> list(const std::string& path);
@@ -76,6 +78,7 @@ class AfsWrapper {
  private:
   paddle::ps::AfsApiWrapper afs_handler_;
 };
+#endif
 
 class PSGPUWrapper {
  public:

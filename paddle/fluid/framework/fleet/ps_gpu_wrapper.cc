@@ -37,12 +37,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_PSLIB
 void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user,
                       const std::string& pass_wd, const std::string& conf) {
   int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
                               conf.c_str());
   if (ret != 0) {
-    VLOG(0) << "AFS Init Error";
+    LOG(ERROR) << "AFS Init Error";
   }
 }
 
@@ -83,6 +84,7 @@ std::string AfsWrapper::cat(const std::string& path) {
 int AfsWrapper::mv(const std::string& old_path, const std::string& dest_path) {
   return afs_handler_.mv(old_path, dest_path);
 }
+#endif
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
@@ -390,7 +392,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->worker_ptr_->pull_sparse_ptr(
+      auto tt = fleet_ptr->worker_ptr_->PullSparsePtr(
           reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
