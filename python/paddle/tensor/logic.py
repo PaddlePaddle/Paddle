@@ -16,9 +16,13 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..static import Variable
-from ..framework import VarBase as Tensor
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-# TODO: define logic functions of a tensor  
+# TODO: define logic functions of a tensor
+import paddle.fluid as fluid
+if fluid.framework._in_eager_mode_:
+    Tensor = fluid.framework.core.eager.Tensor
+else:
+    from ..framework import VarBase as Tensor
 from ..fluid.layers import is_empty  # noqa: F401
 from ..fluid.layers import logical_and  # noqa: F401
 from ..fluid.layers import logical_not  # noqa: F401
@@ -182,8 +186,8 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_equal(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.equal(x, y)
@@ -232,8 +236,8 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_greater_equal(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_greater_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_equal(x, y)
@@ -383,8 +387,8 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        axis = -1
-        return _C_ops.final_state_less_than(x, y, axis)
+        default_axis = -1
+        return _C_ops.final_state_less_than(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_than(x, y)
