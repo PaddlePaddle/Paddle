@@ -172,5 +172,83 @@ class TestFakeDequantizeMaxAbsOp5Bits(TestFakeDequantizeMaxAbsOp):
         self.data_type = "float32"
 
 
+class TestChannelWiseDequantizeOp(OpTest):
+    def set_args(self):
+        self.bit_length = 8
+        self.data_type = "float32"
+        self.quant_axis = 0
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "dequantize_linear"
+        x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
+        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
+                                                  self.quant_axis)
+        ydq = channel_wise_dequantize_max_abs(yq, scale, self.bit_length,
+                                              self.quant_axis)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+        print('TestChannelWiseDequantizeOp:')
+        self.inputs = {'X': yq, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis
+        }
+        self.outputs = {'Y': ydq}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
+    def set_args(self):
+        self.bit_length = 8
+        self.data_type = "float32"
+        self.quant_axis = 1
+
+
+class TestDequantizeOp(OpTest):
+    def set_args(self):
+        self.bit_length = 8
+        self.quant_axis = -1
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float32"
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "dequantize_linear"
+        x = np.random.randn(31, 65).astype(self.data_type)
+        yq, scale = quantize_max_abs(x, self.max_range)
+        ydq = dequantize_max_abs(yq, scale, self.max_range)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': yq, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis
+        }
+        self.outputs = {'Y': ydq}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestDequantizeOpDouble(TestDequantizeOp):
+    def set_args(self):
+        self.bit_length = 8
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float64"
+        self.quant_axis = -1
+
+
+class TestDequantizeOp5Bits(TestDequantizeOp):
+    def set_args(self):
+        self.bit_length = 5
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float32"
+        self.quant_axis = -1
+
+
 if __name__ == "__main__":
     unittest.main()

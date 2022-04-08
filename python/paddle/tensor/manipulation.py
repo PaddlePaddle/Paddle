@@ -76,9 +76,6 @@ def fill_(x, value):
                             float(value), "value_int", int(value))
 
 
-setattr(core.VarBase, 'fill_', fill_)
-
-
 @dygraph_only
 def zero_(x):
     """
@@ -105,9 +102,6 @@ def zero_(x):
 
     """
     return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
-
-
-setattr(core.VarBase, 'zero_', zero_)
 
 
 @dygraph_only
@@ -154,9 +148,6 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
                                      'wrap', wrap)
     return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
                                  True)
-
-
-setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
 
 
 def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
@@ -226,9 +217,6 @@ def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
         x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
 
 
-setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
-
-
 def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
     """
     This function fill the source Tensor y into the x Tensor's diagonal.
@@ -262,12 +250,6 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
         x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
 
 
-setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
-
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
-
-
 @dygraph_only
 def tolist(x):
     """
@@ -299,9 +281,6 @@ def tolist(x):
 
     """
     return x.numpy().tolist()
-
-
-setattr(core.VarBase, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):
@@ -479,6 +458,10 @@ def flip(x, axis, name=None):
     """
     if isinstance(axis, int):
         axis = [axis]
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_flip(x, axis)
+
     if paddle.in_dynamic_mode():
         return _C_ops.flip(x, "axis", axis)
 
@@ -697,7 +680,11 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        dy_out, _ = _C_ops.final_state_flatten(x, start_axis, stop_axis)
+        return dy_out
+
+    if _in_legacy_dygraph():
         dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
                                                     'stop_axis', stop_axis)
         return dy_out
@@ -796,7 +783,10 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_roll(x, shifts, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     helper = LayerHelper("roll", **locals())
@@ -1225,11 +1215,16 @@ def unique(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
-        out, inverse, indices, counts = _C_ops.unique(
-            x, 'dtype', attr_dtype, 'return_index', return_index,
-            'return_inverse', return_inverse, 'return_counts', return_counts,
-            'axis', axis, "is_sorted", True)
+    if _non_static_mode():
+        if in_dygraph_mode():
+            out, indices, inverse, counts = _C_ops.final_state_unique(
+                x, return_index, return_inverse, return_counts, axis,
+                attr_dtype)
+        if _in_legacy_dygraph():
+            out, inverse, indices, counts = _C_ops.unique(
+                x, 'dtype', attr_dtype, 'return_index', return_index,
+                'return_inverse', return_inverse, 'return_counts',
+                return_counts, 'axis', axis, "is_sorted", True)
         outs = [out]
         if return_index:
             outs.append(indices)
@@ -1409,9 +1404,9 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    #if in_dygraph_mode():
-    #return _C_ops.final_state_gather(x, index, axis)
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_gather(x, index, axis)
+    if _in_legacy_dygraph():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
@@ -1478,6 +1473,9 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_unbind(input, axis)
+
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
@@ -1486,7 +1484,7 @@ def unbind(input, axis=0):
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.unbind(input, num, 'axis', axis)
 
     helper = LayerHelper("unbind", **locals())
@@ -1765,6 +1763,11 @@ def tile(x, repeat_times, name=None):
             # [[1, 2, 3, 1, 2, 3]]
     """
     if in_dygraph_mode():
+        if isinstance(repeat_times, core.eager.Tensor):
+            assert (repeat_times.ndim == 1,
+                    "Only support ndim == 1 while repeat_times is a Tensor.")
+            repeat_times = repeat_times.numpy().tolist()
+
         return _C_ops.final_state_tile(x, repeat_times)
 
     if _in_legacy_dygraph():
@@ -1851,6 +1854,9 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand_as(x, None, y.shape)
+
     if _non_static_mode():
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
@@ -2958,3 +2964,17 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     values = paddle.broadcast_to(values, indices.shape)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
+
+
+# TODO(dev): We need avoid implementing it by this way.
+__METHODS = {
+    'fill_': fill_,
+    'zero_': zero_,
+    'fill_diagonal_': fill_diagonal_,
+    'fill_diagonal_tensor_': fill_diagonal_tensor_,
+    "fill_diagonal_tensor": fill_diagonal_tensor,
+    'tolist': tolist
+}
+for name, func in __METHODS.items():
+    setattr(core.VarBase, name, func)
+    setattr(core.eager.Tensor, name, func)

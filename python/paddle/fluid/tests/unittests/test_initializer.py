@@ -655,7 +655,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):
-    def test_uniform_initializer(self, dtype="float32"):
+    def func_uniform_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
@@ -679,9 +679,14 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_uniform_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_uniform_initializer()
+        self.func_uniform_initializer()
+
 
 class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
-    def test_order(self):
+    def func_order(self):
         paddle.set_device('cpu')
         SEED = 123
         weight_attr = paddle.framework.ParamAttr(
@@ -723,6 +728,11 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
         self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
 
+    def test_order(self):
+        with framework._test_eager_guard():
+            self.func_order()
+        self.func_order()
+
 
 # 2-D Parameter with shape: [10, 15]
 class TestOrthogonalInitializer1(unittest.TestCase):
@@ -742,7 +752,7 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         self.assertTrue(np.array_equal(a, b))
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
 
-    def test_orthogonal(self):
+    def func_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -776,6 +786,11 @@ class TestOrthogonalInitializer1(unittest.TestCase):
             res_static = exe.run(start_prog, fetch_list=[linear.weight])[0]
 
         self.check_result(res_dygraph, res_static)
+
+    def test_orthogonal(self):
+        with framework._test_eager_guard():
+            self.func_orthogonal()
+        self.func_orthogonal()
 
 
 # 2-D Parameter with shape: [15, 10]
@@ -841,7 +856,7 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         a = a.reshape(6, -1)
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
 
-    def test_orthogonal(self):
+    def func_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -868,6 +883,11 @@ class TestOrthogonalInitializer4(unittest.TestCase):
             res_static = exe.run(paddle.static.default_startup_program(),
                                  fetch_list=[conv2d.weight])[0]
         self.check_result(res_dygraph, res_static)
+
+    def test_orthogonal(self):
+        with framework._test_eager_guard():
+            self.func_orthogonal()
+        self.func_orthogonal()
 
 
 # 4-D Parameter with shape: [50, 4, 3, 3]
@@ -928,7 +948,7 @@ class TestDiracInitializer1(unittest.TestCase):
         self.assertTrue(np.array_equal(w_dygraph, w_static))
         self.assertTrue(np.array_equal(conv_out, conv_in[:, 0:2, 1:9]))
 
-    def test_dirac(self):
+    def func_dirac(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -970,6 +990,11 @@ class TestDiracInitializer1(unittest.TestCase):
 
         self.check_result(weight_dygraph, weight_static, conv_input,
                           conv_output)
+
+    def test_dirac(self):
+        with framework._test_eager_guard():
+            self.func_dirac()
+        self.func_dirac()
 
 
 # initialize Conv2D weight
