@@ -1572,7 +1572,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       }
-      core_ops_args_info[op_type].push_back(output_var_name);
+      core_ops_args_info[op_type].push_back(output_name);
 
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
       // In inplace op, replace the output with the input directly.
@@ -1707,9 +1707,30 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       }
     }
   }
-  generated_function_body += "\n";
 
   VLOG(6) << "Generated Outs Map";
+
+  // [Generation] Apply View Strategy (Tensor)
+  if (inplace_map.empty() && view_op_map.count(op_type)) {
+    const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT =
+        "  if (ins.count(\"%s\") && outs.count(\"%s\")) {\n"
+        "    egr::EagerUtils::HandleViewBetweenInputAndOutput(ins[\"%s\"][0], "
+        "outs[\"%s\"][0]);\n"
+        "  };\n";
+
+    std::string view_strategy_str = "";
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
+        viwe_input_name, viwe_output_name);
+
+    generated_function_body += view_strategy_str;
+    generated_function_body += "\n";
+
+    VLOG(6) << "Generated View Strategy";
+  }
+  generated_function_body += "\n";
 
   // [Generation] Get Attrs
   dygraph_function_args_str +=
@@ -1803,7 +1824,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           // Bump inplace version of inplace tensor.
           auto inplace_input_name = inplace_map[output_name];
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  egr::EagerUtils::ModifyInplaceInput(outs[\"%s\"][0], &%s);\n"
+              "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n"
               "  %s.bump_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
@@ -2458,22 +2479,23 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  void ClearTensorWrappers() override { \n"
       "%s\n"
-      "    is_tensor_wrappers_cleared = true;\n"
+      "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
+      "\n"
+      "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
+      "    auto copied_node = std::shared_ptr<GradNode%s>(new "
+      "GradNode%s(*this));\n "
+      "    return copied_node;\n "
+      "}}\n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
-      "  bool IsTensorWrappersCleared() override { \n"
-      "    return is_tensor_wrappers_cleared;\n"
-      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
-      "   bool is_tensor_wrappers_cleared = false;\n"
-      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2580,8 +2602,9 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
-      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, op_type, op_type,
+      set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
+      attr_members_str);
 
   return grad_node_str;
 }
@@ -2630,7 +2653,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
+      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -2782,7 +2806,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (infer_inplace && !special_inplace_op_set.count(op_type)) {
       auto in_to_outs = infer_inplace(true);
       for (auto& inplace_pair : in_to_outs) {
         inplace_map[inplace_pair.second] = inplace_pair.first;

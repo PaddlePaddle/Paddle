@@ -61,8 +61,6 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
 
-    export FLAGS_use_curand=True
-
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
@@ -2778,7 +2776,8 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 gpu; example_error=$?
+        SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2

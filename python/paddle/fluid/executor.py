@@ -394,9 +394,11 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+
+    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
+
     return flag
 
 
@@ -1274,7 +1276,7 @@ class Executor(object):
 
         """
         try:
-            return self._run_impl(
+            res = self._run_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1285,6 +1287,8 @@ class Executor(object):
                 use_program_cache=use_program_cache,
                 use_prune=use_prune,
                 return_merged=return_merged)
+            core.update_autotune_status()
+            return res
         except Exception as e:
             six.reraise(*sys.exc_info())
 
@@ -1375,6 +1379,10 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
+            if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu():
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
@@ -1385,6 +1393,8 @@ class Executor(object):
                 # else:
                 #     return False
             else:
+                if isinstance(program._graph, compiler.CompiledProgram):
+                    return False
                 assert isinstance(program, Program)
                 return True
 
