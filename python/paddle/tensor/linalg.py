@@ -662,9 +662,13 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+            if in_dygraph_mode():
+                sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+            else:
+                sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                            keepdim, 'reduce_all', reduce_all)
             if porder == 1 or porder == np.inf:
                 return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                          keepdim, 'reduce_all', reduce_all)
