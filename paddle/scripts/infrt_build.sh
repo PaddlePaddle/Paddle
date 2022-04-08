@@ -42,7 +42,7 @@ function update_pd_ops() {
    fi
 
    cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=$INFER_WITH_GPU -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j24 paddle_python print_pten_kernels kernel_signature_generator
+   make -j paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
    ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
    ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
