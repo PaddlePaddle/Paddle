@@ -127,7 +127,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_allclose(x, y,
+                                           as_tensor(rtol),
+                                           as_tensor(atol), equal_nan)
     if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
@@ -689,7 +694,12 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_isclose(x, y,
+                                          as_tensor(rtol),
+                                          as_tensor(atol), equal_nan)
     if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',
