@@ -76,6 +76,8 @@ DEFINE_string(mkl_dir,
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
+DEFINE_string(cusparselt_dir, "", "Specify path for loading libcusparseLt.so.");
+
 #ifdef PADDLE_WITH_HIP
 
 DEFINE_string(miopen_dir,
@@ -575,6 +577,19 @@ void* GetMKLRTDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_rt.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.so");
+#endif
+}
+
+void* GetCusparseLtDsoHandle() {
+// APIs available after CUDA 11.2
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+  return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
+#else
+  std::string warning_msg(
+      "Your CUDA_VERSION less 11.2, not support cusparseLt. "
+      "If you want to use cusparseLt, please upgrade CUDA and rebuild "
+      "PaddlePaddle.");
+  return nullptr;
 #endif
 }
 

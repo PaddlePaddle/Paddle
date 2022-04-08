@@ -1925,6 +1925,20 @@ struct AddSupportInt8 : public PatternBase {
   PATTERN_DECL_NODE(quant_out);
 };
 
+//
+// \brief   Pattern looking for dense fc.
+//
+struct DenseFC : public PatternBase {
+  DenseFC(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dense_fc") {}
+
+  PDNode* operator()();
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(fc_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

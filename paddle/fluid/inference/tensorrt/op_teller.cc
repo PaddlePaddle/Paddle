@@ -45,6 +45,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
 #endif
+#if IS_TRT_VERSION_GE(8200)
+    teller_set.insert("sparse_fc");
+    int8_teller_set.insert("sparse_fc");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -1693,6 +1697,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+
+#if IS_TRT_VERSION_GE(8200)
+    if (op_type == "sparse_fc") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the sparse_fc does not support static shape yet";
+        return false;
+      }
+    }
+#endif
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

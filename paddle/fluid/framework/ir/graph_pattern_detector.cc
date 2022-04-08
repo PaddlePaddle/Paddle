@@ -3401,6 +3401,16 @@ PDNode *patterns::AddSupportInt8::operator()() {
   return quant_out;
 }
 
+PDNode *patterns::DenseFC::operator()() {
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto *fc_out =
+      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
+
+  fc->LinksTo({fc_out});
+
+  return fc_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
