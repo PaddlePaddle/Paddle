@@ -75,8 +75,6 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     bool multi_precision,
     float rescale_grad);
 
-std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
-
 ////////////////// Backward(grad) api impls //////////////////////
 
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
