@@ -846,6 +846,10 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_layout(StringToDataLayout(layout));
            })
       .def("_alloc_float",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("_alloc_float",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -874,6 +878,10 @@ PYBIND11_MODULE(core_noavx, m) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("_alloc_int",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
@@ -897,6 +905,12 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+           })
+      .def("_mutable_data",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
@@ -934,6 +948,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CustomPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
@@ -947,6 +963,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CustomPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
@@ -1987,6 +2005,19 @@ All parameter, weight, gradient are variables in Paddle.
                 return new paddle::platform::NPUDeviceContext(place);
 #endif
         })
+        .def_static("create",
+                    [](paddle::platform::CustomPlace& place)
+                        -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                 "Please recompile or reinstall Paddle with "
+                 "CustomDevice support."));
+#else
+                return new paddle::platform::CustomDeviceContext(place);
+#endif
+        })
       .def_static("create",
                   [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
@@ -2722,6 +2753,12 @@ All parameter, weight, gradient are variables in Paddle.
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::CustomPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -2867,7 +2904,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
              platform::RecordEvent record_event(
-                 "StandaloneExecutor:run",
+                 "StandaloneExecutor::run",
                  platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
@@ -4458,6 +4495,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
+#ifdef PADDLE_WITH_PSLIB
+  BindAfsWrapper(&m);
+#endif
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
