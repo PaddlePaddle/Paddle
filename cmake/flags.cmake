@@ -213,9 +213,9 @@ if(WITH_HETERPS AND WITH_PSLIB)
 endif()
 
 if(WITH_ARM_BRPC)
-    set(COMMON_FLAGS
-        -D_GLIBCXX_USE_CXX11_ABI=0
-        ${COMMON_FLAGS})
+    #set(COMMON_FLAGS
+    #    -D_GLIBCXX_USE_CXX11_ABI=0
+    #    ${COMMON_FLAGS})
 endif()
 
 if(LINUX)
