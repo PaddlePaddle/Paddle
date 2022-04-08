@@ -751,7 +751,7 @@ def _build_table(statistic_data,
         if event_type in cpu_call_times and event_type_name in statistic_data.event_summary.model_perspective_items:
             cpu_call_times[
                 event_type] = statistic_data.event_summary.model_perspective_items[
-                    event_type_name]
+                    event_type_name].call
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
