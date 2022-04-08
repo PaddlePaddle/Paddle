@@ -425,6 +425,8 @@ void GraphSampleNeighborsKernel(
                                              return_eids);
     }
   } else {
+    // How to set null value for output_eids(thrust::device_ptr<T>)?
+    // We use `output` to fill the position of unused output_eids.
     if (!flag_perm_buffer) {
       SampleNeighbors<T, Context>(dev_ctx,
                                   row_data,
@@ -433,7 +435,7 @@ void GraphSampleNeighborsKernel(
                                   input,
                                   output,
                                   output_count,
-                                  nullptr,
+                                  output,
                                   sample_size,
                                   bs,
                                   total_sample_size,
@@ -452,7 +454,7 @@ void GraphSampleNeighborsKernel(
                                              input,
                                              output,
                                              output_count,
-                                             nullptr,
+                                             output,
                                              sample_size,
                                              bs,
                                              total_sample_size,
