@@ -42,6 +42,7 @@ class TestAssignOp(op_test.OpTest):
 
 class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
+        self.python_api = paddle.assign
         self.op_type = "assign"
         x = np.random.random(size=(100, 10)).astype('float16')
         self.inputs = {'X': x}
