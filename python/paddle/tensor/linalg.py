@@ -3064,7 +3064,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
 def corrcoef(x, rowvar=True, name=None):
     """
     
-    A correlation coefficient matrix indicate the ccorrelation of each pair variables in the input matrix.
+    A correlation coefficient matrix indicate the correlation of each pair variables in the input matrix.
     For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
     element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.
 
@@ -3078,27 +3078,26 @@ def corrcoef(x, rowvar=True, name=None):
     Parameters:
 
         x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
-        rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True
-        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+        rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`.
 
     Returns:
 
         The correlation coefficient matrix of the variables.
 
     Examples:
-
-    .. code-block:: python
-        :name: code-example1
+        .. code-block:: python
+          :name: code-example1
         
-        import paddle
+            import paddle
 
-        xt = paddle.rand((3,4))
-        print(paddle.linalg.corrcoef(xt))
+            xt = paddle.rand((3,4))
+            print(paddle.linalg.corrcoef(xt))
 
-       # Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-       # [[ 1.        , -0.73702252,  0.66228950],
-       # [-0.73702258,  1.        , -0.77104872],
-       # [ 0.66228974, -0.77104825,  1.        ]])
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # [[ 1.        , -0.73702252,  0.66228950],
+            # [-0.73702258,  1.        , -0.77104872],
+            # [ 0.66228974, -0.77104825,  1.        ]])
 
     """
     if len(x.shape) > 2 or len(x.shape) < 1:
