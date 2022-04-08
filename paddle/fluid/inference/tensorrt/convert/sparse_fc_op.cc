@@ -78,9 +78,11 @@ class SparseFcOpConverter : public OpConverter {
     return reshape_after_fc_layer;
   }
 
-  plugin::SpmmPluginDynamic* new_spmm_plugin(
-      const TensorRTEngine::Weight& weight, const TensorRTEngine::Weight& bias,
-      const std::string& activation_type, nvinfer1::DataType type, int outdim) {
+  plugin::SpmmPluginDynamic* new_spmm_plugin(TensorRTEngine::Weight* weight,
+                                             TensorRTEngine::Weight* bias,
+                                             const std::string& activation_type,
+                                             nvinfer1::DataType type,
+                                             int outdim) {
     plugin::SpmmPluginDynamic::Activation act =
         plugin::SpmmPluginDynamic::Activation::kNone;
     if (activation_type == "relu") {
@@ -92,7 +94,8 @@ class SparseFcOpConverter : public OpConverter {
                                                    activation_type.c_str()));
     }
     return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", type,
-                                         outdim, weight.get(), bias.get(), act);
+                                         outdim, weight->get(), bias->get(),
+                                         act);
   }
 
   void operator()(const framework::proto::OpDesc& op,
@@ -162,8 +165,8 @@ class SparseFcOpConverter : public OpConverter {
     };
 
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
-                         TensorRTEngine::Weight& weight,
-                         TensorRTEngine::Weight& bias) {
+                         TensorRTEngine::Weight* weight,
+                         TensorRTEngine::Weight* bias) {
       if (enable_int8 || support_int8) {
         // add conv layer
         float out_scale = 0;
@@ -254,7 +257,7 @@ class SparseFcOpConverter : public OpConverter {
         x_dim.d[3] == 1 && x_num_col_dims == 2) {
       if (enable_int8 || support_int8) {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            weight, bias, activation_type, nvinfer1::DataType::kINT8, n);
+            &weight, &bias, activation_type, nvinfer1::DataType::kINT8, n);
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.emplace_back(X);
         auto fc_layer_int8 = engine_->network()->addPluginV2(
@@ -263,7 +266,7 @@ class SparseFcOpConverter : public OpConverter {
                                  {output_name}, test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            weight, bias, activation_type, nvinfer1::DataType::kFLOAT, n);
+            &weight, &bias, activation_type, nvinfer1::DataType::kFLOAT, n);
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.emplace_back(X);
         auto fc_layer_float = engine_->network()->addPluginV2(
@@ -285,7 +288,7 @@ class SparseFcOpConverter : public OpConverter {
       if (enable_int8 || support_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
-      regist_fc(reshape_itensor, n_output, weight, bias);
+      regist_fc(reshape_itensor, n_output, &weight, &bias);
     }
   }
 };
