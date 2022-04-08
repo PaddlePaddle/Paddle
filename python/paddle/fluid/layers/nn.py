@@ -200,7 +200,7 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'final_state_minimum',
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
-    # 'elementwise_add': 'final_state_add',
+    'elementwise_add': 'final_state_add',
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
@@ -4623,8 +4623,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
-        # if paddle.in_dynamic_mode():
-        #     return _C_ops.final_state_sum(input, dim, None, keep_dim)
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
     attrs = {

@@ -777,9 +777,13 @@ def cond(x, p=None, name=None):
 
         u, s, vh = svd(input, full_matrices=False)
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             if porder == "nuc":
-                return _C_ops.final_state_sum(s, axis, None, keepdim)
+                if in_dygraph_mode():
+                    return _C_ops.final_state_sum(s, axis, None, keepdim)
+                else:
+                    return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
+                                             'reduce_all', reduce_all)
             max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
