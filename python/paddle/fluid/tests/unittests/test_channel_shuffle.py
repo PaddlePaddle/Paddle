@@ -186,7 +186,6 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 class TestChannelShuffleError(unittest.TestCase):
     def test_error_functional(self):
-
         def error_input():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
