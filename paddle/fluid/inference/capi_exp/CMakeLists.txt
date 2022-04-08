@@ -14,8 +14,8 @@
 #
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
-get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 set(utils_modules stringpiece pretty_log string_helper)
 
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc pd_utils.cc)
