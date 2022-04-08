@@ -43,6 +43,16 @@ def static_program(net, data):
     return loss
 
 
+def set_flags(enable_autotune):
+    if paddle.is_compiled_with_cuda():
+        if enable_autotune:
+            paddle.set_flags({'FLAGS_conv_workspace_size_limit': -1})
+            paddle.set_flags({'FLAGS_cudnn_exhaustive_search': 1})
+        else:
+            paddle.set_flags({'FLAGS_conv_workspace_size_limit': 512})
+            paddle.set_flags({'FLAGS_cudnn_exhaustive_search': 0})
+
+
 class TestAutoTune(unittest.TestCase):
     def test_autotune(self):
         paddle.fluid.core.disable_autotune()
@@ -61,10 +71,9 @@ class TestAutoTune(unittest.TestCase):
 
 class TestDygraphAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
+        set_flags(enable_autotune)
         if enable_autotune:
             paddle.fluid.core.enable_autotune()
-            if paddle.is_compiled_with_cuda():
-                paddle.set_flags({'FLAGS_conv_workspace_size_limit': -1})
         else:
             paddle.fluid.core.disable_autotune()
         paddle.fluid.core.autotune_range(1, 2)
@@ -99,10 +108,9 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
 class TestStaticAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
         paddle.enable_static()
+        set_flags(enable_autotune)
         if enable_autotune:
             paddle.fluid.core.enable_autotune()
-            if paddle.is_compiled_with_cuda():
-                paddle.set_flags({'FLAGS_conv_workspace_size_limit': -1})
         else:
             paddle.fluid.core.disable_autotune()
         paddle.fluid.core.autotune_range(1, 2)
