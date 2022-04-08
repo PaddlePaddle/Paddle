@@ -110,7 +110,8 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     std::vector<ncclUniqueId>& nccl_ids) {  // NOLINT
   if (rank_ == 0) {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       auto nccl_id = std::vector<uint8_t>(
           reinterpret_cast<uint8_t*>(&nccl_ids[i]),
           reinterpret_cast<uint8_t*>(&nccl_ids[i]) + NCCL_UNIQUE_ID_BYTES);
@@ -118,7 +119,8 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     }
   } else {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       auto ret = store_->get(key);
       std::memcpy(&nccl_ids[i], ret.data(), ret.size());
     }
@@ -224,6 +226,43 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     task->control_events_[i].Record(*places_to_ctx_[key][i]);
   }
   return task;
+}
+
+template <typename Fn>
+void ProcessGroupNCCL::Collective(const phi::DenseTensor* in,
+                                  phi::DenseTensor* out, Fn fn,
+                                  CommType op_type) {
+  std::vector<Place> places;
+  places.push_back(in->place());
+  const auto key = GetKeyFromPlaces(places);
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (places_to_ncclcomm_.find(key) == places_to_ncclcomm_.end()) {
+      CreateNCCLManagerCache(key, places);
+    }
+  }
+
+  auto& nccl_comms = places_to_ncclcomm_[key];
+
+  SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+
+  // construct uninitialize guard for device
+  platform::CUDADeviceGuard cuda_guard;
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    cuda_guard.SetDevice(places[0]);
+    memory::RecordStream(in->Holder(), places_to_ctx_[key][0]->stream());
+  }
+
+  {
+    platform::NCCLGroupGuard nccl_guard;
+    cuda_guard.SetDevice(places[0]);
+    const auto& nccl_stream = places_to_ctx_[key][0]->stream();
+    fn(in, out, nccl_comms[0]->GetNcclComm(), nccl_stream);
+  }
+
+  cuda_guard.SetDevice(places[0]);
 }
 
 template <typename Fn>

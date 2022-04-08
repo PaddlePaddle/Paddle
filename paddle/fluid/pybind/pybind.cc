@@ -2867,7 +2867,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
              platform::RecordEvent record_event(
-                 "StandaloneExecutor:run",
+                 "StandaloneExecutor::run",
                  platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
@@ -4458,6 +4458,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
+#ifdef PADDLE_WITH_PSLIB
+  BindAfsWrapper(&m);
+#endif
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
