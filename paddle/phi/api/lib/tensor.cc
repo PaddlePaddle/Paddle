@@ -101,7 +101,11 @@ int64_t Tensor::size() const { return impl_->numel(); }
 phi::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return phi::vectorize<int64_t>(impl_->dims());
+  auto dims = impl_->dims();
+  if (dims.size() == 1 && dims.at(0) == 0) {
+    return {};
+  }
+  return phi::vectorize<int64_t>(dims);
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
@@ -354,6 +358,11 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
   return autograd_meta_.get();
 }
 
+const std::shared_ptr<AbstractAutogradMeta> &Tensor::mutable_autograd_meta()
+    const {
+  return autograd_meta_;
+}
+
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);
@@ -382,6 +391,17 @@ uint32_t Tensor::current_inplace_version() {
         "current_inplace_version is only supported on DenseTensor now."));
   }
   return 0;
+}
+
+void Tensor::reset_inplace_version(bool set_to_zero) {
+  if (set_to_zero) {
+    if (is_dense_tensor()) {
+      auto &inplace_version_counter =
+          std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+              ->InplaceVersionCounter();
+      inplace_version_counter.SetInplaceVersionToZero();
+    }
+  }
 }
 
 }  // namespace experimental

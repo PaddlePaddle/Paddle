@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
@@ -109,15 +109,30 @@ def graph_send_recv(x,
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if _non_static_mode():
-        if out_size is None or out_size <= 0:
+    if out_size is None or out_size <= 0:
+        if _in_legacy_dygraph():
             out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index,
                                               'pool_type', pool_type.upper())
-        else:
+            return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
+                                                      pool_type.upper(), 0)
+    else:
+        if _in_legacy_dygraph():
             out, tmp = _C_ops.graph_send_recv(
                 x, src_index, dst_index, 'pool_type',
                 pool_type.upper(), 'out_size', out_size)
-        return out
+            return out
+        if in_dygraph_mode():
+            if isinstance(out_size, core.eager.Tensor):
+                if (out_size.size < 1):
+                    raise ValueError(
+                        "out_size should be long type, but received Tensor type."
+                    )
+                out_size = out_size.numpy()[0]
+            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
+                                                      pool_type.upper(),
+                                                      out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
                              "graph_send_recv")

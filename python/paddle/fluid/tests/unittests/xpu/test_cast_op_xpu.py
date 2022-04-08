@@ -23,6 +23,9 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from op_test_xpu import XPUOpTest
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 typeid_dict = {
     'int32': int(core.VarDesc.VarType.INT32),
@@ -33,10 +36,27 @@ typeid_dict = {
 }
 
 
-def create_test_class(in_typename, out_typename):
-    class Cls(op_test.OpTest):
+class XPUTestCastOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'cast'
+        self.use_dynamic_create_class = True
+
+    def dynamic_create_class(self):
+        base_class = self.TestCastOp
+        classes = []
+        for out_type in {'float16', 'float32', 'int32', 'int64'}:
+            class_name = 'XPUTestCastOp_outtype_' + out_type
+            attr_dict = {'out_typename': out_type}
+            classes.append([class_name, attr_dict])
+        return base_class, classes
+
+    class TestCastOp(XPUOpTest):
         def setUp(self):
             ipt = np.random.random(size=[10, 10])
+            in_typename = self.in_type_str
+            out_typename = 'float32' if not hasattr(
+                self, 'out_typename') else self.out_typename
+
             self.inputs = {'X': ipt.astype(in_typename)}
             self.outputs = {'Out': ipt.astype(in_typename).astype(out_typename)}
             self.attrs = {
@@ -47,18 +67,12 @@ def create_test_class(in_typename, out_typename):
             self.__class__.no_need_check_grad = True
 
         def test_check_output(self):
-            if paddle.is_compiled_with_xpu():
-                place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
-
-    cls_name = "cast_{0}_{1}".format(in_typename, out_typename)
-    Cls.__name__ = cls_name
-    globals()[cls_name] = Cls
+            self.check_output()
 
 
-for in_type in {'float16', 'float32', 'int32', 'int64', 'bool'}:
-    for out_type in {'float16', 'float32', 'int32', 'int64'}:
-        create_test_class(in_type, out_type)
+support_types = get_xpu_op_support_types('cast')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCastOp, stype)
 
 
 class TestCastOpError(unittest.TestCase):
