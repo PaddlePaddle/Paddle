@@ -715,6 +715,8 @@ class TestModelFunction(unittest.TestCase):
         paddle.summary(nlp_net, (1, 1, 2))
 
     def test_static_flops(self):
+        if paddle.fluid.framework._in_eager_without_dygraph_check():
+            return
         paddle.disable_static()
         net = models.__dict__['mobilenet_v2'](pretrained=False)
         inputs = paddle.randn([1, 3, 224, 224])

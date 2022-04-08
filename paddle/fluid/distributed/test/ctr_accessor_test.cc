@@ -75,8 +75,8 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
           << acc->common_feature_value.embedx_sgd_dim << " "
           << acc->common_feature_value.Dim() << "\n";
 
-  float* value = new float[acc->Dim()];
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  float* value = new float[acc->GetAccessorInfo().dim];
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     value[i] = i * 1.0;
   }
   ASSERT_TRUE(!acc->Shrink(value));
@@ -94,8 +94,8 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_EQ(acc->Configure(parameter), 0);
   ASSERT_EQ(acc->Initialize(), 0);
 
-  float* value = new float[acc->Dim()];
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  float* value = new float[acc->GetAccessorInfo().dim];
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     value[i] = i * 1.0;
   }
 
@@ -109,7 +109,7 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_TRUE(acc->Save(value, 2));
 
   VLOG(3) << "test_save:";
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     VLOG(3) << value[i];
   }
 }
@@ -145,7 +145,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   ASSERT_EQ(acc->Initialize(), 0);
 
   VLOG(3) << "dim: " << acc->common_feature_value.Dim() << "\n";
-  VLOG(3) << "update_dim: " << acc->GetTableInfo(UPDATE_DIM) << "\n";
+  VLOG(3) << "update_dim: " << acc->GetAccessorInfo().update_dim << "\n";
 
   const int field_size = 7 + 8;
   const int item_size = 10;
@@ -162,9 +162,9 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   typedef const float* const_float_ptr;
   const_float_ptr* grad = new const_float_ptr[item_size];
   for (auto i = 0u; i < item_size; ++i) {
-    float* p = new float[acc->GetTableInfo(UPDATE_DIM)];
-    for (auto j = 0u; j < acc->GetTableInfo(UPDATE_DIM); ++j) {
-      p[j] = i;
+    float* p = new float[acc->GetAccessorInfo().update_dim];
+    for (auto j = 0u; j < acc->GetAccessorInfo().update_dim; ++j) {
+      p[j] = i + 1;
     }
     grad[i] = p;
   }
@@ -244,21 +244,21 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.unseen_days = 0;
     v.show += push_v.show;
     v.click += push_v.click;
-    v.delta_score += acc->show_click_score(push_v.show, push_v.click);
+    v.delta_score += acc->ShowClickScore(push_v.show, push_v.click);
 
-    acc->_embed_sgd_rule->update_value(&v.embed_w, &v.embed_g2sum[0],
-                                       &push_v.embed_g);
-    acc->_embedx_sgd_rule->update_value(&v.embedx_w[0], &v.embedx_g2sum[0],
-                                        &push_v.embedx_g[0]);
+    acc->_embed_sgd_rule->UpdateValue(&v.embed_w, &v.embed_g2sum[0],
+                                      &push_v.embed_g, push_v.show);
+    acc->_embedx_sgd_rule->UpdateValue(&v.embedx_w[0], &v.embedx_g2sum[0],
+                                       &push_v.embedx_g[0], push_v.show);
 
-    float* ptr = new float[acc->Dim()];
+    float* ptr = new float[acc->GetAccessorInfo().dim];
     v.to_array(ptr, parameter.embedx_dim());
     exp_value.push_back(ptr);
   }
   acc->Update(value, grad, item_size);
 
   for (auto i = 0u; i < item_size; ++i) {
-    for (auto j = 0u; j < acc->Dim(); ++j) {
+    for (auto j = 0u; j < acc->GetAccessorInfo().dim; ++j) {
       VLOG(3) << value[i][j] << ":" << exp_value[i][j] << " ";
       ASSERT_FLOAT_EQ(value[i][j], exp_value[i][j]);
     }
@@ -273,7 +273,7 @@ TEST(downpour_feature_value_accessor_test, test_show_click_score) {
 
   float show = 10;
   float click = 6;
-  ASSERT_FLOAT_EQ(acc->show_click_score(show, click), 6.8);
+  ASSERT_FLOAT_EQ(acc->ShowClickScore(show, click), 6.8);
 }
 
 TEST(downpour_feature_value_accessor_test, test_string_related) {

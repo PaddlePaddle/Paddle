@@ -1,46 +1,25 @@
-// RUN: infrtexec -i %s | FileCheck %s
+module  {
+  func @main_graph(%arg0: !infrt.dense_tensor<CPU, FP32, ANY>) -> !infrt.dense_tensor<CPU, FP32, ANY> {
+    %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
+    %0 = "phi_dt.create_context.gpu"() : () -> !phi.context<GPU>
+    %1 = "phi_dt.memcpy.gpu"(%arg0, %0) {d2h = false} : (!infrt.dense_tensor<CPU, FP32, ANY>, !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %4 = "phi_dt.create_inited_dense_tensor.cpu.f32" (%ctx) {value=1.5:f32, layout=#infrt.layout<NCHW>, lod=[0], dims=[2, 6]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
+    %3 = "phi_dt.create_inited_dense_tensor.cpu.f32" (%ctx) {value=1.5:f32, layout=#infrt.layout<NCHW>, lod=[0], dims=[2]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
+    %5 = "trt.create_engine"(%1, %4, %3) ( {
+      %10 = "trt.FullyConnected"(%1, %4, %3) {out_channel_num = 2 : si32} : (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+      infrt.return %10 : !infrt.dense_tensor<GPU, FP32, NCHW>
+    }) {run_once = true} : (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !trt.engine
+    %6 = "trt.compute"(%5, %0) : (!trt.engine, !phi.context<GPU>) -> !infrt.tensor_list
+    %7 = "dt.tensor_list_get_tensor"(%6) {id = 0 : i32} : (!infrt.tensor_list) -> !infrt.dense_tensor<GPU, FP32, NCHW>
+    %8 = "phi_dt.memcpy.gpu"(%7, %0) {d2h = true} : (!infrt.dense_tensor<GPU, FP32, NCHW>, !phi.context<GPU>) -> !infrt.dense_tensor<CPU, FP32, ANY>
+    infrt.return %8 : !infrt.dense_tensor<CPU, FP32, ANY>
+  }
 
-// CHECK-LABEL: @main
-func @main() {
-  %ctx = "phi_dt.create_context.gpu" (): () -> !phi.context<GPU>
-  %cpu_ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
-
-  %input_tensor = "phi_dt.create_dense_tensor.gpu" (%ctx) {
-    precision=#infrt.precision<FP32>,
-    layout=#infrt.layout<NCHW>,
-    dims=[1:i64, 3:i64, 1:i64, 1:i64], lod=[1:i64]}: (!phi.context<GPU>) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
-  "phi_dt.fill_dense_tensor.f32"(%input_tensor) {value=[3.8:f32, 2.4:f32, 1.3:f32]} : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-  //"phi_dt.print_tensor" (%input_tensor) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-
-  %kernel_weight = "phi_dt.create_dense_tensor.cpu"(%cpu_ctx) {
-    precision=#infrt.precision<FP32>,
-    layout=#infrt.layout<NCHW>,
-    dims=[2:i64, 3:i64], lod=[1:i64]} : (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
-  "phi_dt.fill_dense_tensor.f32"(%kernel_weight) {value=[1.:f32, 2.:f32, 3.:f32, 4.:f32, 5.:f32, 6.:f32]} : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
-  //"phi_dt.print_tensor" (%kernel_weight) : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
-
-  %kernel_bias = "phi_dt.create_dense_tensor.cpu"(%cpu_ctx) {
-    precision=#infrt.precision<FP32>,
-    layout=#infrt.layout<NCHW>,
-    dims=[2:i64], lod=[1:i64]} : (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
-  "phi_dt.fill_dense_tensor.f32"(%kernel_bias) {value=[1.:f32, 2.:f32]} : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
-  //"phi_dt.print_tensor" (%kernel_bias) : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
-
-  %engine = "trt.create_engine"(%input_tensor, %kernel_weight, %kernel_bias) ({
-    %1 = "trt.Activation"(%input_tensor) {activation_type = 1 : si32, alpha = 1.0 : f32, beta = 6.0 : f32} : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
-    %2 = "trt.FullyConnected"(%input_tensor, %kernel_weight, %kernel_bias) {out_channel_num = 2 : si32} : (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
-    "infrt.return"(%1, %2) : (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-  }) : (!infrt.dense_tensor<GPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !trt.engine
-
-  %res = "trt.compute"(%engine, %ctx) {} : (!trt.engine, !phi.context<GPU>) -> (!infrt.tensor_list)
-  %size = "dt.tensor_list_get_size"(%res) {} : (!infrt.tensor_list) -> (i32)
-  "infrt.print.i32"(%size) {} : (i32) -> ()
-
-  %ts0 = "dt.tensor_list_get_tensor"(%res) {id = 0 : i32} : (!infrt.tensor_list) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
-  "phi_dt.print_tensor" (%ts0) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-
-  %ts1 = "dt.tensor_list_get_tensor"(%res) {id = 1 : i32} : (!infrt.tensor_list) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
-  "phi_dt.print_tensor" (%ts1) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-
-  infrt.return
+  func @main() {
+    %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
+    %input_tensor = "phi_dt.create_inited_dense_tensor.cpu.f32" (%ctx) {value=1.5:f32, layout=#infrt.layout<NCHW>, lod=[0], dims=[3, 6, 1, 1]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
+    %res = infrt.call @main_graph(%input_tensor) {} : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
+    "phi_dt.print_tensor" (%res) : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
+    infrt.return
+  }
 }

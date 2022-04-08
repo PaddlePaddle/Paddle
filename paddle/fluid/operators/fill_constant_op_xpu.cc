@@ -21,7 +21,6 @@ REGISTER_OP_XPU_KERNEL(
     ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
     ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
     ops::FillConstantKernel<paddle::platform::float16>,
-    ops::FillConstantKernel<paddle::platform::bfloat16>,
     ops::FillConstantKernel<paddle::platform::complex<float>>,
     ops::FillConstantKernel<paddle::platform::complex<double>>);
 #endif

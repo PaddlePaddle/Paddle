@@ -44,24 +44,24 @@ class CtrCommonAccessor : public ValueAccessor {
     int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
     int Size() { return Dim() * sizeof(float); }
     int SlotIndex() { return 0; }
-    int unseen_days_index() { return SlotIndex() + 1; }
-    int delta_score_index() { return unseen_days_index() + 1; }
-    int ShowIndex() { return delta_score_index() + 1; }
+    int UnseenDaysIndex() { return SlotIndex() + 1; }
+    int DeltaScoreIndex() { return UnseenDaysIndex() + 1; }
+    int ShowIndex() { return DeltaScoreIndex() + 1; }
     int ClickIndex() { return ShowIndex() + 1; }
-    int Embed_W_Index() { return ClickIndex() + 1; }
-    int embed_g2sum_index() { return Embed_W_Index() + 1; }
-    int Embedx_W_Index() { return embed_g2sum_index() + embed_sgd_dim; }
-    int embedx_g2sum_index() { return Embedx_W_Index() + embedx_dim; }
+    int EmbedWIndex() { return ClickIndex() + 1; }
+    int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
+    int EmbedxWIndex() { return EmbedG2SumIndex() + embed_sgd_dim; }
+    int EmbedxG2SumIndex() { return EmbedxWIndex() + embedx_dim; }
 
-    float& unseen_days(float* val) { return val[unseen_days_index()]; }
-    float& delta_score(float* val) { return val[delta_score_index()]; }
+    float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
+    float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
     float& Show(float* val) { return val[ShowIndex()]; }
     float& Click(float* val) { return val[ClickIndex()]; }
     float& Slot(float* val) { return val[SlotIndex()]; }
-    float& EmbedW(float* val) { return val[Embed_W_Index()]; }
-    float& embed_g2sum(float* val) { return val[embed_g2sum_index()]; }
-    float& EmbedxW(float* val) { return val[Embedx_W_Index()]; }
-    float& embedx_g2sum(float* val) { return val[embedx_g2sum_index()]; }
+    float& EmbedW(float* val) { return val[EmbedWIndex()]; }
+    float& EmbedG2Sum(float* val) { return val[EmbedG2SumIndex()]; }
+    float& EmbedxW(float* val) { return val[EmbedxWIndex()]; }
+    float& EmbedxG2Sum(float* val) { return val[EmbedxG2SumIndex()]; }
 
     int embed_sgd_dim;
     int embedx_dim;
@@ -84,10 +84,8 @@ class CtrCommonAccessor : public ValueAccessor {
     static int SlotIndex() { return 0; }
     static int ShowIndex() { return CtrCommonPushValue::SlotIndex() + 1; }
     static int ClickIndex() { return CtrCommonPushValue::ShowIndex() + 1; }
-    static int Embed_G_Index() { return CtrCommonPushValue::ClickIndex() + 1; }
-    static int Embedx_G_Index() {
-      return CtrCommonPushValue::Embed_G_Index() + 1;
-    }
+    static int EmbedGIndex() { return CtrCommonPushValue::ClickIndex() + 1; }
+    static int EmbedxGIndex() { return CtrCommonPushValue::EmbedGIndex() + 1; }
     static float& Slot(float* val) {
       return val[CtrCommonPushValue::SlotIndex()];
     }
@@ -98,10 +96,10 @@ class CtrCommonAccessor : public ValueAccessor {
       return val[CtrCommonPushValue::ClickIndex()];
     }
     static float& EmbedG(float* val) {
-      return val[CtrCommonPushValue::Embed_G_Index()];
+      return val[CtrCommonPushValue::EmbedGIndex()];
     }
     static float* EmbedxG(float* val) {
-      return val + CtrCommonPushValue::Embedx_G_Index();
+      return val + CtrCommonPushValue::EmbedxGIndex();
     }
   };
 
@@ -118,8 +116,8 @@ class CtrCommonAccessor : public ValueAccessor {
     static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
     static int ShowIndex() { return 0; }
     static int ClickIndex() { return 1; }
-    static int Embed_W_Index() { return 2; }
-    static int Embedx_W_Index() { return 3; }
+    static int EmbedWIndex() { return 2; }
+    static int EmbedxWIndex() { return 3; }
     static float& Show(float* val) {
       return val[CtrCommonPullValue::ShowIndex()];
     }
@@ -127,38 +125,17 @@ class CtrCommonAccessor : public ValueAccessor {
       return val[CtrCommonPullValue::ClickIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[CtrCommonPullValue::Embed_W_Index()];
+      return val[CtrCommonPullValue::EmbedWIndex()];
     }
     static float* EmbedxW(float* val) {
-      return val + CtrCommonPullValue::Embedx_W_Index();
+      return val + CtrCommonPullValue::EmbedxWIndex();
     }
   };
   CtrCommonAccessor() {}
-  virtual int Initialize();
   virtual ~CtrCommonAccessor() {}
-
-  virtual void SetTableInfo(AccessorInfo& info);
-  virtual size_t GetTableInfo(InfoKey key);
-  // value维度
-  size_t Dim();
-  // value各个维度的size
-  size_t DimSize(size_t dim);
-  // value各维度相加总size
-  size_t Size();
-  // value中mf动态长度部分总size大小, sparse下生效
-  size_t MFSize();
-  // pull value维度
-  size_t SelectDim();
-  // pull value各个维度的size
-  size_t SelectDimSize(size_t dim);
-  // pull value各维度相加总size
-  size_t SelectSize();
-  // push value维度
-  size_t UpdateDim();
-  // push value各个维度的size
-  size_t UpdateDimSize(size_t dim);
-  // push value各维度相加总size
-  size_t UpdateSize();
+  virtual int Initialize();
+  // 初始化AccessorInfo
+  virtual void InitAccessorInfo();
   // 判断该value是否进行shrink
   virtual bool Shrink(float* value);
   // 判断该value是否保存到ssd
@@ -202,7 +179,7 @@ class CtrCommonAccessor : public ValueAccessor {
   }
 
  private:
-  // float show_click_score(float show, float click);
+  // float ShowClickScore(float show, float click);
 
   // SparseValueSGDRule* _embed_sgd_rule;
   // SparseValueSGDRule* _embedx_sgd_rule;
@@ -213,7 +190,7 @@ class CtrCommonAccessor : public ValueAccessor {
  public:  // TODO(zhaocaibei123): it should be private, but we make it public
           // for unit test
   CtrCommonFeatureValue common_feature_value;
-  float show_click_score(float show, float click);
+  float ShowClickScore(float show, float click);
   SparseValueSGDRule* _embed_sgd_rule;
   SparseValueSGDRule* _embedx_sgd_rule;
 };

@@ -176,9 +176,12 @@ def source_include(header_file_path):
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+DECLARE_bool(conv2d_disable_cudnn);
 """
 
 
