@@ -161,7 +161,7 @@ def export_chrome_tracing(dir_name: str,
     Args:
         dir_name(str): Directory to save profiling data.
         worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
-
+    
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
 
@@ -328,27 +328,27 @@ class Profiler:
 
                 import paddle
                 import paddle.profiler as profiler
-
+                
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
-
+                
                     def __getitem__(self, idx):
                         image = paddle.rand(shape=[100], dtype='float32')
                         label = paddle.randint(0, 10, shape=[1], dtype='int64')
                         return image, label
-
+                
                     def __len__(self):
                         return self.num_samples
-
+                
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
                         self.fc = paddle.nn.Linear(100, 10)
-
+                
                     def forward(self, image, label=None):
                         return self.fc(image)
-
+                
                 dataset = RandomDataset(20 * 4)
                 simple_net = SimpleNet()
                 opt = paddle.optimizer.SGD(learning_rate=1e-3,
@@ -806,9 +806,10 @@ def get_profiler(config_path):
             )
             translated_config_dict['on_trace_ready'] = None
     if "timer_only" in config_dict:
-        if isinstance(config_dict['timer_only'], bool):
-            translated_config_dict['timer_only'] = config_dict['timer_only']
-        else:
+        try:
+            if isinstance(config_dict['timer_only'], bool):
+                translated_config_dict['timer_only'] = config_dict['timer_only']
+        except:
             print(
                 'Set timer_only parameter error, use default parameter instead.')
 
