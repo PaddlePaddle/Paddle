@@ -129,6 +129,7 @@ namespace tensorrt {
 
   // TODO(wilber): Find a way to add layer.
   for (auto& operation : block.without_terminator()) {
+    VLOG(1) << "process " << operation.getName().getStringRef().str() << " ...";
     if (trt::ActivationOp op = llvm::dyn_cast<trt::ActivationOp>(operation)) {
       ActivationFunc(
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
@@ -138,6 +139,18 @@ namespace tensorrt {
     } else if (trt::ConvolutionOp op =
                    llvm::dyn_cast<trt::ConvolutionOp>(operation)) {
       ConvFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::PoolingOp op = llvm::dyn_cast<trt::PoolingOp>(operation)) {
+      PoolFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ShuffleOp op = llvm::dyn_cast<trt::ShuffleOp>(operation)) {
+      ShuffleFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ScaleNdOp op = llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
+      ScaleNdFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ElementWiseOp op =
+                   llvm::dyn_cast<trt::ElementWiseOp>(operation)) {
+      EltwiseFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";
     }

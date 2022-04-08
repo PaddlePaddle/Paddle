@@ -37,6 +37,11 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void EmbeddingInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        MetaTensor* out);
+
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -112,12 +117,33 @@ void CrossInferMeta(const MetaTensor& x,
                     int axis,
                     MetaTensor* out);
 
+void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
+                                      const MetaTensor& label,
+                                      bool soft_label,
+                                      bool use_softmax,
+                                      bool numeric_stable_mode,
+                                      int ignore_index,
+                                      int axis,
+                                      MetaTensor* softmax,
+                                      MetaTensor* loss,
+                                      MetaConfig config = MetaConfig());
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out);
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask);
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
@@ -192,14 +218,20 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 int y_num_col_dims,
                                 MetaTensor* out);
 
+void MatrixRankTolInferMeta(const MetaTensor& x,
+                            const MetaTensor& atol_tensor,
+                            bool use_default_tol,
+                            bool hermitian,
+                            MetaTensor* out);
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
-                    const std::string& mode,
                     const std::string& data_format,
+                    const std::string& mode,
                     MetaTensor* out,
-                    MetaConfig config);
+                    MetaConfig config = MetaConfig());
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
