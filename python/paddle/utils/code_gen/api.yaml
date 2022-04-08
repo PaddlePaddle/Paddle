@@ -606,6 +606,16 @@
     func : exp
   backward : exp_grad
 
+# expand
+- api : expand
+  args : (Tensor x, IntArray shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+  backward : expand_grad
+
 # expand_as
 - api : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
@@ -1884,7 +1894,7 @@
     func : TriangularSolveInferMeta
   kernel :
     func : triangular_solve
-  # backward : triangular_solve_grad
+  backward : triangular_solve_grad
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)

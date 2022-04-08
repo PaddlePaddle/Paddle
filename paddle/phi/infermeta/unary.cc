@@ -396,11 +396,12 @@ void EighInferMeta(const MetaTensor& x,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out) {
+#define MAX_RANK_SUPPORTED 6
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
   if (expand_shape.size() == 0) {
-    expand_shape = std::vector<int>(x_dims.size(), -1);
+    expand_shape = std::vector<int64_t>(x_dims.size(), -1);
   }
 
   PADDLE_ENFORCE_GE(
@@ -457,8 +458,8 @@ void ExpandInferMeta(const MetaTensor& x,
     }
   }
 
-  out->set_dims(out_shape);
-  out->set_dims(x.dtype());
+  out->set_dims(make_ddim(out_shape));
+  out->set_dtype(x.dtype());
   if (out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }

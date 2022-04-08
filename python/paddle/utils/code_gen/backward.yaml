@@ -443,6 +443,16 @@
   kernel :
     func : expand_as_grad
 
+- backward_api : expand_grad
+  forward : expand (Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expand_grad
+
 - backward_api : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1449,6 +1459,16 @@
     param : [out_grad, axis]
   kernel :
     func : transpose_grad
+
+- backward_api : triangular_solve_grad
+  forward : triangular_solve (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper, bool tranpose, bool unitriangular)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : triangular_solve_grad
 
 - backward_api : tril_triu_grad
   forward : tril_triu(Tensor x,  int diagonal,  bool lower) -> Tensor(out)
