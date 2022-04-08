@@ -209,6 +209,8 @@ XPUOpMap& get_kl2_ops() {
                                   pOpKernelType(vartype::FP16, XPUPlace())})},
       {"gelu", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                              pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"generate_proposals_v2",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"greater_equal",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
