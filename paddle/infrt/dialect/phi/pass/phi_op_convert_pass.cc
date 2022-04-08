@@ -36,12 +36,35 @@
 #include "paddle/phi/ops/compat/signatures.h"
 
 namespace {
+
+infrt::Place ParsePlaceFromStr(const std::string &key) {
+  size_t first_index = key.find_first_of('-');
+  size_t second_index = key.find_last_of('-');
+  if (first_index != second_index) {
+    llvm::Optional<infrt::TargetType> tar =
+        infrt::GetTargetType(key.substr(0, first_index));
+    llvm::Optional<infrt::PrecisionType> pre = infrt::GetPrecisionType(
+        key.substr(first_index + 1, second_index - first_index - 1));
+    llvm::Optional<infrt::LayoutType> lay =
+        infrt::GetLayoutType(key.substr(second_index + 1));
+    if (tar && pre && lay) {
+      return infrt::Place(tar.getValue(), pre.getValue(), lay.getValue());
+    }
+  }
+  LOG(FATAL) << "Can't parse infrt::Place from string:" << key;
+  return infrt::Place();
+}
+
 class PhiOpConvertPass
     : public mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "PhiOpConvertPass"; }
   void runOnFunction() override;
-  PhiOpConvertPass();
+
+  /// Initialize the valid_places_ by the valid_places_options_ while
+  /// valid_places_options_ has values.
+  mlir::LogicalResult initialize(mlir::MLIRContext *context) override;
+  PhiOpConvertPass() {}
   explicit PhiOpConvertPass(const std::vector<infrt::Place> &valid_places)
       : valid_places_(valid_places) {}
 
@@ -56,14 +79,35 @@ class PhiOpConvertPass
   void convertStage();
   void dispatchStage();
 
-  // Force a specified data format for all layout sensitive operations.
-  Option<std::string> valid_places_options_{
+  ListOption<std::string> valid_places_options_{
       *this,
       "valid-targets",
-      llvm::cl::desc("Set the valid target, [CPU-FP32-NCHW]")};
+      llvm::cl::desc(
+          "Set the valids target, such as: CPU-FP32-NCHW,GPU-FP32-NCHW"),
+      llvm::cl::MiscFlags::CommaSeparated};
 
   std::vector<infrt::Place> valid_places_;
 };
+
+/// Initialize the canonicalizer by building the set of patterns used during
+/// execution.
+mlir::LogicalResult PhiOpConvertPass::initialize(mlir::MLIRContext *context) {
+  if (valid_places_options_.hasValue()) {
+    VLOG(4) << "Start parse valid_places from commond line:";
+    if (!valid_places_.empty()) {
+      LOG(WARNING) << "Find valid place from commandline, current value will "
+                      "be overwrittern.";
+      valid_places_.clear();
+    }
+    for (auto &val : *valid_places_options_) {
+      VLOG(4) << "place string:" << val;
+      valid_places_.emplace_back(ParsePlaceFromStr(val));
+    }
+    VLOG(4) << "End parse valid_places from commond line:";
+  }
+  return mlir::success();
+}
+
 // Implementation of the PhiOpConvertPass.
 void PhiOpConvertPass::runOnFunction() {
   convertStage();
@@ -191,7 +235,16 @@ void PhiOpConvertPass::dispatchStage() {
                   .output();
           phi_context[infrt::TargetType::CPU] = context_value;
         } break;
-        case infrt::TargetType::GPU:
+        case infrt::TargetType::GPU: {
+          auto context_value =
+              builder
+                  .create<infrt::phi::CreateGPUContextOp>(
+                      kernel_op.getLoc(),
+                      infrt::phi::ContextType::get(kernel_op.getContext(),
+                                                   infrt::TargetType::GPU))
+                  .output();
+          phi_context[infrt::TargetType::GPU] = context_value;
+        } break;
         case infrt::TargetType::UNK:
         default:
           LOG(FATAL) << "Unsupported TargetType";
@@ -237,17 +290,6 @@ void PhiOpConvertPass::dispatchStage() {
   }
 }
 
-PhiOpConvertPass::PhiOpConvertPass() {
-  if (!valid_places_options_.hasValue()) {
-    valid_places_.emplace_back(infrt::TargetType::CPU,
-                               infrt::PrecisionType::FLOAT32,
-                               infrt::LayoutType::NCHW);
-    return;
-  }
-
-  LOG(FATAL) << "To be done for specifying places in command line";
-}
-
 void PhiOpConvertPass::getDependentDialects(
     mlir::DialectRegistry &registry) const {
   registry.insert<infrt::InfrtDialect>();
@@ -264,8 +306,4 @@ mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
-}
-
-std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass() {
-  return std::make_unique<PhiOpConvertPass>();
 }
