@@ -20,11 +20,11 @@ namespace experimental {
 /* ------------------ for input ----------------------- */
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+  return std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
     return std::static_pointer_cast<phi::DenseTensor>(tensor->impl());
   }
