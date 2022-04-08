@@ -368,6 +368,7 @@ void AucInferMeta(const MetaTensor& input,
                   MetaConfig config) {
   auto predict_dims = input.dims();
   auto label_dims = label.dims();
+  auto ins_tag_weight_dims = ins_tag_weight.dims();
   PADDLE_ENFORCE_GE(
       predict_dims.size(),
       2,
@@ -391,6 +392,14 @@ void AucInferMeta(const MetaTensor& input,
           "The Input(Label) has not been initialized properly. The "
           "shape of Input(Label) = [%s], the shape can not involes 0.",
           label_dims));
+  PADDLE_ENFORCE_NE(
+      phi::product(ins_tag_weight_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The Input(ins_tag_weight) has not been initialized properly. The "
+          "shape of Input(ins_tag_weight) = [%s], the shape can not involes 0.",
+          ins_tag_weight_dims));
+
   if (config.is_runtime) {
     PADDLE_ENFORCE_LE(
         predict_width,
@@ -407,11 +416,6 @@ void AucInferMeta(const MetaTensor& input,
         predict_height,
         label_height,
         phi::errors::InvalidArgument("Out and Label should have same height."));
-
-    PADDLE_ENFORCE_EQ(ins_tag_weight_height,
-                      label_height,
-                      phi::errors::InvalidArgument(
-                          "Ins_tag_weight and Label should have same height."));
   }
 
   int num_pred_buckets = num_thresholds + 1;
