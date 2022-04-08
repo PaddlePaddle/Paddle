@@ -89,7 +89,7 @@ def minimize_lbfgs(objective_func,
                 return paddle.dot(x, x)
 
             x0 = paddle.to_tensor([1.3, 2.7])
-            results = paddle.optimizer.functional.minimize_lbfgs(func, x0)
+            results = paddle.incubate.optimizer.functional.minimize_lbfgs(func, x0)
             print("is_converge: ", results[0])
             print("the minimum of func is: ", results[2])
             # is_converge:  is_converge:  Tensor(shape=[1], dtype=bool, place=Place(gpu:0), stop_gradient=True,
@@ -113,7 +113,8 @@ def minimize_lbfgs(objective_func,
         check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
         H0 = initial_inverse_hessian_estimate
 
-    xk = initial_position
+    # use detach and assign to create new tensor rather than =, or xk will share memory and grad with initial_position
+    xk = paddle.assign(initial_position.detach())
     value, g1 = _value_and_gradient(objective_func, xk)
 
     k = paddle.full(shape=[1], fill_value=0, dtype='int64')

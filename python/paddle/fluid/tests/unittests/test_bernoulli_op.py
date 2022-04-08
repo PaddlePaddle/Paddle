@@ -75,9 +75,6 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
         print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')

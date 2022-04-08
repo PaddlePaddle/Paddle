@@ -300,8 +300,16 @@ void InterpreterCore::Convert(
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
+  bool inplaced = false;
+  for (auto inst : vec_instruction_) {
+    if (inst.OpBase()->Type() == "share_buffer" ||
+        inst.OpBase()->Type() == "share_data") {
+      VLOG(4) << "Already inplaced, skip inplace now.";
+      inplaced = true;
+    }
+  }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
 
@@ -425,13 +433,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
+    // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
       platform::RecordEvent infershape_event(
           "infer_shape", platform::TracerEventType::OperatorInner, 1,
           platform::EventRole::kInnerOp);
-      // If it is OperatorBase, InferShape do nothing.
-      op_with_kernel->Info().infer_shape_(
-          instr_node.InnerInferShapeContext().get());
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
     }
   }
 
@@ -476,6 +489,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   if (!instr_node.InplaceBackMap().empty()) {
+    platform::RecordEvent inplaceback_event(
+        "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
@@ -501,7 +516,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   // for debug nan/inf
-  if (FLAGS_check_nan_inf) {
+  if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op, *global_scope_,
@@ -511,6 +526,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  unfinished_op_numer_ = vec_instr.size();
+  if (unfinished_op_numer_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  platform::RecordEvent record_prepare(
+      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -518,8 +541,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-
-  unfinished_op_numer_ = vec_instr.size();
+  record_prepare.End();
 
   exception_holder_.Clear();
 
@@ -542,10 +564,12 @@ void InterpreterCore::ExecuteInstructionList(
     if (exception_holder_.Type() != "EOF") {
       async_work_queue_->Cancel();
     }
+    VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(), 0,
         platform::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
 }
@@ -554,12 +578,14 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("RunNextInstructions",
+                               platform::TracerEventType::UserDefined, 10);
   VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " " << &(*atomic_deps)[next_id]
-            << " " << next_id;
+    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
+            << ", remain deps: " << (*atomic_deps)[next_id];
     return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
   };
 
@@ -637,15 +663,18 @@ void InterpreterCore::RunInstructionAsync(
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(
         op->Type(), platform::TracerEventType::Operator, 1);
-    interpreter::WaitEvent(instr_node, place_);
 
     try {
+      interpreter::WaitEvent(instr_node, place_);
+
       RunInstruction(instr_node);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       RecordStreamForGC(instr_node);
 #endif
       CheckGC(instr_node, atomic_var_ref);
+
+      interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -677,8 +706,6 @@ void InterpreterCore::RunInstructionAsync(
       }
     }
 
-    interpreter::RecordEvent(instr_node, place_);
-
     RunNextInstructions(instr_node, &ready_ops, atomic_deps, atomic_var_ref);
   }
 }
@@ -689,6 +716,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kQueueAsync) {
     return;
   }
+  platform::RecordEvent record("RecordStreamForGC",
+                               platform::TracerEventType::UserDefined, 10);
 
   gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                            instr.DeviceContext())
@@ -780,6 +809,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 void InterpreterCore::CheckGC(
     const Instruction& instr,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("CheckGC",
+                               platform::TracerEventType::UserDefined, 10);
   size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
 

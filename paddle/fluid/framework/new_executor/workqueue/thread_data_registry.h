@@ -60,18 +60,51 @@ class ThreadDataRegistry {
   }
 
  private:
-  // types
+// types
+// Lock types
+#if defined(__clang__) || defined(__GNUC__)  // CLANG or GCC
+#ifndef __APPLE__
+#if __cplusplus >= 201703L
+  using LockType = std::shared_mutex;
+  using SharedLockGuardType = std::shared_lock<std::shared_mutex>;
+#elif __cplusplus >= 201402L
   using LockType = std::shared_timed_mutex;
+  using SharedLockGuardType = std::shared_lock<std::shared_timed_mutex>;
+#else
+  using LockType = std::mutex;
+  using SharedLockGuardType = std::lock_guard<std::mutex>;
+#endif
+// Special case : mac. https://github.com/facebook/react-native/issues/31250
+#else
+  using LockType = std::mutex;
+  using SharedLockGuardType = std::lock_guard<std::mutex>;
+#endif
+#elif defined(_MSC_VER)  // MSVC
+#if _MSVC_LANG >= 201703L
+  using LockType = std::shared_mutex;
+  using SharedLockGuardType = std::shared_lock<std::shared_mutex>;
+#elif _MSVC_LANG >= 201402L
+  using LockType = std::shared_timed_mutex;
+  using SharedLockGuardType = std::shared_lock<std::shared_timed_mutex>;
+#else
+  using LockType = std::mutex;
+  using SharedLockGuardType = std::lock_guard<std::mutex>;
+#endif
+#else  // other compilers
+  using LockType = std::mutex;
+  using SharedLockGuardType = std::lock_guard<std::mutex>;
+#endif
+
   class ThreadDataHolder;
   class ThreadDataRegistryImpl {
    public:
     void RegisterData(uint64_t tid, ThreadDataHolder* tls_obj) {
-      std::lock_guard<LockType> lock(lock_);
+      std::lock_guard<LockType> guard(lock_);
       tid_map_[tid] = tls_obj;
     }
 
     void UnregisterData(uint64_t tid) {
-      std::lock_guard<LockType> lock(lock_);
+      std::lock_guard<LockType> guard(lock_);
       tid_map_.erase(tid);
     }
 
@@ -79,7 +112,7 @@ class ThreadDataRegistry {
                                       std::is_copy_constructible<Alias>::value>>
     std::unordered_map<uint64_t, T> GetAllThreadDataByValue() {
       std::unordered_map<uint64_t, T> data_copy;
-      std::shared_lock<LockType> lock(lock_);
+      SharedLockGuardType guard(lock_);
       data_copy.reserve(tid_map_.size());
       for (auto& kv : tid_map_) {
         data_copy.emplace(kv.first, kv.second->GetData());
@@ -90,7 +123,7 @@ class ThreadDataRegistry {
     std::unordered_map<uint64_t, std::reference_wrapper<T>>
     GetAllThreadDataByRef() {
       std::unordered_map<uint64_t, std::reference_wrapper<T>> data_ref;
-      std::shared_lock<LockType> lock(lock_);
+      SharedLockGuardType guard(lock_);
       data_ref.reserve(tid_map_.size());
       for (auto& kv : tid_map_) {
         data_ref.emplace(kv.first, std::ref(kv.second->GetData()));

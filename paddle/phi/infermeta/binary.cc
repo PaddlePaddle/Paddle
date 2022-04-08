@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -63,6 +64,16 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
   }
 }
 
+// Used in MatrixRankTolInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = phi::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return phi::make_ddim({1});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return phi::make_ddim(x_vec);
+}
+
 }  // namespace detail
 
 void AllValueCompareInferMeta(const MetaTensor& x,
@@ -73,6 +84,32 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(phi::make_ddim({1}));
   out->set_dtype(DataType::BOOL);
+}
+
+void EmbeddingInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        MetaTensor* out) {
+  auto table_dims = weight.dims();
+  auto ids_dims = input.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+
+  auto output_dims = phi::vectorize(ids_dims);
+  output_dims.push_back(table_dims[1]);
+
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(weight.dtype());
+  out->share_lod(input);
 }
 
 void KLDivInferMeta(const MetaTensor& x,
@@ -727,6 +764,82 @@ void CrossInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
+                                      const MetaTensor& label,
+                                      bool soft_label,
+                                      bool use_softmax,
+                                      bool numeric_stable_mode,
+                                      int ignore_index,
+                                      int axis,
+                                      MetaTensor* softmax,
+                                      MetaTensor* loss,
+                                      MetaConfig config) {
+  auto logits_dims = logits.dims();
+  auto labels_dims = label.dims();
+  auto logits_rank = logits_dims.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -logits_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+  PADDLE_ENFORCE_LT(axis,
+                    logits_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+
+  axis = phi::funcs::CanonicalAxis(axis, logits_rank);
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[i],
+                          labels_dims[i],
+                          phi::errors::InvalidArgument(
+                              "Input(Logits) and Input(Label) should in "
+                              "same shape in dimensions except axis."));
+      }
+    }
+  }
+
+  if (axis != logits_rank - 1) {
+    PADDLE_ENFORCE_EQ(
+        numeric_stable_mode,
+        true,
+        phi::errors::InvalidArgument("Attr(axis) can only be -1 "
+                                     "when not in numeric_stable_mode."));
+  }
+
+  if (soft_label) {
+    if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
+      PADDLE_ENFORCE_EQ(logits_dims[axis],
+                        labels_dims[axis],
+                        phi::errors::InvalidArgument(
+                            "If Attr(soft_label) == true,  "
+                            "the axis dimension of "
+                            "Input(X) and Input(Label) should be equal."));
+    }
+  } else {
+    if (config.is_runtime || labels_dims[axis] > 0) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[axis],
+          1UL,
+          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                       "the axis dimension of "
+                                       "Input(Label) should be 1."));
+    }
+  }
+
+  softmax->set_dims(logits_dims);
+  softmax->set_dtype(logits.dtype());
+
+  logits_dims[axis] = 1;
+  loss->set_dims(logits_dims);
+  loss->set_dtype(logits.dtype());
+
+  softmax->share_lod(logits);
+  loss->share_lod(logits);
+}
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -748,6 +861,26 @@ void DistInferMeta(const MetaTensor& x,
                         y_dims));
   out->set_dims({1});
   out->set_dtype(x.dtype());
+}
+
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask) {
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (mask != nullptr) {
+    mask->set_dims(x_dims);
+    mask->set_dtype(DataType::UINT8);
+  }
 }
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
@@ -1342,6 +1475,47 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MatrixRankTolInferMeta(const MetaTensor& x,
+                            const MetaTensor& atol_tensor,
+                            bool use_default_tol,
+                            bool hermitian,
+                            MetaTensor* out) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+
+  if (hermitian) {
+    int rows = dim_x[dim_x.size() - 2];
+    int cols = dim_x[dim_x.size() - 1];
+    PADDLE_ENFORCE_EQ(rows,
+                      cols,
+                      phi::errors::InvalidArgument(
+                          "if hermitian == true, matrix should be n*n"));
+  }
+  DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+  auto dim_tol = atol_tensor.dims();
+  if (dim_x_batch == dim_tol) {
+    out->set_dims(dim_x_batch);
+  } else {
+    int max_dim = std::max(dim_x_batch.size(), dim_tol.size());
+    int axis = std::abs(dim_x_batch.size() - dim_tol.size());
+    std::vector<int> x_batch_dims_array(max_dim);
+    std::vector<int> tol_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    phi::funcs::GetBroadcastDimsArrays(dim_x_batch,
+                                       dim_tol,
+                                       x_batch_dims_array.data(),
+                                       tol_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    out->set_dims(phi::make_ddim(out_dims_array));
+  }
+  out->share_lod(x);
+}
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
@@ -1374,8 +1548,8 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
 
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
-                    const std::string& mode,
                     const std::string& data_format,
+                    const std::string& mode,
                     MetaTensor* out,
                     MetaConfig config) {
   auto x_dim = x.dims();

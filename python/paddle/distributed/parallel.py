@@ -24,11 +24,23 @@ from paddle import compat as cpt
 
 # deprecated module import
 from paddle.fluid import core
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.distributed import collective
+from paddle.distributed.collective import _set_group_map
+from paddle.distributed.collective import _set_group_map_by_name
+from paddle.distributed.collective import _get_group_map_by_name
+from paddle.distributed.collective import _group_map_by_name
+from paddle.distributed.collective import _default_group_name
+from paddle.distributed.collective import _valid_backend_list
+from paddle.distributed.collective import _set_default_backend
+from paddle.distributed.collective import _set_default_store
+from paddle.distributed.collective import _new_process_group_impl
+from paddle.distributed.collective import Group
 
 __all__ = []
 
@@ -159,17 +171,89 @@ def init_parallel_env():
 
     if not is_cpu_only and core.is_compiled_with_cuda():
         _check_var_exists("FLAGS_selected_gpus")
+        backend = "nccl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_xpu():
         _check_var_exists('FLAGS_selected_xpus')
+        backend = "bkcl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_npu():
         _check_var_exists('FLAGS_selected_npus')
+        backend = "hccl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_mlu():
         _check_var_exists('FLAGS_selected_mlus')
+        backend = "cncl" if backend == "auto" else backend
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
+
+    # NOTE(chenweihang): [ why config global place here? ]
+    # the dygraph mode will be set to default mode,
+    # users will not call `dygraph.guard` or `enable_dygraph`
+    # directly, if they want to switch default place,
+    # they need to call a function to change default place,
+    # here just set correctly place to users
+    if is_cpu_only:
+        place = core.CPUPlace()
+    elif core.is_compiled_with_cuda():
+        place = core.CUDAPlace(parallel_env.device_id)
+    elif core.is_compiled_with_xpu():
+        place = core.XPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_npu():
+        place = core.NPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_mlu():
+        place = core.MLUPlace(parallel_env.device_id)
+
+    _set_expected_place(place)
+
+    group = None
+    if backend in _valid_backend_list and in_dygraph_mode():
+        if _default_group_name in _get_group_map_by_name():
+            return _get_group_map_by_name()[_default_group_name]
+        _set_default_backend(backend)
+        rank = int(os.getenv("PADDLE_TRAINER_ID"))
+        world_size = int(os.getenv("PADDLE_TRAINERS_NUM"))
+        assert rank >= 0 and world_size > rank and world_size > 1, (
+            "rank must be non-negative and world_size must be the "
+            "maximum rank plus one. Moreover, at least two processes are "
+            "required to create a process group.")
+        master_addr = os.getenv("MASTER_ADDR", None)
+        master_port = os.getenv("MASTER_PORT", None)
+        endpoints = None
+        if not master_addr or not master_port:
+            endpoints = os.getenv("PADDLE_MASTER", None)
+        if endpoints is None:
+            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+        assert endpoints, (
+            "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
+            "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
+            "and 'export MASTER_ADDR=54612'. Or you can start your training"
+            "with paddle.distributed.run module.")
+        master_addr, master_port = endpoints.split(":")
+        master_port = int(master_port)
+        is_master = rank == 0
+        default_store = core.TCPStore(master_addr, master_port, is_master,
+                                      world_size)
+        _set_default_store(default_store)
+        pg = _new_process_group_impl(
+            backend,
+            default_store,
+            rank,
+            world_size,
+            _default_group_name,
+            pg_options=None)
+        ranks = list(range(world_size))
+        group = Group(
+            rank,
+            world_size,
+            id=0,
+            ranks=ranks,
+            pg=pg,
+            name=_default_group_name)
+        _set_group_map_by_name(_default_group_name, group)
+        _set_group_map(0, group)
+        parallel_helper._set_parallel_ctx(True)
+        return group
 
     node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
     # 3: init gloo context (step 1: httpsever start)
@@ -202,24 +286,6 @@ def init_parallel_env():
     strategy.current_endpoint = parallel_env.current_endpoint
     strategy.nrings = parallel_env.nrings
 
-    # NOTE(chenweihang): [ why config global place here? ]
-    # the dygraph mode will be set to default mode,
-    # users will not call `dygraph.guard` or `enable_dygraph`
-    # directly, if they want to switch default place,
-    # they need to call a function to change default place,
-    # here just set correctly place to users
-    if is_cpu_only:
-        place = core.CPUPlace()
-    elif core.is_compiled_with_cuda():
-        place = core.CUDAPlace(parallel_env.device_id)
-    elif core.is_compiled_with_xpu():
-        place = core.XPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_npu():
-        place = core.NPUPlace(parallel_env.device_id)
-    elif core.is_compiled_with_mlu():
-        place = core.MLUPlace(parallel_env.device_id)
-
-    _set_expected_place(place)
     # init nccl or hccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
@@ -274,6 +340,7 @@ def init_parallel_env():
         if parallel_env.rank == 0:
             http_server_d["running"] = False
             http_server.join()
+    return group
 
 
 def get_rank():
