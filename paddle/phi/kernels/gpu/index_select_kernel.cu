@@ -72,6 +72,9 @@ void IndexSelectKernel(const Context& ctx,
   T* out_data = ctx.template Alloc<T>(output);
 
   int64_t numel = output->numel();
+  if (numel == 0) {
+    return;
+  }
   auto stream = ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
