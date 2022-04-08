@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid import Program, program_guard
-'''
+
 class TestTrilIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "tril_indices"
@@ -31,22 +31,23 @@ class TestTrilIndicesOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
-        #self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
-        self.target = np.tril_indices(0,0,0)
+        self.attrs = {'rows': 4, 'cols': 4, 'offset': 0}
+        self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
+        self.target = np.array(self.target)
 
 class TestTrilIndicesOpCase1(TestTrilIndicesOp):
     def init_config(self):
-        self.attrs = {'rows': 4, 'cols': 4, 'offset': 0}
-        self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
-
+        self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
+        #self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
+        self.target = np.tril_indices(0,0,0)
+        self.target = np.array(self.target)
 
 class TestTrilIndicesOpCase2(TestTrilIndicesOp):
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
         self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
+        self.target = np.array(self.target)
 
-'''
 class TestTrilIndicesAPICase(unittest.TestCase):
     
     def test_static(self):
@@ -90,7 +91,7 @@ class TestTrilIndicesAPICase(unittest.TestCase):
         out =  paddle.tril_indices(4,None,2)
         expected_result = np.tril_indices(4,2)
         self.assertEqual((out.numpy() == expected_result).all(), True)
-    
+
         
 
        
