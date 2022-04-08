@@ -916,6 +916,8 @@ void ParallelExecutor::BCastParamsToDevices(
 
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  platform::RecordEvent record_run("ParallelExecutor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef PADDLE_WITH_CUDA
   if (platform::IsCUDAGraphCapturing()) {
