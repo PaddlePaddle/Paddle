@@ -210,6 +210,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     }
 #endif
 
+    VLOG(3) << "finding kernel: " << op.Type()
+            << " the kernel key is: " << expected_kernel_key;
+
     pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
                                                                  pt_kernel_key);
@@ -263,8 +266,17 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
       || is_xpu_unsupport
 #endif
-      ) {
+#if defined(PADDLE_WITH_XPU_KP)
+      || (is_xpu_unsupport && !is_xpu_kp_support)
+#endif
+          ) {
+    VLOG(3) << "finding fluid kernel: " << op.Type()
+            << " for device code is failed: " << expected_kernel_key;
+
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+      VLOG(3) << "finding fluid kernel: " << op.Type()
+              << " for cpu code and the kernel_key is: " << expected_kernel_key;
+
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
       auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
