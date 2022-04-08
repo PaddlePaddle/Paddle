@@ -162,6 +162,11 @@ inline void EmplaceDeviceContext(
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
               framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
@@ -531,6 +536,7 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 void CUDADeviceContext::Wait() const {
+  VLOG(4) << "CUDA context(" << this << ")  Wait";
   if (thread_ctx_.count(this)) {
     context()->Stream()->Wait();
     return;
@@ -741,6 +747,7 @@ dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
 }
 
 void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
+  VLOG(4) << tls().get_curr_exec() << " " << ptr;
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";

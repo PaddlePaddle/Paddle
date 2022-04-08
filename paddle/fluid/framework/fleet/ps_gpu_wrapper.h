@@ -43,7 +43,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#endif
+#ifdef PADDLE_WITH_PSLIB
+#include "afs_api.h"
 #endif
 
 namespace paddle {
@@ -51,6 +54,27 @@ namespace framework {
 
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
+
+#ifdef PADDLE_WITH_PSLIB
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  virtual ~AfsWrapper() {}
+  void init(const std::string& fs_name, const std::string& fs_user,
+            const std::string& pass_wd, const std::string& conf);
+  int remove(const std::string& path);
+  int mkdir(const std::string& path);
+  std::vector<std::string> list(const std::string& path);
+
+  int exist(const std::string& path);
+  int upload(const std::string& local_file, const std::string& afs_file);
+
+  int download(const std::string& local_file, const std::string& afs_file);
+
+ private:
+  paddle::ps::AfsApiWrapper afs_handler_;
+};
+#endif
 
 class PSGPUWrapper {
  public:
@@ -174,10 +198,8 @@ class PSGPUWrapper {
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
 
-      table_id_ = 1;
-#ifdef PADDLE_WITH_PSLIB
       table_id_ = 0;
-#endif
+
       // start build cpu&gpu ps thread
       start_build_thread();
     }
@@ -303,9 +325,24 @@ class PSGPUWrapper {
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
+  int UseAfsApi() { return use_afs_api_; }
+
+#ifdef PADDLE_WITH_PSLIB
+  std::shared_ptr<paddle::ps::AfsReader> OpenReader(
+      const std::string& filename) {
+    return afs_handler_.open_reader(filename);
+  }
+
+  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
+                  const std::string& pass_wd, const std::string& conf);
+#endif
+
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+#ifdef PADDLE_WITH_PSLIB
+  paddle::ps::AfsApiWrapper afs_handler_;
+#endif
   std::unordered_map<
       uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
@@ -341,6 +378,7 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  int use_afs_api_ = 0;
 
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm

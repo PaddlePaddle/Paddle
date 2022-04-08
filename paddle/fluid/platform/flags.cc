@@ -32,6 +32,9 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 }  // namespace platform
 }  // namespace paddle
 
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
+
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
  */
@@ -361,11 +364,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -545,8 +544,6 @@ PADDLE_DEFINE_EXPORTED_double(
  * Note:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
-
-PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
 
 /**
  * Debug related FLAG

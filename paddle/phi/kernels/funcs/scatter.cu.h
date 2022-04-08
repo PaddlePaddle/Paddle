@@ -77,7 +77,7 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterNdCUDAKernel(const T* update,
                                     const IndexT* indices,
                                     T* output,
-                                    const int64_t* output_dims,
+                                    const Dim<DDim::kMaxRank> output_dims,
                                     size_t remain_size,
                                     size_t slice_size,
                                     size_t end_size) {
@@ -156,6 +156,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -220,26 +222,17 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
     slice_size *= output_dims[i];
   }
   const size_t slice_bytes = slice_size * sizeof(T);
-  // put output_dims int CUDA
-  // gplace and cplace
-  const auto gplace = ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
 
-  std::vector<int64_t> v_output_dims(output_dims_size);
+  Dim<DDim::kMaxRank> g_output_dims;
   for (int i = 0; i < output_dims_size; ++i) {
-    v_output_dims[i] = output_dims[i];
+    g_output_dims[i] = output_dims[i];
   }
-
-  phi::DenseTensor out_dims_tensor;
-  out_dims_tensor.Resize({output_dims_size});
-  auto* g_output_dims = ctx.Alloc<int64_t>(&out_dims_tensor);
-  int64_t bytes = output_dims_size * sizeof(int64_t);
-  paddle::memory::Copy(
-      gplace, g_output_dims, cplace, v_output_dims.data(), bytes, ctx.stream());
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_update,
@@ -252,4 +245,4 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

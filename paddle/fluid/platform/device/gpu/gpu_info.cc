@@ -13,34 +13,35 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 #include <array>
 #include <cstdlib>
 #include <mutex>
 #include <set>
 #include <vector>
-
 #include "gflags/gflags.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/miopen.h"
-#else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#endif
-#include "paddle/fluid/memory/malloc.h"
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
-#endif
-#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
-
 #include "paddle/phi/backends/gpu/gpu_info.h"
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/miopen.h"
+#else
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10020
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
+#endif
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -193,6 +194,7 @@ class RecordedGpuMallocHelper {
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
@@ -229,6 +231,7 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
