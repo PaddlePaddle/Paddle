@@ -238,6 +238,8 @@ function cmake_base() {
         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+        -DWITH_CUSTOM_DEVICE=${WITH_CUSTOM_DEVICE:-OFF}
+        -DUSE_CXX11_ABI=${USE_CXX11_ABI:-ON}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
@@ -294,6 +296,8 @@ EOF
         -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
+        -DWITH_CUSTOM_DEVICE=${WITH_CUSTOM_DEVICE:-OFF} \
+        -DUSE_CXX11_ABI=${USE_CXX11_ABI:-ON} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
@@ -1991,7 +1995,7 @@ set -x
 }
 
 function parallel_test_base_custom_device() {
-    echo "IN custom device CI"
+    echo "IN custom device CI now"
     parallel_test_base_npu
 }
 
