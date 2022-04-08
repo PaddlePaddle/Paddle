@@ -172,6 +172,112 @@ class TestGetProfiler(unittest.TestCase):
                 ones_like_y = paddle.ones_like(y)
                 profiler.step()
 
+        # below tests are just for coverage, wrong config
+        # test use_direct
+        config_content = '''
+        {
+        "targets": ["Cpu", "Gpu"],
+        "scheduler": {
+            "make_scheduler":{
+                "module": "paddle.profiler",
+                "use_direct": true,
+                "args": [],
+                "kwargs": {}
+            }
+        },
+        "on_trace_ready": {
+            "export_chrome_tracing":{
+                "module": "paddle.profiler1",
+                "use_direct": true,
+                "args": [],
+                "kwargs": {
+                    }
+                }
+            },
+          "timer_only": false
+        }
+        '''
+        filehandle = tempfile.NamedTemporaryFile(mode='w')
+        filehandle.write(config_content)
+        filehandle.flush()
+        import paddle.profiler.profiler as profiler
+        try:
+            profiler = profiler.get_profiler(filehandle.name)
+        except:
+            pass
+
+        # test scheduler 
+        config_content = '''
+        {
+        "targets": ["Cpu", "Gpu"],
+        "scheduler": {
+           "make_scheduler":{
+                "module": "paddle.profiler",
+                "use_direct": false,
+                "args": [],
+                "kwargs": {
+                        "closed": 1,
+                        "ready": 1,
+                        "record": 2
+                    }
+            }
+        },
+        "on_trace_ready": {
+            "export_chrome_tracing":{
+                "module": "paddle.profiler",
+                "use_direct": true,
+                "args": [],
+                "kwargs": {
+                    }
+                }
+            },
+          "timer_only": false
+        }
+        '''
+        filehandle = tempfile.NamedTemporaryFile(mode='w')
+        filehandle.write(config_content)
+        filehandle.flush()
+        import paddle.profiler.profiler as profiler
+        profiler = profiler.get_profiler(filehandle.name)
+
+        # test exception
+        config_content = '''
+        {
+        "targets": [1],
+        "scheduler": {
+            "make_scheduler1":{
+                "module": "paddle.profiler",
+                "use_direct": false,
+                "args": [],
+                "kwargs": {
+                        "closed": 1,
+                        "ready": 1,
+                        "record": 2
+                    }
+            }
+        },
+        "on_trace_ready": {
+            "export_chrome_tracing1":{
+                "module": "paddle.profiler",
+                "use_direct": false,
+                "args": [],
+                "kwargs": {
+                        "dir_name": "testdebug/"
+                    }
+                }
+            },
+          "timer_only": 1
+        }
+        '''
+        filehandle = tempfile.NamedTemporaryFile(mode='w')
+        filehandle.write(config_content)
+        filehandle.flush()
+        import paddle.profiler.profiler as profiler
+        profiler = profiler.get_profiler(filehandle.name)
+        # test path error
+        import paddle.profiler.profiler as profiler
+        profiler = profiler.get_profiler('nopath.json')
+
 
 class RandomDataset(Dataset):
     def __init__(self, num_samples):

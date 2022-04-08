@@ -806,10 +806,9 @@ def get_profiler(config_path):
             )
             translated_config_dict['on_trace_ready'] = None
     if "timer_only" in config_dict:
-        try:
-            if isinstance(config_dict['timer_only'], bool):
-                translated_config_dict['timer_only'] = config_dict['timer_only']
-        except:
+        if isinstance(config_dict['timer_only'], bool):
+            translated_config_dict['timer_only'] = config_dict['timer_only']
+        else:
             print(
                 'Set timer_only parameter error, use default parameter instead.')
 
