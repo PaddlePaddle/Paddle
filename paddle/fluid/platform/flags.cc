@@ -161,10 +161,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
