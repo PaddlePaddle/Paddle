@@ -1033,9 +1033,9 @@ void MultiSlotInMemoryDataFeed::Init(
     slot_conf_[i].name = slot.name();
     slot_conf_[i].type = slot.type();
     slot_conf_[i].use_slots_index = use_slots_index_[i];
+
     total_dims_without_inductive_[i] = 1;
     inductive_shape_index_[i] = -1;
-
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
@@ -1185,7 +1185,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         instance->uid_ = feasign;
       }
 #endif
-
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
