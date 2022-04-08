@@ -966,5 +966,135 @@ std::vector<Tensor> meshgrid_grad_impl(
   return api_output;
 }
 
+std::vector<Tensor> multi_dot_grad_impl(const std::vector<Tensor>& x,
+                                        const Tensor& out_grad) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x, out_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "multi_dot_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "multi_dot_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "multi_dot_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_x_vec = PrepareData(x, kernel.InputAt(0), {});
+  std::vector<const phi::DenseTensor*> input_x(input_x_vec->size());
+  for (size_t i = 0; i < input_x.size(); ++i) {
+    input_x[i] = &input_x_vec->at(i);
+  }
+  auto input_out_grad = PrepareData(out_grad, kernel.InputAt(1), {});
+
+  size_t out_number = input_x.size();
+  std::vector<Tensor> api_output;
+  auto kernel_out = SetKernelOutput(out_number, kernel_backend, &api_output);
+
+  auto x_meta_vec = MakeMetaTensor(input_x);
+  std::vector<phi::MetaTensor*> x_metas(x_meta_vec.size());
+  for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+    x_metas[i] = &x_meta_vec[i];
+  }
+
+  std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_outs.push_back(kernel_out[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
+  }
+
+  phi::MultiDotGradInferMeta(
+      x_metas, MakeMetaTensor(*input_out_grad), meta_out_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const std::vector<const phi::DenseTensor*>&,
+                                    const phi::DenseTensor&,
+                                    std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, input_x, *input_out_grad, kernel_out);
+
+  return api_output;
+}
+
+std::vector<Tensor> multiplex_grad_impl(const std::vector<Tensor>& inputs,
+                                        const Tensor& ids,
+                                        const Tensor& out_grad) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "multiplex_grad API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "multiplex_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "multiplex_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_ids = PrepareData(ids, kernel.InputAt(0), {});
+  auto input_out_grad = PrepareData(out_grad, kernel.InputAt(1), {});
+
+  auto out_number = inputs.size();
+  std::vector<Tensor> api_output;
+  auto kernel_out = SetKernelOutput(out_number, kernel_backend, &api_output);
+
+  std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    meta_outs.push_back(kernel_out[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
+  }
+
+  phi::MultiplexGradInferMeta(MakeMetaTensor(*input_ids),
+                              MakeMetaTensor(*input_out_grad),
+                              meta_out_ptrs);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *input_ids, *input_out_grad, kernel_out);
+
+  return api_output;
+}
+
 }  // namespace experimental
 }  // namespace paddle

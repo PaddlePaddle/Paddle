@@ -19,11 +19,13 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
+        self.python_api = paddle.multiplex
         rows = 4
         index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)
@@ -44,19 +46,25 @@ class TestMultiplexOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out')
+        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out', check_eager=True)
 
     def test_check_grad_ignore_x1(self):
-        self.check_grad(['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'))
+        self.check_grad(
+            ['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'), check_eager=True)
 
     def test_check_grad_ignore_x1_x2(self):
-        self.check_grad(['x3', 'x4'], 'Out', no_grad_set=set(['x1', 'x2']))
+        self.check_grad(
+            ['x3', 'x4'],
+            'Out',
+            no_grad_set=set(['x1', 'x2']),
+            check_eager=True)
 
     def test_check_grad_ignore_x3(self):
-        self.check_grad(['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'))
+        self.check_grad(
+            ['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'), check_eager=True)
 
 
 class TestMultiplexOpError(unittest.TestCase):
@@ -101,6 +109,10 @@ class TestMultiplexODygrap(unittest.TestCase):
         index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_multiplex_dygraph()
 
 
 if __name__ == '__main__':
