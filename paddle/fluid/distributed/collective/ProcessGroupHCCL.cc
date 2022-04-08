@@ -236,7 +236,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::Broadcast(
       in_tensors, out_tensors,
       [&](phi::DenseTensor& input, phi::DenseTensor& output, HcclComm comm,
           const aclrtStream& stream) {
-        const auto root = opts.source_rank * tensors.size() + opts.source_root;
+        const auto root =
+            opts.source_rank * in_tensors.size() + opts.source_root;
         if (rank_ == root) {
           return platform::dynload::HcclBroadcast(
               input.data(), input.numel(),
