@@ -47,6 +47,7 @@ class TestTriangularSolveOp(OpTest):
 
     def setUp(self):
         self.op_type = "triangular_solve"
+        self.python_api = paddle.tensor.linalg.triangular_solve
         self.config()
 
         self.inputs = {
@@ -62,10 +63,10 @@ class TestTriangularSolveOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 # 2D(broadcast) + 3D, test 'transpose'
