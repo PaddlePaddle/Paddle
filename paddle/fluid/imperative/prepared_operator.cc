@@ -268,9 +268,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
           ) {
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
-      VLOG(3) << "finding fluid kernel: " << op.Type()
-              << " for cpu code and the kernel_key is: " << expected_kernel_key;
-
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
       auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
