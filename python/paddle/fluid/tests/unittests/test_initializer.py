@@ -708,6 +708,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
             np.allclose(
                 hist, hist2, rtol=0, atol=0.01),
             "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
         with framework._test_eager_guard():
@@ -738,6 +739,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
             np.allclose(
                 hist, hist2, rtol=0, atol=0.01),
             "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):
         with framework._test_eager_guard():
