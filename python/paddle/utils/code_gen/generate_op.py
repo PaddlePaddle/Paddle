@@ -20,7 +20,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from filters import to_op_attr_type, to_opmaker_name, to_pascal_case
-from tests import is_base_api, is_vec, is_initializer_list, supports_inplace, supports_no_need_buffer
+from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
 from filters import to_input_name, to_grad_name
 from parse_utils import to_named_dict
 
@@ -39,6 +39,7 @@ env.filters["to_input_name"] = to_input_name
 env.filters["to_grad_name"] = to_grad_name
 env.tests["base_api"] = is_base_api
 env.tests["vec"] = is_vec
+env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
 env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer

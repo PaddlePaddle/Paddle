@@ -6,17 +6,17 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
   void Make() override {
   {% filter indent(4, True) %}
     {% for input in api["inputs"] %}
-      {# {% if input["name"] in api["kernel"]["param"] %} #}
+      {% if input["name"] in api["kernel"]["param"] %}
 {{add_input(loop.index0, input, api_name)}};
-      {# {% endif %} #}
+      {% endif %}
     {% endfor %}
     {% for output in api["outputs"] %}
 {{add_output(loop.index0, output, api_name)}};
     {% endfor %}
     {% for attr in api["attrs"] %}
-      {# {% if attr["name"] in api["kernel"]["param"] %} #}
+      {% if attr["name"] in api["kernel"]["param"] %}
 {{add_attr(loop.index0, attr, api_name)}};
-      {# {% endif %} #}
+      {% endif %}
     {% endfor %}
   {% endfilter %}
     AddComment(R"DOC(
@@ -58,7 +58,7 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["name"] %}
   {% set typename = attr["typename"] %}
-  {% if typename == "Scalar "%}
+  {% if typename is scalar %}
 AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
   {% elif typename == "IntArray" %}{# the type has been renamed #}
@@ -126,10 +126,10 @@ paddle::SmallVector<std::string> inputs {
 {% macro get_an_attr(attr) %}{# inline #}
 {% set typename = attr["typename"] %}
 {% set name = attr["name"] %}
-{% if typename == "Scalar" %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
 attrs.emplace_back(
   ctx.HasInput("{{name | to_pascal_case}}")
-  ? "{{name | to_pascal_case}}"
+  ? "{{name | to_pascal_case}}Tensor"
   : "{{name}}"
 )
 {%- elif typename == "IntArray" %}
@@ -247,10 +247,10 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       {% elif attr["typename"] == "Scalar" %}
     grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
       {% endif %}
-    grad_op->SetAttr({{attr_name}}, this->GetAttr({{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}));
+    grad_op->SetAttr("{{attr_name}}", this->GetAttr("{{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}"));
     {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
-    grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "attr {{attr_name}}");
-    grad_op->SetAttr({{attr_name}}, {{attr["default_value"]}});
+    grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "({{attr["typename"] | to_op_attr_type}}), exceptional attr {{attr_name}}");
+    grad_op->SetAttr("{{attr_name}}", {{process_default_value(attr)}});
     {% endif %}
   {% endfor %}
   }

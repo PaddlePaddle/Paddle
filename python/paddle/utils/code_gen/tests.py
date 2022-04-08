@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from type_mapping import input_types_map, attr_types_map, output_type_map
 
 
@@ -30,6 +31,10 @@ def is_output(s):
 
 def is_vec(s):
     return s.endswith("[]")
+
+
+def is_scalar(s):
+    return re.match(r"Scalar(\(\w+\))*", s) is not None
 
 
 def is_initializer_list(s):
