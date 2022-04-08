@@ -26,11 +26,9 @@ void TrilIndicesKernel(const Context& dev_ctx,
                      int offset,
                      DataType dtype,
                      DenseTensor* out){
-    VLOG(4) << "TrilIndices kernel begin : *****";
     T* out_data = dev_ctx.template Alloc<T>(out);
     auto out_dims = out->dims();
     int64_t tril_size = out_dims[1];
-    VLOG(4) << "TrilIndices tril_size : " << tril_size;
     int64_t i = 0;
 
     T r = std::max<int64_t>(0, -offset), c = 0;
@@ -47,7 +45,6 @@ void TrilIndicesKernel(const Context& dev_ctx,
         // and tril_size provide the guarantee
       }
     }
-     VLOG(4) << "TrilIndices kernel end : *****";
 }
 }//namespace phi
 
