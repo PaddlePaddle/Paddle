@@ -743,6 +743,10 @@ def _build_table(statistic_data,
             TracerEventType.
             Communication] = statistic_data.distributed_summary.cpu_calls
 
+    if TracerEventType.Forward in cpu_call_times:
+        cpu_call_times[TracerEventType.Forward] = cpu_call_times[
+            TracerEventType.ProfileStep]
+
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
     ):
