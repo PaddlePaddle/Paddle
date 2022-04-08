@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import tempfile
 
 import paddle
 import paddle.profiler as profiler
@@ -136,6 +137,40 @@ class TestNvprof(unittest.TestCase):
             x = paddle.to_tensor(
                 x_value, stop_gradient=False, place=paddle.CPUPlace())
             y = x / 2.0
+
+
+class TestGetProfiler(unittest.TestCase):
+    def test_getprofiler(self):
+        config_content = '''
+        {
+        "targets": ["CPU"],
+        "scheduler": [3,4],
+        "on_trace_ready": {
+            "export_chrome_tracing":{
+                "module": "paddle.profiler",
+                "use_direct": false,
+                "args": [],
+                "kwargs": {
+                        "dir_name": "testdebug/"
+                    }
+                }
+            },
+          "timer_only": false
+        }
+        '''
+        filehandle = tempfile.NamedTemporaryFile(mode='w')
+        filehandle.write(config_content)
+        filehandle.flush()
+        import paddle.profiler.profiler as profiler
+        profiler = profiler.get_profiler(filehandle.name)
+        x_value = np.random.randn(2, 3, 3)
+        x = paddle.to_tensor(
+            x_value, stop_gradient=False, place=paddle.CPUPlace())
+        with profiler:
+            for i in range(5):
+                y = x / 2.0
+                ones_like_y = paddle.ones_like(y)
+                profiler.step()
 
 
 class RandomDataset(Dataset):
