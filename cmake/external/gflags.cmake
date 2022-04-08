@@ -45,7 +45,6 @@ if(WITH_ARM_BRPC)
         DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
                             && tar zxvf arm_gflags.tar.gz
         UPDATE_COMMAND  ""
-        INSTALL_COMMAND ${INSTALL_COMMAND}
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
