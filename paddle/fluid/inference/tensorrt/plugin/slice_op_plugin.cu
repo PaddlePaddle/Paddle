@@ -275,9 +275,8 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int j = 0;
     for (size_t i = 0; i < in_dims.nbDims; i++) {
       if (decrease_axis_ == i) continue;
-      res.d[j++] =
-          expr_builder.operation(nvinfer1::DimensionOperation::kMAX,
-                                 *expr_builder.constant(0), *in_dims.d[i]);
+      res.d[j++] = expr_builder.operation(nvinfer1::DimensionOperation::kMAX,
+                                          *expr_builder.constant(0), *ret.d[i]);
     }
     return res;
   }
