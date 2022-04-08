@@ -31,6 +31,7 @@
 #include "base/object_pool.h"
 #define butil base
 #else
+#include "base/object_pool.h"
 #include "butil/endpoint.h"
 #endif
 #include "paddle/fluid/distributed/common/utils.h"
