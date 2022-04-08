@@ -256,7 +256,7 @@ def _new_process_group_impl(backend,
             local_rank=rank,
             local_size=world_size,
             gloo_rank=cluster_id,
-            gloo_size=len(cluster_sizes),
+            gloo_size=len(cluster_size),
             with_switch=True,
             switch_endpoint=switch_ep)
 
