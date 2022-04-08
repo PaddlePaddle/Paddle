@@ -144,42 +144,6 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
   cudaStreamSynchronize(stream);
 }
 
-void MultiSlotInMemoryDataFeed::FillSlotValueOffset(
-    const int ins_num, const int used_slot_num, size_t *slot_value_offsets,
-    const int *uint64_offsets, const int uint64_slot_size,
-    const int *float_offsets, const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
-  FillSlotValueOffsetKernel<<<GET_BLOCKS(used_slot_num), CUDA_NUM_THREADS, 0,
-                              stream>>>(
-      ins_num, used_slot_num, slot_value_offsets, uint64_offsets,
-      uint64_slot_size, float_offsets, float_slot_size, used_slots);
-  cudaStreamSynchronize(stream);
-}
-
-void MultiSlotInMemoryDataFeed::CopyForTensor(
-    const int ins_num, const int used_slot_num, void **dest,
-    const size_t *slot_value_offsets, const uint64_t *uint64_feas,
-    const int *uint64_offsets, const int *uint64_ins_lens,
-    const int uint64_slot_size, const float *float_feas,
-    const int *float_offsets, const int *float_ins_lens,
-    const int float_slot_size, const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<platform::CUDADeviceContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
-
-  CopyForTensorKernel<<<GET_BLOCKS(used_slot_num * ins_num), CUDA_NUM_THREADS,
-                        0, stream>>>(
-      used_slot_num, ins_num, dest, slot_value_offsets, uint64_feas,
-      uint64_offsets, uint64_ins_lens, uint64_slot_size, float_feas,
-      float_offsets, float_ins_lens, float_slot_size, used_slots);
-  cudaStreamSynchronize(stream);
-}
-
 }  // namespace framework
 }  // namespace paddle
 #endif

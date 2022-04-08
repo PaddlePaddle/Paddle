@@ -189,11 +189,6 @@ using SlotRecord = SlotRecordObject*;
 struct Record {
   std::vector<FeatureItem> uint64_feasigns_;
   std::vector<FeatureItem> float_feasigns_;
-  std::vector<int> uint64_offset_;
-  std::vector<int> float_offset_;
-  std::vector<uint64_t> uint64_feasign_values_;
-  std::vector<float> float_feasign_values_;
-
   std::string ins_id_;
   std::string content_;
   uint64_t search_id;
@@ -389,7 +384,6 @@ struct SlotConf {
   std::string type;
   int use_slots_index;
   int use_slots_is_dense;
-  int slot_value_idx;
 };
 
 class CustomParser {
@@ -533,12 +527,9 @@ class MiniBatchGpuPack {
  public:
   MiniBatchGpuPack(const paddle::platform::Place& place,
                    const std::vector<UsedSlotInfo>& infos);
-  MiniBatchGpuPack(const paddle::platform::Place& place,
-                   const std::vector<SlotConf>& slot_conf);
   ~MiniBatchGpuPack();
   void reset(const paddle::platform::Place& place);
   void pack_instance(const SlotRecord* ins_vec, int num);
-  void pack_instance(const std::vector<Record>& ins_vec);
   int ins_num() { return ins_num_; }
   int pv_num() { return pv_num_; }
   BatchGPUValue& value() { return value_; }
@@ -595,9 +586,6 @@ class MiniBatchGpuPack {
   void pack_all_data(const SlotRecord* ins_vec, int num);
   void pack_uint64_data(const SlotRecord* ins_vec, int num);
   void pack_float_data(const SlotRecord* ins_vec, int num);
-  void pack_all_data(const std::vector<Record>& ins_vec);
-  void pack_uint64_data(const std::vector<Record>& ins_vec);
-  void pack_float_data(const std::vector<Record>& ins_vec);
 
  public:
   template <typename T>
@@ -664,18 +652,6 @@ class MiniBatchGpuPackMgr {
   // one device one thread
   MiniBatchGpuPack* get(const paddle::platform::Place& place,
                         const std::vector<UsedSlotInfo>& infos) {
-    int device_id = place.GetDeviceId();
-    if (pack_list_[device_id] == nullptr) {
-      pack_list_[device_id] = new MiniBatchGpuPack(place, infos);
-    } else {
-      pack_list_[device_id]->reset(place);
-    }
-    return pack_list_[device_id];
-  }
-
-  // one device one thread
-  MiniBatchGpuPack* get(const paddle::platform::Place& place,
-                        const std::vector<SlotConf>& infos) {
     int device_id = place.GetDeviceId();
     if (pack_list_[device_id] == nullptr) {
       pack_list_[device_id] = new MiniBatchGpuPack(place, infos);
@@ -1390,15 +1366,8 @@ class MultiSlotDataFeed
 class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  public:
   MultiSlotInMemoryDataFeed() {}
-  virtual ~MultiSlotInMemoryDataFeed() {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-    if (pack_ != nullptr) {
-      pack_ = nullptr;
-    }
-#endif
-  }
+  virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
-  virtual bool Start();
   // void SetRecord(Record* records) { records_ = records; }
 
  protected:
@@ -1413,28 +1382,6 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
   virtual void PutToFeedVec(const Record* ins_vec, int num);
-
- protected:
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  void BuildSlotBatchGPU(const int ins_num);
-  void FillSlotValueOffset(const int ins_num, const int used_slot_num,
-                           size_t* slot_value_offsets,
-                           const int* uint64_offsets,
-                           const int uint64_slot_size, const int* float_offsets,
-                           const int float_slot_size,
-                           const UsedSlotGpuType* used_slots);
-  void CopyForTensor(const int ins_num, const int used_slot_num, void** dest,
-                     const size_t* slot_value_offsets,
-                     const uint64_t* uint64_feas, const int* uint64_offsets,
-                     const int* uint64_ins_lens, const int uint64_slot_size,
-                     const float* float_feas, const int* float_offsets,
-                     const int* float_ins_lens, const int float_slot_size,
-                     const UsedSlotGpuType* used_slots);
-
-  MiniBatchGpuPack* pack_ = nullptr;
-  int float_use_slot_size_ = 0;
-  int uint64_use_slot_size_ = 0;
-#endif
 };
 
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {

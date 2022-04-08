@@ -213,19 +213,12 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         const auto& ins = *iter;
-        const auto& feasign_v = ins.uint64_feasign_values_;
+        const auto& feasign_v = ins.uint64_feasigns_;
         for (const auto feasign : feasign_v) {
-          int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_keys_[i][shard_id].insert(feasign);
+          uint64_t cur_key = feasign.sign().uint64_feasign_;
+          int shard_id = cur_key % thread_keys_shard_num_;
+          this->thread_keys_[i][shard_id].insert(cur_key);
         }
-
-        // for old record
-        // const auto& feasign_v = ins.uint64_feasigns_;
-        // for (const auto feasign : feasign_v) {
-        //   uint64_t cur_key = feasign.sign().uint64_feasign_;
-        //   int shard_id = cur_key % thread_keys_shard_num_;
-        //   this->thread_keys_[i][shard_id].insert(cur_key);
-        // }
       }
     };
     for (int i = 0; i < thread_keys_thread_num_; i++) {
