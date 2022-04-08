@@ -194,7 +194,6 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
     for (int i = 0; i < num_layers; i++) {
