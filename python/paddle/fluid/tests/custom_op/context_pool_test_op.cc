@@ -28,6 +28,7 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::CPU>(cpu_place);
   PD_CHECK(cpu_ctx->GetPlace() == cpu_place);
+  // if want to use the eigen_device here, need to include eigen headers
   auto* cpu_eigen_device = cpu_ctx->eigen_device();
   PD_CHECK(cpu_eigen_device != nullptr);
 
@@ -39,6 +40,7 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::GPU>(gpu_place);
   PD_CHECK(gpu_ctx->GetPlace() == gpu_place);
+  // if want to use the eigen_device here, need to include eigen headers
   auto* gpu_eigen_device = gpu_ctx->eigen_device();
   PD_CHECK(gpu_eigen_device != nullptr);
 #endif

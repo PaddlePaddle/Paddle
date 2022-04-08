@@ -58,7 +58,7 @@ struct DefaultDeviceContextType<AllocationType::GPU> {
  * be initialized by itself.
  *
  * Note: DeviceContextPool is an experimental API and may be removed in the
- * future. In 2.3, we recommend directly using the C++ API to combine new
+ * future. From 2.3, we recommend directly using the C++ API to combine new
  * perators.
  */
 class PADDLE_API DeviceContextPool {

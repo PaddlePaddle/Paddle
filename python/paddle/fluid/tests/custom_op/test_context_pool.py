@@ -35,11 +35,8 @@ custom_ops = load(
     name='context_pool_jit',
     sources=['context_pool_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    #include "paddle/extension.h"
-    extra_cxx_cflags=extra_cc_args +
-    ['-DPADDLE_WITH_CUSTOM_KERNEL'],  # test for cflags
-    extra_cuda_cflags=extra_nvcc_args +
-    ['-DPADDLE_WITH_CUSTOM_KERNEL'],  # test for cflags
+    extra_cxx_cflags=extra_cc_args,  # test for cflags
+    extra_cuda_cflags=extra_nvcc_args,  # test for cflags
     verbose=True)
 
 

@@ -447,6 +447,8 @@ class BuildExtension(build_ext, object):
                         cflags.append('-DPADDLE_WITH_HIP')
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
+                # Add this compile option to isolate fluid headers
+                cflags.append('-DPADDLE_WITH_CUSTOM_KERNEL')
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True)
@@ -491,8 +493,8 @@ class BuildExtension(build_ext, object):
 
                 include_regex = re.compile(r'((\-|\/)I.*)')
                 include_list = [
-                    m.group(1)
-                    for m in (include_regex.match(elem) for elem in cmd) if m
+                    m.group(1) for m in (include_regex.match(elem)
+                                         for elem in cmd) if m
                 ]
 
                 assert len(src_list) == 1 and len(obj_list) == 1
@@ -524,6 +526,8 @@ class BuildExtension(build_ext, object):
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     cmd.append('-DPADDLE_WITH_CUDA')
+                # Add this compile option to isolate fluid headers
+                cmd.append('-DPADDLE_WITH_CUSTOM_KERNEL')
 
                 return original_spawn(cmd)
 
