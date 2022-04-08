@@ -36,15 +36,11 @@ class AucOp : public framework::OperatorWithKernel {
     }
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
-    auto ins_tag_height = ctx->GetInputDim("InsTagWeight")[0];
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(predict_height, label_height,
                         platform::errors::InvalidArgument(
                             "Out and Label should have same height."));
-      PADDLE_ENFORCE_EQ(ins_tag_height, label_height,
-                        platform::errors::InvalidArgument(
-                            "InsTagWeight and Label should have same height."));
     }
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
@@ -89,11 +85,11 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
-    AddInput("InsTagWeight",
-             "(Tensor) instag weight, 1 means real data, 0 means false data");
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
+    AddInput("InsTagWeight",
+             "(Tensor) instag weight, 1 means real data, 0 means false data");
 
     AddOutput("AUC",
               "A scalar representing the "
