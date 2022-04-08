@@ -2182,6 +2182,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
@@ -2338,6 +2339,11 @@ void BindImperative(py::module *m_ptr) {
         });
   m.def("pylayer_apply",
         [](const platform::MLUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+  m.def("pylayer_apply",
+        [](const platform::CustomPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });

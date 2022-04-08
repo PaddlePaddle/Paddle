@@ -174,6 +174,12 @@ void PoolGradInferMeta(const MetaTensor& x,
                        const std::string& padding_algorithm,
                        MetaTensor* dx);
 
+void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
+
+void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
+                                const MetaTensor& x_grad_grad,
+                                MetaTensor* out_grad_grad);
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,

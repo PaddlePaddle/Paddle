@@ -20,7 +20,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...static import Variable
 from ...tensor.creation import assign
 from ...fluid import dygraph_utils
-from ...fluid.layers.layer_function_generator import templatedoc
+from ...tensor.layer_function_generator import templatedoc
 from ...fluid.layers.sequence_lod import sequence_mask  #noqa: F401
 from paddle import in_dynamic_mode
 
