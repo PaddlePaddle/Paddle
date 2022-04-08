@@ -35,7 +35,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];
@@ -47,8 +47,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
 
 template <typename T>
 __global__ void index_select_grad_init(T* input_grad, int64_t N) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     input_grad[idx] = 0.0;
   }
 }
