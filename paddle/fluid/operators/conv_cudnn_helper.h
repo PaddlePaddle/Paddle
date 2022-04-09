@@ -187,12 +187,25 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     if (deterministic) {
       result = FindAlgoDeterministic();
     } else {
-      bool use_autotune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || use_autotune) {
-        result = FindAlgoExhaustiveSearch<T>(args, ctx);
+      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+      // 2. Once turning on auto-tune, runn heuristic search(default) before
+      //    auto-tune process, run exhaustive_search during mentioned process.
+      // 3. After auto-tune process, run cached algorithm if cached, run
+      //    default mode for the rest.
+      size_t key = args.GetCacheKey<T>();
+      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
+          "conv_forward");
+      if (cache.Find(key)) {
+        result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
-        result = FindAlgoHeuristic(args, ctx);
+        bool use_autotune =
+            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        if (exhaustive_search || use_autotune) {
+          result = FindAlgoExhaustiveSearch<T>(args, ctx);
+          cache.Set(key, static_cast<int64_t>(result.algo));
+        } else {
+          result = FindAlgoHeuristic(args, ctx);
+        }
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
@@ -265,54 +278,37 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     return result;
   }
 
-  // Exhaustive search mode.
-  // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-  // 2. Once turning on auto-tune, runn heuristic search(default) before
-  //    auto-tune process, run exhaustive_search during mentioned process.
-  // 3. After auto-tune process, run cached algorithm if cached, run default
-  //    mode for the rest.
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
       const ConvArgs& args, const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
-    size_t key = args.GetCacheKey<T>();
-    auto& cache =
-        phi::autotune::AutoTuneCache::Instance().RegisterOrGet("conv_forward");
-    if (cache.Find(key)) {
-      result.algo = static_cast<AlgoT>(cache.Get(key));
-    } else {
-      size_t workspace_size_limit =
-          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
-      size_t max_workspace_size =
-          GetMaxWorkspaceSize(args, workspace_size_limit);
-      VLOG(4) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
-              << " MB";
+    size_t workspace_size_limit =
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
+    size_t max_workspace_size = GetMaxWorkspaceSize(args, workspace_size_limit);
+    VLOG(4) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
+            << " MB";
 
-      int returned_algo_count;
-      std::vector<PerfT> perf_results(kNUM_CUDNN_FWD_ALGS);
-      auto cudnn_find_func = [&](void* workspace_ptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                args.handle, args.idesc.desc(), args.x->data<T>(),
-                args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
-                args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
-                kNUM_CUDNN_FWD_ALGS, &returned_algo_count, perf_results.data(),
-                workspace_ptr, max_workspace_size));
-      };
+    int returned_algo_count;
+    std::vector<PerfT> perf_results(kNUM_CUDNN_FWD_ALGS);
+    auto cudnn_find_func = [&](void* workspace_ptr) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+              args.handle, args.idesc.desc(), args.x->data<T>(),
+              args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
+              args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
+              kNUM_CUDNN_FWD_ALGS, &returned_algo_count, perf_results.data(),
+              workspace_ptr, max_workspace_size));
+    };
 
-      auto workspace_handle = ctx.cudnn_workspace_handle();
-      workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                   UseFixedWorkspace());
+    auto workspace_handle = ctx.cudnn_workspace_handle();
+    workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                 UseFixedWorkspace());
 
-      VLOG(5) << GetPerfResultString<PerfT>(
-          "[Exhaustive Search] FwdAlgo Perf result", perf_results,
-          returned_algo_count, workspace_size_limit);
-      ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
-                                          &result);
-
-      // Add the algorithm to cache.
-      cache.Set(key, static_cast<int64_t>(result.algo));
-    }
+    VLOG(5) << GetPerfResultString<PerfT>(
+        "[Exhaustive Search] FwdAlgo Perf result", perf_results,
+        returned_algo_count, workspace_size_limit);
+    ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                        &result);
 
     return result;
   }
@@ -361,12 +357,25 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     if (deterministic) {
       result = FindAlgoDeterministic();
     } else {
-      bool use_autotune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || use_autotune) {
-        result = FindAlgoExhaustiveSearch<T>(args, ctx);
+      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+      // 2. Once turning on auto-tune, runn heuristic search(default) before
+      //    auto-tune process, run exhaustive_search during mentioned process.
+      // 3. After auto-tune process, run cached algorithm if cached, run
+      //    default mode for the rest.
+      size_t key = args.GetCacheKey<T>();
+      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
+          "conv_backward_data");
+      if (cache.Find(key)) {
+        result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
-        result = FindAlgoHeuristic(args, ctx);
+        bool use_autotune =
+            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        if (exhaustive_search || use_autotune) {
+          result = FindAlgoExhaustiveSearch<T>(args, ctx);
+          cache.Set(key, static_cast<int64_t>(result.algo));
+        } else {
+          result = FindAlgoHeuristic(args, ctx);
+        }
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
@@ -450,54 +459,37 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     return result;
   }
 
-  // Exhaustive search mode.
-  // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-  // 2. Once turning on auto-tune, runn heuristic search(default) before
-  //    auto-tune process, run exhaustive_search during mentioned process.
-  // 3. After auto-tune process, run cached algorithm if cached, run default
-  //    mode for the rest.
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
       const ConvArgs& args, const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
-    size_t key = args.GetCacheKey<T>();
-    auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
-        "conv_backward_data");
-    if (cache.Find(key)) {
-      result.algo = static_cast<AlgoT>(cache.Get(key));
-    } else {
-      size_t workspace_size_limit =
-          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
-      size_t max_workspace_size =
-          GetMaxWorkspaceSize(args, workspace_size_limit);
-      VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
-              << " MB";
+    size_t workspace_size_limit =
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
+    size_t max_workspace_size = GetMaxWorkspaceSize(args, workspace_size_limit);
+    VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
+            << " MB";
 
-      int returned_algo_count;
-      std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_DATA_ALGS);
-      auto cudnn_find_func = [&](void* workspace_ptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cudnnFindConvolutionBackwardDataAlgorithmEx(
-                args.handle, args.wdesc.desc(), args.w->data<T>(),
-                args.odesc.desc(), args.o->data<T>(), args.cdesc.desc(),
-                args.idesc.desc(), const_cast<T*>(args.x->data<T>()),
-                kNUM_CUDNN_BWD_DATA_ALGS, &returned_algo_count,
-                perf_results.data(), workspace_ptr, max_workspace_size));
-      };
+    int returned_algo_count;
+    std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_DATA_ALGS);
+    auto cudnn_find_func = [&](void* workspace_ptr) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnFindConvolutionBackwardDataAlgorithmEx(
+              args.handle, args.wdesc.desc(), args.w->data<T>(),
+              args.odesc.desc(), args.o->data<T>(), args.cdesc.desc(),
+              args.idesc.desc(), const_cast<T*>(args.x->data<T>()),
+              kNUM_CUDNN_BWD_DATA_ALGS, &returned_algo_count,
+              perf_results.data(), workspace_ptr, max_workspace_size));
+    };
 
-      auto workspace_handle = ctx.cudnn_workspace_handle();
-      workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                   UseFixedWorkspace());
+    auto workspace_handle = ctx.cudnn_workspace_handle();
+    workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                 UseFixedWorkspace());
 
-      VLOG(5) << GetPerfResultString<PerfT>(
-          "[Exhaustive Search] BwdDataAlgo Perf result", perf_results,
-          returned_algo_count, workspace_size_limit);
-      ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
-                                          &result);
-
-      // Add the algorithm to cache.
-      cache.Set(key, static_cast<int64_t>(result.algo));
-    }
+    VLOG(5) << GetPerfResultString<PerfT>(
+        "[Exhaustive Search] BwdDataAlgo Perf result", perf_results,
+        returned_algo_count, workspace_size_limit);
+    ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                        &result);
 
     return result;
   }
@@ -546,12 +538,25 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     if (deterministic) {
       result = FindAlgoDeterministic();
     } else {
-      bool use_autotune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || use_autotune) {
-        result = FindAlgoExhaustiveSearch<T>(args, ctx);
+      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+      // 2. Once turning on auto-tune, runn heuristic search(default) before
+      //    auto-tune process, run exhaustive_search during mentioned process.
+      // 3. After auto-tune process, run cached algorithm if cached, run
+      //    default mode for the rest.
+      size_t key = args.GetCacheKey<T>();
+      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
+          "conv_backward_filter");
+      if (cache.Find(key)) {
+        result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
-        result = FindAlgoHeuristic(args, ctx);
+        bool use_autotune =
+            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        if (exhaustive_search || use_autotune) {
+          result = FindAlgoExhaustiveSearch<T>(args, ctx);
+          cache.Set(key, static_cast<int64_t>(result.algo));
+        } else {
+          result = FindAlgoHeuristic(args, ctx);
+        }
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
@@ -625,62 +630,46 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     return result;
   }
 
-  // Exhaustive search mode.
-  // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-  // 2. Once turning on auto-tune, runn heuristic search(default) before
-  //    auto-tune process, run exhaustive_search during mentioned process.
-  // 3. After auto-tune process, run cached algorithm if cached, run
-  //    default mode for the rest.
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
       const ConvArgs& args, const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
-    size_t key = args.GetCacheKey<T>();
-    auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
-        "conv_backward_filter");
-    if (cache.Find(key)) {
-      result.algo = static_cast<AlgoT>(cache.Get(key));
-    } else {
-      int returned_algo_count = 0;
-      std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
-      size_t workspace_size_limit =
-          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
-      auto workspace_handle = ctx.cudnn_workspace_handle();
-      if (platform::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
-        size_t max_workspace_size =
-            GetMaxWorkspaceSize(args, workspace_size_limit);
-        VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
-                << " MB";
+    int returned_algo_count = 0;
+    std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
+    size_t workspace_size_limit =
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
+    auto workspace_handle = ctx.cudnn_workspace_handle();
+    if (platform::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
+      size_t max_workspace_size =
+          GetMaxWorkspaceSize(args, workspace_size_limit);
+      VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
+              << " MB";
 
-        auto cudnn_find_func = [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithmEx(
-                  args.handle, args.idesc.desc(), args.x->data<T>(),
-                  args.odesc.desc(), args.o->data<T>(), args.cdesc.desc(),
-                  args.wdesc.desc(), const_cast<T*>(args.w->data<T>()),
-                  kNUM_CUDNN_BWD_FILTER_ALGS, &returned_algo_count,
-                  perf_results.data(), workspace_ptr, max_workspace_size));
-        };
-        workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
-                                     UseFixedWorkspace());
-
-        VLOG(5) << GetPerfResultString<PerfT>(
-            "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
-            returned_algo_count, workspace_size_limit);
-        ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
-                                            &result);
-      } else {
+      auto cudnn_find_func = [&](void* workspace_ptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
-                args.handle, args.idesc.desc(), args.odesc.desc(),
-                args.cdesc.desc(), args.wdesc.desc(), perf_results.size(),
-                &returned_algo_count, perf_results.data()));
-        perf_results.resize(returned_algo_count);
-        ChooseAlgo(perf_results, workspace_size_limit, &result);
-      }
+            platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithmEx(
+                args.handle, args.idesc.desc(), args.x->data<T>(),
+                args.odesc.desc(), args.o->data<T>(), args.cdesc.desc(),
+                args.wdesc.desc(), const_cast<T*>(args.w->data<T>()),
+                kNUM_CUDNN_BWD_FILTER_ALGS, &returned_algo_count,
+                perf_results.data(), workspace_ptr, max_workspace_size));
+      };
+      workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                   UseFixedWorkspace());
 
-      // Add the algorithm to cache.
-      cache.Set(key, static_cast<int64_t>(result.algo));
+      VLOG(5) << GetPerfResultString<PerfT>(
+          "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
+          returned_algo_count, workspace_size_limit);
+      ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
+                                          &result);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
+              args.handle, args.idesc.desc(), args.odesc.desc(),
+              args.cdesc.desc(), args.wdesc.desc(), perf_results.size(),
+              &returned_algo_count, perf_results.data()));
+      perf_results.resize(returned_algo_count);
+      ChooseAlgo(perf_results, workspace_size_limit, &result);
     }
 
     return result;

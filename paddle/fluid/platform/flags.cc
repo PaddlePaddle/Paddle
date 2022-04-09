@@ -184,6 +184,8 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Whether enable exhaustive search for cuDNN convolution or "
     "not, default is False.");
 
+PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_exhaustive_search_times
