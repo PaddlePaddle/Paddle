@@ -69,7 +69,7 @@ static inline bool UseFixedWorkspace() {
   return FLAGS_conv_workspace_size_limit >= 0;
 }
 
-static size_t CaclWorkspaceLimitInBytes(bool use_fixed_workspace) {
+static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
   if (!use_fixed_workspace) {
     int device_id = platform::GetCurrentDeviceId();
     int64_t allocated = memory::StatGetCurrentValue("Allocated", device_id);
@@ -132,7 +132,7 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
       }
     }
   }
-  if (best_algo_idx == -1) {
+  if (best_algo_idx != -1) {
     search_result->algo = perf_results[best_algo_idx].algo;
     search_result->time = perf_results[best_algo_idx].time;
     search_result->workspace_size = perf_results[best_algo_idx].memory;
@@ -222,7 +222,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                                                const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
-        CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
 
 #if CUDNN_VERSION >= 7001
     int actual_perf_count;
@@ -282,7 +282,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       result.algo = static_cast<AlgoT>(cache.Get(key));
     } else {
       size_t workspace_size_limit =
-          CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
       size_t max_workspace_size =
           GetMaxWorkspaceSize(args, workspace_size_limit);
       VLOG(4) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
@@ -395,7 +395,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                                                const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
-        CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
 
 #if CUDNN_VERSION >= 7001
     int actual_perf_count;
@@ -467,7 +467,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       result.algo = static_cast<AlgoT>(cache.Get(key));
     } else {
       size_t workspace_size_limit =
-          CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
       size_t max_workspace_size =
           GetMaxWorkspaceSize(args, workspace_size_limit);
       VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
@@ -581,7 +581,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                                                const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
     size_t workspace_size_limit =
-        CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+        CalcWorkspaceLimitInBytes(UseFixedWorkspace());
 
 #if CUDNN_VERSION >= 7001
     int actual_perf_count;
@@ -644,7 +644,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       int returned_algo_count = 0;
       std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
       size_t workspace_size_limit =
-          CaclWorkspaceLimitInBytes(UseFixedWorkspace());
+          CalcWorkspaceLimitInBytes(UseFixedWorkspace());
       auto workspace_handle = ctx.cudnn_workspace_handle();
       if (platform::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
         size_t max_workspace_size =
