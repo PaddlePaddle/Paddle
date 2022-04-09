@@ -25,7 +25,6 @@ from paddle.fluid.framework import _test_eager_guard
 class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
-        self.python_api = paddle.multiplex
         rows = 4
         index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)
@@ -46,25 +45,19 @@ class TestMultiplexOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out', check_eager=True)
+        self.check_grad(['x1', 'x2', 'x3', 'x4'], 'Out')
 
     def test_check_grad_ignore_x1(self):
-        self.check_grad(
-            ['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'), check_eager=True)
+        self.check_grad(['x2', 'x3', 'x4'], 'Out', no_grad_set=set('x1'))
 
     def test_check_grad_ignore_x1_x2(self):
-        self.check_grad(
-            ['x3', 'x4'],
-            'Out',
-            no_grad_set=set(['x1', 'x2']),
-            check_eager=True)
+        self.check_grad(['x3', 'x4'], 'Out', no_grad_set=set(['x1', 'x2']))
 
     def test_check_grad_ignore_x3(self):
-        self.check_grad(
-            ['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'), check_eager=True)
+        self.check_grad(['x1', 'x2', 'x4'], 'Out', no_grad_set=set('x3'))
 
 
 class TestMultiplexOpError(unittest.TestCase):
@@ -111,8 +104,28 @@ class TestMultiplexODygrap(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_final_state_api(self):
-        with _test_eager_guard():
-            self.test_multiplex_dygraph()
+        with fluid.dygraph.guard():
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            inputs[0].stop_gradient = False
+            inputs[1].stop_gradient = False
+            res = paddle.multiplex(inputs, index)
+            res.backward()
+            with _test_eager_guard():
+                inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+                index_eager = paddle.to_tensor(
+                    np.array([[1], [0]]).astype(np.int32))
+                inputs_eager[0].stop_gradient = False
+                inputs_eager[1].stop_gradient = False
+                res_eager = paddle.multiplex(inputs_eager, index_eager)
+                res_eager.backward()
+                self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
+                self.assertEqual((inputs[0].grad.numpy() ==
+                                  inputs_eager[0].grad.numpy()).all(), True)
+                self.assertEqual((inputs[1].grad.numpy() ==
+                                  inputs_eager[1].grad.numpy()).all(), True)
 
 
 if __name__ == '__main__':
