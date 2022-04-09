@@ -55,7 +55,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 3, 64, 64]).astype(np.float32)
+            return np.ones([6, 6, 64, 64]).astype(np.float32)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
             for starts in [[0, 1]]:
@@ -97,8 +97,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [6, 6, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
