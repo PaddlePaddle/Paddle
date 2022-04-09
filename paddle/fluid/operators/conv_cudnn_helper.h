@@ -663,6 +663,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
                                           &result);
     } else {
+      int max_algos = 0;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
+              args.handle, &max_algos));
+#endif
+      std::vector<perf_t> perf_results(max_algos);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
               args.handle, args.idesc.desc(), args.odesc.desc(),
