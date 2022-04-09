@@ -404,7 +404,7 @@ class GraphSampler {
 };
 #endif
 
-class GraphTable : public SparseTable {
+class GraphTable : public Table {
  public:
   GraphTable() {
     use_cache = false;
@@ -415,6 +415,23 @@ class GraphTable : public SparseTable {
     rw_lock.reset(new pthread_rwlock_t());
   }
   virtual ~GraphTable();
+
+  virtual void *GetShard(size_t shard_idx) { return 0; }
+
+  static int32_t sparse_local_shard_num(uint32_t shard_num,
+                                        uint32_t server_num) {
+    if (shard_num % server_num == 0) {
+      return shard_num / server_num;
+    }
+    size_t local_shard_num = shard_num / server_num + 1;
+    return local_shard_num;
+  }
+
+  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+                                 uint64_t key) {
+    return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
+  }
+
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
                                   int &actual_size, bool need_feature,
@@ -451,15 +468,6 @@ class GraphTable : public SparseTable {
 
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
-
-  virtual int32_t PullSparse(float *values, const PullSparseValue &pull_value) {
-    return 0;
-  }
-
-  virtual int32_t PushSparse(const uint64_t *keys, const float *values,
-                             size_t num) {
-    return 0;
-  }
 
   virtual int32_t clear_nodes();
   virtual void Clear() {}

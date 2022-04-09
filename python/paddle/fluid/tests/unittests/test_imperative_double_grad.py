@@ -639,5 +639,40 @@ class TestDoubleGradResNet(TestCase):
         self.assertTrue(np.array_equal(egr_g_numpy, g_numpy))
 
 
+class TestDoubleGradBasics(TestCase):
+    def test_matmul(self):
+        input_numpy = np.ones([3, 3]) * 2
+        with _test_eager_guard():
+            x = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            y = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            grad_out = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32')
+
+            out = paddle.matmul(x, y, False, False)
+            new_x_g, new_y_g = paddle.grad(
+                [out], [x, y], [grad_out], retain_graph=True, create_graph=True)
+            new_x_g.backward()
+
+            out_ref = np.ones([3, 3]) * 12.0
+            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+
+            new_x_g_ref = np.ones([3, 3]) * 6.0
+            new_y_g_ref = np.ones([3, 3]) * 6.0
+            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
+            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+
+            x_grad_ref = np.ones([3, 3]) * 0.0
+            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+
+            y_grad_ref = np.ones([3, 3]) * 3.0
+            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+
+            grad_out_grad_ref = np.ones([3, 3]) * 6.0
+            self.assertTrue(
+                np.array_equal(grad_out.grad.numpy(), grad_out_grad_ref))
+
+
 if __name__ == '__main__':
     unittest.main()

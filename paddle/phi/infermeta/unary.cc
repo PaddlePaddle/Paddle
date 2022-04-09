@@ -24,11 +24,24 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
+
+namespace detail {
+// Used in MatrixRankInferMeta
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = phi::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return phi::make_ddim({1});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return phi::make_ddim(x_vec);
+}
+}  // namespace detail
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
@@ -358,17 +371,6 @@ void DiagonalInferMeta(const MetaTensor& input,
     }
   }
   out->set_dims(phi::make_ddim(out_dims));
-}
-
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask) {
-  auto x_dims = x.dims();
-  out->set_dims(x_dims);
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-
-  if (mask != nullptr) {
-    mask->set_dims(x_dims);
-  }
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -911,6 +913,29 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void MatrixRankInferMeta(const MetaTensor& x,
+                         bool use_default_tol,
+                         bool hermitian,
+                         MetaTensor* out) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+
+  if (hermitian) {
+    int rows = dim_x[dim_x.size() - 2];
+    int cols = dim_x[dim_x.size() - 1];
+    PADDLE_ENFORCE_EQ(rows,
+                      cols,
+                      phi::errors::InvalidArgument(
+                          "if hermitian == true, matrix should be n*n"));
+  }
+  DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+  out->set_dims(dim_x_batch);
+  out->share_lod(x);
+}
+
 void MaxOutInferMeta(const MetaTensor& x,
                      int groups,
                      int axis,
@@ -1288,6 +1313,36 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
+}
+
+void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
+                               int upscale_factor,
+                               const std::string& data_format,
+                               MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  auto dx_dims = do_dims;
+  dx_dims[0] = do_dims[0];
+
+  if (!channel_last) {
+    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
+    dx_dims[2] = do_dims[2] / upscale_factor;
+    dx_dims[3] = do_dims[3] / upscale_factor;
+  } else {
+    dx_dims[1] = do_dims[1] / upscale_factor;
+    dx_dims[2] = do_dims[2] / upscale_factor;
+    dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+  }
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
 }
 
 void PNormInferMeta(const MetaTensor& x,
@@ -1736,6 +1791,51 @@ void ShardIndexInferMeta(const MetaTensor& in,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void SliceRawInferMeta(const MetaTensor& input,
+                       const std::vector<int64_t>& axes,
+                       const IntArray& starts_arr,
+                       const IntArray& ends_arr,
+                       const std::vector<int64_t>& infer_flags_t,
+                       const std::vector<int64_t>& decrease_axis,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument("The rank of input should be less than 7."));
+  DDim out_dims(in_dims);
+
+  std::vector<int64_t> infer_flags = infer_flags_t;
+  if (infer_flags.empty()) {
+    // Initialize infer_flags with 1.
+    // To be compatible with other op tests in which infer_flags is not set.
+    infer_flags = std::vector<int64_t>(axes.size(), 1);
+  }
+
+  // 2.1 Check attrs.
+  std::vector<int64_t> starts = starts_arr.GetData();
+  std::vector<int64_t> ends = ends_arr.GetData();
+
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
+      in_dims, axes, &starts, &ends, nullptr, &infer_flags);
+
+  auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
+      in_dims, axes, starts, ends, nullptr, &infer_flags);
+  if (config.is_runtime) {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, &infer_flags);
+  } else {
+    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
+        slice_dims, decrease_axis, nullptr);
+  }
+
+  out->set_dims(out_dims);
+  if (axes.size() > 0 && axes[0] != 0) {
+    out->share_lod(input);
+  }
 }
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
@@ -2394,7 +2494,7 @@ void TransposeGradInferMeta(const MetaTensor& x,
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
-                     std::vector<MetaTensor>* outs) {
+                     std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
   std::vector<int> out_dim;
   axis = axis < 0 ? in_dims.size() + axis : axis;
@@ -2403,11 +2503,11 @@ void UnbindInferMeta(const MetaTensor& x,
   }
   auto out_dims = phi::make_ddim(out_dim);
 
-  for (size_t i = 0; i < outs->size(); ++i) {
-    (*outs)[i].set_dtype(x.dtype());
-    (*outs)[i].set_dims(out_dims);
-    (*outs)[i].set_layout(x.layout());
-    (*outs)[i].share_lod(x);
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->set_dtype(x.dtype());
+    outs[i]->set_dims(out_dims);
+    outs[i]->set_layout(x.layout());
+    outs[i]->share_lod(x);
   }
 }
 
@@ -2831,4 +2931,5 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);

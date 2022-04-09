@@ -25,18 +25,12 @@ struct OneHotV2OpFunctor {
   DenseTensor* out_;
   int depth_;
   const DeviceContext& ctx_;
-  bool allow_out_of_range_;
 
   OneHotV2OpFunctor(const DenseTensor* in,
                     DenseTensor* out,
                     int depth,
-                    const DeviceContext& ctx,
-                    bool allow_out_of_range = false)
-      : in_(in),
-        out_(out),
-        depth_(depth),
-        ctx_(ctx),
-        allow_out_of_range_(allow_out_of_range) {}
+                    const DeviceContext& ctx)
+      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
 
   template <typename OutT>
   void apply() const {
@@ -45,32 +39,24 @@ struct OneHotV2OpFunctor {
     auto* p_out_data = ctx_.template Alloc<OutT>(out_);
     funcs::set_constant(ctx_, out_, 0.0);
 
-    if (allow_out_of_range_) {
-      for (int i = 0; i < numel; ++i) {
-        if (p_in_data[i] >= 0 && p_in_data[i] < depth_) {
-          *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
-        }
-      }
-    } else {
-      for (int i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_GE(
-            p_in_data[i],
-            0,
-            phi::errors::InvalidArgument(
-                "Illegal index value, Input(input) value should be at least 0, "
-                "but received input (%d) less than 0",
-                p_in_data[i]));
-        PADDLE_ENFORCE_LT(
-            p_in_data[i],
-            depth_,
-            phi::errors::InvalidArgument(
-                "Illegal index value, Input(input) value should be less than "
-                "Input(depth), "
-                "but received input (%d) not less than depth (%d)",
-                p_in_data[i],
-                depth_));
-        *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
-      }
+    for (int i = 0; i < numel; ++i) {
+      PADDLE_ENFORCE_GE(
+          p_in_data[i],
+          0,
+          phi::errors::InvalidArgument(
+              "Illegal index value, Input(input) value should be at least 0, "
+              "but received input (%d) less than 0",
+              p_in_data[i]));
+      PADDLE_ENFORCE_LT(
+          p_in_data[i],
+          depth_,
+          phi::errors::InvalidArgument(
+              "Illegal index value, Input(input) value should be less than "
+              "Input(depth), "
+              "but received input (%d) not less than depth (%d)",
+              p_in_data[i],
+              depth_));
+      *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
     }
   }
 };
@@ -89,8 +75,7 @@ void OneHotRawKernel(const Context& dev_ctx,
   }
 
   phi::VisitDataType(dtype,
-                     OneHotV2OpFunctor<Context, T>(
-                         &x, out, depth, dev_ctx, allow_out_of_range));
+                     OneHotV2OpFunctor<Context, T>(&x, out, depth, dev_ctx));
 }
 
 }  // namespace phi

@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
 import time
 import unittest

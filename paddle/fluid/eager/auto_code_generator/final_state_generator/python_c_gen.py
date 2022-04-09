@@ -23,7 +23,7 @@ from codegen_utils import ParseYamlForward, GetInplacedFunctionName
 ###########################
 ## Global Configurations ##
 ###########################
-skipped_forward_api_names = set(["scale"])
+skipped_forward_api_names = set([])
 
 
 def SkipAPIGeneration(forward_api_name):
