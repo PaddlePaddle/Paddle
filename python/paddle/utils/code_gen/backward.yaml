@@ -900,7 +900,10 @@
   forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
   args : (Tensor[] inputs, Tensor[] outputs_grad)
   output : Tensor[](inputs_grad){inputs.size()}
-  invoke : meshgrid_grad_impl(inputs, outputs_grad)
+  infer_meta :
+    func : MeshgridGradInferMeta
+  kernel :
+    func : meshgrid_grad
 
 - backward_api : min_grad
   forward: min (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
@@ -1379,8 +1382,13 @@
 - backward_api : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int axis)
-  output : Tensor[](x_grad)
-  invoke : stack_grad_impl(x, out_grad, axis)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : StackGradInferMeta
+    param: [out_grad, axis]
+  kernel :
+    func : stack_grad
+    param : [out_grad, axis]
   no_need_buffer : x
 
 - backward_api : strided_slice_grad

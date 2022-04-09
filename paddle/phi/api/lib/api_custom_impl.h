@@ -96,20 +96,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
 
 /************************   backward api impl   ***************************/
 
-std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
-                                     const Tensor& out_grad,
-                                     const Scalar& axis);
-
 Tensor imag_grad_impl(const Tensor& x);
 
 Tensor real_grad_impl(const Tensor& x);
-
-std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad,
-                                    int axis);
-std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
-std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
-                                       const std::vector<Tensor>& outputs_grad);
 
 }  // namespace experimental
 }  // namespace paddle

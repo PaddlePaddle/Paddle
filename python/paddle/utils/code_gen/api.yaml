@@ -1270,7 +1270,10 @@
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}
-  invoke : meshgrid_impl(inputs)
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
