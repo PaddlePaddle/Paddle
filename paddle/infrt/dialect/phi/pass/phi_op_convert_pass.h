@@ -23,4 +23,6 @@ namespace infrt {
  */
 std::unique_ptr<mlir::Pass> CreatePhiOpCvtPass(std::vector<Place> valid_places);
 
+std::unique_ptr<mlir::Pass> CreatePhiOpCvtPass();
+
 }  // namespace infrt
