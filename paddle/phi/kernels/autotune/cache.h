@@ -181,11 +181,10 @@ class AutoTuneCache {
     // }
     for (auto it = auto_tune_map_.begin(); it != auto_tune_map_.end();) {
       float op_hits_rate = it->second.AutoTuneHitRate();
-      if (op_hits_rate > miss_rate) {
-        auto_tune_map_.erase(it);
+      if (op_hits_rate > 0.95f) {
+        auto_tune_map_.erase(it++);
       }
     }
-    keep_cache_ = auto_tune_map_.empty() ? false : true;
   }
 
   void UpdateStatus() {
