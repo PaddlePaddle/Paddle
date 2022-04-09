@@ -39,10 +39,10 @@ class TestLabelSmoothOp(OpTest):
         self.outputs = {'Out': smoothed_label}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=False)
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
