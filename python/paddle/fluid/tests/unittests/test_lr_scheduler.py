@@ -637,7 +637,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_down": 5,
             "mode": 'exp_range',
             "gamma": 1.,
-            "scale_fn": lambda x: 0.95**x,
+            "scale_fn": lambda x: 0.85**x,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {

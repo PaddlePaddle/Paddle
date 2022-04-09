@@ -1596,13 +1596,13 @@ class CyclicLR(LRScheduler):
     r"""
 
     Set the learning rate using a cyclic learning rate scheduler, which cycles the learning rate between two boundaries with a constant frequrncy.
-    The distance between the two boundaries can be csaled on a per-iteration or per-cycle basis.
+    The distance between the two boundaries can be scaled on a per-iteration or per-cycle basis.
 
     It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
 
     According to the paper, the cyclic learning rate schedule has three build-in scale methods:
 
-    * "triangular": A basic traingular cycle without amplitude scaling.
+    * "triangular": A basic triangular cycle without amplitude scaling.
     * "triangular2": A basic triangular cycle that scales initial amplitude by half each cycle.
     * "exp_range": A cycle that scales initial amplitude by half each cycle.
 
