@@ -932,8 +932,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
         if (with_dynamic_shape) {
           if (decrease_axis.size() > 1) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 1"
-                       "is not supported in TensorRT when it's dynamic";
             return false;
           }
         } else {
