@@ -39,20 +39,19 @@ __global__ void FillTensor(float* data) { data[0] = 1; }
 TEST(Scalar, ConstructFromDenseTensor1) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::FLOAT16, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace())
+                           .GetAllocator(phi::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
-  dev_ctx.Wait();
+  auto* dense_x_data = dev_ctx.Alloc<float16>(&dense_x);
+  dense_x_data[0] = 1;
   phi::Scalar scalar_test(dense_x);
   ASSERT_NEAR(1, scalar_test.to<float16>(), 1e-6);
 }
@@ -60,20 +59,19 @@ TEST(Scalar, ConstructFromDenseTensor1) {
 TEST(Scalar, ConstructFromDenseTensor2) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::INT16, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace())
+                           .GetAllocator(phi::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
-  dev_ctx.Wait();
+  auto* dense_x_data = dev_ctx.Alloc<int16_t>(&dense_x);
+  dense_x_data[0] = 1;
   phi::Scalar scalar_test(dense_x);
   ASSERT_EQ(1, scalar_test.to<int16_t>());
 }
@@ -81,20 +79,19 @@ TEST(Scalar, ConstructFromDenseTensor2) {
 TEST(Scalar, ConstructFromDenseTensor3) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::INT8, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace())
+                           .GetAllocator(phi::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
-  dev_ctx.Wait();
+  auto* dense_x_data = dev_ctx.Alloc<int8_t>(&dense_x);
+  dense_x_data[0] = 1;
   phi::Scalar scalar_test(dense_x);
   ASSERT_EQ(1, scalar_test.to<int8_t>());
 }
@@ -102,41 +99,39 @@ TEST(Scalar, ConstructFromDenseTensor3) {
 TEST(Scalar, ConstructFromDenseTensor4) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::BOOL, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace())
+                           .GetAllocator(phi::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
-  dev_ctx.Wait();
+  auto* dense_x_data = dev_ctx.Alloc<bool>(&dense_x);
+  dense_x_data[0] = true;
   phi::Scalar scalar_test(dense_x);
-  ASSERT_EQ(1, scalar_test.to<bool>());
+  ASSERT_EQ(true, scalar_test.to<bool>());
 }
 
 TEST(Scalar, ConstructFromDenseTensor5) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(alloc.get(),
                            phi::DenseTensorMeta(phi::DataType::COMPLEX64,
                                                 phi::make_ddim({1}),
                                                 phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace())
+                           .GetAllocator(phi::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
-  dev_ctx.Wait();
+  auto* dense_x_data = dev_ctx.Alloc<complex64>(&dense_x);
+  dense_x_data[0] = 1;
   phi::Scalar scalar_test(dense_x);
   complex64 expected_value(1, 0);
   EXPECT_TRUE(expected_value == scalar_test.to<complex64>());
@@ -145,11 +140,32 @@ TEST(Scalar, ConstructFromDenseTensor5) {
 TEST(Scalar, ConstructFromDenseTensor6) {
   // 1. create tensor
   const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(alloc.get(),
                            phi::DenseTensorMeta(phi::DataType::COMPLEX128,
                                                 phi::make_ddim({1}),
                                                 phi::DataLayout::NCHW));
+  phi::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(phi::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
+  auto* dense_x_data = dev_ctx.Alloc<complex128>(&dense_x);
+  dense_x_data[0] = 1;
+  phi::Scalar scalar_test(dense_x);
+  complex128 expected_value(1, 0);
+  EXPECT_TRUE(expected_value == scalar_test.to<complex128>());
+}
+
+TEST(Scalar, ConstructFromDenseTensor7) {
+  // 1. create tensor
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+  phi::DenseTensor dense_x(
+      alloc.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
   phi::GPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::GPUPlace())
@@ -160,8 +176,7 @@ TEST(Scalar, ConstructFromDenseTensor6) {
   FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
   dev_ctx.Wait();
   phi::Scalar scalar_test(dense_x);
-  complex128 expected_value(1, 0);
-  EXPECT_TRUE(expected_value == scalar_test.to<complex128>());
+  ASSERT_NEAR(1, scalar_test.to<float>(), 1e-6);
 }
 
 TEST(Scalar, ConstructFromTensor) {
