@@ -992,6 +992,16 @@
   optional : prior_dist
   backward : label_smooth_grad
 
+- api : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+  backward : layer_norm_grad
+  optional : scale, bias
+
 # leaky_relu
 - api : leaky_relu
   args : (Tensor x, float alpha)

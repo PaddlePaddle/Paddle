@@ -134,17 +134,6 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
-void LayerNormInferMeta(const MetaTensor& x,
-                        paddle::optional<const MetaTensor&> scale,
-                        paddle::optional<const MetaTensor&> bias,
-                        float epsilon,
-                        int begin_norm_axis,
-                        bool is_test,
-                        MetaTensor* out,
-                        MetaTensor* mean,
-                        MetaTensor* variance,
-                        MetaConfig config = MetaConfig());
-
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
                         bool keepdim,
