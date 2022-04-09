@@ -39,12 +39,15 @@ enum class PrecisionType : uint8_t {
 };
 
 struct Place {
-  TargetType target = TargetType::UNK;
-  PrecisionType precision = PrecisionType::UNK;
-  LayoutType layout = LayoutType::UNK;
+  TargetType target;
+  PrecisionType precision;
+  LayoutType layout;
   Place(TargetType tar, PrecisionType pre, LayoutType lay)
       : target(tar), precision(pre), layout(lay) {}
-  Place() = default;
+  Place()
+      : target(TargetType::UNK),
+        precision(PrecisionType::UNK),
+        layout(LayoutType::UNK) {}
 };
 
 llvm::Optional<TargetType> GetTargetType(llvm::StringRef key);
