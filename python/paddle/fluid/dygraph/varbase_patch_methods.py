@@ -871,6 +871,28 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def values(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Get the values of current SparseTensor(COO or CSR).
+
+        Returns:
+            Tensor: A DenseTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+
+                with _test_eager_guard():
+                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                    values = [1, 2, 3, 4, 5]
+                    dense_shape = [3, 4]
+                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), dense_shape=dense_shape)
+                    print(sparse_x.values())
+        """
         if self.is_sparse_coo():
             return _C_ops.final_state_sparse_coo_values(self)
         elif self.is_sparse_csr():
@@ -881,6 +903,29 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def to_dense(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Convert the current SparseTensor(COO or CSR) to DenseTensor.
+
+        Returns:
+            Tensor: A DenseTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+
+                with _test_eager_guard():
+                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                    values = [1, 2, 3, 4, 5]
+                    dense_shape = [3, 4]
+                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), dense_shape=dense_shape)
+                    dense_x = sparse_x.to_dense()
+
+        """
         if self.is_sparse_coo():
             return _C_ops.final_state_sparse_coo_to_dense(self)
         elif self.is_sparse_csr():
@@ -890,6 +935,27 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Convert the current DenseTensor to SparseTensor in COO format.
+
+        Returns:
+            Tensor: A SparseCooTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+
+                with _test_eager_guard():
+                    dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                    dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                    sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+        """
+
         if self.is_sparse_csr():
             return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
         elif self.is_sparse_coo():
