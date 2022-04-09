@@ -1052,8 +1052,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
-        VLOG(3) << "The id and emb size of fused EmbEltwiseLayerNormOp "
-                   "should be same ";
         return false;
       }
     }
