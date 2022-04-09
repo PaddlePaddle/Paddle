@@ -21,8 +21,10 @@ import os
 ########################
 ### Global Variables ###
 ########################
-ops_to_fill_zero_for_empty_grads = set(
-    ["split_grad", "rnn_grad", "matmul_double_grad"])
+ops_to_fill_zero_for_empty_grads = set([
+    "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
+    "sigmoid_triple_grad"
+])
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -169,12 +171,6 @@ def GetInplacedFunctionName(function_name):
 
 def GetForwardFunctionName(string):
     return f"{string}_final_state_dygraph_function"
-
-
-def TransformGradVarNameForDoubleGradGeneration(string):
-    if IsGradName(string):
-        string = "grad_" + string[:-5]
-    return string
 
 
 def GetIndent(num):
