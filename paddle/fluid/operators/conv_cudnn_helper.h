@@ -669,7 +669,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
               args.handle, &max_algos));
 #endif
-      std::vector<perf_t> perf_results(max_algos);
+      std::vector<PerfT> perf_results(max_algos);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
               args.handle, args.idesc.desc(), args.odesc.desc(),
