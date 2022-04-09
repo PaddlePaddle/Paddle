@@ -279,8 +279,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
          auto-tune process, run exhaustive_search during mentioned process.
       3. After auto-tune process, run cached algorithm if cached, run default
          mode for the rest. */
-    bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
-    if (exhaustive_search || open_tune) {
+    bool is_auto_tune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    if (exhaustive_search || is_auto_tune) {
       std::string op_type("conv_fwd");
       auto key = ConvArgs::GetConvKey<T>(&args);
       auto& cache =
@@ -292,9 +292,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
         return algo;
       }
 
-      bool is_auto_tune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || is_auto_tune) {
+      bool fuill_cache =
+          phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
+      if (exhaustive_search || fuill_cache) {
         std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_results;
         auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
@@ -403,8 +403,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         auto-tune process, run exhaustive_search during mentioned process.
     3. After auto-tune process, run cached algorithm if cached, run default
         mode for the rest. */
-    bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
-    if (exhaustive_search || open_tune) {
+    bool is_auto_tune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    if (exhaustive_search || is_auto_tune) {
       std::string op_type("conv_bwd");
       auto key = ConvArgs::GetConvKey<T>(&args);
       auto& cache =
@@ -416,9 +416,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         return algo;
       }
 
-      bool is_auto_tune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || is_auto_tune) {
+      bool fuill_cache =
+          phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
+      if (exhaustive_search || fuill_cache) {
         std::array<perf_t, kNUM_CUDNN_BWD_DATA_ALGS> perf_results;
         auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
@@ -539,8 +539,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         auto-tune process, run exhaustive_search during mentioned process.
     3. After auto-tune process, run cached algorithm if cached, run default
         mode for the rest. */
-    bool open_tune = phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
-    if (exhaustive_search || open_tune) {
+    bool is_auto_tune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    if (exhaustive_search || is_auto_tune) {
       std::string op_type("conv_filter");
       auto key = ConvArgs::GetConvKey<T>(&args);
       auto& cache =
@@ -552,9 +552,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         return algo;
       }
 
-      bool is_auto_tune =
-          phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-      if (exhaustive_search || is_auto_tune) {
+      bool fuill_cache =
+          phi::autotune::AutoTuneCache::Instance().GetTuneStatus();
+      if (exhaustive_search || fuill_cache) {
         // Exhaustive search mode except for HALF type
         if (dtype != CUDNN_DATA_HALF) {
           std::array<perf_t, kNUM_CUDNN_BWD_FILTER_ALGS> perf_results;

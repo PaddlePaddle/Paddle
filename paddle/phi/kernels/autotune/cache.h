@@ -15,6 +15,7 @@
 #pragma once
 #include <algorithm>
 #include <mutex>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
 #include "glog/logging.h"
@@ -101,14 +102,37 @@ class AlgorithmsCache {
 
   int64_t CacheHits() const { return cache_hits_; }
 
-  float CacheHitRate() const {
-    int64_t num_accesses = cache_hits_ + cache_misses_;
+  float HitRateCalculation(int64_t cache_hits, int64_t cache_miss) const {
+    int64_t num_accesses = cache_hits + cache_miss;
     float cache_hit_rate = 0.;
     if (num_accesses != 0) {
       cache_hit_rate =
-          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+          static_cast<float>(cache_hits) / static_cast<float>(num_accesses);
     }
     return cache_hit_rate;
+  }
+
+  float CacheHitRate() {
+    return HitRateCalculation(cache_hits_, cache_misses_);
+  }
+
+  void HitsRateUpdate() {
+    int current_hits = cache_hits_ - formal_cache_hits_;
+    int current_miss = cache_misses_ - formal_cache_misses_;
+    formal_cache_hits_ = cache_hits_;
+    formal_cache_misses_ = cache_misses_;
+    float step_hit_rate = HitRateCalculation(current_hits, current_miss);
+    step_hit_rates_.push_back(step_hit_rate);
+  }
+
+  float AutoTuneHitRate() {
+    int statistic_step_nums = std::ceil(step_hit_rates_.size() * 0.3);
+    float hits_rate_sum =
+        std::accumulate(step_hit_rates_.rbegin(),
+                        step_hit_rates_.rbegin() + statistic_step_nums,
+                        0.0);
+    float statistic_hits_rate = hits_rate_sum / statistic_step_nums;
+    return statistic_hits_rate;
   }
 
   int64_t Size() const { return hash_.size(); }
@@ -116,8 +140,13 @@ class AlgorithmsCache {
  private:
   std::unordered_map<size_t, AlgorithmT> hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
+  std::vector<float> step_hit_rates_;
+
   int64_t cache_hits_ = 0;
   int64_t cache_misses_ = 0;
+
+  int64_t formal_cache_hits_ = 0;
+  int64_t formal_cache_misses_ = 0;
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -146,33 +175,33 @@ class AutoTuneCache {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
     // Set a small tolerance to avoid performance degradation
     // due to large cache size under dynamic shape.
-    if (miss_rate > 0.01) {
-      // auto_tune_map_.clear();
-      keep_cache_ = false;
+    // if (miss_rate > 0.01) {
+    //   auto_tune_map_.clear();
+    //   keep_cache_ = false;
+    // }
+    for (auto it = auto_tune_map_.begin(); it != auto_tune_map_.end();) {
+      float op_hits_rate = it->second.AutoTuneHitRate();
+      if (op_hits_rate > miss_rate) {
+        auto_tune_map_.erase(it);
+      }
     }
+    keep_cache_ = auto_tune_map_.empty() ? false : true;
   }
 
   void UpdateStatus() {
-    int64_t size = 0;
-    int64_t cache_hits = 0;
-    int64_t cache_misses = 0;
     for (auto& v : auto_tune_map_) {
       VLOG(4) << "AlgoType: " << v.first << " Cache Size: " << v.second.Size()
               << " Hits: " << v.second.CacheHits()
               << " Misses: " << v.second.CacheMisses()
               << " Hit Rate: " << v.second.CacheHitRate();
-      size += v.second.Size();
-      cache_hits += v.second.CacheHits();
-      cache_misses += v.second.CacheMisses();
+      total_size_ += v.second.Size();
+      total_cache_hits_ += v.second.CacheHits();
+      total_cache_misses_ += v.second.CacheMisses();
+      v.second.HitsRateUpdate();
     }
-    total_size_ = size;
-    total_cache_hits_ = cache_hits;
-    total_cache_misses_ = cache_misses;
   }
 
   bool GetTuneStatus() { return keep_cache_; }
-
-  void OpenTuneStatus() { keep_cache_ = true; }
 
   // The number of total config cached
   int64_t Size() const { return total_size_; }
@@ -198,7 +227,10 @@ class AutoTuneCache {
   int64_t total_cache_hits_ = 0;
   int64_t total_cache_misses_ = 0;
   int64_t total_size_ = 0;
-  bool keep_cache_ = false;
+
+  /* Once AutoTuneCache works,
+     keep_cache_ shall be set as true by default. */
+  bool keep_cache_ = true;
 };
 
 }  // namespace autotune

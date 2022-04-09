@@ -14,8 +14,6 @@
 
 #pragma once
 #include <cmath>
-#include <mutex>
-#include <numeric>
 #include "glog/logging.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 
@@ -47,11 +45,6 @@ class AutoTuneStatus {
 
     if (!use_autotune_ && !update_use_autotune_) {
       return;
-    }
-
-    // A signal for open auto-tune operation.
-    if (current_steps_id_ == (start_step_id_ - 1)) {
-      AutoTuneCache::Instance().OpenTuneStatus();
     }
 
     if (current_steps_id_ < start_step_id_) {
