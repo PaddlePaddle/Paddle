@@ -35,7 +35,7 @@ class _Conv3D(Layer):
                  padding_mode='zeros',
                  weight_attr=None,
                  bias_attr=None,
-                 data_format="NCDHW"):
+                 data_format="NDHWC"):
         super(_Conv3D, self).__init__()
         assert weight_attr is not False, "weight_attr should not be False in Conv."
         self._param_attr = weight_attr
@@ -81,7 +81,8 @@ class _Conv3D(Layer):
             shape=filter_shape,
             attr=self._param_attr,
             default_initializer=_get_default_param_initializer())
-        #Currently, sparse_conv3d does not support bias
+        #self.bias = self.create_parameter(
+        #    attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
         self.bias = None
 
     def forward(self, x):
@@ -114,6 +115,113 @@ class _Conv3D(Layer):
 
 
 class Conv3D(_Conv3D):
+    r"""
+    **Sparse Convlution3d Layer**
+    The Sparse convolution3d layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided, 
+    bias is added to the output of the convolution. 
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out = W \ast X + b
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NDHWC format.
+    * :math:`W`: Filter value, a tensor with DHWCM format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Parameters:
+        in_channels(int): The number of input channels in the input image.
+        out_channels(int): The number of output channels produced by the convolution.
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. The default value is 1.
+        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+            1. a string in ['valid', 'same'].
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
+            4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
+            5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+            The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. The default value is 1, currently, only support groups=1.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``, currently, only support padding_mode='zeros'.
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. The default value is None.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCDHW" or "NDHWC". Currently, only support "NCDHW".
+
+    Attribute:
+
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Shape:
+
+        - x: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
+
+        - weight: :math:`(K_{d}, K_{h}, K_{w}, C_{in}, C_{out})`
+
+        - bias: :math:`(C_{out})`
+
+        - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        ..  math::
+
+           D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+
+           H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+           W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          from paddle.fluid.framework import _test_eager_guard
+          
+          with _test_eager_guard():
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            dense_shape = [1, 1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+            subm_conv = paddle.sparse.Conv3D(1, 1, (1, 3, 3))
+            y = subm_conv(sparse_x)
+            print(y.shape)
+            # (1, 1, 1, 2, 1)
+    """
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -125,7 +233,7 @@ class Conv3D(_Conv3D):
                  padding_mode='zeros',
                  weight_attr=None,
                  bias_attr=None,
-                 data_format="NCDHW"):
+                 data_format="NDHWC"):
         super(Conv3D, self).__init__(
             in_channels,
             out_channels,
@@ -142,6 +250,113 @@ class Conv3D(_Conv3D):
 
 
 class SubmConv3D(_Conv3D):
+    r"""
+    **Sparse Submanifold Convlution3d Layer**
+    The Sparse submanifold convolution3d layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided, 
+    bias is added to the output of the convolution.
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out =(W \ast X + b
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NDHWC format.
+    * :math:`W`: Filter value, a tensor with DHWCM format.
+    * :math:`\\ast`: Submanifold Convolution operation, refer to the paper: https://arxiv.org/abs/1706.01307.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Parameters:
+        in_channels(int): The number of input channels in the input image.
+        out_channels(int): The number of output channels produced by the convolution.
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
+            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
+            stride_D = stride_H = stride_W = stride. The default value is 1.
+        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+            1. a string in ['valid', 'same'].
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
+            4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
+            5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+            The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. The default value is 1.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.Currently, only support ``'zeros'``.
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
+            of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as param_attr. If it is set to None, the parameter
+            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
+            If it is set to False, no bias will be added to the output units.
+            If it is set to None or one attribute of ParamAttr, conv3d
+            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. The default value is None.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCDHW" or "NDHWC". Currently, only support "NCDHW".
+
+    Attribute:
+
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Shape:
+
+        - x: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
+
+        - weight: :math:`(K_{d}, K_{h}, K_{w}, C_{in}, C_{out})`
+
+        - bias: :math:`(C_{out})`
+
+        - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        ..  math::
+
+           D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+
+           H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+           W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          from paddle.fluid.framework import _test_eager_guard
+          
+          with _test_eager_guard():
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            dense_shape = [1, 1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+            subm_conv = paddle.sparse.SubmConv3D(1, 1, (1, 3, 3))
+            y = subm_conv(sparse_x)
+            print(y.shape)
+            # (1, 1, 3, 4, 1)
+    """
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -153,7 +368,7 @@ class SubmConv3D(_Conv3D):
                  padding_mode='zeros',
                  weight_attr=None,
                  bias_attr=None,
-                 data_format="NCDHW"):
+                 data_format="NDHWC"):
         super(SubmConv3D, self).__init__(
             in_channels,
             out_channels,

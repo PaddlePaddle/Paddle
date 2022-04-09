@@ -27,7 +27,7 @@ def _conv3d(x,
             dilation=1,
             groups=1,
             subm=False,
-            data_format="NCDHW",
+            data_format="NDHWC",
             name=None):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
     assert bias == None, "Currently, sparse_conv3d does not support bias"
@@ -72,8 +72,112 @@ def conv3d(x,
            padding=0,
            dilation=1,
            groups=1,
-           data_format="NCDHW",
+           data_format="NDHWC",
            name=None):
+    r"""
+
+    The sparse convolution3d functional calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided, 
+    bias is added to the output of the convolution. 
+
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out = \sigma (W \ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+
+        - Output:
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        ..  math::
+
+            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+
+    Args:
+        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+            type of input is float16 or float32 or float64.
+        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+            where M is the number of filters(output channels), g is the number of groups,
+            kD, kH, kW are the filter's depth, height and width respectively.
+        bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
+        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a 
+            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
+        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            Default: dilation = 1.
+        groups (int): The groups number of the Conv3D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str|None): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and 
+           None by default.
+
+    Returns:
+        A Tensor representing the conv3d, whose data type is 
+        the same with input. If act is None, the tensor storing the 
+        convolution result, and if act is not None, the tensor storing 
+        convolution and non-linearity activation result.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.framework import _test_eager_guard
+
+            with _test_eager_guard():
+              indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+              values = [[1], [2], [3], [4]]
+              indices = paddle.to_tensor(indices, dtype='int32')
+              values = paddle.to_tensor(values, dtype='float32')
+              dense_shape = [1, 1, 3, 4, 1]
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+              weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+              y = paddle.sparse.functional.conv3d(sparse_x, weight)
+              print(y.shape)
+              # (1, 1, 1, 2, 1)
+    """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
                    data_format, name)
 
@@ -85,7 +189,111 @@ def subm_conv3d(x,
                 padding=0,
                 dilation=1,
                 groups=1,
-                data_format="NCDHW",
+                data_format="NDHWC",
                 name=None):
+    r"""
+
+    The sparse submanifold convolution3d functional calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
+    channels, D is the depth of the feature, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided, 
+    bias is added to the output of the convolution. 
+
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out = W \ast X + b
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`\\ast`: Submanifold Convolution operation, refer to the paper: https://arxiv.org/abs/1706.01307.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+
+        - Output:
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
+        Where
+
+        ..  math::
+
+            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
+            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+
+    Args:
+        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+            type of input is float16 or float32 or float64.
+        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+            where M is the number of filters(output channels), g is the number of groups,
+            kD, kH, kW are the filter's depth, height and width respectively.
+        bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
+        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a 
+            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
+        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            Default: dilation = 1.
+        groups (int): The groups number of the Conv3D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str|None): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and 
+           None by default.
+
+    Returns:
+        A Tensor representing the conv3d, whose data type is 
+        the same with input. If act is None, the tensor storing the 
+        convolution result, and if act is not None, the tensor storing 
+        convolution and non-linearity activation result.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.framework import _test_eager_guard
+
+            with _test_eager_guard():
+              indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+              values = [[1], [2], [3], [4]]
+              indices = paddle.to_tensor(indices, dtype='int32')
+              values = paddle.to_tensor(values, dtype='float32')
+              dense_shape = [1, 1, 3, 4, 1]
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+              weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+              y = paddle.sparse.functional.subm_conv3d(sparse_x, weight)
+              print(y.shape)
+              #(1, 1, 3, 4, 1)
+    """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, True,
                    data_format, name)
