@@ -1229,7 +1229,7 @@
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
-  invoke : scale(out_grad, scale, bias, bias_after_scale)
+  invoke : scale(out_grad, scale, 0.0, bias_after_scale)
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
@@ -1262,6 +1262,7 @@
     param : [x]
   kernel :
     func : segment_pool_grad
+    data_type : x
   optional : summed_ids
 
 - backward_api : selu_grad
