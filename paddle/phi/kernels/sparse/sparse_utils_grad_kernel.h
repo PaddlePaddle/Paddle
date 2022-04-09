@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -31,6 +32,14 @@ void SparseCooToDenseGradKernel(const Context& dev_ctx,
                                 const SparseCooTensor& x,
                                 const DenseTensor& out_grad,
                                 SparseCooTensor* x_grad);
+
+template <typename T, typename Context>
+void SparseCooTensorGradKernel(const Context& dev_ctx,
+                               const DenseTensor& indices,
+                               const SparseCooTensor& out_grad,
+                               DenseTensor* values_grad) {
+  SparseMaskHelperKernel<T, Context>(dev_ctx, out_grad, indices, values_grad);
+}
 
 }  // namespace sparse
 }  // namespace phi

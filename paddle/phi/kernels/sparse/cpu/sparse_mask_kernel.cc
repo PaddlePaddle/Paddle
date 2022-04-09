@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
 #include "paddle/phi/api/ext/dispatch.h"
 
@@ -38,12 +39,6 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& indices = mask.non_zero_indices();
   const DenseTensor& values = mask.non_zero_elements();
   int sparse_dim = indices.dims().size();
-  std::vector<int64_t> sparse_offsets(sparse_dim);
-  int64_t offset = 1;
-  for (int i = sparse_dim - 1; i >= 0; i--) {
-    sparse_offsets[i] = offset;
-    offset *= dims[i];
-  }
 
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
   DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
@@ -51,19 +46,23 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   // the out_indices is same as indices of mask
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
 
-  const IntT* indices_ptr = indices.data<IntT>();
   T* out_values_ptr = out_values.data<T>();
   const T* x_ptr = x.data<T>();
 
   const int64_t non_zero_num = mask.nnz();
   auto dims_2d = flatten_to_2d(dims, sparse_dim);
   const int cols = dims_2d[1];
+  const IntT* indices_ptr = indices.data<IntT>();
+
+  std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);
+  // phi::funcs::sparse::FlattenIndices<IntT>(indices, x.dims(), &out_indexs);
+  for (int64_t i = 0; i < non_zero_num; i++) {
+    out_indexs[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
+        indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
+  }
 
   for (int64_t i = 0; i < non_zero_num; i++) {
-    int64_t index = 0;
-    for (int j = 0; j < sparse_dim; j++) {
-      index += indices_ptr[j * non_zero_num + i] * sparse_offsets[j];
-    }
+    int64_t index = out_indexs[i];
     memcpy(out_values_ptr + i * cols, x_ptr + index * cols, cols * sizeof(T));
   }
   out->SetMember(out_indices, out_values, dims, true);
@@ -85,6 +84,75 @@ void SparseMaskKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename T, typename IntT>
+void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
+                               const SparseCooTensor& x,
+                               const DenseTensor& mask_indices,
+                               DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      mask_indices.dims().size(),
+      2,
+      phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
+
+  const int64_t sparse_dim = x.non_zero_indices().dims()[0];
+
+  std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz()),
+      mask_indexs(mask_indices.dims()[1]);
+  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+      x.non_zero_indices(), x.dims(), &sparse_offsets);
+
+  auto FlattenIndices = [](const IntT* indices,
+                           const IntT* sparse_offsets,
+                           const int64_t non_zero_num,
+                           const int64_t sparse_dim,
+                           std::vector<IntT>* out) {
+    for (int64_t i = 0; i < non_zero_num; i++) {
+      (*out)[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
+          indices, sparse_offsets, non_zero_num, sparse_dim, i);
+    }
+  };
+
+  FlattenIndices(x.non_zero_indices().data<IntT>(),
+                 sparse_offsets.data(),
+                 x.nnz(),
+                 sparse_dim,
+                 &x_indexs);
+  FlattenIndices(mask_indices.data<IntT>(),
+                 sparse_offsets.data(),
+                 x.nnz(),
+                 sparse_dim,
+                 &mask_indexs);
+
+  std::set<IntT> x_indexs_set(x_indexs.begin(), x_indexs.end());
+  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  T* out_ptr = out->data<T>();
+  memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
+  const int stride = x.non_zero_elements().dims()[1];
+  const T* in_ptr = x.non_zero_elements().data<T>();
+  for (uint64_t i = 0; i < mask_indexs.size(); i++) {
+    auto iter = x_indexs_set.find(mask_indexs[i]);
+    if (iter != x_indexs_set.end()) {
+      memcpy(out_ptr + i * stride,
+             in_ptr + mask_indexs[i] * stride,
+             stride * sizeof(T));
+    }
+  }
+}
+
+/**
+ * @brief filter values from x.values() using mask_indices
+ */
+template <typename T, typename Context>
+void SparseMaskHelperKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out) {
+  PD_DISPATCH_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
+        SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
+      }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 
@@ -100,4 +168,17 @@ PD_REGISTER_KERNEL(sparse_mask,
                    int,
                    int64_t) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_mask_helper,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseMaskHelperKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

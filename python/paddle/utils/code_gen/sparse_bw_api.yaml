@@ -19,6 +19,13 @@
   kernel :
     func : coo_values_grad
 
+- backward_api : create_sparse_coo_tensor_grad
+  forward : create_sparse_coo_tensor(Tensor indices, Tensor values, IntArray dense_shape) -> Tensor(out@SparseCooTensor)
+  args : (Tensor indices, Tensor out_grad)
+  output : Tensor(values_grad@DenseTensor)
+  kernel :
+    func : sparse_coo_tensor_grad
+
 - backward_api : dense_to_coo_grad
   forward : dense_to_coo(Tensor x, int64_t sparse_dim) -> Tensor(out@SparseCooTensor)
   args : (Tensor out_grad)

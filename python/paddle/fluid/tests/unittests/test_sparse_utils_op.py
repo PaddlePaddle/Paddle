@@ -186,6 +186,27 @@ class TestSparseConvert(unittest.TestCase):
             values_tensor.backward(paddle.to_tensor(out_grad))
             assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
 
+    def test_sparse_coo_tensor_grad(self):
+        with _test_eager_guard():
+            indices = [[0, 1], [0, 1]]
+            values = [1, 2]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(
+                values, dtype='float32', stop_gradient=False)
+            sparse_x = paddle.sparse.sparse_coo_tensor(
+                indices, values, shape=[2, 2], stop_gradient=False)
+            print(sparse_x)
+            grad_indices = [[0, 1], [1, 0]]
+            grad_values = [2, 3]
+            grad_indices = paddle.to_tensor(grad_indices, dtype='int32')
+            grad_values = paddle.to_tensor(grad_values, dtype='float32')
+            sparse_out_grad = paddle.sparse.sparse_coo_tensor(
+                grad_indices, grad_values, shape=[2, 2])
+            sparse_x.backward(sparse_out_grad)
+            print(sparse_x.grad)
+            print(values.grad)
+            print(indices.grad)
+
 
 if __name__ == "__main__":
     unittest.main()

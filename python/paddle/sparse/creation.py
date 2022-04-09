@@ -107,7 +107,9 @@ def sparse_coo_tensor(indices,
     values = _handle_dtype(values, dtype)
     if shape is None:
         shape = _infer_dense_shape(indices)
-    return core.eager.sparse_coo_tensor(indices, values, shape, stop_gradient)
+#return core.eager.sparse_coo_tensor(indices, values, shape, stop_gradient)
+    return _C_ops.final_state_sparse_create_sparse_coo_tensor(indices, values,
+                                                              shape)
 
 
 #TODO: need to support shape is None

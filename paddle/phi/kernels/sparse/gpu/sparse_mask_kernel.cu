@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/binary_search.h>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/ddim.h"
@@ -20,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 #include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
 
 #include "paddle/phi/api/ext/dispatch.h"
@@ -59,7 +62,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
   const DenseTensor& indices = mask.non_zero_indices();
   const DenseTensor& values = mask.non_zero_elements();
   int sparse_dim = indices.dims().size();
-  DenseTensor sparse_offsets = phi::Empty(
+  DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
       DenseTensorMeta(DataType::INT64, {sparse_dim}, DataLayout::NCHW));
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
@@ -121,6 +124,143 @@ void SparseMaskKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename IntT>
+__global__ void FlattenIndicesKernel(const IntT* indices,
+                                     const IntT* sparse_offsets,
+                                     const int64_t non_zero_num,
+                                     const int64_t sparse_dim,
+                                     IntT* out) {
+  CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
+    out[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
+        indices, sparse_offsets, non_zero_num, sparse_dim, i);
+  }
+}
+
+template <typename T, typename IntT>
+__global__ void SparseMaskCopyKernel(const IntT* x_indexs,
+                                     const IntT* mask_indexs,
+                                     const IntT* bound_out,
+                                     const T* x_values,
+                                     const int64_t n,
+                                     const int64_t stride,
+                                     T* out_values) {
+  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+    const IntT j = bound_out[i];
+    if (j >= 0 && j < n && mask_indexs[i] == x_indexs[j]) {
+      for (int k = 0; k < stride; k++) {
+        out_values[i * stride + k] = x_values[j * stride + k];
+      }
+    }
+  }
+}
+
+template <typename T, typename IntT>
+void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
+                               const SparseCooTensor& x,
+                               const DenseTensor& mask_indices,
+                               DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      mask_indices.dims().size(),
+      2,
+      phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
+
+  const int64_t sparse_dim = x.non_zero_indices().dims()[0];
+  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
+
+  std::vector<IntT> sparse_offsets(
+      sparse_dim);  //, x_indexs(x.nnz()), mask_indexs(mask_indices.dims()[1]);
+
+  DenseTensorMeta x_indices_meta(indices_dtype, {x.nnz()}, DataLayout::NCHW);
+  DenseTensorMeta mask_indices_meta(
+      indices_dtype, {mask_indices.dims()[1]}, DataLayout::NCHW);
+  DenseTensorMeta sparse_offset_meta(
+      indices_dtype, {sparse_dim}, DataLayout::NCHW);
+
+  DenseTensor x_indexs =
+      phi::Empty<GPUContext>(dev_ctx, std::move(x_indices_meta));
+  DenseTensor mask_indexs =
+      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+  DenseTensor bound_out =
+      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+  DenseTensor d_sparse_offsets =
+      phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
+  IntT* x_indexs_ptr = x_indexs.data<IntT>();
+  IntT* mask_indexs_ptr = mask_indexs.data<IntT>();
+  IntT* bound_out_ptr = bound_out.data<IntT>();
+
+  // 1. calc the offsets of per dim
+  phi::funcs::sparse::CalcOffsetsPerDim(
+      x.non_zero_indices(), x.dims(), &sparse_offsets);
+  // 2. copy sparse_offsets to device
+  phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
+                                     sparse_offsets.data(),
+                                     sizeof(IntT) * sparse_dim,
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyHostToDevice,
+#else
+                                     cudaMemcpyHostToDevice,
+#endif
+                                     dev_ctx.stream());
+
+  // 3. flatten x indices and mask indices
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_indexs.numel(), 1);
+  FlattenIndicesKernel<<<config.block_per_grid,
+                         config.thread_per_block,
+                         0,
+                         dev_ctx.stream()>>>(x.non_zero_indices().data<IntT>(),
+                                             d_sparse_offsets.data<IntT>(),
+                                             x_indexs.numel(),
+                                             sparse_dim,
+                                             x_indexs_ptr);
+
+  config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
+  FlattenIndicesKernel<<<config.block_per_grid,
+                         config.thread_per_block,
+                         0,
+                         dev_ctx.stream()>>>(mask_indices.data<IntT>(),
+                                             d_sparse_offsets.data<IntT>(),
+                                             mask_indices.numel(),
+                                             sparse_dim,
+                                             mask_indexs_ptr);
+  // 4. call thrust::lower_bound
+  thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
+                      x_indexs_ptr,
+                      x_indexs_ptr + x_indexs.numel(),
+                      mask_indexs_ptr,
+                      mask_indexs_ptr + mask_indexs.numel(),
+                      bound_out_ptr);
+
+  // 5. copy value to out
+  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  set_zero(dev_ctx, out, static_cast<T>(0));
+  T* out_ptr = out->data<T>();
+
+  SparseMaskCopyKernel<<<config.block_per_grid,
+                         config.thread_per_block,
+                         0,
+                         dev_ctx.stream()>>>(x_indexs_ptr,
+                                             mask_indexs_ptr,
+                                             bound_out_ptr,
+                                             x.non_zero_elements().data<T>(),
+                                             mask_indexs.numel(),
+                                             x.non_zero_elements().dims()[1],
+                                             out_ptr);
+}
+
+template <typename T, typename Context>
+void SparseMaskHelperKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out) {
+  PD_DISPATCH_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
+        SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
+      }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 
@@ -137,4 +277,18 @@ PD_REGISTER_KERNEL(sparse_mask,
                    int,
                    int64_t) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_mask_helper,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseMaskHelperKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
