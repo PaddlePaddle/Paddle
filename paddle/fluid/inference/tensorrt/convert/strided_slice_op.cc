@@ -103,7 +103,8 @@ class StridedSliceOpConverter : public OpConverter {
                                   static_cast<size_t>(input_dims.nbDims)};
 
     auto const_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, nvinfer1::Dims{1, {input_dims.nbDims}},
+        engine_, Constant,
+        nvinfer1::Dims{1, {static_cast<size_t>(input_dims.nbDims)}},
         weight.get());
 
     auto shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
