@@ -154,6 +154,12 @@ operator()(
     }
   }
 
+  Py_XDECREF(backward_fn);
+  Py_XDECREF(backward_args);
+  if (!PyTuple_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
+  }
+
   return grad_out;
 }
 }  // namespace egr
