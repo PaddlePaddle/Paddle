@@ -93,7 +93,9 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
         auto scale_name = op_desc->Input("Scales")[0];
         auto* var = scope->FindVar(scale_name);
         PADDLE_ENFORCE_NOT_NULL(
-            var, "The Scales variable of dequantize op is not found.");
+            var, platform::errors::NotFound(
+                     "The Scales variable [%s] of dequantize op is not found.",
+                     var));
 
         auto* scale_tensor = var->GetMutable<LoDTensor>();
         auto* scale_data = scale_tensor->data<float>();
@@ -132,7 +134,9 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
       auto out_var_name = op_desc->Output("Out")[0];
       auto* var = scope->FindVar(scale_name);
       PADDLE_ENFORCE_NOT_NULL(
-          var, "The InScale variable of quantize op is not found.");
+          var,
+          platform::errors::NotFound(
+              "The InScale variable [%s] of quantize op is not found.", var));
 
       auto* scale_tensor = var->GetMutable<LoDTensor>();
       auto* scale_data = scale_tensor->data<float>();
@@ -196,8 +200,10 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
   for (auto* node_input : op_node->inputs) {
     if (node_input->Name() == x_var_name) {
       fake_quant_in = node_input;
+      break;
     } else if (node_input->Name() == in_scale_name) {
       fake_quant_in_scale = node_input;
+      break;
     }
   }
 
@@ -206,15 +212,22 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
   for (auto* node_output : op_node->outputs) {
     if (node_output->Name() == out_var_name) {
       fake_quant_out = node_output;
+      break;
     } else if (node_output->Name() == out_scale_name) {
       fake_quant_out_scale = node_output;
+      break;
     }
   }
 
-  PADDLE_ENFORCE_NOT_NULL(fake_quant_in,
-                          "The input var of quantize op is not found.");
-  PADDLE_ENFORCE_NOT_NULL(fake_quant_out,
-                          "The output var of quantize op is not found.");
+  PADDLE_ENFORCE_NOT_NULL(
+      fake_quant_in,
+      platform::errors::NotFound(
+          "The input var [%s] of quantize op is not found.", x_var_name));
+  PADDLE_ENFORCE_NOT_NULL(
+      fake_quant_out,
+      platform::errors::NotFound(
+          "The output var [%s] of quantize op is not found.", out_var_name));
+
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
   auto outlinks = fake_quant_out->outputs;
@@ -241,6 +254,7 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
   for (auto* node_input : op_node->inputs) {
     if (node_input->Name() == x_var_name) {
       fake_dequant_in = node_input;
+      break;
     }
   }
 
@@ -248,13 +262,19 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
   for (auto* node_output : op_node->outputs) {
     if (node_output->Name() == out_var_name) {
       fake_dequant_out = node_output;
+      break;
     }
   }
 
-  PADDLE_ENFORCE_NOT_NULL(fake_dequant_in,
-                          "The input var of dequantize op is not found.");
-  PADDLE_ENFORCE_NOT_NULL(fake_dequant_out,
-                          "The output var of dequantize op is not found.");
+  PADDLE_ENFORCE_NOT_NULL(
+      fake_dequant_in,
+      platform::errors::NotFound(
+          "The input var [%s] of dequantize op is not found.", x_var_name));
+  PADDLE_ENFORCE_NOT_NULL(
+      fake_dequant_out,
+      platform::errors::NotFound(
+          "The output var [%s] of dequantize op is not found.", out_var_name));
+
   std::string input_act_name = fake_dequant_in->Var()->Name();
   std::string output_act_name = fake_dequant_out->Var()->Name();
   auto outlinks = fake_dequant_out->outputs;
@@ -335,8 +355,9 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
   auto var_name = op_desc->Input(weight_name)[0];
   auto* var = scope->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, "The input persistable var of %s op is not found.", op_desc->Type());
-
+      var, platform::errors::NotFound(
+               "The input persistable [%s] var of [%s] op is not found.",
+               var_name, op_desc->Type()));
   auto* weight_tensor = var->GetMutable<LoDTensor>();
   auto* weight_data = weight_tensor->data<float>();
   bool is_int8 = true;
@@ -371,7 +392,9 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
 
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, "The input persistable var of %s op is not found.", op_desc->Type());
+      var, platform::errors::NotFound(
+               "The input persistable [%s] var of [%s] op is not found.",
+               weight_var_name, op_desc->Type()));
   auto* weight_tensor = var->GetMutable<LoDTensor>();
   const auto weight_dims = weight_tensor->dims();
 
