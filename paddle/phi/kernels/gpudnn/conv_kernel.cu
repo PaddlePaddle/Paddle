@@ -18,7 +18,6 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -68,7 +67,6 @@ void ConvCudnnKernel(const Context& ctx,
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
 #ifdef PADDLE_WITH_HIP
@@ -309,17 +307,17 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  miopenConvFwdAlgorithm_t algo{};
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
-  algo = search::Find<T>(
+  fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-  cudnnConvolutionFwdAlgo_t algo{};
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  algo = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, algo);
+  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -328,7 +326,7 @@ void ConvCudnnKernel(const Context& ctx,
   // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
     // FWD_ALGO_IMPLICIT_GEMM manually.
   if (groups > 1) {
-    algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
   }
 #endif
 
@@ -352,7 +350,7 @@ void ConvCudnnKernel(const Context& ctx,
                 args.wdesc.desc(),
                 filter_data,
                 args.cdesc.desc(),
-                algo,
+                fwd_result.algo,
                 &beta,
                 args.odesc.desc(),
                 output_data,
@@ -373,7 +371,7 @@ void ConvCudnnKernel(const Context& ctx,
                   args.wdesc.desc(),
                   filter_data + i * group_offset_filter,
                   args.cdesc.desc(),
-                  algo,
+                  fwd_result.algo,
                   workspace_ptr,
                   workspace_size,
                   &beta,
