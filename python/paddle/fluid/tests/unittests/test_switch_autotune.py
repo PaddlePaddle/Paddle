@@ -70,7 +70,7 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
         net = SimpleNet()
         for i in range(3):
             train_dygraph(net, x_var)
-            if i >= 1 and i < 2:
+            if i >= 2 and i < 8:
                 expected_res = {
                     "step_id": i,
                     "use_autotune": enable_autotune,
