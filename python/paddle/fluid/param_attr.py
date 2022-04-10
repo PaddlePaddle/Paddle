@@ -30,15 +30,16 @@ __all__ = [
 
 class ParamAttr(object):
     """
-    Create a object to represent the attribute of parameter. The attributes are:
-    name, initializer, learning rate, regularizer, trainable, gradient clip,
-    and model average.
-    
+
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
         There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
+
+    Create a object to represent the attribute of parameter. The attributes are:
+    name, initializer, learning rate, regularizer, trainable, gradient clip,
+    and model average.
 
     Parameters:
         name (str, optional): The parameter's name. Default None, meaning that the name
@@ -63,6 +64,7 @@ class ParamAttr(object):
        ParamAttr Object.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
