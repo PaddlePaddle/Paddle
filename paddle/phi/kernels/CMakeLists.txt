@@ -61,7 +61,7 @@ kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_sca
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
 kernel_library(rnn_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor lstm_compute gru_compute)
 kernel_library(rnn_grad_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor lstm_compute gru_compute)
-kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc sequence_padding sequence_scale)
+kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} warpctc phi_dynload_warpctc sequence_padding sequence_scale)
 kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS} sequence_padding sequence_scale)
 
 # 4. auto parse and build kernel targets by cmake
