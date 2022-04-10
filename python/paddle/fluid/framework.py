@@ -835,6 +835,7 @@ def cpu_places(device_count=None):
         list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
