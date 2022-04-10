@@ -6895,6 +6895,7 @@ def device_guard(device=None):
             assigned devices.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
