@@ -788,6 +788,8 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
