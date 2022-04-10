@@ -132,7 +132,7 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 150;
   __local__ KeyType local_keys[buf_size];
   __local__ ValType local_vals[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
@@ -177,7 +177,7 @@ __global__ void search_kernel(Table* table, const KeyType* keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 150;
   __local__ KeyType local_keys[buf_size];
   __local__ ValType local_vals[buf_size];
 
@@ -207,7 +207,7 @@ __global__ void update_kernel(Table* table, const KeyType* const keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 250;
   __local__ KeyType local_keys[buf_size];
   __local__ GradType local_grads[buf_size];
 
