@@ -129,7 +129,7 @@ __global__ void calc_shard_index_kernel(KeyType* d_keys, long long len, T* shard
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
   const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
+  __local__ KeyType local_keys[buf_size];
   __local__ T local_shard_index[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
@@ -155,15 +155,15 @@ __global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys, T*
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
   const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
-  __local__ T local_shard_keys[buf_size];
+  __local__ KeyType local_keys[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
        i += nthreads * len_per_loop) {
     // read batch from GM will boost performance
     int read_len = min(len_per_loop, len - i);
-    GM2LM(d_keys + i, local_keys, read_len * sizeof(T));
+    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     for (int k = 0; k < read_len; k++) {
       local_shard_keys[k] = local_keys[local_idx[k]];
@@ -172,6 +172,7 @@ __global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys, T*
   }
 }
 
+// local mem too large, cause compile error
 template <typename KeyType, typename GradType, typename T>
 __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
                                  GradType* d_shard_grads, GradType* d_grads,
@@ -183,12 +184,14 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
+
   const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
-  __local__ T local_grads[buf_size];
-  __local__ T local_shard_keys[buf_size];
-  __local__ T local_shard_grads[buf_size];
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
+  __local__ GradType local_shard_grads[buf_size];
   __local__ T local_idx[buf_size];
+
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
        i += nthreads * len_per_loop) {
@@ -217,8 +220,8 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals, T* idx
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
   const int buf_size = 1024;
-  __local__ T local_vals[buf_size];
-  __local__ T local_shard_vals[buf_size];
+  __local__ ValType local_vals[buf_size];
+  __local__ ValType local_shard_vals[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;

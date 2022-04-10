@@ -74,15 +74,11 @@ class XPUCacheArray {
 
   void print() {}
 
-  __device__ ValType* find(const KeyType& key) { return &vals[0]; }
 
-  __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
+  // ValType* find(const KeyType& key) { return NULL; }
+  // bool insert(const KeyType& key, const ValType& val) { return true; }
 
-  size_t size() {
-    return 0;
-    // size_t real_size = (size_t)size_;
-    // return real_size;
-  }
+  size_t size() { return 0; }
 
  private:
   long long capacity_ = 1;  // NOLINT

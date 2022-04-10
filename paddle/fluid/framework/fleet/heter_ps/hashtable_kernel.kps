@@ -143,8 +143,8 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
     GM2LM(keys, local_keys, read_len * sizeof(KeyType));
     GM2LM(vals, local_vals, read_len * sizeof(ValType));
     for (int k = 0; k < read_len; k++) {
-      auto status = table->insert(local_keys[k], local_vals[k]);
-      assert(status != false && "error: insert fails: table is full");
+      // auto status = table->insert(local_keys[k], local_vals[k]);
+      // assert(status != false && "error: insert fails: table is full");
     }
   }
 }
@@ -187,10 +187,10 @@ __global__ void search_kernel(Table* table, const KeyType* keys,
     int read_len = min(len_per_loop, len - i);
     GM2LM(keys, local_keys, read_len * sizeof(KeyType));
     for (int k = 0; k < read_len; k++) {
-      ValType* val = table->find(local_keys[k]);
-      if (val != NULL) {
-        local_vals[k] = *val;
-      }
+      // ValType* val = table->find(local_keys[k]);
+      // if (val != NULL) {
+      //  local_vals[k] = *val;
+      // }
     }
     LM2GM(local_vals, vals + i, read_len * sizeof(ValType));
   }
@@ -220,10 +220,10 @@ __global__ void update_kernel(Table* table, const KeyType* const keys,
     GM2LM(grads, local_grads, read_len * sizeof(GradType));
 
     for (int k = 0; k < read_len; k++) {
-      ValType* val = table->find(local_keys[k]);
-      if (val != NULL) {
-        update_value(val, &local_grads[k]);
-      }
+      // ValType* val = table->find(local_keys[k]);
+      // if (val != NULL) {
+      //  update_value(*val, grads[i]);
+      //}
     }
   }
 }
