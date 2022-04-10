@@ -954,7 +954,6 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
-    :api_attr: Static Graph
 
     Generate hierarchical name prefix for the operators in Static Graph.
 
@@ -967,6 +966,7 @@ def name_scope(prefix=None):
         prefix(str, optional): prefix. Default is none.
 
     Examples:
+    
         .. code-block:: python
 
           import paddle
