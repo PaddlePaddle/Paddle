@@ -690,7 +690,7 @@ def is_compiled_with_rocm():
 
 def cuda_places(device_ids=None):
     """
-    **Note**:
+    Note:
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
         The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
@@ -715,6 +715,7 @@ def cuda_places(device_ids=None):
         list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
