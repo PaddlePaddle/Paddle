@@ -13,13 +13,7 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/operators/data/map_runner.h"
-
-#ifdef _WIN32
-static unsigned sleep(unsigned seconds) {
-  Sleep(seconds * 1000);
-  return 0;
-}
-#endif
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace operators {
@@ -138,7 +132,7 @@ void MapRunner::StartMapThread(const Scope* scope) {
       try {
         executor.Run(*map_block_->Program(), &scope_,
                      static_cast<int>(map_block_->ID()), false, true,
-                     std::vector<std::string>(), false, true);
+                     output_var_names_, false, true);
       } catch (...) {
         break;
       }
