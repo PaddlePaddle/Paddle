@@ -6879,8 +6879,9 @@ def switch_device(device):
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
-    **Notes**:
-        **The API only supports static mode.**
+    
+    Note:
+        The API only supports static mode.
 
     A context manager that specifies the device on which the OP will be placed.
 
