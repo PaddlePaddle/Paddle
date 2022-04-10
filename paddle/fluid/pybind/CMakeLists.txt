@@ -350,7 +350,7 @@ if(WITH_PYTHON)
     add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS interpretercore standalone_executor)
+  list(APPEND PYBIND_DEPS interpretercore standalone_executor staticgraph_executor_statistics)
   cc_library(op_function_common SRCS op_function_common.cc DEPS ${PYBIND_DEPS})
   list(APPEND PYBIND_DEPS op_function_common)
 

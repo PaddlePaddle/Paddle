@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/profiler/executor_statistics.h"
+#include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include <fstream>
 #include <functional>
 #include <map>
@@ -24,11 +24,11 @@
 #include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
-namespace platform {
+namespace framework {
 
 class StatisticsEngine {
  public:
-  int Apply(const NodeTrees& tree);
+  int Apply(const platform::NodeTrees& tree);
 
   void Log(const std::string& full_filename);
 
@@ -55,13 +55,13 @@ class StatisticsEngine {
         : evt_idx(idx), start_ns(start), end_ns(end) {}
   };
 
-  using Filter = std::function<bool(const HostTraceEventNode&)>;
+  using Filter = std::function<bool(const platform::HostTraceEventNode&)>;
 
-  int Init(
-      const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes);
+  int Init(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
+               thread2nodes);
 
-  int Stat(
-      const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes);
+  int Stat(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
+               thread2nodes);
 
   void InitStdEvents();
 
@@ -108,13 +108,14 @@ class StatisticsEngine {
   std::unordered_map<std::string, size_t> name2idx_;
 };
 
-int StatisticsEngine::Apply(const NodeTrees& tree) {
+int StatisticsEngine::Apply(const platform::NodeTrees& tree) {
   auto thread2nodes = tree.Traverse(true);
   return Init(thread2nodes) || Stat(thread2nodes);
 }
 
 int StatisticsEngine::Init(
-    const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes) {
+    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
+        thread2nodes) {
   if (inited_) {
     LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
     return -1;
@@ -215,154 +216,158 @@ void StatisticsEngine::InitInterthreadPriorityForStdEvents() {
 
 int StatisticsEngine::InitFiltersForExecutor() {
   return RegisterEventFilter("Total",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name().find("ProfileStep") == 0;
                              }) ||
          RegisterEventFilter("CplusplusEnd",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "Executor::RunPartialPreparedContext";
                              }) ||
          RegisterEventFilter("RunOp",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Type() == TracerEventType::Operator;
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Type() ==
+                                      platform::TracerEventType::Operator;
                              }) ||
-         RegisterEventFilter("OpCompute",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "compute" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
-         RegisterEventFilter("OpInfershape",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "infer_shape" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
+         RegisterEventFilter(
+             "OpCompute",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "compute" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
+         RegisterEventFilter(
+             "OpInfershape",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "infer_shape" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
          RegisterEventFilter("GarbageCollect",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "CheckGC";
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "AutoGrowthBestFitAllocator::Allocate";
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "AutoGrowthBestFitAllocator::Free";
                              }) ||
          RegisterEventFilter(
-             "DataTransform", [](const HostTraceEventNode& evt) {
+             "DataTransform", [](const platform::HostTraceEventNode& evt) {
                return evt.Name() == "prepare_data" &&
-                      evt.Type() == TracerEventType::OperatorInner;
+                      evt.Type() == platform::TracerEventType::OperatorInner;
              });
 }
 
 int StatisticsEngine::InitFiltersForParallelExecutor() {
   return RegisterEventFilter("Total",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name().find("ProfileStep") == 0;
                              }) ||
          RegisterEventFilter("CplusplusEnd",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "ParallelExecutor::Run";
                              }) ||
          RegisterEventFilter("RunOp",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Type() == TracerEventType::Operator;
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Type() ==
+                                      platform::TracerEventType::Operator;
                              }) ||
-         RegisterEventFilter("OpCompute",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "compute" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
-         RegisterEventFilter("OpInfershape",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "infer_shape" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
+         RegisterEventFilter(
+             "OpCompute",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "compute" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
+         RegisterEventFilter(
+             "OpInfershape",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "infer_shape" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
          RegisterEventFilter("GarbageCollect",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "eager_deletion";
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "AutoGrowthBestFitAllocator::Allocate";
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "AutoGrowthBestFitAllocator::Free";
                              }) ||
-         RegisterEventFilter("DataTransform",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "prepare_data" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
+         RegisterEventFilter(
+             "DataTransform",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "prepare_data" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
          RegisterEventFilter("ThreadpoolAddTask",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "WorkQueue::AddTask";
                              });
 }
 
 int StatisticsEngine::InitFiltersForInterpreterCore() {
   return RegisterEventFilter("Total",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name().find("ProfileStep") == 0;
                              }) ||
          RegisterEventFilter("CplusplusEnd",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "StandaloneExecutor::run";
                              }) ||
          RegisterEventFilter("RunOp",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Type() == TracerEventType::Operator;
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Type() ==
+                                      platform::TracerEventType::Operator;
                              }) ||
-         RegisterEventFilter("OpCompute",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "compute" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
-         RegisterEventFilter("OpInfershape",
-                             [](const HostTraceEventNode& evt) {
-                               return evt.Name() == "infer_shape" &&
-                                      evt.Type() ==
-                                          TracerEventType::OperatorInner;
-                             }) ||
+         RegisterEventFilter(
+             "OpCompute",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "compute" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
+         RegisterEventFilter(
+             "OpInfershape",
+             [](const platform::HostTraceEventNode& evt) {
+               return evt.Name() == "infer_shape" &&
+                      evt.Type() == platform::TracerEventType::OperatorInner;
+             }) ||
          RegisterEventFilter("GarbageCollect",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "CheckGC" ||
                                       evt.Name() == "RecordStreamForGC";
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "StreamSafeCUDAAllocator::Allocate";
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() ==
                                       "StreamSafeCUDAAllocator::Free";
                              }) ||
          RegisterEventFilter("CalcNextOp",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "RunNextInstructions";
                              }) ||
          RegisterEventFilter("ThreadpoolAddTask",
-                             [](const HostTraceEventNode& evt) {
+                             [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "WorkQueue::AddTask";
                              });
 }
 
 int StatisticsEngine::Stat(
-    const std::map<uint64_t, std::vector<HostTraceEventNode*>>& thread2nodes) {
+    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
+        thread2nodes) {
   // build StdEvent
   std::vector<std::vector<StdEvent>> all_evts;
   for (const auto& nodes : thread2nodes) {
@@ -544,27 +549,28 @@ void StatisticsEngine::Log(const std::string& full_filename) {
   ofs << "[";
   for (size_t idx = 0; idx < statistics_.size(); ++idx) {
     const auto& evt_stat = statistics_[idx];
-    ofs << string_format(std::string(R"JSON(
+    ofs << platform::string_format(std::string(R"JSON(
   { 
     "statistical item" : "%s", 
     "total time(ns)" : %llu, 
     "total number of times" : %llu,
     "normalization time(ns)" : %llu
   },)JSON"),
-                         names_[idx].c_str(), evt_stat.total_time,
-                         evt_stat.count, evt_stat.normalization_time);
+                                   names_[idx].c_str(), evt_stat.total_time,
+                                   evt_stat.count, evt_stat.normalization_time);
   }
   ofs.seekp(-1, std::ios_base::end);
   ofs << "]";
   ofs.close();
 }
 
-void ExecutorStatistics(const std::string& file_name, const NodeTrees& tree) {
+void StaticGraphExecutorPerfStatistics(
+    std::shared_ptr<platform::NodeTrees> profiling_data) {
   StatisticsEngine engine;
-  if (engine.Apply(tree) == 0) {
-    engine.Log(file_name);
+  if (engine.Apply(*profiling_data) == 0) {
+    engine.Log("test");
   }
 }
 
-}  // namespace platform
+}  // namespace framework
 }  // namespace paddle

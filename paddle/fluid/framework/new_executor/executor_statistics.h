@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include <string>
+#include <memory>
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 namespace paddle {
-namespace platform {
+namespace framework {
 
-void ExecutorStatistics(const std::string& file_name, const NodeTrees& tree);
+void StaticGraphExecutorPerfStatistics(
+    std::shared_ptr<platform::NodeTrees> profiling_data);
 
-}  // namespace platform
+}  // namespace framework
 }  // namespace paddle

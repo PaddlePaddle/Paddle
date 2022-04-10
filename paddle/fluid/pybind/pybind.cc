@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -3380,7 +3381,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("stop",
            [](paddle::platform::Profiler *profiler) {
              platform::DisableHostEventRecorder();
-             return profiler->Stop();
+             auto result = profiler->Stop();
+             framework::StaticGraphExecutorPerfStatistics(
+                 result->GetNodeTrees());
+             return result;
            },
            py::return_value_policy::automatic_reference);
 
