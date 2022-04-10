@@ -17,6 +17,7 @@
 #include <functional>
 #include <map>
 #include <ostream>
+#include <queue>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -28,7 +29,7 @@ namespace framework {
 
 class StatisticsEngine {
  public:
-  int Apply(const platform::NodeTrees& tree);
+  int Apply(const platform::NodeTrees& trees);
 
   void Log(const std::string& full_filename);
 
@@ -57,11 +58,9 @@ class StatisticsEngine {
 
   using Filter = std::function<bool(const platform::HostTraceEventNode&)>;
 
-  int Init(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-               thread2nodes);
+  int Init(const platform::NodeTrees& trees);
 
-  int Stat(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-               thread2nodes);
+  int Stat(const platform::NodeTrees& trees);
 
   void InitStdEvents();
 
@@ -109,13 +108,10 @@ class StatisticsEngine {
 };
 
 int StatisticsEngine::Apply(const platform::NodeTrees& tree) {
-  auto thread2nodes = tree.Traverse(true);
-  return Init(thread2nodes) || Stat(thread2nodes);
+  return Init(tree) || Stat(tree);
 }
 
-int StatisticsEngine::Init(
-    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-        thread2nodes) {
+int StatisticsEngine::Init(const platform::NodeTrees& trees) {
   if (inited_) {
     LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
     return -1;
@@ -125,9 +121,13 @@ int StatisticsEngine::Init(
   InitInnerthreadPriorityForStdEvents();
   InitInterthreadPriorityForStdEvents();
   // determine executor type
-  for (const auto& kv : thread2nodes) {
-    for (const auto& evt : kv.second) {
-      const auto& name = evt->Name();
+  for (const auto& kv : trees.GetNodeTrees()) {
+    std::queue<const platform::HostTraceEventNode*> q;
+    q.push(kv.second);
+    while (!q.empty()) {
+      auto cur_node = q.front();
+      q.pop();
+      const auto& name = cur_node->Name();
       if (name.find("Executor::") == 0) {
         VLOG(10) << "type: Executor";
         return InitFiltersForExecutor();
@@ -137,6 +137,9 @@ int StatisticsEngine::Init(
       } else if (name.find("StandaloneExecutor::") == 0) {
         VLOG(10) << "type: InterpreterCore";
         return InitFiltersForInterpreterCore();
+      }
+      for (const auto& child : cur_node->GetChildren()) {
+        q.push(child);
       }
     }
   }
@@ -365,24 +368,32 @@ int StatisticsEngine::InitFiltersForInterpreterCore() {
                              });
 }
 
-int StatisticsEngine::Stat(
-    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-        thread2nodes) {
-  // build StdEvent
+int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
+  // Convert StdEvent
   std::vector<std::vector<StdEvent>> all_evts;
-  for (const auto& nodes : thread2nodes) {
-    if (nodes.second.size() == 0) {
-      continue;
-    }
+  for (const auto& tree : trees.GetNodeTrees()) {
     std::vector<StdEvent> thr_evts;
-    thr_evts.reserve(nodes.second.size());
-    for (const auto evt : nodes.second) {
+    std::queue<const platform::HostTraceEventNode*> q;
+    q.push(tree.second);
+    while (!q.empty()) {
+      auto cur_node = q.front();
+      q.pop();
+      for (const auto& child : cur_node->GetChildren()) {
+        // Remove duplicate operator records.
+        // See InterpreterCore::RunInstruction for details.
+        if (child->Type() == platform::TracerEventType::Operator &&
+            cur_node->Name() == "compute") {
+          VLOG(10) << "Remove duplicate operator record: " << cur_node->Name();
+          continue;
+        }
+        q.push(child);
+      }
       for (size_t idx = 0; idx < filters_.size(); ++idx) {
         if (!filters_[idx]) {
           continue;
         }
-        if (filters_[idx](*evt)) {
-          thr_evts.emplace_back(idx, evt->StartNs(), evt->EndNs());
+        if (filters_[idx](*cur_node)) {
+          thr_evts.emplace_back(idx, cur_node->StartNs(), cur_node->EndNs());
           break;
         }
       }
@@ -565,7 +576,7 @@ void StatisticsEngine::Log(const std::string& full_filename) {
 }
 
 void StaticGraphExecutorPerfStatistics(
-    std::shared_ptr<platform::NodeTrees> profiling_data) {
+    std::shared_ptr<const platform::NodeTrees> profiling_data) {
   StatisticsEngine engine;
   if (engine.Apply(*profiling_data) == 0) {
     engine.Log("test");
