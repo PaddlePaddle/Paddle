@@ -911,6 +911,7 @@
     param: [x]
   kernel :
     func : mean_grad
+  no_need_buffer : x
 
 - backward_api : meshgrid_grad
   forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
@@ -1344,6 +1345,7 @@
     param : [input]
   kernel :
     func : slice_grad
+  no_need_buffer : input
 
 - backward_api : soft_shrink_grad
   forward : soft_shrink (Tensor x, float lambda) -> Tensor(out)
@@ -1598,3 +1600,4 @@
     param : [x, y]
   kernel :
     func : where_grad
+  no_need_buffer : x, y
