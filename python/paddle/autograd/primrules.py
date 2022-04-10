@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       transpose, split, concat, reduce, matmul, slice_select,
                       slice_assign, gather, scatter_add, fill_const)
@@ -35,13 +36,19 @@ class Registry(object):
         return self.tab[name]
 
 
-_primop_lower = Registry('primop_lowers')
+_orig2prim = Registry('orig2prims')
+_prim2orig = Registry('prim2origs')
 _primop_jvp = Registry('primop_jvps')
 _primop_transpose = Registry('primop_vjps')
 
 
-def _lower(op):
-    _lowerrule = _primop_lower.lookup(op.type)
+def _orig2prim(op):
+    _lowerrule = _orig2prim.lookup(op.type)
+    return _lowerrule(op)
+
+
+def _prim2orig(op):
+    _lowerrule = _prim2orig.lookup(op.type)
     return _lowerrule(op)
 
 
@@ -55,13 +62,13 @@ def _transpose(op, dot_checker, *args):
     return _transposerule(op, dot_checker, *args)
 
 
-def REGISTER_LOWER(op_type):
+def REGISTER_ORIG2PRIM(op_type):
     """Decorator for registering the lower function for an original op.
     
     Usage:
     .. code-block:: python
-        @Register_LOWER('elementwise_add')
-        def elementwise_add_lower(op):
+        @Register_ORIG2PRIM('elementwise_add')
+        def elementwise_add_orig2prim(op):
             x, y = get_op_inputs(op)
             return primops.add(x, y)
 
@@ -73,7 +80,30 @@ def REGISTER_LOWER(op_type):
             assert op.type == op_type
             return f(op, *args, **kwargs)
 
-        _primop_lower.register(op_type, _lower)
+        _orig2prim.register(op_type, _lower)
+
+    return wrapper
+
+
+def REGISTER_PRIM2ORIG(op_type):
+    """Decorator for registering the lower function for an primitive op.
+    
+    Usage:
+    .. code-block:: python
+        @Register_PRIM2ORIG('add_p')
+        def add_prim2orig(op):
+            x, y = get_op_inputs(op)
+            return paddle.add(x, y)
+
+    """
+    assert isinstance(op_type, str)
+
+    def wrapper(f):
+        def _lower(op, *args, **kwargs):
+            assert op.type == op_type
+            return f(op, *args, **kwargs)
+
+        _prim2orig.register(op_type, _lower)
 
     return wrapper
 
@@ -136,34 +166,132 @@ def linear_jvp(op, *args):
     return out_dot
 
 
-## Register lower rules
+## Register orig2prim lower rules
 
 ## TODO(lml): add lower rules for ops used in laplace2d demo.
 """
-matmul_v2
-elementwise_add
-tanh
-reshape2
-concat
-slice
-fill_zeros_like
+matmul_v2 done
+elementwise_add done
+tanh done
+reshape2 done
+concat done
+slice done
+fill_zeros_like done
 sum
 p_norm
 index_select
-elementwise_sub
+elementwise_sub done
 scale
 assign
 
 how to deal with shape and fill_constant?
+    Do not process them now.
 """
 
 
-@REGISTER_LOWER('elementwise_add')
-def elementwise_add_lower(op):
+@REGISTER_ORIG2PRIM('matmul_v2')
+def matmul_v2_orig2prim(op):
+    def trans(shape):
+        last_shape = shape[-1]
+        shape[-1] = shape[-2]
+        shape[-2] = last_shape
+        return shape
+
+    x, y = get_op_inputs(op)
+    assert len(x.shape) < 4 and len(
+        y.shape) < 4, 'Can not support multi batchsize dimensions.'
+    if op.attr('trans_x'):
+        x = primops.transpose(x, shape=trans(x.shape))
+    if op.attr('trans_y'):
+        y = primops.transpose(y, shape=trans(y.shape))
+    return primops.matmul(x, y)
+
+
+@REGISTER_ORIG2PRIM('elementwise_add')
+def elementwise_add_orig2prim(op):
     x, y = get_op_inputs(op)
     if x.shape != y.shape:
         y = primops.broadcast(y, shape=x.shape)
-    return primops.add(x, y)
+    if op.attr('Scale_x'):
+        tmp = primops.fill_constant(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = primops.mul(x, tmp)
+    if op.attr('Scale_y'):
+        tmp = primops.fill_constant(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = primops.mul(y, tmp)
+    z = primops.add(x, y)
+    if op.attr('Scale_out'):
+        tmp = primops.fill_constant(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = primops.mul(z, tmp)
+    return z
+
+
+@REGISTER_ORIG2PRIM('tanh')
+def tanh_orig2prim(op):
+    x = get_op_inputs(op)
+    return primops.tanh(x)
+
+
+## NOTE(lml): The second output of reshape2 Xshape, can't be described by prim ops, use paddle.shape() interface instead.
+@REGISTER_ORIG2PRIM('reshape2')
+def reshape2_orig2prim(op):
+    _, _, x = get_op_inputs(op)
+    y, _ = get_op_outputs(op)
+    return primops.reshape(x, shape=y.shape), paddle.shape(x)
+
+
+@REGISTER_ORIG2PRIM('concat')
+def concat_orig2prim(op):
+    axis_t, *xs = get_op_inputs(op)
+    assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
+    return primops.concat(xs, axis=op.attr('axis'))
+
+
+@REGISTER_ORIG2PRIM('slice')
+def slice_orig2prim(op):
+    ends_t, ends_tl, x, starts_t, starts_tl = get_op_inputs(op)
+
+    assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'
+    assert ends_t is None, 'Can not lower concat into prim ops with endstensor.'
+    assert starts_tl is None, 'Can not lower concat into prim ops with startstensorlist.'
+    assert ends_tl is None, 'Can not lower concat into prim ops with endstensorlist.'
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = [1 for _ in starts]
+    axis = op.attr('axes')
+    y = primops.slice(x, starts=starts, ends=ends, strides=strides, axis=axis)
+    if op.attr('decrease_axis') is not None:
+        y = primops.reshape(y, shape=get_op_outputs(op).shape)
+    return y
+
+
+@REGISTER_ORIG2PRIM('fill_zeros_like')
+def fill_zeros_like_orig2prim(op):
+    x = get_op_inputs(op)
+    return primops.fill_constant(x, shape=x.shape, value=0.0)
+
+
+@REGISTER_ORIG2PRIM('elementwise_sub')
+def elementwise_sub_orig2prim(op):
+    x, y = get_op_inputs(op)
+    if x.shape != y.shape:
+        y = primops.broadcast(y, shape=x.shape)
+    if op.attr('Scale_x'):
+        tmp = primops.fill_constant(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = primops.mul(x, tmp)
+    if op.attr('Scale_y'):
+        tmp = primops.fill_constant(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = primops.mul(y, tmp)
+    z = primops.sub(x, y)
+    if op.attr('Scale_out'):
+        tmp = primops.fill_constant(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = primops.mul(z, tmp)
+    return z
 
 
 ## Register linearize rules
