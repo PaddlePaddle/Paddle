@@ -235,5 +235,3 @@ def scatter_add(x, y, indextensor, axis, out=None):
 
 if __name__ == '__main__':
     paddle.enable_static()
-    A = paddle.rand([2, 3])
-    B = paddle.rand([3, 2])

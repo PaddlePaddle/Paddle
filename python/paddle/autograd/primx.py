@@ -93,25 +93,24 @@ class Transform(object):
 
     ## TODO(lml): finish these function
     def get_var_lookup_tab(self, block):
-        pass
+        tab = {}
+        for var in block.allvars():
+            tab[var.name] = var
 
     def bind(self):
-        pass
-
-    def need_lower(self):
         pass
 
     def update_vlt(self):
         pass
 
-    def lower2prim(self, block=None):
+    def orig2prim(self, block=None):
         if block is None:
             block = default_main_program().current_block()
         vlt = get_var_lookup_tab(block)
         ops_to_remove = []
         for op_idx in range(len(block.ops)):
             op = block.ops(op_idx)
-            if need_lower(op):
+            if _orig2prim.lookup(op.type()) is not None:
                 for name in op.input_arg_names():
                     if name in to_bind:
                         bind(name, to_bind[name])
