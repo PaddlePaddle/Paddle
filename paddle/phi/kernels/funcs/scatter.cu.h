@@ -231,7 +231,7 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   int64_t n = slice_size * remain_numel;
   dim3 grid = dim3((n + block - 1) / block);
   paddle::platform::LimitGridDim(ctx, &grid);
- 
+
   ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_update,
       p_index,

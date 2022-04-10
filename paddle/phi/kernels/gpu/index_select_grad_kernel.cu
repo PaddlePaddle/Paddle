@@ -47,9 +47,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
 
 template <typename T>
 __global__ void index_select_grad_init(T* input_grad, int64_t N) {
-  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-    input_grad[idx] = 0.0;
-  }
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) { input_grad[idx] = 0.0; }
 }
 
 template <typename T, typename Context>
