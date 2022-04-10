@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 
 void StaticGraphExecutorPerfStatistics(
-    std::shared_ptr<platform::NodeTrees> profiling_data);
+    std::shared_ptr<const platform::NodeTrees> profiling_data);
 
 }  // namespace framework
 }  // namespace paddle

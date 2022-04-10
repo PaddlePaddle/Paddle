@@ -17,18 +17,27 @@
 #include <functional>
 #include <map>
 #include <ostream>
+#include <queue>
 #include <set>
 #include <unordered_map>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+
+DECLARE_bool(use_stream_safe_cuda_allocator);
+PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath, "",
+                              "FLAGS_static_executor_perfstat_filepath "
+                              "enables performance statistics for the static "
+                              "graph executor.");
 
 namespace paddle {
 namespace framework {
 
 class StatisticsEngine {
  public:
-  int Apply(const platform::NodeTrees& tree);
+  int Apply(const platform::NodeTrees& trees);
 
   void Log(const std::string& full_filename);
 
@@ -55,13 +64,13 @@ class StatisticsEngine {
         : evt_idx(idx), start_ns(start), end_ns(end) {}
   };
 
+  enum class ExecutorType { EXECUTOR, PARALLEL_EXECUTOR, INTERPRETER_CORE };
+
   using Filter = std::function<bool(const platform::HostTraceEventNode&)>;
 
-  int Init(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-               thread2nodes);
+  int Init(const platform::NodeTrees& trees);
 
-  int Stat(const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-               thread2nodes);
+  int Stat(const platform::NodeTrees& trees);
 
   void InitStdEvents();
 
@@ -101,6 +110,7 @@ class StatisticsEngine {
   int StatNormalizationTime(const std::vector<std::vector<StdEvent>>& all_evts);
 
   bool inited_ = false;
+  ExecutorType executor_type_;
   std::vector<std::string> names_;
   std::vector<Filter> filters_;
   std::vector<Priority> priorities_;
@@ -109,15 +119,16 @@ class StatisticsEngine {
 };
 
 int StatisticsEngine::Apply(const platform::NodeTrees& tree) {
-  auto thread2nodes = tree.Traverse(true);
-  return Init(thread2nodes) || Stat(thread2nodes);
+  return Init(tree) || Stat(tree);
 }
 
-int StatisticsEngine::Init(
-    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-        thread2nodes) {
+int StatisticsEngine::Init(const platform::NodeTrees& trees) {
   if (inited_) {
     LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
+    return -1;
+  }
+  if (platform::GetCurrentThreadName() != "MainThread") {
+    LOG(WARNING) << "StatisticsEngin must run on the main thread";
     return -1;
   }
   inited_ = true;
@@ -125,18 +136,32 @@ int StatisticsEngine::Init(
   InitInnerthreadPriorityForStdEvents();
   InitInterthreadPriorityForStdEvents();
   // determine executor type
-  for (const auto& kv : thread2nodes) {
-    for (const auto& evt : kv.second) {
-      const auto& name = evt->Name();
+  uint64_t main_tid = platform::GetCurrentThreadId().sys_tid;
+  for (const auto& kv : trees.GetNodeTrees()) {
+    if (kv.first != main_tid) {
+      continue;
+    }
+    std::queue<const platform::HostTraceEventNode*> q;
+    q.push(kv.second);
+    while (!q.empty()) {
+      auto cur_node = q.front();
+      q.pop();
+      const auto& name = cur_node->Name();
       if (name.find("Executor::") == 0) {
         VLOG(10) << "type: Executor";
+        executor_type_ = ExecutorType::EXECUTOR;
         return InitFiltersForExecutor();
       } else if (name.find("ParallelExecutor::") == 0) {
         VLOG(10) << "type: ParallelExecutor";
+        executor_type_ = ExecutorType::PARALLEL_EXECUTOR;
         return InitFiltersForParallelExecutor();
       } else if (name.find("StandaloneExecutor::") == 0) {
         VLOG(10) << "type: InterpreterCore";
+        executor_type_ = ExecutorType::INTERPRETER_CORE;
         return InitFiltersForInterpreterCore();
+      }
+      for (const auto& child : cur_node->GetChildren()) {
+        q.push(child);
       }
     }
   }
@@ -214,6 +239,13 @@ void StatisticsEngine::InitInterthreadPriorityForStdEvents() {
   priorities_[name2idx_["PythonEnd"]].interthread_priority = prio;
 }
 
+const char* alloc_device_mem = FLAGS_use_stream_safe_cuda_allocator
+                                   ? "StreamSafeCUDAAllocator::Allocate"
+                                   : "AutoGrowthBestFitAllocator::Allocate";
+const char* free_device_mem = FLAGS_use_stream_safe_cuda_allocator
+                                  ? "StreamSafeCUDAAllocator::Free"
+                                  : "AutoGrowthBestFitAllocator::Free";
+
 int StatisticsEngine::InitFiltersForExecutor() {
   return RegisterEventFilter("Total",
                              [](const platform::HostTraceEventNode& evt) {
@@ -247,13 +279,11 @@ int StatisticsEngine::InitFiltersForExecutor() {
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "AutoGrowthBestFitAllocator::Allocate";
+                               return evt.Name() == alloc_device_mem;
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "AutoGrowthBestFitAllocator::Free";
+                               return evt.Name() == free_device_mem;
                              }) ||
          RegisterEventFilter(
              "DataTransform", [](const platform::HostTraceEventNode& evt) {
@@ -290,17 +320,16 @@ int StatisticsEngine::InitFiltersForParallelExecutor() {
              }) ||
          RegisterEventFilter("GarbageCollect",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == "eager_deletion";
+                               return evt.Name() == "eager_deletion" ||
+                                      evt.Name() == "CheckGC";
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "AutoGrowthBestFitAllocator::Allocate";
+                               return evt.Name() == alloc_device_mem;
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "AutoGrowthBestFitAllocator::Free";
+                               return evt.Name() == free_device_mem;
                              }) ||
          RegisterEventFilter(
              "DataTransform",
@@ -347,13 +376,11 @@ int StatisticsEngine::InitFiltersForInterpreterCore() {
                              }) ||
          RegisterEventFilter("AllocateDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "StreamSafeCUDAAllocator::Allocate";
+                               return evt.Name() == alloc_device_mem;
                              }) ||
          RegisterEventFilter("FreeDeviceMem",
                              [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() ==
-                                      "StreamSafeCUDAAllocator::Free";
+                               return evt.Name() == free_device_mem;
                              }) ||
          RegisterEventFilter("CalcNextOp",
                              [](const platform::HostTraceEventNode& evt) {
@@ -365,24 +392,32 @@ int StatisticsEngine::InitFiltersForInterpreterCore() {
                              });
 }
 
-int StatisticsEngine::Stat(
-    const std::map<uint64_t, std::vector<platform::HostTraceEventNode*>>&
-        thread2nodes) {
-  // build StdEvent
+int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
+  // Convert StdEvent
   std::vector<std::vector<StdEvent>> all_evts;
-  for (const auto& nodes : thread2nodes) {
-    if (nodes.second.size() == 0) {
-      continue;
-    }
+  for (const auto& tree : trees.GetNodeTrees()) {
     std::vector<StdEvent> thr_evts;
-    thr_evts.reserve(nodes.second.size());
-    for (const auto evt : nodes.second) {
+    std::queue<const platform::HostTraceEventNode*> q;
+    q.push(tree.second);
+    while (!q.empty()) {
+      auto cur_node = q.front();
+      q.pop();
+      for (const auto& child : cur_node->GetChildren()) {
+        // Remove duplicate operator records.
+        // See InterpreterCore::RunInstruction for details.
+        if (child->Type() == platform::TracerEventType::Operator &&
+            cur_node->Name() == "compute") {
+          VLOG(10) << "Remove duplicate operator record: " << child->Name();
+          continue;
+        }
+        q.push(child);
+      }
       for (size_t idx = 0; idx < filters_.size(); ++idx) {
         if (!filters_[idx]) {
           continue;
         }
-        if (filters_[idx](*evt)) {
-          thr_evts.emplace_back(idx, evt->StartNs(), evt->EndNs());
+        if (filters_[idx](*cur_node)) {
+          thr_evts.emplace_back(idx, cur_node->StartNs(), cur_node->EndNs());
           break;
         }
       }
@@ -420,6 +455,13 @@ int StatisticsEngine::Stat(
   const auto& allocate = statistics_[name2idx_["AllocateDeviceMem"]];
   luanch_kernel.total_time = op_compute.total_time - allocate.total_time;
   luanch_kernel.count = op_compute.count;
+
+  if (executor_type_ != ExecutorType::EXECUTOR &&
+      statistics_[name2idx_["ThreadpoolAddTask"]].count == 0) {
+    LOG(WARNING) << "Check your env variable FLAGS_host_trace_level, make sure "
+                    "FLAGS_host_trace_level >= 10.";
+    return -1;
+  }
 
   // statistic normalization_time
   return MergeInnerthreadEvents(&all_evts) ||
@@ -537,15 +579,14 @@ int StatisticsEngine::StatNormalizationTime(
   return 0;
 }
 
-void StatisticsEngine::Log(const std::string& full_filename) {
+void StatisticsEngine::Log(const std::string& filepath) {
   std::ofstream ofs;
-  ofs.open(full_filename, std::ofstream::out | std::ofstream::trunc);
+  ofs.open(filepath, std::ofstream::out | std::ofstream::trunc);
   if (!ofs) {
-    LOG(WARNING) << "Unable to open file " << full_filename
-                 << " for writing data.";
+    LOG(WARNING) << "Unable to open file " << filepath << " for writing data.";
     return;
   }
-  LOG(INFO) << "writing statistics data to " << full_filename;
+  LOG(INFO) << "writing the executor performance statistics to " << filepath;
   ofs << "[";
   for (size_t idx = 0; idx < statistics_.size(); ++idx) {
     const auto& evt_stat = statistics_[idx];
@@ -565,10 +606,14 @@ void StatisticsEngine::Log(const std::string& full_filename) {
 }
 
 void StaticGraphExecutorPerfStatistics(
-    std::shared_ptr<platform::NodeTrees> profiling_data) {
+    std::shared_ptr<const platform::NodeTrees> profiling_data) {
+  if (FLAGS_static_executor_perfstat_filepath.size() == 0) {
+    VLOG(5) << "StaticGraphExecutorPerfStatistics is disabled";
+    return;
+  }
   StatisticsEngine engine;
   if (engine.Apply(*profiling_data) == 0) {
-    engine.Log("test");
+    engine.Log(FLAGS_static_executor_perfstat_filepath);
   }
 }
 
