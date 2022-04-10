@@ -62,9 +62,9 @@ void BindTCPStore(py::module *m) {
                     store = paddle.distributed.TCPStore("127.0.0.1", 6170, True, 1,
                                                             datetime.timedelta(0))
 
-                    store.set("key",3)
+                    store.set("key",str(3))
                     ret = store.get("key")
-                    print(ret)
+                    print(int(ret))
                )DOC")
           .def("get",
                [](distributed::Store &self,
