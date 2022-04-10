@@ -124,7 +124,7 @@ __global__ void calc_shard_index(KeyType* d_keys, long long len, T* shard_index,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
+  const int buf_size = 512;
   __local__ KeyType local_keys[buf_size];
   __local__ T local_shard_index[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
@@ -150,7 +150,7 @@ __global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
+  const int buf_size = 400;
   __local__ KeyType local_keys[buf_size];
   __local__ KeyType local_shard_keys[buf_size];
   __local__ T local_idx[buf_size];
@@ -181,7 +181,7 @@ __global__ void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 100;
   __local__ KeyType local_keys[buf_size];
   __local__ GradType local_grads[buf_size];
   __local__ KeyType local_shard_keys[buf_size];
@@ -215,7 +215,7 @@ __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
+  const int buf_size = 50;
   __local__ ValType local_vals[buf_size];
   __local__ ValType local_shard_vals[buf_size];
   __local__ T local_idx[buf_size];
