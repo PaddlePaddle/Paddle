@@ -399,6 +399,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
     std::vector<StdEvent> thr_evts;
     std::queue<const platform::HostTraceEventNode*> q;
     q.push(tree.second);
+    std::unordered_set<const platform::HostTraceEventNode*> removed;
     while (!q.empty()) {
       auto cur_node = q.front();
       q.pop();
@@ -407,10 +408,13 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
         // See InterpreterCore::RunInstruction for details.
         if (child->Type() == platform::TracerEventType::Operator &&
             cur_node->Name() == "compute") {
-          VLOG(10) << "Remove duplicate operator record: " << child->Name();
-          continue;
+          removed.insert(child);
         }
         q.push(child);
+      }
+      if (removed.count(cur_node) > 0) {
+        VLOG(10) << "Remove duplicate operator record: " << cur_node->Name();
+        continue;
       }
       for (size_t idx = 0; idx < filters_.size(); ++idx) {
         if (!filters_[idx]) {
