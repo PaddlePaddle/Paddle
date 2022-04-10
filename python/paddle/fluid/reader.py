@@ -339,6 +339,9 @@ class DataLoader(object):
         # Whether use multi-stream/thread GPU DataLoader
         self._use_data_pipeline = False
         if callable(dataset):
+            if sys.platform == 'win32' or sys.platform == 'darwin':
+                raise RuntimeError("GPU DataLoader is not supported "\
+                                   "on Windows currently")
             self._use_data_pipeline = True
             with DataPipeline() as self._data_pipeline:
                 outputs = dataset()

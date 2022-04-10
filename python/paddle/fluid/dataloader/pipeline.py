@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import sys
 import paddle
 import paddle.fluid as fluid
 
@@ -26,7 +27,8 @@ from collections.abc import Sequence, Mapping
 
 __all__ = ["DataPipeline"]
 
-CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
+if sys.platform != 'win32':
+    CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
 
 AVAILABLE_OP_TYPES = ['data_reader', 'map']
 

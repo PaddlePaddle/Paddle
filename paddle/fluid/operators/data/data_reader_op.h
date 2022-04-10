@@ -25,13 +25,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#ifdef _WIN32
-static unsigned sleep(unsigned seconds) {
-  Sleep(seconds * 1000);
-  return 0;
-}
-#endif
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace operators {
@@ -165,8 +159,8 @@ class DataReader {
 
         try {
           executor.Run(*reader_block_->Program(), &scope_,
-                       static_cast<int>(reader_block_->ID()), false, true, {},
-                       false, true);
+                       static_cast<int>(reader_block_->ID()), false, true, 
+                       output_var_names_, false, true);
         } catch (...) {
           break;
         }

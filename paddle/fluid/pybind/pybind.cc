@@ -70,7 +70,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/data/utils.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -164,6 +163,10 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/pybind/fleet_py.h"
+#endif
+
+#if !defined(_WIN32)
+#include "paddle/fluid/operators/data/utils.h"
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -770,6 +773,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
+#if !defined(_WIN32)
   m.def("_shutdown_all_dataloaders",
         &paddle::operators::data::ShutDownAllDataLoaders);
   m.def("_shutdown_readers_and_decoders",
@@ -781,6 +785,7 @@ PYBIND11_MODULE(core_noavx, m) {
     paddle::operators::data::ResetDataLoader(reader_id, map_ids, pipeline_id);
 
   });
+#endif
 
   py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
       m, "CustomOpKernelContext", R"DOC()DOC");
