@@ -140,6 +140,7 @@ if(WITH_MKLDNN)
     pass_library(batch_norm_act_fuse_pass inference DIR mkldnn)
     pass_library(multi_gru_fuse_pass inference DIR mkldnn)
     pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
+    pass_library(quant_dequant_mkldnn_pass inference DIR mkldnn)
 endif()
 
 if(WITH_IPU)
