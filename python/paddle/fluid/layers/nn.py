@@ -11828,6 +11828,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         Tensor: Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
+    
         .. code-block:: python
             
             # scale as a float32 number
