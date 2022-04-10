@@ -64,7 +64,7 @@ class InternalStorage:
             tmp_buffer = self.buffer.cuda(
                 self.dev_id) if device == "gpu" else self.buffer.cpu()
             for param in self._params:
-                param.clear_gradient()
+                param.clear_gradient(False)
 
             del self.buffer
             self.buffer = tmp_buffer
@@ -262,7 +262,7 @@ class GradStorage(InternalStorage):
         if not self._release:
             for p in self._params:
                 if p.grad is not None:
-                    p.clear_gradient()
+                    p.clear_gradient(False)
 
             self.buffer = None
             self._fill = 0

@@ -194,7 +194,7 @@ class GroupShardedStage3(nn.Layer):
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute.".format(param.name)
 
-            param.fw_storage.clear_gradient()
+            param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
             param.bw_storage = None
         # 2.Handle unslice param
@@ -203,7 +203,7 @@ class GroupShardedStage3(nn.Layer):
                 grad_storage.buffer.zero_()
         else:
             for param in list(self._unslice_params):
-                param.clear_gradient()
+                param.clear_gradient(False)
                 tmp_var = param.cuda(DEV_ID)
                 param._clear_data()
                 if tmp_var.dtype == Type.fp32.value and param2dtype[
@@ -487,7 +487,7 @@ class GroupShardedStage3(nn.Layer):
             for grad_storage in self._grad_storages.values():
                 for p in grad_storage._params:
                     tmp_g = _device2cpu(p.grad, convert_dtype=True)
-                    p.clear_gradient()
+                    p.clear_gradient(False)
                     p._copy_gradient_from(tmp_g)
                     del tmp_g
                 grad_storage.buffer._clear()
@@ -554,7 +554,7 @@ class GroupShardedStage3(nn.Layer):
                         param.bw_storage = paddle.add(
                             param.bw_storage,
                             full_grad._slice(start, end).detach().clone())
-                param.clear_gradient()
+                param.clear_gradient(False)
                 del self._task_flow.full_grad[param.name]
 
             if param.name in self._task_flow.full_param.keys():
@@ -844,9 +844,10 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
         assert isinstance(param2buffer_size[param.name], int)
         temp_grad = paddle.zeros(
             [param2buffer_size[param.name]], dtype=param.dtype)
-        param._copy_gradient_from(
-            temp_grad._slice(0, param._numel()).get_tensor()._set_dims(
-                param.shape))
+        temp_tensor = temp_grad._slice(0, param._numel())
+        temp_tensor.get_tensor()._set_dims(param.shape)
+        param._copy_gradient_from(temp_tensor)
+        del temp_tensor
         task_flow.full_grad[param.name] = temp_grad
     return task_flow
 
@@ -892,7 +893,7 @@ def _device2cpu(trans_param, convert_dtype=False):
     if convert_dtype:
         trans_param = paddle.cast(trans_param, Type.fp32.value)
     tmp_p = trans_param.cpu()
-    trans_param._clear()
+    trans_param._clear_data()
     return tmp_p
 
 

@@ -319,16 +319,15 @@ class GroupShardedStage2(nn.Layer):
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
                         if dst_rank != self._rank:
-                            param.clear_gradient()
+                            param.clear_gradient(False)
                         elif self._offload:
-                            with device_guard():
-                                tmp_grad = param.grad.cast(
-                                    dtype=Type.fp32.value).cpu()
+                            tmp_grad = param.grad.cast(
+                                dtype=Type.fp32.value).cpu()
 
                             self._sharding_optimizers[0]._offload_acc_grad(
                                 param.name, tmp_grad)
                             del tmp_grad
-                            param.clear_gradient()
+                            param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
                     collective.reduce(
@@ -362,7 +361,7 @@ class GroupShardedStage2(nn.Layer):
                         def cleanup():
                             if dst_rank != self._rank:
                                 for p in grad_storage._params:
-                                    p.clear_gradient()
+                                    p.clear_gradient(False)
 
                                 grad_storage.buffer._clear_data()
                             elif self._offload:
@@ -373,7 +372,7 @@ class GroupShardedStage2(nn.Layer):
                                             dtype=Type.fp32.value)
                                     self._sharding_optimizers[
                                         0]._offload_acc_grad(p.name, tmp_grad)
-                                    p.clear_gradient()
+                                    p.clear_gradient(False)
                                 grad_storage._device = self._default_device
                                 grad_storage.buffer._clear_data()
 

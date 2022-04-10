@@ -146,5 +146,5 @@ def test_sharding_api():
 
 if __name__ == '__main__':
     with _test_eager_guard():
-        test_sharding_api()
+        pass
     test_sharding_api()
