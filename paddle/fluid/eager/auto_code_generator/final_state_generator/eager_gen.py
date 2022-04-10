@@ -194,6 +194,16 @@ FORWARD_FUNCTION_TEMPLATE = \
     
     // Get Input AutoGradMeta
 {}
+    // Set Device Id
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    if (paddle::platform::is_gpu_place(place)) {{
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::SetDeviceId(place.device);
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+    }}
     // Forward API Call
     VLOG(3) << \"Final State Running: \" << \"{}\"; 
 {}
@@ -285,6 +295,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 {}
 {}
