@@ -67,15 +67,10 @@ class XPUCacheArray {
 
   void print() {}
 
-  ValType* find(const KeyType& key) { return NULL; }
+  // ValType* find(const KeyType& key) { return NULL; }
+  // bool insert(const KeyType& key, const ValType& val) { return true; }
 
-  bool insert(const KeyType& key, const ValType& val) { return true; }
-
-  size_t size() {
-    return 0;
-    // size_t real_size = (size_t)size_;
-    // return real_size;
-  }
+  size_t size() { return 0; }
 
  private:
   long long capacity_;
