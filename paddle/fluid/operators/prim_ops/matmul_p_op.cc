@@ -55,7 +55,7 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();

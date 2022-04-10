@@ -50,12 +50,7 @@ class ConcatPrimOpMaker : public framework::OpProtoAndCheckerMaker {
 class ConcatPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    auto x_var_ptrs = ctx->GetOutputVarPtrs("XS");
-    PADDLE_ENFORCE_GT(
-        x_var_ptrs.size(), 0,
-        platform::errors::InvalidArgument(
-            "Number of"
-            " input tensors of concat_p op should be at least 1"));
+    auto x_var_ptrs = ctx->GetInputVarPtrs("XS");
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
     auto axis = ctx->Attrs().Get<int64_t>("axis");
     int64_t cnt_along_axis = 0;

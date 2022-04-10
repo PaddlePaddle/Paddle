@@ -58,7 +58,7 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
 class SplitPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    framework::InferShapeVarPtr x_var_ptr = ctx->GetOutputVarPtrs("X")[0];
+    framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     auto y_var_ptrs = ctx->GetOutputVarPtrs("YS");
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
