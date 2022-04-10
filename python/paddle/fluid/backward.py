@@ -2021,7 +2021,6 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 @framework.static_only
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    :api_attr: Static Graph
 
     Backpropagate the gradients of targets to inputs.
 
@@ -2042,6 +2041,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -2054,7 +2054,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             y = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
             y = F.relu(y)
             z = paddle.static.gradients([y], x)
-            print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
+            print(z) # [var x@GRAD : LOD_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
     """
     check_type(targets, 'targets', (framework.Variable, list, tuple),
                'paddle.static.gradients')
