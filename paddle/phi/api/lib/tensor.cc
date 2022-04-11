@@ -42,9 +42,11 @@ static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
   switch (alloc_type) {
     case AllocationType::CPU:
       return place_type;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case AllocationType::GPU:
       return phi::Place(AllocationType::GPU,
                         phi::backends::gpu::GetCurrentDeviceId());
+#endif
     default:
       PADDLE_THROW(phi::errors::Unavailable(
           "The PlaceType is a legacy design, only supports CPU and GPU, "
