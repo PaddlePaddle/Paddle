@@ -277,6 +277,18 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         for x, y in zip(gt, res):
             self.assertTrue(np.array_equal(x, y))
 
+    def test_empty_program(self):
+        program = paddle.static.Program()
+        exe = paddle.static.Executor(self.place)
+        for i in range(10):
+            out = exe.run()  # old executor
+
+        for i in range(10):
+            print(i, flush=1)
+            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+            out = exe.run(program, feed=None)
+            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+
 
 class TestException(unittest.TestCase):
     def setUp(self):
