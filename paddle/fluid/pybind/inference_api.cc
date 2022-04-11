@@ -212,6 +212,34 @@ void PaddleInferTensorCreate(
   tensor.Reshape(std::move(shape));
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
+  
+paddle_infer::PlaceType ToPaddleInferPlace(
+    phi::AllocationType allocation_type) {
+  if (allocation_type == phi::AllocationType::CPU) {
+    return paddle_infer::PlaceType::kCPU;
+  } else if (allocation_type == phi::AllocationType::GPU) {
+    return paddle_infer::PlaceType::kGPU;
+  } else {
+    return paddle_infer::PlaceType::kCPU;
+  }
+}
+
+void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                  framework::Tensor input_tensor) {
+  std::vector<int> shape;
+  for (int i = 0; i < input_tensor.dims().size(); ++i) {
+    shape.push_back(input_tensor.dims()[i]);
+  }
+  if (input_tensor.dtype() == phi::DataType::FLOAT32) {
+    tensor.ShareExternalData(
+        static_cast<float *>(input_tensor.data()), shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<paddle::platform::float16 *>(input_tensor.data()), shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  }
+}
 
 /// \brief Experimental interface.
 /// Create the Strings tensor from data.
