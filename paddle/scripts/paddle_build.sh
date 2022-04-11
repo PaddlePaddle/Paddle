@@ -2996,7 +2996,7 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
-        check_whl_size
+        #check_whl_size
         ;;
       build_and_check_cpu)
         set +e
@@ -3004,7 +3004,7 @@ function main() {
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
-        check_whl_size
+        #check_whl_size
         ;;
       build_and_check_gpu)
         set +e
