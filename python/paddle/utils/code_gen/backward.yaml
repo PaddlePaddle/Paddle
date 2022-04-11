@@ -89,6 +89,16 @@
   kernel :
     func : asinh_grad
 
+- backward_api : assign_grad
+  forward : assign (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : assign_raw
+
 - backward_api : atan2_grad
   forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
@@ -892,6 +902,16 @@
   kernel :
     func : maximum_grad
 
+- backward_api : maxout_grad
+  forward : maxout(Tensor x, int groups, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int groups, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param: [x]
+  kernel :
+    func : maxout_grad
+
 - backward_api : mean_all_grad
   forward : mean_all(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -968,6 +988,18 @@
   kernel :
     func : modulo_grad
   no_need_buffer : x, y
+
+- backward_api : multi_dot_grad
+  forward : multi_dot (Tensor[] x) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad)
+  output : Tensor[](x_grad)
+  invoke : multi_dot_grad_impl(x, out_grad)
+
+- backward_api : multiplex_grad
+  forward : multiplex (Tensor[] ins, Tensor ids) -> Tensor(out)
+  args : (Tensor[] ins, Tensor ids, Tensor out_grad)
+  output : Tensor[](ins_grad)
+  invoke : multiplex_grad_impl(ins, ids, out_grad)
 
 - backward_api : multiply_grad
   forward : multiply (Tensor x, Tensor y) -> Tensor(out)
