@@ -7,7 +7,7 @@ list(APPEND TRT_FILES trt_plugin.cc split_op_plugin.cu elementwise_op_plugin.cu 
             gather_nd_op_plugin.cu mish_op_plugin.cu pool3d_op_plugin.cu
             deformable_conv_op_plugin.cu matmul_op_int8_plugin.cu)
 
-if (CUSPARSELT_FOUND)
+if (CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
 
