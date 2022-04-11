@@ -166,8 +166,8 @@ int ElementwisePluginDynamic::initialize() TRT_NOEXCEPT {
   }
   VLOG(3) << "cudaMalloc numel: " << numel;
   cudaMalloc(&p_gpu_weight_, sizeof(float) * numel);
-  cudaMemcpy(p_gpu_weight_, p_cpu_weight_, numel * sizeof(float),
-             cudaMemcpyHostToDevice);
+//  cudaMemcpy(p_gpu_weight_, p_cpu_weight_, numel * sizeof(float),
+//             cudaMemcpyHostToDevice);
   return 0;
 }
 

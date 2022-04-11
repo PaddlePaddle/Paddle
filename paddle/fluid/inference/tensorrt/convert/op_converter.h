@@ -86,7 +86,7 @@ class OpConverter {
             platform::errors::Unimplemented("Unsupported elementwise type %s",
                                             op_type.c_str()));
         it = Registry<OpConverter>::Global().Lookup(
-            "elementwise_" + op_type + "_tensor");  // debugggggggggggggg
+            "elementwise_" + op_type + "_weight");
         PADDLE_ENFORCE_NOT_NULL(
             it, platform::errors::Unimplemented(
                     "no OpConverter for optype [%s]", op_desc.Type()));

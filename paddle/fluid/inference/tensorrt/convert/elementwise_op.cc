@@ -89,6 +89,10 @@ class ElementwiseWeightOpConverter : public OpConverter {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
             engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
             scale_weights.get(), power_weights.get(), dynamic_shape_offset);
+        VLOG(3) << "Add IScaleLayer for elemnetwise_add, and set channel axis to 2;";
+        // debugggggggggggggggg
+        scale_layer->setChannelAxis(2);
+
         layer = scale_layer;
       } else if (op_type_ == "mul") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
@@ -116,11 +120,11 @@ class ElementwiseWeightOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (Y_t->dims().size() == 1) {
         auto scale_mode = nvinfer1::ScaleMode::kCHANNEL;
-        PADDLE_ENFORCE_EQ(Y_t->dims()[0], dims_x.d[1],
+        PADDLE_ENFORCE_EQ(Y_t->dims()[0], dims_x.d[2],
                           platform::errors::InvalidArgument(
                               "The Bias's size(%d) should be equal to the "
-                              "first dim(%d) of the Input.",
-                              Y_t->dims()[0], dims_x.d[1]));
+                              "third dim(%d) of the Input.",
+                              Y_t->dims()[0], dims_x.d[2]));
         regist_eltwise_weight(scale_mode);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -201,52 +205,22 @@ class ElementwiseTensorOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
-    std::vector<nvinfer1::ITensor*> itensors;
-
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
-    nvinfer1::Dims dims_x = X->getDimensions();
+    auto* Y = engine_->GetITensor(op_desc.Input("Y").front());
+    std::vector<nvinfer1::ITensor*> itensors;
     itensors.push_back(X);
+    itensors.push_back(Y);
+    nvinfer1::Dims dims_x = X->getDimensions();
+    nvinfer1::Dims dims_y = Y->getDimensions();
 
-    nvinfer1::ITensor* Y = nullptr;
-    nvinfer1::Dims dims_y;
-    float* weight_data = nullptr;
-    auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
-    bool with_weight = true;
-    if (Y_v == nullptr) {
-      with_weight = false;
-      Y = engine_->GetITensor(op_desc.Input("Y").front());
-      itensors.push_back(Y);
-      dims_y = Y->getDimensions();
-    } else {
-      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-      weight_data =
-          engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
-
-      dims_y.nbDims = Y_t->dims().size();
-      for (int i = 0; i < dims_y.nbDims; i++) {
-        dims_y.d[i] = Y_t->dims()[i];
-      }
-    }
-
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+//    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     auto output_name = op_desc.Output("Out")[0];
 
     auto common_func = [&](nvinfer1::ILayer* layer) {
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-      if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-        CHECK(op_desc.HasAttr("X_scale"));
-        //        CHECK(op_desc.HasAttr("Y_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
-        //        float y_scale = BOOST_GET_CONST(float,
-        //        op_desc.GetAttr("Y_scale"));
-        engine_->SetTensorDynamicRange(X, x_scale);
-//        engine_->SetTensorDynamicRange(Y, y_scale);
-#endif
-      }
     };
 
-    if (!with_weight && dims_x.nbDims == dims_y.nbDims) {
+    if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer =
@@ -256,29 +230,32 @@ class ElementwiseTensorOpConverter : public OpConverter {
     } else {
       VLOG(3) << "Convert a fluid elementwise op to TensorRT "
                  "ElementWisePluginLayer";
-      if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-        plugin::ElementwisePluginDynamic* plugin =
-            new plugin::ElementwisePluginDynamic(op_type_, axis, weight_data,
-                                                 dims_y);
-        layer =
-            engine_->AddDynamicPlugin(itensors.data(), itensors.size(), plugin);
-#else
+
         PADDLE_THROW(platform::errors::Fatal(
-            "You are running the TRT Dynamic Shape mode, need to confirm that "
-            "your TRT version is no less than 6.0"));
-#endif
-      } else {
-        plugin::ElementWisePlugin* plugin = new plugin::ElementWisePlugin(
-            op_type_, dims_x, dims_y, axis, weight_data);
+            "Unsupported!!!"));
 
-        std::vector<nvinfer1::ITensor*> inputs{X};
-        auto* plugin_layer = engine_->AddPlugin(
-            inputs.data(), inputs.size(),
-            reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
-        layer = plugin_layer;
-      }
+//      if (engine_->with_dynamic_shape()) {
+//#if IS_TRT_VERSION_GE(6000)
+////        plugin::ElementwisePluginDynamic* plugin =
+////            new plugin::ElementwisePluginDynamic(op_type_, axis);
+////        layer = engine_->AddDynamicPlugin(itensors.data(), 2, plugin);
+//#else
+//        PADDLE_THROW(platform::errors::Fatal(
+//            "You are running the TRT Dynamic Shape mode, need to confirm that "
+//            "your TRT version is no less than 6.0"));
+//#endif
+//      } else {
+//        plugin::ElementWisePlugin* plugin =
+//            new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
+//
+//        std::vector<nvinfer1::ITensor*> inputs{X, Y};
+//        auto* plugin_layer = engine_->AddPlugin(
+//            inputs.data(), inputs.size(),
+//            reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+//
+//        layer = plugin_layer;
+//      }
     }
     common_func(layer);
   }
@@ -368,3 +345,4 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_tensor,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
+

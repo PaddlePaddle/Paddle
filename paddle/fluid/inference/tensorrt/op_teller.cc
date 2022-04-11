@@ -1494,19 +1494,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-<<<<<<< HEAD
-      auto* block = desc.Block();
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
-		      std::multiplies<int>());
-      int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
-		      std::multiplies<int>());
-
-      // if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
-      if (!with_dynamic_shape && (input_num != shape_num || shape.size() == 1))
-=======
       if (!with_dynamic_shape) {
         if (shape.size() == 1) {
           return false;
@@ -1526,7 +1513,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             return true;
           }
         }
->>>>>>> 1b58ce144a340ff895dedeeab68e3a3a3ab36c06
         return false;
       }
     }

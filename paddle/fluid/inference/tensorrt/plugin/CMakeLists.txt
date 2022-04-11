@@ -4,6 +4,7 @@ nv_library(tensorrt_plugin
            pool_op_plugin.cu swish_op_plugin.cu layer_norm_op_plugin.cu
            instance_norm_op_plugin.cu emb_eltwise_layernorm_plugin.cu
            qkv_to_context_plugin.cu skip_layernorm_op_plugin.cu slice_op_plugin.cu
+           preln_residual_bias_plugin.cu
            hard_swish_op_plugin.cu stack_op_plugin.cu special_slice_plugin.cu
            anchor_generator_op_plugin.cu
            yolo_box_op_plugin.cu
