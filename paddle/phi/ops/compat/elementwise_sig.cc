@@ -229,6 +229,7 @@ KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
                          {"X", "Y", GradVarName("Out")},
                          {"axis"},
                          {GradVarName("X"), GradVarName("Y")});
+}
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
