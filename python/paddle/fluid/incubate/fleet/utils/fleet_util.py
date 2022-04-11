@@ -2152,3 +2152,38 @@ class GPUPSUtil(FleetUtil):
                     f.write(meta_str)
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error("write %s succeed" % donefile_path)
+
+    def _get_xbox_str(self,
+                      output_path,
+                      day,
+                      model_path,
+                      xbox_base_key,
+                      data_path,
+                      hadoop_fs_name,
+                      monitor_data={},
+                      mode="patch"):
+        xbox_dict = collections.OrderedDict()
+        if mode == "base":
+            xbox_dict["id"] = str(xbox_base_key)
+        elif mode == "patch":
+            xbox_dict["id"] = str(int(time.time()))
+        else:
+            print("warning: unknown mode %s, set it to patch" % mode)
+            mode = "patch"
+            xbox_dict["id"] = str(int(time.time()))
+        xbox_dict["key"] = str(xbox_base_key)
+        if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+            model_path = model_path[model_path.find(":") + 1:]
+        xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
+        xbox_dict["record_count"] = "111111"
+        xbox_dict["partition_type"] = "2"
+        xbox_dict["job_name"] = "default_job_name"
+        xbox_dict["ins_tag"] = "feasign"
+        xbox_dict["ins_path"] = data_path
+        xbox_dict["job_id"] = os.environ.get("PADDLE_JOB_ID", "")
+        # currently hard code here, set monitor_data empty string
+        xbox_dict["monitor_data"] = ""
+        xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
+                                    + day + ".txt"
+        xbox_dict["mpi_size"] = str(fleet.worker_num())
+        return json.dumps(xbox_dict)
