@@ -239,4 +239,9 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    ALL_LAYOUT,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
-                   double) {}
+                   double) {
+  // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+}
