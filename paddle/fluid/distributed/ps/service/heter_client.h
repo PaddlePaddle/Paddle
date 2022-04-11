@@ -94,7 +94,9 @@ class HeterClient {
     std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
     if (peer_role == PEER_ROLE_IS_SWITCH) {
 #ifdef PADDLE_WITH_ARM_BRPC
-// options.mutable_ssl_options();
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
 #else
       options.ssl_options.enable = need_encrypt;
 #endif
@@ -173,7 +175,7 @@ class HeterClient {
     VLOG(4) << "peer role is: " << peer_role
             << ", addr is: " << peer_endpoints[0];
     switch_s_instance_.SetPeerSwitchList(peer_endpoints);
-    switch_s_instance_.InitClientChannels(false, peer_endpoints, peer_role);
+    switch_s_instance_.InitClientChannels(true, peer_endpoints, peer_role);
     return switch_s_instance_;
   }
 
