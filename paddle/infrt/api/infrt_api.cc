@@ -256,6 +256,7 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   ::mlir::PassManager pm(context);
   ::mlir::OpPassManager& pass_manager = pm.nest<::mlir::FuncOp>();
   if (config.tensorrt_enabled()) {
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
     pass_manager.addPass(::infrt::CreateInfrtWeightsUnfoldPass());
     pass_manager.addPass(::infrt::trt::CreateTrtOpTellerPass());
     pass_manager.addPass(::infrt::trt::CreateTrtGraphFusePass());
@@ -263,6 +264,9 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
     pass_manager.addPass(::infrt::trt::CreateTrtOpConverterPass());
     pass_manager.addPass(::infrt::trt::CreateTrtTypeConvertPass());
     pass_manager.addPass(::mlir::createCanonicalizerPass());
+#else
+    llvm_unreachable("TensorRT can not be enabled when it is not compiled.");
+#endif
   } else {
     std::vector<::infrt::Place> valid_places = {
         {::infrt::TargetType::CPU,
