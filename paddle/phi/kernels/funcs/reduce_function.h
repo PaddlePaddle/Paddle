@@ -35,7 +35,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"

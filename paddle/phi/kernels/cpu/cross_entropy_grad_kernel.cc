@@ -16,12 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
-// TODO(chenweihang): move dispatch.h into phi/core
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 
@@ -200,7 +198,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
                                                axis,
                                                logits_grad);
   } else {
-    PD_DISPATCH_INTEGRAL_TYPES(
+    PD_VISIT_INTEGRAL_TYPES(
         dtype, "CrossEntropyWithSoftmaxGradCPUKernel", ([&] {
           CrossEntropyWithSoftmaxGradCPUKernel<T, data_t>(dev_ctx,
                                                           label,

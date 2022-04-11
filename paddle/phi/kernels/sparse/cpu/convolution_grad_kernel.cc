@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -191,7 +190,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const bool subm,
                       SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dGradCPUKernel", ([&] {
         Conv3dGradCPUKernel<T, data_t>(dev_ctx,
                                        x,

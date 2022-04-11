@@ -24,14 +24,12 @@ namespace cub = hipcub;
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-
-// TODO(chenweihang): move dispatch.h into phi/core
-#include "paddle/phi/api/ext/dispatch.h"
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax.h"
@@ -267,7 +265,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
                                                axis,
                                                logits_grad);
   } else {
-    PD_DISPATCH_INTEGRAL_TYPES(
+    PD_VISIT_INTEGRAL_TYPES(
         dtype, "CrossEntropyWithSoftmaxGradGPUKernel", ([&] {
           CrossEntropyWithSoftmaxGradGPUKernel<T, data_t>(dev_ctx,
                                                           label,

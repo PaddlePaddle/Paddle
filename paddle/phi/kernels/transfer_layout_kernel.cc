@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

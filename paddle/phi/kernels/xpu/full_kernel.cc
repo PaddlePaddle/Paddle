@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/full_kernel.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
