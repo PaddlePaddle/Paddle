@@ -66,50 +66,6 @@ struct ReservoirValue {
   }
 };
 
-class SparseTable : public Table {
- public:
-  SparseTable() {}
-  virtual ~SparseTable() {}
-
-  virtual void *GetShard(size_t shard_idx) { return 0; }
-
-  int32_t PullDense(float *values, size_t num) override { return 0; }
-
-  int32_t PushDense(const float *values, size_t num) override { return 0; }
-
-  static int32_t sparse_local_shard_num(uint32_t shard_num,
-                                        uint32_t server_num) {
-    if (shard_num % server_num == 0) {
-      return shard_num / server_num;
-    }
-    size_t local_shard_num = shard_num / server_num + 1;
-    return local_shard_num;
-  }
-
-  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
-                                 uint64_t key) {
-    return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
-  }
-};
-
-class DenseTable : public Table {
- public:
-  DenseTable() {}
-  virtual ~DenseTable() {}
-
-  virtual void *GetShard(size_t shard_idx) { return 0; }
-  int32_t PullSparse(float *values,
-                     const PullSparseValue &pull_value) override {
-    return 0;
-  }
-  int32_t PushSparse(const uint64_t *keys, const float *values,
-                     size_t num) override {
-    return 0;
-  }
-  int32_t PushDenseParam(const float *values, size_t num) override { return 0; }
-  int32_t Shrink(const std::string &param) override { return 0; }
-};
-
 class BarrierTable : public Table {
  public:
   BarrierTable() {}
@@ -120,19 +76,6 @@ class BarrierTable : public Table {
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
 
-  int32_t PullDense(float *values, size_t num) override { return 0; }
-
-  int32_t PushDense(const float *values, size_t num) override { return 0; }
-
-  int32_t PullSparse(float *values,
-                     const PullSparseValue &pull_value) override {
-    return 0;
-  }
-  int32_t PushSparse(const uint64_t *keys, const float *values,
-                     size_t num) override {
-    return 0;
-  }
-  int32_t PushDenseParam(const float *values, size_t num) override { return 0; }
   int32_t Shrink(const std::string &param) override { return 0; }
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }

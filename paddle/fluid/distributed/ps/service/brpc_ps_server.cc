@@ -205,7 +205,7 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   }
 
   auto res_data = butil::get_object<std::vector<float>>();
-  res_data->resize(num * table->ValueAccesor()->GetTableInfo(SELECT_SIZE) /
+  res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /
                    sizeof(float));
 
   TableContext table_context;
@@ -244,7 +244,14 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
   uint32_t num = *(const uint32_t *)data;
 
   const float *values = (const float *)(data + sizeof(uint32_t));
-  if (table->PushDenseParam(values, num) != 0) {
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.push_context.values = values;
+  table_context.push_context.is_param = true;
+  table_context.num = num;
+
+  //  if (table->PushDenseParam(values, num) != 0) {
+  if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "PushDenseParam failed");
   }
   return 0;
@@ -330,7 +337,15 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
   const uint64_t *keys = (const uint64_t *)push_data.data();
   const float *values =
       (const float *)(push_data.data() + sizeof(uint64_t) * num);
-  if (table->PushSparseParam(keys, values, num) != 0) {
+
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.push_context.keys = keys;
+  table_context.push_context.values = values;
+  table_context.push_context.is_param = true;
+  table_context.num = num;
+  //  if (table->PushSparseParam(keys, values, num) != 0) {
+  if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "PushSparseParam error");
   }
   return 0;
@@ -349,7 +364,14 @@ int32_t BrpcPsService::PullGeoParam(Table *table,
 
   std::vector<float> values;
   std::vector<uint64_t> ids;
-  table->PullGeoParam(trainer_id, &values, &ids);
+
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.pull_context.geo_pull_keys = &ids;
+  table_context.pull_context.geo_pull_values = &values;
+  table_context.trainer_id = trainer_id;
+  table->Pull(table_context);
+  //  table->PullGeoParam(trainer_id, &values, &ids);
 
   uint32_t num = ids.size();
   cntl->response_attachment().append((char *)(&num), sizeof(uint32_t));
@@ -384,7 +406,7 @@ int32_t BrpcPsService::PullSparse(Table *table, const PsRequestMessage &request,
 
   CostTimer timer("pserver_server_pull_sparse");
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
-  auto dim = table->ValueAccesor()->GetTableInfo(SELECT_DIM);
+  auto dim = table->ValueAccesor()->GetAccessorInfo().select_dim;
 
   thread_local std::string req_buffer;
   req_buffer.reserve(req_buffer_size);
@@ -625,7 +647,13 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
   const int64_t *values =
       (const int64_t *)(request.data().data() + sizeof(uint32_t));
   auto trainer_id = request.client_id();
-  if (table->PushDense(values, trainer_id) != 0) {
+
+  TableContext context;
+  context.trainer_id = trainer_id;
+  context.push_context.push_steps = values;
+
+  //  if (table->PushDense(values, trainer_id) != 0) {
+  if (table->Push(context) != 0) {
     set_response_code(response, -1, "run_program failed");
   }
 

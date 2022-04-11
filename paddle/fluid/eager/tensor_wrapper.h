@@ -51,6 +51,7 @@ class TensorWrapper {
      * to avoid recursive depends on GradNodeBase
      * **/
     full_reserved_ = full_reserved;
+    no_need_buffer_ = no_need_buffer;
     if (full_reserved_) {
       VLOG(6) << "Fully reserved tensor: " << tensor.name();
       intermidiate_tensor_ = tensor;
@@ -58,7 +59,6 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
-    no_need_buffer_ = no_need_buffer;
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
@@ -95,18 +95,19 @@ class TensorWrapper {
     }
 
     check_inplace_version();
+
     // if it's full_reserved just return the full copy of tensor
-    if (full_reserved_) {
-      return intermidiate_tensor_;
-    } else {
+    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+    if (!full_reserved_) {
       std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
-      intermidiate_tensor_.set_autograd_meta(
+      recovered_tensor.set_autograd_meta(
           std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
-      return intermidiate_tensor_;
     }
+
+    return recovered_tensor;
   }
 
   void check_inplace_version() {

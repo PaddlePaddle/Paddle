@@ -326,6 +326,10 @@ const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
   return adj_edges_;
 }
 
+std::vector<std::vector<Edge>>& GradNodeBase::GetMutableEdges() {
+  return adj_edges_;
+}
+
 std::vector<std::vector<paddle::experimental::Tensor>>
 GradNodeBase::ApplyGradientHooks(
     const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
