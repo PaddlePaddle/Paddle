@@ -28,12 +28,15 @@ class ArgMaxXPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto dtype = ctx.Attr<int>("dtype");
     PADDLE_ENFORCE_EQ(
-        (dtype < 0 || dtype == 3), true,
+        (dtype < 0 || dtype == 2 || dtype == 3), true,
         platform::errors::InvalidArgument(
-            "The attribute of dtype in xpu argmin/argmax must be [%s], but "
+            "The attribute of dtype in xpu argmin/argmax must be [%s] or [%s], "
+            "but "
             "received [%s]",
             paddle::framework::DataTypeToString(
                 framework::proto::VarType::INT64),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT32),
             paddle::framework::DataTypeToString(
                 static_cast<framework::proto::VarType::Type>(dtype))));
 

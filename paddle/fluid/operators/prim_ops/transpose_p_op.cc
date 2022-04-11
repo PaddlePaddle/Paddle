@@ -45,6 +45,9 @@ class TransposePrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "(Tensor), The output tensor of transpose_p op.");
     AddAttr<std::vector<int64_t>>("axis",
                                   "(std::vector<int64_t>) Tanspose axis.");
+    AddComment(R"DOC(
+Autograd primitive transpose_p operator.
+)DOC");
   }
 };
 
@@ -108,5 +111,6 @@ class TransposePrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(transpose_p, paddle::operators::TransposePrimOp,
+                  paddle::operators::TransposePrimOpMaker,
                   paddle::operators::TransposePrimOpShapeInference,
                   paddle::operators::TransposePrimOpVarTypeInference);

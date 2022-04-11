@@ -43,6 +43,9 @@ class DivPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of div_p op.");
     AddInput("Y", "(Tensor), The input tensor of div_p op.");
     AddOutput("Z", "(Tensor), The output tensor of div_p op.");
+    AddComment(R"DOC(
+Autograd primitive div_p operator.
+)DOC");
   }
 };
 
@@ -108,5 +111,6 @@ class DivPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(div_p, paddle::operators::DivPrimOp,
+                  paddle::operators::DivPrimOpMaker,
                   paddle::operators::DivPrimOpShapeInference,
                   paddle::operators::DivPrimOpVarTypeInference);

@@ -48,7 +48,11 @@ class GatherPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "(Tensor), The output tensor of gather_p op.");
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to gather.");
     AddAttr<std::vector<int64_t>>(
-        "index", "(std::vector<int64_t>) The index of gather_p op");
+        "index", "(std::vector<int64_t>) The index of gather_p op")
+        .SetDefault({0});
+    AddComment(R"DOC(
+Autograd primitive gather_p operator.
+)DOC");
   }
 };
 
@@ -98,5 +102,6 @@ class GatherPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(gather_p, paddle::operators::GatherPrimOp,
+                  paddle::operators::GatherPrimOpMaker,
                   paddle::operators::GatherPrimOpShapeInference,
                   paddle::operators::GatherPrimOpVarTypeInference);

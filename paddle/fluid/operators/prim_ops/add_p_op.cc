@@ -43,6 +43,9 @@ class AddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of add_p op.");
     AddInput("Y", "(Tensor), The input tensor of add_p op.");
     AddOutput("Z", "(Tensor), The output tensor of add_p op.");
+    AddComment(R"DOC(
+Autograd primitive add_p operator.
+)DOC");
   }
 };
 
@@ -108,5 +111,6 @@ class AddPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(add_p, paddle::operators::AddPrimOp,
+                  paddle::operators::AddPrimOpMaker,
                   paddle::operators::AddPrimOpShapeInference,
                   paddle::operators::AddPrimOpVarTypeInference);

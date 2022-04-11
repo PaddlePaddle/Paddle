@@ -46,6 +46,9 @@ class BroadcastPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "shape",
         "(std::vector<int64_t>) Target shape of broadcast_p operator.");
+    AddComment(R"DOC(
+Autograd primitive broadcast_p operator.
+)DOC");
   }
 };
 
@@ -73,5 +76,6 @@ class BroadcastPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(broadcast_p, paddle::operators::BroadcastPrimOp,
+                  paddle::operators::BroadcastPrimOpMaker,
                   paddle::operators::BroadcastPrimOpShapeInference,
                   paddle::operators::BroadcastPrimOpVarTypeInference);

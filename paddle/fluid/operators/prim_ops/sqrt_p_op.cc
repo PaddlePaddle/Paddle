@@ -42,6 +42,9 @@ class SqrtPrimOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of sqrt_p op.");
     AddOutput("Y", "(Tensor), The output tensor of sqrt_p op.");
+    AddComment(R"DOC(
+Autograd primitive sqrt_p operator.
+)DOC");
   }
 };
 
@@ -72,5 +75,6 @@ class SqrtPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(sqrt_p, paddle::operators::SqrtPrimOp,
+                  paddle::operators::SqrtPrimOpMaker,
                   paddle::operators::SqrtPrimOpShapeInference,
                   paddle::operators::SqrtPrimOpVarTypeInference);
