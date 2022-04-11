@@ -2622,6 +2622,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   int offset_cols_size = (ins_num + 1);
   size_t slot_total_num = (use_slot_size_ * offset_cols_size);
@@ -2726,7 +2727,6 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                 used_slot_gpu_types);
 }
 
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
                                    const std::vector<UsedSlotInfo>& infos) {
   place_ = place;

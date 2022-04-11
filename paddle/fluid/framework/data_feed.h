@@ -418,7 +418,7 @@ struct UsedSlotGpuType {
   int slot_value_idx;
 };
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 #define CUDA_CHECK(val) CHECK(val == gpuSuccess)
 template <typename T>
 struct CudaBuffer {
