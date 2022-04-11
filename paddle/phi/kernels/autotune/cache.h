@@ -161,9 +161,8 @@ class AutoTuneCache {
     // Set a small tolerance to avoid performance degradation
     // due to large cache size under dynamic shape.
     if (miss_rate > 0.01) {
-      /* TODO(limingshu): Currently auto_tune works for conv
-       op, this method shall be opimized later when more ops
-       involved in auto_tune. */
+      /* TODO(limingshu): Currently works for conv op only, this
+          method shall be opimized when more ops involved in.*/
       // auto_tune_map_.clear();
     }
   }
