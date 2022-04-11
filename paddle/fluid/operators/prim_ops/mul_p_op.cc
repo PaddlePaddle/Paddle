@@ -43,6 +43,9 @@ class MulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of mul_p op.");
     AddInput("Y", "(Tensor), The input tensor of mul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of mul_p op.");
+    AddComment(R"DOC(
+Autograd primitive mul_p operator.
+)DOC");
   }
 };
 
@@ -108,5 +111,6 @@ class MulPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(mul_p, paddle::operators::MulPrimOp,
+                  paddle::operators::MulPrimOpMaker,
                   paddle::operators::MulPrimOpShapeInference,
                   paddle::operators::MulPrimOpVarTypeInference);

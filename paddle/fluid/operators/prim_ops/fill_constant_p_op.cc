@@ -46,6 +46,9 @@ class FillConstantPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "shape", "(std::vector<int64_t>) The shape of output tensor.");
     AddAttr<int>("dtype", "(int) The dtype of output tensor.");
+    AddComment(R"DOC(
+Autograd primitive fill_constant_p operator.
+)DOC");
   }
 };
 
@@ -73,5 +76,6 @@ class FillConstantPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(fill_constant_p, paddle::operators::FillConstantPrimOp,
+                  paddle::operators::FillConstantPrimOpMaker,
                   paddle::operators::FillConstantPrimOpShapeInference,
                   paddle::operators::FillConstantPrimOpVarTypeInference);

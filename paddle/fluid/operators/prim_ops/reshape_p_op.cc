@@ -45,6 +45,9 @@ class ReshapePrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "(Tensor), The output tensor of reshape_p op.");
     AddAttr<std::vector<int64_t>>(
         "shape", "(std::vector<int64_t>) Target shape of reshape_p operator.");
+    AddComment(R"DOC(
+Autograd primitive reshape_p operator.
+)DOC");
   }
 };
 
@@ -72,5 +75,6 @@ class ReshapePrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(reshape_p, paddle::operators::ReshapePrimOp,
+                  paddle::operators::ReshapePrimOpMaker,
                   paddle::operators::ReshapePrimOpShapeInference,
                   paddle::operators::ReshapePrimOpVarTypeInference);

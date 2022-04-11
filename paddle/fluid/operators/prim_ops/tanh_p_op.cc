@@ -42,6 +42,9 @@ class TanhPrimOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of tanh_p op.");
     AddOutput("Y", "(Tensor), The output tensor of tanh_p op.");
+    AddComment(R"DOC(
+Autograd primitive tanh_p operator.
+)DOC");
   }
 };
 
@@ -72,5 +75,6 @@ class TanhPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(tanh_p, paddle::operators::TanhPrimOp,
+                  paddle::operators::TanhPrimOpMaker,
                   paddle::operators::TanhPrimOpShapeInference,
                   paddle::operators::TanhPrimOpVarTypeInference);

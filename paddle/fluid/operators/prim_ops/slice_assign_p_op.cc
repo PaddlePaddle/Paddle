@@ -54,6 +54,9 @@ class SliceAssignPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "strides",
         "(std::vector<int64_t>) The slice strides of slice_assign_p op");
+    AddComment(R"DOC(
+Autograd primitive slice_assign_p operator.
+)DOC");
   }
 };
 
@@ -61,7 +64,7 @@ class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
-    framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
+    framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
     framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
@@ -127,5 +130,6 @@ class SliceAssignPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(slice_assign_p, paddle::operators::SliceAssignPrimOp,
+                  paddle::operators::SliceAssignPrimOpMaker,
                   paddle::operators::SliceAssignPrimOpShapeInference,
                   paddle::operators::SliceAssignPrimOpVarTypeInference);
