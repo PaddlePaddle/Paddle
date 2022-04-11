@@ -372,14 +372,6 @@ void BindPaddleDType(py::module *m) {
       .value("INT32", PaddleDType::INT32);
 }
 
-void BindPaddleDataLayout(py::module *m) {
-  py::enum_<PaddleDataLayout>(*m, "PaddleDataLayout")
-      .value("UNK", PaddleDataLayout::kUNK)
-      .value("Any", PaddleDataLayout::kAny)
-      .value("NHWC", PaddleDataLayout::kNHWC)
-      .value("NCHW", PaddleDataLayout::kNCHW);
-}
-
 void BindPaddleBuf(py::module *m) {
   py::class_<PaddleBuf>(*m, "PaddleBuf")
       .def(py::init<size_t>())
