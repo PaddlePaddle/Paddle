@@ -1905,7 +1905,7 @@ def cross_entropy(input,
     if reduction == "sum":
         return paddle.sum(out, name=name)
     elif reduction == "mean":
-        if ignore_index != -100:
+        if ignore_index >= 0:
             out_sum = paddle.sum(out, name=name)
             # for each label[i],set 1 or 0, according to ignore_index
             # mask[i]=0, if label[i]==ignore_index

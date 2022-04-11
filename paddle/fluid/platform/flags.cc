@@ -161,10 +161,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -544,8 +543,6 @@ PADDLE_DEFINE_EXPORTED_double(
  * Note:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
-
-PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
 
 /**
  * Debug related FLAG
