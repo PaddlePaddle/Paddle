@@ -42,10 +42,9 @@ class SelectedRows : public TensorBase,
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
-      : impl_(std::make_shared<phi::SelectedRowsImpl>(rows, height)) {}
+  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
 
-  SelectedRows() : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
+  SelectedRows();
 
   const DenseTensor& value() const { return impl_->value(); }
 
