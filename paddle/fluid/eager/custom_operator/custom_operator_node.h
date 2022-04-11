@@ -59,7 +59,7 @@ class RunCustomOpNode : public GradNodeBase {
       std::vector<egr::TensorWrapper>* fwd_var) {
     std::vector<paddle::experimental::Tensor> res;
     for (size_t i = 0; i < fwd_var->size(); i++) {
-      res.emplace_back(fwd_var->at(i).recover(nullptr));
+      res.emplace_back(fwd_var->at(i).recover());
     }
     return res;
   }

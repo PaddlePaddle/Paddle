@@ -762,6 +762,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
+
         node_input_buffers_dict[next_node]->add(
             edge_rank.first, edge_rank.second, grad_output_tensor);
 

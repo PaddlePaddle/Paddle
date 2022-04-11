@@ -226,7 +226,7 @@ FORWARD_BODY_TEMPLATE = \
 {}
       // SetAttributes
 {}
-      // SetTensorWrappers
+      // Set TensorWrappers for Forward Inputs
 {}
       // SetGradOutMeta & SetEdges
 {}
@@ -235,6 +235,8 @@ FORWARD_BODY_TEMPLATE = \
 {}
 {}
 {}
+{}
+      // Set TensorWrappers for Forward Outputs
 {}
     }}
 """
@@ -709,7 +711,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_attributes_str = "\n".join(set_attributes_list)
 
         # SetTensorWrappers
-        set_tensor_wrappers_list = []
+        set_input_tensor_wrappers_list = []
+        set_output_tensor_wrappers_list = []
         num_fwd_outputs = len(forward_outputs_position_map.keys())
         for name, (atype, is_fwd_input,
                    pos) in backward_forward_inputs_map.items():
@@ -721,6 +724,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, {need_input_data});"
+                set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
@@ -732,8 +736,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
-            set_tensor_wrappers_list.append(set_tensor_wrappers)
-        set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
+                set_output_tensor_wrappers_list.append(set_tensor_wrappers)
+        set_input_tensor_wrappers_str = "\n".join(
+            set_input_tensor_wrappers_list)
+        set_output_tensor_wrappers_str = "\n".join(
+            set_output_tensor_wrappers_list)
 
         # SetGradOutMeta & SetEdges
         set_grad_out_meta_list = []
@@ -790,9 +797,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
-            node_construction_str, set_attributes_str, set_tensor_wrappers_str,
-            set_grad_out_meta_str, set_edges_str, set_out_rank_str,
-            set_history_str, set_grad_in_meta_str, set_retain_grad_str)
+            node_construction_str, set_attributes_str,
+            set_input_tensor_wrappers_str, set_grad_out_meta_str, set_edges_str,
+            set_out_rank_str, set_history_str, set_grad_in_meta_str,
+            set_retain_grad_str, set_output_tensor_wrappers_str)
 
     def run(self):
         # Basic Validation Check
@@ -1285,7 +1293,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
-            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
