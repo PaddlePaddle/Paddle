@@ -720,9 +720,9 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
 
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  /// \brief A boolean state telling whether to use the MKLDNN Int8.
   ///
-  /// \return bool Whether to use the MKLDNN Bfloat16.
+  /// \return bool Whether to use the MKLDNN Int8.
   ///
   bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
 

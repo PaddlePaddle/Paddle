@@ -659,6 +659,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_mkldnn_int8", &AnalysisConfig::EnableMkldnnInt8,
            py::arg("mkldnn_int8_enabled_op_types") =
                std::unordered_set<std::string>({}))
+      .def("mkldnn_int8_enabled", &AnalysisConfig::mkldnn_int8_enabled)
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
