@@ -97,6 +97,7 @@ class HeterClient {
       if (need_encrypt) {
         options.mutable_ssl_options();
       }
+      VLOG(4) << "ssl enabled in arm";
 #else
       options.ssl_options.enable = need_encrypt;
 #endif
