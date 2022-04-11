@@ -49,6 +49,8 @@ namespace distributed = paddle::distributed;
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<framework::LoDTensor>();
+  auto x_g_var = scope->Var("x@GRAD");
+  x_g_var->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
@@ -59,34 +61,49 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto g_size = rows_numel +
+                30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
+  auto x_g_var = scope->Var("x@GRAD")->GetMutable<framework::LoDTensor>();
+  float* x_g_ptr =
+      x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
+  for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
 }
 
 void GetDownpourSparseTableProto(
     ::paddle::distributed::TableParameter* sparse_table_proto) {
   sparse_table_proto->set_table_id(0);
-  sparse_table_proto->set_table_class("CommonSparseTable");
-  sparse_table_proto->set_shard_num(256);
-  sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
-  ::paddle::distributed::TableAccessorParameter* accessor_proto =
+  sparse_table_proto->set_table_class("MemorySparseTable");
+  sparse_table_proto->set_shard_num(10);
+  ::paddle::distributed::TableAccessorParameter* accessor_config =
       sparse_table_proto->mutable_accessor();
-  ::paddle::distributed::CommonAccessorParameter* common_proto =
-      sparse_table_proto->mutable_common();
 
-  accessor_proto->set_accessor_class("CommMergeAccessor");
-  accessor_proto->set_fea_dim(0);
-  accessor_proto->set_embedx_dim(10);
+  accessor_config->set_accessor_class("SparseAccessor");
+  accessor_config->set_fea_dim(10);
+  accessor_config->set_embedx_dim(9);
+  accessor_config->set_embedx_threshold(0);
+  accessor_config->mutable_ctr_accessor_param()->set_nonclk_coeff(0.2);
+  accessor_config->mutable_ctr_accessor_param()->set_click_coeff(1);
+  accessor_config->mutable_ctr_accessor_param()->set_base_threshold(0.5);
+  accessor_config->mutable_ctr_accessor_param()->set_delta_threshold(0.2);
+  accessor_config->mutable_ctr_accessor_param()->set_delta_keep_days(16);
+  accessor_config->mutable_ctr_accessor_param()->set_show_click_decay_rate(
+      0.99);
 
-  common_proto->set_name("sgd");
-  common_proto->set_table_name("MergedDense");
-  common_proto->set_trainer_num(1);
-  common_proto->set_sync(false);
-  common_proto->set_entry("none");
-  common_proto->add_params("Param");
-  common_proto->add_dims(10);
-  common_proto->add_initializers("uniform_random&0&-1.0&1.0");
-  common_proto->add_params("LearningRate");
-  common_proto->add_dims(1);
-  common_proto->add_initializers("fill_constant&1.0");
+  accessor_config->mutable_embed_sgd_param()->set_name("SparseNaiveSGDRule");
+  auto* naive_param =
+      accessor_config->mutable_embed_sgd_param()->mutable_naive();
+  naive_param->set_learning_rate(1.0);
+  naive_param->set_initial_range(0.3);
+  naive_param->add_weight_bounds(-10.0);
+  naive_param->add_weight_bounds(10.0);
+
+  accessor_config->mutable_embedx_sgd_param()->set_name("SparseNaiveSGDRule");
+  naive_param = accessor_config->mutable_embedx_sgd_param()->mutable_naive();
+  naive_param->set_learning_rate(1.0);
+  naive_param->set_initial_range(0.3);
+  naive_param->add_weight_bounds(-10.0);
+  naive_param->add_weight_bounds(10.0);
 }
 
 ::paddle::distributed::PSParameter GetServerProto() {
@@ -156,14 +173,14 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, 1);
+  _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto));
+      paddle::distributed::PSServerFactory::Create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
-  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
-  pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->Configure(server_proto, _ps_env, 0, empty_vec);
+  pserver_ptr_->Start(ip_, port_);
 }
 
 void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
@@ -172,17 +189,17 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
-  worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+      paddle::distributed::PSClientFactory::Create(worker_proto));
+  worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
 }
 
 void RunBrpcPushSparse() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // Srart Server
   std::thread server_thread(RunServer);
@@ -214,44 +231,12 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   LOG(INFO) << "Run pull_sparse_param";
-  auto pull_status = worker_ptr_->pull_sparse(
+  auto pull_status = worker_ptr_->PullSparse(
       fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    fea_values.data()[idx] *= 2.0;
-  }
-
-  /*-----------------------Test Push Param----------------------------------*/
-
-  LOG(INFO) << "Run push_sparse_param";
-  paddle::distributed::DownpourBrpcClosure* closure_push_param =
-      new paddle::distributed::DownpourBrpcClosure(1, [&](void* done) {
-        int ret = 0;
-        auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
-        for (size_t i = 0; i < 1; ++i) {
-          if (closure->check_response(
-                  i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
-            ret = -1;
-            break;
-          }
-        }
-        closure->set_promise_value(ret);
-      });
-  auto push_status = worker_ptr_->push_sparse_param(
-      0, fea_keys.data(), (const float**)fea_value_ptr.data(), fea_keys.size(),
-      closure_push_param);
-  push_status.wait();
-
-  auto pull_param_status = worker_ptr_->pull_sparse(
-      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
-  pull_param_status.wait();
-
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx]);
-  }
 
   /*-----------------------Test Push Grad----------------------------------*/
-
+  // first to expand embedx, init
   paddle::distributed::DownpourBrpcClosure* closure_push_grad =
       new paddle::distributed::DownpourBrpcClosure(1, [&](void* done) {
         int ret = 0;
@@ -266,17 +251,46 @@ void RunBrpcPushSparse() {
         closure->set_promise_value(ret);
       });
 
-  LOG(INFO) << "Run pull_sparse_grad";
+  framework::Variable* g_var = client_scope.FindVar("x@GRAD");
+  framework::LoDTensor* g_tensor = g_var->GetMutable<framework::LoDTensor>();
+
+  LOG(INFO) << "Run push_sparse_grad";
   std::vector<float*> push_g_vec;
   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
-    push_g_vec.push_back(tensor->data<float>() + i * 10);
+    push_g_vec.push_back(g_tensor->data<float>() + i * 13);
   }
-  auto push_grad_status = worker_ptr_->push_sparse_raw_gradient(
+  auto push_grad_status = worker_ptr_->PushSparseRawGradient(
       0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
       closure_push_grad);
   push_grad_status.wait();
 
-  auto pull_update_status = worker_ptr_->pull_sparse(
+  // pull
+  pull_status = worker_ptr_->PullSparse(fea_value_ptr.data(), 0,
+                                        fea_keys.data(), fea_keys.size(), true);
+  pull_status.wait();
+
+  paddle::distributed::DownpourBrpcClosure* closure_push_grad1 =
+      new paddle::distributed::DownpourBrpcClosure(1, [&](void* done) {
+        int ret = 0;
+        auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+        for (size_t i = 0; i < 1; ++i) {
+          if (closure->check_response(
+                  i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
+            ret = -1;
+            break;
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+
+  // push again, embedx update this time
+  push_grad_status = worker_ptr_->PushSparseRawGradient(
+      0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
+      closure_push_grad1);
+  push_grad_status.wait();
+
+  // pull update
+  auto pull_update_status = worker_ptr_->PullSparse(
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
@@ -285,9 +299,9 @@ void RunBrpcPushSparse() {
   }
 
   LOG(INFO) << "Run stop_server";
-  worker_ptr_->stop_server();
+  worker_ptr_->StopServer();
   LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
   server_thread.join();
 }
 

@@ -23,9 +23,7 @@ void AssignValueInferMeta(const std::vector<int>& shape,
   out->set_dtype(dtype);
 }
 
-void CreateInferMeta(const ScalarArray& shape,
-                     DataType dtype,
-                     MetaTensor* out) {
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
@@ -48,7 +46,7 @@ void EyeInferMeta(int64_t num_rows,
   out->set_dtype(dtype);
 }
 
-void GaussianRandomInferMeta(const ScalarArray& shape,
+void GaussianRandomInferMeta(const IntArray& shape,
                              float mean,
                              float std,
                              int seed,
@@ -58,6 +56,51 @@ void GaussianRandomInferMeta(const ScalarArray& shape,
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
+}
+
+void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({n}));
+  out->set_dtype(dtype);
+}
+
+void UniformRandomInferMeta(const IntArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(DataLayout::NCHW);
+}
+
+void RandintInferMeta(
+    int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out, errors::InvalidArgument("Output(Out) of RandintOp is null."));
+  PADDLE_ENFORCE_LT(
+      low,
+      high,
+      errors::InvalidArgument("randint's low must less then high, "
+                              "but received: low = %d, high = %d.",
+                              low,
+                              high));
+
+  auto& shape_vector = shape.GetData();
+  PADDLE_ENFORCE_EQ(
+      shape_vector.empty(),
+      false,
+      errors::InvalidArgument("The shape information should not be empty, it "
+                              "must be set by Attr(shape)."));
+
+  std::vector<int64_t> tensor_shape;
+  tensor_shape.reserve(shape_vector.size());
+  for (auto dim : shape_vector) {
+    tensor_shape.push_back(static_cast<int64_t>(dim));
+  }
+  out->set_dims(make_ddim(tensor_shape));
+  out->set_dtype(dtype);
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,

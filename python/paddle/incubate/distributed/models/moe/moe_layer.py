@@ -30,8 +30,6 @@ from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
 
-__all__ = ["MoeLayer"]
-
 
 def _local_scatter(inp, pos):
     if pos.shape != [0]:
@@ -71,7 +69,7 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
                                      'ring_id', ring_id, 'nranks', nranks)
 
 
-class MOEScatter(PyLayer):
+class MoEScatter(PyLayer):
     r"""
     Scatter input samples from [batch x sequences] to contiguous alone experts.
     If `world_size` is greater than 1, the samples will first be locally
@@ -117,10 +115,10 @@ class MOEScatter(PyLayer):
         return grad_in, None, None, None
 
 
-class MOEGather(PyLayer):
+class MoEGather(PyLayer):
     r"""
     Gather output samples from contiguous alone experts back to [batch x
-    sequences]. Works symmetrically with MOEScatter.
+    sequences]. Works symmetrically with MoEScatter.
     """
 
     @staticmethod
@@ -225,8 +223,8 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
         fwd_batch_size, )
 
 
-class MoeLayer(nn.Layer):
-    """Moe Layer
+class MoELayer(nn.Layer):
+    """MoE Layer
     Args:
         d_model: (int) model dimention
         experts: (nn.LayerList) expert networks list
@@ -243,7 +241,7 @@ class MoeLayer(nn.Layer):
     Examples:
         .. code-block:: python
         from paddle.nn import layer, LayerList
-        from paddle.distributed.moe import Moelayer
+        from paddle.distributed.moe import MoElayer
         from paddle.distributed.collective import Group
         from paddle.distributed import fleet
 
@@ -279,7 +277,7 @@ class MoeLayer(nn.Layer):
             exp_layer = ExpertLayer(d_model, dim_feedforward // top_k, windex=expi, num_expert=num_experts)
             experts_list.append(exp_layer)
         
-        moeLayer = MoeLayer(d_model = d_model,
+        moeLayer = MoELayer(d_model = d_model,
                             experts=experts_list,
                             gate=gate_config,
                             moe_group=moe_group,
@@ -295,7 +293,7 @@ class MoeLayer(nn.Layer):
                  moe_group=None,
                  mp_group=None,
                  **kwargs):
-        super(MoeLayer, self).__init__()
+        super(MoELayer, self).__init__()
 
         recompute_interval = kwargs.get("recompute_interval", 0)
 
@@ -385,7 +383,7 @@ class MoeLayer(nn.Layer):
             temp_pos = pos
         assert topk == self.top_k
 
-        x = MOEScatter.apply(inp, temp_pos, local_expert_count,
+        x = MoEScatter.apply(inp, temp_pos, local_expert_count,
                              global_expert_count, fwd_batch_size,
                              self.world_size, self.group)
 
@@ -416,7 +414,7 @@ class MoeLayer(nn.Layer):
         if len(gate.shape) == 2:
             out_batch_size *= gate.shape[1]
 
-        x = MOEGather.apply(x, pos, local_expert_count, global_expert_count,
+        x = MoEGather.apply(x, pos, local_expert_count, global_expert_count,
                             out_batch_size, self.world_size, self.group)
 
         x = x.reshape([-1, self.top_k, d_model])

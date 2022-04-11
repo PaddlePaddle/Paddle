@@ -51,21 +51,28 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      rtol.dtype(),
-      DataType::FLOAT64,
-      phi::errors::InvalidArgument(
-          "Input (Rtol) type must be double, but get %s.", rtol.dtype()));
-  PADDLE_ENFORCE_EQ(
-      atol.dtype(),
-      DataType::FLOAT64,
-      phi::errors::InvalidArgument(
-          "Input (Atol) type must be double, but get %s.", atol.dtype()));
-
+  double rtol_v, atol_v;
+  if (rtol.dtype() == DataType::FLOAT64) {
+    rtol_v = rtol.to<double>();
+  } else if (rtol.dtype() == DataType::FLOAT32) {
+    rtol_v = rtol.to<float>();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input (Rtol) type must be double or float, but get %s.",
+        rtol.dtype()));
+  }
+  if (atol.dtype() == DataType::FLOAT64) {
+    atol_v = atol.to<double>();
+  } else if (atol.dtype() == DataType::FLOAT32) {
+    atol_v = atol.to<float>();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input (Atol) type must be double or float, but get %s.",
+        atol.dtype()));
+  }
+  VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
   const T* in_data = x.data<T>();
   const T* other_data = y.data<T>();
-  auto rtol_v = rtol.to<double>();
-  auto atol_v = atol.to<double>();
   bool* out_data = dev_ctx.template Alloc<bool>(out);
 
   int num = x.numel();

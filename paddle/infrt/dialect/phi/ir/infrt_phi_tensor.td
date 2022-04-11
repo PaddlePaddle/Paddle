@@ -28,6 +28,18 @@ class CreateDenseTensorOp<string target>
   let results = (outs DenseTensor:$output);
 }
 
+def CreateHostInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32", [NoSideEffect]> {
+  let arguments = (ins
+    Context:$context,
+    I64ArrayAttr:$dims,
+    LayoutAttr:$layout,
+    I64ArrayAttr:$lod,
+    F32ArrayAttr:$values,
+    DefaultValuedAttr<BoolAttr, "true">:$run_once
+  );
+  let results = (outs DenseTensor:$output);
+}
+
 def CreateInitedCpuFLOAT32DenseTensorOp
       : PDT_Op<"create_inited_dense_tensor.cpu.f32", [NoSideEffect]> {
   let arguments = (ins Context:$context, I64ArrayAttr:$dims, 

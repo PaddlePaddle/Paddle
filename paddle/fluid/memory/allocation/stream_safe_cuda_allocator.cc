@@ -33,7 +33,7 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
 
-void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
+void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
     return;
@@ -90,7 +90,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   return true;
 }
 
-const gpuStream_t& StreamSafeCUDAAllocation::GetOwningStream() const {
+gpuStream_t StreamSafeCUDAAllocation::GetOwningStream() const {
   return owning_stream_;
 }
 
@@ -102,7 +102,7 @@ void StreamSafeCUDAAllocation::RecordGraphCapturingStreams() {
 }
 
 void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
-    const gpuStream_t& stream) {
+    gpuStream_t stream) {
   gpuEvent_t record_event;
   auto it = outstanding_event_map_.find(stream);
   if (it == outstanding_event_map_.end()) {
@@ -154,17 +154,18 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-const gpuStream_t& StreamSafeCUDAAllocator::GetDefaultStream() const {
+gpuStream_t StreamSafeCUDAAllocator::GetDefaultStream() const {
   return default_stream_;
 }
 
-void StreamSafeCUDAAllocator::SetDefaultStream(const gpuStream_t& stream) {
+void StreamSafeCUDAAllocator::SetDefaultStream(gpuStream_t stream) {
   default_stream_ = stream;
 }
 
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("StreamSafeCUDAAllocator::Allocate",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -192,8 +193,9 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Free",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("StreamSafeCUDAAllocator::Free",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCUDAAllocation*>(allocation);
 

@@ -199,13 +199,6 @@ IF(WITH_XPU)
         DSTS ${dst_dir} ${dst_dir})
 ENDIF()
 
-IF(WITH_IPU)
-    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
-    copy(inference_lib_dist
-        SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
-        DSTS ${dst_dir})
-ENDIF()
-
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -405,7 +398,8 @@ function(version version_file)
             "WITH_GPU: ${WITH_GPU}\n"
             "WITH_ROCM: ${WITH_ROCM}\n"
             "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
-            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n"
+            "WITH_IPU: ${WITH_IPU}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -420,6 +414,10 @@ function(version version_file)
         file(APPEND ${version_file}
                 "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
                 "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
+    endif()
+    if(WITH_IPU)
+        file(APPEND ${version_file}
+                "PopART version: ${POPART_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

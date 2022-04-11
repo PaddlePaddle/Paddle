@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 namespace paddle {
 namespace pybind {
@@ -43,8 +45,7 @@ namespace py = ::pybind11;
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 
-std::set<paddle::experimental::Tensor*> GetNonDifferentiableNames(
-    PyObject* obj) {
+std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   std::set<paddle::experimental::Tensor*> result;
   if (obj == nullptr) {
     return result;
@@ -230,6 +231,10 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
+    Py_XDECREF(forward_args);
+    Py_XDECREF(kwargs_value_list);
+    Py_XDECREF(backward_function);
+    Py_XDECREF(forward_fn);
     return nullptr;
   }
 
@@ -298,8 +303,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   VLOG(6) << "PyLayer forward function finish...";
 
   if (require_any_grad && trace_backward) {
-    auto non_differentiable =
-        GetNonDifferentiableNames(ctx->non_differentiable);
+    auto non_differentiable = GetTensorsFromPyObject(ctx->non_differentiable);
     for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
       for (size_t j = 0; j < outputs_autograd_meta[i].size(); j++) {
         if (non_differentiable.find(outputs_tensor[i][j]) !=
@@ -311,7 +315,22 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       }
     }
 
-    // TODO(pangyoki) add inplace, inplaced tensor is ctx->dirty_tensors
+    // add inplace strategy, inplaced tensor is ctx->dirty_tensors
+    auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
+    for (auto it = dirty_tensors.begin(); it != dirty_tensors.end(); ++it) {
+      auto dirty_tensor = *it;
+      auto dirty_tensor_autograd_meta =
+          egr::EagerUtils::autograd_meta(dirty_tensor);
+      PADDLE_ENFORCE_EQ(!dirty_tensor_autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(*dirty_tensor),
+                        false, paddle::platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   dirty_tensor->name()));
+      dirty_tensor->bump_inplace_version();
+      VLOG(3) << "Tensor(" << dirty_tensor->name()
+              << ") uses Inplace Strategy.";
+    }
 
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
         reinterpret_cast<PyObject*>(ctx), outputs_autograd_meta.size(),
@@ -352,6 +371,14 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
     VLOG(6) << "PyLayer construct backward node finish...";
   }
 
+  if (!PyTuple_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
+  }
+  Py_XDECREF(forward_args);
+  Py_XDECREF(kwargs_value_list);
+  Py_XDECREF(backward_function);
+  Py_XDECREF(forward_fn);
+
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -380,7 +407,7 @@ int tensor_properties_set_container(PyLayerObject* self, PyObject* value,
   Py_XDECREF(self->container);
   self->container = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
@@ -402,7 +429,7 @@ int tensor_properties_set_non_differentiable(PyLayerObject* self,
   Py_XDECREF(self->non_differentiable);
   self->non_differentiable = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
@@ -424,7 +451,7 @@ int tensor_properties_set_dirty_tensors(PyLayerObject* self, PyObject* value,
   Py_XDECREF(self->dirty_tensors);
   self->dirty_tensors = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 int tensor_properties_set_materialize_grads(PyLayerObject* self,
@@ -432,7 +459,7 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_TRY
   self->materialize_grads = CastPyArg2AttrBoolean(value, 0);
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyMethodDef pylayer_methods[] = {
@@ -466,7 +493,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_dealloc = (destructor)PyLayerDealloc;
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
-  type->tp_new = PyLayerNew;
+  type->tp_new = (newfunc)PyLayerNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
