@@ -245,7 +245,7 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   Tensor out;
-  copy(x, &out, place, blocking);
+  copy(x, place, blocking, &out);
   return out;
 }
 

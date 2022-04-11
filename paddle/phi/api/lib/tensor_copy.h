@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void copy(const Tensor& src, Tensor* dst, Place place, bool blocking);
+void copy(const Tensor& src, Place place, bool blocking, Tensor* dst);
 
 }  // namespace experimental
 }  // namespace paddle

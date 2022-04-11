@@ -32,10 +32,15 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         tensor_in.numel()));
   if (tensor_in.place() == PlaceType::kGPU) {
     Tensor dst_tensor;
-    copy(tensor_in, &dst_tensor, phi::CPUPlace(), true);
+    copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
     GetDataFromTensor(dst_tensor);
-  } else {
+  } else if (tensor_in.place() == PlaceType::kCPU) {
     GetDataFromTensor(tensor_in);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Now, it is not supported to construct Scalar using tensor that its "
+        "PlaceType is (%d)",
+        static_cast<int>(tensor_in.place())));
   }
 }
 

@@ -26,7 +26,7 @@ class TypeInfo {
  public:
   const std::string& name() const;
 
-  size_t id() const { return id_; }
+  int8_t id() const { return id_; }
 
   bool operator==(TypeInfo other) const { return id_ == other.id(); }
   bool operator!=(TypeInfo other) const { return id_ != other.id(); }
@@ -35,8 +35,8 @@ class TypeInfo {
 
  private:
   friend class TypeRegistry<BaseT>;
-  explicit TypeInfo(size_t id) : id_(id) {}
-  size_t id_;
+  explicit TypeInfo(int8_t id) : id_(id) {}
+  int8_t id_;
 };
 
 template <typename BaseT, typename DerivedT>

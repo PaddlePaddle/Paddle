@@ -18,7 +18,6 @@ limitations under the License. */
 #include <mutex>
 #include <string>
 
-#include "glog/logging.h"
 #include "paddle/phi/core/utils/type_info.h"
 
 namespace phi {
@@ -38,7 +37,7 @@ class TypeRegistry {
   TypeRegistry() = default;
   mutable std::mutex mutex_;
   std::vector<std::string> names_;
-  std::map<std::string, size_t> name_to_id_;
+  std::map<std::string, int8_t> name_to_id_;
 };
 
 template <typename BaseT>
@@ -51,8 +50,8 @@ template <typename BaseT>
 TypeInfo<BaseT> TypeRegistry<BaseT>::RegisterType(const std::string& type) {
   std::lock_guard<std::mutex> guard(mutex_);
   assert(name_to_id_.find(type) == name_to_id_.end());
-  assert(names_.size() < std::numeric_limits<size_t>::max());
-  size_t id = names_.size();
+  assert(names_.size() < std::numeric_limits<int8_t>::max());
+  int8_t id = static_cast<int8_t>(names_.size());
   names_.emplace_back(type);
   name_to_id_[type] = id;
   return TypeInfo<BaseT>(id);
@@ -62,7 +61,7 @@ template <typename BaseT>
 const std::string& TypeRegistry<BaseT>::GetTypeName(
     TypeInfo<BaseT> info) const {
   std::lock_guard<std::mutex> guard(mutex_);
-  size_t id = info.id();
+  int8_t id = info.id();
   assert(id >= 0);
   assert(static_cast<size_t>(id) < names_.size());
   return names_[id];

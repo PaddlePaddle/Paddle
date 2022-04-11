@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void copy(const Tensor& src, Tensor* dst, Place place, bool blocking) {
+void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
