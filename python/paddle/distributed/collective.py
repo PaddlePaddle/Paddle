@@ -824,7 +824,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        out = paddle.concat(tensor_list)
+        tensor_shape = list(tensor.shape)
+        tensor_shape[0] *= group.nranks
+        out = paddle.empty(tensor_shape, tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
