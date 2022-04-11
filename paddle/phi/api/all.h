@@ -39,7 +39,6 @@ limitations under the License. */
 
 // original custom op headers
 #include "paddle/phi/api/ext/dispatch.h"
-#include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/ext/place.h"

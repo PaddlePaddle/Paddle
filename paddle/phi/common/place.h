@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/phi/api/ext/dll_decl.h"
+#include "paddle/phi/api/include/dll_decl.h"
 
 namespace phi {
 

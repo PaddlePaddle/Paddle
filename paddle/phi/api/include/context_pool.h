@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mutex>
 
-#include "paddle/phi/api/ext/dll_decl.h"
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
