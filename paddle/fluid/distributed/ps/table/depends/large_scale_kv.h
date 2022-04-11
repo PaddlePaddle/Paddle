@@ -27,13 +27,9 @@
 #include "gflags/gflags.h"
 
 #ifdef PADDLE_WITH_ARM_BRPC
-#include "base/endpoint.h"
-#include "base/object_pool.h"
-#define butil base
-#else
 #include "butil/object_pool.h"
-#include "butil/endpoint.h"
 #endif
+#include "butil/endpoint.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"

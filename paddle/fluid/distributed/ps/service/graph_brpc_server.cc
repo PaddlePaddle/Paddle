@@ -17,11 +17,7 @@
 
 #include <thread>  // NOLINT
 #include <utility>
-#ifdef PADDLE_WITH_ARM_BRPC
-#include "base/endpoint.h"
-#else
 #include "butil/endpoint.h"
-#endif
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"

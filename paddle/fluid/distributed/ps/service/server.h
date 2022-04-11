@@ -20,11 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_ARM_BRPC
-#include "base/endpoint.h"
-#else
 #include "butil/endpoint.h"
-#endif
 #include "google/protobuf/service.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"

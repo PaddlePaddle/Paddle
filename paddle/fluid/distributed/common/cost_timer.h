@@ -15,14 +15,8 @@
 #pragma once
 #include <memory>
 #include <unordered_map>
-#ifdef PADDLE_WITH_ARM_BRPC
-#include "base/time.h"
-#include "bvar/latency_recorder.h"
-#define butil base
-#else
 #include "butil/time.h"
 #include "bvar/latency_recorder.h"
-#endif
 #include "glog/logging.h"
 
 namespace paddle {
