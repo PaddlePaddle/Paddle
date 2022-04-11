@@ -147,7 +147,7 @@ class TestParameter(object):
             exe = fluid.Executor(place)
             result, = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = eval("np.%s(np_x)" % self.op_type)
-            self.assertTrue(np.allclose(result, expected))
+            self.assertEqual(result, expected)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -156,7 +156,10 @@ class TestParameter(object):
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             # ROCM platform will fail in assertEqual
-            self.assertTrue(np.allclose(z, z_expected))
+            if core.is_compiled_with_rocm():
+                self.assertTrue(np.allclose(z, z_expected))
+            else:
+                self.assertEqual(z, z_expected)
 
 
 class TestSigmoid(TestActivation):
