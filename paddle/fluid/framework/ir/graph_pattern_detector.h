@@ -1574,15 +1574,6 @@ struct LastBfloat16Ops : public PatternBase {
   PATTERN_DECL_NODE(op_out);
 };
 
-struct FirstBfloat16Ops : public PatternBase {
-  FirstBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "first_bfloat16_ops") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op_in);
-  PATTERN_DECL_NODE(op);
-};
-
 struct DuplicatedInputs : public PatternBase {
   DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "many_inputs_op") {}
