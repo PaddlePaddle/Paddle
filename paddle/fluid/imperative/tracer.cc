@@ -223,8 +223,8 @@ void Tracer::TraceOpImpl(const std::string& type,
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1 || amp_level_ == AmpLevel::O2) {
     const auto& tracer = imperative::GetCurrentTracer();
-    new_ins = phi::autotune::LayoutAutoTune<VarType>::Instance().OptimizeLayout(
-        type, ins, outs, &attrs, tracer);
+    auto transposer = phi::autotune::GetLayoutTransposer(type);
+    new_ins = transposer->Run<VarType>(ins, outs, &attrs, tracer);
     if (amp_level_ == AmpLevel::O1) {
       if (amp_dtype_ == phi::DataType::FLOAT16) {
         VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
