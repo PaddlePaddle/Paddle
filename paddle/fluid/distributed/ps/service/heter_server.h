@@ -385,6 +385,7 @@ class HeterService : public PsService {
     // std_cntl.request_attachment().append(cntl->request_attachment().movable());
     PsService_Stub stub(channel);
     stub.SendS2S(&std_cntl, request, response, closure2);
+    VLOG(4) << "called SendS2S";
     cntl->response_attachment().append(
         std_cntl.response_attachment().movable());
     fut.wait();
