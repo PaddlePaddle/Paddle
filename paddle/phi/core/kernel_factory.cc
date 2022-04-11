@@ -59,14 +59,47 @@ KernelKeyMap KernelFactory::SelectKernelMap(
   return iter->second;
 }
 
-const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name, const KernelKey& kernel_key) const {
+bool KernelFactory::IsSelectKernelValid(const std::string& kernel_name,
+                                        const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
+  auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end()) {
+    return false;
+  }
+  return true;
+}
+
+const Kernel& KernelFactory::SelectKernelOrThrowError(
+    const std::string& kernel_name,
+    const KernelKey& kernel_key,
+    bool use_cudnn) const {
+  auto iter = kernels_.find(kernel_name);
+  PADDLE_ENFORCE_NE(
+      iter,
+      kernels_.end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_cudnn && kernel_key.backend() == Backend::GPU) {
+    auto kernel_iter = iter->second.find(
+        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      kernel_iter = iter->second.find(
+          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+    }
+    if (kernel_iter != iter->second.end()) {
+      return kernel_iter->second;
+    }
+    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
+                 << "] is not registered.";
+  }
+#endif
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&

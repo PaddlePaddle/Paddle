@@ -28,6 +28,9 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_api_func_name(self):
         return self.api
 
+    def gene_kernel_backend_select(self):
+        return BackwardAPI.gene_kernel_backend_select(self)
+
     def get_return_type(self, out_type_list):
         return BackwardAPI.get_return_type(self, out_type_list)
 
@@ -94,7 +97,7 @@ def header_include():
     return """
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -106,16 +109,11 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 """
-
-
-def api_register():
-    return ""
 
 
 def api_namespace():
@@ -156,8 +154,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    source_file.write(api_register())
 
     header_file.close()
     source_file.close()

@@ -12,3 +12,8 @@ py_test_modules(test_multi_precision_fp16_train MODULES test_multi_precision_fp1
 set_tests_properties(test_image_classification_fp16 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_weight_decay_extend PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multi_precision_fp16_train PROPERTIES TIMEOUT 120)
+
+if (APPLE)
+        set_tests_properties(test_model_cast_to_bf16 PROPERTIES TIMEOUT 300)
+        set_tests_properties(test_quantize_transpiler PROPERTIES TIMEOUT 300)
+endif()

@@ -28,6 +28,7 @@ np.random.seed(0)
 class TestErfinv(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
+        self.python_api = paddle.erfinv
         self.init_dtype()
         self.shape = [11, 17]
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
@@ -42,7 +43,7 @@ class TestErfinv(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(

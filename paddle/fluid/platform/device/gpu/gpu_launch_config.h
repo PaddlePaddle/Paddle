@@ -128,6 +128,10 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
   int blocks = DivUp(DivUp(numel, vec_size), threads);
+  int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
+  if (blocks > limit_blocks) {
+    blocks = limit_blocks;
+  }
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
@@ -166,6 +170,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
   return config;
 }
 
+template <typename Context>
+void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+  auto max_grid_dim = reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                          .GetCUDAMaxGridDimSize();
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
+  grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
+}
 }  // namespace platform
 }  // namespace paddle
 

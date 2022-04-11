@@ -37,9 +37,58 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_PSLIB
+void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user,
+                      const std::string& pass_wd, const std::string& conf) {
+  int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
+                              conf.c_str());
+  if (ret != 0) {
+    LOG(ERROR) << "AFS Init Error";
+  }
+}
+
+int AfsWrapper::remove(const std::string& path) {
+  return afs_handler_.remove(path);
+}
+
+int AfsWrapper::mkdir(const std::string& path) {
+  return afs_handler_.mkdir(path);
+}
+
+std::vector<std::string> AfsWrapper::list(const std::string& path) {
+  return afs_handler_.list(path);
+}
+
+int AfsWrapper::exist(const std::string& path) {
+  return afs_handler_.exist(path);
+}
+
+int AfsWrapper::upload(const std::string& local_file,
+                       const std::string& afs_file) {
+  return afs_handler_.upload_file(local_file, afs_file);
+}
+
+int AfsWrapper::download(const std::string& local_file,
+                         const std::string& afs_file) {
+  return afs_handler_.download_file(local_file, afs_file);
+}
+#endif
+
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
-
+#ifdef PADDLE_WITH_PSLIB
+void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
+                              const std::string& fs_user,
+                              const std::string& pass_wd,
+                              const std::string& conf) {
+  int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
+                              conf.c_str());
+  if (ret != 0) {
+    LOG(ERROR) << "AFS Init Error";
+  }
+  use_afs_api_ = 1;
+}
+#endif
 void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
@@ -274,7 +323,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto fleet_ptr = FleetWrapper::GetInstance();
 #endif
 #ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
 #endif
 
 #if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
@@ -331,7 +380,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
+      auto tt = fleet_ptr->worker_ptr_->PullSparsePtr(
           reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
@@ -494,7 +543,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
-    std::vector<std::vector<paddle::distributed::VALUE*>> task_ptrs(device_num);
+    std::vector<std::vector<paddle::distributed::FixedFeatureValue*>> task_ptrs(
+        device_num);
 #endif
 
     for (size_t j = 0; j < local_keys[i].size(); j++) {
@@ -557,21 +607,21 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
       for (int j = 0; j < len; ++j) {
         device_keys[dev][cur + j] = task_keys[dev][j];
-        distributed::VALUE* ptr_val = task_ptrs[dev][j];
+        float* ptr_val = task_ptrs[dev][j]->data();
         FeatureValue& val = device_vals[dev][cur + j];
-        bool has_mf = 1;
-        val.delta_score = 0;
-        val.show = ptr_val->count_;
-        val.clk = 0;
-        val.slot = 0;
-        val.lr = 0;
-        val.lr_g2sum = 0;
+        size_t dim = task_ptrs[dev][j]->size();
+        val.delta_score = ptr_val[2];
+        val.show = ptr_val[3];
+        val.clk = ptr_val[4];
+        val.slot = ptr_val[0];
+        val.lr = ptr_val[5];
+        val.lr_g2sum = ptr_val[6];
         val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
-        if (has_mf) {
+        if (dim > 7) {
           val.mf_size = MF_DIM + 1;
           for (int x = 0; x < val.mf_size; x++) {
-            val.mf[x] = ptr_val->data_[x];
+            val.mf[x] = ptr_val[x + 7];
           }
         } else {
           val.mf_size = 0;
