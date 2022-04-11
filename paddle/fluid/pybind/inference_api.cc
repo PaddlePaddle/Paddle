@@ -212,7 +212,7 @@ void PaddleInferTensorCreate(
   tensor.Reshape(std::move(shape));
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
-  
+
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
   if (allocation_type == phi::AllocationType::CPU) {
