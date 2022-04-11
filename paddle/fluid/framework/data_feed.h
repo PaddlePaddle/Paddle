@@ -418,6 +418,7 @@ struct UsedSlotGpuType {
   int slot_value_idx;
 };
 
+#if defined(PADDLE_WITH_CUDA)
 #define CUDA_CHECK(val) CHECK(val == gpuSuccess)
 template <typename T>
 struct CudaBuffer {
@@ -670,6 +671,7 @@ inline MiniBatchGpuPackMgr& BatchGpuPackMgr() {
   static MiniBatchGpuPackMgr mgr;
   return mgr;
 }
+#endif
 
 typedef paddle::framework::CustomParser* (*CreateParserObjectFunc)();
 
