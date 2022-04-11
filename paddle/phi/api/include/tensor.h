@@ -30,7 +30,6 @@ using gpuStream_t = hipStream_t;
 #endif
 
 #include "paddle/phi/api/ext/dll_decl.h"
-#include "paddle/phi/api/ext/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
@@ -109,21 +108,23 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Construct a new Tensor object on the target place.
-   * This is a deprecated method and may be removed in the future!
+   *
+   * This is a deprecated method and may be removed in the future!!!
    *
    * @param place
    */
-  explicit Tensor(const PlaceType& place);
+  explicit Tensor(const Place& place);
 
   /**
    * @brief Construct a new Tensor object on the target place
    * with specified shape.
-   * This is a deprecated method and may be removed in the future!
+   *
+   * This is a deprecated method and may be removed in the future!!!
    *
    * @param place
    * @param shape
    */
-  Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
+  Tensor(const Place& place, const std::vector<int64_t>& shape);
 
   /**
    * @brief Construct a new Tensor object by a TensorBase pointer and name
@@ -135,8 +136,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Construct a new Tensor object with name
    *
-   * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * @note Internal method, used to adapt original execution mechanism and
+   * debug analysis in the development of new dygraph. It may be removed in
+   * the future.
    * */
   explicit Tensor(const std::string& name) : name_(name) {}
 
@@ -151,6 +153,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Get the size of current tensor.
+   *
    * The compatible method of `Tensor::numel()`.
    * This is a deprecated method and may be removed in the future!
    *
@@ -167,6 +170,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
+   *
    * The compatible method of `Tensor::dims()`.
    * This is a deprecated method and may be removed in the future!
    *
@@ -178,7 +182,7 @@ class PADDLE_API Tensor final {
    * @brief Reset the shape of the tensor.
    * @note: This method means Reset the shape of the tensor,
    * and must be called before calling mutable_data() or
-   * copy_to(const PlaceType& place), this is not a standard definition of
+   * copy_to(const Place& place), this is not a standard definition of
    * reshape behavior, so we will deprecated this feature in the future.
    *
    * @param shape
@@ -194,6 +198,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Return the data type of Tensor.
+   *
    * The compatible method of `Tensor::dtype()`.
    * This is a deprecated method and may be removed in the future!
    *
@@ -246,18 +251,18 @@ class PADDLE_API Tensor final {
    * @brief Return the place (device) of Tensor.
    * This is a deprecated method and may be removed in the future!
    *
-   * @return PlaceType
+   * @return Place
    */
-  PlaceType place() const;
+  Place place() const;
 
   /**
    * @brief Return the place (device) of Tensor.
-   * Because the `place` method already exists, so we need to use a new name,
-   * here we temporarily use `inner_place`.
    *
-   * @return paddle::platform::Place
+   * This is a deprecated method and may be removed in the future!!!
+   *
+   * @return Place
    */
-  phi::Place inner_place() const;
+  Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -287,7 +292,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Get the memory pointer in CPU or GPU with specific data type.
-   * It's usually used to get the output data pointer.
+   * It's usually used to get the output data pointer, same as the T* data().
    *
    * @tparam T
    * @return T*
@@ -297,6 +302,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Get the memory pointer in CPU or GPU with specific data type.
+   *
    * It's usually used to get the output data pointer.
    * This is a deprecated method and may be removed in the future!
    *
@@ -305,7 +311,7 @@ class PADDLE_API Tensor final {
    * @return T*
    */
   template <typename T>
-  T* mutable_data(const PlaceType& place);
+  T* mutable_data(const Place& place);
 
   /**
    * @brief Get the const memory pointer directly.
@@ -319,8 +325,7 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Get the memory pointer directly.
-   * It's usually used to get the output data pointer.
-   * This is a deprecated method and may be removed in the future!
+   * It's usually used to get the mutable output data pointer.
    *
    * @tparam T
    * @return T*
@@ -409,7 +414,7 @@ class PADDLE_API Tensor final {
    * @return Tensor
    */
   template <typename T>
-  Tensor copy_to(const PlaceType& target_place) const;
+  Tensor copy_to(const Place& target_place) const;
 
   /**
    * @brief Transfer the current Tensor to the specified device and return.
@@ -427,7 +432,8 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return void
    */
-  void copy_(const Tensor& src, const phi::Place& target_place, bool blocking);
+  void copy_(const Tensor& src, const Place& target_place, bool blocking);
+
   /**
    * @brief Cast datatype from one to another
    *
@@ -489,11 +495,17 @@ class PADDLE_API Tensor final {
   /* Part 8: Autograd methods */
 
   /**
-   * @brief Get the autograd meta object
+   * @brief Get the autograd meta object pointer
    *
    * @return AbstractAutogradMeta*
    */
   AbstractAutogradMeta* get_autograd_meta() const;
+
+  /**
+   * @brief Get the shared pointer of autograd meta object
+   *
+   * @return std::shared_ptr<AbstractAutogradMeta>&
+   */
   const std::shared_ptr<AbstractAutogradMeta>& mutable_autograd_meta() const;
 
   /**
@@ -524,7 +536,7 @@ class PADDLE_API Tensor final {
 
   /* Part 10: Auto generated Tensor methods */
 
-  /* Part 11: Methods of converting SparseTensor and DenseTensor to each other
+  /* Part 11: Methods of converting underlying TensorType to each other
    */
   /**
    * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
@@ -587,12 +599,6 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
-
-  /**
-   * Place type: Return the expected memory location if the Tensor is
-   * uninitialized.
-   */
-  PlaceType place_{PlaceType::kUNK};
 };
 
 }  // namespace experimental

@@ -1,13 +1,11 @@
 add_subdirectory(utils)
 
-cc_library(ext_compat_utils SRCS ext_compat_utils.cc DEPS place)
-
 if (WITH_GPU)
-  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 elseif (WITH_ROCM)
-  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 else()
-  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)

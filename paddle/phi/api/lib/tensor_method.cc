@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -39,37 +38,37 @@ Tensor Tensor::copy_to(Place place, bool blocking) const {
 }
 
 template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) const {
+Tensor Tensor::copy_to(const Place &target_place) const {
   LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
                   "2.3, and will be removed in version 2.4, please use "
                   "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToInnerPlace(target_place), /*blocking=*/false);
+  return copy_to(target_place, /*blocking=*/false);
 }
 
 template PADDLE_API Tensor
-Tensor::copy_to<float>(const PlaceType &target_place) const;
+Tensor::copy_to<float>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<double>(const PlaceType &target_place) const;
+Tensor::copy_to<double>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int64_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int32_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
+Tensor::copy_to<uint8_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int8_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int16_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<float>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<double>>(
-    const PlaceType &target_place) const;
+Tensor::copy_to<bool>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
+Tensor::copy_to<phi::dtype::complex<float>>(const Place &target_place) const;
+template PADDLE_API Tensor
+Tensor::copy_to<phi::dtype::complex<double>>(const Place &target_place) const;
+template PADDLE_API Tensor
+Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/phi/api/ext/dll_decl.h"
+
 namespace phi {
 
 enum class AllocationType : int8_t {
@@ -209,4 +211,30 @@ using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
+
+/* NOTE: In order to remove and be compatible with the enumeration type
+`PlaceType` of custom operator, we define a temporary type.
+
+This type cannot add any new type!!! It is only used for compatibility with
+historical writing and we will remove this temporary type in the future.
+This Type cannot be used in framework! only used for custom operator!
+
+The historical PlaceType define:
+
+- enum class PlaceType { kUNK = -1, kCPU, kGPU };
+
+The historical PlaceType using:
+
+- PD_CHECK(x.place() == paddle::PlaceType::kCPU)
+- auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+
+The new type cannot be used as int value! If you use as int, please modify
+the implementation.
+*/
+struct PADDLE_API PlaceType {
+  static phi::Place kUNK;
+  static phi::Place kCPU;
+  static phi::Place kGPU;
+};
+
 }  // namespace paddle
