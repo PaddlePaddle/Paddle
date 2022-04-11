@@ -21,6 +21,11 @@
 
 namespace phi {
 
+template <typename Context>
+void AssignRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out);
+
 // In order to be compatible with the `AsDispensable` input in the original
 // assign op maker, the input parameter here needs to be dispensable, but
 // this looks weird
