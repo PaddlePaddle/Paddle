@@ -13,6 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cusparseLt.h>
+#include <cassert>
+#include <iostream>
+#include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 // #include "serialize.hpp"
 
@@ -100,7 +104,7 @@ SpmmPluginDynamic::cusparseLtContext::~cusparseLtContext() {
 
 void SpmmPluginDynamic::cusparseLtContext::init(
     int m, int n, int k, cudaDataType_t type, void* bias_ptr,
-    SpmmPluginDynamic::Activation activation) {
+    SpmmPluginDynamic::Activation activation, float gelu_scale) {
   /*
   1. Init matrix descriptors (matA, matB, matC)
   2. Init matrix multiplication descriptor (matmul)
@@ -137,6 +141,14 @@ void SpmmPluginDynamic::cusparseLtContext::init(
   CHECK_CUSPARSE(cusparseLtMatmulDescriptorInit(
       &handle, &matmul, CUSPARSE_OPERATION_NON_TRANSPOSE,
       CUSPARSE_OPERATION_TRANSPOSE, &matA, &matB, &matC, &matC, compute_type))
+
+  if (type == CUDA_R_8I) {
+    int true_value = 1;
+    CHECK_CUSPARSE(cusparseLtMatmulDescSetAttribute(
+        &handle, &matmul, CUSPARSELT_MATMUL_ALPHA_VECTOR_SCALING, &true_value,
+        sizeof(true_value)))
+  }
+
   if (activation == SpmmPluginDynamic::Activation::kRelu) {
     int true_value = 1;
     float relu_upper_bound = std::numeric_limits<float>::max();
@@ -155,6 +167,9 @@ void SpmmPluginDynamic::cusparseLtContext::init(
     CHECK_CUSPARSE(cusparseLtMatmulDescSetAttribute(
         &handle, &matmul, CUSPARSELT_MATMUL_ACTIVATION_GELU, &true_value,
         sizeof(true_value)))
+    CHECK_CUSPARSE(cusparseLtMatmulDescSetAttribute(
+        &handle, &matmul, CUSPARSELT_MATMUL_ACTIVATION_GELU_SCALING,
+        &gelu_scale, sizeof(gelu_scale)))
   } else {
     assert(activation == SpmmPluginDynamic::Activation::kNone &&
            "Received unknown activation");
@@ -177,6 +192,8 @@ void SpmmPluginDynamic::cusparseLtContext::init(
 }
 
 void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
+  // Plan needs alg id, so if the alg id is changed, we need to reinitialize a
+  // new plan
   assert(is_initialized &&
          "Descriptor should be initialized before setting algorithm");
   CHECK_CUSPARSE(cusparseLtMatmulAlgSetAttribute(
@@ -208,7 +225,7 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
       CUSPARSELT_SPARSITY_50_PERCENT))
   CHECK_CUSPARSE(
       cusparseLtSpMMACompressedSize2(&handle, &matB, compressed_size))
-  CHECK_CUDA(cudaMalloc(reinterpret_cast<void**> dest, *compressed_size))
+  CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(dest), *compressed_size))
   CHECK_CUSPARSE(cusparseLtSpMMACompress2(
       &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr))
   CHECK_CUSPARSE(cusparseLtMatDescriptorDestroy(&matB))
@@ -226,14 +243,16 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
       m_max_(0),
       is_configured_(false),
       optim_alg_(0),
-      weight_scale_(1.0f),
+      weight_scale_(nullptr),
+      weight_scale_dev_(nullptr),
       weight_compressed_(nullptr),
       weight_compressed_dev_(nullptr),
       compressed_size_(0),
       has_bias_(false),
       bias_(nullptr),
       bias_dev_(nullptr),
-      activation_(activation) {
+      activation_(activation),
+      gelu_scale_(1.0f) {
   /*
   1. Convert weight precision (on host)
   2. (Int8) Calculate scale and scale the weight (on host)
@@ -262,18 +281,21 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_dev),
                         precision_size_ * out_dim_ * k_))
   if (precision == DataType::kINT8) {
-    float max_weight{0.0f};
-    for (int i = 0; i < weight.count; ++i) {
-      float local_abs =
-          std::abs(reinterpret_cast<const float*>(weight_host.data())[i]);
-      max_weight = std::max(max_weight, local_abs);
+    weight_scale_ = new float[out_dim_];
+    for (int i = 0; i < out_dim_; ++i) {
+      float max_weight{0.0f};
+      for (int j = 0; j < k_; ++j) {
+        float local_abs = std::abs(
+            reinterpret_cast<const float*>(weight_host.data())[i * k_ + j]);
+        max_weight = std::max(max_weight, local_abs);
+      }
+      static_cast<float*>(weight_scale_)[i] = max_weight / 127.0f;
     }
-    weight_scale_ = max_weight / 127.0f;
     std::vector<int8_t> scale_buffer(weight.count);
     for (int i = 0; i < weight.count; ++i) {
       scale_buffer[i] = static_cast<int8_t>(
           round_scale(reinterpret_cast<const float*>(weight_host.data())[i] /
-                      weight_scale_));
+                      static_cast<float*>(weight_scale_)[i / k_]));
     }
     CHECK_CUDA(cudaMemcpy(weight_dev, scale_buffer.data(),
                           precision_size_ * weight.count,
@@ -307,13 +329,12 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
 }
 
 // Constructor for clone
-SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
-                                     const nvinfer1::DataType precision,
-                                     const int out_dim, const int k,
-                                     const void* weight_compressed,
-                                     size_t compressed_size, const void* bias,
-                                     bool is_configured, const int m_max,
-                                     const int optim_alg, Activation activation)
+SpmmPluginDynamic::SpmmPluginDynamic(
+    const std::string& layer_name, const nvinfer1::DataType precision,
+    const int out_dim, const int k, const void* weight_scale,
+    const void* weight_compressed, size_t compressed_size, const void* bias,
+    bool is_configured, const int m_max, const int optim_alg,
+    Activation activation, float gelu_scale)
     : layer_name_(layer_name),
       precision_(precision),
       out_dim_(out_dim),
@@ -321,14 +342,16 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
       m_max_(m_max),
       is_configured_(is_configured),
       optim_alg_(optim_alg),
-      weight_scale_(1.0f),
+      weight_scale_(nullptr),
+      weight_scale_dev_(nullptr),
       weight_compressed_(nullptr),
       weight_compressed_dev_(nullptr),
       compressed_size_(compressed_size),
       has_bias_(false),
       bias_(nullptr),
       bias_dev_(nullptr),
-      activation_(activation) {
+      activation_(activation),
+      gelu_scale_(gelu_scale) {
   /*
   1. Copy the compressed weight (on host)
   2. Copy the compressed weight to device
@@ -347,6 +370,18 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   CHECK_CUDA(cudaMemcpy(weight_compressed_dev_, weight_compressed_,
                         compressed_size, cudaMemcpyHostToDevice))
 
+  if (precision_ == DataType::kINT8) {
+    weight_scale_ = new float[out_dim_];
+    std::copy_n(static_cast<const char*>(weight_scale),
+                sizeof(float) * out_dim_, static_cast<char*>(weight_scale_));
+    if (is_configured_) {
+      CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_scale_dev_),
+                            sizeof(float) * out_dim_))
+      CHECK_CUDA(cudaMemcpy(weight_scale_dev_, weight_scale_,
+                            sizeof(float) * out_dim_, cudaMemcpyHostToDevice))
+    }
+  }
+
   has_bias_ = (bias != nullptr);
   if (has_bias_) {
     // Each plugin has a copy of bias
@@ -363,7 +398,8 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
 
   if (is_configured_) {
     cudaDataType_t dataType = convertTrtType(precision_);
-    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_);
+    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_,
+                       gelu_scale_);
     spmm_context_.setAlgo(optim_alg_);
   }
 }
@@ -371,6 +407,8 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
 SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
                                      size_t length)
     : layer_name_(name),
+      weight_scale_(nullptr),
+      weight_scale_dev_(nullptr),
       weight_compressed_(nullptr),
       weight_compressed_dev_(nullptr),
       bias_(nullptr),
@@ -383,10 +421,10 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
   deserialize_value(&data, &length, &m_max_);
   deserialize_value(&data, &length, &is_configured_);
   deserialize_value(&data, &length, &optim_alg_);
-  deserialize_value(&data, &length, &weight_scale_);
   deserialize_value(&data, &length, &compressed_size_);
   deserialize_value(&data, &length, &has_bias_);
   deserialize_value(&data, &length, &activation_);
+  deserialize_value(&data, &length, &gelu_scale_);
 
   assert(is_configured_ && "Deserialize data should be configured");
 
@@ -406,20 +444,30 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
                           cudaMemcpyHostToDevice))
   }
 
+  if (precision_ == DataType::kINT8) {
+    weight_scale_ = new float[out_dim_];
+    deserialize_value_size(&data, &length, weight_scale_,
+                           sizeof(float) * out_dim_);
+    CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_scale_dev_),
+                          sizeof(float) * out_dim_))
+    CHECK_CUDA(cudaMemcpy(weight_scale_dev_, weight_scale_,
+                          sizeof(float) * out_dim_, cudaMemcpyHostToDevice))
+  }
+
   if (is_configured_) {
     cudaDataType_t dataType = convertTrtType(precision_);
-    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_);
+    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_,
+                       gelu_scale_);
     spmm_context_.setAlgo(optim_alg_);
   }
 }
 
 IPluginV2DynamicExt* SpmmPluginDynamic::clone() const noexcept {
   try {
-    auto* p =
-        new SpmmPluginDynamic(layer_name_, precision_, out_dim_, k_,
-                              weight_compressed_, compressed_size_, bias_,
-                              is_configured_, m_max_, optim_alg_, activation_);
-    p->weight_scale_ = weight_scale_;
+    auto* p = new SpmmPluginDynamic(
+        layer_name_, precision_, out_dim_, k_, weight_scale_,
+        weight_compressed_, compressed_size_, bias_, is_configured_, m_max_,
+        optim_alg_, activation_, gelu_scale_);
     p->setPluginNamespace(namespace_.c_str());
 
     return p;
@@ -518,8 +566,27 @@ void SpmmPluginDynamic::configurePlugin(const DynamicPluginTensorDesc* inputs,
     }
 
     m_max_ = BS;
+    if (precision_ == DataType::kINT8) {
+      float scale;
+      if (activation_ == Activation::kGelu) {
+        scale = inputs->desc.scale;
+        gelu_scale_ = 1 / outputs->desc.scale;
+      } else {
+        scale = inputs->desc.scale / outputs->desc.scale;
+      }
+      for (int i = 0; i < out_dim_; ++i) {
+        static_cast<float*>(weight_scale_)[i] =
+            static_cast<const float*>(weight_scale_)[i] * scale;
+      }
+      CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_scale_dev_),
+                            sizeof(float) * out_dim_))
+      CHECK_CUDA(cudaMemcpy(weight_scale_dev_, weight_scale_,
+                            sizeof(float) * out_dim_, cudaMemcpyHostToDevice))
+    }
+
     if (has_bias_) {
-      if (inputs->desc.type == DataType::kINT8) {
+      if (inputs->desc.type == DataType::kINT8 &&
+          activation_ == Activation::kNone) {
         for (int i = 0; i < out_dim_; ++i) {
           static_cast<float*>(bias_)[i] =
               static_cast<const float*>(bias_)[i] / outputs->desc.scale;
@@ -531,24 +598,30 @@ void SpmmPluginDynamic::configurePlugin(const DynamicPluginTensorDesc* inputs,
                             cudaMemcpyHostToDevice))
     }
     cudaDataType_t dataType = convertTrtType(precision_);
-    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_);
+    spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_,
+                       gelu_scale_);
 
     void* dA;
     void* dC;
     void* d_workspace;
     float alpha{1.0f};
     float beta{0.0f};
-    if (precision_ == DataType::kINT8) {
-      alpha = inputs->desc.scale * weight_scale_ / outputs->desc.scale;
-    }
     CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&dA),
                           m_max_ * k_ * sizeof(dataType)));
     CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&dC),
                           m_max_ * out_dim_ * sizeof(dataType)));
     CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&d_workspace),
                           spmm_context_.workspace_size));
+
+    void* alpha_vec;
+    if (precision_ == DataType::kINT8) {
+      alpha_vec = weight_scale_dev_;
+    } else {
+      alpha_vec = &alpha;
+    }
+
     CHECK_CUSPARSE(cusparseLtMatmulSearch(
-        &spmm_context_.handle, &spmm_context_.plan, &alpha, dA,
+        &spmm_context_.handle, &spmm_context_.plan, alpha_vec, dA,
         weight_compressed_dev_, &beta, dC, dC, d_workspace, nullptr, 0))
     CHECK_CUSPARSE(cusparseLtMatmulAlgGetAttribute(
         &spmm_context_.handle, &spmm_context_.alg_sel,
@@ -594,11 +667,10 @@ int SpmmPluginDynamic::enqueue(const PluginTensorDesc* inputDesc,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == DataType::kINT8) {
-      alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
       const auto* const input = static_cast<const int8_t*>(inputs[0]);
       auto* output = static_cast<int8_t*>(outputs[0]);
       cusparseStatus_t status = cusparseLtMatmul(
-          &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
+          &spmm_context_.handle, &spmm_context_.plan, weight_scale_dev_, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else {
@@ -641,8 +713,10 @@ size_t SpmmPluginDynamic::getSerializationSize() const noexcept {
   return compressed_size_ + (has_bias_ ? sizeof(float) * out_dim_ : 0) +
          sizeof(precision_) + sizeof(precision_size_) + sizeof(element_size_) +
          sizeof(out_dim_) + sizeof(k_) + sizeof(m_max_) +
-         sizeof(is_configured_) + sizeof(optim_alg_) + sizeof(weight_scale_) +
-         sizeof(compressed_size_) + sizeof(has_bias_) + sizeof(activation_);
+         sizeof(is_configured_) + sizeof(optim_alg_) +
+         (precision_ == DataType::kINT8 ? sizeof(float) * out_dim_ : 0) +
+         sizeof(compressed_size_) + sizeof(has_bias_) + sizeof(activation_) +
+         sizeof(gelu_scale_);
 }
 
 void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
@@ -654,10 +728,10 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
   serialize_value(&buffer, m_max_);
   serialize_value(&buffer, is_configured_);
   serialize_value(&buffer, optim_alg_);
-  serialize_value(&buffer, weight_scale_);
   serialize_value(&buffer, compressed_size_);
   serialize_value(&buffer, has_bias_);
   serialize_value(&buffer, activation_);
+  serialize_value(&buffer, gelu_scale_);
 
   char* d = static_cast<char*>(buffer);
   std::copy_n(static_cast<const char*>(weight_compressed_), compressed_size_,
@@ -666,6 +740,11 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
     d += compressed_size_;
     std::copy_n(static_cast<const char*>(bias_), out_dim_ * sizeof(float), d);
   }
+  if (precision_ == DataType::kINT8) {
+    d += out_dim_ * sizeof(float);
+    std::copy_n(static_cast<const char*>(weight_scale_),
+                out_dim_ * sizeof(float), d);
+  }
 }
 
 void SpmmPluginDynamic::destroy() noexcept {
@@ -673,6 +752,9 @@ void SpmmPluginDynamic::destroy() noexcept {
   CHECK_CUDA(cudaFree(weight_compressed_dev_))
   if (has_bias_) {
     CHECK_CUDA(cudaFree(bias_dev_))
+  }
+  if (precision_ == DataType::kINT8) {
+    CHECK_CUDA(cudaFree(weight_scale_dev_))
   }
   if (is_configured_) {
     spmm_context_.destroy();
@@ -691,6 +773,8 @@ void SpmmPluginDynamic::setPluginNamespace(const char* libNamespace) noexcept {
 const char* SpmmPluginDynamic::getPluginNamespace() const noexcept {
   return namespace_.c_str();
 }
+
+/////////////////////////////////////////////////////////
 
 inline nvinfer1::DataType fieldTypeToDataType(
     const nvinfer1::PluginFieldType ftype) {
