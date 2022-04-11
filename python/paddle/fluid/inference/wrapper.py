@@ -14,7 +14,6 @@
 
 from ..core import AnalysisConfig, PaddleDType, PaddlePlace
 from ..core import PaddleInferPredictor, PaddleInferTensor
-from .. import core
 
 import numpy as np
 
@@ -38,8 +37,6 @@ def tensor_copy_from_cpu(self, data):
         raise TypeError(
             "In copy_from_cpu, we only support numpy ndarray and list[str] data type."
         )
-
-
 
 
 Tensor.copy_from_cpu = tensor_copy_from_cpu
