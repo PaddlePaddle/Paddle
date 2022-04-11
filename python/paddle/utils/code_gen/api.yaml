@@ -833,7 +833,7 @@
     func : HuberLossInferMeta
   kernel :
     func : huber_loss
-  # backward : huber_loss_grad
+  backward : huber_loss_grad
 
 - api : imag
   args : (Tensor x)
@@ -945,6 +945,19 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+
+# label_smooth
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [label]
+  kernel :
+    func : label_smooth
+    data_type : label
+  optional : prior_dist
+  backward : label_smooth_grad
 
 # leaky_relu
 - api : leaky_relu
@@ -1302,6 +1315,16 @@
   optional : weight
   backward : nll_loss_grad
 
+- api : norm
+  args : (Tensor x, int axis, float epsilon, bool is_test)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+    func : norm
+  intermediate : norm
+  backward : norm_grad
+
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -1598,6 +1621,7 @@
     func : SegmentPoolInferMeta
   kernel :
     func : segment_pool
+    data_type : x
   backward : segment_pool_grad
 
 # selu
@@ -1794,6 +1818,17 @@
     data_type : x
   backward : sum_grad
 
+# The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
+- api : swish
+  args : (Tensor x, float beta=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : swish
+  backward : swish_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
@@ -1911,6 +1946,25 @@
     func : trunc
   backward : trunc_grad
 
+# python API: paddle.nn.initializer.TruncatedNormal
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    backend : place
+    data_type : dtype
+
+- api : unbind
+  args : (Tensor input, int axis)
+  output : Tensor[]
+  invoke : unbind_impl(input, axis)
+  backward : unbind_grad
+
 # unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
@@ -1920,6 +1974,16 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+# The `axis` argument of Python API paddle.unique is not vector
+- api : unique
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueInferMeta
+  kernel :
+    func : unique
+    data_type : x
 
 - api : unsqueeze
   args : (Tensor x, IntArray axes)

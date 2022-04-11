@@ -475,6 +475,54 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
   return api_output;
 }
 
+std::vector<Tensor> unbind_impl(const Tensor& input, int axis) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(input);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  Backend kernel_backend = kernel_key.backend();
+  DataLayout kernel_layout = kernel_key.layout();
+  DataType kernel_data_type = kernel_key.dtype();
+
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "unbind", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "unbind API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  VLOG(6) << "unbind API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto dense_input = PrepareData(input, kernel.InputAt(0), {});
+
+  // Calculate the number of out tensors
+  auto input_shape = input.dims();
+  if (axis < 0) {
+    axis = input_shape.size() + axis;
+  }
+  auto out_num = input_shape[axis];
+
+  std::vector<Tensor> out;
+  auto dense_outs = SetKernelOutput(out_num, kernel_backend, &out);
+  std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_num);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_num);
+  for (int64_t i = 0; i < out_num; ++i) {
+    meta_outs.push_back(dense_outs[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
+  }
+
+  phi::UnbindInferMeta(MakeMetaTensor(*dense_input), axis, meta_out_ptrs);
+
+  using kernel_signature = void (*)(const phi::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    int,
+                                    std::vector<phi::DenseTensor*>&);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx, *dense_input, axis, dense_outs);
+
+  return out;
+}
+
 ////////////////// Backward(grad) api impls //////////////////////
 
 // TODO(chenweihang):  the original sum grad op can support higher-level
