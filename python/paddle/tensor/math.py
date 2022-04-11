@@ -94,7 +94,7 @@ def log(x, name=None):
 
     .. math::
 
-        Out = \\ln(x)
+        Out = \ln(x)
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
@@ -213,7 +213,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     .. math::
 
-        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+        out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1838,7 +1838,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
-       logsumexp(x) = \\log\\sum exp(x)
+       logsumexp(x) = \log\sum exp(x)
 
     Args:
         x (Tensor): The input Tensor with data type float32 or float64, which 
@@ -2407,7 +2407,7 @@ def log1p(x, name=None):
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
-        Out = \\ln(x+1)
+        Out = \ln(x+1)
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
@@ -2445,7 +2445,7 @@ def log2(x, name=None):
 
     .. math::
 
-        Out = \\log_2x
+        Out = \log_2x
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
@@ -2497,7 +2497,7 @@ def log10(x, name=None):
 
     .. math::
 
-        Out = \\log_10_x
+        Out = \log_10_x
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
@@ -3279,7 +3279,7 @@ def tanh(x, name=None):
     Tanh Activation Operator.
 
     .. math::
-        out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+        out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Args:
         x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
