@@ -15,11 +15,7 @@
 #pragma once
 
 #include <cmath>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/phi/kernels/autotune/cache.h"
-
-DECLARE_bool(use_autotune);
 
 namespace phi {
 namespace autotune {
@@ -33,46 +29,11 @@ class AutoTuneStatus {
 
   bool UseAutoTune() { return use_autotune_; }
 
-  // EnableAutoTune and DisableAutoTune Should be used for debug only.
-  void EnableAutoTune() {
-    use_autotune_ = true;
-    Init();
-  }
+  // EnableAutoTune and DisableAutoTune should be used for debug only.
+  void EnableAutoTune();
+  void DisableAutoTune();
 
-  void DisableAutoTune() {
-    use_autotune_ = false;
-    Init();
-  }
-
-  void Update() {
-    if (!FLAGS_use_autotune) {
-      return;
-    }
-
-    current_steps_id_ += 1;
-    if (current_steps_id_ < start_step_id_) {
-      use_autotune_ = false;
-    } else if (current_steps_id_ >= start_step_id_ &&
-               current_steps_id_ < stop_step_id_) {
-      use_autotune_ = true;
-      AutoTuneCache::Instance().UpdateStatus();
-      step_hit_rates_.push_back(StepHitRate());
-      VLOG(3) << "Step ID: " << current_steps_id_
-              << ", Accumulative Cache Hit Rate: "
-              << AutoTuneCache::Instance().CacheHitRate()
-              << ", Cache Size: " << AutoTuneCache::Instance().Size()
-              << ", Current Step Hit Rate: " << StepHitRate();
-    } else {
-      use_autotune_ = false;
-      // clean cache according miss rate
-      float miss_rate = static_cast<float>(1) - RecentHitRate();
-      if (current_steps_id_ == stop_step_id_) {
-        AutoTuneCache::Instance().Clean(miss_rate);
-      }
-      VLOG(3) << "Step ID: " << current_steps_id_
-              << ", Recent Miss Rate: " << miss_rate;
-    }
-  }
+  void Update();
 
   int64_t StepID() { return current_steps_id_; }
 
