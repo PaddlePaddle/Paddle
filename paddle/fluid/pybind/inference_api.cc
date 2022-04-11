@@ -76,6 +76,7 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::PaddleBuf;
 using paddle::PaddleDType;
+using paddle::PaddleDataLayout;
 using paddle::PaddlePassBuilder;
 using paddle::PaddlePlace;
 using paddle::PaddlePredictor;
@@ -85,6 +86,7 @@ using paddle::ZeroCopyTensor;
 
 namespace {
 void BindPaddleDType(py::module *m);
+void BindPaddleDataLayout(py::module *m);
 void BindPaddleBuf(py::module *m);
 void BindPaddleTensor(py::module *m);
 void BindPaddlePlace(py::module *m);
@@ -327,6 +329,7 @@ void CopyPaddleInferTensor(paddle_infer::Tensor &dst,  // NOLINT
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
+  BindPaddleDataLayout(m);
   BindPaddleBuf(m);
   BindPaddleTensor(m);
   BindPaddlePlace(m);
@@ -370,6 +373,14 @@ void BindPaddleDType(py::module *m) {
       .value("FLOAT32", PaddleDType::FLOAT32)
       .value("INT64", PaddleDType::INT64)
       .value("INT32", PaddleDType::INT32);
+}
+
+void BindPaddleDataLayout(py::module *m) {
+  py::enum_<PaddleDataLayout>(*m, "PaddleDataLayout")
+      .value("UNK", PaddleDataLayout::kUNK)
+      .value("Any", PaddleDataLayout::kAny)
+      .value("NHWC", PaddleDataLayout::kNHWC)
+      .value("NCHW", PaddleDataLayout::kNCHW);
 }
 
 void BindPaddleBuf(py::module *m) {
@@ -817,6 +828,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("share_external_data_bind", &PaddleInferShareExternalData)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
