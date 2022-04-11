@@ -20,6 +20,8 @@ endif()
 
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 
+cc_library(staticgraph_executor_statistics SRCS executor_statistics.cc DEPS enforce glog os_info)
+
 # cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 # skip win32 since wget is not installed by default on windows machine.
 if (WITH_GPU AND WITH_TESTING AND NOT WIN32 AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")

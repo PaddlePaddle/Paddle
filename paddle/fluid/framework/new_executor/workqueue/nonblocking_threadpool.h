@@ -129,6 +129,7 @@ class ThreadPoolTempl {
     // this. We expect that such scenario is prevented by program, that is,
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
+      // Allow 'false positive' which makes a redundant notification.
       if (num_tasks > num_threads_ - blocked_) {
         VLOG(6) << "Add task, Notify";
         ec_.Notify(false);
@@ -379,9 +380,8 @@ class ThreadPoolTempl {
       return false;
     }
 
-    // Number of blocked threads is used as termination condition.
-    // If we are shutting down and all worker threads blocked without work,
-    // that's we are done.
+    // Number of blocked threads is used as notification condition.
+    // We must increase the counter before the emptiness check.
     blocked_++;
 
     // Now do a reliable emptiness check.
@@ -393,6 +393,9 @@ class ThreadPoolTempl {
       return true;
     }
 
+    // Number of blocked threads is used as termination condition.
+    // If we are shutting down and all worker threads blocked without work,
+    // that's we are done.
     if (done_ && blocked_ == static_cast<unsigned>(num_threads_)) {
       ec_.CancelWait();
       // Almost done, but need to re-check queues.
