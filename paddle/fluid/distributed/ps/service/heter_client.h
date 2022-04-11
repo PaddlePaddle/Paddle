@@ -88,14 +88,14 @@ class HeterClient {
                           const std::vector<std::string>& node_list,
                           int32_t peer_role) {
     brpc::ChannelOptions options;
+    options.protocol = "baidu_std";
+    options.connection_type = "single";
+    options.timeout_ms = FLAGS_pserver_timeout_ms;
     std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
     if (peer_role == PEER_ROLE_IS_SWITCH) {
 #ifdef PADDLE_WITH_ARM_BRPC
-      options.mutable_ssl_options();
+// options.mutable_ssl_options();
 #else
-      options.protocol = "baidu_std";
-      options.connection_type = "single";
-      options.timeout_ms = FLAGS_pserver_timeout_ms;
       options.ssl_options.enable = need_encrypt;
 #endif
       client_channels = &peer_switch_channels_;
