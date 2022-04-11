@@ -60,6 +60,7 @@ void AutoTuneStatus::Update() {
     // if (current_steps_id_ == stop_step_id_) {
     //   AutoTuneCache::Instance().Clean(miss_rate);
     // }
+    AutoTuneCache::Instance().UpdateStatus();
     VLOG(3) << "Step ID: " << current_steps_id_ << ", Current Step Hit Rate: "
             << static_cast<int>(StepHitRate() * 100) << "%";
   }

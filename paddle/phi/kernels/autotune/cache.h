@@ -103,37 +103,14 @@ class AlgorithmsCache {
 
   int64_t CacheHits() const { return cache_hits_; }
 
-  float HitRateCalculation(int64_t cache_hits, int64_t cache_miss) const {
-    int64_t num_accesses = cache_hits + cache_miss;
+  float CacheHitRate() const {
+    int64_t num_accesses = cache_hits_ + cache_misses_;
     float cache_hit_rate = 0.;
     if (num_accesses != 0) {
       cache_hit_rate =
-          static_cast<float>(cache_hits) / static_cast<float>(num_accesses);
+          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
     }
     return cache_hit_rate;
-  }
-
-  float CacheHitRate() {
-    return HitRateCalculation(cache_hits_, cache_misses_);
-  }
-
-  void HitsRateUpdate() {
-    int current_hits = cache_hits_ - formal_cache_hits_;
-    int current_miss = cache_misses_ - formal_cache_misses_;
-    formal_cache_hits_ = cache_hits_;
-    formal_cache_misses_ = cache_misses_;
-    float step_hit_rate = HitRateCalculation(current_hits, current_miss);
-    step_hit_rates_.push_back(step_hit_rate);
-  }
-
-  float AutoTuneHitRate() {
-    int statistic_step_nums = std::ceil(step_hit_rates_.size() * 0.3);
-    float hits_rate_sum =
-        std::accumulate(step_hit_rates_.rbegin(),
-                        step_hit_rates_.rbegin() + statistic_step_nums,
-                        0.0);
-    float statistic_hits_rate = hits_rate_sum / statistic_step_nums;
-    return statistic_hits_rate;
   }
 
   int64_t Size() const { return hash_.size(); }
@@ -141,13 +118,9 @@ class AlgorithmsCache {
  private:
   std::unordered_map<size_t, AlgorithmT> hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
-  std::vector<float> step_hit_rates_;
 
   int64_t cache_hits_{0};
   int64_t cache_misses_{0};
-
-  int64_t formal_cache_hits_ = 0;
-  int64_t formal_cache_misses_ = 0;
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -188,15 +161,10 @@ class AutoTuneCache {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
     // Set a small tolerance to avoid performance degradation
     // due to large cache size under dynamic shape.
-    // if (miss_rate > 0.01) {
-    //   auto_tune_map_.clear();
-    //   keep_cache_ = false;
-    // }
-    for (auto it = auto_tune_map_.begin(); it != auto_tune_map_.end();) {
-      float op_hits_rate = it->second.AutoTuneHitRate();
-      if (op_hits_rate > 0.95f) {
-        auto_tune_map_.erase(it++);
-      }
+    if (miss_rate > 0.01) {
+      /* TODO(limingshu): Currently works for conv op only, this
+          method shall be opimized when more ops involved in.*/
+      // auto_tune_map_.clear();
     }
   }
 
@@ -217,8 +185,6 @@ class AutoTuneCache {
     total_cache_hits_ = cache_hits;
     total_cache_misses_ = cache_misses;
   }
-
-  bool GetTuneStatus() { return keep_cache_; }
 
   // The number of total config cached
   int64_t Size() const { return total_size_; }
@@ -244,10 +210,6 @@ class AutoTuneCache {
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};
   int64_t total_size_{0};
-
-  /* Once AutoTuneCache works,
-     keep_cache_ shall be set as true by default. */
-  bool keep_cache_ = true;
 };
 
 }  // namespace autotune
