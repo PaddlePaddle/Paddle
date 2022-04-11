@@ -59,6 +59,7 @@ def minimize_bfgs(objective_func,
         max_line_search_iters (int): the maximum number of line search iterations.
         initial_step_length (float): step length used in first iteration of line search. different initial_step_length may cause different optimal result. For methods like Newton and quasi-Newton the initial trial step length should always be 1.0.
         dtype ('float32' | 'float64'): data type used in the algorithm.
+        name (str): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         output(tuple):
