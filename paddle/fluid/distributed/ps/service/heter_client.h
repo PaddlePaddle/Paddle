@@ -95,7 +95,7 @@ class HeterClient {
     if (peer_role == PEER_ROLE_IS_SWITCH) {
 #ifdef PADDLE_WITH_ARM_BRPC
       if (need_encrypt) {
-        options.mutable_ssl_options();
+        // options.mutable_ssl_options();
       }
       VLOG(4) << "ssl enabled in arm";
 #else
@@ -176,7 +176,7 @@ class HeterClient {
     VLOG(4) << "peer role is: " << peer_role
             << ", addr is: " << peer_endpoints[0];
     switch_s_instance_.SetPeerSwitchList(peer_endpoints);
-    switch_s_instance_.InitClientChannels(false, peer_endpoints, peer_role);
+    switch_s_instance_.InitClientChannels(true, peer_endpoints, peer_role);
     return switch_s_instance_;
   }
 
