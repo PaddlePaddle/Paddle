@@ -29,6 +29,52 @@ sample_size;
 
 */
 
+template <int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
+__global__ void neighbor_sample_example_v2(
+    GpuPsCommGraph graph, 
+    int* node_index, int* actual_size, int64_t* res,
+    int sample_len, int n) {
+  assert(blockDim.x == WARP_SIZE);
+  assert(blockDim.y == BLOCK_WARPS);
+
+  int i = blockIdx.x * TILE_SIZE + threadIdx.y;
+  const int last_idx = min(static_cast<int>(blockIdx.x + 1) * TILE_SIZE, n);
+  curandState rng;
+  curand_init(blockIdx.x, threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+
+  while (i < last_idx) {
+    int neighbor_len = graph.node_list[node_index[i]].neighbor_size;
+    int data_offset = graph.node_list[node_index[i]].neighbor_offset;
+    int offset = i * sample_len;
+    int64_t* data = graph.neighbor_list;
+    if (neighbor_len <= sample_len) {
+      for (int j = threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
+        res[offset + j] = data[data_offset + j]; 
+      }
+      actual_size[i] = neighbor_len;
+    } else {
+      for (int j = threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
+        res[offset + j] = j;
+      } 
+      __syncwarp();
+      for (int j = sample_len + threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
+        const int num = curand(&rng) % (j + 1);
+        if (num < sample_len) {
+          atomicMax(reinterpret_cast<unsigned int*>(res + offset + num),
+                    static_cast<unsigned int>(j));
+        }
+      }
+      __syncwarp();
+      for (int j = threadIdx.x; j < sample_len; j += WARP_SIZE) {
+        const int perm_idx = res[offset + j] + data_offset;
+        res[offset + j] = data[perm_idx];
+      }
+      actual_size[i] = sample_len;
+    }
+    i += BLOCK_WARPS;
+  }
+}
+
 __global__ void neighbor_sample_example(GpuPsCommGraph graph, int* node_index,
                                         int* actual_size, int64_t* res,
                                         int sample_len, int* sample_status,
@@ -534,9 +580,9 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     int* id_array = reinterpret_cast<int*>(node.val_storage);
     int* actual_size_array = id_array + shard_len;
     int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
-    int sample_grid_size = (shard_len - 1) / dim_y + 1;
-    dim3 block(parallel_sample_size, dim_y);
-    dim3 grid(sample_grid_size);
+    //int sample_grid_size = (shard_len - 1) / dim_y + 1;
+    //dim3 block(parallel_sample_size, dim_y);
+    //dim3 grid(sample_grid_size);
     // int sample_grid_size = shard_len / block_size_ + 1;
     // VLOG(0)<<"in sample grid_size = "<<sample_grid_size<<" block_size
     // ="<<block_size_<<" device = "<<resource_->dev_id(i)<<"len = "<<len;;
@@ -544,10 +590,19 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     //                           resource_->remote_stream(i, gpu_id)>>>(
     //     graph, res_array, actual_size_array, sample_array, sample_size,
     //     shard_len);
-    neighbor_sample_example<<<grid, block, 0,
+    /*neighbor_sample_example<<<grid, block, 0,
                               resource_->remote_stream(i, gpu_id)>>>(
         graph, id_array, actual_size_array, sample_array, sample_size,
-        sample_status[i], shard_len, gpu_id);
+        sample_status[i], shard_len, gpu_id);*/
+    constexpr int WARP_SIZE = 32;
+    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+    const dim3 block(WARP_SIZE, BLOCK_WARPS);
+    const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
+    neighbor_sample_example_v2<WARP_SIZE, BLOCK_WARPS, TILE_SIZE><<<grid, block, 0, 
+                                 resource_->remote_stream(i, gpu_id)>>>(
+        graph, id_array, actual_size_array, sample_array, sample_size,
+        shard_len);
   }
   /*
   for (int i = 0; i < total_gpu; ++i) {
