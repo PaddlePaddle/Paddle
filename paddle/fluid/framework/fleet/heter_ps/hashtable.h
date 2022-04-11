@@ -58,7 +58,7 @@ class TableContainer
 };
 #endif
 
-#if defined(__xpu__)
+#if defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
