@@ -18,6 +18,7 @@
 #include "base/endpoint.h"
 #else
 #include "butil/endpoint.h"
+#include "butil/object_pool.h"
 #endif
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
