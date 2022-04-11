@@ -87,7 +87,7 @@ void BindTCPStore(py::module *m) {
                     import datetime
                     import paddle
 
-                    store = paddle.distributed.TCPStore("127.0.0.1", 6170, True, 1,
+                    store = paddle.distributed.TCPStore("127.0.0.1", 6171, True, 1,
                                                             datetime.timedelta(0))
                     store.add("my", 3)
                     ret = store.get('my')
@@ -111,7 +111,7 @@ void BindTCPStore(py::module *m) {
                     import datetime
                     import paddle
 
-                    store = paddle.distributed.TCPStore("127.0.0.1", 6170, True, 1,
+                    store = paddle.distributed.TCPStore("127.0.0.1", 6172, True, 1,
                                                             datetime.timedelta(0))
                     store.add("my", 3)
                     store.add("my", 3)
@@ -134,7 +134,7 @@ void BindTCPStore(py::module *m) {
                import datetime
                import paddle
 
-               store = paddle.distributed.TCPStore("127.0.0.1", 6170, True, 1,
+               store = paddle.distributed.TCPStore("127.0.0.1", 6173, True, 1,
                                                        datetime.timedelta(0))
                store.wait("my")
 
@@ -173,7 +173,7 @@ void BindTCPStore(py::module *m) {
                import datetime
                import paddle
 
-               store = paddle.distributed.TCPStore("127.0.0.1", 6170, True, 1,
+               store = paddle.distributed.TCPStore("127.0.0.1", 6174, True, 1,
                                                        datetime.timedelta(0))
                store.add("my", 3)
                ret = store.get('my')
