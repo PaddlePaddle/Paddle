@@ -903,8 +903,7 @@ def image_decode(x,
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A list of decoded image tensors with shape of
-                (imge_channels, image_height, image_width)
+        Tensor: A list of decoded image tensors with shape of (imge_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
@@ -1009,8 +1008,7 @@ def image_decode_random_crop(x,
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A list of decoded image tensors with shape of
-                (imge_channels, image_height, image_width)
+        Tensor: A list of decoded image tensors with shape of (imge_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
@@ -1092,8 +1090,7 @@ def random_flip(x, prob=0.5, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A bool Tensor in shape of [N, 1], N is the shape of 1st
-                dimension of input Tensor.
+        Tensor: A bool Tensor in shape of [N, 1], N is the shape of 1st dimension of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -1692,9 +1689,8 @@ def random_crop_and_resize(x,
             default.
 
     Returns:
-        Tensor: The output is a 4-D tensor with shape (batch_size,
-                channels, h, w) or (batch_random_crop_and_resize, h, w, 
-                channels). The data type is uint8 or float32.
+        Tensor: The output is a 4-D tensor with shape (batch_size, channels, h, w) or (batch_random_crop_and_resize, h, w, channels).
+                The data type is uint8 or float32.
 
     Examples:
         .. code-block:: python
@@ -1786,8 +1782,7 @@ def image_resize(x,
             default.
 
     Returns:
-        Tensor: The output of image_resizeis a 4-D tensor with shape
-            (batch_size, channels, h, w) or (batch_resize, h, w, channels). 
+        Tensor: The output of image_resizeis a 4-D tensor with shape (batch_size, channels, h, w) or (batch_resize, h, w, channels). 
             The data type is uint8 or float32.
 
     Examples:
