@@ -95,8 +95,9 @@ class HeterClient {
     if (peer_role == PEER_ROLE_IS_SWITCH) {
 #ifdef PADDLE_WITH_ARM_BRPC
       if (need_encrypt) {
-        // options.mutable_ssl_options();
+        options.mutable_ssl_options();
       }
+      options.connection_type = "";
       VLOG(4) << "ssl enabled in arm";
 #else
       options.ssl_options.enable = need_encrypt;
