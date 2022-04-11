@@ -139,6 +139,14 @@ void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
                            const std::vector<MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
+void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+                           const MetaTensor& out_grad,
+                           std::vector<MetaTensor*> x_grad);
+
+void MultiplexGradInferMeta(const MetaTensor& ids,
+                            const MetaTensor& out_grad,
+                            std::vector<MetaTensor*> ins_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
                           paddle::optional<const MetaTensor&> weight,
@@ -175,6 +183,10 @@ void PoolGradInferMeta(const MetaTensor& x,
                        MetaTensor* dx);
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
+
+void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
+                                const MetaTensor& x_grad_grad,
+                                MetaTensor* out_grad_grad);
 
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,

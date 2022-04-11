@@ -1,4 +1,4 @@
-// RUN: infrtopt -phi-op-convert -infrt-op-fuse %s
+// RUN: infrtopt -phi-op-convert=valid-targets=CPU-FP32-NCHW -infrt-op-fuse %s
 
 // CHECK-LABEL: @ops
 func @ops(%a:!infrt.lod_tensor<?xf32,0>, %b:!infrt.lod_tensor<?xf32,0>) {
