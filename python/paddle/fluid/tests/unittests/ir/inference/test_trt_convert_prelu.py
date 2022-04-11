@@ -136,7 +136,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64],
+                        "input_data": [4, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
                         "input_data": [2, 3],
@@ -146,7 +146,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 1, 1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64, 128, 128],
+                        "input_data": [4, 3, 16, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
                         "input_data": [2, 3, 16, 32],
@@ -156,10 +156,10 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64, 256],
+                        "input_data": [4, 3, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
-                        "input_data": [2, 3, 128],
+                        "input_data": [2, 3, 16],
                     }
 
         def clear_dynamic_shape():

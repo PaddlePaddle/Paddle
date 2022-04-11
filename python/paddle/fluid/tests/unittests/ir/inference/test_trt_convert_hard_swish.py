@@ -37,7 +37,7 @@ class TrtConvertHardSwishTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 3, 64, 64]).astype(np.float32)
+            return np.ones([1, 3, 32, 32]).astype(np.float32)
 
         for threshold in [6.0, 7.0, 100.0, 0.0, -1.0]:
             for scale in [5.0, 6.0, 7.0, -1.0, 0.0, 100.0]:
@@ -74,9 +74,9 @@ class TrtConvertHardSwishTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 16, 16]}
+            self.dynamic_shape.max_input_shape = {"input_data": [2, 3, 32, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
