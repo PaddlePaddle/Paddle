@@ -239,5 +239,15 @@ class EagerUtils {
       std::vector<std::vector<paddle::experimental::Tensor>>* out_grads,
       const std::vector<std::vector<GradSlotMeta>>& grad_out_metas);
 };
+void print_mem_info3(const std::string& info);
 
+class print_mem_info_guard3 {
+ public:
+  print_mem_info_guard3(const std::string& op_type) {
+    print_mem_info3(op_type + " begin");
+    op_type_ = op_type;
+  }
+  ~print_mem_info_guard3() { print_mem_info3(op_type_ + " end"); }
+  std::string op_type_;
+};
 }  // namespace egr

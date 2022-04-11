@@ -110,6 +110,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    print_mem_info_guard guard("%s");
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -328,8 +329,8 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      call_api_str, return_str);
+      OP_FUNCTION_TEMPLATE, func_name, op_type, ins_cast_str, op_type,
+      input_args_num, call_api_str, return_str);
 
   return op_function_str;
 }

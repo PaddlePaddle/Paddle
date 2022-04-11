@@ -151,7 +151,7 @@ GRAD_FUNCTION_TEMPLATE = \
 """
 std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
     // Fill Zero For GradIn Tensors
-    egr::print_mem_info_guard3 guard("{}");
+    paddle::pybind::print_mem_info_guard guard("{}");
 {}
 
     // Apply Gradient Hooks
@@ -268,6 +268,7 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
@@ -1472,9 +1473,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_node_creation_str = f"if(create_graph) VLOG(3) << \"Higher order grad node for {grad_node_name} has not been implemented yet.\";"
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, forward_api_name + "_grad", fill_zero_str,
-            get_grad_in_args_str, grad_node_name, grad_function_call_str,
-            get_outputs_str, inputs_autograd_meta_str,
+            grad_node_name, forward_api_name+"_grad", fill_zero_str, get_grad_in_args_str, grad_node_name,
+            grad_function_call_str, get_outputs_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
 

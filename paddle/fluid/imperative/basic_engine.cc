@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -389,6 +390,23 @@ static void PerformBackwardInplace(const std::string& op_type,
   }
 }
 
+void print_mem_info2(const std::string& info) {
+  auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+  auto reserved = paddle::memory::StatGetCurrentValue("Reserved", 0);
+  std::cout << info << ", allocated = " << allocated
+            << ", reserved = " << reserved << std::endl;
+}
+
+class print_mem_info_guard2 {
+ public:
+  print_mem_info_guard2(const std::string& op_type) {
+    print_mem_info2(op_type + " begin");
+    op_type_ = op_type;
+  }
+  ~print_mem_info_guard2() { print_mem_info2(op_type_ + " end"); }
+  std::string op_type_;
+};
+
 void BasicEngine::Execute() {
   platform::RecordEvent backward_record_event(
       "backward", platform::TracerEventType::Operator, 1);
@@ -569,6 +587,7 @@ void BasicEngine::Execute() {
 
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
+        print_mem_info_guard2 guard(cur_op.Type());
         try {
           if (tmp_ins_ptr == nullptr) {
             OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),

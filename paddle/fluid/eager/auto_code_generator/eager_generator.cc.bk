@@ -2362,8 +2362,7 @@ static std::string GenerateGradNodeCCContents(
       "  VLOG(3) << \"Running Eager Backward Node: GradNode%s\";\n";
   std::string generated_grad_function_body =
       paddle::string::Sprintf(EAGER_LOG_TEMPLATE, fwd_op_type);
-  const char* MEM_INFO_TEMPLATE =
-      "  egr::print_mem_info_guard3 guard(\"%s_grad\");\n";
+  const char* MEM_INFO_TEMPLATE ="  paddle::pybind::print_mem_info_guard guard(\"%s_grad\");\n";
   generated_grad_function_body +=
       paddle::string::Sprintf(MEM_INFO_TEMPLATE, fwd_op_type);
   // This is a Copy
@@ -2688,6 +2687,7 @@ static void GenerateNodeCCFile(const std::string& node_cc_path,
       "#include \"paddle/fluid/framework/op_registry.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/pybind/op_function_common.h\"\n"
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n";
   std::string node_cc_include_str =

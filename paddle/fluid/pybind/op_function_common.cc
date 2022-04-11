@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 
@@ -879,6 +880,13 @@ ssize_t GetIdxFromCoreOpsInfoMap(
     }
   }
   return -1;
+}
+
+void print_mem_info(const std::string& info) {
+  auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+  auto reserved = paddle::memory::StatGetCurrentValue("Reserved", 0);
+  std::cout << info << ", allocated = " << allocated
+            << ", reserved = " << reserved << std::endl;
 }
 
 }  // namespace pybind
