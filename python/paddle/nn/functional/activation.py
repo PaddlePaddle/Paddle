@@ -175,7 +175,10 @@ def gelu(x, approximate=False, name=None):
             #  [ 0.84119201,  1.39957154]]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_gelu(x, approximate)
+
+    if _in_legacy_dygraph():
         return _C_ops.gelu(x, 'approximate', approximate)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'gelu')
