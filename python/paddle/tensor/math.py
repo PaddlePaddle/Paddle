@@ -23,56 +23,52 @@ from paddle.common_ops_import import OpProtoHolder
 from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
-from paddle.tensor import cast
-from paddle.tensor.attribute import _complex_to_real_dtype
+from .manipulation import cast
+from .creation import _complex_to_real_dtype
+from .layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+
 import paddle
-from paddle.static import Variable
-from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ..static import Variable
+from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper
+from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
-from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 
 # TODO: define math functions
 # yapf: disable
-from ..fluid.layers import abs    # noqa: F401
-from ..fluid.layers import acos    # noqa: F401
-from ..fluid.layers import asin    # noqa: F401
-from ..fluid.layers import ceil    # noqa: F401
-from ..fluid.layers import ceil_    # noqa: F401
-from ..fluid.layers import cos    # noqa: F401
-from ..fluid.layers import tan    # noqa: F401
-from ..fluid.layers import sinh    # noqa: F401
-from ..fluid.layers import cosh    # noqa: F401
-from ..fluid.layers import exp    # noqa: F401
-from ..fluid.layers import exp_    # noqa: F401
-from ..fluid.layers import expm1    # noqa: F401
-from ..fluid.layers import floor    # noqa: F401
-from ..fluid.layers import floor_    # noqa: F401
-from ..fluid.layers import log    # noqa: F401
-from ..fluid.layers import reciprocal    # noqa: F401
-from ..fluid.layers import reciprocal_    # noqa: F401
-from ..fluid.layers import round    # noqa: F401
-from ..fluid.layers import round_    # noqa: F401
-from ..fluid.layers import rsqrt    # noqa: F401
-from ..fluid.layers import rsqrt_    # noqa: F401
-from ..fluid.layers import scale    # noqa: F401
-from ..fluid.layers import square    # noqa: F401
-from ..fluid.layers import stanh    # noqa: F401
-from ..fluid.layers import atan    # noqa: F401
-from ..fluid.layers import erf    # noqa: F401
-from ..fluid.layers import sqrt    # noqa: F401
-from ..fluid.layers import sqrt_    # noqa: F401
-from ..fluid.layers import sin    # noqa: F401
-from ..fluid.layers import lgamma    # noqa: F401
-from ..fluid.layers import asinh    # noqa: F401
-from ..fluid.layers import acosh    # noqa: F401
-from ..fluid.layers import atanh    # noqa: F401
+from .ops import abs    # noqa: F401
+from .ops import acos    # noqa: F401
+from .ops import asin    # noqa: F401
+from .ops import ceil    # noqa: F401
+from .ops import ceil_    # noqa: F401
+from .ops import cos    # noqa: F401
+from .ops import tan    # noqa: F401
+from .ops import sinh    # noqa: F401
+from .ops import cosh    # noqa: F401
+from .ops import exp    # noqa: F401
+from .ops import exp_    # noqa: F401
+from .ops import expm1    # noqa: F401
+from .ops import floor    # noqa: F401
+from .ops import floor_    # noqa: F401
+from .ops import reciprocal    # noqa: F401
+from .ops import reciprocal_    # noqa: F401
+from .ops import round    # noqa: F401
+from .ops import round_    # noqa: F401
+from .ops import rsqrt    # noqa: F401
+from .ops import rsqrt_    # noqa: F401
+from .ops import square    # noqa: F401
+from .ops import atan    # noqa: F401
+from .ops import erf    # noqa: F401
+from .ops import sqrt    # noqa: F401
+from .ops import sqrt_    # noqa: F401
+from .ops import sin    # noqa: F401
+from .ops import lgamma    # noqa: F401
+from .ops import asinh    # noqa: F401
+from .ops import acosh    # noqa: F401
+from .ops import atanh    # noqa: F401
 
-from ..fluid.layers import multiplex    # noqa: F401
-from ..fluid.layers import reduce_prod
+
 from ..fluid.layers import elementwise_sub
 from paddle import _C_ops
 
@@ -91,6 +87,241 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP64,
 ]
 
+
+def log(x, name=None):
+    r"""
+    Calculates the natural log of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\ln(x)
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        Tensor: The natural log of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = [[2,3,4], [7,8,9]]
+            x = paddle.to_tensor(x, dtype='float32')
+            res = paddle.log(x)
+            # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_log(x)
+    if _in_legacy_dygraph():
+        return _C_ops.log(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+    """
+    Scale operator.
+
+    Putting scale and bias to the input Tensor as following:
+
+    ``bias_after_scale`` is True:
+
+    .. math::
+                            Out=scale*X+bias
+
+    ``bias_after_scale`` is False:
+
+    .. math::
+                            Out=scale*(X+bias)
+
+    Args:
+        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
+        bias(float): The bias to be put on the input.
+        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Output tensor of scale operator, with shape and data type same as input.
+
+    Examples:
+        .. code-block:: python
+            
+            # scale as a float32 number
+            import paddle
+
+            data = paddle.randn(shape=[2,3], dtype='float32')
+            res = paddle.scale(data, scale=2.0, bias=1.0)
+
+        .. code-block:: python
+
+            # scale with parameter scale as a Tensor
+            import paddle
+
+            data = paddle.randn(shape=[2, 3], dtype='float32')
+            factor = paddle.to_tensor([2], dtype='float32')
+            res = paddle.scale(data, scale=factor, bias=1.0)
+
+    """
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
+    if _non_static_mode():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        out = _C_ops.scale(x, 'scale',
+                           float(_scale), 'bias',
+                           float(bias), 'bias_after_scale', bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
+
+    check_variable_and_dtype(x, "x", [
+        'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
+    ], "scale")
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+    helper = LayerHelper('scale', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return helper.append_activation(out)
+
+
+def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
+    """
+    stanh activation.
+
+    .. math::
+
+        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        scale_a (float, optional): The scale factor a of the input. Default is 0.67.
+        scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            out = paddle.stanh(x, scale_a=0.67, scale_b=1.72) # [1.00616539, 1.49927628, 1.65933108, 1.70390463]
+
+    """
+
+    if _non_static_mode():
+        return _C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
+
+    helper = LayerHelper('stanh', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='stanh',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'scale_a': scale_a,
+               'scale_b': scale_b})
+    return out
+
+def multiplex(inputs, index, name=None):
+    """
+
+    Based on the given index parameter, the OP selects a specific row from each input Tensor to construct the output Tensor.
+
+    If the input of this OP contains :math:`m` Tensors, where :math:`I_{i}` means the i-th input Tensor, :math:`i` between :math:`[0,m)` .
+
+    And :math:`O` means the output, where :math:`O[i]` means the i-th row of the output, then the output satisfies that :math:`O[i] = I_{index[i]}[i]` .
+
+    For Example:
+
+            .. code-block:: text
+
+                Given:
+
+                inputs = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+                          [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+                          [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+                          [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+
+                index = [[3],[0],[1],[2]]
+
+                out = [[3,0,3,4],    # out[0] = inputs[index[0]][0] = inputs[3][0] = [3,0,3,4]
+                       [0,1,3,4],    # out[1] = inputs[index[1]][1] = inputs[0][1] = [0,1,3,4]
+                       [1,2,4,2],    # out[2] = inputs[index[2]][2] = inputs[1][2] = [1,2,4,2]
+                       [2,3,3,4]]    # out[3] = inputs[index[3]][3] = inputs[2][3] = [2,3,3,4]
+
+
+    Args:
+        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+        index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: Output of multiplex OP, with data type being float32, float64, int32, int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            res = paddle.multiplex(inputs, index)
+            print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
+
+    """
+    if _non_static_mode():
+        return _C_ops.multiplex(index, inputs)
+    helper = LayerHelper('multiplex', **locals())
+
+    check_type(inputs, 'inputs', (list), 'multiplex')
+    if len(inputs) < 2:
+        raise ValueError(
+            "inputs should be a list object with at least 2 elements.")
+    for id, x in enumerate(inputs):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'multiplex')
+    check_variable_and_dtype(index, "index", ['int32', 'int64'], 'multiplex')
+
+    out = helper.create_variable_for_type_inference(inputs[0].dtype)
+    helper.append_op(
+        type='multiplex',
+        inputs={'X': inputs,
+                'Ids': index},
+        outputs={'Out': [out]})
+    return out
 
 @inplace_apis_in_dygraph_only
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
@@ -2674,9 +2905,10 @@ ${comment}
             #         [12, 15, 18, 16, 20, 24],
             #         [21, 24, 27, 28, 32, 36]])
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.kron(x, y)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_kron(x, y)
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
@@ -2972,7 +3204,38 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
-    return reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
+    input = x
+    dim = axis
+    keep_dim = keepdim
+    if dim is not None and not isinstance(dim, list):
+        if isinstance(dim, tuple):
+            dim = list(dim)
+        elif isinstance(dim, int):
+            dim = [dim]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".
+                format(type(dim)))
+    if in_dygraph_mode():
+        return _C_ops.final_state_reduce_prod(
+            input, dim if dim != None and dim != [] else [0], keep_dim, True if
+            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+
+    helper = LayerHelper('reduce_prod', **locals())
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_prod',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None and dim != [] else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
+        })
+    return out
 
 
 def sign(x, name=None):
@@ -3348,6 +3611,9 @@ def conj(x, name=None):
           #        [(4-4j), (5-5j), (6-6j)]])
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_conj(x)
+
     if paddle.in_dynamic_mode():
         return _C_ops.conj(x)
 
@@ -3525,9 +3791,10 @@ def logit(x, eps=None, name=None):
 
     if eps == None:
         eps = 0.0
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.logit(x, 'eps', eps)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_logit(x, eps)
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
     helper = LayerHelper("logit", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -3634,6 +3901,9 @@ def erfinv(x, name=None):
             # out: [0, 0.4769, -inf]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv( x )
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
     if paddle.in_dynamic_mode():

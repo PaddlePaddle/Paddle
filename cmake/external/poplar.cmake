@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+macro(find_popart_version popart_version_file)
+  file(READ ${popart_version_file} popart_version_file_content)
+  string(REGEX MATCH "(POPART_VERSION_STRING)[ \t\r\n](\")([0-9]+\.[0-9]+\.[0-9]+)(\\+)([A-Za-z0-9_]*)(\")" POPART_VERSION ${popart_version_file_content})
+  string(REPLACE "POPART_VERSION_STRING" "" POPART_VERSION "${POPART_VERSION}")
+  string(REPLACE "\"" "" POPART_VERSION "${POPART_VERSION}")
+  string(REPLACE " " "" POPART_VERSION "${POPART_VERSION}")
+  if(NOT POPART_VERSION)
+    set(POPART_VERSION "Unknown version")
+  else()
+    message(STATUS "Current PopART version is ${POPART_VERSION}")
+  endif()
+endmacro()
+
 if(WITH_IPU)
   set(POPLAR_DIR CACHE PATH "Path to a Poplar install")
   set(POPART_DIR CACHE PATH "Path to a Popart install")
@@ -63,6 +76,8 @@ if(WITH_IPU)
   if(NOT popart_FOUND)
     message(FATAL_ERROR "You must provide a path to a Popart build using -DPOPART_DIR=/path/to/popart/build")
   endif()
+
+  find_popart_version("${POPART_DIR}/include/popart/version.hpp")
 
   add_definitions(-DONNX_NAMESPACE=onnx)
   add_custom_target(extern_poplar DEPENDS poplar popart-only)

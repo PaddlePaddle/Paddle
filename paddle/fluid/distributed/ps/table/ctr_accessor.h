@@ -186,6 +186,7 @@ class CtrCommonAccessor : public ValueAccessor {
   // CtrCommonFeatureValue common_feature_value;
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
+  bool _show_scale = false;
 
  public:  // TODO(zhaocaibei123): it should be private, but we make it public
           // for unit test

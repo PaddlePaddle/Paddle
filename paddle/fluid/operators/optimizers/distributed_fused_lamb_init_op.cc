@@ -94,6 +94,7 @@ class DistributedFusedLambInitOpMaker
     AddOutput("GradOut", "The output gradient list.").AsDuplicable();
     AddOutput("GlobalScale",
               "The global scale. It is usually the scale factor for AMP.");
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
     AddAttr<float>("beta1", "The initial value of Beta1Pow.");
     AddAttr<float>("beta2", "The initial value of Beta2Pow.");

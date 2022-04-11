@@ -9,6 +9,10 @@ option(INFRT_WITH_TRT  "Compile INFRT with TensorRT"    OFF)
 #TODO(xiaowei) remove fluid
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
+if(WITH_GPU)
+  set(INFRT_WITH_GPU ON)
+endif()
+
 if (INFRT_WITH_PHI)
   add_definitions("-DINFRT_WITH_PHI")
 
