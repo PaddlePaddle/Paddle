@@ -783,7 +783,7 @@
     func : GumbelSoftmaxInferMeta
   kernel :
     func : gumbel_softmax
-  # backward : gumbel_softmax_grad
+  backward : gumbel_softmax_grad
 
 # hard_shrink
 - api : hard_shrink
