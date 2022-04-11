@@ -212,7 +212,7 @@ void PaddleInferTensorCreate(
   tensor.Reshape(std::move(shape));
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
-  
+
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
   if (allocation_type == phi::AllocationType::CPU) {
@@ -240,7 +240,6 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         ToPaddleInferPlace(input_tensor.place().GetType()));
   }
 }
-
 
 /// \brief Experimental interface.
 /// Create the Strings tensor from data.
