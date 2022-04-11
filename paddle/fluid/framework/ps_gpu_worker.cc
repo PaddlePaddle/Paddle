@@ -126,11 +126,16 @@ void PSGPUWorker::PrepareCudaGraph() {
   std::string enable_cuda_graph_capture_attr_name = "enable_cuda_graph_capture";
   op_or_cudagraphs_.reserve(ops_.size());
 
+  static const std::unordered_set<std::string> op_white_list = {
+    "adam",
+    "coalesce_tensor",
+  };
   // when op is captured, its inputs and outputs and those grads will be never changed
   // so the capture attribute can infect another op whose all inputs and outputs nerver changed
   std::unordered_set<std::string> var_whitelist;
   for (auto& op : ops_) {
-    if (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name)) {
+    if (op_white_list.find(op->Type()) != op_white_list.end() ||
+        (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name))) {
       for (auto& input : op->InputVars()) {
         var_whitelist.emplace(input);
         var_whitelist.emplace(framework::GradVarName(input));
