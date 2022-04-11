@@ -392,9 +392,9 @@ class HeterService : public PsService {
     VLOG(4) << "SendToSwitch done";
   }
 
-  void SendS2S(::google::protobuf::RpcController* controller,
-               const MultiVarMsg* request, PsResponseMessage* response,
-               ::google::protobuf::Closure* done) {
+  virtual void SendS2S(::google::protobuf::RpcController* controller,
+                       const MultiVarMsg* request, PsResponseMessage* response,
+                       ::google::protobuf::Closure* done) {
     VLOG(4) << "entering SendS2S";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
