@@ -22,7 +22,7 @@ from paddle.fluid.core import VarDesc
 from paddle.fluid import core, dygraph_utils
 from paddle.fluid.data_feeder import check_type, check_dtype, check_variable_and_dtype, convert_dtype
 from paddle.fluid.layers import fill_constant, utils, scale
-from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.tensor.layer_function_generator import templatedoc
 import paddle.fluid as fluid
 import numpy
 import warnings

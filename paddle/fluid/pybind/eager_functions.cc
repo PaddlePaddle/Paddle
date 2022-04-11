@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -35,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -770,7 +772,55 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* eager_api_to_uva_tensor(PyObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in eager_api_to_uva_tensor.";
+  auto new_tensor = std::shared_ptr<paddle::experimental::Tensor>(
+      new paddle::experimental::Tensor(
+          egr::Controller::Instance().GenerateUniqueName()));
+  PyObject* obj = PyTuple_GET_ITEM(args, 0);
+  auto array = py::cast<py::array>(py::handle(obj));
+
+  int device_id = 0;
+  PyObject* Py_device_id = PyTuple_GET_ITEM(args, 1);
+  if (Py_device_id) {
+    device_id = CastPyArg2AttrLong(Py_device_id, 1);
+  }
+
+  if (py::isinstance<py::array_t<int32_t>>(array)) {
+    SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<float>>(array)) {
+    SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int8_t>>(array)) {
+    SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<int16_t>>(array)) {
+    SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
+    SetUVATensorFromPyArray<paddle::platform::float16>(new_tensor, array,
+                                                       device_id);
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
+  } else {
+    // obj may be any type, obj.cast<py::array>() may be failed,
+    // then the array.dtype will be string of unknown meaning.
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Input object type error or incompatible array data type. "
+        "tensor.set() supports array with bool, float16, float32, "
+        "float64, int8, int16, int32, int64,"
+        "please check your input or input array data type."));
+  }
+
+  return ToPyObject(*(new_tensor.get()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 #endif
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -794,13 +844,15 @@ PyMethodDef variable_functions[] = {
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
+/**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read", (PyCFunction)(void (*)(void))eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"async_write", (PyCFunction)(void (*)(void))eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"to_uva_tensor", (PyCFunction)(void (*)(void))eager_api_to_uva_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
 #endif
-    /**sparse functions**/
     {NULL, NULL, 0, NULL}};
 
 void BindFunctions(PyObject* module) {

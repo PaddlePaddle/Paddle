@@ -17,7 +17,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -26,6 +26,9 @@ from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
 
 __all__ = []
+
+# Consistent with kDefaultDim from C++ Backend
+K_DEFAULT_DIM = 9
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -251,7 +254,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        if paddle.in_dynamic_mode():
+
+        if in_dygraph_mode():
+            if dim is None:
+                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+            return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
+        if _in_legacy_dygraph():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
                                              'reduce_all', True)
@@ -543,6 +551,9 @@ def dist(x, y, p=2, name=None):
             out = paddle.dist(x, y, float("-inf"))
             print(out) # out = [0.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dist(x, y, p)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')
@@ -1118,7 +1129,7 @@ def t(input, name=None):
     return out
 
 
-def cross(x, y, axis=None, name=None):
+def cross(x, y, axis=9, name=None):
     """
     Computes the cross product between two tensors along an axis.
 
@@ -1128,7 +1139,7 @@ def cross(x, y, axis=None, name=None):
     Args:
         x (Tensor): The first input tensor.
         y (Tensor): The second input tensor.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1157,6 +1168,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
+        axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.final_state_cross(x, y, axis)
     else:
         if _in_legacy_dygraph():
@@ -1275,8 +1287,26 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             #      [1, 1, 1, 1]]
 
     """
+    if in_dygraph_mode():
+        if isinstance(tol, Variable):
+            if tol.dtype != x.dtype:
+                tol_tensor = cast(tol, x.dtype)
+            else:
+                tol_tensor = tol
+            use_default_tol = False
+            return _C_ops.final_state_matrix_rank_tol(
+                x, tol_tensor, use_default_tol, hermitian)
 
-    if paddle.in_dynamic_mode():
+        if tol is None:
+            tol_attr = 0.0
+            use_default_tol = True
+        else:
+            tol_attr = float(tol)
+            use_default_tol = False
+        return _C_ops.final_state_matrix_rank(x, tol_attr, use_default_tol,
+                                              hermitian)
+
+    if _in_legacy_dygraph():
         if tol is None:
             tol_tensor = None
             tol_attr = 0.0
@@ -1457,10 +1487,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_bincount(x, weights, minlength)
-
-    if _in_legacy_dygraph():
+    if _non_static_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1571,7 +1598,10 @@ def det(x, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_det(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
@@ -2243,8 +2273,10 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):
