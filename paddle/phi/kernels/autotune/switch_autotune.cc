@@ -49,18 +49,19 @@ void AutoTuneStatus::Update() {
     step_hit_rates_.push_back(StepHitRate());
     VLOG(3) << "Step ID: " << current_steps_id_
             << ", Accumulative Cache Hit Rate: "
-            << AutoTuneCache::Instance().CacheHitRate()
-            << ", Cache Size: " << AutoTuneCache::Instance().Size()
-            << ", Current Step Hit Rate: " << StepHitRate();
+            << static_cast<int>(AutoTuneCache::Instance().CacheHitRate() * 100)
+            << "%, Cache Size: " << AutoTuneCache::Instance().Size()
+            << ", Current Step Hit Rate: "
+            << static_cast<int>(StepHitRate() * 100) << "%";
   } else {
     use_autotune_ = false;
     // clean cache according miss rate
-    float miss_rate = static_cast<float>(1) - RecentHitRate();
-    if (current_steps_id_ == stop_step_id_) {
-      AutoTuneCache::Instance().Clean(miss_rate);
-    }
-    VLOG(3) << "Step ID: " << current_steps_id_
-            << ", Recent Miss Rate: " << miss_rate;
+    // float miss_rate = static_cast<float>(1) - RecentHitRate();
+    // if (current_steps_id_ == stop_step_id_) {
+    //   AutoTuneCache::Instance().Clean(miss_rate);
+    // }
+    VLOG(3) << "Step ID: " << current_steps_id_ << ", Current Step Hit Rate: "
+            << static_cast<int>(StepHitRate() * 100) << "%";
   }
 }
 

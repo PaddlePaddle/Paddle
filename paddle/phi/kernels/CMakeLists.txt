@@ -14,7 +14,7 @@ set_property(GLOBAL PROPERTY PHI_KERNELS "")
 
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils custom_kernel)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor selected_rows_functor )
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
@@ -38,7 +38,7 @@ set(MANUAL_BUILD_KERNELS ${AUTOTUNE_KERNELS} cross_entropy_kernel adam_kernel ad
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
     triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
 foreach(src ${AUTOTUNE_KERNELS})
-  kernel_library(${src} DEPS switch_autotune)
+  kernel_library(${src} DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
 endforeach()
 kernel_library(adam_kernel DEPS gflags glog flags ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper)
 kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)

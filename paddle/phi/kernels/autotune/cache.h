@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <algorithm>
 #include <mutex>
 #include <numeric>
@@ -142,8 +143,8 @@ class AlgorithmsCache {
   std::shared_ptr<std::mutex> cache_mutex_;
   std::vector<float> step_hit_rates_;
 
-  int64_t cache_hits_ = 0;
-  int64_t cache_misses_ = 0;
+  int64_t cache_hits_{0};
+  int64_t cache_misses_{0};
 
   int64_t formal_cache_hits_ = 0;
   int64_t formal_cache_misses_ = 0;
@@ -200,16 +201,21 @@ class AutoTuneCache {
   }
 
   void UpdateStatus() {
+    int64_t size = 0;
+    int64_t cache_hits = 0;
+    int64_t cache_misses = 0;
     for (auto& v : auto_tune_map_) {
       VLOG(4) << "AlgoType: " << v.first << " Cache Size: " << v.second.Size()
               << " Hits: " << v.second.CacheHits()
               << " Misses: " << v.second.CacheMisses()
               << " Hit Rate: " << v.second.CacheHitRate();
-      total_size_ += v.second.Size();
-      total_cache_hits_ += v.second.CacheHits();
-      total_cache_misses_ += v.second.CacheMisses();
-      v.second.HitsRateUpdate();
+      size += v.second.Size();
+      cache_hits += v.second.CacheHits();
+      cache_misses += v.second.CacheMisses();
     }
+    total_size_ = size;
+    total_cache_hits_ = cache_hits;
+    total_cache_misses_ = cache_misses;
   }
 
   bool GetTuneStatus() { return keep_cache_; }
@@ -235,9 +241,9 @@ class AutoTuneCache {
   AutoTuneCache() : autotune_cache_mutex_(new std::mutex()) {}
   AlgorithmsTypeMap auto_tune_map_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
-  int64_t total_cache_hits_ = 0;
-  int64_t total_cache_misses_ = 0;
-  int64_t total_size_ = 0;
+  int64_t total_cache_hits_{0};
+  int64_t total_cache_misses_{0};
+  int64_t total_size_{0};
 
   /* Once AutoTuneCache works,
      keep_cache_ shall be set as true by default. */

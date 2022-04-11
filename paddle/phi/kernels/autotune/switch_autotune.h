@@ -48,19 +48,25 @@ class AutoTuneStatus {
 
   // Hit Rate of Current Step
   float StepHitRate() {
-    int64_t current_hits = AutoTuneCache::Instance().CacheHits();
-    int64_t current_misses = AutoTuneCache::Instance().CacheMisses();
-    int64_t step_hits_ = current_hits - previous_hits_;
-    int64_t step_misses_ = current_misses - previous_misses_;
-    float step_hit_rate = 0.;
-    int64_t step_num_accesses = step_hits_ + step_misses_;
-    if (step_num_accesses != 0) {
-      step_hit_rate = static_cast<float>(step_hits_) /
-                      static_cast<float>(step_num_accesses);
+    static int64_t last_step_id = -2;
+
+    if (last_step_id != current_steps_id_) {
+      int64_t current_hits = AutoTuneCache::Instance().CacheHits();
+      int64_t current_misses = AutoTuneCache::Instance().CacheMisses();
+      int64_t step_hits_ = current_hits - previous_hits_;
+      int64_t step_misses_ = current_misses - previous_misses_;
+      float step_hit_rate = 0.;
+      int64_t step_num_accesses = step_hits_ + step_misses_;
+      if (step_num_accesses != 0) {
+        step_hit_rate = static_cast<float>(step_hits_) /
+                        static_cast<float>(step_num_accesses);
+      }
+      previous_hits_ = current_hits;
+      previous_misses_ = current_misses;
+      current_step_hit_rate_ = step_hit_rate;
+      last_step_id = current_steps_id_;
     }
-    previous_hits_ = current_hits;
-    previous_misses_ = current_misses;
-    return step_hit_rate;
+    return current_step_hit_rate_;
   }
 
   void SetAutoTuneRange(int64_t start, int64_t stop) {
@@ -85,6 +91,7 @@ class AutoTuneStatus {
   int64_t current_steps_id_ = -1;
   int64_t previous_hits_ = 0;
   int64_t previous_misses_ = 0;
+  float current_step_hit_rate_{0.f};
   std::vector<float> step_hit_rates_;
 };
 
