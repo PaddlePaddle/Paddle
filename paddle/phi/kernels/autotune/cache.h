@@ -171,6 +171,18 @@ class AutoTuneCache {
     return auto_tune_map_[algo_type];
   }
 
+  AlgorithmsConfigKeyMap& GetConvForward() {
+    return RegisterOrGet("conv_forward");
+  }
+
+  AlgorithmsConfigKeyMap& GetConvBackwardData() {
+    return RegisterOrGet("conv_backward_data");
+  }
+
+  AlgorithmsConfigKeyMap& GetConvBackwardFilter() {
+    return RegisterOrGet("conv_backward_filter");
+  }
+
   void Clean(float miss_rate) {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
     // Set a small tolerance to avoid performance degradation

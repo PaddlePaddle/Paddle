@@ -193,8 +193,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
       size_t key = args.GetCacheKey<T>();
-      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
-          "conv_forward");
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
       if (cache.Find(key)) {
         result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
@@ -363,8 +362,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
       size_t key = args.GetCacheKey<T>();
-      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
-          "conv_backward_data");
+      auto& cache =
+          phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
       if (cache.Find(key)) {
         result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
@@ -544,8 +543,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
       size_t key = args.GetCacheKey<T>();
-      auto& cache = phi::autotune::AutoTuneCache::Instance().RegisterOrGet(
-          "conv_backward_filter");
+      auto& cache =
+          phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
       if (cache.Find(key)) {
         result.algo = static_cast<AlgoT>(cache.Get(key));
       } else {
@@ -663,12 +662,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
                                           &result);
     } else {
-      int max_algos = 0;
-#if CUDNN_VERSION_MIN(7, 0, 1)
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
-              args.handle, &max_algos));
-#endif
+      int max_algos = GetAlgorithmMaxCount(args.handle);
       std::vector<PerfT> perf_results(max_algos);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
@@ -680,6 +674,21 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     }
 
     return result;
+  }
+
+  static int GetAlgorithmMaxCount(cudnnHandle_t handle) {
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    int max_algos = 0;
+    auto status =
+        platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
+            handle, &max_algos);
+    if (status == gpuSuccess) {
+      VLOG(5) << "[BackwardFilter] max_algos: predefined="
+              << kNUM_CUDNN_BWD_FILTER_ALGS << ", actual=" << max_algos;
+      return max_algos;
+    }
+#endif
+    return kNUM_CUDNN_BWD_FILTER_ALGS;
   }
 
   static size_t GetMaxWorkspaceSize(const ConvArgs& args,
