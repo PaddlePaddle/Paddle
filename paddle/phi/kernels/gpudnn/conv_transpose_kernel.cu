@@ -217,16 +217,19 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
   using search =
       paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-  algo = search::Find<T>(args, false, deterministic, workspace_size, ctx);
+  bwd_result.algo =
+      search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-  algo = search::Find<T>(args, false, deterministic, ctx);
+  bwd_result = search::Find<T>(args, false, deterministic, ctx);
   workspace_size =
-      std::max(workspace_size, search::GetWorkspaceSize(args, algo));
+      std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
 #endif
 
   // ------------------- cudnn conv transpose forward ---------------------
@@ -247,7 +250,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           args.wdesc.desc(),
           filter_data + filter_offset * g,
           args.cdesc.desc(),
-          algo,
+          bwd_result.algo,
           &beta,
           args.idesc.desc(),
           transformed_out_data + out_offset * g,
@@ -264,7 +267,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           args.odesc.desc(),
           x_data + x_offset * g,
           args.cdesc.desc(),
-          algo,
+          bwd_result.algo,
           cudnn_workspace,
           workspace_size,
           &beta,

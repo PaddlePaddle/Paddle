@@ -777,10 +777,17 @@ void OpDesc::CheckAttrs() {
   checker->Check(&attrs_);
 }
 
-void OpDesc::InferShape(const BlockDesc &block) const {
+void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
-    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    auto &op_info = OpInfoMap::Instance().Get(this->Type());
+    auto *checker = op_info.Checker();
+    if (checker != nullptr) {
+      // set dafault value here
+      VLOG(10) << "begin to check attribute of " << Type();
+      checker->Check(&attrs_);
+    }
+    auto &infer_shape = op_info.infer_shape_;
     PADDLE_ENFORCE_EQ(
         static_cast<bool>(infer_shape), true,
         platform::errors::NotFound(

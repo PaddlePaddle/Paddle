@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -84,30 +85,31 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   int64_t numel = x_grad->numel();
+  if (numel == 0) {
+    return;
+  }
   int64_t index_nums = index.numel();
   int64_t out_nums = out_grad.numel();
 
   auto stream = ctx.stream();
 
-  index_select_grad_init<
-      T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-           PADDLE_CUDA_NUM_THREADS,
-           0,
-           stream>>>(in_grad_data, numel);
+  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
 
-  int blocks =
-      (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
-  int threads = PADDLE_CUDA_NUM_THREADS;
+  index_select_grad_init<T><<<grid_dim, block_dim, 0, stream>>>(in_grad_data,
+                                                                numel);
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_select with single thread.";
-    blocks = 1;
-    threads = 1;
+    block_dim = 1;
+    grid_dim.x = 1;
   }
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    index_select_grad_cuda_kernel<T, int64_t><<<blocks, threads, 0, stream>>>(
+    index_select_grad_cuda_kernel<T,
+                                  int64_t><<<grid_dim, block_dim, 0, stream>>>(
         output_grad_data,
         in_grad_data,
         index_data,
@@ -118,7 +120,7 @@ void IndexSelectGradKernel(const Context& ctx,
         delta);
   } else {
     const int* index_data = index.data<int>();
-    index_select_grad_cuda_kernel<T, int><<<blocks, threads, 0, stream>>>(
+    index_select_grad_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
         output_grad_data,
         in_grad_data,
         index_data,

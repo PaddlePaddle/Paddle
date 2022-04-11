@@ -319,7 +319,10 @@ def index_select(x, index, axis=0, name=None):
             # [ 9. 10. 10.]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_index_select(x, index, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.index_select(x, index, 'dim', axis)
 
     helper = LayerHelper("index_select", **locals())
@@ -518,7 +521,9 @@ def mode(x, axis=-1, keepdim=False, name=None):
            #    [1, 0]]))
            
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mode(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
     helper = LayerHelper("mode", **locals())
@@ -856,6 +861,12 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     """
 
+    if in_dygraph_mode():
+        if axis == None:
+            axis = -1
+        out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
+        return out, indices
+
     if _non_static_mode():
         if axis is None:
             out, indices = _C_ops.top_k_v2(x, 'k',
@@ -938,8 +949,11 @@ def searchsorted(sorted_sequence,
             #         [1, 3, 4, 5]])
             
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_searchsorted(sorted_sequence, values,
+                                               out_int32, right)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
                                    out_int32, "right", right)
 
@@ -1002,11 +1016,16 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             #  [[0, 2],
             #  [1, 2]]))
     """
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if axis is not None:
-            return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim",
+                                       keepdim)
+            return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
         else:
-            return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
     inputs = {"X": [x]}
