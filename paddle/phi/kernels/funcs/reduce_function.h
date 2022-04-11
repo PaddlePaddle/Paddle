@@ -33,19 +33,22 @@
 namespace cub = hipcub;
 #endif
 
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-// #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/phi/api/ext/dispatch.h"
+// #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h" // 重复了
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#endif
+
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
