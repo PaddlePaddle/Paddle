@@ -159,7 +159,7 @@ class DataReader {
 
         try {
           executor.Run(*reader_block_->Program(), &scope_,
-                       static_cast<int>(reader_block_->ID()), false, true, 
+                       static_cast<int>(reader_block_->ID()), false, true,
                        output_var_names_, false, true);
         } catch (...) {
           break;
