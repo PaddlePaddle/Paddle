@@ -58,7 +58,7 @@ class TableContainer
 };
 #endif
 
-#if defined(__xpu__)
+#if defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
@@ -74,14 +74,12 @@ class XPUCacheArray {
 
   void print() {}
 
-  __device__ ValType* find(const KeyType& key) { return &vals[0]; }
+  // __device__ ValType* find(const KeyType& key) { return &vals[0]; }
 
-  __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
+  // __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
 
   size_t size() {
     return 0;
-    // size_t real_size = (size_t)size_;
-    // return real_size;
   }
 
  private:

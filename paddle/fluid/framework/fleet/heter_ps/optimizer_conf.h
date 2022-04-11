@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#if defined(PADDLE_WITH_XPU_KP)
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
+#endif
 
 namespace optimizer_config {
 

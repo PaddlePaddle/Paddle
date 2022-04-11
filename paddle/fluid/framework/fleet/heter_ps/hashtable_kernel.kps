@@ -132,7 +132,7 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 150;
   __local__ KeyType local_keys[buf_size];
   __local__ ValType local_vals[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
@@ -143,8 +143,8 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
     GM2LM(keys, local_keys, read_len * sizeof(KeyType));
     GM2LM(vals, local_vals, read_len * sizeof(ValType));
     for (int k = 0; k < read_len; k++) {
-      auto status = table->insert(local_keys[k], local_vals[k]);
-      assert(status != false && "error: insert fails: table is full");
+      // auto status = table->insert(local_keys[k], local_vals[k]);
+      // assert(status != false && "error: insert fails: table is full");
     }
   }
 }
@@ -167,7 +167,7 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
 // }
 
 template <typename KeyType, typename ValType, typename Table>
-__global__ void search_kernel(Table* table, const KeyType* keys,
+__global__ void search_kernel(Table* table, const KeyType* const keys,
                               ValType* const vals, size_t len) {
   int cid = core_id();
   int ncores = core_num();
@@ -177,7 +177,7 @@ __global__ void search_kernel(Table* table, const KeyType* keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 150;
   __local__ KeyType local_keys[buf_size];
   __local__ ValType local_vals[buf_size];
 
@@ -187,10 +187,11 @@ __global__ void search_kernel(Table* table, const KeyType* keys,
     int read_len = min(len_per_loop, len - i);
     GM2LM(keys, local_keys, read_len * sizeof(KeyType));
     for (int k = 0; k < read_len; k++) {
-      ValType* val = table->find(local_keys[k]);
-      if (val != NULL) {
-        local_vals[k] = *val;
-      }
+      // temporarily comment
+      // ValType* val = table->find(local_keys[k]);
+      //if (val != NULL) {
+      //  local_vals[k] = *val;
+      //}
     }
     LM2GM(local_vals, vals + i, read_len * sizeof(ValType));
   }
@@ -207,7 +208,7 @@ __global__ void update_kernel(Table* table, const KeyType* const keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 1024;
+  const int buf_size = 250;
   __local__ KeyType local_keys[buf_size];
   __local__ GradType local_grads[buf_size];
 
@@ -220,10 +221,10 @@ __global__ void update_kernel(Table* table, const KeyType* const keys,
     GM2LM(grads, local_grads, read_len * sizeof(GradType));
 
     for (int k = 0; k < read_len; k++) {
-      ValType* val = table->find(local_keys[k]);
-      if (val != NULL) {
-        update_value(val, &local_grads[k]);
-      }
+      //ValType* val = table->find(local_keys[k]);
+      //if (val != NULL) {
+      //  update_value(val, &local_grads[k]);
+      //}
     }
   }
 }
@@ -255,7 +256,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   if (len == 0) {
     return;
   }
-  search_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  search_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType> ><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
 // template <typename KeyType, typename ValType>

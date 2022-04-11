@@ -128,8 +128,8 @@ __global__ void calc_shard_index_kernel(KeyType* d_keys, long long len, T* shard
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
+  const int buf_size = 512;
+  __local__ KeyType local_keys[buf_size];
   __local__ T local_shard_index[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
@@ -154,9 +154,9 @@ __global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys, T*
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
-  __local__ T local_shard_keys[buf_size];
+  const int buf_size = 400;
+  __local__ KeyType local_keys[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
@@ -183,11 +183,11 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
-  __local__ T local_keys[buf_size];
-  __local__ T local_grads[buf_size];
-  __local__ T local_shard_keys[buf_size];
-  __local__ T local_shard_grads[buf_size];
+  const int buf_size = 100;
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
+  __local__ GradType local_shard_grads[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
@@ -216,9 +216,9 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals, T* idx
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  const int buf_size = 1024;
-  __local__ T local_vals[buf_size];
-  __local__ T local_shard_vals[buf_size];
+  const int buf_size = 50;
+  __local__ ValType local_vals[buf_size];
+  __local__ ValType local_shard_vals[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
   for (int i = thread_id * len_per_loop; i < len;
@@ -272,7 +272,6 @@ void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
 }
 
 template <typename KeyT, typename ValueT, typename StreamType>
-
 void HeterCommKernel::sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                 const KeyT* d_keys_in,                             // NOLINT
                 KeyT* d_keys_out, const ValueT* d_values_in,
@@ -283,7 +282,6 @@ void HeterCommKernel::sort_pairs(void* d_temp_storage, size_t& temp_storage_byte
 template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
           typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
           typename NumRunsOutputIteratorT, typename StreamType>
-
 void HeterCommKernel::reduce_by_key(void* d_temp_storage,
                    size_t& temp_storage_bytes,  // NOLINT
                    KeysInputIteratorT d_keys_in,
@@ -302,22 +300,23 @@ template void HeterCommKernel::calc_shard_offset<int, XPUStream>(int* idx, int* 
 template void HeterCommKernel::calc_shard_index<unsigned long, int, XPUStream>(
     unsigned long* d_keys, long long len, int* shard_index, int total_gpu,
     const XPUStream& stream);
+
 template void HeterCommKernel::fill_shard_key<unsigned long, int, XPUStream>(
     unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
     const XPUStream& stream);
-template void
-HeterCommKernel::fill_shard_grads<unsigned long, paddle::framework::FeaturePushValue, int,
+
+template void HeterCommKernel::fill_shard_grads<unsigned long, paddle::framework::FeaturePushValue, int,
                  XPUStream>(unsigned long* d_shard_keys, unsigned long* d_keys,
                             paddle::framework::FeaturePushValue* d_shard_grads,
                             paddle::framework::FeaturePushValue* d_grads,
                             int* idx, long long len, const XPUStream& stream);
+
 template void HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, XPUStream>(
     paddle::framework::FeatureValue* d_shard_vals,
     paddle::framework::FeatureValue* d_vals, int* idx, long long len,
     const XPUStream& stream);
 
-template void
-HeterCommKernel::sort_pairs<unsigned long, paddle::framework::FeaturePushValue, XPUStream>(
+template void HeterCommKernel::sort_pairs<unsigned long, paddle::framework::FeaturePushValue, XPUStream>(
     void* d_temp_storage,
     size_t& temp_storage_bytes,      // NOLINT
     const unsigned long* d_keys_in,  // NOLINT

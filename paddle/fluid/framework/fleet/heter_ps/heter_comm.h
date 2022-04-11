@@ -214,7 +214,7 @@ class HeterComm {
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
-  // int block_size_{256};
+  int block_size_{256};
 
  private:
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
