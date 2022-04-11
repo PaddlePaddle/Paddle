@@ -30,6 +30,7 @@ class TestPad3dOp(OpTest):
         self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad3d"
+        self.python_api = paddle.nn.functional.pad
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
@@ -72,10 +73,10 @@ class TestPad3dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)

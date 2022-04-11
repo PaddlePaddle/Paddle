@@ -58,5 +58,10 @@ void TRTOpTellerPass::runOnFunction() {
     builder.create<::infrt::ReturnOp>(loc, op->getResults());
   }
 }
+
+std::unique_ptr<mlir::Pass> CreateTrtOpTellerPass() {
+  return std::make_unique<TRTOpTellerPass>();
+}
+
 }  // namespace trt
 }  // namespace infrt

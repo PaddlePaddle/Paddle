@@ -487,7 +487,7 @@ class TestPyLayer(unittest.TestCase):
             z = layer(data)
             with self.assertRaisesRegexp(
                     RuntimeError,
-                    "received current_inplace_version:{} != inplace_version_snapshot_:{}".
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
                     format(1, 0)):
                 z.backward()
 

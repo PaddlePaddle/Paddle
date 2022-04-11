@@ -157,7 +157,6 @@ Node *softmax_handler(Graph *graph, Node *node) {
 
 Node *scale_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
@@ -191,6 +190,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       }
     }
   } else {
+    auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
     if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
       return CreateBaseOp(graph, node, "popart_identity",
                           {GetInputVarNode("X", node)}, node->outputs, {});
@@ -366,6 +366,11 @@ Node *arg_max_handler(Graph *graph, Node *node) {
                       {{"axis", axis}, {"keepdims", int64_t{0}}});
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
@@ -377,8 +382,3 @@ REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
 REGISTER_HANDLER(arg_max, arg_max_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

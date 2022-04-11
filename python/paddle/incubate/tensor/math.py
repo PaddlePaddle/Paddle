@@ -15,6 +15,7 @@
 from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -50,7 +51,9 @@ def segment_sum(data, segment_ids, name=None):
             #Outputs: [[4., 4., 4.], [4., 5., 6.]]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "SUM")[0]
+    if _in_legacy_dygraph():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "SUM")
         return out
 
@@ -104,6 +107,9 @@ def segment_mean(data, segment_ids, name=None):
             #Outputs: [[2., 2., 2.], [4., 5., 6.]]
 
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "MEAN")[0]
     if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MEAN")
         return out
@@ -157,6 +163,10 @@ def segment_min(data, segment_ids, name=None):
             #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
 
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "MIN")[0]
+
     if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MIN")
         return out
@@ -210,6 +220,11 @@ def segment_max(data, segment_ids, name=None):
             #Outputs: [[3., 2., 3.], [4., 5., 6.]]
 
     """
+
+    if in_dygraph_mode():
+        out, tmp = _C_ops.final_state_segment_pool(data, segment_ids, "MAX")
+        return out
+
     if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MAX")
         return out
