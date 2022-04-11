@@ -15,7 +15,9 @@
 import os
 os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
 os.environ['FLAGS_host_trace_level'] = '10'
-os.environ['FLAGS_static_executor_perfstat_filepath'] = './exec_perfstat'
+os.environ[
+    'FLAGS_static_executor_perfstat_filepath'] = './exec_perfstat_' + str(
+        os.getpid())
 import sys
 import shutil
 import unittest
@@ -124,8 +126,9 @@ def build_program():
 class ExecutorStatisticsTestCase(unittest.TestCase):
     def setUp(self):
         self.iter_n = 3
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        #self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        #) else paddle.CPUPlace()
+        self.place = paddle.CPUPlace()
 
     def test_executor_statistics(self):
         paddle.seed(2020)

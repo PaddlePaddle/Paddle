@@ -590,7 +590,6 @@ void StatisticsEngine::Log(const std::string& filepath) {
     LOG(WARNING) << "Unable to open file " << filepath << " for writing data.";
     return;
   }
-  LOG(INFO) << "writing the executor performance statistics to " << filepath;
   ofs << "[";
   for (size_t idx = 0; idx < statistics_.size(); ++idx) {
     const auto& evt_stat = statistics_[idx];
@@ -606,6 +605,9 @@ void StatisticsEngine::Log(const std::string& filepath) {
   }
   ofs.seekp(-1, std::ios_base::end);
   ofs << "]";
+  if (ofs) {
+    LOG(INFO) << "writing the executor performance statistics to " << filepath;
+  }
   ofs.close();
 }
 
