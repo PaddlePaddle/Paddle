@@ -67,8 +67,8 @@ void SquaredL2Norm(const DeviceContext& ctx,
     return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
   }
 
-  using FunctorTT = kernel_primitives::SquareFunctor<T1, T2>;
-  cub::TransformInputIterator<T2, FunctorTT, const T1*> iter(x, FunctorTT());
+  using FunctorT = paddle::kernel_primitives::SquareFunctor<T1, T2>;
+  cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;
 #pragma unroll 2
