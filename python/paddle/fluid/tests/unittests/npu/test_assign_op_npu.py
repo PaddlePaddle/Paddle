@@ -38,7 +38,8 @@ class TestAssign(OpTest):
         self.inputs = {'X': x}
 
         self.attrs = {}
-        self.outputs = {'Out': x}
+        out = np.zeros([3, 3]).astype(self.dtype)
+        self.outputs = {'Out': out}
 
     def set_npu(self):
         self.__class__.use_npu = True

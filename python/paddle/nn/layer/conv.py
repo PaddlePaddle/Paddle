@@ -25,6 +25,7 @@ from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
 from ...device import is_compiled_with_cuda
 from ...device import is_compiled_with_rocm
+from ...device import is_compiled_with_npu
 
 __all__ = []
 
@@ -146,7 +147,8 @@ class _ConvNd(Layer):
         if self._op_type == 'conv2d' and (in_channels == groups and
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
-            self._op_type = 'depthwise_conv2d'
+            if is_compiled_with_npu() and dilation == 1:
+                self._op_type = 'depthwise_conv2d'
             if is_compiled_with_rocm():
                 self._use_cudnn = True
             else:

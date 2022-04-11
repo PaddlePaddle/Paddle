@@ -52,7 +52,8 @@ class AssignNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+// @TODO
+// Ascend Asign will block, so do not regist float
 REGISTER_OP_NPU_KERNEL(
     assign, ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>)
