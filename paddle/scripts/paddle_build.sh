@@ -187,6 +187,10 @@ function cmake_base() {
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
+    pscore_flag=${distibuted_flag}
+    if [ ${WITH_PSCORE:-${pscore_flag}} == "OFF" ] ; then
+        pscore_flag="OFF"
+    fi
 
     if [ "$CMD" != "assert_file_approvals" ];then
       python -m pip install distro
@@ -223,7 +227,7 @@ function cmake_base() {
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_PSCORE=${distibuted_flag}
+        -DWITH_PSCORE=${pscore_flag}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
@@ -281,7 +285,7 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_PSCORE=${distibuted_flag} \
+        -DWITH_PSCORE=${pscore_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.10 \
