@@ -101,7 +101,7 @@ struct GpuLaunchConfig {
 inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int64_t numel,
                                             int vec_size = 1) {
-  PADDLE_ENFORCE_GT(numel,
+  PADDLE_ENFORCE_GE(numel,
                     0,
                     phi::errors::InvalidArgument(
                         "element quantity should be greater than or equal 0,"
