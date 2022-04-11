@@ -170,8 +170,4 @@ void AdamDenseKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
-  // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
 }
