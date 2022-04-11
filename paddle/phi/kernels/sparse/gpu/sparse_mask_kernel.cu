@@ -130,10 +130,14 @@ __global__ void FlattenIndicesKernel(const IntT* indices,
                                      const int64_t non_zero_num,
                                      const int64_t sparse_dim,
                                      IntT* out) {
-  CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
-    out[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
-        indices, sparse_offsets, non_zero_num, sparse_dim, i);
-  }
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  phi::funcs::sparse::FlattenIndices<IntT>(indices,
+                                           sparse_offsets,
+                                           non_zero_num,
+                                           sparse_dim,
+                                           tid,
+                                           gridDim.x * blockDim.x,
+                                           out);
 }
 
 template <typename T, typename IntT>

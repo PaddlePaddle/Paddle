@@ -53,6 +53,20 @@ inline const IntT HOSTDEVICE IndicesToIndex(const IntT* indices,
   return index;
 }
 
+template <typename IntT>
+inline void HOSTDEVICE FlattenIndices(const IntT* indices,
+                                      const IntT* sparse_offsets,
+                                      const int64_t non_zero_num,
+                                      const int64_t sparse_dim,
+                                      const int start,
+                                      const int stride,
+                                      IntT* out) {
+  for (int i = start; i < non_zero_num; i += stride) {
+    out[i] =
+        IndicesToIndex(indices, sparse_offsets, non_zero_num, sparse_dim, i);
+  }
+}
+
 // 1. indices.dims().size() == 2
 template <typename IntT>
 inline void CalcOffsetsPerDim(const DenseTensor& indices,

@@ -55,16 +55,12 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   const IntT* indices_ptr = indices.data<IntT>();
 
   std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);
-  // phi::funcs::sparse::FlattenIndices<IntT>(indices, x.dims(), &out_indexs);
   for (int64_t i = 0; i < non_zero_num; i++) {
-    out_indexs[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
+    int64_t index = phi::funcs::sparse::IndicesToIndex<IntT>(
         indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
-  }
-
-  for (int64_t i = 0; i < non_zero_num; i++) {
-    int64_t index = out_indexs[i];
     memcpy(out_values_ptr + i * cols, x_ptr + index * cols, cols * sizeof(T));
   }
+
   out->SetMember(out_indices, out_values, dims, true);
 }
 
@@ -101,27 +97,20 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.non_zero_indices(), x.dims(), &sparse_offsets);
 
-  auto FlattenIndices = [](const IntT* indices,
-                           const IntT* sparse_offsets,
-                           const int64_t non_zero_num,
-                           const int64_t sparse_dim,
-                           std::vector<IntT>* out) {
-    for (int64_t i = 0; i < non_zero_num; i++) {
-      (*out)[i] = phi::funcs::sparse::IndicesToIndex<IntT>(
-          indices, sparse_offsets, non_zero_num, sparse_dim, i);
-    }
-  };
-
-  FlattenIndices(x.non_zero_indices().data<IntT>(),
-                 sparse_offsets.data(),
-                 x.nnz(),
-                 sparse_dim,
-                 &x_indexs);
-  FlattenIndices(mask_indices.data<IntT>(),
-                 sparse_offsets.data(),
-                 x.nnz(),
-                 sparse_dim,
-                 &mask_indexs);
+  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+                                     sparse_offsets.data(),
+                                     x.nnz(),
+                                     sparse_dim,
+                                     0,
+                                     1,
+                                     x_indexs.data());
+  phi::funcs::sparse::FlattenIndices(mask_indices.data<IntT>(),
+                                     sparse_offsets.data(),
+                                     x.nnz(),
+                                     sparse_dim,
+                                     0,
+                                     1,
+                                     mask_indexs.data());
 
   std::unordered_map<IntT, uint64_t> x_indexs_map;
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
@@ -133,6 +122,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
   const T* in_ptr = x.non_zero_elements().data<T>();
+  // TODO(zhangkaihuo): multithreading can be used for acceleration
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {
     auto iter = x_indexs_map.find(mask_indexs[i]);
     if (iter != x_indexs_map.end()) {
