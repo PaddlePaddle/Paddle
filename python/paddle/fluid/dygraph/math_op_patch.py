@@ -122,7 +122,7 @@ def monkey_patch_math_varbase():
     def _scalar_elementwise_op_(var, scale, bias):
         if _in_legacy_dygraph():
             return _C_ops.scale(var, 'scale', scale, 'bias', bias)
-        return _C_ops.final_state_scale(var, scale, bias, True)
+        return _C_ops.final_state_scale(var, float(scale), bias, True)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
