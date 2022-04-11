@@ -62,6 +62,8 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
+std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
+
 std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     const Tensor& param,
     const Tensor& grad,
@@ -109,9 +111,15 @@ Tensor real_grad_impl(const Tensor& x);
 std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad,
                                     int axis);
-std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
 std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
                                        const std::vector<Tensor>& outputs_grad);
+
+std::vector<Tensor> multi_dot_grad_impl(const std::vector<Tensor>& x,
+                                        const Tensor& out_grad);
+
+std::vector<Tensor> multiplex_grad_impl(const std::vector<Tensor>& inputs,
+                                        const Tensor& ids,
+                                        const Tensor& out_grad);
 
 }  // namespace experimental
 }  // namespace paddle
