@@ -404,7 +404,7 @@ class DistributedStrategy(object):
     def adam_d2sum(self):
         """
         set adam_d2sum
-        Default value: True
+        Default value: False
 
         Examples:
 
@@ -415,7 +415,7 @@ class DistributedStrategy(object):
             fleet.init(role_maker)
 
             strategy = fleet.DistributedStrategy()
-            strategy.adam_d2sum = True  # by default this is True
+            strategy.adam_d2sum = True  # by default this is False
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
