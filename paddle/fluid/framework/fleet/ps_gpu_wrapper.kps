@@ -30,8 +30,8 @@ namespace paddle {
 namespace framework {
 
 __global__ void PullCopy(float** dest, const FeatureValue* src,
-                         const int64_t* len, int hidden, int slot_num,
-                         int total_len, uint64_t** keys) {
+                         const long long* len, int hidden, int slot_num,
+                         int total_len, unsigned long long** keys) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -85,8 +85,8 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
 }
 
-__global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
-                               const int64_t* len, int slot_num,
+__global__ void CopyKeysKernel(unsigned long long** src_keys, unsigned long long* dest_total_keys,
+                               const long long* len, int slot_num,
                                int total_len) {
   int cid = core_id();
   int ncores = core_num();
@@ -114,7 +114,7 @@ __global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
   }
 }
 
-__global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
+__global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
                          int hidden, int slot_num, int total_len, int bs,
                          int* slot_vector) {
   int cid = core_id();
@@ -199,8 +199,10 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   xpu_memcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              XPU_HOST_TO_DEVICE);
 
-  PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, gpu_len,
-                              hidden_size, slot_num, total_length, gpu_keys);
+  unsigned long long** c_keys = (unsigned long long**)gpu_keys;  
+  const long long* c_len = (const long long*)gpu_len;  
+  PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, c_len,
+                              hidden_size, slot_num, total_length, c_keys);
 
   xpu_wait(stream);
 }
@@ -214,7 +216,10 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  CopyKeysKernel<<<2, 64, stream>>>(origin_keys, total_keys, gpu_len, slot_num,
+  unsigned long long** o_keys = (unsigned long long**)origin_keys;  
+  unsigned long long* t_keys = (unsigned long long*)total_keys;  
+  const long long* c_len = (const long long*)gpu_len;  
+  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num,
                                     total_len);
   xpu_wait(stream);
 }
@@ -257,7 +262,8 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   xpu_memcpy(d_slot_vector, slot_vector_.data(),
              slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
 
-  PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, gpu_len,
+  long long* c_len = (long long*)gpu_len;  
+  PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, c_len,
                               hidden_size, slot_lengths.size(), total_length,
                               batch_size, d_slot_vector);
   xpu_wait(stream);

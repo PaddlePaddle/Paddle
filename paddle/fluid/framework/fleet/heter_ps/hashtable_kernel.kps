@@ -14,8 +14,25 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
+namespace optimizer_config {
+extern _global_ptr_ float* nonclk_coeff;
+extern _global_ptr_ float* clk_coeff;
+
+extern _global_ptr_ float* min_bound;
+extern _global_ptr_ float* max_bound;
+extern _global_ptr_ float* learning_rate;
+extern _global_ptr_ float* initial_g2sum;
+extern _global_ptr_ float* initial_range;
+
+extern _global_ptr_ float* mf_create_thresholds;
+extern _global_ptr_ float* mf_learning_rate;
+extern _global_ptr_ float* mf_initial_g2sum;
+extern _global_ptr_ float* mf_initial_range;
+extern _global_ptr_ float* mf_min_bound;
+extern _global_ptr_ float* mf_max_bound;
+}
 
 namespace paddle {
 namespace framework {
@@ -123,7 +140,7 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
 
 template <typename KeyType, typename ValType, typename Table>
 __global__ void insert_kernel(Table* table, const KeyType* keys,
-                              const ValType* vals, size_t len) {
+                              const ValType* vals, long long len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -168,7 +185,7 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
 
 template <typename KeyType, typename ValType, typename Table>
 __global__ void search_kernel(Table* table, const KeyType* const keys,
-                              ValType* const vals, size_t len) {
+                              ValType* const vals, long long len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -199,7 +216,7 @@ __global__ void search_kernel(Table* table, const KeyType* const keys,
 
 template <typename KeyType, typename ValType, typename Table, typename GradType>
 __global__ void update_kernel(Table* table, const KeyType* const keys,
-                              const GradType* const grads, size_t len) {
+                              const GradType* const grads, long long len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -256,7 +273,8 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   if (len == 0) {
     return;
   }
-  search_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType> ><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  long long c_len = (long long)len;
+  search_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType> ><<<4, 64, stream>>>(container_, d_keys, d_vals, c_len);
 }
 
 // template <typename KeyType, typename ValType>
@@ -277,7 +295,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
-  insert_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  long long c_len = (long long)len;
+  insert_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(container_, d_keys, d_vals, c_len);
 }
 
 // template <typename KeyType, typename ValType>
@@ -308,7 +327,8 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
-  update_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>, GradType><<<4, 64, stream>>>(container_, d_keys, d_grads, len);
+  long long c_len = (long long)len;
+  update_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>, GradType><<<4, 64, stream>>>(container_, d_keys, d_grads, c_len);
 }
 
 // template <typename KeyType, typename ValType>
