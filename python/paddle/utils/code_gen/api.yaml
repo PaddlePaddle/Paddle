@@ -167,6 +167,16 @@
     func : asinh
   backward : asinh_grad
 
+# assign
+- api : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign_raw
+  backward : assign_grad
+
 # atan
 - api : atan
   args : (Tensor x)
