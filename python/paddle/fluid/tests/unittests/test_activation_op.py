@@ -25,6 +25,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -2928,7 +2929,9 @@ def ref_swish(x):
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
+        self.python_api = paddle.nn.functional.swish
         self.init_dtype()
+        self.check_eager = True
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -2940,7 +2943,10 @@ class TestSwish(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
 class TestSwishAPI(unittest.TestCase):
@@ -2974,6 +2980,10 @@ class TestSwishAPI(unittest.TestCase):
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
 
     def test_fluid_api(self):
         paddle.enable_static()

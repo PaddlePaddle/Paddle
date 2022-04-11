@@ -1317,6 +1317,16 @@
   kernel :
     func : sum_grad
 
+- backward_api : swish_grad
+  forward : swish (Tensor x, float beta=1.0) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float bete=1.0)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : swish_grad
+
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, int axis)
@@ -1428,6 +1438,12 @@
     param : [out_grad]
   kernel :
     func : trunc_grad
+
+- backward_api : unbind_grad
+  forward : unbind (Tensor input, int axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, int axis)
+  output : Tensor(input_grad)
+  invoke : stack(out_grad, axis)
 
 - backward_api : unfold_grad
   forward : unfold (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
