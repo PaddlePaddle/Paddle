@@ -213,7 +213,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::AllReduce(
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const AllreduceOptions& opts) {
   return Collective(in_tensors, out_tensors,
-                    [&](const phi::DenseTensor& input, phi::DenseTensor& output,
+                    [&](phi::DenseTensor& input, phi::DenseTensor& output,
                         HcclComm comm, const aclrtStream& stream) {
                       return platform::dynload::HcclAllReduce(
                           input.data(), output.data(), input.numel(),
