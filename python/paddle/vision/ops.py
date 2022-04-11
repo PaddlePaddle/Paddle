@@ -846,20 +846,18 @@ def read_file(filename, name=None):
 
     Examples:
         .. code-block:: python
-            import paddle
-            from paddle.utils.download import get_path_from_url
 
-            DATASET_HOME = os.path.expanduser("~/.cache/paddle/datasets")
-            DATASET_URL = "https://paddlemodels.cdn.bcebos.com/ImageNet_stub.tar"
-            DATASET_MD5 = "c7110519124a433901cf005a4a91b607"
-            BATCH_SIZE = 16
+             import cv2
+             import paddle
 
-            data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
-                                          DATASET_MD5)
-            indices = paddle.arange(BATCH_SIZE)
-            outs = paddle.vision.reader.file_label_loader(data_root,
-                                                indices, BATCH_SIZE)
-            print(outs[0].shape)
+             fake_img = (np.random.random(
+                         (400, 300, 3)) * 255).astype('uint8')
+
+             cv2.imwrite('fake.jpg', fake_img)
+
+             img_bytes = paddle.vision.ops.read_file('fake.jpg')
+             
+             print(img_bytes.shape)
 
     """
 
@@ -910,6 +908,7 @@ def image_decode(x,
 
     Examples:
         .. code-block:: python
+
             import cv2
             import paddle
             import numpy as np
@@ -923,6 +922,7 @@ def image_decode(x,
             imgs = paddle.vision.ops.image_decode([img_bytes])
             
             print(imgs[0].shape)
+
     """
 
     local_rank = paddle.distributed.get_rank()
@@ -1014,6 +1014,7 @@ def image_decode_random_crop(x,
 
     Examples:
         .. code-block:: python
+
             import cv2
             import paddle
             import numpy as np
@@ -1027,6 +1028,7 @@ def image_decode_random_crop(x,
             imgs = paddle.vision.ops.image_decode_random_crop([img_bytes])
             
             print(imgs[0].shape)
+
     """
 
     local_rank = paddle.distributed.get_rank()
@@ -1095,12 +1097,14 @@ def random_flip(x, prob=0.5, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             
             x = paddle.rand(shape=[8, 3, 32, 32])
             mirror = paddle.vision.ops.random_flip(x)
 
             print(mirror)
+
     """
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
@@ -1114,6 +1118,41 @@ def mirror_normalize(x,
                      mean=[123.675, 116.28, 103.53],
                      std=[58.395, 57.120, 57.375],
                      name=None):
+    """
+    This API perform random flipping and normalize on input Tensor, it
+    treats the 1st dimension as batch size and perform random flipping
+    on each sample depending on input Tensor mirror.
+
+    Args:
+        x (Tensor): The input tensor in shape of [N, ...], N is the batch
+            size to generate random flipping mirror flags.
+	mirror (Tensor): The input tensor in shape of [N, 1], N is the
+	    batch size and each value indicates whether to perform
+            random flipping on this sample.
+        mean (float | List[float]): The mean value for normalizing on each
+            channel.
+        std (float | List[float]): The std value for normalizing on each
+            channel.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor in the same shape as input with dtype as float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.rand(shape=[8, 3, 32, 32])
+            mirror = paddle.vision.ops.random_flip(x)
+            out = paddle.vision.ops.mirror_normalize(x, mirror)
+
+            print(out.shape)
+
+    """
+
     def _to_list_3(l):
         if isinstance(l, (list, tuple)):
             assert len(l) == 1 or len(l) == 3, \
@@ -1761,6 +1800,7 @@ def image_resize(x,
             out = paddle.vision.ops.image_resize([data], size=224)
 
             print(out.shape)
+
     """
     check_type(size, 'size', (int, tuple), 'image_resize')
     assert interp_method in ['bilinear', 'nearest']
