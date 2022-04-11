@@ -120,7 +120,6 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  PlaceType place_;
   platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;
