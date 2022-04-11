@@ -39,10 +39,42 @@ class PReluOpConverter : public OpConverter {
       data_format =
           BOOST_GET_CONST(std::string, op_desc.GetAttr("data_format"));
     }
+    bool trt_nhwc_convert =
+        op_desc.HasAttr("trt_nhwc_convert") &&
+        BOOST_GET_CONST(bool, op_desc.GetAttr("trt_nhwc_convert"));
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
-
+    auto alpha_tensor_dim = alpha_tensor->dims();
     platform::CPUPlace cpu_place;
+    // Alpha has 1 (all) or 4 (channel, element) dimensions.
+    // We only transpose alpha when the shape of alpha is 4.
+    if (trt_nhwc_convert && alpha_tensor_dim.size() == 4) {
+      // Convert alpha from NHWC to NCHW
+      VLOG(4) << "Convert alpha from NHWC to NCHW";
+      float* alpha_data = alpha_tensor->mutable_data<float>(cpu_place);
+      int N = alpha_tensor_dim[0];
+      int H = alpha_tensor_dim[1];
+      int W = alpha_tensor_dim[2];
+      int C = alpha_tensor_dim[3];
+      std::vector<float> alpha_data_copy(alpha_data,
+                                         alpha_data + alpha_tensor->numel());
+      for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < C; ++j) {
+          for (int k = 0; k < H; ++k) {
+            for (int l = 0; l < W; ++l) {
+              alpha_data[i * C * H * W + j * H * W + k * W + l] =
+                  alpha_data_copy[i * H * W * C + k * W * C + l * C + j];
+            }
+          }
+        }
+      }
+      framework::DDim nchw_dim(alpha_tensor->dims());
+      nchw_dim[1] = C;
+      nchw_dim[2] = H;
+      nchw_dim[3] = W;
+      alpha_tensor->Resize(nchw_dim);
+    }
+
     std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
         new framework::LoDTensor());
     alpha_tensor_temp->Resize(alpha_tensor->dims());
