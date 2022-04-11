@@ -2273,8 +2273,10 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):

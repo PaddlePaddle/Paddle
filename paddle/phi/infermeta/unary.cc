@@ -1315,6 +1315,36 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
+                               int upscale_factor,
+                               const std::string& data_format,
+                               MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  auto dx_dims = do_dims;
+  dx_dims[0] = do_dims[0];
+
+  if (!channel_last) {
+    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
+    dx_dims[2] = do_dims[2] / upscale_factor;
+    dx_dims[3] = do_dims[3] / upscale_factor;
+  } else {
+    dx_dims[1] = do_dims[1] / upscale_factor;
+    dx_dims[2] = do_dims[2] / upscale_factor;
+    dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+  }
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
                     int axis,
@@ -2901,4 +2931,5 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);

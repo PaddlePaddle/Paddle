@@ -260,5 +260,9 @@ void TRTOpConverterPass::runOnOperation() {
     signalPassFailure();
 }
 
+std::unique_ptr<mlir::Pass> CreateTrtOpConverterPass() {
+  return std::make_unique<TRTOpConverterPass>();
+}
+
 }  // namespace trt
 }  // namespace infrt

@@ -167,6 +167,16 @@
     func : asinh
   backward : asinh_grad
 
+# assign
+- api : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign_raw
+  backward : assign_grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -345,6 +355,7 @@
     func : UnchangedInferMeta
   kernel :
     func : conj
+  backward : conj_grad
 
 - api : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
@@ -659,6 +670,7 @@
     func : FlipInferMeta
   kernel :
     func : flip
+  backward : flip_grad
 
 - api : floor
   args : (Tensor x)
@@ -1249,6 +1261,15 @@
     func : maximum
   backward : maximum_grad
 
+- api : maxout
+  args : (Tensor x, int groups, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : MaxOutInferMeta
+  kernel :
+    func : maxout
+  backward : maxout_grad
+
 - api : mean
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1328,6 +1349,15 @@
   invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
   optional : master_param
 
+- api : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1336,6 +1366,16 @@
     func : MultinomialInferMeta
   kernel :
     func : multinomial
+
+- api : multiplex
+  args : (Tensor[] ins, Tensor ids)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : ins
+  backward : multiplex_grad
 
 - api : multiply
   args : (Tensor x, Tensor y)
@@ -1433,7 +1473,7 @@
     func : PixelShuffleInferMeta
   kernel :
     func : pixel_shuffle
-  # backward : pixel_shuffle_grad
+  backward : pixel_shuffle_grad
 
 # poisson  // no need grad
 - api : poisson
@@ -1879,6 +1919,17 @@
     data_type : x
   backward : sum_grad
 
+# The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
+- api : swish
+  args : (Tensor x, float beta=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : swish
+  backward : swish_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
@@ -2027,6 +2078,18 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- api : uniform_random
+  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype, min, max, seed]
+  kernel :
+    func : uniform_random
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype
+    backend : place
 
 # The `axis` argument of Python API paddle.unique is not vector
 - api : unique
