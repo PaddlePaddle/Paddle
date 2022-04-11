@@ -161,7 +161,7 @@ def split_lod_tensor(input, mask, level=0):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[1])
+          x = fluid.layers.data(name='a', shape=[1])
           x.persistable = True
 
           y = fluid.layers.data(name='y', shape=[1])
