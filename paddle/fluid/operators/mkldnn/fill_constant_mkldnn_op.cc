@@ -59,10 +59,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
 
     auto* out = ctx.Output<Tensor>("Out");
-
     T fill_value = CalculateFillValue(ctx);
-
-    std::cout << fill_value << std::endl;
 
     auto shape = GetShape(ctx);
     out->Resize(shape);
