@@ -312,6 +312,16 @@
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
 
+- backward_api : deformable_conv_grad
+  forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(x_grad), Tensor(offset_grad), Tensor(filter_grad), Tensor(mask_grad)
+  infer_meta :
+    func : DeformableConvGradInferMeta
+  kernel :
+    func : deformable_conv_grad
+  optional : mask
+
 - backward_api : depthwise_conv2d_transpose_grad
   forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
   args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)

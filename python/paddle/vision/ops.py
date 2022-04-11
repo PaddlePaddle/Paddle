@@ -558,7 +558,15 @@ def deform_conv2d(x,
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_deformable_conv(
+            x, offset, weight, mask, stride, padding, dilation,
+            deformable_groups, groups, 1)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=1)
+        else:
+            out = pre_bias
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'deformable_groups', deformable_groups, 'groups', groups,
                  'im2col_step', 1)
