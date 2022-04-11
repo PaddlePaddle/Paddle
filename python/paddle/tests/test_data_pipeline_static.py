@@ -113,7 +113,10 @@ class TestDataPipelineStaticCase1(unittest.TestCase):
             num_iters = 0
             for data in loader:
                 image = data['image'].numpy()
-                assert image.shape[0] == self.batch_size
+                if num_iters < self.num_iters - 1:
+                    assert image.shape[0] == self.batch_size
+                else:
+                    assert image.shape[0] == self.last_batch_size
                 assert image.shape[1] == 3
                 assert image.shape[2] == self.target_size
                 assert image.shape[3] == self.target_size
@@ -124,7 +127,10 @@ class TestDataPipelineStaticCase1(unittest.TestCase):
                 assert np.all(restore_image < 256.)
 
                 label = data['label'].numpy()
-                assert label.shape[0] == self.batch_size
+                if num_iters < self.num_iters - 1:
+                    assert label.shape[0] == self.batch_size
+                else:
+                    assert label.shape[0] == self.last_batch_size
                 assert label.dtype == np.int64
                 assert np.all(label >= 0)
                 assert np.all(label <= 1)
@@ -147,8 +153,8 @@ class TestDataPipelineStaticCase2(TestDataPipelineStaticCase1):
         self.host_memory_padding = 0
         self.device_memory_padding = 0
 
-        self.shuffle = True
-        self.drop_last = True
+        self.shuffle = False
+        self.drop_last = False
         self.calc_iter_info()
 
         self.target_size = 128

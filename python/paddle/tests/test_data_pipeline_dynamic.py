@@ -74,8 +74,8 @@ class TestDataPipelineDynamicCase2(TestDataPipelineDynamicCase1):
         self.host_memory_padding = 0
         self.device_memory_padding = 0
 
-        self.shuffle = True
-        self.drop_last = True
+        self.shuffle = False
+        self.drop_last = False
         self.calc_iter_info()
 
         self.target_size = 128

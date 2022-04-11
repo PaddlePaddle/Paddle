@@ -82,6 +82,11 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
           "Out variable number should equal to output variable name "
           "number, but receive %d != %d",
           out_vars.size(), output_var_names_.size()));
+
+  framework::LoDTensorArray outputs;
+  std::vector<int64_t> batch_sizes;
+  outputs.reserve(output_var_names_.size());
+  batch_sizes.reserve(output_var_names_.size());
   for (size_t i = 0; i < output_var_names_.size(); i++) {
     auto *out_var = scope_.FindVar(output_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
@@ -96,15 +101,29 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
     }
 
     bool success = true;
-    auto outputs = out_queue->Pop(&success);
+    auto output = out_queue->Pop(&success);
     PADDLE_ENFORCE_EQ(success, true, platform::errors::PreconditionNotMet(
                                          "Read from output queue %s failed",
                                          output_var_names_[i]));
+    outputs.emplace_back(output[0]);
+    batch_sizes.emplace_back(output[0].dims()[0]);
+  }
 
+  // Check and unique batch size before copy to output
+  auto batch_size =
+      *std::min_element(std::begin(batch_sizes), std::end(batch_sizes));
+  for (size_t i = 0; i < output_var_names_.size(); i++) {
     CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
-    copy_tensor(outputs.at(0), out_vars[i]->GetMutable<LoDTensor>());
-    for (auto &output : outputs) output.clear();
-    outputs.clear();
+
+    if (batch_sizes[i] == batch_size) {
+      copy_tensor(outputs[i], out_vars[i]->GetMutable<LoDTensor>());
+    } else {
+      copy_tensor(outputs[i].Slice(0, batch_size),
+                  out_vars[i]->GetMutable<LoDTensor>());
+    }
+
+    // clear Tensor in DataLoader program
+    outputs[i].clear();
   }
 }
 

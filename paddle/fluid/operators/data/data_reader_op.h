@@ -172,7 +172,7 @@ class DataReader {
                            "The output variable %s is not found in DataReader "
                            "program's internal scope",
                            output_var_names_[i]));
-          // CheckOutputVarStatus(*out_var, output_var_names_[i]);
+          CheckOutputVarStatus(*out_var, output_var_names_[i]);
 
           if (out_var->IsType<LoDTensor>()) {
             framework::LoDTensorArray t_arr(1);
@@ -190,6 +190,23 @@ class DataReader {
       }
       scope->DeleteScope(&scope_);
     });
+  }
+
+  void CheckOutputVarStatus(const Variable& var, const std::string& var_name) {
+    // only LoDTensor variable type support currently
+    PADDLE_ENFORCE_EQ(
+        var.IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "The tensor in output variable %s get from DataReader "
+            "program's internal scope is not initialized.",
+            var_name));
+    PADDLE_ENFORCE_EQ(
+        var.IsType<LoDTensor>(), true,
+        platform::errors::InvalidArgument(
+            "The output variable %s get from DataReader program's "
+            "internal scope holds wrong type. Expect type is "
+            "LoDTensor, but receive type is %s.",
+            var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   }
 
   void ShutDown() {
