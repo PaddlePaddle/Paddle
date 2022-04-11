@@ -124,6 +124,7 @@ void SparseMaskKernel(const Context& dev_ctx,
       }));
 }
 
+// TODO(zhangkaihuo): Use an op to realize the function of FlattenIndices
 template <typename IntT>
 __global__ void FlattenIndicesKernel(const IntT* indices,
                                      const IntT* sparse_offsets,
