@@ -150,8 +150,8 @@ void CsrValuesKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void SparseCooTensorKernel(const Context& dev_ctx,
-                           const DenseTensor& indices,
                            const DenseTensor& values,
+                           const DenseTensor& indices,
                            const IntArray& dense_shape,
                            SparseCooTensor* out) {
   *out =

@@ -76,7 +76,7 @@ PD_REGISTER_KERNEL(sparse_coo_tensor_grad,
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

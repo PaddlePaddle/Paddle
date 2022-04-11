@@ -167,21 +167,20 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   const int64_t sparse_dim = x.non_zero_indices().dims()[0];
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
 
-  std::vector<IntT> sparse_offsets(
-      sparse_dim);  //, x_indexs(x.nnz()), mask_indexs(mask_indices.dims()[1]);
+  std::vector<IntT> sparse_offsets(sparse_dim);
 
-  DenseTensorMeta x_indices_meta(indices_dtype, {x.nnz()}, DataLayout::NCHW);
-  DenseTensorMeta mask_indices_meta(
+  DenseTensorMeta x_indexs_meta(indices_dtype, {x.nnz()}, DataLayout::NCHW);
+  DenseTensorMeta mask_indexs_meta(
       indices_dtype, {mask_indices.dims()[1]}, DataLayout::NCHW);
   DenseTensorMeta sparse_offset_meta(
       indices_dtype, {sparse_dim}, DataLayout::NCHW);
 
   DenseTensor x_indexs =
-      phi::Empty<GPUContext>(dev_ctx, std::move(x_indices_meta));
+      phi::Empty<GPUContext>(dev_ctx, std::move(x_indexs_meta));
   DenseTensor mask_indexs =
-      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indexs_meta));
   DenseTensor bound_out =
-      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indexs_meta));
   DenseTensor d_sparse_offsets =
       phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
   IntT* x_indexs_ptr = x_indexs.data<IntT>();
@@ -221,11 +220,15 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
                          0,
                          dev_ctx.stream()>>>(mask_indices.data<IntT>(),
                                              d_sparse_offsets.data<IntT>(),
-                                             mask_indices.numel(),
+                                             mask_indexs.numel(),
                                              sparse_dim,
                                              mask_indexs_ptr);
-  // 4. call thrust::lower_bound
+// 4. call thrust::lower_bound
+#ifdef PADDLE_WITH_HIP
+  thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                       x_indexs_ptr,
                       x_indexs_ptr + x_indexs.numel(),
                       mask_indexs_ptr,
@@ -238,6 +241,9 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
 
+  const int64_t stride =
+      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+
   SparseMaskCopyKernel<<<config.block_per_grid,
                          config.thread_per_block,
                          0,
@@ -246,7 +252,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
                                              bound_out_ptr,
                                              x.non_zero_elements().data<T>(),
                                              mask_indexs.numel(),
-                                             x.non_zero_elements().dims()[1],
+                                             stride,
                                              out_ptr);
 }
 

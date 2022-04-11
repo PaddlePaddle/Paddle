@@ -14,6 +14,7 @@
 
 from paddle import _C_ops
 from ..framework import core, dygraph_only
+from ..framework import _current_expected_place, _get_paddle_place
 from ..tensor import to_tensor
 from ..tensor import max
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -36,6 +37,18 @@ def _infer_dense_shape(indices):
     lens = max(indices, axis=1)
     lens = lens + 1
     return list(lens.numpy())
+
+
+def _get_place(place):
+    place = _get_paddle_place(place)
+    if place is None:
+        place = _current_expected_place()
+    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
+                                core.CUDAPlace)):
+        raise ValueError(
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+        )
+    return place
 
 
 @dygraph_only
@@ -94,6 +107,8 @@ def sparse_coo_tensor(indices,
             #       values=[1., 2., 3.])
     """
 
+    place = _get_place(place)
+
     if not isinstance(indices, core.eager.Tensor):
         indices = to_tensor(
             indices, dtype=None, place=place, stop_gradient=True)
@@ -101,14 +116,19 @@ def sparse_coo_tensor(indices,
         values = to_tensor(values, dtype, place, stop_gradient)
     if len(indices.shape) != 2:
         raise ValueError("'indices' must be 2-D.")
-    if place is not None:
+
+    if not indices.place._equals(place):
         indices = indices._copy_to(place, False)
+
+    if not values.place._equals(place):
         values = values._copy_to(place, False)
     values = _handle_dtype(values, dtype)
+    values.stop_gradient = stop_gradient
+
     if shape is None:
         shape = _infer_dense_shape(indices)
-#return core.eager.sparse_coo_tensor(indices, values, shape, stop_gradient)
-    return _C_ops.final_state_sparse_create_sparse_coo_tensor(indices, values,
+
+    return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
                                                               shape)
 
 
@@ -173,6 +193,9 @@ def sparse_csr_tensor(crows,
             #       cols=[1, 3, 2, 0, 1],
             #       values=[1, 2, 3, 4, 5])
     """
+
+    place = _get_place(place)
+
     if not isinstance(crows, core.eager.Tensor):
         crows = to_tensor(crows, dtype=None, place=place, stop_gradient=True)
     if not isinstance(cols, core.eager.Tensor):
@@ -184,10 +207,15 @@ def sparse_csr_tensor(crows,
             "SparseCsrTensor only support 2-D or 3-D matrix. The 'crows', 'cols' and 'values' must be 1-D."
         )
 
-    if place is not None:
+    if not crows.place._equals(place):
         crows = crows._copy_to(place, False)
+
+    if not cols.place._equals(place):
         cols = cols._copy_to(place, False)
+
+    if not values.place._equals(place):
         values = values._copy_to(place, False)
     values = _handle_dtype(values, dtype)
+    values.stop_gradient = stop_gradient
     return core.eager.sparse_csr_tensor(crows, cols, values, shape,
                                         stop_gradient)

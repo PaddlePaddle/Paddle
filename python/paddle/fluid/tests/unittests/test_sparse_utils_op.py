@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
+from paddle import _C_ops
 
 
 class TestSparseCreate(unittest.TestCase):
@@ -195,17 +196,31 @@ class TestSparseConvert(unittest.TestCase):
                 values, dtype='float32', stop_gradient=False)
             sparse_x = paddle.sparse.sparse_coo_tensor(
                 indices, values, shape=[2, 2], stop_gradient=False)
-            print(sparse_x)
-            grad_indices = [[0, 1], [1, 0]]
+            grad_indices = [[0, 1], [1, 1]]
             grad_values = [2, 3]
             grad_indices = paddle.to_tensor(grad_indices, dtype='int32')
             grad_values = paddle.to_tensor(grad_values, dtype='float32')
             sparse_out_grad = paddle.sparse.sparse_coo_tensor(
                 grad_indices, grad_values, shape=[2, 2])
             sparse_x.backward(sparse_out_grad)
-            print(sparse_x.grad)
-            print(values.grad)
-            print(indices.grad)
+            correct_values_grad = [0, 3]
+            assert np.array_equal(correct_values_grad, values.grad.numpy())
+
+            place = core.CPUPlace()
+            indices_cpu = paddle.to_tensor(indices, dtype='int32', place=place)
+            values_cpu = paddle.to_tensor(
+                values, dtype='float32', place=place, stop_gradient=False)
+            sparse_x_cpu = paddle.sparse.sparse_coo_tensor(
+                indices_cpu,
+                values_cpu,
+                shape=[2, 2],
+                place=place,
+                stop_gradient=False)
+
+            sparse_out_grad_cpu = paddle.sparse.sparse_coo_tensor(
+                grad_indices, grad_values, shape=[2, 2], place=place)
+            sparse_x_cpu.backward(sparse_out_grad_cpu)
+            assert np.array_equal(correct_values_grad, values_cpu.grad.numpy())
 
 
 if __name__ == "__main__":

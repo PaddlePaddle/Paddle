@@ -123,17 +123,21 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
                  sparse_dim,
                  &mask_indexs);
 
-  std::set<IntT> x_indexs_set(x_indexs.begin(), x_indexs.end());
+  std::unordered_map<IntT, uint64_t> x_indexs_map;
+  for (uint64_t i = 0; i < x_indexs.size(); i++) {
+    x_indexs_map[x_indexs[i]] = i;
+  }
   *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* out_ptr = out->data<T>();
   memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
-  const int stride = x.non_zero_elements().dims()[1];
+  const int64_t stride =
+      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
   const T* in_ptr = x.non_zero_elements().data<T>();
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {
-    auto iter = x_indexs_set.find(mask_indexs[i]);
-    if (iter != x_indexs_set.end()) {
+    auto iter = x_indexs_map.find(mask_indexs[i]);
+    if (iter != x_indexs_map.end()) {
       memcpy(out_ptr + i * stride,
-             in_ptr + mask_indexs[i] * stride,
+             in_ptr + iter->second * stride,
              stride * sizeof(T));
     }
   }

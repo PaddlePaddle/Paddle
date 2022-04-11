@@ -22,7 +22,7 @@
   backward : coo_values_grad
 
 - api : create_sparse_coo_tensor
-  args : (Tensor indices, Tensor values, IntArray dense_shape)
+  args : (Tensor values, Tensor indices, IntArray dense_shape)
   output : Tensor(out@SparseCooTensor)
   kernel :
     func : sparse_coo_tensor
