@@ -908,6 +908,16 @@
     data_type : input
   optional : weight
 
+- backward_api : norm_grad
+  forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
+  args : (Tensor x, Tensor norm, Tensor out_grad, int axis, float epsilon, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : norm_grad
+
 - backward_api : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
@@ -1096,7 +1106,7 @@
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
-  invoke : scale(out_grad, scale, bias, bias_after_scale)
+  invoke : scale(out_grad, scale, 0.0, bias_after_scale)
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
@@ -1129,6 +1139,8 @@
     param : [x]
   kernel :
     func : segment_pool_grad
+    data_type : x
+  optional : summed_ids
 
 - backward_api : selu_grad
   forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)
