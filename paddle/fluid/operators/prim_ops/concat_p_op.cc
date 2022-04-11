@@ -44,6 +44,9 @@ class ConcatPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("XS", "(Tensor), The input tensors of concat_p op.");
     AddOutput("Y", "(Tensor), The output tensor of concat_p op.");
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to concat.");
+    AddComment(R"DOC(
+Autograd primitive concat_p operator.
+)DOC");
   }
 };
 
@@ -125,5 +128,6 @@ class ConcatPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(concat_p, paddle::operators::ConcatPrimOp,
+                  paddle::operators::ConcatPrimOpMaker,
                   paddle::operators::ConcatPrimOpShapeInference,
                   paddle::operators::ConcatPrimOpVarTypeInference);

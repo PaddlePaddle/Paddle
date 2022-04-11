@@ -44,6 +44,9 @@ class MatmulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of matmul_p op.");
     AddInput("Y", "(Tensor), The input tensor of matmul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of matmul_p op.");
+    AddComment(R"DOC(
+Autograd primitive matmul_p operator.
+)DOC");
   }
 };
 
@@ -121,5 +124,6 @@ class MatmulPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(matmul_p, paddle::operators::MatmulPrimOp,
+                  paddle::operators::MatmulPrimOpMaker,
                   paddle::operators::MatmulPrimOpShapeInference,
                   paddle::operators::MatmulPrimOpVarTypeInference);

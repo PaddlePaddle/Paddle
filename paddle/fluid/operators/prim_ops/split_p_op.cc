@@ -52,6 +52,9 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "elements in it indicate the sizes of sub-Tensors’ dimension orderly. "
         "The length of the vector must not be larger than the input's size of "
         "specified axis.");
+    AddComment(R"DOC(
+Autograd primitive split_p operator.
+)DOC");
   }
 };
 
@@ -102,5 +105,6 @@ class SplitPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(split_p, paddle::operators::SplitPrimOp,
+                  paddle::operators::SplitPrimOpMaker,
                   paddle::operators::SplitPrimOpShapeInference,
                   paddle::operators::SplitPrimOpVarTypeInference);

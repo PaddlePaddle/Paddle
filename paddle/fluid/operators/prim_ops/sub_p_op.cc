@@ -43,6 +43,9 @@ class SubPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of sub_p op.");
     AddInput("Y", "(Tensor), The input tensor of sub_p op.");
     AddOutput("Z", "(Tensor), The output tensor of sub_p op.");
+    AddComment(R"DOC(
+Autograd primitive sub_p operator.
+)DOC");
   }
 };
 
@@ -108,5 +111,6 @@ class SubPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(sub_p, paddle::operators::SubPrimOp,
+                  paddle::operators::SubPrimOpMaker,
                   paddle::operators::SubPrimOpShapeInference,
                   paddle::operators::SubPrimOpVarTypeInference);

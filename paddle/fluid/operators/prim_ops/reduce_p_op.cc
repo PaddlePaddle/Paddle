@@ -48,6 +48,9 @@ class ReducePrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "(std::vector<int64_t>) The axis along which to reduce on. Must be in "
         "range [-rank(input), rank(input)]. If `axis[i] < 0`, the axis[i] to "
         "reduce is `rank + axis[i]`.");
+    AddComment(R"DOC(
+Autograd primitive reduce_p operator.
+)DOC");
   }
 };
 
@@ -95,5 +98,6 @@ class ReducePrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(reduce_p, paddle::operators::ReducePrimOp,
+                  paddle::operators::ReducePrimOpMaker,
                   paddle::operators::ReducePrimOpShapeInference,
                   paddle::operators::ReducePrimOpVarTypeInference);

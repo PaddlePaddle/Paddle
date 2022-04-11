@@ -51,7 +51,11 @@ class ScatterAddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("axis",
                      "(int64_t), The axis along which to scatter and add.");
     AddAttr<std::vector<int64_t>>(
-        "index", "(std::vector<int64_t>) The index of scatter_add_p op");
+        "index", "(std::vector<int64_t>) The index of scatter_add_p op")
+        .SetDefault({0});
+    AddComment(R"DOC(
+Autograd primitive scatter_add_p operator.
+)DOC");
   }
 };
 
@@ -125,5 +129,6 @@ class ScatterAddPrimOpVarTypeInference
 }  // namespace paddle
 
 REGISTER_OPERATOR(scatter_add_p, paddle::operators::ScatterAddPrimOp,
+                  paddle::operators::ScatterAddPrimOpMaker,
                   paddle::operators::ScatterAddPrimOpShapeInference,
                   paddle::operators::ScatterAddPrimOpVarTypeInference);
