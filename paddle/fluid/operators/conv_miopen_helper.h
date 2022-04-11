@@ -14,42 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <array>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/conv_search_cache.h"
-#include "paddle/fluid/framework/operator_kernel_configs.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/fluid/operators/conv_base_helper.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DataLayout = platform::DataLayout;
-template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using framework::AlgorithmsCache;
-static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
-  *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
-  if (dims.size() == 5) {
-    *D = dims[2 - i];
-    *H = dims[3 - i];
-    *W = dims[4 - i];
-  } else {
-    *D = 1;
-    *H = dims[2 - i];
-    *W = dims[3 - i];
-  }
-}
+using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
@@ -66,9 +36,8 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
     extents[i] = new_out_dims[i];
   }
 
-  int start;
   for (size_t i = 0; i < axes.size(); ++i) {
-    start = starts[i];
+    int start = starts[i];
     if (start < 0) {
       start = (start + in_dims[axes[i]]);
     }
@@ -84,41 +53,6 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
           *out, new_out_dims);
   out_t.device(place) = in_t.slice(offsets, extents);
 }
-
-template <typename T>
-std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
-  out << "[";
-  for (auto const& tmp : v) out << tmp << ",";
-  out << "]";
-  return out;
-}
-
-using framework::ConvSearchCache;
-
-struct ConvArgs {
-  miopenHandle_t handle;
-  platform::TensorDescriptor idesc, odesc;
-  platform::FilterDescriptor wdesc;
-  platform::ConvolutionDescriptor cdesc;
-  const framework::Tensor *x, *w, *o;
-  miopenDataType_t cudnn_dtype;
-
-  // strides
-  std::vector<int> s;
-  // paddings
-  std::vector<int> p;
-  // dilations
-  std::vector<int> d;
-
-  ConvArgs(const framework::Tensor* x, const framework::Tensor* w,
-           const framework::Tensor* o, const std::vector<int> s,
-           const std::vector<int> p, const std::vector<int> d,
-           miopenDataType_t dtype)
-      : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
-};
-
-template <typename algo_t>
-struct SearchAlgorithm {};
 
 template <>
 struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
