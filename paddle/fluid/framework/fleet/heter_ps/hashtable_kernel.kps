@@ -14,7 +14,26 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+
+namespace optimizer_config {
+extern _global_ptr_ float* nonclk_coeff;
+extern _global_ptr_ float* clk_coeff;
+
+extern _global_ptr_ float* min_bound;
+extern _global_ptr_ float* max_bound;
+extern _global_ptr_ float* learning_rate;
+extern _global_ptr_ float* initial_g2sum;
+extern _global_ptr_ float* initial_range;
+
+extern _global_ptr_ float* mf_create_thresholds;
+extern _global_ptr_ float* mf_learning_rate;
+extern _global_ptr_ float* mf_initial_g2sum;
+extern _global_ptr_ float* mf_initial_range;
+extern _global_ptr_ float* mf_min_bound;
+extern _global_ptr_ float* mf_max_bound;
+}
+
 namespace paddle {
 namespace framework {
 
