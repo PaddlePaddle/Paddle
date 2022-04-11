@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace plat = paddle::platform;
@@ -68,44 +69,6 @@ Stack all of the Inputs(X) into one tensor along Attr(axis). The dims of all Inp
 class StackOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Y")), true,
-        platform::errors::InvalidArgument("Input(Y@Grad) not exist."));
-
-    int axis = ctx->Attrs().Get<int>("axis");
-    auto dy_dim = ctx->GetInputDim(framework::GradVarName("Y"));
-    int rank = dy_dim.size();
-    PADDLE_ENFORCE_GE(
-        axis, -rank,
-        platform::errors::InvalidArgument(
-            "Attr(axis) must be inside [-rank, rank), where rank = %d, "
-            "but received axis is:%d.",
-            rank, axis));
-    PADDLE_ENFORCE_LT(
-        axis, rank,
-        platform::errors::InvalidArgument(
-            "Attr(axis) must be inside [-rank, rank), where rank = %d, "
-            "but received axis is:%d.",
-            rank, axis));
-
-    if (axis < 0) axis += rank;
-    PADDLE_ENFORCE_EQ(
-        ctx->Outputs(framework::GradVarName("X")).size(),
-        static_cast<size_t>(dy_dim[axis]),
-        platform::errors::InvalidArgument(
-            "Number of Outputs(X@Grad) is equal to dy dim at axis, but"
-            " received outputs size is:%d, dy dims is:%d.",
-            ctx->Outputs(framework::GradVarName("X")).size(),
-            static_cast<size_t>(dy_dim[axis])));
-
-    auto vec = phi::vectorize<int>(dy_dim);
-    vec.erase(vec.begin() + axis);
-    ctx->SetOutputsDim(
-        framework::GradVarName("X"),
-        std::vector<framework::DDim>(dy_dim[axis], phi::make_ddim(vec)));
-  }
 };
 
 template <typename T>
@@ -127,8 +90,10 @@ class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INFER_SHAPE_FUNCTOR(stack, StackInferMetaFunctor,
                             PD_INFER_META(phi::StackInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(stack_grad, StackGradInferMetaFunctor,
+                            PD_INFER_META(phi::StackGradInferMeta));
 REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
                   ops::StackGradOpMaker<paddle::framework::OpDesc>,
                   ops::StackGradOpMaker<paddle::imperative::OpBase>,
                   StackInferMetaFunctor);
-REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
+REGISTER_OPERATOR(stack_grad, ops::StackOpGrad, StackGradInferMetaFunctor);
