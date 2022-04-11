@@ -43,6 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 DECLARE_int32(record_pool_max_size);
@@ -417,7 +418,7 @@ struct UsedSlotGpuType {
   int slot_value_idx;
 };
 
-#define CUDA_CHECK(val) CHECK(val == cudaSuccess)
+#define CUDA_CHECK(val) CHECK(val == gpuSuccess)
 template <typename T>
 struct CudaBuffer {
   T* cu_buffer;
