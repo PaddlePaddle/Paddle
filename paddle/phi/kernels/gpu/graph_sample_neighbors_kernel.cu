@@ -66,7 +66,6 @@ __global__ void SampleKernel(const uint64_t rand_seed,
                              T* output,
                              T* output_eids,
                              int* output_ptr,
-                             int* output_idxs,
                              bool return_eids) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
@@ -103,7 +102,7 @@ __global__ void SampleKernel(const uint64_t rand_seed,
       }
     } else {
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
-        output_idxs[out_row_start + idx] = idx;
+        output[out_row_start + idx] = idx;
       }
 #ifdef PADDLE_WITH_CUDA
       __syncwarp();
@@ -117,7 +116,7 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 #endif
         if (num < k) {
           atomicMax(reinterpret_cast<unsigned int*>(  // NOLINT
-                        output_idxs + out_row_start + num),
+                        output + out_row_start + num),
                     static_cast<unsigned int>(idx));  // NOLINT
         }
       }
@@ -126,7 +125,7 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 #endif
 
       for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
-        T perm_idx = output_idxs[out_row_start + idx] + in_row_start;
+        T perm_idx = output[out_row_start + idx] + in_row_start;
         output[out_row_start + idx] = row[perm_idx];
         if (return_eids) {
           output_eids[out_row_start + idx] = eids[perm_idx];
@@ -167,9 +166,7 @@ void SampleNeighbors(const Context& dev_ctx,
                      int total_sample_num,
                      bool return_eids) {
   thrust::device_vector<int> output_ptr;
-  thrust::device_vector<int> output_idxs;
   output_ptr.resize(bs);
-  output_idxs.resize(total_sample_num);
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
@@ -192,7 +189,6 @@ void SampleNeighbors(const Context& dev_ctx,
       thrust::raw_pointer_cast(output),
       thrust::raw_pointer_cast(output_eids),
       thrust::raw_pointer_cast(output_ptr.data()),
-      thrust::raw_pointer_cast(output_idxs.data()),
       return_eids);
 }
 
