@@ -101,12 +101,12 @@ struct GpuLaunchConfig {
 inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int64_t numel,
                                             int vec_size = 1) {
-  PADDLE_ENFORCE_GT(
-      numel,
-      0,
-      phi::errors::InvalidArgument("element quantity should be greater than 0,"
-                                   " but received value is: %d.",
-                                   numel));
+  PADDLE_ENFORCE_GE(numel,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "element quantity should be greater than or equal to 0,"
+                        " but received value is: %d.",
+                        numel));
   // Get compute_capability
   const int capability = context.GetComputeCapability();
   /* If thread number per block is 64/128/256/512, cuda performs better.*/
