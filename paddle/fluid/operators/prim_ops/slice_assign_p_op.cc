@@ -61,7 +61,7 @@ class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
-    framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
+    framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
     framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);

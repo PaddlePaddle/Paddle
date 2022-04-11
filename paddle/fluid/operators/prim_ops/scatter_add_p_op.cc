@@ -89,12 +89,12 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
                           "The dimensions of two input tensor should be same, "
                           "but get %d and %d",
                           x_rank, y_rank));
-    PADDLE_ENFORCE_EQ(x_shape[axis], num_index,
+    PADDLE_ENFORCE_EQ(y_shape[axis], num_index,
                       platform::errors::InvalidArgument(
                           "The shape of source input tensor at scatter axis "
                           "should be  equal to num_index, "
                           "but get %d and %d",
-                          x_shape[axis], num_index));
+                          y_shape[axis], num_index));
     for (size_t i = 0; i < x_rank; ++i) {
       if (i != size_t(axis)) {
         PADDLE_ENFORCE_EQ(
