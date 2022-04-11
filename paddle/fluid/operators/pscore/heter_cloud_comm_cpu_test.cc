@@ -116,7 +116,7 @@ void StartSwitchInterServer(
     std::vector<std::string> peer_endpoints) {
   switch_server_ptr->SetPeerEndPoints(peer_endpoints);
   switch_server_ptr->SetInterEndpoint(endpoints[1]);
-  switch_server_ptr->StartHeterInterService(true);
+  switch_server_ptr->StartHeterInterService(false);
 }
 
 TEST(HETERSENDANDRECV, CPU) {
