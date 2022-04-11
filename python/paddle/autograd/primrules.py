@@ -280,7 +280,7 @@ def concat_transpose(op, check_dot, y_bar):
         assert check_dot(x)
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
-    return split(y_bar, sections=sections, axis=axis)
+    return split(y_bar, num_or_sections=sections, axis=axis)
 
 
 @REGISTER_TRANSPOSE('reduce_p')

@@ -66,7 +66,8 @@ def fill_const(value, shape, dtype, out=None):
 
 
 def neg(x, out=None):
-    return _simple_unop(LayerHelper('neg_p', **locals()))
+    zero = fill_const(0.0, x.shape, x.dtype)
+    return sub(zero, x)
 
 
 def add(x, y, out=None):
@@ -105,16 +106,14 @@ def transpose(x, axis=None, out=None):
     return _manipulation_unop(LayerHelper('transpose_p', **locals()))
 
 
-def split(x, num=None, sections=None, axis=0, outs=None):
-    assert num is None ^ sections is None
-    assert sections is None ^ isinstance(sections, (list, tuple))
-
-    n = len(sections) if num is None else num
-    attrs = {'axis': axis}
-    if num is not None:
-        attrs['num'] = num
+def split(x, num_or_sections, axis=0, outs=None):
+    if isinstance(num_or_sections, (list, tuple)):
+        n = len(num_or_sections)
     else:
-        attrs['sections'] = sections
+        assert isinstance(num_or_sections, int)
+        n = num_or_sections
+    
+    attrs = {'num_or_sections': num_or_sections, 'axis': axis}
 
     helper = LayerHelper('split_p', **locals())
     if outs is None:
@@ -144,7 +143,7 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-def reduce(x, axis, keepdim, out=None):
+def reduce(x, axis, keepdim=None, out=None):
     assert isinstance(axis, (int, tuple, list))
     assert isinstance(keepdim, bool)
 
@@ -187,7 +186,7 @@ def slice_select(x, axis, starts, ends, strides, out=None):
 
 
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
-    assert len(y.shape) == len(starts) == len(ends) == len(strides)
+    assert len(y.shape) == len(starts) == len(ends) == len(strides) == len(axis)
     assert len(y.shape) <= len(x.shape)
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
@@ -198,7 +197,7 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
         type=helper.layer_type,
         inputs={'X': x,
                 'Y': y},
-        outputs={'Y': out},
+        outputs={'Z': out},
         attrs=attrs)
     return out
 
