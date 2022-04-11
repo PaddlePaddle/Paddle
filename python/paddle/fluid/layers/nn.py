@@ -5970,8 +5970,11 @@ def multiplex(inputs, index, name=None):
             print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
-    if _non_static_mode():
+
+    if _in_legacy_dygraph():
         return _C_ops.multiplex(index, inputs)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
