@@ -170,11 +170,18 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   cudaMemcpy((void*)device_optimizer_config_, &host_optimizer_config_,
              sizeof(OptimizerConfig), cudaMemcpyHostToDevice);
   rwlock_.reset(new phi::RWLock);
+  g_rand_state_ = nullptr;
+  g_rand_state_size_ = 0;
 }
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
   delete container_;
+  if (g_rand_state_ != nullptr) {
+    CHECK(cudaFree(g_rand_state_) == cudaSuccess);
+    g_rand_state_ = nullptr;
+  }
+  g_rand_state_size_ = 0;
 }
 
 template <typename KeyType, typename ValType>
@@ -337,9 +344,26 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
+  if (len > g_rand_state_size_) {
+    curandState* state = nullptr;
+    CHECK(cudaMalloc(reinterpret_cast<void**>(&state), len * sizeof(curandState)) == cudaSuccess);
+    if (g_rand_state_size_ > 0) {
+      CHECK(cudaMemcpyAsync(state, g_rand_state_,
+                    g_rand_state_size_ * sizeof(curandState), cudaMemcpyDeviceToDevice, stream) == cudaSuccess);
+    }
+    int init_len = len - g_rand_state_size_;
+    const int init_kernel_grid = (init_len - 1) / BLOCK_SIZE_ + 1;
+    curand_init_kernel<<<init_kernel_grid, BLOCK_SIZE_, 0, stream>>>(state + g_rand_state_size_, init_len);
+    if (g_rand_state_size_ != 0) {
+      cudaStreamSynchronize(stream);
+      CHECK(cudaFree(g_rand_state_) == cudaSuccess);
+    }
+    g_rand_state_ = state;
+    g_rand_state_size_ = len;
+  }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, *device_optimizer_config_, d_keys, d_grads, len, sgd);
+      container_, *device_optimizer_config_, d_keys, g_rand_state_, d_grads, len, sgd);
 }
 
 template <typename KeyType, typename ValType>
