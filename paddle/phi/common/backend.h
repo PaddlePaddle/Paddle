@@ -47,7 +47,6 @@ enum class Backend : uint8_t {
   GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
-  MLU,  // MLU currently does not exist at the same time as CUDA
 
   // the third library backend
   MKLDNN,
@@ -115,9 +114,6 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::NPU:
       os << "NPU";
       break;
-    case Backend::MLU:
-      os << "MLU";
-      break;
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
@@ -158,8 +154,6 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::XPU;
   } else if (s == std::string("NPU")) {
     return Backend::NPU;
-  } else if (s == std::string("MLU")) {
-    return Backend::MLU;
   } else if (s == std::string("MKLDNN")) {
     return Backend::MKLDNN;
   } else if (s == std::string("GPUDNN")) {

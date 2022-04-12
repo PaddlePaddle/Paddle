@@ -105,17 +105,8 @@ void MLUOpTensorKernel(const framework::ExecutionContext& ctx,
 
 // ------------------ BinaryOp -----------------
 enum BINARY_FUNCTOR {
-  BITWISEAND,
-  BITWISEOR,
-  BITWISEXOR,
   DIV,
   DIVNONAN,
-  FLOORDIV,
-  FLOORMOD,
-  MAXIMUM,
-  MINIMUM,
-  POW,
-  SQUAREDDIFFERENCE,
 };
 
 template <BINARY_FUNCTOR func>
@@ -166,36 +157,8 @@ void MLUBinaryOp(const framework::ExecutionContext& ctx) {
 
 // ------------------ UnaryOp -----------------
 enum UNARY_FUNCTOR {
-  ABS,
-  ACOS,
-  ACOSH,
-  ASIN,
-  ASINH,
-  ATAN,
-  ATANH,
-  CEIL,
-  COMPLEXABS,
-  COS,
-  COSH,
-  ERF,
-  EXP,
-  FLOOR,
-  ISFINITE,
-  ISNAN,
-  LOG,
-  LOG1P,
-  LOGICAL_NOT,
   NEG,
   RECIPROCAL,
-  RINT,
-  RSQRT,
-  SIGN,
-  SIN,
-  SINH,
-  SQRT,
-  SQUARE,
-  TAN,
-  TANH,
 };
 
 template <UNARY_FUNCTOR func>

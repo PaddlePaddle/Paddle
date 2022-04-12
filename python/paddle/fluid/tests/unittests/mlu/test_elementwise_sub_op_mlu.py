@@ -110,7 +110,6 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
             'X': np.random.rand(100, 3, 2).astype(np.float32),
             'Y': np.random.rand(100).astype(np.float32)
         }
-
         self.attrs = {'axis': 0}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
@@ -125,7 +124,6 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
             'X': np.random.rand(2, 100, 3).astype(np.float32),
             'Y': np.random.rand(100).astype(np.float32)
         }
-
         self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
@@ -140,7 +138,6 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
             'X': np.random.rand(2, 3, 100).astype(np.float32),
             'Y': np.random.rand(100).astype(np.float32)
         }
-
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
         }
@@ -154,7 +151,6 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
             'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
             'Y': np.random.rand(10, 12).astype(np.float32)
         }
-
         self.attrs = {'axis': 1}
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
@@ -202,9 +198,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseSubOp):
             'X': np.random.rand(10, 12).astype(np.float32),
             'Y': np.random.rand(2, 3, 10, 12).astype(np.float32)
         }
-
         self.attrs = {'axis': 2}
-
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
