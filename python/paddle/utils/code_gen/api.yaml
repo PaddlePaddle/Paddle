@@ -167,6 +167,16 @@
     func : asinh
   backward : asinh_grad
 
+# assign
+- api : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign_raw
+  backward : assign_grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -1251,6 +1261,15 @@
     func : maximum
   backward : maximum_grad
 
+- api : maxout
+  args : (Tensor x, int groups, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : MaxOutInferMeta
+  kernel :
+    func : maxout
+  backward : maxout_grad
+
 - api : mean
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1271,8 +1290,11 @@
 
 - api : meshgrid
   args : (Tensor[] inputs)
-  output : Tensor[]
-  invoke : meshgrid_impl(inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
@@ -1327,6 +1349,15 @@
   invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
   optional : master_param
 
+- api : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1335,6 +1366,16 @@
     func : MultinomialInferMeta
   kernel :
     func : multinomial
+
+- api : multiplex
+  args : (Tensor[] ins, Tensor ids)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : ins
+  backward : multiplex_grad
 
 - api : multiply
   args : (Tensor x, Tensor y)
@@ -2021,8 +2062,11 @@
 
 - api : unbind
   args : (Tensor input, int axis)
-  output : Tensor[]
-  invoke : unbind_impl(input, axis)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
   backward : unbind_grad
 
 # unfold
@@ -2034,6 +2078,18 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- api : uniform_random
+  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype, min, max, seed]
+  kernel :
+    func : uniform_random
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype
+    backend : place
 
 # The `axis` argument of Python API paddle.unique is not vector
 - api : unique
