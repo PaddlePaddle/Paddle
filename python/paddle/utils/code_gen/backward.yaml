@@ -97,7 +97,7 @@
     func : UnchangedInferMeta
     param : [out_grad]
   kernel :
-    func : assign_raw
+    func : assign
 
 - backward_api : atan2_grad
   forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
