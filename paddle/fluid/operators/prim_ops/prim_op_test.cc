@@ -176,7 +176,7 @@ TEST(PrimOp, split_p) {
 
   NewVar(block, x0, shape);
   AppendOp(block, "split_p", {{"X", {x0}}}, {{"YS", {x1, x2, x3}}},
-           {{"axis", 1}, {"num_or_sections", std::vector<int64_t>{2, 4, 2}}});
+           {{"axis", 1L}, {"num_or_sections", std::vector<int64_t>{2, 4, 2}}});
   ASSERT_EQ(block->Var("x1")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("x1")->GetDataType(), proto::VarType_Type_FP32);
   auto shapes = block->Var("x1")->GetShape();
@@ -201,7 +201,7 @@ TEST(PrimOp, split_p) {
   std::string x4 = "x4";
   std::string x5 = "x5";
   AppendOp(block, "split_p", {{"X", {x0}}}, {{"YS", {x4, x5}}},
-           {{"axis", 2}, {"num_or_sections", std::vector<int64_t>{2}}});
+           {{"axis", 2L}, {"num_or_sections", std::vector<int64_t>{2}}});
   ASSERT_EQ(block->Var("x4")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("x4")->GetDataType(), proto::VarType_Type_FP32);
   shapes = block->Var("x4")->GetShape();
@@ -234,7 +234,7 @@ TEST(PrimOp, concat_p) {
   NewVar(block, x1, shape_1);
   NewVar(block, x2, shape_2);
   AppendOp(block, "concat_p", {{"XS", {x0, x1, x2}}}, {{"Y", {x3}}},
-           {{"axis", 1}});
+           {{"axis", 1L}});
   ASSERT_EQ(block->Var("x3")->GetType(), proto::VarType::LOD_TENSOR);
   ASSERT_EQ(block->Var("x3")->GetDataType(), proto::VarType_Type_FP32);
   auto shapes = block->Var("x3")->GetShape();
