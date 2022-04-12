@@ -93,6 +93,7 @@ void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
         desc.SetAttr("out_threshold", fc_op->GetAttr("out_threshold"));
       }
       desc.Flush();
+      GraphSafeRemoveNodes(g, {fc});
       auto sparse_fc_node = g->CreateOpNode(&desc);
 
       IR_NODE_LINK_TO(fc_input, sparse_fc_node);
