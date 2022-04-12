@@ -2481,7 +2481,7 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
-      "  std::string name() override { return \"%s[mid_grad_node]\"; } \n "
+      "  std::string name() override { return \"%s_mid_grad_node\"; } \n "
       "\n"
       "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
       "    auto copied_node = std::shared_ptr<GradNode%s>(new "

@@ -120,7 +120,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
-  std::string name() override {{ return \"{}[final_grad_node]\"; }}
+  std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
       {}
