@@ -231,10 +231,10 @@ if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6888866 39303645
   fi
 
-HAS_MODIFIED_DECLARATIONS=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels/declarations.h" || true`
+HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by chenwhql for any use of paddle/phi/kernels/declarations.h. Thanks!\n"
-    check_approval 1 22561442
+    echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"
+    check_approval 1 chenwhql zyfncg
   fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
