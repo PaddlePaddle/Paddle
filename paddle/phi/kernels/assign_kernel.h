@@ -21,13 +21,18 @@
 
 namespace phi {
 
+template <typename Context>
+void AssignKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out);
+
 // In order to be compatible with the `AsDispensable` input in the original
 // assign op maker, the input parameter here needs to be dispensable, but
 // this looks weird
 template <typename Context>
-void AssignKernel(const Context& dev_ctx,
-                  paddle::optional<const DenseTensor&> x,
-                  DenseTensor* out);
+void AssignRawKernel(const Context& dev_ctx,
+                     paddle::optional<const DenseTensor&> x,
+                     DenseTensor* out);
 
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,

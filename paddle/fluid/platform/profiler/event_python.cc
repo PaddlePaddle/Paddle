@@ -81,7 +81,7 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
                                const ExtraInfo& extra_info)
-    : tree_(std::move(tree)), extra_info_(extra_info) {
+    : tree_(tree.release()), extra_info_(extra_info) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
