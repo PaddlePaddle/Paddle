@@ -139,7 +139,7 @@ void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
                            const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
-void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);
 
