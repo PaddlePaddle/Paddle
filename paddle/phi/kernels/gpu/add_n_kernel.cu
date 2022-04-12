@@ -132,7 +132,7 @@ void AddNKernel(const Context &dev_ctx,
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),
                          phi::CPUPlace(),
-                         reinterpret_cast<void *>(in_data.data()),
+                         reinterpret_cast<void *>(restored),
                          in_data.size() * sizeof(T *),
                          dev_ctx.stream());
 
