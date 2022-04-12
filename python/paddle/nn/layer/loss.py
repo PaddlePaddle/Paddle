@@ -1298,3 +1298,83 @@ class HingeEmbeddingLoss(Layer):
             reduction=self.reduction,
             margin=self.margin,
             name=self.name)
+
+
+class CosineEmbeddingLoss(Layer):
+    r"""
+    This interface is used to construct a callable object of the ``CosineEmbeddingLoss`` class.
+    The CosineEmbeddingLoss layer measures the cosine_embedding loss between input predictions ``input1``, ``input2``
+    and target labels ``label`` with values 1 or 0. This is used for measuring whether two inputs are similar or
+    dissimilar and is typically used for learning nonlinear embeddings or semi-supervised learning.
+    The cosine_embedding loss can be described as:
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
+
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
+    .. math::
+        Out = MEAN(Out)
+
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
+    .. math::
+        Out = SUM(Out)
+
+    Parameters:
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+            :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+            default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+            ``'mean'``: the sum of the output will be divided by the number of
+            elements in the output, ``'sum'``: the output will be summed.
+
+    Shape:
+        input1 (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
+            number of additional dimensions. Available dtypes are float32, float64.
+        input2 (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
+            number of additional dimensions. Available dtypes are float32, float64.
+        label (Tensor): 2-D tensor with the same shape as ``input``. The target
+            labels which values should be numbers between 0 and 1. Available
+            dtypes are int32, int64, float32, float64.
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
+            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
+            label = paddle.to_tensor([1], 'int32')
+
+            cosine_embedding_loss = paddle.nn.loss.CosineEmbeddingLoss(margin=0.5, reduction='mean)
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # output: [0.42310387]
+
+    """
+
+    def __init__(self, margin=0, reduction='mean'):
+        if margin > 1 or margin < -1:
+            raise ValueError(
+                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed." % margin)
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError("The value of 'reduction' should be 'sum', 'mean' or "
+                             "'none', but received %s, which is not allowed." % reduction)
+        super(CosineEmbeddingLoss, self).__init__()
+        self.margin = margin
+        self.reduction = reduction
+
+    def forward(self, input1, input2, label):
+        return F.cosine_embedding_loss(input1, input2, label, margin=self.margin, reduction=self.reduction)

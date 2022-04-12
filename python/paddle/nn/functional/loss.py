@@ -2154,3 +2154,125 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def cosine_embedding_loss(input1: paddle.Tensor, input2: paddle.Tensor, label: paddle.Tensor, margin=0,
+                          reduction='mean'):
+    r"""
+    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    The operator cos can be described as follow:
+     .. math::
+        cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
+
+     Parameters:
+        input1 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): 0D or 1D tensor. The target labels values should be numbers between 0 and 1.
+                         Available dtypes are int32, int64, float32, float64.
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+                         :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+                         default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+                         ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+                         ``'mean'``: the sum of the output will be divided by the number of elements in the output
+                         ``'sum'``: the output will be summed.
+
+    Returns:
+        Tensor, the L1 Loss of Tensor ``input`` and ``label``.
+            If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
+            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
+            label = paddle.to_tensor([1], 'int32')
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
+            print(output) # output: [0.42310387]
+
+    """
+    label_size = len(label.shape)
+    if label_size != 0 and label_size != 1:
+        raise ValueError("0D or 1D target tensor expected, multi-target not supported")
+
+    if label_size == 1:
+        if len(input1.shape) != 2 or len(input2.shape) != 2:
+            raise ValueError("1D target tensor expects 2D input tensors, but found inputs with different sizes")
+
+    elif label_size == 0:
+        if len(input1.shape) != 1 or len(input2.shape) != 1:
+            raise ValueError("0D target tensor expects 1D input tensors, but found inputs with different sizes")
+
+    batch_size, hidden_size = input1.shape
+    scores = paddle.zeros([batch_size])
+
+    if in_dynamic_mode():
+        for i in range(batch_size):
+            z = paddle.matmul(input1[i], input2[i])
+            denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
+            score = z / denom
+            if label[i].item() == 1:
+                scores[i] = 1 - score
+            elif label[i].item() == 0:
+                scores[i] = max(0, score - margin)
+            else:
+                raise ValueError(
+                    "value of label should be number between 0 and 1, but received {}".format(label[i].item()))
+
+        if reduction == 'none':
+            return scores
+        if reduction == 'mean':
+            return paddle.mean(scores)
+        elif reduction == 'sum':
+            return paddle.sum(scores)
+
+    fluid.data_feeder.check_variable_and_dtype(input1, 'input1', ['float32', 'float64'], 'cosine_embedding_loss')
+    fluid.data_feeder.check_variable_and_dtype(input2, 'input2', ['float32', 'float64'], 'cosine_embedding_loss')
+    fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int32', 'int64', 'float32', 'float64'],
+                                               'cosine_embedding_loss')
+
+    label_ones = fluid.layers.fill_constant(shape=[label.shape[0]],
+                                            dtype='{}'.format(label.dtype).replace("paddle.", ""), value=1)
+    label_zeros = fluid.layers.fill_constant(shape=[label.shape[0]],
+                                             dtype='{}'.format(label.dtype).replace("paddle.", ""), value=0)
+    conds_ones = fluid.layers.equal(x=label, y=label_ones)
+    conds_zeros = fluid.layers.equal(x=label, y=label_zeros)
+
+    for i in range(batch_size):
+        z = fluid.layers.matmul(input1[i], input2[i])
+        elem1 = fluid.layers.reduce_sum(fluid.layers.pow(input1[i], factor=2.0))
+        elem2 = fluid.layers.reduce_sum(fluid.layers.pow(input2[i], factor=2.0))
+        denom = fluid.layers.sqrt(elem1) * fluid.layers.sqrt(elem2)
+        score = z / denom
+        with fluid.layers.Switch() as switch:
+            with switch.case(conds_ones[i] == True and conds_zeros[i] == False):
+                scores[i] = 1 - score
+            with switch.case(conds_ones[i] == False and conds_zeros[i] == True):
+                scores[i] = max(0, score - margin)
+            with switch.default():
+                pass
+
+    if reduction == 'none':
+        return scores
+    if reduction == 'mean':
+        return paddle.mean(scores)
+    elif reduction == 'sum':
+        return paddle.sum(scores)
+
