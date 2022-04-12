@@ -11,13 +11,16 @@ add_custom_command(TARGET ps_framework_proto POST_BUILD
     COMMAND mv the_one_ps.pb.cc ps.pb.cc)
 if(WITH_PYTHON)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
+  add_custom_target(ps_py_proto_init ALL  
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   if (NOT WIN32)
     add_custom_command(TARGET ps_py_proto POST_BUILD
       COMMAND mv the_one_ps_pb2.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
   else(NOT WIN32)
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET ps_py_proto POST_BUILD
-      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath})
+      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath}
+      COMMENT "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}.")
   endif(NOT WIN32)
 endif()
 
