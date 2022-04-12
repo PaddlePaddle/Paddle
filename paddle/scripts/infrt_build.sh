@@ -44,8 +44,6 @@ function update_pd_ops() {
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
    python3 generate_phi_kernel_dialect.py
-   # generate test model
-   cd ${PADDLE_ROOT}
 }
 
 function init() {
@@ -113,6 +111,8 @@ function create_fake_models() {
     python3 -m pip uninstall -y paddlepaddle
     python3 -m pip install  *whl
 
+    # generate test model
+    cd ${PADDLE_ROOT}
     mkdir -p ${PADDLE_ROOT}/build/models
     python3 paddle/infrt/tests/models/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
     python3 paddle/infrt/tests/models/resnet50_model.py ${PADDLE_ROOT}/build/models/resnet50/model
