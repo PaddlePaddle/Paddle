@@ -29,8 +29,8 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
-#include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/place.h"
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"

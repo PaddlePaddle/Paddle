@@ -259,6 +259,103 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
   }
 }
 
+void LayerNormInferMeta(const MetaTensor& x,
+                        paddle::optional<const MetaTensor&> scale,
+                        paddle::optional<const MetaTensor&> bias,
+                        float epsilon,
+                        int begin_norm_axis,
+                        bool is_test,
+                        MetaTensor* out,
+                        MetaTensor* mean,
+                        MetaTensor* variance,
+                        MetaConfig config) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_LT(
+      begin_norm_axis,
+      x_dim.size(),
+      phi::errors::InvalidArgument(
+          "'begin_norm_axis' must be less than the dimensions of X,"
+          "But received 'begin_norm_axis' is [%d],"
+          "received the dimensions of X is [%d].",
+          begin_norm_axis,
+          x_dim.size()));
+
+  auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
+  int left = static_cast<int>(matrix_dim[0]);
+  int right = static_cast<int>(matrix_dim[1]);
+  if (scale.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(scale->dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be 1, but "
+                          "received dimensions of"
+                          "Input(Scale) is [%d]",
+                          scale->dims().size()));
+  }
+
+  if (config.is_runtime && scale.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        scale->dims()[0],
+        right,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Scale) must equal to be the"
+            "second dimension value of the flattened 2D matrix of Input(X),"
+            "But received the first dimension value of Input(Scale) is"
+            "[%d], the second dimension value of the flattened 2D matrix of"
+            " Input(Scale) is [%d].",
+            scale->dims()[0],
+            right));
+  }
+  if (bias.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(bias->dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(Bias) must be 1, but "
+                          "received dimensions of"
+                          "Input(Bias) is [%d]",
+                          bias->dims().size()));
+  }
+  if (config.is_runtime && bias.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        bias->dims()[0],
+        right,
+        phi::errors::InvalidArgument(
+            "The first dimension value of Input(Bias) must equal to be the"
+            "second dimension value of the flattened 2D matrix of Input(X),"
+            "But received the first dimension value of Input(Bias) is"
+            "[%d], the second dimension value of the flattened 2D matrix of"
+            " Input(Bias) is [%d].",
+            bias->dims()[0],
+            right));
+  }
+
+  out->set_dims(x_dim);
+  if (mean) {
+    mean->set_dims({left});
+  }
+  if (variance) {
+    variance->set_dims({left});
+  }
+  out->share_lod(x);
+}
+
+void LayerNormGradInferMeta(const MetaTensor& x,
+                            paddle::optional<const MetaTensor&> y,
+                            paddle::optional<const MetaTensor&> z,
+                            MetaTensor* dx,
+                            MetaTensor* dy,
+                            MetaTensor* dz) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy && (y.get_ptr() != nullptr)) {
+    dy->share_meta(*y.get_ptr());
+  }
+  if (dz && (z.get_ptr() != nullptr)) {
+    dz->share_meta(*z.get_ptr());
+  }
+}
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
