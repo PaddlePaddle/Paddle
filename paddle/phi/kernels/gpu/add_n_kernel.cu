@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 namespace phi {
 
@@ -126,6 +127,8 @@ void AddNKernel(const Context &dev_ctx,
     auto tmp_in_array =
         paddle::memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
+    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      in_data.data(), in_data.size());
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),
                          phi::CPUPlace(),
