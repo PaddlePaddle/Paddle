@@ -109,10 +109,6 @@ class TestAdamW(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -166,10 +162,6 @@ class TestAdamW2(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
 
 class TestAdamWOp(unittest.TestCase):
