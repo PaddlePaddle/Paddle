@@ -534,6 +534,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
   // GeneralGrad
   bool is_general_grad = !inputs.empty();
+  if (is_general_grad) GeneralGrad::Instance().Clear();
 
   /* --- Initialization --- */
   // 1. Init queue with starting nodes

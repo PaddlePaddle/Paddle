@@ -205,13 +205,20 @@ class TestVJP(TestAutogradFunctional):
         self.check_results(ref_result, aliased_result)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_vjp_i1o1()
             self.func_vjp_i2o1()
             self.func_vjp_i2o2()
             self.func_vjp_i2o2_omitting_v()
             self.func_vjp_nested()
             self.func_vjp_aliased_input()
+
+        self.func_vjp_i1o1()
+        self.func_vjp_i2o1()
+        self.func_vjp_i2o2()
+        self.func_vjp_i2o2_omitting_v()
+        self.func_vjp_nested()
+        self.func_vjp_aliased_input()
 
 
 @utils.place(config.DEVICES)
@@ -227,8 +234,9 @@ class TestVJPException(unittest.TestCase):
                                 paddle.to_tensor(self.v))
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_vjp()
+        self.func_vjp()
 
 
 def jac(grad_fn, f, inputs):
@@ -303,11 +311,15 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(results_omitting_v, results_with_v)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_jvp_i1o1()
             self.func_jvp_i2o1()
             self.func_jvp_i2o2()
             self.func_jvp_i2o2_omitting_v()
+        self.func_jvp_i1o1()
+        self.func_jvp_i2o1()
+        self.func_jvp_i2o2()
+        self.func_jvp_i2o2_omitting_v()
 
 
 @utils.place(config.DEVICES)
@@ -492,12 +504,19 @@ class TestHessianClassNoBatch(unittest.TestCase):
             paddle.autograd.Hessian(func, paddle.ones([3]))
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_single_input()
             self.func_multi_input()
             self.func_allow_unused_true()
             self.func_create_graph_true()
             self.func_out_not_single()
+        self.setUpClass()
+        self.func_single_input()
+        self.func_multi_input()
+        self.func_allow_unused_true()
+        self.func_create_graph_true()
+        self.func_out_not_single()
 
 
 class TestHessianClassBatchFirst(unittest.TestCase):
@@ -599,12 +618,19 @@ class TestHessianClassBatchFirst(unittest.TestCase):
             paddle.autograd.Hessian(func, paddle.ones((3, 3)), is_batched=True)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_single_input()
             self.func_multi_input()
             self.func_allow_unused()
             self.func_stop_gradient()
             self.func_out_not_single()
+        self.setUpClass()
+        self.func_single_input()
+        self.func_multi_input()
+        self.func_allow_unused()
+        self.func_stop_gradient()
+        self.func_out_not_single()
 
 
 class TestHessian(unittest.TestCase):
@@ -619,6 +645,7 @@ class TestHessian(unittest.TestCase):
             "second_order_grad").get("rtol")
         self.atol = config.TOLERANCE.get(self.dtype).get(
             "second_order_grad").get("atol")
+
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
@@ -694,9 +721,10 @@ class TestHessian(unittest.TestCase):
                                    self.rtol, self.atol)
         try:
             paddle.grad(hessian, self.x)
-        except RuntimeError as e:
+        except Exception as e:
             error_msg = cpt.get_exception_message(e)
-            assert error_msg.find("has no gradient") > 0
+            assert error_msg.find("has no gradient") > 0 or error_msg.find(
+                "does not appear") > 0
 
     def func_create_graph_true(self):
         def func(x):
@@ -713,13 +741,21 @@ class TestHessian(unittest.TestCase):
         assert triple_grad is not None
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_single_input()
             self.func_multi_input()
             self.func_allow_unused_false()
             self.func_allow_unused_true()
             self.func_create_graph_false()
             self.func_create_graph_true()
+        self.setUpClass()
+        self.func_single_input()
+        self.func_multi_input()
+        self.func_allow_unused_false()
+        self.func_allow_unused_true()
+        self.func_create_graph_false()
+        self.func_create_graph_true()
 
 
 class TestHessianFloat64(TestHessian):
@@ -830,9 +866,10 @@ class TestBatchHessian(unittest.TestCase):
                                    self.rtol, self.atol)
         try:
             paddle.grad(hessian, self.x)
-        except RuntimeError as e:
+        except Exception as e:
             error_msg = cpt.get_exception_message(e)
-            assert error_msg.find("has no gradient") > 0
+            assert error_msg.find("has no gradient") > 0 or error_msg.find(
+                "does not appear") > 0
 
     def func_create_graph_true(self):
         def func(x):
@@ -849,13 +886,23 @@ class TestBatchHessian(unittest.TestCase):
         assert triple_grad is not None
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_single_input()
-            self.func_multi_input()
             self.func_allow_unused_false()
             self.func_allow_unused_true()
             self.func_create_graph_false()
             self.func_create_graph_true()
+        self.setUpClass()
+        self.func_single_input()
+        self.func_allow_unused_false()
+        self.func_allow_unused_true()
+        self.func_create_graph_false()
+        self.func_create_graph_true()
+
+        # FIXME(zhanlve)
+        if _in_legacy_dygraph():
+            self.func_multi_input()
 
 
 class TestBatchHessianFloat64(TestBatchHessian):
@@ -985,12 +1032,19 @@ class TestVHP(unittest.TestCase):
         assert triple_grad is not None
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_v_default()
             self.func_multi_input()
             self.func_single_input()
             self.func_allow_unused_true()
             self.func_create_graph_true()
+        self.setUpClass()
+        self.func_v_default()
+        self.func_multi_input()
+        self.func_single_input()
+        self.func_allow_unused_true()
+        self.func_create_graph_true()
 
 
 class TestJacobian(unittest.TestCase):
@@ -1100,9 +1154,10 @@ class TestJacobian(unittest.TestCase):
                                        self.atol)
         try:
             paddle.grad(jacobian[0], [self.x, self.y])
-        except RuntimeError as e:
+        except Exception as e:
             error_msg = cpt.get_exception_message(e)
-            assert error_msg.find("has no gradient") > 0
+            assert error_msg.find("has no gradient") > 0 or error_msg.find(
+                "does not appear") > 0
 
     def func_create_graph_true(self):
         def func(x, y):
@@ -1123,7 +1178,8 @@ class TestJacobian(unittest.TestCase):
         assert double_grad is not None
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_multi_input_and_multi_output()
             self.func_multi_input_and_single_output()
             self.func_single_input_and_multi_output()
@@ -1132,6 +1188,15 @@ class TestJacobian(unittest.TestCase):
             self.func_allow_unused_true()
             self.func_create_graph_false()
             self.func_create_graph_true()
+        self.setUpClass()
+        self.func_multi_input_and_multi_output()
+        self.func_multi_input_and_single_output()
+        self.func_single_input_and_multi_output()
+        self.func_single_input_and_single_output()
+        self.func_allow_unused_false()
+        self.func_allow_unused_true()
+        self.func_create_graph_false()
+        self.func_create_graph_true()
 
 
 class TestJacobianFloat64(TestJacobian):
@@ -1269,9 +1334,10 @@ class TestJacobianBatch(unittest.TestCase):
                                        self.atol)
         try:
             paddle.grad(jacobian[0], [self.x, self.y])
-        except RuntimeError as e:
+        except Exception as e:
             error_msg = cpt.get_exception_message(e)
-            assert error_msg.find("has no gradient") > 0
+            assert error_msg.find("has no gradient") > 0 or error_msg.find(
+                "does not appear") > 0
 
     def func_create_graph_true(self):
         def func(x, y):
@@ -1292,7 +1358,8 @@ class TestJacobianBatch(unittest.TestCase):
         assert double_grad is not None
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
+            self.setUpClass()
             self.func_batch_single_input_and_batch_single_output()
             self.func_batch_single_input_and_batch_multi_output()
             self.func_batch_multi_input_and_batch_single_output()
@@ -1301,6 +1368,15 @@ class TestJacobianBatch(unittest.TestCase):
             self.func_allow_unused_true()
             self.func_create_graph_false()
             self.func_create_graph_true()
+        self.setUpClass()
+        self.func_batch_single_input_and_batch_single_output()
+        self.func_batch_single_input_and_batch_multi_output()
+        self.func_batch_multi_input_and_batch_single_output()
+        self.func_batch_multi_input_and_batch_multi_output()
+        self.func_allow_unused_false()
+        self.func_allow_unused_true()
+        self.func_create_graph_false()
+        self.func_create_graph_true()
 
 
 class TestJacobianBatchFloat64(TestJacobianBatch):

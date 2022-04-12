@@ -84,6 +84,8 @@ void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& out_grad,
                            MetaTensor* x_grad);
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -115,8 +117,6 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dz,
                                  MetaTensor* dk,
                                  MetaTensor* dl);
-
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
 
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
