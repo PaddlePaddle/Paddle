@@ -64,7 +64,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-// PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
+PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
 PD_REGISTER_KERNEL(
     subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 PD_REGISTER_KERNEL(divide_raw, KPS, ALL_LAYOUT, phi::DivideRawKernel, float) {}
@@ -84,13 +84,13 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(
-    fmax, KPS, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(
-    fmin, KPS, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
+    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(add_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
                    float,
@@ -103,7 +103,7 @@ PD_REGISTER_KERNEL(add_raw,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(subtract_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
                    float,
@@ -116,7 +116,7 @@ PD_REGISTER_KERNEL(subtract_raw,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(divide_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
                    float,
@@ -128,7 +128,7 @@ PD_REGISTER_KERNEL(divide_raw,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(multiply_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
                    float,
@@ -141,7 +141,7 @@ PD_REGISTER_KERNEL(multiply_raw,
                    complex128,
                    bfloat16) {}
 PD_REGISTER_KERNEL(maximum_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::MaximumRawKernel,
                    float,
@@ -151,7 +151,7 @@ PD_REGISTER_KERNEL(maximum_raw,
                    float16,
                    bfloat16) {}
 PD_REGISTER_KERNEL(minimum_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::MinimumRawKernel,
                    float,
@@ -161,7 +161,7 @@ PD_REGISTER_KERNEL(minimum_raw,
                    float16,
                    bfloat16) {}
 PD_REGISTER_KERNEL(modulo_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::ModuloRawKernel,
                    float,
@@ -169,13 +169,13 @@ PD_REGISTER_KERNEL(modulo_raw,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
                    float,

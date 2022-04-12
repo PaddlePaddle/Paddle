@@ -28,6 +28,8 @@ using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kp_ops() {
   static XPUOpMap s_xpu_kp_kernels{
+      {"elementwise_add",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_div",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_sub",
