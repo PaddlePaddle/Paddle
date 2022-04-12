@@ -41,7 +41,8 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of split_p op.");
-    AddOutput("YS", "(Tensor), The output tensors of split_p op.");
+    AddOutput("YS", "(Tensor), The output tensors of split_p op.")
+        .AsDuplicable();
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to split.");
     AddAttr<std::vector<int64_t>>(
         "num_or_sections",

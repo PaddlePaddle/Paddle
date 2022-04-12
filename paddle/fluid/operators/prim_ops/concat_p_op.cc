@@ -41,7 +41,8 @@ class ConcatPrimOp : public framework::OperatorBase {
 class ConcatPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("XS", "(Tensor), The input tensors of concat_p op.");
+    AddInput("XS", "(Tensor), The input tensors of concat_p op.")
+        .AsDuplicable();
     AddOutput("Y", "(Tensor), The output tensor of concat_p op.");
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to concat.");
     AddComment(R"DOC(
