@@ -118,7 +118,7 @@ def conv3d(x,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+        x (Tensor): The input is 5-D SparseCooTensor with shape [N, C, D, H, W], the data 
             type of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
@@ -155,7 +155,7 @@ def conv3d(x,
            None by default.
 
     Returns:
-        A Tensor representing the conv3d, whose data type is 
+        A SparseCooTensor representing the conv3d, whose data type is 
         the same with input. If act is None, the tensor storing the 
         convolution result, and if act is not None, the tensor storing 
         convolution and non-linearity activation result.
@@ -235,7 +235,7 @@ def subm_conv3d(x,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+        x (Tensor): The input is 5-D SparseCooTensor with shape [N, C, D, H, W], the data 
             type of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
@@ -272,7 +272,7 @@ def subm_conv3d(x,
            None by default.
 
     Returns:
-        A Tensor representing the conv3d, whose data type is 
+        A SparseCooTensor representing the conv3d, whose data type is 
         the same with input. If act is None, the tensor storing the 
         convolution result, and if act is not None, the tensor storing 
         convolution and non-linearity activation result.

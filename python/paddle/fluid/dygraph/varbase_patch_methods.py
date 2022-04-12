@@ -892,6 +892,7 @@ def monkey_patch_varbase():
                     dense_shape = [3, 4]
                     sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), dense_shape=dense_shape)
                     print(sparse_x.values())
+                    #[1, 2, 3, 4, 5]
         """
         if self.is_sparse_coo():
             return _C_ops.final_state_sparse_coo_values(self)
@@ -922,8 +923,11 @@ def monkey_patch_varbase():
                     indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                     values = [1, 2, 3, 4, 5]
                     dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), dense_shape=dense_shape)
+                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
                     dense_x = sparse_x.to_dense()
+                    #[[0., 1., 0., 2.],
+                    # [0., 0., 3., 0.],
+                    # [4., 5., 0., 0.]]
 
         """
         if self.is_sparse_coo():
@@ -954,6 +958,9 @@ def monkey_patch_varbase():
                     dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
                     dense_x = paddle.to_tensor(dense_x, dtype='float32')
                     sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                    #indices=[[0, 0, 1, 1],
+                    #         [1, 3, 2, 3]],
+                    #values=[1., 2., 3., 4.]
         """
 
         if self.is_sparse_csr():

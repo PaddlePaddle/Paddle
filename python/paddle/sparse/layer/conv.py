@@ -200,10 +200,6 @@ class Conv3D(_Conv3D):
 
            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
 
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-
     Examples:
 
         .. code-block:: python
@@ -216,8 +212,8 @@ class Conv3D(_Conv3D):
             values = [[1], [2], [3], [4]]
             dense_shape = [1, 1, 3, 4, 1]
             sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
-            subm_conv = paddle.sparse.Conv3D(1, 1, (1, 3, 3))
-            y = subm_conv(sparse_x)
+            conv = paddle.sparse.Conv3D(1, 1, (1, 3, 3))
+            y = conv(sparse_x)
             print(y.shape)
             # (1, 1, 1, 2, 1)
     """
@@ -334,10 +330,6 @@ class SubmConv3D(_Conv3D):
            H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
-
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
 
     Examples:
 
