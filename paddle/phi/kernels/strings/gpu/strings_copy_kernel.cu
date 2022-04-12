@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"

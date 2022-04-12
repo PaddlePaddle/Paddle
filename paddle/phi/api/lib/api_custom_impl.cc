@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -247,11 +248,8 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "copy", kernel_key);
 
   VLOG(6) << "copy API kernel key: " << kernel_key;
-  VLOG(6) << "copy API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
 
@@ -261,17 +259,7 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
   phi::MetaTensor meta_out(kernel_out);
   phi::UnchangedInferMeta(*dense_x, &meta_out);
-
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    phi::Place,
-                                    bool,
-                                    phi::DenseTensor*);
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
-  (*kernel_fn)(*dev_ctx, *dense_x, place, blocking, kernel_out);
-
+  phi::Copy(*dev_ctx, *dense_x, place, blocking, kernel_out);
   return out;
 }
 

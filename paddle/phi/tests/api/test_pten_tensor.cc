@@ -18,12 +18,6 @@
 #include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-#endif
-
 namespace paddle {
 namespace tests {
 

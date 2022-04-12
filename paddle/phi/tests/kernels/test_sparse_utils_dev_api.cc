@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
