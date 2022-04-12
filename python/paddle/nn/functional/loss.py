@@ -2197,8 +2197,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def cosine_embedding_loss(input1: paddle.Tensor, input2: paddle.Tensor, label: paddle.Tensor, margin=0,
-                          reduction='mean'):
+def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
     r"""
     This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
@@ -2217,9 +2216,9 @@ def cosine_embedding_loss(input1: paddle.Tensor, input2: paddle.Tensor, label: p
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
      Parameters:
-        input1 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input1 (Tensor): 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input2 (Tensor): 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
                          Available dtypes are float32, float64.
         label (Tensor): 0D or 1D tensor. The target labels values should be numbers between 0 and 1.
                          Available dtypes are int32, int64, float32, float64.
@@ -2251,15 +2250,14 @@ def cosine_embedding_loss(input1: paddle.Tensor, input2: paddle.Tensor, label: p
     """
     label_size = len(label.shape)
     if label_size != 0 and label_size != 1:
-        raise ValueError("0D or 1D target tensor expected, multi-target not supported")
+        raise ValueError("1D target tensor expected, multi-target not supported")
 
-    if label_size == 1:
-        if len(input1.shape) != 2 or len(input2.shape) != 2:
-            raise ValueError("1D target tensor expects 2D input tensors, but found inputs with different sizes")
+    if len(input1.shape) != len(input2.shape):
+        raise ValueError("the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
+                         "different sizes")
 
-    elif label_size == 0:
-        if len(input1.shape) != 1 or len(input2.shape) != 1:
-            raise ValueError("0D target tensor expects 1D input tensors, but found inputs with different sizes")
+    if len(input1.shape) != 2 and len(input2.shape) != 2:
+        raise ValueError("1D target tensor expects 2D input tensors, but found inputs with different sizes")
 
     batch_size, hidden_size = input1.shape
     scores = paddle.zeros([batch_size])
