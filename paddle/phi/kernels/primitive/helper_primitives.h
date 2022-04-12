@@ -23,7 +23,7 @@ struct dim3 {
   int y;
   int z;
 
-  explicit inline dim3(int split_x, int split_y = 1, int split_z = 1) {
+  explicit inline dim3(int split_x = 1, int split_y = 1, int split_z = 1) {
     x = split_x;
     y = split_y;
     z = split_z;
