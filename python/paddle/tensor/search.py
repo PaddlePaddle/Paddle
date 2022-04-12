@@ -17,8 +17,8 @@ import paddle
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
-from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ..framework import core, in_dygraph_mode, _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -401,7 +401,15 @@ def nonzero(x, as_tuple=False):
     if paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
-        outs = layers.where(x)
+        helper = LayerHelper("where_index", **locals())
+
+        outs = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64)
+
+        helper.append_op(
+            type='where_index',
+            inputs={'Condition': x},
+            outputs={'Out': [outs]})
 
     if not as_tuple:
         return outs
@@ -592,10 +600,10 @@ def where(condition, x=None, y=None, name=None):
           #             [3]]),)
     """
     if np.isscalar(x):
-        x = layers.fill_constant([1], np.array([x]).dtype.name, x)
+        x = paddle.full([1], x, np.array([x]).dtype.name)
 
     if np.isscalar(y):
-        y = layers.fill_constant([1], np.array([y]).dtype.name, y)
+        y = paddle.full([1], y, np.array([y]).dtype.name)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)

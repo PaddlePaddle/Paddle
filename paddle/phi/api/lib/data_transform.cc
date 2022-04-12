@@ -40,7 +40,8 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
   bool ret =
       input.GetType() == AllocationType::GPUPINNED ||
       (transform_flag.need_trans_backend() && target != Backend::ALL_BACKEND &&
-       phi::TransToPhiBackend(input) != target);
+       phi::TransToPhiBackend(input) !=
+           (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
 
