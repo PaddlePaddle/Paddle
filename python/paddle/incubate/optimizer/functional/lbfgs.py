@@ -50,19 +50,19 @@ def minimize_lbfgs(objective_func,
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
 
     Args:
-        objective_func: the objective function to minimize. ``func`` accepts a multivariate input and returns a scalar.
+        objective_func: the objective function to minimize. ``objective_func`` accepts a multivariate input and returns a scalar.
         initial_position (Tensor): the starting point of the iterates. 
-        history_size (Scalar): the number of stored vector pairs {si,yi}.
-        max_iters (Scalar): the maximum number of minimization iterations.
-        tolerance_grad (Scalar): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm.
-        tolerance_change (Scalar): terminates if the change of function value/position/parameter between two iterations is smaller than this value.
-        initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation.
-        line_search_fn (str): indicate which line search method to use, only support 'strong wolfe' right now. May support 'Hager Zhang' in the futrue.
-        max_line_search_iters (Scalar): the maximum number of line search iterations.
-        initial_step_length: step length used in first iteration of line search. different initial_step_length may cause different optimal result. For methods like Newton and quasi-Newton the initial trial step length should always be 1.0 .
-        dtype ('float' | 'float32' | 'float64' | 'double'): the data type to be used.
-        name (str): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+        history_size (Scalar): the number of stored vector pairs {si,yi}. Default value: 100.
+        max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
+        tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
+        tolerance_change (float, optional): terminates if the change of function value/position/parameter between two iterations is smaller than this value. Default value: 1e-9.
+        initial_inverse_hessian_estimate (Tensor, optional): the initial inverse hessian approximation at initial_position. It must be symmetric and positive definite. Default value: None.
+        line_search_fn (str, optional): indicate which line search method to use, only support 'strong wolfe' right now. May support 'Hager Zhang' in the futrue. Default value: 'strong wolfe'.
+        max_line_search_iters (int, optional): the maximum number of line search iterations. Default value: 50.
+        initial_step_length (float, optional): step length used in first iteration of line search. different initial_step_length may cause different optimal result. For methods like Newton and quasi-Newton the initial trial step length should always be 1.0. Default value: 1.0.
+        dtype ('float32' | 'float64', optional): data type used in the algorithm. Default value: 'float32'.
+        name (str, optional): Name for the operation. For more information, please refer to :ref:`api_guide_Name`. Default value: None.
+
     Returns:
         output(tuple):
 
