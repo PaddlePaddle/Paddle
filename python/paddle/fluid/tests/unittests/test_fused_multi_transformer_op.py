@@ -30,6 +30,7 @@ from paddle.fluid.framework import default_main_program
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import Constant
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle import _C_ops
 
@@ -50,18 +51,18 @@ def _set_var_distributed(var):
 
 
 def fused_multi_transformer(x,
+                            ln_scales,
+                            ln_biases,
                             qkv_weights,
                             qkv_biases,
                             linear_weights,
                             linear_biases,
-                            ln_scales,
-                            ln_biases,
+                            ffn_ln_scales,
+                            ffn_ln_biases,
                             ffn1_weights,
                             ffn1_biases,
                             ffn2_weights,
                             ffn2_biases,
-                            ffn_ln_scales,
-                            ffn_ln_biases,
                             pre_layer_norm=True,
                             epsilon=1e-05,
                             cache_kvs=None,
@@ -97,7 +98,7 @@ def fused_multi_transformer(x,
             return final_out, cache_kv_out
         return final_out
     else:
-        helper = LayerHelper('fused_multi_head_attention', **locals())
+        helper = LayerHelper('fused_multi_transformer', **locals())
         dtype = x.dtype
         # check dtypes
         check_variable_and_dtype(x, 'x', ['float16', 'float32'],
@@ -113,13 +114,24 @@ def fused_multi_transformer(x,
         inputs['QKVW'] = qkv_weights
         if qkv_biases is not None:
             inputs['QKVBias'] = qkv_biases
+        if cache_kvs is not None:
+            assert len(cache_kvs) == len(qkv_weights)
+            inputs['CacheKV'] = cache_kvs
+            if time_step is not None:
+                inputs['TimeStep'] = time_step
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:
             inputs['OutLinearBias'] = linear_biases
-        if cache_kvs:
-            assert len(cache_kvs) == len(qkv_weights)
-            inputs['CacheKV'] = cache_kvs
+
+        inputs['FFNLnScale'] = ffn_ln_scales
+        inputs['FFNLnBias'] = ffn_ln_biases
+        inputs['FFN1Weight'] = ffn1_weights
+        if ffn1_biases is not None:
+            inputs['FFN1Bias'] = ffn1_biases
+        inputs['FFN2Weight'] = ffn2_weights
+        if ffn2_biases is not None:
+            inputs['FFN2Bias'] = ffn2_biases
 
         if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
             seed = helper.main_program.random_seed
@@ -131,20 +143,24 @@ def fused_multi_transformer(x,
             'attn_dropout_rate': dropout_rate,
             'attn_dropout_is_test': not training,
             'attn_dropout_implementation': mode,
+            'dropout_implementation': mode,
             'ring_id': ring_id
         }
 
+        outputs = dict()
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
-        cache_kv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        outputs['Out'] = final_out
+        if cache_kvs:
+            # inplace
+            outputs['CacheKVOut'] = cache_kvs
 
         helper.append_op(
             type='fused_multi_transformer',
             inputs=inputs,
-            outputs={'Out': final_out,
-                     'CacheKVOut': cache_kv_out},
+            outputs=outputs,
             attrs=attrs)
 
-        return (final_out, cache_kv_out) if cache_kvs else final_out
+        return (final_out, cache_kvs) if cache_kvs else final_out
 
 
 class ParallelFusedMultiTransformer(Layer):
@@ -154,18 +170,18 @@ class ParallelFusedMultiTransformer(Layer):
                  dim_feedforward,
                  dropout_rate=0.5,
                  normalize_before=True,
+                 ln_scale_attrs=None,
+                 ln_bias_attrs=None,
                  qkv_weight_attrs=None,
                  qkv_bias_attrs=None,
                  linear_weight_attrs=None,
                  linear_bias_attrs=None,
-                 ln_scale_attrs=None,
-                 ln_bias_attrs=None,
+                 ffn_ln_scale_attrs=None,
+                 ffn_ln_bias_attrs=None,
                  ffn1_weight_attrs=None,
                  ffn1_bias_attrs=None,
                  ffn2_weight_attrs=None,
                  ffn2_bias_attrs=None,
-                 ffn_ln_scale_attrs=None,
-                 ffn_ln_bias_attrs=None,
                  epsilon=1e-5,
                  num_layers=-1,
                  nranks=1,
@@ -204,12 +220,12 @@ class ParallelFusedMultiTransformer(Layer):
             num_layers = len(qkv_weight_attrs)
         assert num_layers > 0
 
+        self.ln_scales, self.ln_biases = [], []
         self.qkv_weights, self.qkv_biases = [], []
         self.linear_weights, self.linear_biases = [], []
-        self.ln_scales, self.ln_biases = [], []
+        self.ffn_ln_scales, self.ffn_ln_biases = [], []
         self.ffn1_weights, self.ffn1_biases = [], []
         self.ffn2_weights, self.ffn2_biases = [], []
-        self.ffn_ln_scales, self.ffn_ln_biases = [], []
 
         def get_attr(attrs, idx):
             if isinstance(attrs, (list, tuple)):
@@ -218,20 +234,26 @@ class ParallelFusedMultiTransformer(Layer):
             return attrs
 
         for i in range(num_layers):
+            ln_scale_attr = get_attr(ln_scale_attrs, i)
+            ln_bias_attr = get_attr(ln_bias_attrs, i)
             qkv_weight_attr = get_attr(qkv_weight_attrs, i)
             qkv_bias_attr = get_attr(qkv_bias_attrs, i)
             linear_weight_attr = get_attr(linear_weight_attrs, i)
             linear_bias_attr = get_attr(linear_bias_attrs, i)
-            ln_scale_attr = get_attr(ln_scale_attrs, i)
-            ln_bias_attr = get_attr(ln_bias_attrs, i)
 
+            ffn_ln_scale_attr = get_attr(ffn_ln_scale_attrs, i)
+            ffn_ln_bias_attr = get_attr(ffn_ln_bias_attrs, i)
             ffn1_weight_attr = get_attr(ffn1_weight_attrs, i)
             ffn1_bias_attr = get_attr(ffn1_bias_attrs, i)
             ffn2_weight_attr = get_attr(ffn2_weight_attrs, i)
             ffn2_bias_attr = get_attr(ffn2_bias_attrs, i)
-            ffn_ln_scale_attr = get_attr(ffn_ln_scale_attrs, i)
-            ffn_ln_bias_attr = get_attr(ffn_ln_bias_attrs, i)
 
+            ln_scale = self.create_parameter(
+                attr=ln_scale_attr,
+                shape=[embed_dim],
+                default_initializer=Constant(value=1.0))
+            ln_bias = self.create_parameter(
+                attr=ln_bias_attr, shape=[embed_dim], is_bias=True)
             qkv_weight = self.create_parameter(
                 shape=[3, num_heads, self.head_dim, embed_dim],
                 attr=qkv_weight_attr,
@@ -252,13 +274,14 @@ class ParallelFusedMultiTransformer(Layer):
                 attr=linear_bias_attr,
                 dtype=self._dtype,
                 is_bias=True)
-            ln_scale = self.create_parameter(
-                attr=ln_scale_attr,
-                shape=[embed_dim],
-                default_initializer=Constant(value=1.0))
-            ln_bias = self.create_parameter(
-                attr=ln_bias_attr, shape=[embed_dim], is_bias=True)
 
+            ffn_ln_scale = self.create_parameter(
+                shape=[embed_dim],
+                attr=ffn_ln_scale_attr,
+                is_bias=False,
+                default_initializer=Constant(1.0))
+            ffn_ln_bias = self.create_parameter(
+                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True)
             ffn1_weight = self.create_parameter(
                 shape=[embed_dim, dim_feedforward],
                 attr=ffn1_weight_attr,
@@ -279,13 +302,6 @@ class ParallelFusedMultiTransformer(Layer):
                 attr=ffn2_bias_attr,
                 dtype=self._dtype,
                 is_bias=True)
-            ffn_ln_scale = self.create_parameter(
-                shape=[embed_dim],
-                attr=ffn_ln_scale_attr,
-                is_bias=False,
-                default_initializer=Constant(1.0))
-            ffn_ln_bias = self.create_parameter(
-                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True)
 
             # tensor model parallel
             if nranks > 1:
@@ -298,43 +314,44 @@ class ParallelFusedMultiTransformer(Layer):
                 _set_var_distributed(linear_weight)
                 _set_var_distributed(ffn2_weight)
 
+            self.ln_scales.append(ln_scale)
+            self.ln_biases.append(ln_bias)
             self.qkv_weights.append(qkv_weight)
             self.qkv_biases.append(qkv_bias)
             self.linear_weights.append(linear_weight)
             self.linear_biases.append(linear_bias)
-            self.ln_scales.append(ln_scale)
-            self.ln_biases.append(ln_bias)
 
+            self.ffn_ln_scales.append(ffn_ln_scale)
+            self.ffn_ln_biases.append(ffn_ln_bias)
             self.ffn1_weights.append(ffn1_weight)
             self.ffn1_biases.append(ffn1_bias)
             self.ffn2_weights.append(ffn2_weight)
             self.ffn2_biases.append(ffn2_bias)
-            self.ffn_ln_scales.append(ffn_ln_scale)
-            self.ffn_ln_biases.append(ffn_ln_bias)
 
         self.dropout_rate = dropout_rate
         self.name = name
 
-    def forward(self, query, attn_mask=None, caches=None):
+    def forward(self, query, attn_mask=None, caches=None, time_step=None):
         if caches is not None:
             assert len(caches) == len(self.qkv_weights)
         out = fused_multi_transformer(
             query,
+            self.ln_scales,
+            self.ln_biases,
             self.qkv_weights,
             self.qkv_biases,
             self.linear_weights,
             self.linear_biases,
-            self.ln_scales,
-            self.ln_biases,
+            self.ffn_ln_scales,
+            self.ffn_ln_biases,
             self.ffn1_weights,
             self.ffn1_biases,
             self.ffn2_weights,
             self.ffn2_biases,
-            self.ffn_ln_scales,
-            self.ffn_ln_biases,
             pre_layer_norm=self.normalize_before,
             epsilon=self._epsilon,
             cache_kvs=caches,
+            time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             training=self.training,
@@ -359,11 +376,15 @@ class TestFusedMultiTransformerOp(OpTest):
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = False
 
+        bias_attr = paddle.fluid.ParamAttr(
+            initializer=paddle.fluid.initializer.Constant(value=0.0005))
         self.q_proj = Linear(
             self.embed_dim,
             self.embed_dim,
             self.weight_attr,
-            bias_attr=self.bias_attr)
+            bias_attr=bias_attr)
+        #bias_attr=self.bias_attr)
+
         self.k_proj = Linear(
             self.kdim,
             self.embed_dim,
@@ -407,7 +428,14 @@ class TestFusedMultiTransformerOp(OpTest):
         self.attn_mask_type = np.float64
         self.pre_layer_norm = True
         self.has_attn_mask = True
+
+        # has_cache_kv, gen_cache_kv, stage
+        # False,        False,        not generation
+        # True,         True,         generation context stage
+        # True,         False,        generation decoder stage
         self.has_cache_kv = False
+        self.gen_cache_kv = False
+
         self.training = False
 
         self.layers = 4
@@ -436,25 +464,30 @@ class TestFusedMultiTransformerOp(OpTest):
             self.cache_kv = np.random.rand(2, self.batch_size, self.num_heads,
                                            self.cache_length,
                                            self.head_dim).astype(self.x_type)
-            # self.cache_kv[:] = 0
-            out_seq_len += self.cache_length
+            if self.gen_cache_kv:
+                self.cache_kv[:] = 0
+            else:
+                out_seq_len += self.cache_length
         else:
             self.cache_kv = None
 
         if self.has_attn_mask:
             # [B, n_head, seq_len, out_seq_len]
             self.attn_mask = np.ones(
-                (self.batch_size, self.num_heads, self.query_length,
-                 out_seq_len),
+                (self.batch_size, 1, self.query_length, out_seq_len),
                 dtype=self.attn_mask_type)
             if self.attn_mask_type == np.int64:
                 self.attn_mask = np.tril(self.attn_mask)
             elif self.attn_mask_type == np.float64:
-                self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e9
+                if self.has_cache_kv and not self.gen_cache_kv:
+                    # NOTE: decoder stage, -1(out_seq_len) should no mask
+                    self.attn_mask[:, :, :, -2] = 0.0
+                    self.attn_mask = (self.attn_mask - 1.0) * 1e4
+                else:
+                    self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
             else:
                 raise ValueError(
                     "'attn_mask_type' should be 'int64' or 'float64'.")
-            self.attn_mask[:] = 0.0
         else:
             self.attn_mask = None
         self.key, self.value = self.query, self.query
@@ -466,6 +499,7 @@ class TestFusedMultiTransformerOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
 
+        cache_kvs = []
         cache_kv = None
         if self.has_cache_kv:
             cache_kv = paddle.to_tensor(self.cache_kv, stop_gradient=False)
@@ -503,8 +537,11 @@ class TestFusedMultiTransformerOp(OpTest):
                     print(q_out[0, 0, :, :])
                     print('cache k out seq=128')
                     print(k_out[0, 0, :, :])
-                k_out = paddle.concat([cache_k, k_out], axis=-2)
-                v_out = paddle.concat([cache_v, v_out], axis=-2)
+                if self.gen_cache_kv:
+                    cache_kvs.append((k_out, v_out))
+                else:
+                    k_out = paddle.concat([cache_k, k_out], axis=-2)
+                    v_out = paddle.concat([cache_v, v_out], axis=-2)
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
@@ -570,6 +607,8 @@ class TestFusedMultiTransformerOp(OpTest):
 
             tensor_query = final_out
 
+        if self.has_cache_kv and self.gen_cache_kv:
+            return final_out, cache_kvs
         return final_out
 
     def GetFusedMultiTransformerOut(self):
@@ -658,8 +697,12 @@ class TestFusedMultiTransformerOp(OpTest):
             ])[:, :, :, :self.cache_length, :] = cache_k_tmp
 
             cache_kv[1, :, :, :self.cache_length, :] = self.cache_kv[1]
-            time_step = paddle.to_tensor(
-                [self.cache_length], dtype='int32', place=paddle.CPUPlace())
+            if self.gen_cache_kv:
+                assert self.query_length == self.cache_length
+                cache_kv[:] = 0
+            else:
+                time_step = paddle.to_tensor(
+                    [self.cache_length], dtype='int32', place=paddle.CPUPlace())
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
@@ -697,18 +740,18 @@ class TestFusedMultiTransformerOp(OpTest):
 
         final_out = fused_multi_transformer(
             x,
+            ln_scales,
+            ln_biases,
             qkv_weights,
             qkv_biases,
             out_weights,
             out_biases,
-            ln_scales,
-            ln_biases,
+            ffn_ln_scales,
+            ffn_ln_biases,
             ffn1_weights,
             ffn1_biases,
             ffn2_weights,
             ffn2_biases,
-            ffn_ln_scales,
-            ffn_ln_biases,
             pre_layer_norm=self.pre_layer_norm,
             epsilon=epsilon,
             cache_kvs=cache_kvs,
@@ -727,15 +770,15 @@ class TestFusedMultiTransformerOp(OpTest):
         final_out = self.GetFusedMultiTransformerOut()
         if self.has_cache_kv:
             final_out, cache_kv_out = final_out
-            if self.debug:
-                s = cache_kv_out[0].shape
-                bsz = s[1]
-                num_head = s[2]
-                max_seq_len = s[3]
-                head_dim = s[4]
-                elems = 8 if self.x_type is np.float16 else 4
-                v_elems = head_dim // elems
+            s = cache_kv_out[0].shape
+            bsz = s[1]
+            num_head = s[2]
+            max_seq_len = s[3]
+            head_dim = s[4]
+            elems = 8 if self.x_type is np.float16 else 4
+            v_elems = head_dim // elems
 
+            if self.debug:
                 print("cache_k out timestep=128")
                 print(cache_kv_out[0].reshape([
                     2, bsz, num_head, v_elems, max_seq_len, elems
@@ -743,6 +786,27 @@ class TestFusedMultiTransformerOp(OpTest):
 
                 print("cache_v out timestep=128")
                 print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
+
+            if self.gen_cache_kv:
+                final_out_ref, cache_kvs = final_out_ref
+                for i in range(self.layers):
+                    cache_k_ref = cache_kvs[i][0]
+                    cache_v_ref = cache_kvs[i][1]
+
+                    cache_k = cache_kv_out[i][0, :]
+                    cache_k = cache_k.reshape(
+                        [bsz, num_head, v_elems, max_seq_len, elems])
+                    cache_k = cache_k[:, :, :, :self.cache_length, :]
+                    cache_k = cache_k.transpose([0, 1, 3, 2, 4])
+                    cache_k = cache_k.reshape(
+                        [bsz, num_head, self.cache_length, head_dim])
+
+                    cache_v = cache_kv_out[i][1, :, :, :self.cache_length, :]
+
+                    np.testing.assert_allclose(
+                        cache_k_ref, cache_k, rtol=self.rtol, atol=self.atol)
+                    np.testing.assert_allclose(
+                        cache_v_ref, cache_v, rtol=self.rtol, atol=self.atol)
 
         np.testing.assert_allclose(
             final_out_ref, final_out, rtol=self.rtol, atol=self.atol)
@@ -768,6 +832,21 @@ class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
         self.has_cache_kv = True
         self.query_length = 1
         self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+
+
+class TestFusedMultiTransformerOpGenCacheKV(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+
+
+class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
         self.x_type = np.float16
 
 

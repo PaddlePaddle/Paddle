@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+// This file is inspired by FasterTransformer
+// https://github.com/NVIDIA/FasterTransformer/blob/main/fastertransformer/cuda/masked_multihead_attention.cu
 
 #include <cuda_fp16.h>
 #include <float.h>
@@ -79,6 +81,9 @@ struct Masked_multihead_attention_params {
   const T *qkv;
   // bias, [3, num_head, dim_head]
   const T *qkv_bias;
+  // TODO(wangxi): optimize with input_lengths and max_input_len
+  // [bsz, 1, 1, time_step(cache_seq_length)+1]
+  const T *attn_mask;
 
   // [2, B, num_head, cache_seq_len(padding max_seq_len), dim_head]
   T *cache_kv;
@@ -671,6 +676,10 @@ __global__ void masked_multihead_attention_kernel(
 
     qk *= params.inv_sqrt_dh;
     if (tid == 0) {
+      // NOTE(wangxi): mask must be 0.0
+      // T mask = params.attn_mask[
+      //    bi * (params.timestep + 1) + params.timestep];
+      // qk += static_cast<float>(mask);
       qk_max = qk;
       qk_smem[params.timestep] = qk;
     }
@@ -720,10 +729,13 @@ __global__ void masked_multihead_attention_kernel(
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k) * params.inv_sqrt_dh;
 
-    // TODO(wangxi): add mask
-    bool is_mask = false;
+    // bool is_mask = false;
     if (ti < params.timestep && tid % THREADS_PER_KEY == 0) {
-      qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
+      // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
+      T mask = params.attn_mask[bi * (params.timestep + 1) + ti];
+      qk += static_cast<float>(mask);
+      qk_max = fmaxf(qk_max, qk);
+
       qk_smem[ti] = qk;
     }
   }
@@ -761,9 +773,9 @@ __global__ void masked_multihead_attention_kernel(
 
   float sum = 0.f;
   for (int ti = tid; ti <= params.timestep; ti += THREADS_PER_BLOCK) {
-    // TODO(wangxi): mask
-    bool is_mask = false;
-    float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
+    // bool is_mask = false;
+    // float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
+    float logit = __expf(qk_smem[ti] - qk_max);
     sum += logit;
     qk_smem[ti] = logit;
   }
@@ -924,10 +936,11 @@ void fmha(const platform::CUDADeviceContext &dev_ctx, const Tensor &qkv_tensor,
           int max_seq_length, int num_head, int dim_head, int timestep,
           float inv_sqrt_dh) {
   Masked_multihead_attention_params<T> params;
-  params.out = out_tensor->mutable_data<T>(dev_ctx.GetPlace());
+  params.out = out_tensor->data<T>();
   params.qkv = qkv_tensor.data<T>();
   params.qkv_bias = qkv_bias_tensor.data<T>();
-  params.cache_kv = cache_kv_tensor->mutable_data<T>(dev_ctx.GetPlace());
+  params.attn_mask = src_mask_tensor.data<T>();
+  params.cache_kv = cache_kv_tensor->data<T>();
 
   params.batch_size = batch_size;
   params.num_head = num_head;
@@ -949,6 +962,96 @@ void fmha(const platform::CUDADeviceContext &dev_ctx, const Tensor &qkv_tensor,
       assert(false);
   }
 }
+
+// NOTE: simd with 16Bytes(128bit), float is 4, float16 is 8
+constexpr int VEC_16B = 16;
+
+template <typename T>
+__global__ void write_cache_k_kernel(T *cache_k, const T *k, const int num_head,
+                                     const int dim_head, const int seq_len,
+                                     const int max_seq_len) {
+  const int bi = blockIdx.y;
+  const int hi = blockIdx.z;
+  constexpr int X_ELEMS = VEC_16B / sizeof(T);
+
+  // [bsz, num_head, seq_len, dim_head/x, x]
+  auto k_src = reinterpret_cast<const uint4 *>(
+      k + bi * num_head * seq_len * dim_head + hi * seq_len * dim_head);
+  // [bsz, num_head, dim_head/x, max_seq_len, x]
+  auto k_dst = reinterpret_cast<uint4 *>(
+      cache_k + bi * num_head * max_seq_len * dim_head +
+      hi * max_seq_len * dim_head);
+
+  const int out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  // vec size
+  int dim_head_div_x = dim_head / X_ELEMS;
+
+  // FIXME(wangxi): num_head is not need?
+  // if (out_idx >= num_head * dim_head_div_x * max_seq_len) return;
+  if (out_idx >= dim_head_div_x * max_seq_len) return;
+
+  int idx = out_idx;
+  const int k_seq_len_id = idx % max_seq_len;
+  // idx = (idx - k_seq_len_id) / max_seq_len;
+  idx = idx / max_seq_len;
+  const int k_vec_id = idx % dim_head_div_x;
+
+  if (k_seq_len_id < seq_len) {
+    k_dst[out_idx] = k_src[k_seq_len_id * dim_head_div_x + k_vec_id];
+  }
+}
+
+template <typename T>
+__global__ void write_cache_v_kernel(T *cache_v, const T *v, const int num_head,
+                                     const int dim_head, const int seq_len,
+                                     const int max_seq_len) {
+  const int bi = blockIdx.y;
+  const int hi = blockIdx.z;
+
+  // [bsz, num_head, seq_len, dim_head/x, x]
+  auto v_src = reinterpret_cast<const uint4 *>(
+      v + bi * num_head * seq_len * dim_head + hi * seq_len * dim_head);
+  // [bsz, num_head, max_seq_len, dim_head/x, x]
+  auto v_dst = reinterpret_cast<uint4 *>(
+      cache_v + bi * num_head * max_seq_len * dim_head +
+      hi * max_seq_len * dim_head);
+
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  constexpr int X_ELEMS = VEC_16B / sizeof(T);
+  const int dim_head_div_x = dim_head / X_ELEMS;
+
+  if (idx >= dim_head_div_x * seq_len) return;
+
+  v_dst[idx] = v_src[idx];
+}
+
+template <typename T>
+void write_cache_kv(const platform::CUDADeviceContext &dev_ctx, T *cache_k,
+                    T *cache_v, const T *k, const T *v, const int bsz,
+                    const int num_head, const int seq_len,
+                    const int max_seq_len, const int dim_head) {
+  constexpr int block_sz = 128;
+  constexpr int x = VEC_16B / sizeof(T);
+
+  // dim_head must be 32, 64, or 128
+  assert(dim_head % x == 0);
+
+  int max_size = max_seq_len * dim_head / x;
+  int size = seq_len * dim_head / x;
+  dim3 grid(div_up(max_size, block_sz), bsz, num_head);
+  dim3 grid_v(div_up(size, block_sz), bsz, num_head);
+
+  // transpose [bsz, num_head, seq_len, dim_head/x, x]->
+  // [bsz, num_head, dim_head/x, max_seq_len, x]
+  write_cache_k_kernel<<<grid, block_sz, 0, dev_ctx.stream()>>>(
+      cache_k, k, num_head, dim_head, seq_len, max_seq_len);
+
+  // copy [bsz, num_head, seq_len, dim_head/x, x]->
+  // [bsz, num_head, max_seq_len, dim_head/x, x]
+  write_cache_v_kernel<<<grid_v, block_sz, 0, dev_ctx.stream()>>>(
+      cache_v, v, num_head, dim_head, seq_len, max_seq_len);
+}
+
 }  // namespace
 
 template <typename T>
@@ -959,6 +1062,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.cuda_device_context();
 
+    auto *time_step = ctx.Input<Tensor>("TimeStep");
     // 0. input
     auto *input_x = ctx.Input<Tensor>("X");
     const auto input_x_dims = input_x->dims();
@@ -966,7 +1070,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "0. input";
+#endif
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -978,7 +1084,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     Tensor ln_mean, ln_var;
     auto *ln_mean_data = ln_mean.mutable_data<U>({bsz_seq}, place);
     auto *ln_var_data = ln_var.mutable_data<U>({bsz_seq}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "1. ln";
+#endif
 
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -992,14 +1100,16 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int output_size = 3 * hidden_size;
     int input_size = dim_embed;
 
-    bool compute_bias = qkv_biases.size() > 0;
+    bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, true, false)
     auto qkv_compute = AttnMatMul<T>(dev_ctx, false, true, bsz_seq, output_size,
                                      input_size, compute_bias);
     Tensor qkv_out;
     auto *qkv_out_data =
         qkv_out.mutable_data<T>({bsz, seq_len, 3, num_head, dim_head}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "2. qkv";
+#endif
 
     // 3. fmha
     AttnDropoutParam attn_param(true, "upscale_in_train", 0.0, true, true, 0,
@@ -1009,7 +1119,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<Tensor>("CacheKVOut");
-    auto *time_step = ctx.Input<Tensor>("TimeStep");
+    // auto *time_step = ctx.Input<Tensor>("TimeStep");
 
     auto out_seq_len = seq_len;
     if (time_step) {
@@ -1044,7 +1154,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         qktv_out.mutable_data<T>({bsz, num_head, seq_len, dim_head}, place);
     auto *fmha_out_data =
         fmha_out.mutable_data<T>({bsz, seq_len, num_head, dim_head}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "3. fmha";
+#endif
 
     // 4. out_linear
     auto out_linear_weights = ctx.MultiInput<Tensor>("OutLinearW");
@@ -1053,7 +1165,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute = AttnMatMul<T>(dev_ctx, false, false, bsz_seq,
                                             dim_embed, hidden_size, false);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "4. out_linear";
+#endif
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
@@ -1067,7 +1181,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                   place);
     auto *dropout_mask_out_data = dropout_mask_out.mutable_data<uint8_t>(
         {bsz, seq_len, dim_embed}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "5. ln(redis)";
+#endif
 
     // 6. ffn matmul1
     auto ffn1_weights = ctx.MultiInput<Tensor>("FFN1Weight");
@@ -1079,7 +1195,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                              dim_ffn, dim_embed, false);
     Tensor ffn1_out;
     auto *ffn1_out_data = ffn1_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "6. ffn1";
+#endif
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
@@ -1090,21 +1208,26 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         ffn1_dropout_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
     auto *ffn1_dropout_mask_data =
         ffn1_dropout_mask.mutable_data<uint8_t>({bsz_seq, dim_ffn}, place);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "7. ffn act";
+#endif
 
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<Tensor>("FFN2Bias");
     auto ffn2_linear_compute = AttnMatMul<T>(dev_ctx, false, false, bsz_seq,
                                              dim_embed, dim_ffn, false);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "8. ffn2 matmul";
+#endif
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
         dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "9. ffn2 redis";
-
+#endif
     // calc
     auto *out = ctx.Output<Tensor>("Out");
     auto *from_data = out->mutable_data<T>(place);
@@ -1143,13 +1266,19 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         //        from_data = x_data;
         //        from_tensor = input_x;
       }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step1";
+#endif
 
       // step2. qkv
       const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
-      qkv_compute.ComputeForward(qkv_weights[i], buf1, qkv_bias, &qkv_out,
+      // in decoder stage, bias is fused in fmha
+      const Tensor *bias = time_step ? nullptr : qkv_bias;
+      qkv_compute.ComputeForward(qkv_weights[i], buf1, bias, &qkv_out,
                                  &qkv_out);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
+#endif
 
       // step3. fmha
       const Tensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
@@ -1159,15 +1288,34 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
 
+        // FIXME(wangxi): bias add again
         fmha<T>(dev_ctx, qkv_out, *qkv_bias, *src_mask, cache_kv_out, &fmha_out,
                 bsz, max_seq_len, num_head, dim_head, time_step->data<int>()[0],
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(
-            qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
-            &qk_out, &src_mask_out, &softmax_out, &attn_dropout_mask_out,
+            qkv_out, nullptr, src_mask, &transpose_out_2, nullptr, &qk_out,
+            &src_mask_out, &softmax_out, &attn_dropout_mask_out,
             &attn_dropout_out, &qktv_out, &fmha_out);
+        // [3, bsz, num_head, seq_len, head_dim]
+        T *qkv_data = transpose_out_2_data;
+        int64_t q_size = bsz * seq_len * num_head * dim_head;
+        int64_t k_size = q_size;
+        const T *q_ptr = qkv_data;
+        const T *k_ptr = q_ptr + q_size;
+        const T *v_ptr = k_ptr + k_size;
+
+        // [2, bsz, num_head, max_seq_len, head_dim]
+        int max_seq_len = cache_kv_out->dims()[3];
+        T *cache_kv_data = cache_kv_out->data<T>();
+        int64_t cache_k_size = bsz * num_head * max_seq_len * dim_head;
+
+        T *cache_k_ptr = cache_kv_data;
+        T *cache_v_ptr = cache_kv_data + cache_k_size;
+
+        write_cache_kv<T>(dev_ctx, cache_k_ptr, cache_v_ptr, k_ptr, v_ptr, bsz,
+                          num_head, seq_len, max_seq_len, dim_head);
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(
@@ -1175,13 +1323,17 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             &qk_out, &src_mask_out, &softmax_out, &attn_dropout_mask_out,
             &attn_dropout_out, &qktv_out, &fmha_out);
       }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step3";
+#endif
 
       // step4. out_linear
       out_linear_compute.ComputeForward(out_linear_weights[i], &fmha_out,
                                         nullptr, buf1, nullptr);
       AllReduce<T>(*buf1, ring_id, dev_ctx);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step4";
+#endif
 
       // step5. ln(residual + dropout(input + bias))
       if (pre_layer_norm) {
@@ -1197,28 +1349,38 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         // dropout_mask_out_data, from_data, ln_mean_data, ln_var_data);
       } else {
       }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
+#endif
 
       // step6. ffn matmul1
       // ffn1_linear_compute.ComputeForward(ffn1_weights[i], out, nullptr,
       ffn1_linear_compute.ComputeForward(ffn1_weights[i], buf1, nullptr,
                                          &ffn1_out, nullptr);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
+#endif
 
       // step7. act bias
       // TODO(wangxi): remove dropout mask in inference
       fused_act_dropout_helper.DropoutActBias(
           dev_ctx, ffn1_out_data, ffn1_biases[i]->data<T>(), "gelu",
           ffn1_dropout_out_data, ffn1_dropout_mask_data);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step7";
+#endif
 
       // step8. ffn matmul2
       ffn2_linear_compute.ComputeForward(ffn2_weights[i], &ffn1_dropout_out,
                                          nullptr, buf1, nullptr);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
+#endif
 
       AllReduce<T>(*buf1, ring_id, dev_ctx);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.1";
+#endif
 
       // step9. residual bias
       if (pre_layer_norm) {
@@ -1228,7 +1390,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             ffn2_biases[i]->data<T>(), buf1->data<T>(), dropout_mask_out_data);
       } else {
       }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step9";
+#endif
       x_data = buf1->data<T>();
       std::swap(buf0, buf1);
     }
@@ -1241,6 +1405,5 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(fused_multi_transformer,
-                        // ops::FusedMultiTransformerOpKernel<double>,
                         ops::FusedMultiTransformerOpKernel<plat::float16>,
                         ops::FusedMultiTransformerOpKernel<float>);
