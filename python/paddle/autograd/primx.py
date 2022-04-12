@@ -14,6 +14,7 @@
 
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
+from .primops import fill_const
 from .primrules import get_input_vars, get_output_vars, _jvp, _transpose
 
 
@@ -51,12 +52,14 @@ def topo_path(xs, ys, block=None):
     for op in block.ops:
         if len(sink_ops) == len(ys):
             break
-        if any(var in def_vars for var in get_input_vars(op)):
+        ins = set(get_input_vars(op))
+        if any(ins.intersection(def_vars)):
             path.append(op)
-        for out in get_output_vars(op):
-            if out in ys:
+        outs = set(get_output_vars(op))
+        for out in outs:
+            if any(out is y for y in ys):
                 # Found an output op
-                assert out not in sink_ops
+                assert not any(out is y for y in sink_ops)
                 sink_ops[out] = op
             else:
                 def_vars.append(op)
@@ -70,7 +73,8 @@ class Transform(object):
     """ An object that maintains the state of transformations applied to a 
     primitve program. """
 
-    def __init__(self):
+    def __init__(self, block):
+        self.block = block
         self.vardefs = {}
         self.varuses = {}
         self.var2dot = {}
@@ -149,7 +153,9 @@ class Transform(object):
 
     def linearize(self, xs, ys, xs_dot=None):
         if xs_dot is None:
-            xs_dot = list(map(make_varlike, xs))
+            xs_dot = []
+            for x in xs:
+                xs_dot.append(fill_const(1.0, shape=x.shape, dtype=x.dtype))
         else:
             assert len(xs) == len(xs_dot)
             for x, x_dot in zip(xs, xs_dot):
@@ -157,17 +163,19 @@ class Transform(object):
                 assert x.dtype == x_dot.dtype
 
         map(self.set_var2dot, xs, xs_dot)
-        for op in topo_path(xs, ys):
+        for op in topo_path(xs, ys, self.block):
             xs_dot = list(map(self.get_var2dot, get_input_vars(op)))
             ys_dot = _jvp(op, *xs_dot)
             map(self.set_var2dot, op.get_output_vars(op), ys_dot)
 
         ys_dot = map(self.get_var2dot, ys)
-        return ys_dot
+        return xs_dot, ys_dot
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
         if ys_bar is None:
-            ys_bar = list(map(make_varlike, ys_dot))
+            ys_dot = []
+            for y in ys_dot:
+                ys_dot.append(fill_const(1.0, shape=y.shape, dtype=y.dtype))
         else:
             assert len(ys_dot) == len(ys_bar)
             for y_dot, y_bar in zip(ys_dot, ys_bar):
@@ -175,7 +183,7 @@ class Transform(object):
                 assert y_dot.dtype == y_bar.dtype
 
         map(self.set_dot2bar, ys_dot, ys_bar)
-        for op in reversed(topo_path(xs_dot, ys_dot)):
+        for op in reversed(topo_path(xs_dot, ys_dot, self.block)):
             ys_bar = list(map(self.get_dot2bar, get_output_vars(op)))
             xs_bar = _transpose(op, self.check_dot, *ys_bar)
             map(self.set_dot2bar, op.get_input_vars(), xs_bar)
@@ -199,4 +207,4 @@ class Transform(object):
                 if k in dots_to_remove:
                     del self.dot2bar[k]
 
-        return xs_bar
+        return ys_bar, xs_bar
