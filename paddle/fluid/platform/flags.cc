@@ -161,10 +161,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -534,6 +533,11 @@ PADDLE_DEFINE_EXPORTED_double(
     "each CUDAPlace. If you don't need to limit the memory, "
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    reader_queue_speed_test_mode, false,
+    "If set true, the queue.pop will only get data from queue but not "
+    "remove the data from queue for speed testing");
 
 /**
  * MKLDNN related FLAG

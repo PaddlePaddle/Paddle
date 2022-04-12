@@ -398,7 +398,8 @@ function(version version_file)
             "WITH_GPU: ${WITH_GPU}\n"
             "WITH_ROCM: ${WITH_ROCM}\n"
             "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
-            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n"
+            "WITH_IPU: ${WITH_IPU}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -413,6 +414,10 @@ function(version version_file)
         file(APPEND ${version_file}
                 "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
                 "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
+    endif()
+    if(WITH_IPU)
+        file(APPEND ${version_file}
+                "PopART version: ${POPART_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
