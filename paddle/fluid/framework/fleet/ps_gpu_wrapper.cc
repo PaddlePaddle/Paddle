@@ -537,19 +537,13 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
   };
   auto build_func = [device_num, record_status, &pass_values, &local_keys,
-                     &local_ptr, &device_task_keys,
-                     &device_task_ptrs](int i) {
-    //std::vector<std::vector<FeatureKey>> task_keys(device_num);
+                     &local_ptr, &device_task_keys, &device_task_ptrs](int i) {
     auto& task_keys = device_task_keys[i];
 #ifdef PADDLE_WITH_PSLIB
-    //std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(
-    //    device_num);
     auto& task_ptrs = device_task_ptrs[i];
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
-    //std::vector<std::vector<paddle::distributed::FixedFeatureValue*>> task_ptrs(
-    //    device_num);
     auto& task_ptrs = device_task_ptrs[i];
 #endif
 
@@ -578,10 +572,10 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   };
   if (!multi_mf_dim_) {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
-        task_futures.emplace_back(hbm_thread_pool_[i]->enqueue(build_func, i));
+      task_futures.emplace_back(hbm_thread_pool_[i]->enqueue(build_func, i));
     }
     for (auto& f : task_futures) {
-        f.wait();
+      f.wait();
     }
     task_futures.clear();
     VLOG(0) << "GpuPs build hbmps done";
@@ -592,24 +586,31 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     prefix_sum[i].resize(thread_keys_shard_num_ + 1);
     prefix_sum[i][0] = 0;
   }
-  auto calc_prefix_func = [this, &prefix_sum, &device_keys, &device_vals, &device_task_keys](int device_num) {
+  auto calc_prefix_func = [this, &prefix_sum, &device_keys, &device_vals,
+                           &device_task_keys](int device_num) {
     for (int j = 0; j < thread_keys_shard_num_; j++) {
-      prefix_sum[device_num][j + 1] = prefix_sum[device_num][j] + device_task_keys[j][device_num].size();
+      prefix_sum[device_num][j + 1] =
+          prefix_sum[device_num][j] + device_task_keys[j][device_num].size();
     }
-    device_keys[device_num].resize(prefix_sum[device_num][thread_keys_shard_num_]);
-    device_vals[device_num].resize(prefix_sum[device_num][thread_keys_shard_num_]);
+    device_keys[device_num].resize(
+        prefix_sum[device_num][thread_keys_shard_num_]);
+    device_vals[device_num].resize(
+        prefix_sum[device_num][thread_keys_shard_num_]);
   };
-  for (int i = 0; i < device_num; i++) {
-    task_futures.emplace_back(hbm_thread_pool_[i]->enqueue(calc_prefix_func, i));
-  }
-  for (auto& f : task_futures) {
+  if (!multi_mf_dim_) {
+    for (int i = 0; i < device_num; i++) {
+      task_futures.emplace_back(
+          hbm_thread_pool_[i]->enqueue(calc_prefix_func, i));
+    }
+    for (auto& f : task_futures) {
       f.wait();
+    }
+    task_futures.clear();
   }
-  task_futures.clear();
   VLOG(0) << "prefix done";
-  auto prepare_dev_value_func = [device_num, &prefix_sum,
-                     &device_keys, &device_vals, &device_task_keys,
-                     &device_task_ptrs](int dev, int shard_id) {
+  auto prepare_dev_value_func = [device_num, &prefix_sum, &device_keys,
+                                 &device_vals, &device_task_keys,
+                                 &device_task_ptrs](int dev, int shard_id) {
     auto& task_keys = device_task_keys[shard_id];
 #ifdef PADDLE_WITH_PSLIB
     auto& task_ptrs = device_task_ptrs[shard_id];
@@ -619,66 +620,65 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     auto& task_ptrs = device_task_ptrs[dev];
 #endif
 
-      int len = prefix_sum[dev][shard_id + 1] - prefix_sum[dev][shard_id];
-      int cur = prefix_sum[dev][shard_id];
+    int len = prefix_sum[dev][shard_id + 1] - prefix_sum[dev][shard_id];
+    int cur = prefix_sum[dev][shard_id];
 #ifdef PADDLE_WITH_PSLIB
-      for (int j = 0; j < len; ++j) {
-        device_keys[dev][cur + j] = task_keys[dev][j];
-        float* ptr_val = task_ptrs[dev][j]->data();
-        FeatureValue& val = device_vals[dev][cur + j];
-        size_t dim = task_ptrs[dev][j]->size();
+    for (int j = 0; j < len; ++j) {
+      device_keys[dev][cur + j] = task_keys[dev][j];
+      float* ptr_val = task_ptrs[dev][j]->data();
+      FeatureValue& val = device_vals[dev][cur + j];
+      size_t dim = task_ptrs[dev][j]->size();
 
-        val.delta_score = ptr_val[1];
-        val.show = ptr_val[2];
-        val.clk = ptr_val[3];
-        val.slot = ptr_val[6];
-        val.lr = ptr_val[4];
-        val.lr_g2sum = ptr_val[5];
-        val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
+      val.delta_score = ptr_val[1];
+      val.show = ptr_val[2];
+      val.clk = ptr_val[3];
+      val.slot = ptr_val[6];
+      val.lr = ptr_val[4];
+      val.lr_g2sum = ptr_val[5];
+      val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
-        if (dim > 7) {
-          val.mf_size = MF_DIM + 1;
-          for (int x = 0; x < val.mf_size; x++) {
-            val.mf[x] = ptr_val[x + 7];
-          }
-        } else {
-          val.mf_size = 0;
-          for (int x = 0; x < MF_DIM + 1; x++) {
-            val.mf[x] = 0;
-          }
+      if (dim > 7) {
+        val.mf_size = MF_DIM + 1;
+        for (int x = 0; x < val.mf_size; x++) {
+          val.mf[x] = ptr_val[x + 7];
+        }
+      } else {
+        val.mf_size = 0;
+        for (int x = 0; x < MF_DIM + 1; x++) {
+          val.mf[x] = 0;
         }
       }
+    }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      for (int j = 0; j < len; ++j) {
-        device_keys[dev][cur + j] = task_keys[dev][j];
-        float* ptr_val = task_ptrs[dev][j]->data();
-        FeatureValue& val = device_vals[dev][cur + j];
-        size_t dim = task_ptrs[dev][j]->size();
-        val.delta_score = ptr_val[2];
-        val.show = ptr_val[3];
-        val.clk = ptr_val[4];
-        val.slot = ptr_val[0];
-        val.lr = ptr_val[5];
-        val.lr_g2sum = ptr_val[6];
-        val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
+    for (int j = 0; j < len; ++j) {
+      device_keys[dev][cur + j] = task_keys[dev][j];
+      float* ptr_val = task_ptrs[dev][j]->data();
+      FeatureValue& val = device_vals[dev][cur + j];
+      size_t dim = task_ptrs[dev][j]->size();
+      val.delta_score = ptr_val[2];
+      val.show = ptr_val[3];
+      val.clk = ptr_val[4];
+      val.slot = ptr_val[0];
+      val.lr = ptr_val[5];
+      val.lr_g2sum = ptr_val[6];
+      val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
-        if (dim > 7) {
-          val.mf_size = MF_DIM + 1;
-          for (int x = 0; x < val.mf_size; x++) {
-            val.mf[x] = ptr_val[x + 7];
-          }
-        } else {
-          val.mf_size = 0;
-          for (int x = 0; x < MF_DIM + 1; x++) {
-            val.mf[x] = 0;
-          }
+      if (dim > 7) {
+        val.mf_size = MF_DIM + 1;
+        for (int x = 0; x < val.mf_size; x++) {
+          val.mf[x] = ptr_val[x + 7];
+        }
+      } else {
+        val.mf_size = 0;
+        for (int x = 0; x < MF_DIM + 1; x++) {
+          val.mf[x] = 0;
         }
       }
+    }
 #endif
-      VLOG(3) << "GpuPs build hbmps done";
+    VLOG(3) << "GpuPs build hbmps done";
 
-      //device_mutex[dev]->unlock();
   };
 
   if (multi_mf_dim_) {
@@ -693,12 +693,13 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     }
   } else {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
-        for (int j = 0; j < device_num; j++) {
-            task_futures.emplace_back(hbm_thread_pool_[i]->enqueue(prepare_dev_value_func, j, i));
-        }
+      for (int j = 0; j < device_num; j++) {
+        task_futures.emplace_back(
+            hbm_thread_pool_[i]->enqueue(prepare_dev_value_func, j, i));
+      }
     }
     for (auto& f : task_futures) {
-        f.wait();
+      f.wait();
     }
     task_futures.clear();
   }

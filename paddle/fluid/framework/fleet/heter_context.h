@@ -74,7 +74,7 @@ class HeterContext {
       value_dim_ptr_;
   std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       device_task_ptr_;
-  std::vector<std::vector<std::vector<paddle::distributed::VALUE*>>>
+  std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       device_dim_ptr_;
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;
