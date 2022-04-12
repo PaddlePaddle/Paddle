@@ -52,6 +52,13 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void FcInferMeta(const MetaTensor& input,
+                 const MetaTensor& weight,
+                 const MetaTensor& bias,
+                 int in_num_col_dims,
+                 bool padding_weights,
+                 MetaTensor* out);
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,

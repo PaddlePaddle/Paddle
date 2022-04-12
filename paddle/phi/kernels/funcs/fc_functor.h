@@ -17,19 +17,23 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename DeviceContext, typename T>
 class FCFunctor {
  public:
-  void operator()(const DeviceContext& context, const int M, const int N,
-                  const int K, const T* X, const T* W, T* Y,
-                  const T* B = nullptr, bool relu = false,
+  void operator()(const DeviceContext& context,
+                  const int M,
+                  const int N,
+                  const int K,
+                  const T* X,
+                  const T* W,
+                  T* Y,
+                  const T* B = nullptr,
+                  bool relu = false,
                   bool weight_pass = false);
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
