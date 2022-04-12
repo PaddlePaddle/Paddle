@@ -30,10 +30,10 @@ sample_size;
 */
 
 template <int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
-__global__ void neighbor_sample_example_v2(
-    GpuPsCommGraph graph, 
-    int* node_index, int* actual_size, int64_t* res,
-    int sample_len, int n) {
+__global__ void neighbor_sample_example_v2(GpuPsCommGraph graph,
+                                           int* node_index, int* actual_size,
+                                           int64_t* res, int sample_len,
+                                           int n) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -49,13 +49,13 @@ __global__ void neighbor_sample_example_v2(
     int64_t* data = graph.neighbor_list;
     if (neighbor_len <= sample_len) {
       for (int j = threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
-        res[offset + j] = data[data_offset + j]; 
+        res[offset + j] = data[data_offset + j];
       }
       actual_size[i] = neighbor_len;
     } else {
       for (int j = threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
         res[offset + j] = j;
-      } 
+      }
       __syncwarp();
       for (int j = sample_len + threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
         const int num = curand(&rng) % (j + 1);
@@ -443,6 +443,7 @@ void GpuPsGraphTable::build_graph_from_cpu(
   }
   cudaDeviceSynchronize();
 }
+
 NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
                                                              int64_t* key,
                                                              int sample_size,
@@ -580,9 +581,9 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     int* id_array = reinterpret_cast<int*>(node.val_storage);
     int* actual_size_array = id_array + shard_len;
     int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
-    //int sample_grid_size = (shard_len - 1) / dim_y + 1;
-    //dim3 block(parallel_sample_size, dim_y);
-    //dim3 grid(sample_grid_size);
+    int sample_grid_size = (shard_len - 1) / dim_y + 1;
+    dim3 block(parallel_sample_size, dim_y);
+    dim3 grid(sample_grid_size);
     // int sample_grid_size = shard_len / block_size_ + 1;
     // VLOG(0)<<"in sample grid_size = "<<sample_grid_size<<" block_size
     // ="<<block_size_<<" device = "<<resource_->dev_id(i)<<"len = "<<len;;
@@ -590,19 +591,10 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     //                           resource_->remote_stream(i, gpu_id)>>>(
     //     graph, res_array, actual_size_array, sample_array, sample_size,
     //     shard_len);
-    /*neighbor_sample_example<<<grid, block, 0,
+    neighbor_sample_example<<<grid, block, 0,
                               resource_->remote_stream(i, gpu_id)>>>(
         graph, id_array, actual_size_array, sample_array, sample_size,
-        sample_status[i], shard_len, gpu_id);*/
-    constexpr int WARP_SIZE = 32;
-    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
-    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-    const dim3 block(WARP_SIZE, BLOCK_WARPS);
-    const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
-    neighbor_sample_example_v2<WARP_SIZE, BLOCK_WARPS, TILE_SIZE><<<grid, block, 0, 
-                                 resource_->remote_stream(i, gpu_id)>>>(
-        graph, id_array, actual_size_array, sample_array, sample_size,
-        shard_len);
+        sample_status[i], shard_len, gpu_id);
   }
   /*
   for (int i = 0; i < total_gpu; ++i) {
@@ -661,6 +653,121 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
   // auto end2 = std::chrono::steady_clock::now();
   // tt = std::chrono::duration_cast<std::chrono::microseconds>(end2 - end1);
   // VLOG(0)<< "sample graph time  " << tt.count() << " us";
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
+    if (shard_len == 0) {
+      continue;
+    }
+    destroy_storage(gpu_id, i);
+  }
+  cudaStreamSynchronize(stream);
+  return result;
+}
+
+NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(int gpu_id,
+                                                                int64_t* key,
+                                                                int sample_size,
+                                                                int len) {
+  NeighborSampleResult* result =
+      new NeighborSampleResult(sample_size, len, resource_->dev_id(gpu_id));
+
+  if (len == 0) {
+    return result;
+  }
+
+  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
+  int* actual_sample_size = result->actual_sample_size;
+  int64_t* val = result->val;
+  int total_gpu = resource_->total_gpu();
+  auto stream = resource_->local_stream(gpu_id, 0);
+
+  int grid_size = (len - 1) / block_size_ + 1;
+
+  int h_left[total_gpu];   // NOLINT
+  int h_right[total_gpu];  // NOLINT
+
+  auto d_left = memory::Alloc(place, total_gpu * sizeof(int));
+  auto d_right = memory::Alloc(place, total_gpu * sizeof(int));
+  int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+  int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+
+  cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
+  //
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+
+  auto d_shard_keys = memory::Alloc(place, len * sizeof(int64_t));
+  int64_t* d_shard_keys_ptr = reinterpret_cast<int64_t*>(d_shard_keys->ptr());
+  auto d_shard_vals = memory::Alloc(place, sample_size * len * sizeof(int64_t));
+  int64_t* d_shard_vals_ptr = reinterpret_cast<int64_t*>(d_shard_vals->ptr());
+  auto d_shard_actual_sample_size = memory::Alloc(place, len * sizeof(int));
+  int* d_shard_actual_sample_size_ptr =
+      reinterpret_cast<int*>(d_shard_actual_sample_size->ptr());
+
+  split_input_to_shard(key, d_idx_ptr, len, d_left_ptr, d_right_ptr, gpu_id);
+
+  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, key,
+                                                        d_idx_ptr, len);
+
+  cudaStreamSynchronize(stream);
+
+  cudaMemcpy(h_left, d_left_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
+    if (shard_len == 0) {
+      continue;
+    }
+    create_storage(gpu_id, i, shard_len * sizeof(int64_t),
+                   shard_len * (1 + sample_size) * sizeof(int64_t));
+  }
+  walk_to_dest(gpu_id, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1) {
+      continue;
+    }
+    auto& node = path_[gpu_id][i].nodes_.back();
+    cudaStreamSynchronize(node.in_stream);
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->get(reinterpret_cast<int64_t*>(node.key_storage),
+                    reinterpret_cast<int*>(node.val_storage),
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, gpu_id));
+    auto shard_len = h_right[i] - h_left[i] + 1;
+    auto graph = gpu_graph_list[i];
+    int* id_array = reinterpret_cast<int*>(node.val_storage);
+    int* actual_size_array = id_array + shard_len;
+    int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
+    constexpr int WARP_SIZE = 32;
+    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+    const dim3 block(WARP_SIZE, BLOCK_WARPS);
+    const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
+    neighbor_sample_example_v2<
+        WARP_SIZE, BLOCK_WARPS,
+        TILE_SIZE><<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
+        graph, id_array, actual_size_array, sample_array, sample_size,
+        shard_len);
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1) {
+      continue;
+    }
+    cudaStreamSynchronize(resource_->remote_stream(i, gpu_id));
+  }
+  move_neighbor_sample_result_to_source_gpu(gpu_id, total_gpu, sample_size,
+                                            h_left, h_right, d_shard_vals_ptr,
+                                            d_shard_actual_sample_size_ptr);
+
+  fill_dvalues<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_vals_ptr, val, d_shard_actual_sample_size_ptr, actual_sample_size,
+      d_idx_ptr, sample_size, len);
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
