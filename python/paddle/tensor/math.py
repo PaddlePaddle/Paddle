@@ -3002,7 +3002,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical or`` of tensor elements over the given dimension, and return the result, type is bool.
+    Computes the the ``logical or`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3030,16 +3030,15 @@ def any(x, axis=None, keepdim=False, name=None):
            :name: code-example1
 
             import paddle
-            import numpy as np
 
-            x = paddle.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = paddle.assign([[1, 0], [0, 0]])
             x = paddle.cast(x, 'bool')
             print(x)
 
             # [[True, False],
             # [False, False]]
 
-            # paddle.assign: copies the input to the output, and return to a tensor.
+            # paddle.assign: copies the input to the output, and return to a tensor
             # paddle.cast: returns a same shape tensor as input, change the dtype as given
 
 
@@ -3051,7 +3050,7 @@ def any(x, axis=None, keepdim=False, name=None):
             out2 = paddle.any(x, axis=0)
             print(out2) # [True, False]
 
-            # keep_dim=False,default value, out3 should be [True, True], out.shape should be (2,)
+            # keep_dim=False(default value), out3 should be [True, True], out.shape should be (2,)
             out3 = paddle.any(x, axis=-1)
             print(out3) # [True, False]
             
