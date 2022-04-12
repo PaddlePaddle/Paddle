@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-
+from paddle.fluid.framework import _test_eager_guard
 np.random.seed(10)
 
 
@@ -40,7 +40,7 @@ def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "mean"
-        self.python_api = mean_wrapper
+        self.python_api = fluid.layers.mean
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
@@ -81,7 +81,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_eager=True)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
@@ -104,11 +104,11 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_eager=True)
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):

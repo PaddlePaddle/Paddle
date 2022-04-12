@@ -39,6 +39,7 @@ constexpr size_t kPrepareWorkQueueIdx = 2;
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
+  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_sequential_run) {
     VLOG(4) << "FLAGS_new_executor_sequential_run:"
@@ -428,18 +429,18 @@ void build_op_func_list(const platform::Place& place,
       op_func_node.dev_ctx_ = dev_ctx;
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      auto exec_ctx =
-          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
         InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
         // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
+        // inheritted from OperatorWithKernel.
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
+
+      auto exec_ctx =
+          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -476,7 +477,6 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
                                               &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
-
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
         auto kernels_iter = all_op_kernels.find(op->Type());
@@ -709,8 +709,14 @@ std::map<int, std::list<int>> build_op_downstream_map(
   // add dependences for random op, make sure that the random op is scheduled
   // sequentially
   const std::set<std::string> random_op_set = {
-      "bernoulli",      "poisson", "multinomial", "gaussian_random",
-      "uniform_random", "randint", "randperm",    "exponential"};
+      "bernoulli", "poisson", "multinomial", "gaussian_random",
+      "truncated_gaussian_random", "uniform_random", "randint", "randperm",
+      "exponential",
+      "sampling_id"
+      "dropout",
+      "class_center_sample",
+  };
+
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
     if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
@@ -721,6 +727,158 @@ std::map<int, std::list<int>> build_op_downstream_map(
     }
   }
 
+  // add dependency for communication op
+  auto is_comm_op = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send", "recv", "send_v2", "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // TODO(zhiqiu): there still some cases not handled
+  // add dependency for c_sync_comm_stream
+
+  // in program, we can add only one c_sync_comm_stream to sync all
+  // communication ops.
+  // c_allreduce_sum(a)
+  // c_allreduce_sum(b)
+  // c_allreduce_sum(c)
+  // c_sync_comm_stream(a)
+  const std::string kSyncComm = "c_sync_comm_stream";
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
+      dependence_op_idx = op_idx;
+    } else {
+      if (dependence_op_idx != -1) {
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+    }
+  }
+
+  // add dependency for coalesce_tensor
+  const std::string kCoalesceTensor = "coalesce_tensor";
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
+      VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
+      auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
+      auto outputs = vec_instruction[op_idx].Outputs().at("Output");
+
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Inputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Outputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      // find first op that reads fused_out
+      auto first_read_fused_out_op = -1;
+      for (auto j = op_idx + 1; j < vec_instruction.size(); ++j) {
+        if (is_read(vec_instruction[j], fused_out)) {
+          first_read_fused_out_op = j;
+          break;
+        }
+      }
+
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
+        VLOG(4) << "No op read FusedOutput";
+        continue;
+      }
+
+      // find ops that write 'outputs' between (op_index,
+      // first_read_fused_out_op)
+      // add depend: them->first_read_fused_out_op
+      for (auto j = op_idx + 1;
+           j < static_cast<size_t>(first_read_fused_out_op); ++j) {
+        for (auto var_id : outputs) {
+          if (is_write(vec_instruction[j], var_id)) {
+            op2dependences[first_read_fused_out_op].insert(j);
+            VLOG(4) << j << " -> " << first_read_fused_out_op;
+            VLOG(4)
+                << "Add depend from " << vec_instruction[j].OpBase()->Type()
+                << " to "
+                << vec_instruction[first_read_fused_out_op].OpBase()->Type();
+          }
+        }
+      }
+
+      // find first op read 'outputs' between (first_read_fused_out_op, end)
+      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+
+      // special case for consecutive communication ops, for example,
+      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput= c_allreduce_sum(FusedOutput)
+      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // we should take the last one to add depned instead of
+      // 'first_read_fused_out_op'
+      size_t target = first_read_fused_out_op;
+      for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
+           ++j) {
+        if (j == target + 1 &&
+            is_comm_op(vec_instruction[target].OpBase()->Type()) &&
+            is_comm_op(vec_instruction[j].OpBase()->Type())) {
+          VLOG(4) << "Found consecutive communication ops, "
+                  << vec_instruction[target].OpBase()->Type() << " -> "
+                  << vec_instruction[j].OpBase()->Type();
+          target = j;
+          continue;
+        }
+
+        for (auto var_id : outputs) {
+          if (is_read(vec_instruction[j], var_id)) {
+            op2dependences[j].insert(target);
+            VLOG(4) << target << " -> " << j;
+            VLOG(4) << "Add depend from "
+                    << vec_instruction[target].OpBase()->Type() << " to "
+                    << vec_instruction[j].OpBase()->Type();
+          }
+        }
+      }
+    }
+  }
+  for (auto pair : op2dependences) {
+    VLOG(10) << pair.first << " Depends on " << pair.second.size();
+    std::ostringstream oss;
+    std::copy(pair.second.begin(), pair.second.end(),
+              std::ostream_iterator<int>(oss, " "));
+    VLOG(10) << oss.str();
+  }
   return std::move(get_downstream_map(op2dependences));
 }
 

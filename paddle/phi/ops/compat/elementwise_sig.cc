@@ -115,7 +115,7 @@ KernelSignature ElementwiseAddGradOpArgumentMapping(
 KernelSignature ElementwiseAddDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "add_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+      "add_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseAddTripleGradOpArgumentMapping(

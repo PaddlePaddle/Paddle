@@ -161,10 +161,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -364,11 +363,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -539,6 +534,11 @@ PADDLE_DEFINE_EXPORTED_double(
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
 
+PADDLE_DEFINE_EXPORTED_bool(
+    reader_queue_speed_test_mode, false,
+    "If set true, the queue.pop will only get data from queue but not "
+    "remove the data from queue for speed testing");
+
 /**
  * MKLDNN related FLAG
  * Name: use_mkldnn
@@ -548,8 +548,6 @@ PADDLE_DEFINE_EXPORTED_double(
  * Note:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
-
-PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
 
 /**
  * Debug related FLAG

@@ -17,6 +17,29 @@
 namespace paddle {
 namespace distributed {
 
+int32_t MemorySparseGeoTable::Pull(TableContext& context) {
+  CHECK(context.value_type == Sparse);
+  if (context.pull_context.geo_pull_keys != nullptr) {
+    return PullGeoParam(context.trainer_id,
+                        context.pull_context.geo_pull_values,
+                        context.pull_context.geo_pull_keys);
+  } else {
+    return PullSparse(context.pull_context.values,
+                      context.pull_context.pull_value);
+  }
+}
+
+int32_t MemorySparseGeoTable::Push(TableContext& context) {
+  CHECK(context.value_type == Sparse);
+  if (!context.push_context.is_param) {
+    return PushSparse(context.push_context.keys, context.push_context.values,
+                      context.num);
+  } else {
+    return PushSparseParam(context.push_context.keys,
+                           context.push_context.values, context.num);
+  }
+}
+
 int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
                                               const float* values, size_t num) {
   VLOG(5) << "DEBUG MemorySparseGeoTable::PushSparseParam begin "
@@ -117,6 +140,7 @@ int32_t MemorySparseGeoTable::Initialize() {
   return 0;
 }
 
+// hash different from MemorySparseTable
 int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
                                          const PullSparseValue& pull_value) {
   auto shard_num = _task_pool_size;
