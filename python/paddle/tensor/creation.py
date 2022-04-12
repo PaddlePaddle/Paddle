@@ -1430,3 +1430,4 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
             outputs={'out': [out]},
             attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
     return out
+    
