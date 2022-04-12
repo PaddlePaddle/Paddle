@@ -33,84 +33,99 @@ class TestPyPrimOps(unittest.TestCase):
     def test_ops(self):
         A = np.random.rand(1)
         B = np.random.rand(2)
-        C = np.random.rand([2, 3])
-        D = np.random.rand([2, 3])
-        E = np.random.rand([3, 2])
+        C = np.random.rand(2, 3)
+        D = np.random.rand(2, 3)
+        E = np.random.rand(3, 2)
 
-        startup = paddle.static.Program()
-        main = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            a = paddle.static.data(name='A', shape=A.shape, dtype='float')
-            b = paddle.static.data(name='B', shape=B.shape, dtype='float')
-            c = paddle.static.data(name='C', shape=C.shape, dtype='float')
-            d = paddle.static.data(name='D', shape=D.shape, dtype='float')
-            e = paddle.static.data(name='E', shape=E.shape, dtype='float')
+        a = paddle.static.data(name='A', shape=A.shape, dtype='float')
+        b = paddle.static.data(name='B', shape=B.shape, dtype='float')
+        c = paddle.static.data(name='C', shape=C.shape, dtype='float')
+        d = paddle.static.data(name='D', shape=D.shape, dtype='float')
+        e = paddle.static.data(name='E', shape=E.shape, dtype='float')
 
-            add_1 = add(a, a)
-            self.assertEqual(add_1.dtype, a.dtype)
-            self.assertEqual(add_1.shape, a.shape)
+        add_1 = add(a, a)
+        self.assertEqual(add_1.dtype, a.dtype)
+        self.assertEqual(add_1.shape, a.shape)
 
-            add_2 = add(c, d)
-            self.assertEqual(add_2.dtype, c.dtype)
-            self.assertEqual(add_2.shape, c.shape)
+        add_2 = add(c, d)
+        self.assertEqual(add_2.dtype, c.dtype)
+        self.assertEqual(add_2.shape, c.shape)
 
-            sub_1 = sub(c, d)
-            self.assertEqual(sub_1.dtype, c.dtype)
-            self.assertEqual(sub_1.shape, c.shape)
+        sub_1 = sub(c, d)
+        self.assertEqual(sub_1.dtype, c.dtype)
+        self.assertEqual(sub_1.shape, c.shape)
 
-            mul_1 = mul(c, d)
-            self.assertEqual(mul_1.dtype, c.dtype)
-            self.assertEqual(mul_1.shape, c.shape)
+        mul_1 = mul(c, d)
+        self.assertEqual(mul_1.dtype, c.dtype)
+        self.assertEqual(mul_1.shape, c.shape)
 
-            div_1 = div(c, d)
-            self.assertEqual(div_1.dtype, c.dtype)
-            self.assertEqual(div_1.shape, c.shape)
+        div_1 = div(c, d)
+        self.assertEqual(div_1.dtype, c.dtype)
+        self.assertEqual(div_1.shape, c.shape)
 
-            sqrt_1 = sqrt(b)
-            self.assertEqual(sqrt_1.dtype, b.dtype)
-            self.assertEqual(sqrt_1.shape, b.shape)
+        sqrt_1 = sqrt(b)
+        self.assertEqual(sqrt_1.dtype, b.dtype)
+        self.assertEqual(sqrt_1.shape, b.shape)
 
-            tanh_1 = tanh(d)
-            self.assertEqual(tanh_1.dtype, d.dtype)
-            self.assertEqual(tanh_1.shape, d.shape)
+        tanh_1 = tanh(d)
+        self.assertEqual(tanh_1.dtype, d.dtype)
+        self.assertEqual(tanh_1.shape, d.shape)
 
-            reshape_1 = reshape(c, d.shape)
-            self.assertEqual(reshape_1.dtype, c.dtype)
-            self.assertEqual(reshape_1.shape, d.shape)
+        reshape_1 = reshape(c, d.shape)
+        self.assertEqual(reshape_1.dtype, c.dtype)
+        self.assertEqual(reshape_1.shape, d.shape)
 
-            broadcast_1 = broadcast(b, e.shape)
-            self.assertEqual(broadcast_1.dtype, b.dtype)
-            self.assertEqual(broadcast_1.shape, e.shape)
+        broadcast_1 = broadcast(b, e.shape)
+        self.assertEqual(broadcast_1.dtype, b.dtype)
+        self.assertEqual(broadcast_1.shape, e.shape)
 
-            transpose_1 = transpose(c, axis=[1, 0])
-            self.assertEqual(transpose_1.dtype, c.dtype)
-            self.assertEqual(transpose_1.shape, e.shape)
+        transpose_1 = transpose(c, axis=[1, 0])
+        self.assertEqual(transpose_1.dtype, c.dtype)
+        self.assertEqual(transpose_1.shape, e.shape)
 
-            split_1_0, split_1_1 = split(c, num_or_sections=[1, 2], axis=-1)
-            self.assertEqual(split_1_0.dtype, c.dtype)
-            self.assertEqual(split_1_0.shape, [2, 1])
-            self.assertEqual(split_1_1.shape, [2, 2])
+        split_1_0, split_1_1 = split(c, num_or_sections=[1, 2], axis=-1)
+        self.assertEqual(split_1_0.dtype, c.dtype)
+        self.assertEqual(split_1_0.shape, [2, 1])
+        self.assertEqual(split_1_1.shape, [2, 2])
 
-            concat_1 = concat([c, d], axis=0)
-            self.assertEqual(concat_1.dtype, c.dtype)
-            self.assertEqual(concat_1.shape, [4, 3])
+        concat_1 = concat([c, d], axis=0)
+        self.assertEqual(concat_1.dtype, c.dtype)
+        self.assertEqual(concat_1.shape, [4, 3])
 
-            reduce_1 = reduce(d, axis=1)
-            self.assertEqual(reduce_1.dtype, d.dtype)
-            self.assertEqual(reduce_1.shape, [2])
+        reduce_1 = reduce(d, axis=1)
+        self.assertEqual(reduce_1.dtype, d.dtype)
+        self.assertEqual(reduce_1.shape, [2])
 
-            reduce_2 = reduce(c, axis=[0, 1])
-            self.assertEqual(reduce_2.dtype, c.dtype)
-            self.assertEqual(reduce_2.shape, [1])
+        reduce_2 = reduce(c, axis=[0, 1])
+        self.assertEqual(reduce_2.dtype, c.dtype)
+        self.assertEqual(reduce_2.shape, [1])
+        # TODO: reduce + keepdim
 
-            # TODO: reduce + keepdim
-            matmul_1 = matmul(d, e)
-            slice_select_1 = slice_select(e, axis=[0], starts=[0], ends=[2],
-                                          strides=[1])
-            slice_select_2 = slice_select(d, axis=[0, 1], starts=[0, 1],
-                                          ends=[2, 3], strides=[1, 2])
-            slice_assign_1 = slice_assign(d, b, axis=[1], starts=[1], ends=[3],
-                                          strides=[1])
-            index = paddle.to_tensor([2, 0, 0], dtype='int')
-            gather_1 = gather(e, index, axis=0)
-            scatter_add_1 = scatter_add(e, gather_1, index, axis=0)
+        matmul_1 = matmul(d, e)
+        self.assertEqual(matmul_1.dtype, d.dtype)
+        self.assertEqual(matmul_1.shape, [2, 2])
+
+        slice_select_1 = slice_select(e, axis=[0], starts=[0], ends=[2],
+                                      strides=[1])
+        self.assertEqual(slice_select_1.dtype, e.dtype)
+        self.assertEqual(slice_select_1.shape, [2, 2])
+        
+        slice_select_2 = slice_select(d, axis=[0, 1], starts=[0, 1],
+                                      ends=[2, 3], strides=[1, 2])
+        self.assertEqual(slice_select_2.dtype, d.dtype)
+        self.assertEqual(slice_select_2.shape, [2, 1])
+
+        slice_assign_1 = slice_assign(d, b, axis=[1], starts=[1], ends=[3],
+                                      strides=[1])
+        self.assertEqual(slice_assign_1.dtype, d.dtype)
+        self.assertEqual(slice_assign_1.shape, d.shape)
+
+        index = paddle.to_tensor([2, 0, 0], dtype='int')
+        gather_1 = gather(e, index, axis=0)
+        self.assertEqual(gather_1.dtype, e.dtype)
+        self.assertEqual(gather_1.shape, [3, 2])
+
+        scatter_add_1 = scatter_add(e, gather_1, index, axis=0)
+        self.assertEqual(scatter_add_1.dtype, e.dtype)
+        self.assertEqual(scatter_add_1.shape, e.shape)
+
