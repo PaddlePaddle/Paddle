@@ -1812,7 +1812,7 @@ class GPUPSUtil(FleetUtil):
 
         if not self._afs.is_file(donefile_path):
             return [-1, -1, int(time.time())]
-        self._afs.download(donefile_path, "./xbox_base_done.txt")
+        # self._afs.download(donefile_path, "./xbox_base_done.txt")
         pre_content = self._afs.cat(donefile_path)
         last_dict = json.loads(pre_content.split("\n")[-1])
         last_day = int(last_dict["input"].split("/")[-3])
@@ -1958,7 +1958,6 @@ class GPUPSUtil(FleetUtil):
                 pre_content = ""
                 with open(donefile_name, "r") as f:
                     pre_content = f.read()
-                last_dict = json.loads(pre_content.strip().split("\n")[-1])
                 pre_content_list = pre_content.strip().split("\n")
                 day_list = [i.split("\t")[0] for i in pre_content_list]
                 pass_list = [i.split("\t")[3] for i in pre_content_list]
@@ -2083,8 +2082,6 @@ class GPUPSUtil(FleetUtil):
                     self.rank0_info("not write %s because %s/%s already "
                                     "exists" % (donefile_name, day, pass_id))
             else:
-                self.rank0_info("write xbox %s" % \
-                                      (xbox_str))
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
                 self._afs.upload(donefile_name, donefile_path)
