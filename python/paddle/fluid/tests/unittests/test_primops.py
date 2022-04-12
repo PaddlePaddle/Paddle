@@ -21,7 +21,7 @@ from paddle.autograd.primops import (neg, add, sub, mul, div, sqrt, tanh,
                                      concat, reduce, matmul, slice_select,
                                      slice_assign, gather, scatter_add, 
                                      fill_const)
-
+from paddle.autograd.primx import Transform
 
 class TestPyPrimOps(unittest.TestCase):
     """ Test Python wrappers of primitive ops. """
@@ -115,7 +115,8 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(slice_select_2.dtype, d.dtype)
         self.assertEqual(slice_select_2.shape, (2, 1))
 
-        slice_assign_1 = slice_assign(d, b, axis=[1], starts=[1], ends=[3],
+        y = broadcast(b, [2, 2])
+        slice_assign_1 = slice_assign(d, y, axis=[1], starts=[1], ends=[3],
                                       strides=[1])
         self.assertEqual(slice_assign_1.dtype, d.dtype)
         self.assertEqual(slice_assign_1.shape, d.shape)
@@ -125,13 +126,29 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(gather_1.dtype, e.dtype)
         self.assertEqual(gather_1.shape, (5, 2))
 
-        y =  paddle.rand([5])
+        y =  paddle.rand([5, 2])
         scatter_add_1 = scatter_add(e, y, index, axis=0)
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
 
     def test_jvps(self):
         pass
+
+    def test_linearize(self):
+        X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
+        W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
+        act = tanh
+        W_ = broadcast(W, shape=[100, 5, 2])
+        X_ = reshape(X, shape=[100, 2, 1])
+        Z = tanh(matmul(W_, X_))
+        Y = reduce(Z, axis=[1, 2])
+        def loss(y, x):
+            ad = Transform(y.block)
+            xs_dot, ys_dot = ad.linearize([x], [y])
+            ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
+            return xs_bar
+        grad, = loss(Y, W)
+        assert grad.shape == W.shape
 
 if __name__ == '__main__':
     unittest.main()

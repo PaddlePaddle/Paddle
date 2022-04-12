@@ -202,7 +202,7 @@ def slice_select(x, axis, starts, ends, strides, out=None):
 
 @REGISTER_FN('slice_assign_p')
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
-    assert len(y.shape) == len(starts) == len(ends) == len(strides) == len(axis)
+    assert len(starts) == len(ends) == len(strides) == len(axis)
     assert len(y.shape) <= len(x.shape)
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
@@ -227,7 +227,7 @@ def gather(x, indextensor, axis, out=None):
     helper.append_op(
         type=helper.layer_type,
         inputs={'X': x,
-                'Index': indextensor},
+                'IndexTensor': indextensor},
         outputs={'Y': out},
         attrs=attrs)
     return out
@@ -235,7 +235,9 @@ def gather(x, indextensor, axis, out=None):
 
 @REGISTER_FN('scatter_add_p')
 def scatter_add(x, y, indextensor, axis, out=None):
-    assert y.shape == indextensor.shape
+    assert len(x.shape) == len(y.shape)
+    assert len(indextensor.shape) == 1
+    assert y.shape[axis] == indextensor.shape[0]
     attrs = {'axis': axis}
     helper = LayerHelper('scatter_add_p', **locals())
     if out is None:
@@ -244,7 +246,7 @@ def scatter_add(x, y, indextensor, axis, out=None):
         type=helper.layer_type,
         inputs={'X': x,
                 'Y': y,
-                'Index': indextensor},
+                'IndexTensor': indextensor},
         outputs={'Z': out},
         attrs=attrs)
     return out
