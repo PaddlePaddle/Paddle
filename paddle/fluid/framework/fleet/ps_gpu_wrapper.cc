@@ -37,6 +37,43 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_PSLIB
+void AfsWrapper::init(const std::string& fs_name, const std::string& fs_user,
+                      const std::string& pass_wd, const std::string& conf) {
+  int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
+                              conf.c_str());
+  if (ret != 0) {
+    LOG(ERROR) << "AFS Init Error";
+  }
+}
+
+int AfsWrapper::remove(const std::string& path) {
+  return afs_handler_.remove(path);
+}
+
+int AfsWrapper::mkdir(const std::string& path) {
+  return afs_handler_.mkdir(path);
+}
+
+std::vector<std::string> AfsWrapper::list(const std::string& path) {
+  return afs_handler_.list(path);
+}
+
+int AfsWrapper::exist(const std::string& path) {
+  return afs_handler_.exist(path);
+}
+
+int AfsWrapper::upload(const std::string& local_file,
+                       const std::string& afs_file) {
+  return afs_handler_.upload_file(local_file, afs_file);
+}
+
+int AfsWrapper::download(const std::string& local_file,
+                         const std::string& afs_file) {
+  return afs_handler_.download_file(local_file, afs_file);
+}
+#endif
+
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 #ifdef PADDLE_WITH_PSLIB
@@ -234,13 +271,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
   gpu_task->UniqueKeys();
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
+  VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
 
   if (!multi_mf_dim_) {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
@@ -630,7 +667,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   if (!multi_mf_dim_) {
     for (int i = 0; i < device_num; i++) {
       feature_keys_count[i] = gpu_task->device_keys_[i].size();
-      VLOG(1) << i << " card contains feasign nums: " << feature_keys_count[i];
+      VLOG(0) << i << " card contains feasign nums: " << feature_keys_count[i];
       size_max = std::max(size_max, feature_keys_count[i]);
     }
   } else {
@@ -638,7 +675,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       for (int j = 0; j < multi_mf_dim_; j++) {
         feature_keys_count[i] += gpu_task->device_dim_ptr_[i][j].size();
       }
-      VLOG(1) << i << " card with dynamic mf contains feasign nums: "
+      VLOG(0) << i << " card with dynamic mf contains feasign nums: "
               << feature_keys_count[i];
       size_max = std::max(size_max, feature_keys_count[i]);
     }
@@ -648,7 +685,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     HeterPs_ = nullptr;
   }
   if (size_max <= 0) {
-    VLOG(1) << "Skip build gpu ps cause feasign nums = " << size_max;
+    VLOG(0) << "Skip build gpu ps cause feasign nums = " << size_max;
     return;
   }
   std::vector<std::thread> threads(device_num);
@@ -670,7 +707,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
 }
 
@@ -712,7 +749,7 @@ void PSGPUWrapper::pre_build_thread() {
     // build cpu ps data process
     PreBuildTask(gpu_task);
     timer.Pause();
-    VLOG(1) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
+    VLOG(0) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
             << "s";
     buildcpu_ready_channel_->Put(gpu_task);
   }
@@ -731,13 +768,13 @@ void PSGPUWrapper::build_task() {
     return;
   }
 
-  VLOG(1) << "BuildPull start.";
+  VLOG(0) << "BuildPull start.";
   platform::Timer timer;
   timer.Start();
   BuildPull(gpu_task);
   BuildGPUTask(gpu_task);
   timer.Pause();
-  VLOG(1) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
+  VLOG(0) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
           << "s";
 
   current_task_ = gpu_task;

@@ -33,7 +33,7 @@ KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
+                         {"Input", "Filter", GradVarName("Output")},
                          {"strides",
                           "paddings",
                           "padding_algorithm",

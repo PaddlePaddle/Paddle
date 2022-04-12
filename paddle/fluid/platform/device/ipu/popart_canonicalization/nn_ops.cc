@@ -95,6 +95,21 @@ Node *pool2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto pooling_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
   auto global_pooling = BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+  if (op->HasAttr("adaptive")) {
+    auto adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
+    if (adaptive) {
+      auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+      if (ksize[0] != 1 || ksize[1] != 1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support pool_size=1 with adaptive mode."));
+      }
+      // adaptive maxpool op is max_pool2d_with_index. Only process avgpool
+      // here.
+      return CreateBaseOp(graph, node, "popart_globalaveragepool", node->inputs,
+                          node->outputs);
+    }
+  }
+
   if (global_pooling) {
     if (pooling_type == "max") {
       return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
@@ -157,6 +172,17 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "op pool2d with unkonwn pooling_type: %s", pooling_type));
   }
+}
+
+Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+  if (ksize[0] != 1 || ksize[1] != 1) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Only support pool_size=1 with adaptive mode."));
+  }
+  return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
+                      {GetOutputVarNode("Out", node)});
 }
 
 Node *group_norm_handler(Graph *graph, Node *node) {
@@ -298,15 +324,16 @@ Node *dropout_handler(Graph *graph, Node *node) {
   }
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(pool2d, pool2d_handler);
+REGISTER_HANDLER(max_pool2d_with_index, max_pool2d_with_index_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
 REGISTER_HANDLER(group_norm, group_norm_handler);
 REGISTER_HANDLER(instance_norm, instance_norm_handler);
 REGISTER_HANDLER(layer_norm, layer_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
 REGISTER_HANDLER(dropout, dropout_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle
