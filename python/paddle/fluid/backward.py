@@ -474,12 +474,16 @@ def _accumulate_gradients_by_add_ops_(var_name,
     renamed_vars[var_name] = [var_name]
 
 
-def _addup_repetitive_outputs_(op_descs, block_idx, distop_context=None):
+def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
+
+    Args:
+        grad_var_to_var(dict): used to build the mapping between grad var name and forward var name.
+        Only used in auto parallel.
     """
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
@@ -528,14 +532,12 @@ def _addup_repetitive_outputs_(op_descs, block_idx, distop_context=None):
                             str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
                         # Build the mapping between the new_name and var_name (Only for auto parallel)
-                        if distop_context is not None:
-                            if var_name in distop_context.grad_var_to_var:
-                                distop_context.grad_var_to_var[
-                                    new_name] = distop_context.grad_var_to_var[
-                                        var_name]
+                        if grad_var_to_var is not None:
+                            if var_name in grad_var_to_var:
+                                grad_var_to_var[new_name] = grad_var_to_var[
+                                    var_name]
                             else:
-                                distop_context.grad_var_to_var[
-                                    new_name] = var_name
+                                grad_var_to_var[new_name] = var_name
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
@@ -563,13 +565,12 @@ def _addup_repetitive_outputs_(op_descs, block_idx, distop_context=None):
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     # Build the mapping between the new_name and var_name (Only for auto parallel)
-                    if distop_context is not None:
-                        if var_name in distop_context.grad_var_to_var:
-                            distop_context.grad_var_to_var[
-                                new_name] = distop_context.grad_var_to_var[
-                                    var_name]
+                    if grad_var_to_var is not None:
+                        if var_name in grad_var_to_var:
+                            grad_var_to_var[new_name] = grad_var_to_var[
+                                var_name]
                         else:
-                            distop_context.grad_var_to_var[new_name] = var_name
+                            grad_var_to_var[new_name] = var_name
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
@@ -1096,8 +1097,10 @@ def _append_backward_ops_(block,
     """
 
     # Build the mapping between the forward op and backward op (Only for auto parallel)
-    def update_distop_context(distop_context, op_grad_to_var):
-        distop_context.grad_var_to_var.update(op_grad_to_var)
+    def update_distop_context(distop_context, op_grad_to_var,
+                              appending_grad_times):
+        distop_context.grad_var_to_var[appending_grad_times].update(
+            op_grad_to_var)
         for op_desc in grad_op_desc:
             assert op_desc.id() not in distop_context.grad_op_id_to_op_id
             distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
@@ -1142,12 +1145,15 @@ def _append_backward_ops_(block,
 
         # Build the mapping between the forward op and backward op (Only for auto parallel)
         if distop_context is not None:
-            update_distop_context(distop_context, op_grad_to_var)
+            update_distop_context(distop_context, op_grad_to_var,
+                                  program._appending_grad_times)
         else:
             default_ctx = getattr(paddle.distributed.auto_parallel.dist_context,
                                   '_g_default_distributed_context', None)
-            if default_ctx:
-                update_distop_context(distop_context, op_grad_to_var)
+            if default_ctx is not None:
+                distop_context = default_ctx.dist_op_context
+                update_distop_context(distop_context, op_grad_to_var,
+                                      program._appending_grad_times)
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1182,7 +1188,8 @@ def _append_backward_ops_(block,
                         if name in op_grad_to_var:
                             if distop_context is not None:
                                 distop_context.grad_var_to_var[
-                                    new_name] = op_grad_to_var[name]
+                                    program._appending_grad_times][
+                                        new_name] = op_grad_to_var[name]
                             op_grad_to_var[new_name] = op_grad_to_var[name]
                             op_grad_to_var.pop(name)
 
@@ -1216,8 +1223,9 @@ def _append_backward_ops_(block,
             grad_to_var.update(op_grad_to_var)
 
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
-                                               distop_context)
+    grad_op_descs = _addup_repetitive_outputs_(
+        grad_op_descs, block.idx,
+        distop_context.grad_var_to_var[program._appending_grad_times])
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
