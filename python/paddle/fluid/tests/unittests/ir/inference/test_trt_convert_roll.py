@@ -88,6 +88,9 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
 
             if not dynamic_shape:
                 return 0, 3
+            ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7000:
+                return 0, 3
             return 1, 2
 
         attrs = [

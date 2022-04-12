@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
 namespace framework {
@@ -49,7 +50,8 @@ class RollOpConverter : public OpConverter {
     for (int i = 0; i < start.nbDims; i++) {
       start.d[i] = 0;
     }
-    for (int i = 0; i < axis.size(); i++) {
+    int axis_size = axis.size();
+    for (int i = 0; i < axis_size; i++) {
       start.d[axis[i]] = (-shifts[i]) % input_dims.d[axis[i]];
     }
 
@@ -72,7 +74,9 @@ class RollOpConverter : public OpConverter {
     auto* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
     layer->setInput(2, *shape_layer->getOutput(0));
+#if IS_TRT_VERSION_GE(7000)
     layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
 
     RreplenishLayerAndOutput(layer, "roll", {output_name}, test_mode);
   }
