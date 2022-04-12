@@ -34,15 +34,17 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                 static_cast<int64_t>(dtype));
 }
 
-std::string AlgorithmTypeString(const AlgorithmType& algo_type) {
-  if (algo_type == AlgorithmType::kConvForward) {
+std::string AlgorithmTypeString(int64_t algo_type) {
+  if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForward)) {
     return "conv_forward";
-  } else if (algo_type == AlgorithmType::kConvBackwardData) {
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardData)) {
     return "conv_backward_data";
-  } else if (algo_type == AlgorithmType::kConvBackwardFilter) {
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardFilter)) {
     return "conv_backward_filter";
   }
-  return "unknown";
+  return std::to_string(algo_type);
 }
 
 void AutoTuneCache::UpdateStatus() {

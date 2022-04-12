@@ -139,7 +139,7 @@ enum class AlgorithmType {
 // AlgorithmsConfigKey -> AlgorithmsID
 using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
 // AlgorithmType -> AlgorithmsCache
-using AlgorithmsTypeMap = std::unordered_map<AlgorithmType, AlgorithmsCacheMap>;
+using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
 
 class AutoTuneCache {
  public:
@@ -148,16 +148,20 @@ class AutoTuneCache {
     return autotune_cache;
   }
 
+  AlgorithmsCacheMap& Get(const AlgorithmType& algo_type) {
+    return auto_tune_map_[static_cast<int64_t>(algo_type)];
+  }
+
   AlgorithmsCacheMap& GetConvForward() {
-    return auto_tune_map_[AlgorithmType::kConvForward];
+    return Get(AlgorithmType::kConvForward);
   }
 
   AlgorithmsCacheMap& GetConvBackwardData() {
-    return auto_tune_map_[AlgorithmType::kConvBackwardData];
+    return Get(AlgorithmType::kConvBackwardData);
   }
 
   AlgorithmsCacheMap& GetConvBackwardFilter() {
-    return auto_tune_map_[AlgorithmType::kConvBackwardFilter];
+    return Get(AlgorithmType::kConvBackwardFilter);
   }
 
   void Clean() {
@@ -194,9 +198,10 @@ class AutoTuneCache {
 
   void Register(const AlgorithmType& algo_type) {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
-    if (auto_tune_map_.find(algo_type) == auto_tune_map_.end()) {
+    int64_t key = static_cast<int64_t>(algo_type);
+    if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
       AlgorithmsCacheMap cache;
-      auto_tune_map_[algo_type] = cache;
+      auto_tune_map_[key] = cache;
     }
   }
 
