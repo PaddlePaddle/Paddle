@@ -46,6 +46,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
             ret = paddle.distributed.barrier(group)
             assert ret == None
+        paddle.enable_static()
+        in_tensor = paddle.empty((1, 2))
+        in_tensor2 = paddle.empty((1, 2))
+        paddle.distributed.broadcast(in_tensor, src=0)
+        paddle.distributed.all_gather([in_tensor, in_tensor2], in_tensor)
         print("test ok\n")
 
 
