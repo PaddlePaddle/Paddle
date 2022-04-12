@@ -12,80 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .primreg import REGISTER_JVP, REGISTER_TRANSPOSE
+from .primreg import lookup_fn, lookup_jvp, lookup_transpose
 from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       transpose, split, concat, reduce, matmul, slice_select,
                       slice_assign, gather, scatter_add, fill_const)
 
-import functools
-
-
-class Registry(object):
-    """ A general registry object. """
-
-    def __init__(self, name):
-        self.name = name
-        self.tab = {}
-
-    def register(self, name, value):
-        assert name not in self.tab
-        self.tab[name] = value
-    
-    def lookup(self, name):
-        assert name in self.tab, f'No registry entry is found with name: {name}'
-        return self.tab[name]
-
-_primop_jvp = Registry('primop_jvps')
-_primop_transpose = Registry('primop_vjps')
-
 
 def _jvp(op, *args):
-    _jvprule = _primop_jvp.lookup(op.type)
+    _jvprule = lookup_jvp(op.type)
     return _jvprule(op, *args)
 
 def _transpose(op, dot_checker, *args):
-    _transposerule = _primop_transpose.lookup(op.type)
+    _transposerule = lookup_transpose(op.type)
     return _transposerule(op, dot_checker, *args)
-
-
-def REGISTER_JVP(op_type):
-    """Decorator for registering the JVP function for a primitive op.
-    
-    Usage:
-    .. code-block:: python
-        @RegisterJVP('add')
-        def add_jvp(op, x_dot, y_dot):
-            return primops.add(x_dot, y_dot)
-    
-    """
-    assert isinstance(op_type, str)
-    def wrapper(f):
-        def _jvp(op, *args, **kwargs): 
-            assert op.type == op_type
-            return f(op, *args, **kwargs)
-        _primop_jvp.register(op_type, _jvp)
-
-    return wrapper
-
-
-def REGISTER_TRANSPOSE(op_type):
-    """Decorator for registering the transpose function for a primitive op
-    that denotes a linear operation in the forward AD graph.
-    
-    Usage:
-    .. code-block:: python
-        @RegisterJVP('add')
-        def add_transpose(op, z_bar):
-            return z_bar, z_bar
-    
-    """
-    assert isinstance(op_type, str)
-    def wrapper(f):
-        def _transpose(op, dot_checker, *args, **kwargs): 
-            assert op.type == op_type
-            return f(op, dot_checker, *args, **kwargs)
-        _primop_transpose.register(op_type, _transpose)
-
-    return wrapper
 
 
 def get_input_vars(op):
@@ -96,8 +36,9 @@ def get_output_vars(op):
     return tuple(map(op.block.var, op.output_arg_names))
 
 
-def linear_jvp(op, *args):
-    out_dot = op(*args, **op.all_attrs())
+def linear_jvp(op, *args, **kwargs):
+    fn = lookup_fn(op.type)
+    out_dot = fn(*args, **kwargs)
     return out_dot
 
 ## Register linearize rules
@@ -147,32 +88,40 @@ def tanh_jvp(op, x_dot):
 
 @REGISTER_JVP('reshape_p')
 def reshape_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    shape = op.attr('shape')
+    return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('broadcast_p')
 def broadcast_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    shape = op.attr('shape')
+    return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('transpose_p')
 def transpose_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    axis = op.attr('axis')
+    return linear_jvp(op, x_dot, axis=axis)
 
 
 @REGISTER_JVP('split_p')
 def split_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    num_or_sections = op.attr('num_or_sections')
+    axis = op.attr('axis')
+    return linear_jvp(op, x_dot, num_or_sections=num_or_sections, axis=axis)
 
 
 @REGISTER_JVP('concat_p')
 def concat_jvp(op, xs_dot):
-    return linear_jvp(op, xs_dot)
+    axis = op.attr('axis')
+    return linear_jvp(op, xs_dot, axis=axis)
 
 
 @REGISTER_JVP('reduce_p')
 def reduce_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    axis = op.attr('axis')
+    keepdim = op.attr('keepdim')
+    return linear_jvp(op, x_dot, axis=axis, keepdim=keepdim)
 
 
 @REGISTER_JVP('matmul_p')
@@ -186,24 +135,36 @@ def matmul_jvp(op, x_dot, y_dot):
 
 @REGISTER_JVP('slice_select_p')
 def slice_select_jvp(op, x_dot):
-    return linear_jvp(op, x_dot)
+    axis = op.attr('axis')
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = op.attr('strides')
+    return linear_jvp(op, x_dot, axis=axis, starts=starts, ends=ends,
+                      strides=strides)
 
 
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
-    return linear_jvp(op, x_dot, y_dot)
+    axis = op.attr('axis')
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = op.attr('strides')
+    return linear_jvp(op, x_dot, y_dot, axis=axis, starts=starts, ends=ends,
+                      strides=strides)
 
 
 @REGISTER_JVP('gather_p')
 def gather_jvp(op, x_dot):
     _, indextensor = get_input_vars(op)
-    return linear_jvp(op, x_dot, indextensor)
+    axis = op.attr('axis')
+    return linear_jvp(op, x_dot, indextensor, axis=axis)
 
 
 @REGISTER_JVP('scatter_add_p')
 def scatter_add_jvp(op, x_dot, y_dot):
     _, _, indextensor = get_input_vars(op)
-    return linear_jvp(op, x_dot, y_dot, indextensor)
+    axis = op.attr('axis')
+    return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
 
 
 ## Register transpose rules
@@ -309,7 +270,12 @@ def slice_select_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
     assert check_dot(x)
     zeros = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
-    return slice_assign(zeros, y_bar, **op.all_attrs())
+    axis = op.attr('axis')
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = op.attr('strides')
+    return slice_assign(zeros, y_bar, axis=axis, starts=starts, ends=ends,
+                        strides=strides)
 
 
 @REGISTER_TRANSPOSE('slice_assign_p')
@@ -317,20 +283,28 @@ def slice_assign_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) and check_dot(y)
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
-    return slice_assign(z_bar, zeros, **op.all_attrs()), slice_select(z_bar, **op.all_attrs())
+    axis = op.attr('axis')
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = op.attr('strides')
+    x_bar = slice_assign(z_bar, zeros, axis=axis, starts=starts, ends=ends,
+                        strides=strides)
+    y_bar = slice_select(z_bar, axis=axis, starts=starts, ends=ends,
+                        strides=strides)
+    return x_bar, y_bar
 
 
 @REGISTER_TRANSPOSE('gather_p')
 def gather_transpose(op, check_dot, y_bar):
     x, indextensor = get_input_vars(op)
     assert check_dot(x)
-    return scatter_add(y_bar, indextensor, **op.all_attrs())
+    axis = op.attr('axis')
+    return scatter_add(y_bar, indextensor, axis=axis)
 
 
 @REGISTER_TRANSPOSE('scatter_add_p')
 def scatter_add_transpose(op, check_dot, y_bar):
     x, indextensor = get_input_vars(op)
     assert check_dot(x)
-    return gather(y_bar, indextensor, **op.all_attrs())
-
-
+    axis = op.attr('axis')
+    return gather(y_bar, indextensor, axis=axis)
