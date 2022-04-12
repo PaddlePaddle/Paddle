@@ -105,33 +105,33 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(matmul_1.dtype, d.dtype)
         self.assertEqual(matmul_1.shape, (2, 2))
 
-        # slice_select_1 = slice_select(e, axis=[0], starts=[0], ends=[2],
-        #                               strides=[1])
-        # self.assertEqual(slice_select_1.dtype, e.dtype)
-        # self.assertEqual(slice_select_1.shape, (2, 2))
+        slice_select_1 = slice_select(e, axis=[0], starts=[0], ends=[2],
+                                      strides=[1])
+        self.assertEqual(slice_select_1.dtype, e.dtype)
+        self.assertEqual(slice_select_1.shape, (2, 2))
         
-        # slice_select_2 = slice_select(d, axis=[0, 1], starts=[0, 1],
-        #                               ends=[2, 3], strides=[1, 2])
-        # self.assertEqual(slice_select_2.dtype, d.dtype)
-        # self.assertEqual(slice_select_2.shape, (2, 1))
+        slice_select_2 = slice_select(d, axis=[0, 1], starts=[0, 1],
+                                      ends=[2, 3], strides=[1, 2])
+        self.assertEqual(slice_select_2.dtype, d.dtype)
+        self.assertEqual(slice_select_2.shape, (2, 1))
 
-        # slice_assign_1 = slice_assign(d, b, axis=[1], starts=[1], ends=[3],
-        #                               strides=[1])
-        # self.assertEqual(slice_assign_1.dtype, d.dtype)
-        # self.assertEqual(slice_assign_1.shape, d.shape)
+        slice_assign_1 = slice_assign(d, b, axis=[1], starts=[1], ends=[3],
+                                      strides=[1])
+        self.assertEqual(slice_assign_1.dtype, d.dtype)
+        self.assertEqual(slice_assign_1.shape, d.shape)
 
-        # index = paddle.static.data('index', shape=[5], dtype='int')
-        # gather_1 = gather(e, index, axis=0)
-        # self.assertEqual(gather_1.dtype, e.dtype)
-        # self.assertEqual(gather_1.shape, (5, 2))
+        index = paddle.static.data('index', shape=[5], dtype='int')
+        gather_1 = gather(e, index, axis=0)
+        self.assertEqual(gather_1.dtype, e.dtype)
+        self.assertEqual(gather_1.shape, (5, 2))
 
-        # y =  paddle.rand([5])
-        # scatter_add_1 = scatter_add(e, y, index, axis=0)
-        # self.assertEqual(scatter_add_1.dtype, e.dtype)
-        # self.assertEqual(scatter_add_1.shape, e.shape)
+        y =  paddle.rand([5])
+        scatter_add_1 = scatter_add(e, y, index, axis=0)
+        self.assertEqual(scatter_add_1.dtype, e.dtype)
+        self.assertEqual(scatter_add_1.shape, e.shape)
 
     def test_jvps(self):
-        
+        pass
 
 if __name__ == '__main__':
     unittest.main()
