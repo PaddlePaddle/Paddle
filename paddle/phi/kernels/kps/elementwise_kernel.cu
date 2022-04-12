@@ -64,7 +64,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
+// PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
 PD_REGISTER_KERNEL(
     subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 PD_REGISTER_KERNEL(divide_raw, KPS, ALL_LAYOUT, phi::DivideRawKernel, float) {}
