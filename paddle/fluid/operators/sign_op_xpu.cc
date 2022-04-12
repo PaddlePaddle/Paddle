@@ -29,7 +29,7 @@ class SignXPUKernel : public framework::OpKernel<T> {
     auto xpu_context = context.device_context<DeviceContext>().x_context();
     // int sign(Context* ctx, const T* x , T* y, int len);
     int r = xpu::sign(xpu_context, in->data<T>(), out->data<T>(), in->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
   }
 };
 

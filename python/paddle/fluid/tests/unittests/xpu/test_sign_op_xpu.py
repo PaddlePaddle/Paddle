@@ -61,19 +61,19 @@ class XPUTestSignOP(XPUOpTestWrapper):
         def init_config(self):
             self.input_shape = [864]
 
-    class XPUTestSign1(TestMomentumOPBase):
+    class XPUTestSign1(TestSignOPBase):
         def init_config(self):
             self.input_shape = [2, 768]
 
-    class XPUTestSign2(TestMomentumOPBase):
+    class XPUTestSign2(TestSignOPBase):
         def init_config(self):
             self.input_shape = [3, 8, 4096]
 
-    class XPUTestSign3(TestMomentumOPBase):
+    class XPUTestSign3(TestSignOPBase):
         def init_config(self):
             self.input_shape = [1024]
 
-    class XPUTestSign4(TestMomentumOPBase):
+    class XPUTestSign4(TestSignOPBase):
         def init_config(self):
             self.input_shape = [2, 2, 255]
 
