@@ -600,27 +600,7 @@ class XavierInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if in_dygraph_mode():
-            if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
-                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
-                                                -limit, 'max', limit, 'seed',
-                                                self._seed, 'dtype', out_dtype)
-            else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
-                place = _current_expected_place()
-                out_var = _C_ops.final_state_gaussian_random(
-                    out_var.shape, 0.0, std, self._seed, out_dtype, place)
-
-            if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
-        elif _in_legacy_dygraph():
+        if framework._non_static_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
@@ -628,9 +608,15 @@ class XavierInitializer(Initializer):
                                                 self._seed, 'dtype', out_dtype)
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
-                out_var = _C_ops.gaussian_random(
-                    'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
-                    'std', std, 'seed', self._seed)
+
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    out_var = _C_ops.final_state_gaussian_random(
+                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                else:
+                    out_var = _C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
+                        'std', std, 'seed', self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
@@ -772,28 +758,7 @@ class MSRAInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if in_dygraph_mode():
-            if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
-                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
-                                                -limit, 'max', limit, 'seed',
-                                                self._seed, 'dtype',
-                                                int(out_dtype))
-            else:
-                std = np.sqrt(2.0 / float(fan_in))
-                place = _current_expected_place()
-                out_var = _C_ops.final_state_gaussian_random(
-                    out_var.shape, 0.0, std, self._seed, out_dtype, place)
-
-            if var.dtype == VarDesc.VarType.FP16 or (
-                    var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
-        elif _in_legacy_dygraph():
+        if framework._non_static_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
@@ -802,9 +767,15 @@ class MSRAInitializer(Initializer):
                                                 int(out_dtype))
             else:
                 std = math.sqrt(2.0 / float(fan_in))
-                out_var = _C_ops.gaussian_random(
-                    'shape', out_var.shape, 'dtype',
-                    int(out_dtype), 'mean', 0.0, 'std', std, 'seed', self._seed)
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    out_var = _C_ops.final_state_gaussian_random(
+                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                else:
+                    out_var = _C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype',
+                        int(out_dtype), 'mean', 0.0, 'std', std, 'seed',
+                        self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
