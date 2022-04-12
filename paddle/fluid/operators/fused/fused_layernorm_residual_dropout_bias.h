@@ -82,6 +82,7 @@ __device__ void CalcLayernormY(
   }
 }
 
+
 /**
  * @brief layernorm(residual + dropout(src + bias));
  * @param
@@ -138,11 +139,11 @@ __global__ void FusedLayernormResidualDropoutBias(
     auto scale = static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(
         static_cast<float>(1.) / static_cast<float>(cols));
     auto tmp = mean_val * static_cast<U>(scale);
-    mean[row_id] = mean_share = static_cast<U>(tmp);
+//    mean[row_id] = mean_share = static_cast<U>(tmp);
     var_share = static_cast<U>(var_val * static_cast<U>(scale) -
                                mean_share * mean_share);
     var_share = var_share > U(0) ? var_share : U(0);
-    var[row_id] = var_share;
+//    var[row_id] = var_share;
   }
   __syncthreads();
 
@@ -154,6 +155,32 @@ __global__ void FusedLayernormResidualDropoutBias(
       scale, layernorm_bias, dst, layernorm_dst, row_id, col_id, cols, mean_val,
       invvar);
 }
+
+
+template <typename T, typename MaskType, int VecSize, typename U,
+          bool ScaleBiasWithSameTypeX = false>
+struct FusedLayernormResidualDropoutBiasFunctor {
+
+  void operator()(const size_t rows, const size_t cols, uint64_t seed,
+    const float dropout_prob, const bool is_upscale_in_train,
+    const bool is_test, const uint64_t increment, const float epsilon,
+    const T *src, const T *residual, const T *bias,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
+    MaskType *mask, T *dst, T *layernorm_dst, LayerNormParamType<T> *mean,
+    LayerNormParamType<T> *var, cudaStream_t stream) {
+    int blockDim = GetDesiredBlockDim(cols / VecSize);
+    FusedLayernormResidualDropoutBias<
+          T, MaskType, VecSize, U,
+          ScaleBiasWithSameTypeX><<<rows, blockDim, 0, stream>>>(
+          rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
+          increment, epsilon, src, residual, bias, scale, layernorm_bias,
+          mask, dst, layernorm_dst, mean, var);
+  }
+};
+
+template struct FusedLayernormResidualDropoutBiasFunctor<paddle::platform::float16, uint8_t, 8, float, false>;
+
 
 /*
 * @brief layernorm(residual + dropout(x));

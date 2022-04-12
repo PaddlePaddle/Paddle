@@ -27,9 +27,10 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
+template <typename T>
 class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale, const float* ele_bias,
+  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale, const T* ele_bias,
                                       int bias_size, int scale_size, int ele_bias_size,
                                       const float eps, bool with_fp16)
       : bias_size_(bias_size), scale_size_(scale_size), ele_bias_size_(ele_bias_size), eps_(eps) {
@@ -120,11 +121,11 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
-  std::vector<float> ele_bias_;
+  std::vector<T> ele_bias_;
 
   float* bias_gpu_{nullptr};
   float* scale_gpu_{nullptr};
-  float* ele_bias_gpu_{nullptr};
+  T* ele_bias_gpu_{nullptr};
 
   int bias_size_;
   int scale_size_;
@@ -132,48 +133,6 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
 
   float eps_;
 };
-
-class PrelnResidualBiasPluginDynamicCreator : public nvinfer1::IPluginCreator {
- public:
-  PrelnResidualBiasPluginDynamicCreator() {}
-  const char* getPluginName() const TRT_NOEXCEPT override {
-    return "preln_residual_bias_plugin";
-  }
-
-  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(const char* name,
-                                    const nvinfer1::PluginFieldCollection* fc)
-      TRT_NOEXCEPT override {
-    return nullptr;
-  }
-
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
-    auto plugin = new PrelnResidualBiasPluginDynamic(serial_data, serial_length);
-    return plugin;
-  }
-
-  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const TRT_NOEXCEPT override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_;
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
-};
-REGISTER_TRT_PLUGIN_V2(PrelnResidualBiasPluginDynamicCreator);
 #endif
 
 }  // namespace plugin
