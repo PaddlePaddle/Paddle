@@ -92,21 +92,20 @@ class Corr_Test4(unittest.TestCase):
 
 
 # test unsupported complex input
-class Corr_Test5(unittest.TestCase):
+class Corr_Comeplex_Test(unittest.TestCase):
+    def setUp(self):
+        self.dtype = 'complex128'
+
     def test_errors(self):
         paddle.enable_static()
-        x1 = fluid.data(name='x1', shape=[2], dtype='complex128')
+        x1 = fluid.data(name=self.dtype, shape=[2], dtype=self.dtype)
         self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x1)
         paddle.disable_static()
 
+class Corr_Test5(Corr_Comeplex_Test):
 
-# test unsupported complex input
-class Corr_Test6(unittest.TestCase):
-    def test_errors(self):
-        paddle.enable_static()
-        x2 = fluid.data(name='x2', shape=[2, 2], dtype='complex64')
-        self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x2)
-        paddle.disable_static()
+    def setUp(self):
+        self.dtype = 'complex64'
 
 
 if __name__ == '__main__':
