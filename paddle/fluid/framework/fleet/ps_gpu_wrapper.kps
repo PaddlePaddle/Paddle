@@ -85,7 +85,8 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
 }
 
-__global__ void CopyKeysKernel(unsigned long long** src_keys, unsigned long long* dest_total_keys,
+__global__ void CopyKeysKernel(unsigned long long** src_keys,
+                               unsigned long long* dest_total_keys,
                                const long long* len, int slot_num,
                                int total_len) {
   int cid = core_id();
@@ -199,10 +200,10 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   xpu_memcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              XPU_HOST_TO_DEVICE);
 
-  unsigned long long** c_keys = (unsigned long long**)gpu_keys;  
-  const long long* c_len = (const long long*)gpu_len;  
-  PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, c_len,
-                              hidden_size, slot_num, total_length, c_keys);
+  unsigned long long** c_keys = (unsigned long long**)gpu_keys;
+  const long long* c_len = (const long long*)gpu_len;
+  PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, c_len, hidden_size,
+                              slot_num, total_length, c_keys);
 
   xpu_wait(stream);
 }
@@ -216,11 +217,10 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  unsigned long long** o_keys = (unsigned long long**)origin_keys;  
-  unsigned long long* t_keys = (unsigned long long*)total_keys;  
-  const long long* c_len = (const long long*)gpu_len;  
-  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num,
-                                    total_len);
+  unsigned long long** o_keys = (unsigned long long**)origin_keys;
+  unsigned long long* t_keys = (unsigned long long*)total_keys;
+  const long long* c_len = (const long long*)gpu_len;
+  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
   xpu_wait(stream);
 }
 
@@ -262,7 +262,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   xpu_memcpy(d_slot_vector, slot_vector_.data(),
              slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
 
-  long long* c_len = (long long*)gpu_len;  
+  long long* c_len = (long long*)gpu_len;
   PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, c_len,
                               hidden_size, slot_lengths.size(), total_length,
                               batch_size, d_slot_vector);
@@ -288,20 +288,20 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::initial_range),
              sizeof(float));
 
-  xpu_memcpy((void*)optimizer_config::nonclk_coeff, &nonclk_coeff, sizeof(float),
-             XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::nonclk_coeff, &nonclk_coeff,
+             sizeof(float), XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
              XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::min_bound, &min_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::max_bound, &max_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::learning_rate, &learning_rate, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::initial_g2sum, &initial_g2sum, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::initial_range, &initial_range, sizeof(float),
-             XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::learning_rate, &learning_rate,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::initial_g2sum, &initial_g2sum,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::initial_range, &initial_range,
+             sizeof(float), XPU_HOST_TO_DEVICE);
 }
 
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
@@ -321,16 +321,16 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_max_bound),
              sizeof(float));
 
-  xpu_memcpy((void*)optimizer_config::mf_create_thresholds, &mf_create_thresholds,
-             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::mf_create_thresholds,
+             &mf_create_thresholds, sizeof(float), XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
              sizeof(float), XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::mf_initial_range, &mf_initial_range,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_min_bound, &mf_min_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_max_bound, &mf_max_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::mf_min_bound, &mf_min_bound,
+             sizeof(float), XPU_HOST_TO_DEVICE);
+  xpu_memcpy((void*)optimizer_config::mf_max_bound, &mf_max_bound,
+             sizeof(float), XPU_HOST_TO_DEVICE);
   xpu_memcpy((void*)optimizer_config::mf_learning_rate, &mf_learning_rate,
              sizeof(float), XPU_HOST_TO_DEVICE);
 }
