@@ -19,3 +19,4 @@ limitations under the License. */
 
 // PD_DECLARE_API(Math);
 // PD_DECLARE_API(SparseApi);
+// PD_DECLARE_API(StringsApi);

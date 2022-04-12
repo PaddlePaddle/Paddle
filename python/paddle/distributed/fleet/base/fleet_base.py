@@ -292,7 +292,7 @@ class Fleet(object):
                         "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
                     )
 
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             if self.worker_num() == 1:
                 # if worker_num is 1, should construct default topology & hcg
                 self._topology = tp.CommunicateTopology()
@@ -916,7 +916,7 @@ class Fleet(object):
 
         self._context = {}
 
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             if self.worker_num() > 1:
                 if self._user_defined_strategy.heter_ccl_mode == False:
                     return HybridParallelOptimizer(optimizer, self._hcg,
@@ -1053,8 +1053,7 @@ class Fleet(object):
                 last_comm_buffer_size=self._user_defined_strategy.
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
-                find_unused_parameters,
-                static_graph=True if recompute_enable else False)
+                find_unused_parameters)
         elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
             model = TensorParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
@@ -1495,7 +1494,7 @@ class Fleet(object):
             return self._minimize_impl(loss, startup_program, parameter_list,
                                        no_grad_set)
         else:
-            if paddle.fluid.framework.in_dygraph_mode(
+            if paddle.fluid.framework._non_static_mode(
             ) or self._role_maker._is_non_distributed() or self._is_collective:
                 raise ValueError("loss can be list only in PS mode")
             return self._minimize_losses_impl(loss, startup_program,
@@ -1509,7 +1508,7 @@ class Fleet(object):
         context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy)
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             self._context = context
@@ -1669,7 +1668,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v or k not in opt_info:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
@@ -1745,7 +1745,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v or k not in opt_info:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
             # print("fleet base opt info:", id(program), program._fleet_opt)
 

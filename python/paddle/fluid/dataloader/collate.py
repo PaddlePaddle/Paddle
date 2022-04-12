@@ -15,7 +15,7 @@
 import paddle
 import numbers
 import numpy as np
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 from .. import core, layers
 
 try:
@@ -57,7 +57,7 @@ def default_collate_fn(batch):
     if isinstance(sample, np.ndarray):
         batch = np.stack(batch, axis=0)
         return batch
-    elif isinstance(sample, paddle.Tensor):
+    elif isinstance(sample, (paddle.Tensor, core.eager.Tensor)):
         return layers.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)
@@ -99,7 +99,7 @@ def default_convert_fn(batch):
         Batched data: batched each number, numpy array and paddle.Tensor
                       in input data.
     """
-    if isinstance(batch, (paddle.Tensor, np.ndarray)):
+    if isinstance(batch, (paddle.Tensor, np.ndarray, core.eager.Tensor)):
         return batch
     elif isinstance(batch, (str, bytes)):
         return batch

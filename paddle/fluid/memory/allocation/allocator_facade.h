@@ -76,17 +76,16 @@ class AllocatorFacade {
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream);
 
+  bool IsStreamSafeCUDAAllocatorUsed();
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
-  void RecordStream(std::shared_ptr<Allocation> allocation,
-                    const gpuStream_t& stream);
+  uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
+  void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
-                                                 const gpuStream_t& stream);
-  const gpuStream_t& GetStream(
-      const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream);
+                                                 gpuStream_t stream);
+  gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
+  void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
 #endif
 
 #ifdef PADDLE_WITH_CUDA

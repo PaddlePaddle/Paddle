@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags
+from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode, _in_legacy_dygraph
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -240,8 +240,20 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        if in_dygraph_mode() and (self._l_type == 'conv2d' or
-                                  self._l_type == 'depthwise_conv2d'):
+        if in_dygraph_mode() and self._l_type == "conv2d":
+            pre_bias = _C_ops.final_state_conv2d(
+                input, self.weight, self._stride, self._padding, "EXPLICIT",
+                self._groups if self._groups else 1, self._dilation, "NCHW",
+                False, -1, False)
+            if self.bias is not None:
+                pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
+            else:
+                pre_act = pre_bias
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
+
+        if _non_static_mode() and (self._l_type == 'conv2d' or
+                                   self._l_type == 'depthwise_conv2d'):
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn,
@@ -869,7 +881,7 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if _non_static_mode():
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
@@ -979,7 +991,7 @@ class Linear(layers.Layer):
         self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if _non_static_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
                           'transpose_Y', False, "alpha", 1, "use_mkldnn",
@@ -1125,7 +1137,7 @@ class InstanceNorm(layers.Layer):
             self.bias = None
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if _non_static_mode():
             out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
                                              'epsilon', self._epsilon)
             return out
@@ -1338,16 +1350,27 @@ class BatchNorm(layers.Layer):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        if in_dygraph_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", self._use_mkldnn,
-                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
-                     self._use_global_stats, 'trainable_statistics',
-                     self._trainable_statistics)
-            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-                input, self.weight, self.bias, self._mean, self._variance,
-                mean_out, variance_out, *attrs)
+        if _non_static_mode():
+            if in_dygraph_mode():
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    self._momentum, self._epsilon, self._data_layout,
+                    not self.training, self._use_global_stats,
+                    self._trainable_statistics, False)
+                return dygraph_utils._append_activation_in_dygraph(
+                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
+
+            elif _in_legacy_dygraph():
+                attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                         "is_test", not self.training, "data_layout",
+                         self._data_layout, "use_mkldnn", self._use_mkldnn,
+                         "fuse_with_relu", self._fuse_with_relu,
+                         "use_global_stats", self._use_global_stats,
+                         'trainable_statistics', self._trainable_statistics)
+                batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    None, mean_out, variance_out, *attrs)
+
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
@@ -1488,13 +1511,13 @@ class Dropout(layers.Layer):
         attrs = {
             'dropout_prob': self._dropout_prob,
             'is_test': not self.training
-            if in_dygraph_mode() else self._is_test,
+            if _non_static_mode() else self._is_test,
             'fix_seed': self._seed is not None,
             'seed': self._seed if self._seed is not None else 0,
             'dropout_implementation': self._dropout_implementation,
         }
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             attrs = sum(attrs.items(), ())
             out, mask = _C_ops.dropout(input, *attrs)
             return out
@@ -1647,7 +1670,7 @@ class Embedding(layers.Layer):
             is_bias=False)
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if _non_static_mode():
             return _C_ops.lookup_table_v2(
                 self.weight, input, 'is_sparse', self._is_sparse,
                 'is_distributed', self._is_distributed, 'remote_prefetch',
@@ -1803,7 +1826,7 @@ class LayerNorm(layers.Layer):
                 ', expected input with shape [*, ' + str_normalized_shape[
                     1:] + ', but got input shape ' + str(input_shape))
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             pre_act, _, _ = _C_ops.layer_norm(
                 input, self.weight, self.bias, 'epsilon', self._epsilon,
                 'begin_norm_axis', self._begin_norm_axis)
@@ -1988,7 +2011,7 @@ class GRUUnit(layers.Layer):
             attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     def forward(self, input, hidden):
-        if in_dygraph_mode():
+        if _non_static_mode():
             gate, reset_hidden_pre, updated_hidden = _C_ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
@@ -2234,7 +2257,7 @@ class NCE(layers.Layer):
         self._inputs['Weight'] = self.weight
 
     def forward(self, input, label, sample_weight=None):
-        if in_dygraph_mode():
+        if _non_static_mode():
             attrs = ('num_total_classes', self._attrs['num_total_classes'],
                      'num_neg_samples', self._attrs['num_neg_samples'], 'seed',
                      self._attrs['seed'], 'sampler', self._attrs['sampler'],
@@ -2687,7 +2710,7 @@ class Conv2DTranspose(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if _non_static_mode():
             op = getattr(_C_ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
                      'strides', self._stride, 'paddings', self._padding,
@@ -2778,7 +2801,7 @@ class SequenceConv(layers.Layer):
                  bias_attr=None,
                  param_attr=None,
                  act=None):
-        assert not in_dygraph_mode(
+        assert not _non_static_mode(
         ), "SequenceConv is not supported by dynamic graph mode yet!"
         super(SequenceConv, self).__init__(name_scope)
         self._num_filters = num_filters
@@ -2884,7 +2907,7 @@ class RowConv(layers.Layer):
                  future_context_size,
                  param_attr=None,
                  act=None):
-        assert not in_dygraph_mode(
+        assert not _non_static_mode(
         ), "RowConv is not supported by dynamic graph mode yet!"
         super(RowConv, self).__init__(name_scope)
         self._act = act
@@ -2991,33 +3014,33 @@ class GroupNorm(layers.Layer):
             out, _, _ = _C_ops.group_norm(input, self.weight, self.bias, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
+        else:
+            inputs = {'X': input}
+            if self.bias is not None:
+                inputs['Bias'] = self.bias
+            if self.weight is not None:
+                inputs['Scale'] = self.weight
 
-        inputs = {'X': input}
-        if self.bias is not None:
-            inputs['Bias'] = self.bias
-        if self.weight is not None:
-            inputs['Scale'] = self.weight
+            # create output
+            mean_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            variance_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            group_norm_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
 
-        # create output
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        group_norm_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
+            self._helper.append_op(
+                type="group_norm",
+                inputs=inputs,
+                outputs={
+                    "Y": group_norm_out,
+                    "Mean": mean_out,
+                    "Variance": variance_out,
+                },
+                attrs={"epsilon": self._epsilon,
+                       "groups": self._groups})
 
-        self._helper.append_op(
-            type="group_norm",
-            inputs=inputs,
-            outputs={
-                "Y": group_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={"epsilon": self._epsilon,
-                   "groups": self._groups})
-
-        return self._helper.append_activation(group_norm_out, self._act)
+            return self._helper.append_activation(group_norm_out, self._act)
 
 
 class SpectralNorm(layers.Layer):

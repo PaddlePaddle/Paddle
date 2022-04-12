@@ -24,7 +24,6 @@ import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.fluid.framework as framework
-import paddle.distributed.fleet as fleet
 
 #logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
@@ -59,8 +58,9 @@ DATA_NORM_GRAD_NAME = [x + "@GRAD" for x in DATA_NORM_NAME]
 
 def logger_config(log_path, logging_name):
     logger = logging.getLogger(logging_name)
-    logger.setLevel(level=logging.DEBUG)
-    handler = logging.FileHandler(log_path, mode='a', encoding='UTF-8')
+    logger.setLevel(level=logging.WARNING)
+    handler = logging.FileHandler(
+        log_path, mode='a', encoding='UTF-8', delay=True)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s')

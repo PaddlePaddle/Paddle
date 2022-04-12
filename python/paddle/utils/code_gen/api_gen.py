@@ -17,7 +17,7 @@ import yaml
 import argparse
 import re
 
-from api_base import BaseAPI
+from api_base import BaseAPI, PREFIX_TENSOR_NAME
 
 
 class ForwardAPI(BaseAPI):
@@ -91,8 +91,24 @@ class ForwardAPI(BaseAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};"""
+
+            if self.outputs['return_type'] == 'std::vector<Tensor>':
+                assert self.outputs['out_size_expr'] is not None, \
+                     f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr']}, kernel_backend, &api_output);"""
+
+            else:
+                output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
+
+            if not inplace_flag and self.view_map is not None and self.outputs[
+                    'names'][0] in self.view_map:
+                output_create = output_create + f"""
+{code_indent}  kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
@@ -106,8 +122,22 @@ class ForwardAPI(BaseAPI):
                     output_create = output_create + f"""
 {code_indent}  std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
-                output_create = output_create + f"""
+                if output_type_list[i] == 'std::vector<Tensor>':
+                    assert self.outputs['out_size_expr'][i] is not None, \
+                        f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, &std::get<{i}>(api_output));"""
+
+                else:
+                    output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
+
+                if not inplace_flag and self.view_map is not None and self.outputs[
+                        'names'][i] in self.view_map:
+                    output_create = output_create + f"""
+{code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -124,7 +154,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -149,6 +179,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+DECLARE_bool(conv2d_disable_cudnn);
 """
 
 

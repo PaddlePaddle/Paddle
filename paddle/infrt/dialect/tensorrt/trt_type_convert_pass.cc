@@ -15,6 +15,7 @@
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
 
 #include <glog/logging.h>
+#include <set>
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
@@ -57,6 +58,10 @@ void TrtTypeConvertPass::runOnFunction() {
 
   ::infrt::LayoutType layout = ::infrt::LayoutType::NCHW;
   ::infrt::TargetType target = ::infrt::TargetType::GPU;
+  const std::set<std::string> inited_op_repr{
+      "phi_dt.tensor_map_get_tensor",
+      "phi_dt.create_inited_dense_tensor.cpu.f32",
+      "phi_dt.create_host_inited_dense_tensor.f32"};
   for (auto& op : worklist) {
     if (auto tensor_map_get_op =
             llvm::dyn_cast<::infrt::phi::TensorMapGetTensorOp>(op)) {
@@ -66,16 +71,25 @@ void TrtTypeConvertPass::runOnFunction() {
             mlir_ctx, t.getTarget(), t.getPrecision(), layout);
         res.setType(replace_type);
       }
-    }
-    if (auto create_engine = llvm::dyn_cast<::infrt::trt::CreateEngineOp>(op)) {
+    } else if (auto create_inited_tensor_op =
+                   llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+                       op)) {
+      auto res = create_inited_tensor_op.output();
+      if (auto t = res.getType().dyn_cast<::infrt::DenseTensorType>()) {
+        auto replace_type = ::infrt::DenseTensorType::get(
+            mlir_ctx, t.getTarget(), t.getPrecision(), layout);
+        res.setType(replace_type);
+      }
+    } else if (auto create_engine =
+                   llvm::dyn_cast<::infrt::trt::CreateEngineOp>(op)) {
       // Insert `infrt.gpu.memcpy` op.
       for (auto arg : create_engine.getOperands()) {
         if (mlir::Operation* producer = arg.getDefiningOp()) {
           if (arg.getType().isa<::infrt::DenseTensorType>()) {
             builder.setInsertionPointAfter(producer);
             auto t = arg.getType().dyn_cast<::infrt::DenseTensorType>();
-            if (producer->getName().getStringRef() !=
-                    "phi_dt.tensor_map_get_tensor" &&
+            if (!inited_op_repr.count(
+                    producer->getName().getStringRef().str()) &&
                 t.getTarget() != ::infrt::TargetType::GPU) {
               auto replace_type = ::infrt::DenseTensorType::get(
                   mlir_ctx, target, t.getPrecision(), layout);
@@ -86,7 +100,7 @@ void TrtTypeConvertPass::runOnFunction() {
                   arg,
                   llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
                       .output(),
-                  mlir::BoolAttr::get(mlir_ctx, /*d2h*/ false));
+                  builder.getBoolAttr(false));
               arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
             }
           }
@@ -104,7 +118,7 @@ void TrtTypeConvertPass::runOnFunction() {
                 blockArg,
                 llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
                     .output(),
-                mlir::BoolAttr::get(mlir_ctx, /*d2h*/ false));
+                builder.getBoolAttr(false));
             arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
           }
         }
@@ -147,7 +161,7 @@ void TrtTypeConvertPass::runOnFunction() {
                 arg,
                 llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
                     .output(),
-                mlir::BoolAttr::get(mlir_ctx, /*d2h*/ true));
+                builder.getBoolAttr(true));
             arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
           }
         }
@@ -161,7 +175,7 @@ void TrtTypeConvertPass::runOnFunction() {
 namespace infrt {
 namespace trt {
 
-std::unique_ptr<mlir::Pass> createTrtTypeConvertPass() {
+std::unique_ptr<mlir::Pass> CreateTrtTypeConvertPass() {
   return std::make_unique<TrtTypeConvertPass>();
 }
 
