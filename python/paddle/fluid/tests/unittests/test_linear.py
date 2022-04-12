@@ -73,6 +73,22 @@ class LinearTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(res_f, res_nn)
         np.testing.assert_array_almost_equal(res_nn, res_np)
 
+    def test_weight_init(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        paddle.seed(100)
+        linear = paddle.nn.Linear(
+            2, 3, weight_attr=paddle.nn.initializer.Normal(0, 1.))
+        paddle.nn.utils._stride_column(linear.weight)
+        expect = [[1.4349908, -0.8099171, -2.64788],
+                  [-1.4981681, -1.1784115, -0.023253186]]
+        self.assertTrue(np.allclose(linear.weight.numpy(), expect))
+
+        linear = paddle.nn.Linear(2, 3)
+        expect = [[0.73261100, 0.43836895, 0.07908206],
+                  [0.85075015, -1.04724526, 0.64371765]]
+        self.assertTrue(np.allclose(linear.weight.numpy(), expect))
+
 
 if __name__ == "__main__":
     unittest.main()

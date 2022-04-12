@@ -200,6 +200,11 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            const std::string& data_format,
                            MetaTensor* out);
 
+void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
+                               int upscale_factor,
+                               const std::string& data_format,
+                               MetaTensor* x_grad);
+
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
                     int axis,

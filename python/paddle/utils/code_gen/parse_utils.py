@@ -16,7 +16,7 @@ import re
 import yaml
 from copy import copy
 from typing import Dict, Any, List, Tuple
-from tests import is_attr, is_input, is_output
+from tests import is_attr, is_input, is_output, is_vec
 
 
 def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
@@ -99,19 +99,26 @@ def parse_input_and_attr(api_name: str,
 
 def parse_output(api_name: str, s: str) -> Dict[str, str]:
     """parse an output, typename or typename(name)."""
-    if re.search(r'\([a-zA-Z0-9_@]*\)', s):
-        match = re.search(
-            r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*\((?P<name>[a-zA-Z0-9_@]+)\)", s)
-        typename = match.group("out_type")
-        name = match.group("name")
-    else:
-        typename = s.strip()
-        name = "out"
+    match = re.search(
+        r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
+        s)
+    typename = match.group("out_type")
+    name = match.group("name")
+    size_expr = match.group("expr")
+
+    name = name[1:-1] if name is not None else 'out'
+    size_expr = size_expr[1:-1] if size_expr is not None else None
 
     assert is_output(typename), \
         (f"Invalid output type: {typename} in api: {api_name}."
             f"Supported types are Tensor and Tensor[]")
-    return {"typename": typename, "name": name}
+    if size_expr is not None:
+        assert is_vec(typename), \
+            (f"Invalid output size: output {name} in api: {api_name} is "
+             f"not a vector but has size expr")
+        return {"typename": typename, "name": name, "size": size_expr}
+    else:
+        return {"typename": typename, "name": name}
 
 
 def parse_outputs(api_name: str, outputs: str) -> List[Dict]:
