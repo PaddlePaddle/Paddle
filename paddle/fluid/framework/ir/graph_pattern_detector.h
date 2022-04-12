@@ -1937,6 +1937,9 @@ struct DenseFC : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
   PATTERN_DECL_NODE(fc_out);
+  PATTERN_DECL_NODE(fc_input);
+  PATTERN_DECL_NODE(fc_weights);
+  PATTERN_DECL_NODE(fc_bias);
 };
 
 }  // namespace patterns

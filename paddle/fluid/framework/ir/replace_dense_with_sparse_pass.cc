@@ -52,22 +52,53 @@ void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
                      Graph *g) {
     VLOG(4) << "Replace dense fc with sparse_fc.";
 
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
-      return;
-    }
+    /*   if (!IsCompat(subgraph, g)) {
+         LOG(WARNING) << "Pass in op compat failed.";
+         return;
+       }*/
 
-    // FC output
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, fc_out, dense_fc_pattern);
-    // ops
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, dense_fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, dense_fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, dense_fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, dense_fc_pattern);
+
     auto *fc_op = fc->Op();
     auto w_name = fc_op->Input("W")[0];
     // recognize sparse op by name
-    if (w_name.find("sparse") != w_name.npos) {
+    if (w_name.find("sparse_2_4") != w_name.npos) {
       // fake op
-      fc_op->SetType("sparse_fc");
-      fc_op->Flush();
+      OpDesc desc(fc_op->Block());
+      desc.SetType("sparse_fc");
+      desc.SetInput("Input", {fc_input->Name()});
+      desc.SetInput("W", {fc_weights->Name()});
+      desc.SetInput("Bias", {fc_bias->Name()});
+      desc.SetOutput("Out", {fc_out->Name()});
+
+      // copy all attr
+      if (fc_op->HasAttr("x_num_col_dims")) {
+        desc.SetAttr("in_num_col_dims", fc_op->GetAttr("x_num_col_dims"));
+      }
+      desc.SetAttr("activation_type", fc_op->GetAttr("activation_type"));
+      if (fc_op->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", fc_op->GetAttr("enable_int8"));
+      }
+      if (fc_op->HasAttr("Input_scale")) {
+        desc.SetAttr("Input_scale", fc_op->GetAttr("Input_scale"));
+      }
+      if (fc_op->HasAttr("support_int8")) {
+        desc.SetAttr("support_int8", fc_op->GetAttr("support_int8"));
+      }
+      if (fc_op->HasAttr("out_threshold")) {
+        desc.SetAttr("out_threshold", fc_op->GetAttr("out_threshold"));
+      }
+      desc.Flush();
+      auto sparse_fc_node = g->CreateOpNode(&desc);
+
+      IR_NODE_LINK_TO(fc_input, sparse_fc_node);
+      IR_NODE_LINK_TO(fc_weights, sparse_fc_node);
+      IR_NODE_LINK_TO(fc_bias, sparse_fc_node);
+      IR_NODE_LINK_TO(sparse_fc_node, fc_out);
       found_dense_fc_count++;
     }
   };

@@ -3403,10 +3403,25 @@ PDNode *patterns::AddSupportInt8::operator()() {
 
 PDNode *patterns::DenseFC::operator()() {
   auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
-  auto *fc_out =
-      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
+  // Input
+  auto *fc_input = pattern->NewNode(fc_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("fc", "Input");
+  // Filter
+  auto *fc_weights = pattern->NewNode(fc_weights_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc_bias = pattern->NewNode(fc_bias_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc_out = pattern->NewNode(fc_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output("fc", "Out")
+                     ->assert_is_only_output_of_op("fc");
 
-  fc->LinksTo({fc_out});
+  fc->LinksFrom({fc_input, fc_weights, fc_bias}).LinksTo({fc_out});
 
   return fc_out;
 }
