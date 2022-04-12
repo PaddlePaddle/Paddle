@@ -27,30 +27,32 @@ from paddle.fluid.backward import append_backward
 
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
+        self.python_api = paddle.assign
         self.op_type = "assign"
         x = np.random.random(size=(100, 10)).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
 
     def test_forward(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_backward(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
+        self.python_api = paddle.assign
         self.op_type = "assign"
         x = np.random.random(size=(100, 10)).astype('float16')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
 
     def test_forward(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_backward(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
@@ -171,6 +173,8 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_clone(self):
         paddle.disable_static()
+        self.python_api = paddle.clone
+
         x = paddle.ones([2])
         x.stop_gradient = False
         clone_x = paddle.clone(x)

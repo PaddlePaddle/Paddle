@@ -600,7 +600,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     if self.inputs['input_info'][param] == "const Tensor&":
                         kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
                     elif self.inputs['input_info'][
-                            input_name] == "const std::vector<Tensor>&":
+                            param] == "const std::vector<Tensor>&":
                         kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
                     else:
                         # do nothing
