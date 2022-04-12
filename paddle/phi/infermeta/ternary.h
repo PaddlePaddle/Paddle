@@ -60,6 +60,24 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* dst_count);
 
+void LayerNormInferMeta(const MetaTensor& x,
+                        paddle::optional<const MetaTensor&> scale,
+                        paddle::optional<const MetaTensor&> bias,
+                        float epsilon,
+                        int begin_norm_axis,
+                        bool is_test,
+                        MetaTensor* out,
+                        MetaTensor* mean,
+                        MetaTensor* variance,
+                        MetaConfig config = MetaConfig());
+
+void LayerNormGradInferMeta(const MetaTensor& x,
+                            paddle::optional<const MetaTensor&> y,
+                            paddle::optional<const MetaTensor&> z,
+                            MetaTensor* dx,
+                            MetaTensor* dy,
+                            MetaTensor* dz);
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
