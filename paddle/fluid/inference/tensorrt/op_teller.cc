@@ -928,6 +928,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "roll") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "strided_slice") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
+        VLOG(3)
+            << "The necessary attributes of the strided_slice operator miss ";
+        return false;
+      }
+    }
+
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
