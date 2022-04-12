@@ -24,12 +24,15 @@ class FileLabelLoaderOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Indices) of ReadFileLoaderOp is null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Label"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Label) of ReadFileLoaderOp is null."));
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices",
+                   "FileLabelLoaderOp");
+
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Image").size(), 1UL,
+        platform::errors::InvalidArgument("Outputs(Image) of FileLabelLoaderOp "
+                                          "should not be empty."));
+    OP_INOUT_CHECK(ctx->HasOutput("Label"), "Output", "Label",
+                   "FileLabelLoaderOp");
 
     auto dim_indices = ctx->GetInputDim("Indices");
     PADDLE_ENFORCE_EQ(dim_indices.size(), 1,

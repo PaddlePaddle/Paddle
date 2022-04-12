@@ -60,18 +60,18 @@ Pipeline::Pipeline(const std::shared_ptr<BlockDesc> global_block,
 
 void Pipeline::CheckOutputVarStatus(const Variable &var,
                                     const std::string &var_name) {
-  // only LoDTensor variable type support currently
+  // only Tensor variable type support currently
   PADDLE_ENFORCE_EQ(var.IsInitialized(), true,
                     platform::errors::InvalidArgument(
                         "The tensor in output variable %s get from DataLoader "
                         "program's internal scope is not initialized.",
                         var_name));
   PADDLE_ENFORCE_EQ(
-      var.IsType<LoDTensor>(), true,
+      var.IsType<framework::Tensor>(), true,
       platform::errors::InvalidArgument(
           "The output variable %s get from DataLoader program's "
           "internal scope holds wrong type. Expect type is "
-          "LoDTensor, but receive type is %s.",
+          "Tensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
 }
 
@@ -116,10 +116,10 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
     CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
 
     if (batch_sizes[i] == batch_size) {
-      copy_tensor(outputs[i], out_vars[i]->GetMutable<LoDTensor>());
+      copy_tensor(outputs[i], out_vars[i]->GetMutable<framework::Tensor>());
     } else {
       copy_tensor(outputs[i].Slice(0, batch_size),
-                  out_vars[i]->GetMutable<LoDTensor>());
+                  out_vars[i]->GetMutable<framework::Tensor>());
     }
 
     // clear Tensor in DataLoader program

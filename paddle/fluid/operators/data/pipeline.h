@@ -27,7 +27,6 @@ using Scope = framework::Scope;
 using ParallelExecutor = framework::ParallelExecutor;
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder =
     operators::reader::LoDTensorBlockingQueueHolder;
@@ -52,8 +51,8 @@ class Pipeline {
  private:
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
+  void copy_tensor(const framework::Tensor &lod_tensor,
+                   framework::Tensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
     framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);

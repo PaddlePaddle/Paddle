@@ -21,7 +21,6 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-using framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 using LoDTensorBlockingQueueHolder =
     operators::reader::LoDTensorBlockingQueueHolder;
@@ -163,7 +162,7 @@ __global__ void KeBilinearInterpFw(
 
 template <typename T>
 static void BatchRandomCropAndResizeFwd(
-    const framework::ExecutionContext& ctx, const framework::LoDTensor& input,
+    const framework::ExecutionContext& ctx, const framework::Tensor& input,
     framework::Tensor* output, const std::vector<int64_t> out_size,
     const std::string interp_method, const bool align_corners,
     const int align_mode, const int img_h, const int img_w, const int c,
@@ -218,57 +217,6 @@ static void BatchRandomCropAndResizeFwd(
   }
 }
 
-static void GetCropParameters(const int height, const int width,
-                              const std::vector<float> scale,
-                              const std::vector<float> ratio, int* idx_h,
-                              int* idx_w, int* crop_h, int* crop_w,
-                              const int seed, int num_attempts = 10) {
-  double target_area, aspect_ratio;
-  double area = height * width;
-  std::vector<double> log_ratio;
-  for (int i = 0; i < ratio.size(); i++)
-    log_ratio.push_back(std::log(ratio[i]));
-  std::default_random_engine engine(seed);
-  std::uniform_real_distribution<double> dist_scale(scale[0], scale[1]);
-  std::uniform_real_distribution<double> dist_log_ratio(log_ratio[0],
-                                                        log_ratio[1]);
-
-  for (int i = 0; i < num_attempts; i++) {
-    target_area = dist_scale(engine) * area;
-    aspect_ratio = std::exp(dist_log_ratio(engine));
-
-    *crop_w =
-        static_cast<int>(std::round(std::sqrt(target_area * aspect_ratio)));
-    *crop_h =
-        static_cast<int>(std::round(std::sqrt(target_area / aspect_ratio)));
-    if (*crop_w > 0 && *crop_w <= width && *crop_h > 0 && *crop_h <= height) {
-      std::uniform_int_distribution<int> dist_crop_h(0, height - *crop_h);
-      *idx_h = dist_crop_h(engine);
-      std::uniform_int_distribution<int> dist_crop_w(0, width - *crop_w);
-      *idx_w = dist_crop_w(engine);
-      return;
-    }
-  }
-
-  // Fallback to central crop
-  float in_ratio = static_cast<float>(width) / static_cast<float>(height);
-  float min_ratio = ratio[0] > ratio[1] ? ratio[1] : ratio[0];
-  float max_ratio = ratio[0] > ratio[1] ? ratio[0] : ratio[1];
-  if (in_ratio < min_ratio) {
-    *crop_w = width;
-    *crop_h = static_cast<int>(std::round(*crop_w / min_ratio));
-  } else if (in_ratio > max_ratio) {
-    *crop_h = height;
-    *crop_w = static_cast<int>(std::round(*crop_h * max_ratio));
-  } else {
-    // return whole image
-    *crop_h = height;
-    *crop_w = width;
-  }
-  *idx_h = (height - *crop_h) / 2;
-  *idx_w = (width - *crop_w) / 2;
-}
-
 template <typename T>
 class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -277,11 +225,11 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
     // get input, output
-    auto x = ctx.MultiInput<framework::LoDTensor>("X");
+    auto x = ctx.MultiInput<framework::Tensor>("X");
     PADDLE_ENFORCE_GT(x.size(), 0,
                       platform::errors::InvalidArgument(
                           "The size of X must be greater than 0."));
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto aspect_ratio_min = ctx.Attr<float>("aspect_ratio_min");
     auto aspect_ratio_max = ctx.Attr<float>("aspect_ratio_max");
@@ -327,8 +275,6 @@ class BatchRandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
           data_format == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
       ROI roi;
       generators->at(i)->GenerateRandomROI(img_w, img_h, &roi);
-      // GetCropParameters(img_h, img_w, scale, ratio, &idx_h, &idx_w, &crop_h,
-      //                   &crop_w, seed);
 
       auto out_tensor = out->Slice(i, i + 1);
       BatchRandomCropAndResizeFwd<T>(ctx, *img, &out_tensor, size,

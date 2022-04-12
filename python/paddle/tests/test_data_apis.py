@@ -41,33 +41,78 @@ class TestRandomFlip(unittest.TestCase):
         except ValueError:
             pass
 
-    def test_output_dynamic(self):
+    def run_dynamic(self, prob):
         data = paddle.ones([16, 3, 32, 32], dtype="float32")
-        out = random_flip(data, 0.5)
+        out = random_flip(data, prob)
+        return out
+
+    def run_static(self, prob, place):
+        paddle.enable_static()
+        input_data = paddle.static.data(
+            shape=[16, 3, 32, 32], dtype="float32", name="input")
+        out_data = random_flip(input_data, prob)
+
+        exe = paddle.static.Executor(place)
+        out, = exe.run(
+            paddle.static.default_main_program(),
+            feed={"input": np.ones(
+                [16, 3, 32, 32], dtype="float32")},
+            fetch_list=[out_data])
+        paddle.disable_static()
+
+        return out
+
+    def test_output_dynamic(self):
+        out = self.run_dynamic(0.5)
 
         assert out.dtype == paddle.bool
         assert out.shape == [16, 1]
 
     def test_output_static(self):
-        paddle.enable_static()
-        input_data = paddle.static.data(
-            shape=[16, 3, 32, 32], dtype="float32", name="input")
-        out_data = random_flip(input_data, 0.5)
-
         places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
 
         for place in places:
-            exe = paddle.static.Executor(place)
-            out, = exe.run(
-                paddle.static.default_main_program(),
-                feed={"input": np.ones(
-                    [16, 3, 32, 32], dtype="float32")},
-                fetch_list=[out_data])
+            out = self.run_static(0.5, place)
             assert out.dtype == np.bool
             assert out.shape == (16, 1)
-        paddle.disable_static()
+
+    def test_output_dynamic_all_true(self):
+        out = self.run_dynamic(1.)
+
+        assert out.dtype == paddle.bool
+        assert out.shape == [16, 1]
+        assert np.all(out.numpy())
+
+    def test_output_dynamic_all_false(self):
+        out = self.run_dynamic(0.)
+
+        assert out.dtype == paddle.bool
+        assert out.shape == [16, 1]
+        assert not np.any(out.numpy())
+
+    def test_output_static_all_true(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+
+        for place in places:
+            out = self.run_static(1., place)
+            assert out.dtype == np.bool
+            assert out.shape == (16, 1)
+            assert np.all(out)
+
+    def test_output_static_all_false(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+
+        for place in places:
+            out = self.run_static(0., place)
+            assert out.dtype == np.bool
+            assert out.shape == (16, 1)
+            assert not np.any(out)
 
 
 if __name__ == '__main__':

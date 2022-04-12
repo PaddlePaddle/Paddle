@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import sys
 import paddle
-import paddle.fluid as fluid
 
 from paddle import _C_ops
 from paddle.fluid import core, framework
@@ -54,7 +53,7 @@ class DataPipeline(object):
                               paddle.distributed.ParallelEnv().dev_id)
 
     def _init_programs(self):
-        self._main_program = fluid.Program()
+        self._main_program = paddle.static.Program()
         self._out_vars = []
         self._out_names = []
         self._is_built = False
@@ -91,7 +90,7 @@ class DataPipeline(object):
                 self._out_vars.append(var)
                 self._out_names.append(name)
         else:
-            assert isinstance(outputs, fluid.Variable), \
+            assert isinstance(outputs, paddle.fluid.Variable), \
                     "outputs should be list, dict or Variable"
 
     def build(self):

@@ -64,12 +64,12 @@ def _generate_stream_id():
 
 def map(map_func, *args, **kwargs):
     """
-    This API used to split data loading stages of :attr:`DataPipeline`, the
-    map function will be run in independent C++ thread and stream.
+    This API used to split data loading stages of GPU DataLoader pipeline,
+    the map function will be run in independent C++ thread and stream.
 
     Args:
-        map_func (callable): A callable function construct of data
-            preprocess OPs.
+        map_func (callable): A callable function to do data preprocess
+                             operations.
 
     Returns:
         The output of map function
@@ -222,8 +222,8 @@ def data_reader(reader_func,
                 drop_last=False,
                 seed=None):
     """
-    This API used to auto loading dataset in :attr:`DataPipeline`, the
-    reader function will be run in independent C++ thread.
+    This API used to auto loading dataset in GPU DataLoader pipeline,
+    the reader function will be run in independent C++ thread.
 
     Args:
         reader_func (callable): A callable function construct of a data

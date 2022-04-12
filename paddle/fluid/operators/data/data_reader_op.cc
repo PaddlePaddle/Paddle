@@ -31,7 +31,9 @@ class DataReaderOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const {
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "DataReaderOp");
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(Out) of DataReader should not be empty."));
   }
 
  private:
@@ -69,7 +71,9 @@ class DataReaderOp : public framework::OperatorBase {
 class DataReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(Out) of DataReader should not be empty."));
   }
 };
 
@@ -118,5 +122,3 @@ namespace ops = paddle::operators::data;
 
 REGISTER_OPERATOR(data_reader, ops::DataReaderOp, ops::DataReaderOpMaker,
                   ops::DataReaderInferShape, ops::DataReaderInferVarType)
-
-REGISTER_OP_CPU_KERNEL(data_reader, ops::DataReaderCPUKernel<uint8_t>)

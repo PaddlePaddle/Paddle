@@ -1,8 +1,4 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
 Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -337,10 +333,6 @@ platform::DeviceContext* AsyncDeviceContextPool::Get(
   if (device_contexts_[place].count(stream_id) > 0) {
     return device_contexts_[place][stream_id].get();
   } else {
-    // auto* dev_ctx = dynamic_cast<CUDADeviceContext*>
-    // device_contexts_[place].emplace(stream_id,
-    //     std::unique_ptr<DeviceContext>(
-    //       new platform::CUDADeviceContext(place)));
     EmplaceAsyncDeviceContext<CUDADeviceContext>(&device_contexts_, place,
                                                  stream_id);
     return device_contexts_[place][stream_id].get();

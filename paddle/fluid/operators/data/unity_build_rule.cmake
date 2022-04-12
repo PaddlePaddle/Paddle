@@ -19,7 +19,6 @@ register_unity_group(cc
 
 register_unity_group(cu
     dataloader_op.cu.cc
-    map_op.cu.cc
     batch_decode_random_crop_op.cu
     batch_decode_op.cu
     batch_resize_op.cu

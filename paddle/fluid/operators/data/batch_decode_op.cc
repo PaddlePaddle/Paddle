@@ -25,10 +25,10 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Inputs(X) of DecodeJpeg should not be empty."));
+                          "Inputs(X) of BatchDecode should not be empty."));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Outputs(Out) of DecodeJpeg should not be empty."));
+                          "Outputs(Out) of BatchDecode should not be empty."));
   }
 
  protected:
@@ -66,7 +66,8 @@ The values of the output tensor are uint8 between 0 and 255.
     AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
     AddAttr<int>("local_rank",
                  "(int)"
-                 "The index of the op to start execution");
+                 "The index of the op to start execution")
+        .SetDefault(0);
     AddAttr<int64_t>("program_id",
                      "(int64_t)"
                      "The unique hash id used as cache key for "

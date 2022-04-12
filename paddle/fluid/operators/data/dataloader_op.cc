@@ -44,7 +44,7 @@ class DataLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddOutput("Out",
-              "(vector<LoDTensor>)"
+              "(vector<Tensor>)"
               "The output tensors of DataLoader operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();

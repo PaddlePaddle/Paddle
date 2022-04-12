@@ -70,7 +70,7 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
     auto* var = scope->Var(name);
 
     // share input tensor to dst variable
-    auto* dst_tensor = var->GetMutable<LoDTensor>();
+    auto* dst_tensor = var->GetMutable<framework::Tensor>();
     dst_tensor->ShareDataWith(tensor);
     dst_tensor->set_lod(tensor.lod());
   }
@@ -94,7 +94,7 @@ void MapRunner::StartMapThread(const Scope* scope) {
       running_cond_.wait(lock, [this] { return running_ || shutdown_; });
       if (shutdown_) break;
 
-      // Step 1: get input LoDTensor and share into Scope
+      // Step 1: get input Tensor and share into Scope
       bool success = ShareInputsIntoScope(&scope_);
       if (!success) {
         for (auto& queue : output_queues_) {
@@ -114,7 +114,7 @@ void MapRunner::StartMapThread(const Scope* scope) {
         break;
       }
 
-      // Step 3: fetch output variable to LoDTensor vector
+      // Step 3: fetch output variable to Tensor vector
       //        and push to output queue
       for (size_t i = 0; i < output_var_names_.size(); i++) {
         auto* out_var = scope_.FindVar(output_var_names_[i]);
@@ -125,9 +125,9 @@ void MapRunner::StartMapThread(const Scope* scope) {
                          output_var_names_[i]));
         CheckOutputVarStatus(*out_var, output_var_names_[i]);
 
-        if (out_var->IsType<LoDTensor>()) {
+        if (out_var->IsType<framework::Tensor>()) {
           framework::LoDTensorArray t_arr(1);
-          copy_tensor(out_var->Get<LoDTensor>(), &t_arr[0]);
+          copy_tensor(out_var->Get<framework::Tensor>(), &t_arr[0]);
           output_queues_[i]->Push(t_arr);
         } else {
           auto out_arr = out_var->Get<LoDTensorArray>();
@@ -152,11 +152,11 @@ void MapRunner::CheckOutputVarStatus(const Variable& var,
                         "program's internal scope is not initialized.",
                         var_name));
   PADDLE_ENFORCE_EQ(
-      var.IsType<LoDTensor>(), true,
+      var.IsType<framework::Tensor>(), true,
       platform::errors::InvalidArgument(
           "The output variable %s get from Map program's "
           "internal scope holds wrong type. Expect type is "
-          "LoDTensor, but receive type is %s.",
+          "Tensor, but receive type is %s.",
           var_name, platform::demangle(framework::ToTypeName(var.Type()))));
 }
 

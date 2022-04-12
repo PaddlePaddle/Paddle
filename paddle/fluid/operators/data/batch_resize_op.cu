@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-using framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
@@ -157,8 +156,7 @@ __global__ void KeBilinearInterpFw(
 
 template <typename T>
 static void ResizeFwd(const framework::ExecutionContext& ctx,
-                      const framework::LoDTensor& input,
-                      framework::Tensor* output,
+                      const framework::Tensor& input, framework::Tensor* output,
                       const std::vector<int64_t> out_size,
                       const std::string interp_method, const bool align_corners,
                       const int align_mode, const int img_h, const int img_w,
@@ -214,11 +212,11 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
     // get input, output
-    auto x = ctx.MultiInput<framework::LoDTensor>("X");
+    auto x = ctx.MultiInput<framework::Tensor>("X");
     PADDLE_ENFORCE_GT(x.size(), 0,
                       platform::errors::InvalidArgument(
                           "The size of X must be greater than 0."));
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     // get size, scale, ratio
     auto size = ctx.Attr<std::vector<int64_t>>("size");

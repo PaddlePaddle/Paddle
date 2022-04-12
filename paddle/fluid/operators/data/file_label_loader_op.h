@@ -30,7 +30,6 @@
 namespace paddle {
 namespace operators {
 namespace data {
-using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 
 #ifdef _WIN32
@@ -127,9 +126,9 @@ template <typename T>
 class FileLabelLoaderCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* indices = ctx.Input<LoDTensor>("Indices");
-    auto image_arr = ctx.MultiOutput<LoDTensor>("Image");
-    auto* label_tensor = ctx.Output<LoDTensor>("Label");
+    auto* indices = ctx.Input<framework::Tensor>("Indices");
+    auto image_arr = ctx.MultiOutput<framework::Tensor>("Image");
+    auto* label_tensor = ctx.Output<framework::Tensor>("Label");
 
     auto data_root = ctx.Attr<std::string>("data_root");
     auto* samples = GetFilesAndLabelsFromCache(data_root);
@@ -160,15 +159,6 @@ class FileLabelLoaderCPUKernel : public framework::OpKernel<T> {
 
       label_data[i] = static_cast<int64_t>(label);
     }
-  }
-
- private:
-  void copy_tensor(const framework::LoDTensor& lod_tensor,
-                   framework::LoDTensor* out) const {
-    if (lod_tensor.numel() == 0) return;
-    auto& out_tensor = *out;
-    framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
-    out_tensor.set_lod(lod_tensor.lod());
   }
 };
 

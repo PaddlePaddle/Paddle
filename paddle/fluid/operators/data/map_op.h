@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
 using LoDTensorBlockingQueueHolder =
     operators::reader::LoDTensorBlockingQueueHolder;
 
@@ -64,12 +63,6 @@ GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
   }
   return queues;
 }
-
-template <typename DeviceContext, typename T>
-class MapOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
-};
 
 }  // namespace operators
 }  // namespace paddle

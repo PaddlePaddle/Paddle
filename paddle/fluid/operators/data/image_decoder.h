@@ -44,7 +44,7 @@ static int host_free(void* p) { return static_cast<int>(cudaFreeHost(p)); }
 struct ImageDecodeTask {
   const uint8_t* bit_stream;
   size_t bit_len;
-  framework::LoDTensor* tensor;
+  framework::Tensor* tensor;
   RandomROIGenerator* roi_generator;
   platform::Place place;
 };
@@ -56,7 +56,7 @@ class ImageDecoder {
 
   ~ImageDecoder();
 
-  void Run(const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
+  void Run(const uint8_t* bit_stream, size_t bit_len, framework::Tensor* out,
            RandomROIGenerator* roi_generator, const platform::Place& place);
 
  private:
@@ -65,10 +65,10 @@ class ImageDecoder {
   void CPUDecodeRandomCrop(const uint8_t* data, size_t length,
                            RandomROIGenerator* roi_generator,
                            unsigned char* workspace, size_t workspace_size,
-                           framework::LoDTensor* out, platform::Place place);
+                           framework::Tensor* out, platform::Place place);
 
   nvjpegStatus_t ParseDecodeParams(const uint8_t* bit_stream, size_t bit_len,
-                                   framework::LoDTensor* out,
+                                   framework::Tensor* out,
                                    RandomROIGenerator* roi_generator,
                                    nvjpegImage_t* out_image,
                                    platform::Place place);

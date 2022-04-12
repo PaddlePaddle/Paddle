@@ -61,7 +61,7 @@ class BatchResizeOp : public framework::OperatorWithKernel {
 class BatchResizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(List[LoDTensor]). A batch of instances to random crop.")
+    AddInput("X", "(List[Tensor]). A batch of instances to random crop.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor). The cropped instance batch.");
     AddAttr<std::vector<int64_t>>(

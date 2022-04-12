@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from paddle.vision.ops import mirror_normalize
 
 

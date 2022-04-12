@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.utils.download import get_path_from_url
 from paddle.vision.datasets import DatasetFolder
@@ -71,7 +70,7 @@ class TestFileLabelLoaderStatic(unittest.TestCase):
         samples = [s[0] for s in data_folder.samples]
         targets = [s[1] for s in data_folder.samples]
 
-        sampler_id = fluid.layers.utils._hash_with_id(
+        sampler_id = paddle.fluid.layers.utils._hash_with_id(
             self.data_root, self.batch_size, self.shuffle, self.drop_last,
             self.dynamic)
         sampler = _sampler_manager.get(sampler_id,

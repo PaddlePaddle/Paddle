@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.utils.download import get_path_from_url
 from paddle.vision.datasets import DatasetFolder

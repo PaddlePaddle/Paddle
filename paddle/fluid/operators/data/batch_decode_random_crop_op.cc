@@ -25,10 +25,12 @@ class BatchDecodeRandomCropOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Inputs(X) of DecodeJpeg should not be empty."));
+                          "Inputs(X) of BatchDecodeRandomCrop should "
+                          "not be empty."));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Outputs(Out) of DecodeJpeg should not be empty."));
+                          "Outputs(Out) of BatchDecodeRandomCrop "
+                          "should not be empty."));
     auto aspect_ratio_min = ctx->Attrs().Get<float>("aspect_ratio_min");
     auto aspect_ratio_max = ctx->Attrs().Get<float>("aspect_ratio_max");
     PADDLE_ENFORCE_GT(
@@ -104,14 +106,14 @@ class BatchDecodeRandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput("Out", "The output tensor of BatchDecodeRandomCropOp")
         .AsDuplicable();
-    AddComment(R"DOC(
-This operator decodes a JPEG image into a 3 dimensional RGB Tensor.
-Optionally converts the image to the desired format.
-The values of the output tensor are uint8 between 0 and 255.
-)DOC");
+    AddAttr<int64_t>("program_id",
+                     "(int64_t)"
+                     "The unique hash id used as cache key for "
+                     "decode thread pool");
     AddAttr<int>("local_rank",
                  "(int64_t)"
-                 "The index of the op to start execution");
+                 "The index of the op to start execution")
+        .SetDefault(0);
     AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
     AddAttr<int64_t>("host_memory_padding",
                      "(int64, default 0), pinned memory allocation padding "
@@ -143,10 +145,11 @@ The values of the output tensor are uint8 between 0 and 255.
     AddAttr<int64_t>("num_attempts",
                      "(int) The max attempt number of random cropping boxes")
         .SetDefault(10);
-    AddAttr<int64_t>("program_id",
-                     "(int64_t)"
-                     "The unique hash id used as cache key for "
-                     "decode thread pool");
+    AddComment(R"DOC(
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor.
+Optionally converts the image to the desired format.
+The values of the output tensor are uint8 between 0 and 255.
+)DOC");
   }
 };
 

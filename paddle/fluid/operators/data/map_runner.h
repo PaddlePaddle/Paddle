@@ -25,7 +25,6 @@ using BlockDesc = framework::BlockDesc;
 using Scope = framework::Scope;
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder =
@@ -52,8 +51,8 @@ class MapRunner {
   inline bool IsRunning() { return running_; }
 
  private:
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
+  void copy_tensor(const framework::Tensor &lod_tensor,
+                   framework::Tensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
     framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);

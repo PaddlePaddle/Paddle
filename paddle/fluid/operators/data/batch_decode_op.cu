@@ -42,14 +42,14 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
             static_cast<size_t>(host_memory_padding),
             static_cast<size_t>(device_memory_padding));
 
-    auto inputs = ctx.MultiInput<framework::LoDTensor>("X");
+    auto inputs = ctx.MultiInput<framework::Tensor>("X");
     int batch_size = inputs.size();
 
-    auto out_array = ctx.MultiOutput<framework::LoDTensor>("Out");
+    auto out_array = ctx.MultiOutput<framework::Tensor>("Out");
     auto dev = platform::CUDAPlace(local_rank);
 
     for (size_t i = 0; i < batch_size; i++) {
-      const framework::LoDTensor* x = inputs.at(i);
+      const framework::Tensor* x = inputs.at(i);
       auto* x_data = x->data<T>();
       size_t x_numel = static_cast<size_t>(x->numel());
 

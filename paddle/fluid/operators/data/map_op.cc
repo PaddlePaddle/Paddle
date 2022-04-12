@@ -26,7 +26,10 @@ class MapOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const {
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
+    // Input can be empty in MapOp, not check Input here
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(Out) of MapOp should not be empty."));
   }
 
  protected:
@@ -73,7 +76,9 @@ class MapOp : public framework::OperatorBase {
 class MapInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Outputs(Out) of MapOp should not be empty."));
   }
 };
 
@@ -120,5 +125,3 @@ class MapOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(map, ops::MapOp, ops::MapOpMaker, ops::MapInferShape,
                   ops::MapInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    map, ops::MapOpKernel<paddle::platform::CPUDeviceContext, float>);

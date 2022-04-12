@@ -34,7 +34,6 @@ namespace data {
 using Scope = framework::Scope;
 using Variable = framework::Variable;
 using BlockDesc = framework::BlockDesc;
-using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 using LoDTensorBlockingQueue = operators::reader::LoDTensorBlockingQueue;
 using LoDTensorBlockingQueueHolder =
@@ -174,13 +173,13 @@ class DataReader {
                            output_var_names_[i]));
           CheckOutputVarStatus(*out_var, output_var_names_[i]);
 
-          if (out_var->IsType<LoDTensor>()) {
-            framework::LoDTensorArray t_arr(1);
-            copy_tensor(out_var->Get<LoDTensor>(), &t_arr[0]);
+          if (out_var->IsType<framework::Tensor>()) {
+            LoDTensorArray t_arr(1);
+            copy_tensor(out_var->Get<framework::Tensor>(), &t_arr[0]);
             output_queues_[i]->Push(t_arr);
           } else {
             auto out_arr = out_var->Get<LoDTensorArray>();
-            framework::LoDTensorArray t_arr(out_arr.size());
+            LoDTensorArray t_arr(out_arr.size());
             for (size_t i = 0; i < out_arr.size(); i++) {
               copy_tensor(out_arr[i], &t_arr[i]);
             }
@@ -193,7 +192,7 @@ class DataReader {
   }
 
   void CheckOutputVarStatus(const Variable& var, const std::string& var_name) {
-    // only LoDTensor variable type support currently
+    // only Tensor variable type support currently
     PADDLE_ENFORCE_EQ(
         var.IsInitialized(), true,
         platform::errors::InvalidArgument(
@@ -201,11 +200,11 @@ class DataReader {
             "program's internal scope is not initialized.",
             var_name));
     PADDLE_ENFORCE_EQ(
-        var.IsType<LoDTensor>(), true,
+        var.IsType<framework::Tensor>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from DataReader program's "
             "internal scope holds wrong type. Expect type is "
-            "LoDTensor, but receive type is %s.",
+            "Tensor, but receive type is %s.",
             var_name, platform::demangle(framework::ToTypeName(var.Type()))));
   }
 
@@ -236,7 +235,7 @@ class DataReader {
   void ShareIndicesIntoScope(Scope* scope, std::vector<int64_t> indices) {
     auto* var = scope->Var(indices_var_name_);
 
-    auto* indices_tensor = var->GetMutable<LoDTensor>();
+    auto* indices_tensor = var->GetMutable<framework::Tensor>();
     indices_tensor->Resize(
         phi::make_ddim({static_cast<int64_t>(indices.size())}));
     auto* indices_data =
@@ -265,8 +264,8 @@ class DataReader {
   const int64_t batch_size_;
   Sampler sampler_;
 
-  void copy_tensor(const framework::LoDTensor& lod_tensor,
-                   framework::LoDTensor* out) const {
+  void copy_tensor(const framework::Tensor& lod_tensor,
+                   framework::Tensor* out) const {
     if (lod_tensor.numel() == 0) return;
     auto& out_tensor = *out;
     framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
@@ -348,7 +347,7 @@ static void CheckAndInitOutputQueue(const std::vector<Variable*>& vars,
     if (var->IsInitialized()) {
       PADDLE_ENFORCE_EQ(var->IsType<LoDTensorBlockingQueueHolder>(), true,
                         platform::errors::InvalidArgument(
-                            "Output Variables of DataLoaderOp should hold "
+                            "Output Variables of DataReaderOp should hold "
                             "LoDTensorBlockingQueueHolder type"));
       auto queue = var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
       if (queue == nullptr) {
@@ -371,12 +370,6 @@ GetQueueVecFromVariableVec(const std::vector<Variable*>& vars) {
   }
   return queues;
 }
-
-template <typename T>
-class DataReaderCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
-};
 
 }  // namespace data
 }  // namespace operators

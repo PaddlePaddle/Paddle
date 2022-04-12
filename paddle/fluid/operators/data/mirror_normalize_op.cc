@@ -23,17 +23,10 @@ class MirrorNormalizeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of MirrorNormalizeOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Mirror"), true,
-        platform::errors::NotFound(
-            "Input(Mirror) of MirrorNormalizeOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound(
-            "Output(Out) of MirrorNormalizeOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "MirrorNormalizeOp");
+    OP_INOUT_CHECK(ctx->HasInput("Mirror"), "Input", "Mirror",
+                   "MirrorNormalizeOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MirrorNormalizeOp");
 
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->IsRuntime()) {

@@ -21,8 +21,6 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-using framework::LoDTensor;
-
 template <typename T>
 __global__ void KeMirrorNormalize(const int numel, const T* in_data,
                                   const bool* mirrors, T* out_data,
@@ -43,9 +41,9 @@ template <typename T>
 class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* mirror = ctx.Input<LoDTensor>("Mirror");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* mirror = ctx.Input<framework::Tensor>("Mirror");
+    auto* out = ctx.Output<framework::Tensor>("Out");
 
     auto mean = ctx.Attr<std::vector<float>>("mean");
     auto std = ctx.Attr<std::vector<float>>("std");

@@ -93,14 +93,14 @@ void ImageDecoder::CPUDecodeRandomCrop(const uint8_t* data, size_t length,
                                        RandomROIGenerator* roi_generator,
                                        unsigned char* workspace,
                                        size_t workspace_size,
-                                       framework::LoDTensor* out,
+                                       framework::Tensor* out,
                                        platform::Place place) {
   PADDLE_THROW(platform::errors::Fatal(
       "Nvjpeg decode failed and Paddle is not compiled with OpenCV"));
 }
 
 nvjpegStatus_t ImageDecoder::ParseDecodeParams(
-    const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
+    const uint8_t* bit_stream, size_t bit_len, framework::Tensor* out,
     RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
     platform::Place place) {
   int components;
@@ -169,7 +169,7 @@ nvjpegStatus_t ImageDecoder::GPUDecodeRandomCrop(const uint8_t* bit_stream,
 }
 
 void ImageDecoder::Run(const uint8_t* bit_stream, size_t bit_len,
-                       framework::LoDTensor* out,
+                       framework::Tensor* out,
                        RandomROIGenerator* roi_generator,
                        const platform::Place& place) {
   nvjpegImage_t image;
