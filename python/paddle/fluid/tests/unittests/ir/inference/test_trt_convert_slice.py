@@ -55,11 +55,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 3, 64, 64]).astype(np.float32)
+            return np.ones([6, 6, 64, 64]).astype(np.float32)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
-            for starts in [[0, 1], [-4, -3]]:
-                for ends in [[2, 2], [-1, -2], [5, 5]]:
+            for starts in [[0, 1]]:
+                for ends in [[2, 2], [5, 5]]:
                     for decrease_axis in [[], [1], [2], [-1], [-100]]:
                         for infer_flags in [[-1]]:
                             dics = [{
@@ -97,8 +97,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [6, 6, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -107,7 +107,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             inputs = program_config.inputs
-            if len(attrs[0]["decrease_axis"]) != 0:
+            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) == 0:
+                return 1, 2
+            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) != 1:
+                return 0, 3
+            if dynamic_shape == False and len(attrs[0]["decrease_axis"]) != 0:
                 return 0, 3
             if dynamic_shape:
                 for i in range(len(attrs[0]["starts"])):
@@ -123,7 +127,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-
+        self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
@@ -146,7 +150,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # TODO(inference): fix.
         # trt6 and trt7.1 has bug.
         # trt7.2 deserialize has bug.
-        # self.run_test()
+        self.run_test()
         pass
 
 
