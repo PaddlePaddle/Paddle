@@ -44,5 +44,10 @@ void TRTGraphSplitPass::runOnFunction() {
     graph_op.erase();
   }
 }
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphSplitPass(size_t min_subgraph_size) {
+  return std::make_unique<TRTGraphSplitPass>(min_subgraph_size);
+}
+
 }  // namespace trt
 }  // namespace infrt

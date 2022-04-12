@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -28,8 +29,8 @@ namespace phi {
 
 class DnnWorkspaceHandle {
  public:
-  explicit inline DnnWorkspaceHandle(Allocator* allocator)
-      : allocator_(allocator) {
+  inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
+      : allocator_(allocator), stream_(stream) {
     mtx_.reset(new std::mutex());
   }
 
@@ -48,11 +49,9 @@ class DnnWorkspaceHandle {
    *  running the function. Currently this function is only used when cudnn
    *  exhaustive searching and callers have to guarantee that the input function
    *  is host blocking */
-  inline void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
+  void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                   size_t required_workspace_bytes,
+                   bool use_cached_allocation = true);
 
   inline size_t WorkspaceSize() {
     if (allocation_ == nullptr) {
@@ -70,11 +69,12 @@ class DnnWorkspaceHandle {
 
  private:
   Allocator::AllocationPtr allocation_{nullptr};
-  Allocator* allocator_{nullptr};
+  Allocator* allocator_{nullptr};  // Not owned
+  gpuStream_t stream_{nullptr};    // Not owned
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class GPUContext : public DeviceContext {
+class PADDLE_API GPUContext : public DeviceContext {
  public:
   GPUContext();
   GPUContext(GPUContext&&);
