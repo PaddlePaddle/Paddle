@@ -95,6 +95,8 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         for i in range(len(in_dims_mapping)):
             if i not in decrease_axis:
                 ref_dims_mapping.append(in_dims_mapping[i])
+        if ref_dims_mapping == []:
+            ref_dims_mapping = [-1]
 
         assert len(ref_dims_mapping) == len(out_dims_mapping)
         for i in range(len(out_dims_mapping)):
