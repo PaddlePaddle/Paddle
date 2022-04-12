@@ -68,6 +68,10 @@ void AdamaxInferMeta(const MetaTensor& param,
                      MetaTensor* moment_out,
                      MetaTensor* inf_norm_out);
 
+void AddNInferMeta(const std::vector<MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
