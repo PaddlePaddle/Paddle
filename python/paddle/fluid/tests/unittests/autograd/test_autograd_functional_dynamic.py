@@ -340,12 +340,12 @@ class TestJacobianClassNoBatch(unittest.TestCase):
         self._atol = config.TOLERANCE.get(str(self._dtype)).get(
             "first_order_grad").get("atol")
 
-        self.xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
-            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
-        self._actual = paddle.autograd.Jacobian(self.func, self.xs, False)
-        self._expected = self._expected()
-
     def func_jacobian(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+        self._actual = paddle.autograd.Jacobian(self.func, xs, False)
+        self._expected = self._get_expected()
+
         Index = collections.namedtuple('Index', ('type', 'value'))
         indexes = (Index('all', (slice(0, None, None), slice(0, None, None))),
                    Index('row', (0, slice(0, None, None))),
@@ -361,14 +361,17 @@ class TestJacobianClassNoBatch(unittest.TestCase):
                 err_msg=f'Testcase {index.type} index not passed, value is {index.value}'
             )
 
-    def _expected(self):
-        jac = utils._compute_numerical_jacobian(self.func, self.xs, self._eps,
+    def _get_expected(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+        jac = utils._compute_numerical_jacobian(self.func, xs, self._eps,
                                                 self._dtype)
         return utils._np_concat_matrix_sequence(jac, utils.MatrixFormat.NM)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_jacobian()
+        self.func_jacobian()
 
 
 @utils.place(config.DEVICES)
@@ -387,12 +390,12 @@ class TestJacobianClassBatchFirst(unittest.TestCase):
         self._atol = config.TOLERANCE.get(str(self._dtype)).get(
             "first_order_grad").get("atol")
 
-        self.xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
-            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
-        self._actual = paddle.autograd.Jacobian(self.func, self.xs, True)
-        self._expected = self._expected()
-
     def func_jacobian(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+        self._actual = paddle.autograd.Jacobian(self.func, xs, True)
+        self._expected = self._get_expected()
+
         Index = collections.namedtuple('Index', ('type', 'value'))
         indexes = (
             Index('all', (slice(0, None, None), slice(0, None, None),
@@ -414,16 +417,19 @@ class TestJacobianClassBatchFirst(unittest.TestCase):
                 err_msg=f'Testcase {index.type} index not passed, value is {index.value}'
             )
 
-    def _expected(self):
-        jac = utils._compute_numerical_batch_jacobian(
-            self.func, self.xs, self._eps, self._dtype, False)
+    def _get_expected(self):
+        xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
+            self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
+        jac = utils._compute_numerical_batch_jacobian(self.func, xs, self._eps,
+                                                      self._dtype, False)
         jac = utils._np_concat_matrix_sequence(jac, utils.MatrixFormat.NBM)
         return utils._np_transpose_matrix_format(jac, utils.MatrixFormat.NBM,
                                                  utils.MatrixFormat.BNM)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_jacobian()
+        self.func_jacobian()
 
 
 class TestHessianClassNoBatch(unittest.TestCase):
@@ -889,20 +895,18 @@ class TestBatchHessian(unittest.TestCase):
         with _test_eager_guard():
             self.setUpClass()
             self.func_single_input()
+            self.func_multi_input()
             self.func_allow_unused_false()
             self.func_allow_unused_true()
             self.func_create_graph_false()
             self.func_create_graph_true()
         self.setUpClass()
         self.func_single_input()
+        self.func_multi_input()
         self.func_allow_unused_false()
         self.func_allow_unused_true()
         self.func_create_graph_false()
         self.func_create_graph_true()
-
-        # FIXME(zhanlve)
-        if _in_legacy_dygraph():
-            self.func_multi_input()
 
 
 class TestBatchHessianFloat64(TestBatchHessian):

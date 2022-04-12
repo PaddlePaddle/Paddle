@@ -943,8 +943,10 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
             #        [0., 1., 0., 1., 0., 1., 0., 1.]]))
 
     '''
+
     inputs = _as_tensors(inputs)
     outputs = _as_tensors(func(*inputs))
+
     batch_size = inputs[0].shape[0]
     for input in inputs:
         assert input.shape[
@@ -961,12 +963,14 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
     for i, flat_output in enumerate(flat_outputs):
         jac_i = list([] for _ in range(fin_size))
         for k in range(flat_output.shape[1]):
+
             row_k = paddle.grad(
                 flat_output[:, k],
                 inputs,
                 create_graph=create_graph,
                 retain_graph=True,
                 allow_unused=allow_unused)
+
             for j in range(fin_size):
                 jac_i[j].append(
                     paddle.reshape(
