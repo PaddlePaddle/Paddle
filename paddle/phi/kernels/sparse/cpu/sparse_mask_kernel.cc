@@ -55,6 +55,10 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   const IntT* indices_ptr = indices.data<IntT>();
 
   std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);
+
+  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+      dims, sparse_dim, &sparse_offsets);
+
   for (int64_t i = 0; i < non_zero_num; i++) {
     int64_t index = phi::funcs::sparse::IndicesToIndex<IntT>(
         indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
@@ -95,7 +99,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz()),
       mask_indexs(mask_indices.dims()[1]);
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
-      x.non_zero_indices(), x.dims(), &sparse_offsets);
+      x.dims(), sparse_dim, &sparse_offsets);
 
   phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
                                      sparse_offsets.data(),

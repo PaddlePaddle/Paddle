@@ -69,11 +69,9 @@ inline void HOSTDEVICE FlattenIndices(const IntT* indices,
 
 // 1. indices.dims().size() == 2
 template <typename IntT>
-inline void CalcOffsetsPerDim(const DenseTensor& indices,
-                              const DDim& dims,
+inline void CalcOffsetsPerDim(const DDim& dims,
+                              const int64_t sparse_dim,
                               std::vector<IntT>* offsets) {
-  const DDim& indices_dims = indices.dims();
-  const IntT sparse_dim = indices_dims[0];
   IntT offset = 1;
   for (IntT i = sparse_dim - 1; i >= 0; i--) {
     (*offsets)[i] = offset;

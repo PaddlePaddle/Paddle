@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-from paddle import _C_ops
 
 
 class TestSparseCreate(unittest.TestCase):
@@ -135,9 +134,11 @@ class TestSparseConvert(unittest.TestCase):
             #test to_sparse_coo_grad backward
             out_grad_indices = [[0, 1], [0, 1]]
             out_grad_values = [2.0, 3.0]
-            out_grad = core.eager.sparse_coo_tensor(
+            out_grad = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(out_grad_indices),
-                paddle.to_tensor(out_grad_values), out.shape, True)
+                paddle.to_tensor(out_grad_values),
+                shape=out.shape,
+                stop_gradient=True)
             out.backward(out_grad)
             assert np.array_equal(dense_x.grad.numpy(),
                                   out_grad.to_dense().numpy())
@@ -146,9 +147,11 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            sparse_x = core.eager.sparse_coo_tensor(
+            sparse_x = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(indices),
-                paddle.to_tensor(values), [3, 4], False)
+                paddle.to_tensor(values),
+                shape=[3, 4],
+                stop_gradient=False)
             dense_tensor = sparse_x.to_dense()
             #test to_dense_grad backward
             out_grad = [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
@@ -158,6 +161,17 @@ class TestSparseConvert(unittest.TestCase):
             correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
             assert np.array_equal(correct_x_grad,
                                   sparse_x.grad.values().numpy())
+
+            paddle.device.set_device("cpu")
+            sparse_x_cpu = paddle.sparse.sparse_coo_tensor(
+                paddle.to_tensor(indices),
+                paddle.to_tensor(values),
+                shape=[3, 4],
+                stop_gradient=False)
+            dense_tensor_cpu = sparse_x_cpu.to_dense()
+            dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
+            assert np.array_equal(correct_x_grad,
+                                  sparse_x_cpu.grad.values().numpy())
 
     def test_to_sparse_csr(self):
         with _test_eager_guard():
@@ -178,9 +192,11 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            sparse_x = core.eager.sparse_coo_tensor(
+            sparse_x = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(indices),
-                paddle.to_tensor(values), [3, 4], False)
+                paddle.to_tensor(values),
+                shape=[3, 4],
+                stop_gradient=False)
             values_tensor = sparse_x.values()
             out_grad = [2.0, 3.0, 5.0, 8.0, 9.0]
             # test coo_values_grad

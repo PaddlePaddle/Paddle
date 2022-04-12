@@ -193,8 +193,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   IntT* bound_out_ptr = bound_out.data<IntT>();
 
   // 1. calc the offsets of per dim
-  phi::funcs::sparse::CalcOffsetsPerDim(
-      x.non_zero_indices(), x.dims(), &sparse_offsets);
+  phi::funcs::sparse::CalcOffsetsPerDim(x.dims(), sparse_dim, &sparse_offsets);
   // 2. copy sparse_offsets to device
   phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
                                      sparse_offsets.data(),
