@@ -749,6 +749,17 @@
     func : gelu
   backward : gelu_grad
 
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
+
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -795,6 +806,16 @@
   kernel :
     func : hard_sigmoid
   backward : hard_sigmoid_grad
+
+- api : hard_swish
+  args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_swish
+  backward : hard_swish_grad
 
 # histogram
 - api : histogram
@@ -907,6 +928,15 @@
     data_type : x
   backward : kldiv_loss_grad
 
+- api : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
+
 - api : kthvalue
   args : (Tensor x, int k, int axis, bool keepdim)
   output : Tensor(out), Tensor(indices)
@@ -973,6 +1003,15 @@
   kernel :
     func : lgamma
   backward : lgamma_grad
+
+- api : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : LinspaceInferMeta
+  kernel :
+    func : linspace
+    data_type : dtype
 
 - api : log
   args : (Tensor x)
@@ -1064,6 +1103,17 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_xor
+
+# logit
+- api : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logit
+  backward : logit_grad
 
 # logsigmoid
 - api : logsigmoid
@@ -1168,7 +1218,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
-  
+
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]
