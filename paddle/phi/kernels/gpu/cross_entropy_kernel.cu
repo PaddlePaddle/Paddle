@@ -39,6 +39,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace phi {
+using funcs = phi::funcs;
 
 #define ALIGN_BYTES 16
 
@@ -1199,6 +1200,13 @@ void LaunchVectorizedSoftmaxForward(T* loss,
       loss, softmax, logits, label, high_dim, mid_dim, ignore_index);
 }
 
+static void show_size(phi::TensorBase::DDim d, const char* name) {
+  VLOG(0) << name << "size:";
+  for (int i = 0; i < d.size(); i++) {
+    VLOG(0) << d[i];
+  }
+}
+
 /*
   Wrapper of softmax with cross entropy hard label.
   - SwitchWarpSoftmaxForward for small size when axis == -1
@@ -1433,20 +1441,58 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     set_constant(dev_ctx, loss, static_cast<T>(0));
     return;
   }
-
+  bool split_batch = true;
+  int min_batch = 10;
   if (soft_label) {
     auto* logits_data = logits.data<T>();
     auto* labels_data = label.data<T>();
-    SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
-                                        rank,
-                                        axis_v,
-                                        logits_data,
-                                        labels_data,
-                                        softmax_data,
-                                        loss_data,
-                                        n,
-                                        axis_dim,
-                                        d / axis_dim);
+
+    if (axis_v == 0 || !split_batch) {
+      SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
+                                          rank,
+                                          axis_v,
+                                          logits_data,
+                                          labels_data,
+                                          softmax_data,
+                                          loss_data,
+                                          n,
+                                          axis_dim,
+                                          d / axis_dim);
+    } else {
+      int step = logits.dims()[0] / min_batch;
+      if (step * min_batch < logits.dims()[0]) {
+        step += 1;
+      }
+      int stride = logits.numel() / logits.dims()[0] * min_batch;
+      int stride_loss = loss->numel() / logits.dims()[0] * min_batch;
+
+      show_size(logits.dims(), "logits");
+      show_size(label.dims(), "label");
+      show_size(softmax->dims(), "softmax");
+      show_size(loss->dims(), "loss");
+      VLOG(0) << "Out:";
+
+      for (int i = 0; i < step; i++) {
+        int len = (i + 1) * min_batch <= logits.dims()[0]
+                      ? min_batch
+                      : logits.dims()[0] - i * min_batch;
+        auto tmp_n = n / logits.dims()[0] * len;
+        VLOG(0) << "batch id: " << i << " batch size:" << len << " N:" << tmp_n
+                << " D:" << d << "n:" << n;
+        VLOG(0) << "softmax data start:" << (stride * i)
+                << " loss start:" << (stride_loss * i);
+        SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
+                                            rank,
+                                            axis_v,
+                                            logits_data + stride * i,
+                                            labels_data + stride * i,
+                                            softmax_data + stride * i,
+                                            loss_data + stride_loss * i,
+                                            tmp_n,
+                                            axis_dim,
+                                            d / axis_dim);
+      }
+    }
   } else {
     if (!numeric_stable_mode) {
       // CUDNN kernel only suppoer 2-D tensor and perfome softmax on last dim
@@ -1518,6 +1564,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
         paddle::experimental::CppTypeToDataType<T>::Type(),
         phi::errors::InvalidArgument("The Input(Label) should be with the "
                                      "same data type as Input(Logits)."));
+    VLOG(0) << "==== star cuda kernel : softmax_with_cross_entropy ====";
     CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
                                             logits,
                                             label,
