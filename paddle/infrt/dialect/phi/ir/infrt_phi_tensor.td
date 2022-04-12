@@ -15,6 +15,7 @@ def PHI_DenseTensorDialect : Dialect {
   }];
 
   let cppNamespace = "::infrt::phi";
+  let dependentDialects = ["::infrt::phi::PHIDialect"];
 }
 
 // PHI DenseTensor related Op.

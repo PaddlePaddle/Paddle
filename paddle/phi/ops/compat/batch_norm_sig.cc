@@ -35,7 +35,7 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
     return KernelSignature("batch_norm_infer",
                            {"X", "Scale", "Bias", "Mean", "Variance"},
                            {"momentum", "epsilon", "data_layout"},
-                           {"Y", "MeanOut", "VarianceOut"});
+                           {"Y"});
   } else {
     return KernelSignature("batch_norm",
                            {"X", "Scale", "Bias", "Mean", "Variance"},

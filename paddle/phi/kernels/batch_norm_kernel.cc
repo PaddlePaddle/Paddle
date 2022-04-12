@@ -29,14 +29,13 @@ void BatchNormInferKernel(const Context& dev_ctx,
                           float momentum,
                           float epsilon,
                           const std::string& data_layout,
-                          DenseTensor* y,
-                          DenseTensor* mean_out,
-                          DenseTensor* variance_out) {
+                          DenseTensor* y) {
   // Since saved_mean and saved_variance are used regardless of whether
   // they are in test mode, temporary variables need to be created here
   // to be compatible
-  auto saved_mean = phi::EmptyLike<T, Context>(dev_ctx, *mean_out);
-  auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
+  ::phi::DenseTensor mean_out, variance_out;
+  auto saved_mean = phi::EmptyLike<T, Context>(dev_ctx, mean_out);
+  auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, variance_out);
   BatchNormKernel<T, Context>(dev_ctx,
                               x,
                               scale,
@@ -51,8 +50,8 @@ void BatchNormInferKernel(const Context& dev_ctx,
                               /*trainable_statistics=*/false,
                               /*fuse_with_relu=*/false,
                               y,
-                              mean_out,
-                              variance_out,
+                              &mean_out,
+                              &variance_out,
                               &saved_mean,
                               &saved_variance,
                               /*reserve_space=*/nullptr);

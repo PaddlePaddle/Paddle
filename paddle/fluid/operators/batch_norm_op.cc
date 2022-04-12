@@ -251,10 +251,12 @@ void BatchNormOpMaker::Make() {
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
-            "Store the global mean when training");
+            "Store the global mean when training")
+      .AsExtra();
   AddOutput("VarianceOut",
             "Share memory with Variance. "
-            "Store the global Variance when training");
+            "Store the global Variance when training")
+      .AsExtra();
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")

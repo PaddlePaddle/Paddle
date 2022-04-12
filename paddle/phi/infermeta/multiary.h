@@ -162,8 +162,6 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              float epsilon,
                              const std::string& data_layout,
                              MetaTensor* y,
-                             MetaTensor* mean_out,
-                             MetaTensor* variance_out,
                              MetaConfig config = MetaConfig());
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,

@@ -12,27 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <llvm/ADT/TypeSwitch.h>
-#include <mlir/IR/BuiltinTypes.h>
-#include <mlir/IR/DialectImplementation.h>
-#include <iostream>
+#pragma once
 
+#include <mlir/IR/PatternMatch.h>
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensorDialect.cpp.inc"
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensorTypes.cpp.inc"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
-namespace phi {
+namespace dialect {
 
-void PHIDenseTensorDialect::initialize() {
-#define GET_OP_LIST
-  addOperations<
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.cpp.inc"
-      >();
-}
+::phi::DenseTensor CreateDenseTensorFromWeightOp(::phi::Allocator* allocator,
+                                                 ::mlir::Operation* op);
 
-}  // namespace phi
+::infrt::phi::CreateCPUContextOp CreateCPUContextOp(::mlir::OpBuilder builder,
+                                                    ::mlir::Location loc);
+
+::infrt::phi::CreateHostInitedDenseTensorOp CreateWeightOpFromDenseTensor(
+    ::mlir::OpBuilder builder,
+    ::mlir::Location loc,
+    ::mlir::Value context,
+    const ::phi::DenseTensor& src);
+
+}  // namespace dialect
 }  // namespace infrt
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.cpp.inc"  // NOLINT

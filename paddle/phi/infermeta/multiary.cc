@@ -532,8 +532,12 @@ void BatchNormInferMeta(const MetaTensor& x,
                           bias_dim[0]));
   }
   y->set_dims(x_dims);
-  mean_out->set_dims({C});
-  variance_out->set_dims({C});
+  if (mean_out) {
+    mean_out->set_dims({C});
+  }
+  if (variance_out) {
+    variance_out->set_dims({C});
+  }
   if (saved_mean) {
     saved_mean->set_dims({C});
   }
@@ -552,8 +556,6 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              float epsilon,
                              const std::string& data_layout,
                              MetaTensor* y,
-                             MetaTensor* mean_out,
-                             MetaTensor* variance_out,
                              MetaConfig config) {
   BatchNormInferMeta(x,
                      scale,
@@ -568,8 +570,8 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      /*trainable_statistics=*/false,
                      /*fuse_with_relu=*/false,
                      y,
-                     mean_out,
-                     variance_out,
+                     /*mean_out=*/nullptr,
+                     /*variance_out=*/nullptr,
                      /*saved_mean=*/nullptr,
                      /*saved_variance=*/nullptr,
                      /*reserve_space=*/nullptr,

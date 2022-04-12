@@ -195,6 +195,11 @@ def get_constraint(op_type, op_proto):
     # 2.3.1 inputs
     constraint = "NoSideEffect"
 
+    # As of now, the input and output types of all paddle operators involved
+    # in this file are the same. Such as `dense_tensor<CPU, FP32, NCHW>` and
+    # `dense_tensor<CPU, FP32, NCHW>`.
+    constraint += ", SameOperandsAndResultType"
+
     optional_input_num_ = 0
     for input_ in op_proto[INPUTS]:
         if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][input_][
