@@ -30,8 +30,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     """
 
     def setUp(self):
-        np.random.seed(2022)
-        self.input_data = np.random.rand(4, 7, 5, 6)
+        self.input_data = np.random.rand(4, 7, 6)
 
     # Test correctness when q and axis are set.
     def test_single_q(self):
@@ -41,7 +40,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res = func(x, q=0.5, axis=2)
             np_res = res_func(inp, q=0.5, axis=2)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 1, 2, 3] = np.nan
+            inp[0, 1, 2] = np.nan
 
     # Test correctness for default axis.
     def test_with_no_axis(self):
@@ -51,49 +50,49 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res = func(x, q=0.35)
             np_res = res_func(inp, q=0.35)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 2, 1, 3] = np.nan
-            inp[0, 1, 2, 3] = np.nan
+            inp[0, 2, 1] = np.nan
+            inp[0, 1, 2] = np.nan
 
     # Test correctness for multiple axis.
     def test_with_multi_axis(self):
         inp = self.input_data
         for (func, res_func) in API_list:
             x = paddle.to_tensor(inp)
-            paddle_res = func(x, q=0.75, axis=[0, 2, 3])
-            np_res = res_func(inp, q=0.75, axis=[0, 2, 3])
+            paddle_res = func(x, q=0.75, axis=[0, 2])
+            np_res = res_func(inp, q=0.75, axis=[0, 2])
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 2, 1, 3] = np.nan
-            inp[0, 1, 2, 3] = np.nan
+            inp[0, 5, 3] = np.nan
+            inp[0, 6, 2] = np.nan
 
     # Test correctness when keepdim is set.
     def test_with_keepdim(self):
         inp = self.input_data
         for (func, res_func) in API_list:
             x = paddle.to_tensor(inp)
-            paddle_res = func(x, q=0.35, axis=3, keepdim=True)
-            np_res = res_func(inp, q=0.35, axis=3, keepdims=True)
+            paddle_res = func(x, q=0.35, axis=2, keepdim=True)
+            np_res = res_func(inp, q=0.35, axis=2, keepdims=True)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 3, 4, 2] = np.nan
+            inp[0, 3, 4] = np.nan
 
     # Test correctness when all parameters are set.
     def test_with_keepdim_and_multiple_axis(self):
         inp = self.input_data
         for (func, res_func) in API_list:
             x = paddle.to_tensor(inp)
-            paddle_res = func(x, q=0.1, axis=[1, 3], keepdim=True)
-            np_res = res_func(inp, q=0.1, axis=[1, 3], keepdims=True)
+            paddle_res = func(x, q=0.1, axis=[1, 2], keepdim=True)
+            np_res = res_func(inp, q=0.1, axis=[1, 2], keepdims=True)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 6, 3, 4] = np.nan
+            inp[0, 6, 3] = np.nan
 
     # Test correctness when q = 0.
     def test_with_boundary_q(self):
         inp = self.input_data
         for (func, res_func) in API_list:
             x = paddle.to_tensor(inp)
-            paddle_res = func(x, q=0, axis=3)
-            np_res = res_func(inp, q=0, axis=3)
+            paddle_res = func(x, q=0, axis=1)
+            np_res = res_func(inp, q=0, axis=1)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 2, 3, 4] = np.nan
+            inp[0, 2, 5] = np.nanan
 
     # Test correctness when input includes NaN.
     def test_quantile_include_NaN(self):
@@ -120,7 +119,6 @@ class TestMuitlpleQ(unittest.TestCase):
     """
 
     def setUp(self):
-        np.random.seed(2022)
         self.input_data = np.random.rand(5, 3, 4)
 
     def test_quantile(self):
@@ -217,8 +215,7 @@ class TestQuantileRuntime(unittest.TestCase):
     """
 
     def setUp(self):
-        np.random.seed(2022)
-        self.input_data = np.random.rand(4, 7, 5, 6)
+        self.input_data = np.random.rand(4, 7)
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
         if paddle.device.is_compiled_with_cuda():
@@ -234,8 +231,8 @@ class TestQuantileRuntime(unittest.TestCase):
                     # Check different dtypes
                     np_input_data = self.input_data.astype(dtype)
                     x = paddle.to_tensor(np_input_data, dtype=dtype)
-                    paddle_res = func(x, q=0.5, axis=2)
-                    np_res = res_func(np_input_data, q=0.5, axis=2)
+                    paddle_res = func(x, q=0.5, axis=1)
+                    np_res = res_func(np_input_data, q=0.5, axis=1)
                     self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
 
     def test_static(self):
@@ -249,9 +246,9 @@ class TestQuantileRuntime(unittest.TestCase):
                     shape=self.input_data.shape,
                     dtype=paddle.float64)
 
-                results = func(x, q=0.5, axis=2)
+                results = func(x, q=0.5, axis=1)
                 np_input_data = self.input_data.astype('float32')
-                results_fp64 = func(x_fp64, q=0.5, axis=2)
+                results_fp64 = func(x_fp64, q=0.5, axis=1)
                 np_input_data_fp64 = self.input_data.astype('float64')
 
                 exe = paddle.static.Executor(device)
@@ -260,8 +257,8 @@ class TestQuantileRuntime(unittest.TestCase):
                     feed={"x": np_input_data,
                           "x_fp64": np_input_data_fp64},
                     fetch_list=[results, results_fp64])
-                np_res = res_func(np_input_data, q=0.5, axis=2)
-                np_res_fp64 = res_func(np_input_data_fp64, q=0.5, axis=2)
+                np_res = res_func(np_input_data, q=0.5, axis=1)
+                np_res_fp64 = res_func(np_input_data_fp64, q=0.5, axis=1)
                 self.assertTrue(
                     np.allclose(paddle_res, np_res) and
                     np.allclose(paddle_res_fp64, np_res_fp64))
