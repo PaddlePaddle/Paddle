@@ -20,8 +20,8 @@ import paddle
 import warnings
 
 
-def numpy_corr(np_arr, rowvar=True):
-    return np.corrcoef(np_arr, rowvar=rowvar)
+def numpy_corr(np_arr, rowvar=True,dtype='float64'):
+    return np.corrcoef(np_arr, rowvar=rowvar,dtype=dtype)
 
 
 class Corr_Test(unittest.TestCase):
@@ -29,7 +29,7 @@ class Corr_Test(unittest.TestCase):
         self.shape = [20, 10]
 
     def test_tensor_corr_default(self):
-        typelist = ['float64']
+        typelist = ['float64','float32']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -43,11 +43,11 @@ class Corr_Test(unittest.TestCase):
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
                 corr = paddle.linalg.corrcoef(tensor)
-                np_corr = numpy_corr(np_arr, rowvar=True)
-                self.assertTrue(np.allclose(np_corr, corr.numpy()))
+                np_corr = numpy_corr(np_arr, rowvar=True,dtype=dtype)
+                self.assertTrue(np.allclose(np_corr, corr.numpy(),atol=1.e-6))
 
     def test_tensor_corr_rowvar(self):
-        typelist = ['float64']
+        typelist = ['float64','float32']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -62,8 +62,8 @@ class Corr_Test(unittest.TestCase):
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
                 corr = paddle.linalg.corrcoef(tensor, rowvar=False)
-                np_corr = numpy_corr(np_arr, rowvar=False)
-                self.assertTrue(np.allclose(np_corr, corr.numpy()))
+                np_corr = numpy_corr(np_arr, rowvar=False,dtype=dtype)
+                self.assertTrue(np.allclose(np_corr, corr.numpy(),atol=1.e-6))
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
@@ -101,6 +101,7 @@ class Corr_Comeplex_Test(unittest.TestCase):
         x1 = fluid.data(name=self.dtype, shape=[2], dtype=self.dtype)
         self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x1)
         paddle.disable_static()
+
 
 class Corr_Test5(Corr_Comeplex_Test):
 
