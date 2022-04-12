@@ -923,12 +923,11 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
-    if [ ! "${pr_whl_size}" ];then
-        echo "pr whl size not found "         
-        exit 1
-    fi
 
     set +x
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
@@ -2996,7 +2995,6 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
-        #check_whl_size
         ;;
       build_and_check_cpu)
         set +e
@@ -3004,7 +3002,6 @@ function main() {
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
-        #check_whl_size
         ;;
       build_and_check_gpu)
         set +e
@@ -3020,6 +3017,9 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        ;;
+      check_whl_size)
+        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
