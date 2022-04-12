@@ -76,9 +76,10 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
 #ifdef INFRT_WITH_GPU
-::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
-                             const ::phi::GPUContext& context,
-                             bool d2h);
+void GpuMemCpy(const ::phi::DenseTensor& input,
+               const ::phi::GPUContext& context,
+               bool d2h,
+               ::phi::DenseTensor* output);
 #endif
 
 }  // namespace phi

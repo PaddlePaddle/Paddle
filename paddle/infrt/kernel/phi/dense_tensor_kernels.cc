@@ -22,6 +22,7 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef INFRT_WITH_GPU
 #include <cuda_runtime.h>
@@ -308,34 +309,50 @@ inline size_t SizeOfDataType(::phi::DataType data_type) {
   }
   return 0;
 }
-::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
-                             const ::phi::GPUContext& context,
-                             bool d2h) {
+void GpuMemCpy(const ::phi::DenseTensor& input,
+               const ::phi::GPUContext& context,
+               bool d2h,
+               ::phi::DenseTensor* output) {
   if (d2h) {
-    ::phi::DenseTensor ret(
-        const_cast<::phi::Allocator*>(&context.GetHostAllocator()),
-        input.meta());
     CHECK(input.place().GetType() == ::phi::AllocationType::GPU);
-    // TODO(wilber): Add sync op and stream.
-    cudaMemcpyAsync(ret.data(),
+
+    // TODO(wilber): Just a trick to avoid malloc.
+    if (input.numel() > output->numel()) {
+      // TODO(wilber): Use pinned memory.
+      output->Resize(input.dims());
+      context.HostAlloc(
+          output, input.dtype(), input.numel() * SizeOfDataType(input.dtype()));
+    }
+
+    cudaMemcpyAsync(output->data(),
                     input.data(),
                     SizeOfDataType(input.dtype()) * input.numel(),
                     cudaMemcpyDeviceToHost,
-                    nullptr);
-    return ret;
+                    context.stream());
+    // TODO(wilber): Ir add sync op.
+    cudaStreamSynchronize(context.stream());
   } else {
     // h2d
-    ::phi::DenseTensor ret(
-        const_cast<::phi::Allocator*>(&context.GetAllocator()), input.meta());
     CHECK(input.place().GetType() == ::phi::AllocationType::CPU ||
           input.place().GetType() == ::phi::AllocationType::GPUPINNED);
+
+    if (input.numel() > output->numel()) {
+      output->Resize(input.dims());
+      context.Alloc(output,
+                    input.dtype(),
+                    input.numel() * SizeOfDataType(input.dtype()),
+                    false);
+
+    } else {
+      output->Resize(input.dims());
+    }
+
     // TODO(wilber): Add sync op and stream.
-    cudaMemcpyAsync(ret.data(),
+    cudaMemcpyAsync(output->data(),
                     input.data(),
                     SizeOfDataType(input.dtype()) * input.numel(),
                     cudaMemcpyHostToDevice,
-                    nullptr);
-    return ret;
+                    context.stream());
   }
 }
 #endif
