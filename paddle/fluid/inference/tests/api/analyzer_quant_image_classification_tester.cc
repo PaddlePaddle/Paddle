@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
+DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -27,7 +29,7 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->SwitchIrOptim(false);
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  cfg->EnableMKLDNN();
+  if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 
 template <typename T>
