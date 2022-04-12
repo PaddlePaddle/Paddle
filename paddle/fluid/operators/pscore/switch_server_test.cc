@@ -50,7 +50,7 @@ void StartSwitchInterServer(
   LOG(INFO) << "switch heter service started";
   switch_server_ptr->SetPeerEndPoints(peer_endpoints);
   switch_server_ptr->SetInterEndpoint(endpoints[0]);
-  switch_server_ptr->StartHeterInterService(true);
+  switch_server_ptr->StartHeterInterService(false);
 }
 
 int main(int argc, char* argv[]) {
