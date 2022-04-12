@@ -4152,7 +4152,7 @@ def heaviside(x, y, name=None):
     op_type = 'elementwise_heaviside'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
