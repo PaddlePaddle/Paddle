@@ -520,8 +520,10 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   vec.erase(vec.begin() + axis);
 
   for (size_t i = 0; i < x_grad.size(); ++i) {
-    x_grad[i]->set_dims(phi::make_ddim(vec));
-    x_grad[i]->set_dtype(out_grad.dtype());
+    if (x_grad[i]) {
+      x_grad[i]->set_dims(phi::make_ddim(vec));
+      x_grad[i]->set_dtype(out_grad.dtype());
+    }
   }
 }
 

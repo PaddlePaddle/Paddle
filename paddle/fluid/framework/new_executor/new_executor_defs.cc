@@ -93,19 +93,24 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return false;
     }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {

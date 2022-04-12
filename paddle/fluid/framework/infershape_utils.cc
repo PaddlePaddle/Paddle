@@ -597,7 +597,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   }
 
   for (auto& out_name : output_names) {
-    if (ctx->HasOutputs(out_name)) {
+    if (ctx->HasOutputs(out_name, true)) {
       auto output_var = ctx->GetOutputVarPtrs(out_name);
       if (output_var.size() == 1) {
         infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
@@ -606,8 +606,18 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
         outputs.reserve(output_var.size());
         for (const auto& out : output_var) {
-          outputs.emplace_back(
-              std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+          if (ctx->IsRuntime()) {
+            if (BOOST_GET_CONST(Variable*, out)) {
+              outputs.emplace_back(
+                  std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+              continue;
+            }
+          } else if (BOOST_GET_CONST(VarDesc*, out)) {
+            outputs.emplace_back(
+                std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+            continue;
+          }
+          outputs.emplace_back(nullptr);
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }

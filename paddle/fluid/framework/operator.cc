@@ -718,18 +718,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const override {
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override {
     const auto& outs = ctx_.outputs;
     auto it = outs.find(name);
     if (it == outs.end() || it->second.empty()) {
       return false;
     }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) return false;
       }
+      return false;
+    } else {
+      for (auto& output : it->second) {
+        if (output == nullptr) return false;
+      }
+      return true;
     }
-    return true;
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
