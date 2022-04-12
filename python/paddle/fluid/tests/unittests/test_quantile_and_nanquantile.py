@@ -92,7 +92,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res = func(x, q=0, axis=1)
             np_res = res_func(inp, q=0, axis=1)
             self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
-            inp[0, 2, 5] = np.nanan
+            inp[0, 2, 5] = np.nan
 
     # Test correctness when input includes NaN.
     def test_quantile_include_NaN(self):
