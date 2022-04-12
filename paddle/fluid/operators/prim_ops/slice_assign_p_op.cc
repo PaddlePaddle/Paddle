@@ -101,7 +101,11 @@ class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
                           x_rank, y_rank));
     std::vector<int64_t> y_target_shape(x_shape);
     for (size_t i = 0; i < axis.size(); ++i) {
-      y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
+      if ((ends[i] - starts[i]) % strides[i] == 0) {
+        y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i];
+      } else {
+        y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
+      }
     }
     for (size_t i = 0; i < x_rank; ++i) {
       PADDLE_ENFORCE_EQ(y_target_shape[i], y_shape[i],
