@@ -102,7 +102,7 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
   }
   if (allow_null) {
     for (auto& output : it->second) {
-      if (output != nullptr) return false;
+      if (output != nullptr) return true;
     }
     return false;
   } else {

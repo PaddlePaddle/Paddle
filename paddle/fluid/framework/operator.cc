@@ -727,7 +727,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
     if (allow_null) {
       for (auto& output : it->second) {
-        if (output != nullptr) return false;
+        if (output != nullptr) return true;
       }
       return false;
     } else {
