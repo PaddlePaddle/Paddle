@@ -643,7 +643,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Running GradNode:" << node->name();
 
     paddle::platform::RecordEvent node_record_event(
-        std::string(typeid(*node).name()) + " grad_node",
+        std::string((*node).name()),
         paddle::platform::TracerEventType::Operator, 1);
 
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {

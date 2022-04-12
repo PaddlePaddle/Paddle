@@ -136,7 +136,7 @@ def RemoveConstAndReference(string):
 
 
 def GetGradNodeName(string):
-    return f"FinalGradNode{string}"
+    return f"{string}_grad_node"
 
 
 def GetDygraphForwardFunctionName(string):
