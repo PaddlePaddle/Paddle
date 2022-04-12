@@ -660,14 +660,21 @@ class ConvMKLDNNHandlerT
     if (is_test && bias_mem_p) {
       return bias_mem_p;
     } else {
-      const K* bias_data = bias->data<K>();
+      // if K is int8 (weights are int8) then biases are int32
+      using K2 = typename std::conditional<std::is_same<K, int8_t>::value,
+                                           int32_t, K>::type;
+      if (std::is_same<K2, int32_t>::value &&
+          bias->dtype() != phi::DataType::INT32) {
+        LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
+      }
+      const K2* bias_data = bias->data<K2>();
       auto user_bias_md = platform::MKLDNNMemDesc(
-          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K2>(),
           MKLDNNMemoryFormat::x);
 
       return this->AcquireMemoryWithReorder(
           user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test, {},
+          platform::to_void_cast<K2>(bias_data), "@bias_mem_p", is_test, {},
           scale_data, mask);
     }
   }
@@ -1053,9 +1060,19 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ops::ConvMKLDNNOpKernel<uint8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8WS8,
+                                    ops::kConvMKLDNNINT8,
+                                    ops::ConvMKLDNNOpKernel<uint8_t, int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8,
                                     ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8WS8,
+                                    ops::kConvMKLDNNINT8,
+                                    ops::ConvMKLDNNOpKernel<int8_t, int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

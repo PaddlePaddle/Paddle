@@ -574,9 +574,8 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({
-      "cpu_quantize_pass",
-      "cpu_quantize_squash_pass",
-      "int8_scale_calculation_mkldnn_pass",
+      "cpu_quantize_pass", "cpu_quantize_squash_pass",
+      "int8_scale_calculation_mkldnn_pass", "params_to_int8_pass"
   });
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
