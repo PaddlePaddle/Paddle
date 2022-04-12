@@ -1029,7 +1029,7 @@ def set_grad_var_shape(program, dist_context):
 
             if op.type in [
                     "c_allreduce_sum", "c_identity", "scale", "cast",
-                    "fill_constant", "fill_zeros_like"
+                    "fill_zeros_like"
             ]:
                 forward_var_name = op.input_arg_names[0]
 
@@ -1037,12 +1037,14 @@ def set_grad_var_shape(program, dist_context):
                 "reshape2_grad", "softmax_with_cross_entropy_grad",
                 "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
                 "dropout_grad", "tanh_grad", "slice", "assign",
-                "matmul_v2_triple_grad", "elementwise_add_triple_grad"
+                "matmul_v2_triple_grad", "elementwise_add_triple_grad",
+                "fill_constant"
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
                 "softmax", "cross_entropy2", "dropout", "tanh", "slice_grad",
-                "assign", "matmul_v2_grad_grad", "elementwise_add_grad_grad"
+                "assign", "matmul_v2_grad_grad", "elementwise_add_grad_grad",
+                "shape"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
