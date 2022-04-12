@@ -102,8 +102,8 @@ class HeterContext {
     device_task_ptr_.resize(shard_num_);
     device_task_keys_.resize(shard_num_);
     for (size_t i = 0; i < device_task_ptr_.size(); i++) {
-        device_task_ptr_[i].resize(device_num);
-        device_task_keys_[i].resize(device_num);
+      device_task_ptr_[i].resize(device_num);
+      device_task_keys_[i].resize(device_num);
     }
 
     device_values_.resize(device_num);
@@ -123,8 +123,8 @@ class HeterContext {
     device_task_ptr_.resize(shard_num_);
     device_task_keys_.resize(shard_num_);
     for (size_t i = 0; i < device_task_ptr_.size(); i++) {
-        device_task_ptr_[i].resize(device_num);
-        device_task_keys_[i].resize(device_num);
+      device_task_ptr_[i].resize(device_num);
+      device_task_keys_[i].resize(device_num);
     }
     for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
       feature_dim_keys_[i].resize(dim_num);
@@ -171,8 +171,8 @@ class HeterContext {
       }
       for (size_t i = 0; i < device_task_ptr_.size(); ++i) {
         for (size_t j = 0; j < device_task_ptr_[i].size(); ++j) {
-            device_task_ptr_[i][j].clear();
-            device_task_keys_[i][j].clear();
+          device_task_ptr_[i][j].clear();
+          device_task_keys_[i][j].clear();
         }
       }
     } else {
