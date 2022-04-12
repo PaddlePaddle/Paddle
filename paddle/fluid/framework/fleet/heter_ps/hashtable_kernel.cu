@@ -147,7 +147,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   if (len == 0) {
     return;
   }
-  d const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
 }

@@ -18,10 +18,12 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
-// #ifdef PADDLE_WITH_PSLIB
-// #include "common_value.h"  // NOLINT
-// #endif
-#if defined(PADDLE_WITH_PSCORE
+
+#ifdef PADDLE_WITH_PSLIB
+#include "common_value.h"  // NOLINT
+#endif
+
+#if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #elif defined(PADDLE_WITH_PSLIB)
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
@@ -156,6 +158,7 @@ class HashTable {
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
 };
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif
