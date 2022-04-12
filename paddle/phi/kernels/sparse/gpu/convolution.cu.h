@@ -145,35 +145,6 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
   return new_end.first;
 }
 
-template <typename T>
-__global__ void SetFlagAndUpdateCounterKernel(const int* indexs,
-                                              const int n,
-                                              const int rulebook_len,
-                                              const int kernel_size,
-                                              T* rulebook_ptr,
-                                              int* counter_ptr) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  extern __shared__ int cache_count[];  // kernel_size
-  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
-    cache_count[i] = 0;
-  }
-  __syncthreads();
-
-  for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
-    int index = indexs[i];
-    T kernel_index = rulebook_ptr[index];
-    rulebook_ptr[index + rulebook_len] = -1;
-    rulebook_ptr[index + 2 * rulebook_len] = -1;
-    rulebook_ptr[index] = -1;
-    atomicAdd(&cache_count[kernel_index], 1);
-  }
-  __syncthreads();
-
-  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
-    atomicSub(&counter_ptr[i], cache_count[i]);
-  }
-}
-
 /**
  * @brief: update the out index and indices
  * unique_keys: save the index of the output feature list
@@ -462,7 +433,11 @@ int ProductRuleBook(const Context& dev_ctx,
         DenseTensorMeta(
             indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
     IntT* bound_ptr = bound.data<IntT>();
+#ifdef PADDLE_WITH_HIP
+    thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
+#else
     thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                         in_indexs_ptr,
                         in_indexs_ptr + in_indexs.numel(),
                         out_indexs_ptr,
