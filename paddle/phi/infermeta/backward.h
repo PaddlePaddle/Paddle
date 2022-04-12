@@ -135,8 +135,8 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
-void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
-                           const std::vector<MetaTensor*>& outputs_grad,
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
 void NllLossGradInferMeta(const MetaTensor& input,

@@ -37,28 +37,26 @@ class InferMetaContext {
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
   void SetMetaConfig(MetaConfig config);
-  void EmplaceBackInput(std::shared_ptr<phi::MetaTensor> input);
-  void EmplaceBackOutput(std::shared_ptr<phi::MetaTensor> output);
-  void EmplaceBackAttr(paddle::any attr);
-
-  void EmplaceBackInputs(
-      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs);
-  void EmplaceBackOutputs(
-      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs);
-
-  const std::pair<int, int>& InputRangeAt(size_t idx) const;
-  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
-
   const MetaConfig& GetMetaConfig() const;
 
-  const MetaTensor& InputAt(size_t idx) const;
-  paddle::optional<const phi::MetaTensor&> OptionalInputAt(size_t idx) const;
-  std::vector<MetaTensor*> InputsBetween(size_t start, size_t end) const;
-  paddle::optional<const std::vector<const phi::MetaTensor*>>
+  void EmplaceBackInput(MetaTensor input);
+  void EmplaceBackOutput(MetaTensor output);
+  void EmplaceBackAttr(paddle::any attr);
+
+  void EmplaceBackInputs(paddle::SmallVector<MetaTensor> inputs);
+  void EmplaceBackOutputs(paddle::SmallVector<MetaTensor> outputs);
+
+  virtual const MetaTensor& InputAt(size_t idx) const;
+  virtual paddle::optional<const MetaTensor&> OptionalInputAt(size_t idx) const;
+
+  virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
+                                                       size_t end) const;
+  virtual paddle::optional<const std::vector<const MetaTensor*>>
   OptionalInputsBetween(size_t start, size_t end) const;
 
-  MetaTensor* MutableOutputAt(size_t idx);
-  std::vector<MetaTensor*> MutableOutputBetween(size_t start, size_t end);
+  virtual MetaTensor* MutableOutputAt(size_t idx);
+  virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
+                                                        size_t end);
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -73,19 +71,22 @@ class InferMetaContext {
     }
   }
 
- private:
+  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+
+  virtual ~InferMetaContext() = default;
+
+ protected:
   MetaConfig config_;
 
-  // NOTE(chenweihang): Because the MetaTensor is a base class, and MetaTensor
-  // objects are all created in each round, so we have to use smart pointer
-  // here, maybe we can implemented a new InferMetaContext and a series utils
-  // specifically for fluid to avoid using shared_ptr
-  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs_;
-  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
+
+ private:
+  paddle::SmallVector<MetaTensor> inputs_;
+  paddle::SmallVector<MetaTensor> outputs_;
 };
 
 #define PD_INFER_META(...) \
@@ -159,7 +160,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const std::vector<MetaTensor*>&, Tail...> {
+  struct InferMetaFnCallHelper<const std::vector<const MetaTensor*>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
@@ -167,7 +168,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      std::vector<MetaTensor*> arg =
+      std::vector<const MetaTensor*> arg =
           ctx->InputsBetween(range.first, range.second);
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,

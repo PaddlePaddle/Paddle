@@ -21,7 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors) {
   std::vector<DDim> dims;
   dims.reserve(tensors.size());
   for (const MetaTensor* tensor : tensors) {
@@ -279,7 +280,7 @@ void AdamwInferMeta(const MetaTensor& param,
                 master_param_outs);
 }
 
-void AddNInferMeta(const std::vector<MetaTensor*>& x,
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config) {
   auto N = x.size();
@@ -642,7 +643,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
   const auto& input_dims = GetMetaTensorsDim(x);
@@ -696,7 +697,7 @@ void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
   }
 }
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -1488,7 +1489,7 @@ void InterpolateInferMeta(
   }
 }
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 
@@ -1551,7 +1552,8 @@ void MomentumInferMeta(const MetaTensor& param,
   }
 }
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
   const size_t inputs_num = inputs_dims.size();
@@ -1624,7 +1626,7 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -1803,8 +1805,8 @@ void RmspropInferMeta(const MetaTensor& param,
 }
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
                   paddle::optional<const MetaTensor&> sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
@@ -1910,7 +1912,7 @@ void SGDInferMeta(const MetaTensor& param,
   param_out->set_dtype(param.dtype());
 }
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out) {
   PADDLE_ENFORCE_GT(x.size(),
@@ -1956,7 +1958,7 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
-void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
   for (size_t i = 0; i < x.size(); ++i) {
     out[i]->share_meta(*x[i]);

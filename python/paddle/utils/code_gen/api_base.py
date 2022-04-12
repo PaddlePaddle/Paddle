@@ -476,7 +476,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                         param] == "const std::vector<Tensor>&":
                     meta_tensor_code = meta_tensor_code + f"""
 {code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
 {code_indent}  }}

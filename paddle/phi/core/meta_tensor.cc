@@ -148,4 +148,6 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   }
 }
 
+bool MetaTensor::initialized() const { return tensor_ != nullptr; }
+
 }  // namespace phi

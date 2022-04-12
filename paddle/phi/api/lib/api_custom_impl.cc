@@ -729,7 +729,7 @@ std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
 
   std::vector<phi::MetaTensor> meta_x;
   meta_x.reserve(x.size());
-  std::vector<phi::MetaTensor*> meta_x_ptrs;
+  std::vector<const phi::MetaTensor*> meta_x_ptrs;
   meta_x_ptrs.reserve(x.size());
   for (const auto& t : *dense_x) {
     meta_x.push_back(t);
@@ -902,7 +902,7 @@ std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs) {
   }
 
   auto x_meta_vec = MakeMetaTensor(input_inputs);
-  std::vector<phi::MetaTensor*> inputs_metas(x_meta_vec.size());
+  std::vector<const phi::MetaTensor*> inputs_metas(x_meta_vec.size());
   for (size_t i = 0; i < x_meta_vec.size(); ++i) {
     inputs_metas[i] = &x_meta_vec[i];
   }
@@ -981,13 +981,13 @@ std::vector<Tensor> meshgrid_grad_impl(
   auto kernel_out = SetKernelOutput(out_number, kernel_backend, &api_output);
 
   auto inputs_meta_vec = MakeMetaTensor(input_inputs);
-  std::vector<phi::MetaTensor*> inputs_metas(inputs_meta_vec.size());
+  std::vector<const phi::MetaTensor*> inputs_metas(inputs_meta_vec.size());
   for (size_t i = 0; i < inputs_meta_vec.size(); ++i) {
     inputs_metas[i] = &inputs_meta_vec[i];
   }
 
   auto outputs_grad_meta_vec = MakeMetaTensor(input_outputs_grad);
-  std::vector<phi::MetaTensor*> outputs_grad_metas(
+  std::vector<const phi::MetaTensor*> outputs_grad_metas(
       outputs_grad_meta_vec.size());
   for (size_t i = 0; i < outputs_grad_meta_vec.size(); ++i) {
     outputs_grad_metas[i] = &outputs_grad_meta_vec[i];

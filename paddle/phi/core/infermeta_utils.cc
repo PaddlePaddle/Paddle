@@ -20,14 +20,12 @@ void InferMetaContext::SetMetaConfig(MetaConfig config) {
   config_ = std::move(config);
 }
 
-void InferMetaContext::EmplaceBackInput(
-    std::shared_ptr<phi::MetaTensor> input) {
+void InferMetaContext::EmplaceBackInput(MetaTensor input) {
   int index = inputs_.size();
   inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
-void InferMetaContext::EmplaceBackOutput(
-    std::shared_ptr<phi::MetaTensor> output) {
+void InferMetaContext::EmplaceBackOutput(MetaTensor output) {
   int index = outputs_.size();
   outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
@@ -37,7 +35,7 @@ void InferMetaContext::EmplaceBackAttr(paddle::any attr) {
 }
 
 void InferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs) {
+    paddle::SmallVector<MetaTensor> inputs) {
   int index = inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -45,7 +43,7 @@ void InferMetaContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 void InferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs) {
+    paddle::SmallVector<MetaTensor> outputs) {
   int index = outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -64,24 +62,24 @@ const std::pair<int, int>& InferMetaContext::OutputRangeAt(size_t idx) const {
 const MetaConfig& InferMetaContext::GetMetaConfig() const { return config_; }
 
 const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
-  return *inputs_.at(idx);
+  return inputs_.at(idx);
 }
 
-paddle::optional<const phi::MetaTensor&> InferMetaContext::OptionalInputAt(
+paddle::optional<const MetaTensor&> InferMetaContext::OptionalInputAt(
     size_t idx) const {
   const auto& input = inputs_.at(idx);
-  return input ? paddle::optional<const phi::MetaTensor&>{static_cast<
-                     const phi::MetaTensor&>(*input)}
-               : paddle::optional<const phi::MetaTensor&>{paddle::none};
+  return input.initialized()
+             ? paddle::optional<const MetaTensor&>{input}
+             : paddle::optional<const MetaTensor&>{paddle::none};
 }
 
-std::vector<MetaTensor*> InferMetaContext::InputsBetween(size_t start,
-                                                         size_t end) const {
-  std::vector<MetaTensor*> result;
+std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
+    size_t start, size_t end) const {
+  std::vector<const MetaTensor*> result;
   result.reserve(end - start);
 
   for (size_t i = start; i < end; ++i) {
-    result.push_back(inputs_.at(i).get());
+    result.emplace_back(&inputs_.at(i));
   }
 
   return result;
@@ -91,12 +89,12 @@ paddle::optional<const std::vector<const MetaTensor*>>
 InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
   const auto& first = inputs_.at(start);
 
-  if (first) {
+  if (first.initialized()) {
     std::vector<const MetaTensor*> result;
     result.reserve(end - start);
 
     for (size_t i = start; i < end; ++i) {
-      result.push_back(inputs_.at(i).get());
+      result.emplace_back(&inputs_.at(i));
     }
 
     return paddle::optional<const std::vector<const MetaTensor*>>(result);
@@ -105,7 +103,7 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
 }
 
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
-  return outputs_.at(idx).get();
+  return &outputs_.at(idx);
 }
 
 std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
@@ -113,7 +111,7 @@ std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
   std::vector<MetaTensor*> result;
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(outputs_.at(i).get());
+    result.emplace_back(&outputs_.at(i));
   }
   return result;
 }

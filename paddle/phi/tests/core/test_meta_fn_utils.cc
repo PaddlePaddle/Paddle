@@ -46,9 +46,9 @@ TEST(MetaFnFactory, InferMetaFnExists) {
   phi::MetaTensor meta_out(&dense_out1);
   phi::UnchangedInferMeta(meta_x, &meta_out);
 
-  auto shared_meat_x = std::make_shared<phi::MetaTensor>(&dense_x);
+  auto shared_meat_x = phi::MetaTensor(&dense_x);
   phi::DenseTensor dense_out2;
-  auto shared_meta_out = std::make_shared<phi::MetaTensor>(&dense_out2);
+  auto shared_meta_out = phi::MetaTensor(&dense_out2);
   phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackOutput(shared_meta_out);
@@ -69,9 +69,9 @@ TEST(MetaFnFactory, CopyInferMetaFn) {
   phi::MetaTensor meta_out(&dense_out1);
   phi::UnchangedInferMeta(meta_x, &meta_out);
 
-  auto shared_meat_x = std::make_shared<phi::MetaTensor>(&dense_x);
+  auto shared_meat_x = phi::MetaTensor(&dense_x);
   phi::DenseTensor dense_out2;
-  auto shared_meta_out = std::make_shared<phi::MetaTensor>(&dense_out2);
+  auto shared_meta_out = phi::MetaTensor(&dense_out2);
 
   phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
@@ -90,13 +90,13 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   phi::DenseTensor dense_x;
   dense_x.Resize({4, 10});
   phi::MetaTensor meta_x(&dense_x);
-  auto shared_meat_x = std::make_shared<phi::MetaTensor>(&dense_x);
+  auto shared_meat_x = phi::MetaTensor(&dense_x);
 
   phi::DenseTensor dense_out1;
   phi::DenseTensor dense_out2;
-  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> out;
-  out.push_back(std::make_shared<phi::MetaTensor>(&dense_out1));
-  out.push_back(std::make_shared<phi::MetaTensor>(&dense_out2));
+  paddle::SmallVector<phi::MetaTensor> out;
+  out.emplace_back(phi::MetaTensor(&dense_out1));
+  out.emplace_back(phi::MetaTensor(&dense_out2));
 
   phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);

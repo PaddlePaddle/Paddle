@@ -308,6 +308,92 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
   share_lod(meta_tensor);
 }
 
+void CompatInferMetaContext::EmplaceBackInput(CompatMetaTensor input) {
+  int index = compat_inputs_.size();
+  compat_inputs_.emplace_back(std::move(input));
+  input_range_.emplace_back(std::pair<int, int>(index, index + 1));
+}
+void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
+  int index = compat_outputs_.size();
+  compat_outputs_.emplace_back(std::move(output));
+  output_range_.emplace_back(std::pair<int, int>(index, index + 1));
+}
+
+void CompatInferMetaContext::EmplaceBackInputs(
+    paddle::SmallVector<CompatMetaTensor> inputs) {
+  int index = compat_inputs_.size();
+  input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
+  compat_inputs_.insert(compat_inputs_.end(),
+                        std::make_move_iterator(inputs.begin()),
+                        std::make_move_iterator(inputs.end()));
+}
+
+void CompatInferMetaContext::EmplaceBackOutputs(
+    paddle::SmallVector<CompatMetaTensor> outputs) {
+  int index = compat_outputs_.size();
+  output_range_.emplace_back(
+      std::pair<int, int>(index, index + outputs.size()));
+  compat_outputs_.insert(compat_outputs_.end(),
+                         std::make_move_iterator(outputs.begin()),
+                         std::make_move_iterator(outputs.end()));
+}
+
+const phi::MetaTensor& CompatInferMetaContext::InputAt(size_t idx) const {
+  return compat_inputs_.at(idx);
+}
+
+paddle::optional<const phi::MetaTensor&>
+CompatInferMetaContext::OptionalInputAt(size_t idx) const {
+  const auto& input = compat_inputs_.at(idx);
+  return input.initialized()
+             ? paddle::optional<const phi::MetaTensor&>{input}
+             : paddle::optional<const phi::MetaTensor&>{paddle::none};
+}
+
+std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
+    size_t start, size_t end) const {
+  std::vector<const phi::MetaTensor*> result;
+  result.reserve(end - start);
+
+  for (size_t i = start; i < end; ++i) {
+    result.emplace_back(&compat_inputs_.at(i));
+  }
+
+  return result;
+}
+
+paddle::optional<const std::vector<const phi::MetaTensor*>>
+CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
+  const auto& first = compat_inputs_.at(start);
+
+  if (first.initialized()) {
+    std::vector<const phi::MetaTensor*> result;
+    result.reserve(end - start);
+
+    for (size_t i = start; i < end; ++i) {
+      result.emplace_back(&compat_inputs_.at(i));
+    }
+
+    return paddle::optional<const std::vector<const phi::MetaTensor*>>(result);
+  }
+  return paddle::optional<const std::vector<const phi::MetaTensor*>>(
+      paddle::none);
+}
+
+phi::MetaTensor* CompatInferMetaContext::MutableOutputAt(size_t idx) {
+  return &compat_outputs_.at(idx);
+}
+
+std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
+    size_t start, size_t end) {
+  std::vector<phi::MetaTensor*> result;
+  result.reserve(end - start);
+  for (size_t i = start; i < end; ++i) {
+    result.emplace_back(&compat_outputs_.at(i));
+  }
+  return result;
+}
+
 phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                             const std::string& op_type) {
   // 1. get kernel args
@@ -321,7 +407,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(
+  CompatInferMetaContext infer_meta_context(
       {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
   auto& input_names = std::get<0>(signature.args);
@@ -338,25 +424,23 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   }
   auto attr_defs = kernels_map.cbegin()->second.args_def().attribute_defs();
 
-  // TODO(chenweihang): support multiple inputs and outputs later
   phi::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
       auto input_var = ctx->GetInputVarPtrs(in_name);
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
-            std::make_shared<CompatMetaTensor>(input_var[0], ctx->IsRuntime()));
+            CompatMetaTensor(input_var[0], ctx->IsRuntime()));
       } else {
-        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs;
+        paddle::SmallVector<CompatMetaTensor> inputs;
         inputs.reserve(input_var.size());
         for (const auto& in : input_var) {
-          inputs.push_back(
-              std::make_shared<CompatMetaTensor>(in, ctx->IsRuntime()));
+          inputs.emplace_back(CompatMetaTensor(in, ctx->IsRuntime()));
         }
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
-      infer_meta_context.EmplaceBackInput({nullptr});
+      infer_meta_context.EmplaceBackInput(CompatMetaTensor());
     }
   }
 
@@ -600,19 +684,18 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     if (ctx->HasOutputs(out_name)) {
       auto output_var = ctx->GetOutputVarPtrs(out_name);
       if (output_var.size() == 1) {
-        infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-            output_var[0], ctx->IsRuntime()));
+        infer_meta_context.EmplaceBackOutput(
+            CompatMetaTensor(output_var[0], ctx->IsRuntime()));
       } else {
-        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
+        paddle::SmallVector<CompatMetaTensor> outputs;
         outputs.reserve(output_var.size());
         for (const auto& out : output_var) {
-          outputs.emplace_back(
-              std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+          outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      infer_meta_context.EmplaceBackOutput({nullptr});
+      infer_meta_context.EmplaceBackOutput(CompatMetaTensor());
     }
   }
 
