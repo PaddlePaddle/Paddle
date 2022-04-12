@@ -244,7 +244,7 @@ class TestNormalInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        num_ops = 1
+        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -683,6 +683,68 @@ class TestUniformInitializerDygraph(unittest.TestCase):
         with framework._test_eager_guard():
             self.func_uniform_initializer()
         self.func_uniform_initializer()
+
+
+class TestXavierInitializerDygraph(unittest.TestCase):
+    def func_xvarier_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([1024, 1024, 16])
+        tensor.stop_gradient = False
+
+        xavier_ = paddle.fluid.initializer.XavierInitializer(
+            uniform=False, fan_in=3, fan_out=5)
+        xavier_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16]))
+
+        self.assertTrue(
+            np.allclose(
+                hist, hist2, rtol=0, atol=0.01),
+            "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
+
+    def test_xavier_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_xvarier_initializer()
+        self.func_xvarier_initializer()
+
+
+class TestMSRAInitializerDygraph(unittest.TestCase):
+    def func_msra_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([1024, 1024, 16])
+        tensor.stop_gradient = False
+
+        msra_ = paddle.fluid.initializer.MSRAInitializer(
+            uniform=False, fan_in=4)
+        msra_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16]))
+
+        self.assertTrue(
+            np.allclose(
+                hist, hist2, rtol=0, atol=0.01),
+            "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
+
+    def test_msra_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_msra_initializer()
+        self.func_msra_initializer()
 
 
 class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
