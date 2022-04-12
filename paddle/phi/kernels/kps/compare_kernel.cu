@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/compare_kernel.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#else
 #include <thrust/fill.h>
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#endif
 
 namespace phi {
 
@@ -53,6 +57,7 @@ inline void CompareKernelImpl(const Context& ctx,
       ctx, ins, &outs, axis, Functor());
 }
 
+#ifndef PADDLE_WITH_XPU_KP
 template <typename T, typename Context, typename Functor>
 inline void CompareAllKernelImpl(const Context& ctx,
                                  const DenseTensor& x,
@@ -83,11 +88,22 @@ inline void CompareAllKernelImpl(const Context& ctx,
   funcs::ReduceKernel<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
       ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims);
 }
+#endif
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(less_than, KPS, ALL_LAYOUT, phi::LessThanKernel, int) {}
+PD_REGISTER_KERNEL(less_equal, KPS, ALL_LAYOUT, phi::LessEqualKernel, int) {}
+PD_REGISTER_KERNEL(greater_than, KPS, ALL_LAYOUT, phi::GreaterThanKernel, int) {
+}
+PD_REGISTER_KERNEL(
+    greater_equal, KPS, ALL_LAYOUT, phi::GreaterEqualKernel, int) {}
+PD_REGISTER_KERNEL(equal, KPS, ALL_LAYOUT, phi::EqualKernel, int) {}
+PD_REGISTER_KERNEL(not_equal, KPS, ALL_LAYOUT, phi::NotEqualKernel, int) {}
+#else
 PD_REGISTER_KERNEL(less_than,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::LessThanKernel,
                    bool,
@@ -97,7 +113,7 @@ PD_REGISTER_KERNEL(less_than,
                    float,
                    double) {}
 PD_REGISTER_KERNEL(less_equal,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::LessEqualKernel,
                    bool,
@@ -107,7 +123,7 @@ PD_REGISTER_KERNEL(less_equal,
                    float,
                    double) {}
 PD_REGISTER_KERNEL(greater_than,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::GreaterThanKernel,
                    bool,
@@ -117,7 +133,7 @@ PD_REGISTER_KERNEL(greater_than,
                    float,
                    double) {}
 PD_REGISTER_KERNEL(greater_equal,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::GreaterEqualKernel,
                    bool,
@@ -127,7 +143,7 @@ PD_REGISTER_KERNEL(greater_equal,
                    float,
                    double) {}
 PD_REGISTER_KERNEL(equal,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::EqualKernel,
                    bool,
@@ -137,7 +153,7 @@ PD_REGISTER_KERNEL(equal,
                    float,
                    double) {}
 PD_REGISTER_KERNEL(not_equal,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::NotEqualKernel,
                    bool,
@@ -148,7 +164,7 @@ PD_REGISTER_KERNEL(not_equal,
                    double) {}
 
 PD_REGISTER_KERNEL(equal_all,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::EqualAllKernel,
                    bool,
@@ -156,3 +172,4 @@ PD_REGISTER_KERNEL(equal_all,
                    int64_t,
                    float,
                    double) {}
+#endif

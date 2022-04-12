@@ -543,6 +543,9 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
 
+    if compile_dir is None:
+        # Add this compile option to isolate fluid headers
+        add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
     kwargs['extra_compile_args'] = extra_compile_args
 
     kwargs['language'] = 'c++'
