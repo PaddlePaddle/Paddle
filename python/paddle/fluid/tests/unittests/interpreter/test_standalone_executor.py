@@ -14,10 +14,6 @@
 
 import os
 os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
-os.environ['FLAGS_host_trace_level'] = '10'
-os.environ[
-    'FLAGS_static_executor_perfstat_filepath'] = './exec_perfstat_' + str(
-        os.getpid())
 import sys
 import shutil
 import unittest
