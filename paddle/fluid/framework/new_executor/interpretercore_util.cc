@@ -39,6 +39,7 @@ constexpr size_t kPrepareWorkQueueIdx = 2;
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
+  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_sequential_run) {
     VLOG(4) << "FLAGS_new_executor_sequential_run:"
@@ -708,8 +709,13 @@ std::map<int, std::list<int>> build_op_downstream_map(
   // add dependences for random op, make sure that the random op is scheduled
   // sequentially
   const std::set<std::string> random_op_set = {
-      "bernoulli",      "poisson", "multinomial", "gaussian_random",
-      "uniform_random", "randint", "randperm",    "exponential"};
+      "bernoulli", "poisson", "multinomial", "gaussian_random",
+      "truncated_gaussian_random", "uniform_random", "randint", "randperm",
+      "exponential",
+      "sampling_id"
+      "dropout",
+      "class_center_sample",
+  };
 
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
@@ -722,13 +728,26 @@ std::map<int, std::list<int>> build_op_downstream_map(
   }
 
   // add dependency for communication op
-  const std::string communication_op_prefix = "c_";
+  auto is_comm_op = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send", "recv", "send_v2", "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
   dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
-    if (vec_instruction[op_idx].OpBase()->Type().find(
-            communication_op_prefix) != std::string::npos) {
+    if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         op2dependences[op_idx].insert(dependence_op_idx);
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
       }
       dependence_op_idx = op_idx;
     }
@@ -832,10 +851,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
       for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
            ++j) {
         if (j == target + 1 &&
-            vec_instruction[target].OpBase()->Type().find(
-                communication_op_prefix) != std::string::npos &&
-            vec_instruction[j].OpBase()->Type().find(communication_op_prefix) !=
-                std::string::npos) {
+            is_comm_op(vec_instruction[target].OpBase()->Type()) &&
+            is_comm_op(vec_instruction[j].OpBase()->Type())) {
           VLOG(4) << "Found consecutive communication ops, "
                   << vec_instruction[target].OpBase()->Type() << " -> "
                   << vec_instruction[j].OpBase()->Type();

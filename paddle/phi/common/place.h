@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/phi/api/include/dll_decl.h"
+
 namespace phi {
 
 enum class AllocationType : int8_t {
@@ -33,11 +35,13 @@ enum class AllocationType : int8_t {
 
 const char* AllocationTypeStr(AllocationType type);
 
-size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
-std::string GetGlobalDeviceType(size_t device_type_id_);
+PADDLE_API size_t
+GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+
+PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
-class Place {
+class PADDLE_API Place {
  public:
   Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
 
