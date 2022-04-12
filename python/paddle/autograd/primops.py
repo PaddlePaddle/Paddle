@@ -132,7 +132,7 @@ def split(x, num_or_sections, axis=0, outs=None):
 def concat(xs, axis=0, out=None):
     assert isinstance(xs, (list, tuple)) and len(xs) > 0
     attrs = {'axis': axis}
-    helper = LayerHelper('split_p', **locals())
+    helper = LayerHelper('concat_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=xs[0].dtype)
     helper.append_op(
@@ -143,8 +143,8 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-def reduce(x, axis, keepdim=None, out=None):
-    assert isinstance(axis, (int, tuple, list))
+def reduce(x, axis, keepdim=False, out=None):
+    assert isinstance(axis, (tuple, list))
     assert isinstance(keepdim, bool)
 
     attrs = {'axis': axis, 'keepdim': keepdim}
@@ -231,8 +231,3 @@ def scatter_add(x, y, indextensor, axis, out=None):
         attrs=attrs)
     return out
 
-
-if __name__ == '__main__':
-    paddle.enable_static()
-    A = paddle.rand([2, 3])
-    B = paddle.rand([3, 2])
