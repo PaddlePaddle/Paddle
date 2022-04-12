@@ -360,7 +360,7 @@ def _getitem_impl_(var, item):
             decrease_axes.append(dim)
             start = slice_item
             step = 1
-            end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            end = slice_item + 1 if slice_item != -1 else var.shape[dim]
 
         elif isinstance(slice_item, slice):
             start = slice_item.start
@@ -373,9 +373,9 @@ def _getitem_impl_(var, item):
             step = 1 if step is None else step
 
             if start is None:
-                start = 0 if step > 0 else MAX_INTEGER
+                start = 0 if step > 0 else var.shape[dim]
             if end is None:
-                end = MAX_INTEGER if step > 0 else -1
+                end = var.shape[dim] if step > 0 else -1
 
         elif isinstance(slice_item, list):
             all_bool = True
