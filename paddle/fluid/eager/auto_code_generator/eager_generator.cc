@@ -150,12 +150,20 @@ class ForwardGenerationInfo {
   }
   std::vector<proto::OpProto::Var>* GetMutableOutVars() { return &out_vars_; }
 
+  const std::unordered_set<std::string>& GetNoNeedBufferInputs() const {
+    return no_need_buffer_ins_;
+  }
+  std::unordered_set<std::string>* GetMutableNoNeedBufferInputs() {
+    return &no_need_buffer_ins_;
+  }
+
  private:
   std::string op_type_;
   std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map_;
   std::unordered_map<std::string, size_t> fwd_outputs_name_pos_map_;
   std::vector<proto::OpProto::Var> in_vars_;
   std::vector<proto::OpProto::Var> out_vars_;
+  std::unordered_set<std::string> no_need_buffer_ins_;
 };
 
 class GradNodeGenerationInfo {
@@ -762,6 +770,21 @@ static void CollectForwardInformationFromOpInfo(
   for (const proto::OpProto::Var& output : op_proto.outputs()) {
     fwd_info->GetMutableOutVars()->push_back(output);
   }
+
+  auto& inferer = op_info.NoNeedBufferVarsInferer();
+  if (inferer) {
+    paddle::imperative::NameVarMap<paddle::imperative::VariableWrapper> inputs =
+        {};
+    paddle::imperative::NameVarMap<paddle::imperative::VariableWrapper>
+        outputs = {};
+    paddle::framework::AttributeMap attrs = {};
+    *fwd_info->GetMutableNoNeedBufferInputs() = inferer(inputs, outputs, attrs);
+  }
+  if (fwd_info->GetNoNeedBufferInputs().empty() &&
+      no_need_buffer_map.count(op_proto.type())) {
+    *fwd_info->GetMutableNoNeedBufferInputs() =
+        no_need_buffer_map[op_proto.type()];
+  }
 }
 
 static bool CollectGradInformationFromOpInfo(
@@ -994,6 +1017,8 @@ static std::string GenerateGradNodeCreationContent(
       fwd_info.GetFwdOutputsNamePosMap();
   const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
   const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
+  const std::unordered_set<std::string>& no_need_buffer_ins =
+      fwd_info.GetNoNeedBufferInputs();
 
   const auto& op_base_infos = bwd_info.GetOpBaseInfos();
 
@@ -1133,7 +1158,8 @@ static std::string GenerateGradNodeCreationContent(
       const std::string& tensor_wrapper_name = kv.second;
       std::string full_reserved = "false";
       if (fwd_outputs_name_pos_map.find(tensor_wrapper_name) ==
-          fwd_outputs_name_pos_map.end()) {
+              fwd_outputs_name_pos_map.end() &&
+          !no_need_buffer_ins.count(tensor_wrapper_name)) {
         full_reserved = "true";
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2456,6 +2482,8 @@ static std::string GenerateGradNodeHeaderContents(
   const std::string& op_type = fwd_info.GetOpType();
   const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
   const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
+  const std::unordered_set<std::string>& no_need_buffer_ins =
+      fwd_info.GetNoNeedBufferInputs();
 
   const auto& op_base_infos = bwd_info.GetOpBaseInfos();
 
@@ -2541,6 +2569,10 @@ static std::string GenerateGradNodeHeaderContents(
       std::string tensor_wrapper_arg_str;
       std::string tensor_wrapper_body_str;
       std::string full_reserved_str = "full_reserved";
+      std::string no_need_buffer_str = "false";
+      if (no_need_buffer_ins.count(tensor_wrapper_name)) {
+        no_need_buffer_str = "true";
+      }
       if (duplicable_tensors.count(tensor_wrapper_name)) {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const std::vector<paddle::experimental::Tensor>& %s";
@@ -2554,12 +2586,12 @@ static std::string GenerateGradNodeHeaderContents(
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
             "for(const auto& eager_tensor : %s) {\n"
-            "          %s.emplace_back( egr::TensorWrapper(eager_tensor, true "
-            "/*full_reserved*/) );\n"
+            "          %s.emplace_back( egr::TensorWrapper(eager_tensor, %s "
+            "/*full_reserved*/, %s) );\n"
             "      }\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
-            struct_tensor_wrapper_name);
+            struct_tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
             "for (auto tw: %s)   {\n"
@@ -2580,10 +2612,10 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/, %s);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved_str);
+            tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
         clear_tensor_wrappers_str += paddle::string::Sprintf(
@@ -2773,6 +2805,11 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     VLOG(6) << "-------- CollectInformationFromOpInfo -------";
 
     CollectForwardInformationFromOpInfo(op_info, &fwd_info);
+    // std::cout << "yoki op_type: " << fwd_info.GetOpType() << "\n";
+    // if (!fwd_info.GetNoNeedBufferInputs().empty()) {
+    //   std:: cout << "yoki no_need_buffer: " <<
+    //   *fwd_info.GetNoNeedBufferInputs().begin() << "\n";
+    // }
 
     bool is_available = CollectGradInformationFromOpInfo(op_info, &bwd_info);
 
