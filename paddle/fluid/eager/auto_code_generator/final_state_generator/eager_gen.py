@@ -114,14 +114,14 @@ NODE_DECLARATION_TEMPLATE = \
 class {} : public egr::GradNodeBase {{
  public:
   {}() : egr::GradNodeBase() {{}}
-  {}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : 
+  {}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) :
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
   std::string name() override {{ return \" {} \"; }}
-  
+
   void ClearTensorWrappers() override {{
       {}
       SetIsTensorWrappersCleared(true);
@@ -129,10 +129,10 @@ class {} : public egr::GradNodeBase {{
 
   std::shared_ptr<GradNodeBase> Copy() const override {{
       auto copied_node = std::shared_ptr<{}>(new {}(*this));
-      
+
       return copied_node;
   }}
-  
+
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -155,12 +155,12 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vecto
 
     // Apply Gradient Hooks
     auto hooked_grads = ApplyGradientHooks(grads);
-    
+
     // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
 {}
 
     // Call grad_api function
-    VLOG(3) << \"Final State Running: \" << \"{}\"; 
+    VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
 
     // Get Output
@@ -171,14 +171,14 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vecto
 
     // Get GradOut autograd_meta
 {}
-    
+
     // Compute Require Grad
 {}
-    
+
     // Create Grad Node
 {}
 
-    // Return 
+    // Return
 {}
 
 }}
@@ -191,7 +191,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     // AMP Logic
 {}
-    
+
     // Get Input AutoGradMeta
 {}
     // Set Device Id
@@ -212,7 +212,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     bool trace_backward = egr::Controller::Instance().HasGrad();
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
-    
+
     // Check Inplace & Bump Inplace Version
 {}
 {}
@@ -230,7 +230,7 @@ FORWARD_BODY_TEMPLATE = \
     if(require_any_grad) {{
 {}
       egr::EagerUtils::PassStopGradient({});
-            
+
       // Node Construction
 {}
       // SetAttributes
@@ -694,7 +694,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             pass_stop_gradient_args_list.append(output_autograd_meta_name)
         pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
 
-        # Node Construction        
+        # Node Construction
         num_backward_inputs = len(forward_outputs_position_map.keys())
         num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
@@ -791,7 +791,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_retain_grad_str = "\n".join(set_retain_grad_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
+        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
@@ -1496,7 +1496,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
 class DygraphYamlGenerator(YamlGeneratorBase):
     def __init__(self, api_yaml_path, backward_yaml_path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
