@@ -641,6 +641,7 @@ void DepthwiseConvCudnnGradKernel(const Context& dev_ctx,
                                   bool use_addto,
                                   int workspace_size_MB,
                                   bool exhaustive_search,
+                                  bool fuse_relu,
                                   DenseTensor* input_grad,
                                   DenseTensor* filter_grad) {
   ConvCudnnGradKernel<T>(dev_ctx,
