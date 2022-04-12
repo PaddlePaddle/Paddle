@@ -50,18 +50,18 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         input2 = paddle.to_tensor(self.input2_np)
         label = paddle.to_tensor(self.label_np)
         dy_result = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='mean')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected1 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='mean')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='sum')
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='sum')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected2 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='sum')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected2))
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='none')
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='none')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected3 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='none')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected3))
         self.assertTrue(dy_result.shape, [2])
 
     def run_static(self, use_gpu=False):
@@ -119,6 +119,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         self.assertRaises(ValueError, test_label_shape_error)
 
         def test_input_shape1D_error():
+            input1 = paddle.to_tensor(self.input1_np[0])
             label = paddle.to_tensor(np.ndarray([1]))
             paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
 
@@ -150,20 +151,20 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
         label = paddle.to_tensor(self.label_np)
         CosineEmbeddingLoss = paddle.nn.loss.CosineEmbeddingLoss(margin=0.5, reduction='mean')
         dy_result = CosineEmbeddingLoss(input1, input2, label)
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='mean')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected1 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='mean')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 
         CosineEmbeddingLoss = paddle.nn.loss.CosineEmbeddingLoss(margin=0.5, reduction='sum')
         dy_result = CosineEmbeddingLoss(input1, input2, label)
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='sum')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected2 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='sum')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected2))
         self.assertTrue(dy_result.shape, [1])
 
         CosineEmbeddingLoss = paddle.nn.loss.CosineEmbeddingLoss(margin=0.5, reduction='none')
         dy_result = CosineEmbeddingLoss(input1, input2, label)
-        expected = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='none')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        expected3 = cosine_embedding_loss(self.input1_np, self.input2_np, self.label_np, margin=0.5, reduction='none')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected3))
         self.assertTrue(dy_result.shape, [1, 2])
 
     def run_static(self, use_gpu=False):
