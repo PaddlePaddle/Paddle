@@ -87,6 +87,28 @@ __global__ void dy_mf_search_kernel(Table* table,
     }
   }
 }
+
+__global__ void  curand_init_kernel(curandState* p_value, int len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    curand_init(clock64(), i, 0, p_value + i);
+  }
+}
+
+template <typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const GradType* const grads, curandState* p_state, size_t len,
+                              Sgd sgd) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      sgd.update_value((it.getter())->second, grads[i], p_state[i]);
+    }
+  }
+}
+
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,
                               const typename Table::key_type* const keys,
@@ -122,11 +144,18 @@ template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
   rwlock_.reset(new phi::RWLock);
+  g_rand_state_ = nullptr;
+  g_rand_state_size_ = 0;
 }
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
   delete container_;
+  if (g_rand_state_ != nullptr) {
+    CHECK(cudaFree(g_rand_state_) == cudaSuccess);
+    g_rand_state_ = nullptr;
+  }
+  g_rand_state_size_ = 0;
 }
 
 template <typename KeyType, typename ValType>
@@ -267,9 +296,25 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
+  if (len > g_rand_state_size_) {
+    curandState* state = nullptr;
+    CHECK(cudaMalloc(reinterpret_cast<void**>(&state), len * sizeof(curandState)) == cudaSuccess);
+    if (g_rand_state_size_ > 0) {
+      CHECK(cudaMemcpyAsync(state, g_rand_state_,
+                    g_rand_state_size_ * sizeof(curandState), cudaMemcpyDeviceToDevice, stream) == cudaSuccess);
+    }
+    int init_len = len - g_rand_state_size_;
+    const int init_kernel_grid = (init_len - 1) / BLOCK_SIZE_ + 1;
+    curand_init_kernel<<<init_kernel_grid, BLOCK_SIZE_, 0, stream>>>(state + g_rand_state_size_, init_len);
+    if (g_rand_state_size_ != 0) {
+      cudaStreamSynchronize(stream);
+      CHECK(cudaFree(g_rand_state_) == cudaSuccess);
+    }
+    g_rand_state_ = state;
+    g_rand_state_size_ = len;
+  }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
-                                                       d_grads, len, sgd);
+  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, d_grads, g_rand_state_, len, sgd);
 }
 
 template <typename KeyType, typename ValType>

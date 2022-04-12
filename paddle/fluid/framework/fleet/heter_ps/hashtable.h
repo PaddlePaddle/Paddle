@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
 namespace paddle {
 namespace framework {
@@ -85,6 +86,8 @@ class HashTable {
 
  private:
   TableContainer<KeyType, ValType>* container_;
+  curandState* g_rand_state_;
+  uint64_t g_rand_state_size_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;

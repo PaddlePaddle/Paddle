@@ -516,12 +516,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr,
                                                         d_keys, d_idx_ptr, len);
 
+  cudaMemcpyAsync(h_left, d_left_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost, stream);
+  cudaMemcpyAsync(h_right, d_right_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost, stream);
   cudaStreamSynchronize(stream);
-
-  cudaMemcpy(h_left, d_left_ptr, total_gpu * sizeof(int),
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
-             cudaMemcpyDeviceToHost);
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
@@ -587,8 +586,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
-  int h_left[total_gpu];   // NOLINT
-  int h_right[total_gpu];  // NOLINT
+  int* h_left = nullptr;
+  int* h_right = nullptr;
+  cudaHostAlloc(reinterpret_cast<void**>(&(h_left)),  sizeof(int) * total_gpu, cudaHostAllocDefault);
+  cudaHostAlloc(reinterpret_cast<void**>(&(h_right)),  sizeof(int) * total_gpu, cudaHostAllocDefault);
 
   auto d_left = memory::Alloc(place, total_gpu * sizeof(int));
   auto d_right = memory::Alloc(place, total_gpu * sizeof(int));
@@ -661,6 +662,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   for (int i = 0; i < total_gpu; ++i) {
     destroy_storage(gpu_num, i);
   }
+
+  cudaFreeHost(h_left);
+  cudaFreeHost(h_right);
 }
 
 template <typename KeyType, typename ValType, typename GradType>
