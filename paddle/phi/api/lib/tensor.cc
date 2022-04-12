@@ -155,7 +155,12 @@ bool Tensor::is_sparse_csr_tensor() const {
 /* Part 3: Device and Backend methods */
 
 Place Tensor::place() const {
-  return impl_->initialized() ? impl_->place() : Place();
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::PermissionDenied(
+          "Null pointer error, the impl_ of Tensor should not be "
+          "Null when calling Tensor::place()."));
+  return impl_->place();
 }
 
 Place Tensor::inner_place() const {
@@ -193,7 +198,8 @@ T *Tensor::mutable_data() {
                   "the place, datatype, and data layout of tensor may be in "
                   "an illegal state.";
   if (is_dense_tensor()) {
-    return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
+    return static_cast<phi::DenseTensor *>(impl_.get())
+        ->mutable_data<T>(place());
   }
   return nullptr;
 }
