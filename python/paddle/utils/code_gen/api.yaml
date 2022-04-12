@@ -1290,8 +1290,11 @@
 
 - api : meshgrid
   args : (Tensor[] inputs)
-  output : Tensor[]
-  invoke : meshgrid_impl(inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
@@ -2059,8 +2062,11 @@
 
 - api : unbind
   args : (Tensor input, int axis)
-  output : Tensor[]
-  invoke : unbind_impl(input, axis)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
   backward : unbind_grad
 
 # unfold
