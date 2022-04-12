@@ -68,7 +68,11 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
     void *new_host_mem = nullptr;
+    // change capture mode to cudaStreamCaptureModeRelaxed for enabling cudaMallocHost
+    cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&new_host_mem, nbytes));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddResetCallbackIfCapturingCUDAGraph(
         [new_host_mem]  { PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(new_host_mem)); });
