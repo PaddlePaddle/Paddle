@@ -174,7 +174,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : assign_raw
+    func : assign
   backward : assign_grad
 
 # atan
@@ -1002,6 +1002,16 @@
   optional : prior_dist
   backward : label_smooth_grad
 
+- api : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+  backward : layer_norm_grad
+  optional : scale, bias
+
 # leaky_relu
 - api : leaky_relu
   args : (Tensor x, float alpha)
@@ -1290,8 +1300,11 @@
 
 - api : meshgrid
   args : (Tensor[] inputs)
-  output : Tensor[]
-  invoke : meshgrid_impl(inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
@@ -1710,6 +1723,7 @@
     func : SearchsortedInferMeta
   kernel :
     func : searchsorted
+    data_type : sorted_sequence
 
 # segment_pool
 - api : segment_pool
@@ -2059,8 +2073,11 @@
 
 - api : unbind
   args : (Tensor input, int axis)
-  output : Tensor[]
-  invoke : unbind_impl(input, axis)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
   backward : unbind_grad
 
 # unfold

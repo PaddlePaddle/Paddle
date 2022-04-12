@@ -44,6 +44,8 @@ class SliceOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+    std::vector<int> decrease_axises =
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -107,8 +109,10 @@ class SliceOpConverter : public OpConverter {
       } else {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::SlicePluginDynamic* plugin =
-            new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
+        int decrease_axis =
+            decrease_axises.size() == 0 ? -1 : decrease_axises[0];
+        plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
+            starts, ends, axes, decrease_axis, with_fp16);
         layer = engine_->AddDynamicPlugin(&input, 1, plugin);
       }
     } else {
