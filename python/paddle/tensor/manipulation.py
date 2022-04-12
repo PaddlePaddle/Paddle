@@ -458,6 +458,10 @@ def flip(x, axis, name=None):
     """
     if isinstance(axis, int):
         axis = [axis]
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_flip(x, axis)
+
     if paddle.in_dynamic_mode():
         return _C_ops.flip(x, "axis", axis)
 
@@ -780,6 +784,8 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
+        if isinstance(shifts, paddle.Tensor):
+            shifts = shifts.cpu()
         return _C_ops.final_state_roll(x, shifts, axis)
 
     if _in_legacy_dygraph():

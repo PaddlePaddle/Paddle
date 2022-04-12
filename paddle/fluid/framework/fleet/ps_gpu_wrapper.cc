@@ -271,13 +271,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
   gpu_task->UniqueKeys();
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
+  VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
 
   if (!multi_mf_dim_) {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
@@ -736,7 +736,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     HeterPs_ = nullptr;
   }
   if (size_max <= 0) {
-    VLOG(1) << "Skip build gpu ps cause feasign nums = " << size_max;
+    VLOG(0) << "Skip build gpu ps cause feasign nums = " << size_max;
     return;
   }
   std::vector<std::thread> threads(device_num);
@@ -758,7 +758,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
 }
 
@@ -819,7 +819,7 @@ void PSGPUWrapper::build_task() {
     return;
   }
 
-  VLOG(1) << "BuildPull start.";
+  VLOG(0) << "BuildPull start.";
   platform::Timer timer;
   timer.Start();
   BuildPull(gpu_task);

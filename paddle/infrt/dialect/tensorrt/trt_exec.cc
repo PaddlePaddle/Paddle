@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
   trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphFusePass>());
   trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphSplitPass>(1));
   trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpConverterPass>());
-  trt_pass_manager.addPass(infrt::trt::createTrtTypeConvertPass());
+  trt_pass_manager.addPass(infrt::trt::CreateTrtTypeConvertPass());
   trt_pass_manager.addPass(::mlir::createCanonicalizerPass());
   if (mlir::failed(pm.run(*module))) {
     std::cout << "\npass failed!\n" << std::endl;

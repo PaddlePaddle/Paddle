@@ -684,10 +684,10 @@ def maxout(x, groups, axis=1, name=None):
             #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
             #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
     """
-
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.maxout(x, 'groups', groups, 'axis', axis)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_maxout(x, groups, axis)
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -1181,8 +1181,9 @@ def swish(x, name=None):
             x = paddle.to_tensor(np.array([-2., 0., 1.]))
             out = F.swish(x) # [-0.238406, 0., 0.731059]
     """
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_swish(x, 1.0)
+    if _in_legacy_dygraph():
         return _C_ops.swish(x, 'beta', 1.0)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
