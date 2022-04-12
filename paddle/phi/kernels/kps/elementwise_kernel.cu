@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #ifdef PADDLE_WITH_XPU_KP
-// #include "paddle/phi/backends/xpu/xpu_context.h"
-// #else
-// #include "paddle/phi/backends/gpu/gpu_context.h"
-// #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
@@ -24,7 +19,6 @@
 #endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
-// #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
 
@@ -82,16 +76,7 @@ PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
 }
 PD_REGISTER_KERNEL(
     floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
-// PD_REGISTER_KERNEL(modulo_raw,
-//                    KPS,
-//                    ALL_LAYOUT,
-//                    phi::ModuloRawKernel,
-//                    float) {}
-// PD_REGISTER_KERNEL(elementwise_pow_raw,
-//                    KPS,
-//                    ALL_LAYOUT,
-//                    phi::ElementwisePowRawKernel,
-//                    float) {}
+
 #else
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
