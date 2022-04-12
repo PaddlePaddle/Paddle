@@ -127,6 +127,9 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         self.place = paddle.CPUPlace()
 
     def test_executor_statistics(self):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
+
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
         fetch_list = [x.name for x in fetch_list]
