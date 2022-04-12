@@ -52,12 +52,41 @@ Autograd primitive broadcast_p operator.
   }
 };
 
+static void CheckShapeValid(const std::vector<int64_t> &x_shape,
+                            const std::vector<int64_t> &target_shape) {
+  size_t x_rank = x_shape.size();
+  size_t target_rank = target_shape.size();
+  PADDLE_ENFORCE_GE(target_rank, x_rank,
+                    platform::errors::InvalidArgument(
+                        "The rank of target shape should be greater than or "
+                        "equal to input tensor's dimensions, "
+                        "but received %d and %d",
+                        target_rank, x_rank));
+  std::vector<int64_t>::const_iterator it = target_shape.begin();
+  for (size_t i = 0; i < x_rank; i++, it++) {
+    if (x_shape[i] != 1) {
+      it = std::find(it, target_shape.end(), x_shape[i]);
+    }
+    PADDLE_ENFORCE_EQ(
+        it != target_shape.end(), true,
+        platform::errors::InvalidArgument(
+            "Invalid shape, can not broadcast input tensor into target shape,"
+            "the first dismatching shape  %d is shape of input tensor at "
+            "dimension %d",
+            x_shape[i], i));
+  }
+}
+
 class BroadcastPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
+    framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
+    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    auto x_shape = x_var->GetShape();
+    auto target_shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    CheckShapeValid(x_shape, target_shape);
+    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(target_shape);
   }
 };
 

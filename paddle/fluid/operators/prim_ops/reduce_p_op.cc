@@ -48,6 +48,10 @@ class ReducePrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "(std::vector<int64_t>) The axis along which to reduce on. Must be in "
         "range [-rank(input), rank(input)]. If `axis[i] < 0`, the axis[i] to "
         "reduce is `rank + axis[i]`.");
+    AddAttr<bool>("keepdim",
+                  "(bool, default false) "
+                  "If true, retain the reduced axis with length 1.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Autograd primitive reduce_p operator.
 )DOC");
