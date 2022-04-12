@@ -226,7 +226,7 @@ def ParseYamlReturns(string):
     returns = [x.strip() for x in string.strip().split(",")]
 
     for i in range(len(returns)):
-        ret = returns[i]
+        ret = returns[i].split("{")[0].strip()
 
         ret_name = ""
         if "(" in ret and ")" in ret:
