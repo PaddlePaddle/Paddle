@@ -84,8 +84,6 @@ static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}})
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
 static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
-  {%- elif typename == "str" %}{# warp string #}
-"{{default_value}}"
   {%- else %}{# pass through as-is #}
 {{default_value}}
   {%- endif %}
