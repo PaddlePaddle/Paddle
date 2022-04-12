@@ -483,7 +483,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
 
     Args:
         grad_var_to_var(dict): used to build the mapping between grad var name and forward var name.
-        Only used in auto parallel.
+        Only for auto parallel.
     """
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
@@ -1186,6 +1186,7 @@ def _append_backward_ops_(block,
                         rename_var_map[name] = new_name
 
                         if name in op_grad_to_var:
+                            # Build the mapping between the grad var name and var name (Only for auto parallel)
                             if distop_context is not None:
                                 distop_context.grad_var_to_var[
                                     program._appending_grad_times][
@@ -1222,11 +1223,12 @@ def _append_backward_ops_(block,
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-    # sum parameter's gradients' var given multiple var gradient
+    # record mapping bewteen grad var name and var name (Only for auto parallel)
     grad_var_to_var = None
     if distop_context is not None:
         grad_var_to_var = distop_context.grad_var_to_var[
             program._appending_grad_times]
+    # sum parameter's gradients' var given multiple var gradient
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
                                                grad_var_to_var)
 
