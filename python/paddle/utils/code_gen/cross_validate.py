@@ -13,22 +13,20 @@
 # limitations under the License.
 
 import argparse
+from itertools import chain
 from pathlib import Path
 
 import yaml
 from parse_utils import cross_validate, to_named_dict
 
 
-def main(forward_api_yaml_path, backward_api_yaml_path):
-    with open(forward_api_yaml_path, "rt") as f:
-        forward_apis = yaml.safe_load(f)
-
-    with open(backward_api_yaml_path, "rt") as f:
-        backward_apis = yaml.safe_load(f)
-
+def main(forward_api_yaml_paths, backward_api_yaml_paths):
     apis = {}
-    apis.update(to_named_dict(forward_apis))
-    apis.update(to_named_dict(backward_apis))
+    for api_yaml_path in chain(forward_api_yaml_paths, backward_api_yaml_paths):
+        with open(api_yaml_path, "rt", encoding="utf-8") as f:
+            api_list = yaml.safe_load(f)
+            if api_list is not None:
+                apis.update(to_named_dict((api_list)))
 
     cross_validate(apis)
 
@@ -38,15 +36,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Parse api yaml into canonical format.")
     parser.add_argument(
-        '--forward_yaml_path',
+        '--forward_yaml_paths',
         type=str,
+        nargs='+',
         default=str(current_dir / "api.parsed.yaml"),
         help="forward api yaml file.")
     parser.add_argument(
-        '--backward_yaml_path',
+        '--backward_yaml_paths',
         type=str,
+        nargs='+',
         default=str(current_dir / "backward.yaml.yaml"),
         help="backward api yaml file.")
 
     args = parser.parse_args()
-    main(args.forward_yaml_path, args.backward_yaml_path)
+    main(args.forward_yaml_paths, args.backward_yaml_paths)

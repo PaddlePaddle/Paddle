@@ -15,6 +15,7 @@ set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
+set(new_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_api.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -23,6 +24,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 # backward api file
 set(bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward_api_gen.py)
 set(bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml)
+set(new_bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_backward.yaml)
 set(bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api.h)
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
 set(bw_api_header_file_tmp ${bw_api_header_file}.tmp)
@@ -61,7 +63,6 @@ set(strings_api_source_file_tmp ${strings_api_source_file}.tmp)
 
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
-set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
 set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.h)
 set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
@@ -69,12 +70,14 @@ if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
 endif()
 
+
+
 # generate forward api
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
-                 --api_yaml_path ${api_yaml_file}
+                 --api_yaml_path ${api_yaml_file} ${new_api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
@@ -87,7 +90,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT ${bw_api_header_file} ${bw_api_source_file} ${bw_api_header_file_tmp} ${bw_api_source_file_tmp}
   COMMAND ${PYTHON_EXECUTABLE} ${bw_api_gen_file}
-                 --backward_yaml_path ${bw_api_yaml_file}
+                 --backward_yaml_path ${bw_api_yaml_file} ${new_bw_api_yaml_file}
                  --backward_header_path ${bw_api_header_file_tmp}
                  --backward_source_path ${bw_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_header_file_tmp} ${bw_api_header_file}
@@ -139,7 +142,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT ${dygraph_api_header_file} ${dygraph_api_source_file}
   COMMAND ${PYTHON_EXECUTABLE} ${im_api_gen_file}
-                 --api_yaml_path ${api_yaml_file}
+                 --api_yaml_path ${api_yaml_file} ${new_api_yaml_file}
                  --sparse_api_yaml_path ${sparse_api_yaml_file}
                  --dygraph_api_header_path ${dygraph_api_header_file_tmp}
                  --dygraph_api_source_path ${dygraph_api_source_file_tmp}
@@ -152,7 +155,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT ${wrapped_infermeta_header_file} ${wrapped_infermeta_source_file}
   COMMAND ${PYTHON_EXECUTABLE} ${wrapped_infermeta_gen_file}
-                 --api_yaml_path ${api_yaml_file}
+                 --api_yaml_path ${api_yaml_file} ${new_api_yaml_file}
                  --wrapped_infermeta_header_path ${wrapped_infermeta_header_file}
                  --wrapped_infermeta_source_path ${wrapped_infermeta_source_file}
   DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}

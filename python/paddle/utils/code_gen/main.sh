@@ -12,20 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+mkdir -p parsed_apis
 python parse_api.py \
   --api_yaml_path ./api.yaml \
-  --output_path ./temp/api.parsed.yaml
+  --output_path ./parsed_apis/api.parsed.yaml
+
+python parse_api.py \
+  --api_yaml_path ./new_api.yaml \
+  --output_path ./parsed_apis/new_api.parsed.yaml
 
 python parse_api.py \
   --api_yaml_path ./backward.yaml \
-  --output_path ./temp/backward_api.parsed.yaml \
+  --output_path ./parsed_apis/backward_api.parsed.yaml \
   --backward
 
-python cross_validate.py \
-  --forward_yaml_path ./temp/api.parsed.yaml \
-  --backward_yaml_path ./temp/backward_api.parsed.yaml
+python parse_api.py \
+  --api_yaml_path ./new_backward.yaml \
+  --output_path ./parsed_apis/new_backward_api.parsed.yaml \
+  --backward
 
+echo "Validating api yamls: 
+python/paddle/utils/code_gen/api.yaml
+python/paddle/utils/code_gen/new_api.yaml
+python/paddle/utils/code_gen/backward.yaml
+python/paddle/utils/code_gen/new_backward.yaml"
+python cross_validate.py \
+  --forward_yaml_paths ./parsed_apis/api.parsed.yaml ./parsed_apis/new_api.parsed.yaml \
+  --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml ./parsed_apis/new_backward_api.parsed.yaml
+
+echo "Generating operators and argument mapping functions from api yamls:
+paddle/fluid/operators/generated_op.cc.tmp
+paddle/phi/ops/compat/generated_sig.cc.tmp"
 python generate_op.py \
-  --api_yaml_path ./temp/api.parsed.yaml \
-  --backward_api_yaml_path ./temp/backward_api.parsed.yaml \
-  --output_dir ./temp
+  --api_yaml_path ./parsed_apis/api.parsed.yaml \
+  --backward_api_yaml_path ./parsed_apis/backward_api.parsed.yaml \
+  --output_op_path ../../../../paddle/fluid/operators/generated_op.cc.tmp \
+  --output_arg_map_path ../../../../paddle/phi/ops/compat/generated_sig.cc.tmp

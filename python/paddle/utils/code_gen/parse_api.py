@@ -22,10 +22,14 @@ from parse_utils import parse_api_entry
 
 def main(api_yaml_path, output_path, backward):
     with open(api_yaml_path, "rt") as f:
-        apis = [
-            parse_api_entry(api, "backward_api" if backward else "api")
-            for api in yaml.safe_load(f)
-        ]
+        apis = yaml.safe_load(f)
+        if apis is None:
+            apis = []
+        else:
+            apis = [
+                parse_api_entry(api, "backward_api" if backward else "api")
+                for api in apis
+            ]
 
     with open(output_path, "wt") as f:
         yaml.safe_dump(apis, f, default_flow_style=None, sort_keys=False)

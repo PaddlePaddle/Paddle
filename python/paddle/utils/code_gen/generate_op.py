@@ -45,7 +45,8 @@ env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
-def main(api_yaml_path, backward_yaml_path, gen_op_dir):
+def main(api_yaml_path, backward_yaml_path, output_op_path,
+         output_arg_map_path):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
     forward_api_dict = to_named_dict(apis)
@@ -71,25 +72,26 @@ def main(api_yaml_path, backward_yaml_path, gen_op_dir):
     api_dict.update(forward_api_dict)
     api_dict.update(backward_api_dict)
 
-    gen_op_dir = Path(gen_op_dir)
-    gen_op_dir.mkdir(exist_ok=True)
+    if len(apis) == 0 and len(backward_apis) == 0:
+        return
 
     op_template = env.get_template('op.c.j2')
-    with open(gen_op_dir / "generated_op.cc", "wt") as f:
+    with open(output_op_path, "wt") as f:
         msg = op_template.render(
             apis=apis, backward_apis=backward_apis, api_dict=api_dict)
         f.write(msg)
 
     ks_template = env.get_template('ks.c.j2')
-    with open(gen_op_dir / "generated_sig.cc", 'wt') as f:
+    with open(output_arg_map_path, 'wt') as f:
         msg = ks_template.render(apis=apis, backward_apis=backward_apis)
         f.write(msg)
 
 
 if __name__ == "__main__":
     current_dir = Path(__file__).parent
-    gen_op_dir = (current_dir /
-                  "../../../../paddle/fluid/operators/generated.tmp").resolve()
+    gen_op_dir = (current_dir / "../../../../paddle/fluid/operators/").resolve()
+    gen_arg_map_dir = (current_dir /
+                       "../../../../paddle/phi/ops/compat/").resolve()
     parser = argparse.ArgumentParser(
         description="Generate operator file from api yaml.")
     parser.add_argument(
@@ -103,10 +105,12 @@ if __name__ == "__main__":
         default=str(current_dir / "new_backward_api.parsed.yaml"),
         help="parsed backward api yaml file.")
     parser.add_argument(
-        "--output_dir",
+        "--output_op_path", type=str, help="path to save generated operators.")
+    parser.add_argument(
+        "--output_arg_map_path",
         type=str,
-        default=str(gen_op_dir),
-        help="directory to save generated operator files.")
+        help="path to save generated argument mapping functions.")
 
     args = parser.parse_args()
-    main(args.api_yaml_path, args.backward_api_yaml_path, args.output_dir)
+    main(args.api_yaml_path, args.backward_api_yaml_path, args.output_op_path,
+         args.output_arg_map_path)
