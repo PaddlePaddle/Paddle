@@ -1058,7 +1058,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                            std::to_string(fraction_of_gpu_memory);
         VLOG(3) << "set flag: " << flag;
         gflags.push_back(flag);
-        gflags.push_back("--cudnn_deterministic=True");
       }
 
       // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local

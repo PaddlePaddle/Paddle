@@ -52,6 +52,18 @@ static nvinfer1::Dims ArrayAttrToNvDims(const mlir::ArrayAttr& int_array_attr) {
   return dims;
 }
 
+template <typename T>
+static std::vector<T> ArrayAttrToVec(const mlir::ArrayAttr& int_array_attr) {
+  std::vector<T> ret;
+  ret.resize(int_array_attr.size());
+  CHECK(!int_array_attr.empty());
+  CHECK(int_array_attr[0].getType().isIntOrIndex());
+  for (size_t i = 0; i < int_array_attr.size(); ++i) {
+    ret[i] = int_array_attr[i].cast<mlir::IntegerAttr>().getInt();
+  }
+  return ret;
+}
+
 static nvinfer1::Weights TensorToWeights(::phi::DenseTensor* tensor) {
   CHECK_NOTNULL(tensor);
   nvinfer1::Weights ret;

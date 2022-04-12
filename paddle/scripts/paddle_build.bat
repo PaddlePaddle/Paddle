@@ -255,7 +255,6 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
-set vcvars64_dir="D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -658,7 +657,6 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
-set FLAGS_use_curand=True
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -711,7 +709,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% >> %work_dir%\win_cmake.sh
 
@@ -753,7 +751,7 @@ for /F %%i in ("%libsize%") do (
 )
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
 
 :test_inference_error
@@ -784,7 +782,7 @@ echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
 cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT%
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
 
 :test_inference_ut_error
