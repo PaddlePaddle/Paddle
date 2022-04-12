@@ -248,7 +248,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = fluid.dygraph.to_variable(y_i)
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
-            assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
+            assert np.array_equal(out.cpu().numpy(), np.where(cond_i, x_i, y_i))
 
     def test_scalar(self):
         with fluid.dygraph.guard():
@@ -266,8 +266,8 @@ class TestWhereDygraphAPI(unittest.TestCase):
             a = paddle.rand(a_shape)
             b = paddle.rand(b_shape)
             result = paddle.where(cond, a, b)
-            result = result.numpy()
-            expect = np.where(cond, a, b)
+            result = result.cpu().numpy()
+            expect = np.where(cond.cpu(), a.cpu(), b.cpu())
             self.assertTrue(np.array_equal(expect, result))
 
     def test_dygraph_api_broadcast_1(self):
