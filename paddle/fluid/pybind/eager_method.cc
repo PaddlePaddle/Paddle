@@ -921,7 +921,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             "please check the type of tensor."));
       }
 
-      if (value_tensor_tmp.place() == paddle::PlaceType::kUNK) {
+      if (!value_tensor_tmp.initialized()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
@@ -1009,7 +1009,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       VLOG(4) << "index is not tensor";
       self_numpy[_index] = py::object(py::handle(value_obj), true);
     }
-    if (self->tensor.place() == paddle::PlaceType::kUNK) {
+    if (!self->tensor.initialized()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       SetTensorFromPyArray(self_tensor, self_numpy,
                            platform::Place(platform::CUDAPlace(0)), false);
