@@ -19,9 +19,9 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
-// #ifdef PADDLE_WITH_PSLIB
-// #include "common_value.h"  // NOLINT
-// #endif
+#ifdef PADDLE_WITH_PSLIB
+#include "common_value.h"  // NOLINT
+#endif
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
@@ -63,29 +63,27 @@ template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-      xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-      xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
+    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
 
   virtual ~XPUCacheArray() {
-      xpu_free(keys);
-      xpu_free(vals);
+    xpu_free(keys);
+    xpu_free(vals);
   }
 
   void print() {}
 
-
   // __device__ ValType* find(const KeyType& key) { return &vals[0]; }
 
-  // __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
+  // __device__ bool insert(const KeyType& key, const ValType& val) { return
+  // true; }
 
-  size_t size() {
-    return 0;
-  }
+  size_t size() { return 0; }
 
  private:
   long long capacity_ = 1;  // NOLINT
-  long long size_;      // NOLINT
+  long long size_;          // NOLINT
   KeyType* keys;
   ValType* vals;
 };
