@@ -57,7 +57,7 @@
 - backward_api : add_n_grad
   forward : add_n (Tensor[] x) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad)
-  output : Tensor[](x_grad)
+  output : Tensor[](x_grad){x.size()}
   invoke : add_n_grad_impl(x, out_grad)
   no_need_buffer : x
 
@@ -238,8 +238,12 @@
 - backward_api : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, Scalar axis = 0)
-  output : Tensor[](x_grad)
-  invoke : concat_grad_impl(x, out_grad, axis)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [x]
+  kernel :
+    func : concat_grad
   no_need_buffer : x
 
 - backward_api : conj_grad
@@ -974,8 +978,11 @@
 - backward_api : meshgrid_grad
   forward : meshgrid (Tensor[] inputs) -> Tensor[](outputs)
   args : (Tensor[] inputs, Tensor[] outputs_grad)
-  output : Tensor[](inputs_grad)
-  invoke : meshgrid_grad_impl(inputs, outputs_grad)
+  output : Tensor[](inputs_grad){inputs.size()}
+  infer_meta :
+    func : MeshgridGradInferMeta
+  kernel :
+    func : meshgrid_grad
 
 - backward_api : min_grad
   forward: min (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
@@ -1031,14 +1038,33 @@
 - backward_api : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad)
-  output : Tensor[](x_grad)
-  invoke : multi_dot_grad_impl(x, out_grad)
+  output : Tensor[](x_grad) {x.size()}
+  infer_meta :
+    func : MultiDotGradInferMeta
+  kernel :
+    func : multi_dot_grad
 
 - backward_api : multiplex_grad
   forward : multiplex (Tensor[] ins, Tensor ids) -> Tensor(out)
   args : (Tensor[] ins, Tensor ids, Tensor out_grad)
-  output : Tensor[](ins_grad)
-  invoke : multiplex_grad_impl(ins, ids, out_grad)
+  output : Tensor[](ins_grad){ins.size()}
+  infer_meta :
+    func : MultiplexGradInferMeta
+    param : [ids, out_grad]
+  kernel :
+    func : multiplex_grad
+    param : [ids, out_grad]
+
+- backward_api : multiply_double_grad
+  forward : multiply_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
+  args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, y, grad_out]
+  kernel :
+    func : multiply_double_grad
+  optional : grad_x_grad, grad_y_grad
 
 - backward_api : multiply_double_grad
   forward : multiply_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
@@ -1504,8 +1530,13 @@
 - backward_api : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int axis)
-  output : Tensor[](x_grad)
-  invoke : stack_grad_impl(x, out_grad, axis)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : StackGradInferMeta
+    param: [out_grad, axis]
+  kernel :
+    func : stack_grad
+    param : [out_grad, axis]
   no_need_buffer : x
 
 - backward_api : strided_slice_grad

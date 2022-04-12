@@ -731,16 +731,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           continue;
         }
 
-        auto* next_node = next_node_shared.get();
-        if (!node_input_buffers_dict.count(next_node)) {
-          const auto& input_meta = next_node->InputMeta();
-          auto grad_tensor_holder =
-              std::make_unique<GradTensorHolder>(input_meta);
-          VLOG(6) << "Construct GradTensorHolder for grad node: "
-                  << next_node->name();
-          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
-        }
-
         PADDLE_ENFORCE_LT(
             j, grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
@@ -759,6 +749,16 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
                 << " 's name is: " << grad_output_tensor.name();
+
+        auto* next_node = next_node_shared.get();
+        if (!node_input_buffers_dict.count(next_node)) {
+          const auto& input_meta = next_node->InputMeta();
+          auto grad_tensor_holder =
+              std::make_unique<GradTensorHolder>(input_meta);
+          VLOG(6) << "Construct GradTensorHolder for grad node: "
+                  << next_node->name();
+          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+        }
 
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;

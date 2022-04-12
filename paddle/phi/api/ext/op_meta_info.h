@@ -20,8 +20,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
@@ -58,6 +58,7 @@ using Tensor = paddle::experimental::Tensor;
 
 constexpr char kGradTensorSuffix[] = "@GRAD";
 constexpr char kTensorVectorSuffix[] = "@VECTOR";
+constexpr char kDoubleGradNewOutSuffix[] = "@NEW";
 
 // Used for Construct Grad Tensor name
 inline std::string Grad(const std::string& t_name) {
@@ -74,6 +75,15 @@ inline std::string Vec(const std::string& t_name) {
   result.reserve(t_name.size() + 7U);
   result += t_name;
   result += kTensorVectorSuffix;
+  return result;
+}
+
+// Used for Construct double grad output name
+inline std::string New(const std::string& t_name) {
+  std::string result;
+  result.reserve(t_name.size() + 4U);
+  result += t_name;
+  result += kDoubleGradNewOutSuffix;
   return result;
 }
 

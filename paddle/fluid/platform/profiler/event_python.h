@@ -82,11 +82,11 @@ class ProfilerResult {
   void Save(const std::string& file_name,
             const std::string format = std::string("json"));
 
-  std::unique_ptr<NodeTrees>& GetNodeTrees() { return tree_; }
+  std::shared_ptr<NodeTrees> GetNodeTrees() { return tree_; }
 
  private:
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
-  std::unique_ptr<NodeTrees> tree_;
+  std::shared_ptr<NodeTrees> tree_;
   ExtraInfo extra_info_;
   HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
