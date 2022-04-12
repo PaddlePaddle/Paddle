@@ -1223,9 +1223,12 @@ def _append_backward_ops_(block,
             grad_to_var.update(op_grad_to_var)
 
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(
-        grad_op_descs, block.idx,
-        distop_context.grad_var_to_var[program._appending_grad_times])
+    grad_var_to_var = None
+    if distop_context is not None:
+        grad_var_to_var = distop_context.grad_var_to_var[
+            program._appending_grad_times]
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
+                                               grad_var_to_var)
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
