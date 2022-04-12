@@ -31,6 +31,20 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu);
+
 Tensor conv2d_impl(const Tensor& input,
                    const Tensor& filter,
                    const std::vector<int>& strides,
@@ -83,41 +97,14 @@ std::tuple<Tensor, Tensor> sgd_impl(
     paddle::optional<const Tensor&> master_param,
     bool multi_precision);
 
-std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
-
 ////////////////// Backward(grad) api impls //////////////////////
 
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad);
 
-std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
-    const Tensor& x,
-    const Tensor& scale,
-    const Tensor& bias,
-    const Tensor& mean,
-    const Tensor& variance,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    bool fuse_with_relu);
-
-std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
-                                     const Tensor& out_grad,
-                                     const Scalar& axis);
-
 Tensor imag_grad_impl(const Tensor& x);
 
 Tensor real_grad_impl(const Tensor& x);
-
-std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad,
-                                    int axis);
-std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
-std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
-                                       const std::vector<Tensor>& outputs_grad);
 
 }  // namespace experimental
 }  // namespace paddle

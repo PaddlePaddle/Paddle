@@ -56,6 +56,9 @@ paddle::optional<phi::MetaTensor> MakeMetaTensor(
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors);
 
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::DenseTensor*>& tensors);
+
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
 
 paddle::optional<phi::MetaTensor> MakeMetaTensor(
