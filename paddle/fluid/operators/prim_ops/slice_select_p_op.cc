@@ -89,7 +89,11 @@ class SliceSelectPrimOpShapeInference : public framework::InferShapeBase {
             "but get %d and %d",
             strides.size(), axis.size()));
     for (size_t i = 0; i < axis.size(); ++i) {
-      x_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
+      if ((ends[i] - starts[i]) % strides[i] == 0) {
+        x_shape[axis[i]] = (ends[i] - starts[i]) / strides[i];
+      } else {
+        x_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
+      }
     }
     BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
   }
