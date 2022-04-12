@@ -158,7 +158,6 @@ class HashTable {
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
 };
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif
