@@ -134,7 +134,7 @@ inline void StridedMemcpyWithAxis0(
   for (size_t i = 0; i < outputs->size(); ++i) {
     auto out_stride = stride_numel(shape_refer[i]->dims());
     auto out = outputs->at(i);
-    if (out != nullptr) {
+    if (out != nullptr && out->initialized()) {
       StridedNumelCopyWithAxis<T>(dev_ctx, axis, out->data<T>(), out_stride,
                                   input.data<T>() + input_offset, in_stride,
                                   out_stride[axis]);
