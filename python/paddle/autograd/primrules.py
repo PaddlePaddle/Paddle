@@ -67,7 +67,7 @@ def REGISTER_ORIG2PRIM(op_type):
     
     Usage:
     .. code-block:: python
-        @Register_ORIG2PRIM('tanh')
+        @REGISTER_ORIG2PRIM('tanh')
         def tanh_orig2prim(op):
             x = get_input_vars(op)
             return primops.tanh(x)
@@ -90,7 +90,7 @@ def REGISTER_PRIM2ORIG(op_type):
     
     Usage:
     .. code-block:: python
-        @Register_PRIM2ORIG('tanh_p')
+        @REGISTER_PRIM2ORIG('tanh_p')
         def tanh_prim2orig(op):
             x = get_input_vars(op)
             return paddle.tanh(x)
@@ -168,22 +168,24 @@ def linear_jvp(op, *args):
 
 ## Register orig2prim lower rules
 """
-matmul_v2
+These original ops are fully supported:
+
 elementwise_add
 tanh
 reshape2
-concat
-slice
 fill_zeros_like
 sum
-p_norm
 index_select
 elementwise_sub
 scale
 assign
 
-how to deal with shape and fill_constant?
-    Do not process them currently.
+These original ops are partially supported:
+
+matmul_v2
+concat
+slice
+p_norm
 """
 
 
