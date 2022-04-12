@@ -30,7 +30,7 @@ namespace framework {
 class HeterCommKernel {
  public:
   HeterCommKernel() {}
-  HeterCommKernel(const int block_size) : block_size_(block_size) {}
+  explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -41,7 +41,7 @@ class HeterCommKernel {
 
   template <typename KeyType, typename T, typename StreamType>
   void calc_shard_index(KeyType* d_keys, long long len, T* shard_index,
-                        int total_gpu, const StreamType& stream);
+                        int total_devs, const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
   void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
@@ -62,7 +62,7 @@ class HeterCommKernel {
                   const KeyT* d_keys_in, KeyT* d_keys_out,
                   const ValueT* d_values_in, ValueT* d_values_out,
                   int num_items, int begin_bit = 0,
-                  int end_bit = sizeof(KeyT) * 8, StreamType stream = 0,
+                  int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
                   bool debug_synchronous = false);
 
   template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
@@ -75,7 +75,7 @@ class HeterCommKernel {
                      ValuesInputIteratorT d_values_in,
                      AggregatesOutputIteratorT d_aggregates_out,
                      NumRunsOutputIteratorT d_num_runs_out, int num_items,
-                     StreamType stream = 0, bool debug_synchronous = false);
+                     StreamType stream = NULL, bool debug_synchronous = false);
 
  private:
   int block_size_{256};

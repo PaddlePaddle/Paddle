@@ -135,10 +135,9 @@ class Optimizer {
                 grad.show);  // for local test
     }
   }
-
-#endif
 };
 
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif

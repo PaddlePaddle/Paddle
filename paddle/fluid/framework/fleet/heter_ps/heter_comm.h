@@ -15,18 +15,22 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
-// #include "cub/cub.cuh"
-// #include "cub/util_allocator.cuh"
-#include "hashtable.h"       // NOLINT
-#include "heter_resource.h"  // NOLINT
-#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
-#include "paddle/fluid/platform/place.h"
 #include "thrust/pair.h"
+#elif defined(PADDLE_WITH_XPU_KP)
+#include <xpu/runtime.h>
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#endif
+
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -148,7 +152,11 @@ class HeterComm {
       }
     }
 
+#if defined(PADDLE_WITH_CUDA)
     platform::CUDAPlace place_;
+#elif defined(PADDLE_WITH_XPU_KP)
+    platform::XPUPlace place_;
+#endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
     KeyType* all_keys;
@@ -164,13 +172,11 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(const StreamType& stream) {
-// if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU_KP)
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
 #endif
-    // }
   }
 
   template <typename StreamType>

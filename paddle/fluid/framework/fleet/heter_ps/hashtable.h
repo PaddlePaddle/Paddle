@@ -13,27 +13,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <limits>
 #include <memory>
 #include <vector>
-#ifdef PADDLE_WITH_PSLIB
-#include "common_value.h"  // NOLINT
-#endif
-#ifdef PADDLE_WITH_PSCORE
+// #ifdef PADDLE_WITH_PSLIB
+// #include "common_value.h"  // NOLINT
+// #endif
+#if defined(PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
-#endif
+#elif defined(PADDLE_WITH_PSLIB)
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#endif
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #if defined(PADDLE_WITH_CUDA)
-#include "thrust/pair.h"
-// #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "thrust/pair.h"
+#elif defined(__xpu__)
+#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/math.h"
+#include "xpu/kernel/simd.h"
 #endif
 
 namespace paddle {
@@ -66,10 +70,8 @@ class XPUCacheArray {
   }
 
   void print() {}
-
   // ValType* find(const KeyType& key) { return NULL; }
   // bool insert(const KeyType& key, const ValType& val) { return true; }
-
   size_t size() { return 0; }
 
  private:
@@ -78,7 +80,6 @@ class XPUCacheArray {
   KeyType* keys;
   ValType* vals;
 };
-
 #endif
 
 template <typename KeyType, typename ValType>

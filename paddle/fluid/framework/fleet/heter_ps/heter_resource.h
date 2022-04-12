@@ -17,7 +17,16 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <vector>
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+#include <xpu/runtime.h>  // NOLINT
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_HETERPS

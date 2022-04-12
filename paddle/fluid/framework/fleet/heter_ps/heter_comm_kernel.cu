@@ -22,8 +22,6 @@ namespace framework {
 
 #ifdef PADDLE_WITH_CUDA
 
-// #define block_size_ 256
-
 struct GPUCustomGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
@@ -217,7 +215,7 @@ template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     const cudaStream_t& stream);
 template void HeterCommKernel::calc_shard_index<
     unsigned long, int, cudaStream_t>(unsigned long* d_keys, long long len,
-                                      int* shard_index, int total_gpu,
+                                      int* shard_index, int total_devs,
                                       const cudaStream_t& stream);
 
 template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(

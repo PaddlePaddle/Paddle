@@ -14,7 +14,15 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -61,7 +69,7 @@ XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
 
   platform::XPUDeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
-  comm_streams_.resize(dev_ids_.size(), 0);
+  comm_streams_.resize(dev_ids_.size(), NULL);
   remote_streams_.resize(dev_ids_.size());
 
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
@@ -76,9 +84,9 @@ XPUResource::~XPUResource() {
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
   }
-  for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
-  }
+  // for (size_t i = 0; i < comm_streams_.size(); ++i) {
+  //  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
+  // }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(remote_streams_[i]));
   }
