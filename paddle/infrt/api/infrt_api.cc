@@ -257,11 +257,13 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   ::mlir::OpPassManager& pass_manager = pm.nest<::mlir::FuncOp>();
   if (config.tensorrt_enabled()) {
     pass_manager.addPass(::infrt::CreateInfrtWeightsUnfoldPass());
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
     pass_manager.addPass(::infrt::trt::CreateTrtOpTellerPass());
     pass_manager.addPass(::infrt::trt::CreateTrtGraphFusePass());
     pass_manager.addPass(::infrt::trt::CreateTrtGraphSplitPass(1));
     pass_manager.addPass(::infrt::trt::CreateTrtOpConverterPass());
     pass_manager.addPass(::infrt::trt::CreateTrtTypeConvertPass());
+#endif
     pass_manager.addPass(::mlir::createCanonicalizerPass());
   } else {
     std::vector<::infrt::Place> valid_places = {
