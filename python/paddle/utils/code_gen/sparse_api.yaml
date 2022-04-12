@@ -56,3 +56,19 @@
   args : (Tensor x)
   output : Tensor(out@SparseCsrTensor)
   invoke : to_sparse_csr_impl(x)
+
+- api : sparse_elementwise_add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_elementwise_add
+    layout : x
+  backward : sparse_elementwise_add_grad
+
+- api : sparse_elementwise_mul
+  args : (Tensor x, Tensor y)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_elementwise_mul
+    layout : x
+  backward : sparse_elementwise_mul_grad
