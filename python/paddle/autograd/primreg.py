@@ -42,6 +42,14 @@ def lookup_fn(optype):
     return _primop_fn.lookup(optype)
 
 
+def lookup_orig2prim(optype):
+    return _orig2prim.lookup(optype)
+
+
+def lookup_prim2orig(optype):
+    return _prim2orig.lookup(optype)
+
+
 def lookup_jvp(optype):
     return _primop_jvp.lookup(optype)
 
@@ -113,7 +121,7 @@ def REGISTER_JVP(op_type):
     
     Usage:
     .. code-block:: python
-        @RegisterJVP('add')
+        @REGISTER_JVP('add_p')
         def add_jvp(op, x_dot, y_dot):
             return primops.add(x_dot, y_dot)
     
@@ -137,7 +145,7 @@ def REGISTER_TRANSPOSE(op_type):
     
     Usage:
     .. code-block:: python
-        @RegisterJVP('add')
+        @REGISTER_TRANSPOSE('add_p')
         def add_transpose(op, z_bar):
             return z_bar, z_bar
     

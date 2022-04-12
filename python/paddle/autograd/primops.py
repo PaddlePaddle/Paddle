@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
@@ -45,7 +44,7 @@ def _manipulation_unop(helper):
 
     attrs = {
         k: helper.kwargs[k]
-        for k in ('shape', 'axis', 'indexes') if k in helper.kwargs
+        for k in ('shape', 'axis', 'index') if k in helper.kwargs
     }
 
     if out is None:
@@ -69,6 +68,14 @@ def fill_const(value, shape, dtype, out=None):
 def neg(x, out=None):
     zero = fill_const(0.0, x.shape, x.dtype)
     return sub(zero, x)
+
+
+def strided_slice_grad(y_grad, x, axis, starts, ends, strides, out=None):
+    attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'strides': strides}
+    helper = LayerHelper('strided_slice_grad', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    return out
 
 
 @REGISTER_FN('add_p')
@@ -140,7 +147,7 @@ def split(x, num_or_sections, axis=0, outs=None):
     return outs
 
 
-@REGISTER_FN('concat')
+@REGISTER_FN('concat_p')
 def concat(xs, axis=0, out=None):
     assert isinstance(xs, (list, tuple)) and len(xs) > 0
     attrs = {'axis': axis}
@@ -203,7 +210,7 @@ def slice_select(x, axis, starts, ends, strides, out=None):
 @REGISTER_FN('slice_assign_p')
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
     assert len(starts) == len(ends) == len(strides) == len(axis)
-    assert len(y.shape) <= len(x.shape)
+    assert len(y.shape) == len(x.shape)
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_assign_p', **locals())

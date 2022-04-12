@@ -13,20 +13,21 @@
 # limitations under the License.
 
 import paddle
-from .primreg import REGISTER_JVP, REGISTER_TRANSPOSE
-from .primreg import lookup_fn, lookup_jvp, lookup_transpose
+from .primreg import REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG, REGISTER_JVP, REGISTER_TRANSPOSE
+from .primreg import lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp, lookup_transpose
 from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       transpose, split, concat, reduce, matmul, slice_select,
-                      slice_assign, gather, scatter_add, fill_const)
+                      slice_assign, gather, scatter_add, fill_const,
+                      strided_slice_grad)
 
 
 def _orig2prim(op):
-    _lowerrule = _orig2prim.lookup(op.type)
+    _lowerrule = lookup_orig2prim(op.type)
     return _lowerrule(op)
 
 
 def _prim2orig(op):
-    _lowerrule = _prim2orig.lookup(op.type)
+    _lowerrule = lookup_prim2orig(op.type)
     return _lowerrule(op)
 
 
@@ -89,37 +90,37 @@ def matmul_v2_orig2prim(op):
     assert len(x.shape) < 4 and len(
         y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
     if op.attr('trans_x'):
-        x = primops.transpose(x, shape=trans(x.shape))
+        x = transpose(x, shape=trans(x.shape))
     if op.attr('trans_y'):
-        y = primops.transpose(y, shape=trans(y.shape))
-    return primops.matmul(x, y)
+        y = transpose(y, shape=trans(y.shape))
+    return matmul(x, y)
 
 
 @REGISTER_ORIG2PRIM('elementwise_add')
 def elementwise_add_orig2prim(op):
     x, y = get_input_vars(op)
     if x.shape != y.shape:
-        y = primops.broadcast(y, shape=x.shape)
+        y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = primops.mul(x, tmp)
+        x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = primops.mul(y, tmp)
-    z = primops.add(x, y)
+        y = mul(y, tmp)
+    z = add(x, y)
     if op.attr('Scale_out'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = primops.mul(z, tmp)
+        z = mul(z, tmp)
     return z
 
 
 @REGISTER_ORIG2PRIM('tanh')
 def tanh_orig2prim(op):
     x = get_input_vars(op)
-    return primops.tanh(x)
+    return tanh(x)
 
 
 ## NOTE(lml): The second output of reshape2 Xshape, can't be described by prim ops, use paddle.shape() interface instead.
@@ -127,14 +128,14 @@ def tanh_orig2prim(op):
 def reshape2_orig2prim(op):
     _, _, x = get_input_vars(op)
     y, _ = get_output_vars(op)
-    return primops.reshape(x, shape=y.shape), paddle.shape(x)
+    return reshape(x, shape=y.shape), paddle.shape(x)
 
 
 @REGISTER_ORIG2PRIM('concat')
 def concat_orig2prim(op):
     axis_t, *xs = get_input_vars(op)
     assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
-    return primops.concat(xs, axis=op.attr('axis'))
+    return concat(xs, axis=op.attr('axis'))
 
 
 @REGISTER_ORIG2PRIM('slice')
@@ -149,23 +150,23 @@ def slice_orig2prim(op):
     ends = op.attr('ends')
     strides = [1 for _ in starts]
     axis = op.attr('axes')
-    y = primops.slice(x, starts=starts, ends=ends, strides=strides, axis=axis)
+    y = slice_select(x, starts=starts, ends=ends, strides=strides, axis=axis)
     if op.attr('decrease_axis') is not None:
-        y = primops.reshape(y, shape=get_output_vars(op).shape)
+        y = reshape(y, shape=get_output_vars(op).shape)
     return y
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op):
     x, = get_input_vars(op)
-    return primops.fill_constant(x, shape=x.shape, value=0.0)
+    return fill_constant(x, shape=x.shape, value=0.0)
 
 
 @REGISTER_ORIG2PRIM('sum')
 def sum_orig2prim(op):
     x0, *x_other = get_input_vars(op)
     for x in x_other:
-        x0 = primops.add(x0, x)
+        x0 = add(x0, x)
     return x0
 
 
@@ -183,55 +184,54 @@ def p_norm_orig2prim(op):
         'asvector'), 'Only support lower pnorm when asvector=True currently'
     x, = get_input_vars(op)
     if len(x.shape) > 1:
-        x = primops.reshape(x, shape=[num_el(x.shape)])
-    return primops.sqrt(primops.reduce(primops.mul(x, x), axis=0))
+        x = reshape(x, shape=[num_el(x.shape)])
+    return sqrt(reduce(mul(x, x), axis=0))
 
 
 @REGISTER_ORIG2PRIM('index_select')
 def index_select_orig2prim(op):
     index_t, x = get_input_vars(op)
-    return primops.gather(x, indextensor=index_t, axis=op.attr('dim'))
+    return gather(x, indextensor=index_t, axis=op.attr('dim'))
 
 
 @REGISTER_ORIG2PRIM('elementwise_sub')
 def elementwise_sub_orig2prim(op):
     x, y = get_input_vars(op)
     if x.shape != y.shape:
-        y = primops.broadcast(y, shape=x.shape)
+        y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = primops.mul(x, tmp)
+        x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = primops.mul(y, tmp)
-    z = primops.sub(x, y)
+        y = mul(y, tmp)
+    z = sub(x, y)
     if op.attr('Scale_out'):
-        tmp = primops.fill_constant(
+        tmp = fill_constant(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = primops.mul(z, tmp)
+        z = mul(z, tmp)
     return z
 
 
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op):
     x = get_input_vars(op)
-    scale_t = primops.fill_constant(
+    scale_t = fill_constant(
         shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
-    bias_t = primops.fill_constant(
-        shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
+    bias_t = fill_constant(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
-        return primops.add(primops.mul(x, scale_t), bias_t)
+        return add(mul(x, scale_t), bias_t)
     else:
-        return primops.mul(primops.add(x, bias_t), scale_t)
+        return mul(add(x, bias_t), scale_t)
 
 
 @REGISTER_ORIG2PRIM('assign')
 def assign_orig2prim(op):
     x = get_input_vars(op)
-    zero_t = primops.fill_constant(shape=x.shape, dtype=x.dtype, value=0.0)
-    return primops.add(x, zero_t)
+    zero_t = fill_constant(shape=x.shape, dtype=x.dtype, value=0.0)
+    return add(x, zero_t)
 
 
 ## Register orig2prim lower rules
@@ -295,8 +295,11 @@ def transpose_prim2orig(op):
 @REGISTER_PRIM2ORIG('split_p')
 def split_prim2orig(op):
     x, = get_input_vars(op)
+    num_or_sections = op.attr('num_or_sections')
+    if len(num_or_sections) == 1:
+        num_or_sections = num_or_sections[0]
     return paddle.split(
-        x, num_or_sections=op.attr('num_or_sections'), axis=op.attr('axis'))
+        x, num_or_sections=num_or_sections, axis=op.attr('axis'))
 
 
 @REGISTER_PRIM2ORIG('concat_p')
@@ -328,11 +331,25 @@ def slice_select_prim2orig(op):
         strides=op.attr('strides'))
 
 
-# TODO(lml): find correct api for slice_assign_p.
+def strided_slice_grad(y_grad, x, axis, starts, ends, strides, x_grad=None):
+    attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'strides': strides}
+    helper = LayerHelper('strided_slice_grad', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    return x_grad
+
+
 @REGISTER_PRIM2ORIG('slice_assign_p')
 def slice_assign_prim2orig(op):
     x, y = get_input_vars(op)
-    return x
+    return paddle.add(x,
+                      strided_slice_grad(
+                          y,
+                          x,
+                          axis=op.attr('axis'),
+                          starts=op.attr('starts'),
+                          ends=op.attr('ends'),
+                          strides=op.attr(strides)))
 
 
 @REGISTER_PRIM2ORIG('gather_p')

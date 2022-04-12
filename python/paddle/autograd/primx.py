@@ -15,7 +15,7 @@
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primops import fill_const
-from .primrules import get_input_vars, get_output_vars, _jvp, _transpose
+from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
 
 
 def make_var(dtype, shape, block=None, namekey='', stop_gradient=False):
