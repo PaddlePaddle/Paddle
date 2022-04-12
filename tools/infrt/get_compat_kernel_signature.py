@@ -16,7 +16,7 @@ import os
 import re
 import json
 
-skip_list = ["adam_sig.cc", "adamw_sig.cc"]
+skip_list = []
 
 
 def is_grad_kernel(kernel_info):
