@@ -395,7 +395,13 @@ def _is_enable_standalone_executor():
     """
     flag = False
 
-    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+    from ..distributed.fleet import fleet
+    if fleet._role_maker is not None:
+        warnings.warn("do not use standalone executor in fleet by default")
+        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+    else:
+        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
 

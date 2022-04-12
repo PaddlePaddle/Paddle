@@ -19,13 +19,16 @@ import unittest
 import time
 import paddle
 import paddle.incubate.multiprocessing as mp
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode, _enable_legacy_dygraph
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
 
 
 def fill_tensor(queue, event):
+    # make sure run in legacy dygraph
+    if in_dygraph_mode():
+        _enable_legacy_dygraph()
     data = queue.get()
     with paddle.no_grad():
         data[0][:] = 5
