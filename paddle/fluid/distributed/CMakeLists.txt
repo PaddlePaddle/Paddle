@@ -17,7 +17,7 @@ if(WITH_PYTHON)
   else(NOT WIN32)
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET ps_py_proto POST_BUILD
-      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath}
+      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath})
   endif(NOT WIN32)
 endif()
 
