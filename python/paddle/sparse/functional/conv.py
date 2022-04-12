@@ -102,12 +102,12 @@ def conv3d(x,
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+          Filter shape: :math:`(D_f, H_f, W_f, C_{in}, C_{out})`
 
         - Output:
-          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
 
         Where
 
@@ -118,9 +118,9 @@ def conv3d(x,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        x (Tensor): The input is 5-D SparseCooTensor with shape [N, C, D, H, W], the data 
+        x (Tensor): The input is 5-D SparseCooTensor with shape [N, D, H, W, C], the data 
             type of input is float16 or float32 or float64.
-        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+        weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
@@ -147,18 +147,15 @@ def conv3d(x,
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
+            `[batch_size, input_depth, input_height, input_width, input_channels]`.
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
 
     Returns:
-        A SparseCooTensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor storing the 
-        convolution result, and if act is not None, the tensor storing 
-        convolution and non-linearity activation result.
+        A SparseCooTensor representing the conv3d, whose data type is the same with input. 
 
     Examples:
         .. code-block:: python
@@ -210,7 +207,7 @@ def subm_conv3d(x,
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
-    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`W`: Filter value, a tensor with DHWCM format.
     * :math:`\\ast`: Submanifold Convolution operation, refer to the paper: https://arxiv.org/abs/1706.01307.
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
@@ -219,12 +216,12 @@ def subm_conv3d(x,
 
         - Input:
 
-          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+          Input shape: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
 
-          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
+          Filter shape: :math:`(D_f, H_f, W_f, C_{in}, C_{out})`
 
         - Output:
-          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+          Output shape: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
 
         Where
 
@@ -235,9 +232,9 @@ def subm_conv3d(x,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        x (Tensor): The input is 5-D SparseCooTensor with shape [N, C, D, H, W], the data 
+        x (Tensor): The input is 5-D SparseCooTensor with shape [N, D, H, W, C], the data 
             type of input is float16 or float32 or float64.
-        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+        weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
@@ -251,7 +248,7 @@ def subm_conv3d(x,
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
             and when `data_format` is `"NCDHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NDHWC"`, `padding` can be in the form
+            when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points. 
@@ -262,20 +259,18 @@ def subm_conv3d(x,
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
+            connected to the second half of the input channels. Currently, only support groups=1.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
+            `[batch_size, input_depth, input_height, input_width, input_channels]`.
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
 
     Returns:
         A SparseCooTensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor storing the 
-        convolution result, and if act is not None, the tensor storing 
-        convolution and non-linearity activation result.
+        the same with input. 
 
     Examples:
         .. code-block:: python

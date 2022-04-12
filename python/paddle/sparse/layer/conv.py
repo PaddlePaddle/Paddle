@@ -160,7 +160,7 @@ class Conv3D(_Conv3D):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1, currently, only support groups=1.
-        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``, currently, only support padding_mode='zeros'.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -188,7 +188,7 @@ class Conv3D(_Conv3D):
 
         - bias: :math:`(C_{out})`
 
-        - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+        - output: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
 
         Where
 
@@ -291,7 +291,7 @@ class SubmConv3D(_Conv3D):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
-        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.Currently, only support ``'zeros'``.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -319,7 +319,7 @@ class SubmConv3D(_Conv3D):
 
         - bias: :math:`(C_{out})`
 
-        - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+        - output: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
 
         Where
 
