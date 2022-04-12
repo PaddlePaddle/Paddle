@@ -286,7 +286,7 @@ void testSampleRate() {
   auto end1 = std::chrono::steady_clock::now();
   auto tt =
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-  std::cerr << "total time cost without cache for v0 is "
+  std::cerr << "total time cost without cache for v1 is "
             << tt.count() / exe_count / gpu_num1 << " us" << std::endl;
 
   // g.graph_neighbor_sample_v2
@@ -314,7 +314,7 @@ void testSampleRate() {
   auto end2 = std::chrono::steady_clock::now();
   auto tt2 =
       std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
-  std::cerr << "total time cost without cache for v1 is "
+  std::cerr << "total time cost without cache for v2 is "
             << tt2.count() / exe_count / gpu_num1 << " us" << std::endl;
 
   for (int i = 0; i < gpu_num1; i++) {
