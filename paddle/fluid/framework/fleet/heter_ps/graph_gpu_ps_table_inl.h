@@ -53,7 +53,7 @@ __global__ void neighbor_sample_example_v2(GpuPsCommGraph graph,
       }
       actual_size[i] = neighbor_len;
     } else {
-      for (int j = threadIdx.x; j < neighbor_len; j += WARP_SIZE) {
+      for (int j = threadIdx.x; j < sample_len; j += WARP_SIZE) {
         res[offset + j] = j;
       }
       __syncwarp();
