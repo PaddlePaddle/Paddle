@@ -113,10 +113,6 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
     auto result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
         result.memory < workspace_limit) {
-      VLOG(3) << "  algo=" << result.algo << ", time=" << result.time
-              << " ms, memory=" << ToMegaBytes(result.memory)
-              << " MB (limit=" << ToMegaBytes(workspace_limit)
-              << " MB), status=" << result.status;
       if (best_algo_idx == -1) {
         // The algorithm which has minimize time cost and need a workspace_size
         // fitting the workspace_limit constraint.
@@ -303,7 +299,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
                                  UseFixedWorkspace());
 
-    VLOG(5) << GetPerfResultString<PerfT>(
+    VLOG(4) << GetPerfResultString<PerfT>(
         "[Exhaustive Search] FwdAlgo Perf result", perf_results,
         returned_algo_count, workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -484,7 +480,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
                                  UseFixedWorkspace());
 
-    VLOG(5) << GetPerfResultString<PerfT>(
+    VLOG(4) << GetPerfResultString<PerfT>(
         "[Exhaustive Search] BwdDataAlgo Perf result", perf_results,
         returned_algo_count, workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -656,7 +652,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
                                    UseFixedWorkspace());
 
-      VLOG(5) << GetPerfResultString<PerfT>(
+      VLOG(4) << GetPerfResultString<PerfT>(
           "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
           returned_algo_count, workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -670,6 +666,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               args.cdesc.desc(), args.wdesc.desc(), perf_results.size(),
               &returned_algo_count, perf_results.data()));
       perf_results.resize(returned_algo_count);
+
+      VLOG(4) << GetPerfResultString<PerfT>(
+          "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
+          perf_results.size(), workspace_size_limit);
       ChooseAlgo(perf_results, workspace_size_limit, &result);
     }
 
@@ -716,10 +716,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   static void ChooseAlgo(const std::vector<PerfT>& perf_results,
                          size_t workspace_limit,
                          SearchResult<AlgoT>* algo_result) {
-    VLOG(3) << GetPerfResultString<PerfT>(
-        "[Exhaustive Search] BwdFilterAlgo Perf result", perf_results,
-        perf_results.size(), workspace_limit);
-
     for (size_t i = 0; i != perf_results.size(); ++i) {
       const auto& result = perf_results[i];
       if (result.status == CUDNN_STATUS_SUCCESS &&

@@ -24,13 +24,11 @@ namespace autotune {
 
 void AutoTuneStatus::EnableAutoTune() {
   FLAGS_use_autotune = true;
-  use_autotune_ = true;
   Init();
 }
 
 void AutoTuneStatus::DisableAutoTune() {
   FLAGS_use_autotune = false;
-  use_autotune_ = false;
   Init();
 }
 
@@ -40,10 +38,11 @@ void AutoTuneStatus::Update() {
     return;
   }
 
-  if (current_steps_id_ < start_step_id_) {
+  // This fuction is called when each iter finished.
+  if (current_steps_id_ + 1 < start_step_id_) {
     use_autotune_ = false;
-  } else if (current_steps_id_ >= start_step_id_ &&
-             current_steps_id_ < stop_step_id_) {
+  } else if (current_steps_id_ + 1 >= start_step_id_ &&
+             current_steps_id_ + 1 < stop_step_id_) {
     use_autotune_ = true;
     AutoTuneCache::Instance().UpdateStatus();
     step_hit_rates_.push_back(StepHitRate());
@@ -55,14 +54,19 @@ void AutoTuneStatus::Update() {
             << static_cast<int>(StepHitRate() * 100) << "%";
   } else {
     use_autotune_ = false;
-    // clean cache according miss rate
+    // Set a small tolerance to avoid performance degradation
+    // due to large cache size under dynamic shape.
+    // TODO(limingshu): Currently works for conv op only, this
+    // method shall be opimized when more ops involved in.
     // float miss_rate = static_cast<float>(1) - RecentHitRate();
     // if (current_steps_id_ == stop_step_id_) {
     //   AutoTuneCache::Instance().Clean(miss_rate);
     // }
-    AutoTuneCache::Instance().UpdateStatus();
-    VLOG(4) << "Step ID: " << current_steps_id_ << ", Current Step Hit Rate: "
-            << static_cast<int>(StepHitRate() * 100) << "%";
+    if (VLOG_IS_ON(4)) {
+      AutoTuneCache::Instance().UpdateStatus();
+      VLOG(4) << "Step ID: " << current_steps_id_ << ", Current Step Hit Rate: "
+              << static_cast<int>(StepHitRate() * 100) << "%";
+    }
   }
 }
 

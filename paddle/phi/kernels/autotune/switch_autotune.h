@@ -78,19 +78,20 @@ class AutoTuneStatus {
   AutoTuneStatus() = default;
 
   void Init() {
+    use_autotune_ = false;
     current_steps_id_ = -1;
     previous_hits_ = 0;
     previous_misses_ = 0;
     step_hit_rates_.clear();
-    AutoTuneCache::Instance().Clean(1.0);
+    AutoTuneCache::Instance().Clean();
   }
 
-  bool use_autotune_ = false;
-  int64_t start_step_id_ = 1;
-  int64_t stop_step_id_ = 10;
-  int64_t current_steps_id_ = -1;
-  int64_t previous_hits_ = 0;
-  int64_t previous_misses_ = 0;
+  bool use_autotune_{false};
+  int64_t start_step_id_{1};
+  int64_t stop_step_id_{10};
+  int64_t current_steps_id_{-1};
+  int64_t previous_hits_{0};
+  int64_t previous_misses_{0};
   float current_step_hit_rate_{0.f};
   std::vector<float> step_hit_rates_;
 };

@@ -4466,7 +4466,7 @@ All parameter, weight, gradient are variables in Paddle.
     return phi::autotune::AutoTuneStatus::Instance().DisableAutoTune();
   });
 
-  m.def("autotune_range", [](int64_t start, int64_t stop) {
+  m.def("set_autotune_range", [](int64_t start, int64_t stop) {
     return phi::autotune::AutoTuneStatus::Instance().SetAutoTuneRange(start,
                                                                       stop);
   });
@@ -4475,10 +4475,8 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("autotune_status", [] {
-    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     py::dict res;
-    res["use_autotune"] =
-        phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     res["step_id"] = phi::autotune::AutoTuneStatus::Instance().StepID();
     res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
     res["cache_hit_rate"] =
