@@ -561,12 +561,12 @@ class XavierInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype', out_dtype)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
                 out_var = _C_ops.gaussian_random(
                     'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
                     'std', std, 'seed', self._seed)
@@ -581,7 +581,7 @@ class XavierInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -595,7 +595,7 @@ class XavierInitializer(Initializer):
                     },
                     stop_gradient=True)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -713,13 +713,13 @@ class MSRAInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype',
                                                 int(out_dtype))
             else:
-                std = np.sqrt(2.0 / float(fan_in))
+                std = math.sqrt(2.0 / float(fan_in))
                 out_var = _C_ops.gaussian_random(
                     'shape', out_var.shape, 'dtype',
                     int(out_dtype), 'mean', 0.0, 'std', std, 'seed', self._seed)
@@ -734,7 +734,7 @@ class MSRAInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -749,7 +749,7 @@ class MSRAInitializer(Initializer):
                     stop_gradient=True)
 
             else:
-                std = np.sqrt(2.0 / float(fan_in))
+                std = math.sqrt(2.0 / float(fan_in))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},

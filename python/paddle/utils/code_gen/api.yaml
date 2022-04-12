@@ -167,6 +167,16 @@
     func : asinh
   backward : asinh_grad
 
+# assign
+- api : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  backward : assign_grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -345,6 +355,7 @@
     func : UnchangedInferMeta
   kernel :
     func : conj
+  backward : conj_grad
 
 - api : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
@@ -659,6 +670,7 @@
     func : FlipInferMeta
   kernel :
     func : flip
+  backward : flip_grad
 
 - api : floor
   args : (Tensor x)
@@ -814,7 +826,7 @@
     func : GumbelSoftmaxInferMeta
   kernel :
     func : gumbel_softmax
-  # backward : gumbel_softmax_grad
+  backward : gumbel_softmax_grad
 
 # hard_shrink
 - api : hard_shrink
@@ -837,6 +849,16 @@
   kernel :
     func : hard_sigmoid
   backward : hard_sigmoid_grad
+
+- api : hard_swish
+  args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_swish
+  backward : hard_swish_grad
 
 # histogram
 - api : histogram
@@ -949,6 +971,15 @@
     data_type : x
   backward : kldiv_loss_grad
 
+- api : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
+
 - api : kthvalue
   args : (Tensor x, int k, int axis, bool keepdim)
   output : Tensor(out), Tensor(indices)
@@ -970,6 +1001,16 @@
     data_type : label
   optional : prior_dist
   backward : label_smooth_grad
+
+- api : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+  backward : layer_norm_grad
+  optional : scale, bias
 
 # leaky_relu
 - api : leaky_relu
@@ -1015,6 +1056,15 @@
   kernel :
     func : lgamma
   backward : lgamma_grad
+
+- api : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : LinspaceInferMeta
+  kernel :
+    func : linspace
+    data_type : dtype
 
 - api : log
   args : (Tensor x)
@@ -1106,6 +1156,17 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_xor
+
+# logit
+- api : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logit
+  backward : logit_grad
 
 # logsigmoid
 - api : logsigmoid
@@ -1210,6 +1271,15 @@
     func : maximum
   backward : maximum_grad
 
+- api : maxout
+  args : (Tensor x, int groups, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : MaxOutInferMeta
+  kernel :
+    func : maxout
+  backward : maxout_grad
+
 - api : mean
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1230,8 +1300,11 @@
 
 - api : meshgrid
   args : (Tensor[] inputs)
-  output : Tensor[]
-  invoke : meshgrid_impl(inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
@@ -1286,6 +1359,15 @@
   invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
   optional : master_param
 
+- api : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1294,6 +1376,16 @@
     func : MultinomialInferMeta
   kernel :
     func : multinomial
+
+- api : multiplex
+  args : (Tensor[] ins, Tensor ids)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : ins
+  backward : multiplex_grad
 
 - api : multiply
   args : (Tensor x, Tensor y)
@@ -1323,6 +1415,16 @@
     data_type : input
   optional : weight
   backward : nll_loss_grad
+
+- api : norm
+  args : (Tensor x, int axis, float epsilon, bool is_test)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+    func : norm
+  intermediate : norm
+  backward : norm_grad
 
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
@@ -1381,7 +1483,7 @@
     func : PixelShuffleInferMeta
   kernel :
     func : pixel_shuffle
-  # backward : pixel_shuffle_grad
+  backward : pixel_shuffle_grad
 
 # poisson  // no need grad
 - api : poisson
@@ -1621,6 +1723,7 @@
     func : SearchsortedInferMeta
   kernel :
     func : searchsorted
+    data_type : sorted_sequence
 
 # segment_pool
 - api : segment_pool
@@ -1630,6 +1733,7 @@
     func : SegmentPoolInferMeta
   kernel :
     func : segment_pool
+    data_type : x
   backward : segment_pool_grad
 
 # selu
@@ -1826,6 +1930,17 @@
     data_type : x
   backward : sum_grad
 
+# The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
+- api : swish
+  args : (Tensor x, float beta=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : swish
+  backward : swish_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
@@ -1958,8 +2073,11 @@
 
 - api : unbind
   args : (Tensor input, int axis)
-  output : Tensor[]
-  invoke : unbind_impl(input, axis)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
   backward : unbind_grad
 
 # unfold
@@ -1971,6 +2089,18 @@
   kernel :
     func : unfold
   backward : unfold_grad
+
+- api : uniform_random
+  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype, min, max, seed]
+  kernel :
+    func : uniform_random
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype
+    backend : place
 
 # The `axis` argument of Python API paddle.unique is not vector
 - api : unique
