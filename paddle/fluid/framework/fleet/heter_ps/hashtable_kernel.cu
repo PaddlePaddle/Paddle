@@ -128,6 +128,27 @@ __global__ void dy_mf_search_kernel(Table* table,
   }
 }
 
+__global__ void curand_init_kernel(curandState* p_value, int len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    curand_init(clock64(), i, 0, p_value + i);
+  }
+}
+
+template <typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const GradType* const grads, curandState* p_state,
+                              size_t len, Sgd sgd) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      sgd.update_value((it.getter())->second, grads[i], p_state[i]);
+    }
+  }
+}
+
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,
                               const OptimizerConfig& optimizer_config,

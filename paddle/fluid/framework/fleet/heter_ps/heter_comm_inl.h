@@ -821,9 +821,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
-
-  int h_left[total_device];   // NOLINT
-  int h_right[total_device];  // NOLINT
+  int* h_left = nullptr;
+  int* h_right = nullptr;
+  cudaHostAlloc(reinterpret_cast<void**>(&(h_left)), sizeof(int) * total_gpu,
+                cudaHostAllocDefault);
+  cudaHostAlloc(reinterpret_cast<void**>(&(h_right)), sizeof(int) * total_gpu,
+                cudaHostAllocDefault);
 
   auto d_left = memory::Alloc(place, total_device * sizeof(int));
   auto d_right = memory::Alloc(place, total_device * sizeof(int));
@@ -1072,6 +1075,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     }
     destroy_storage(dev_num, i);
   }
+
+  cudaFreeHost(h_left);
+  cudaFreeHost(h_right);
 }
 
 #endif
