@@ -15,11 +15,13 @@
 #include "paddle/infrt/host_context/paddle_mlir.h"
 
 #include <mlir/IR/OpDefinition.h>
+#include <mlir/IR/Value.h>
 
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -35,32 +37,40 @@ MLIRModelGenImpl::MLIRModelGenImpl()
 
 infrt::paddle::framework_proto::ProgramDesc MLIRModelGenImpl::ParsePaddleModel(
     const std::string &model_file) {
+  model_file_ = model_file;
   infrt::paddle::framework_proto::ProgramDesc program_proto =
       *infrt::paddle::LoadProgram(model_file);
   return program_proto;
 }
 
-mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
-    const std::string &model_dir) {
+mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(const std::string &model_dir,
+                                                   bool arg_has_map) {
+  model_dir_ = model_dir;
   infrt::paddle::framework_proto::ProgramDesc program_proto =
       ParsePaddleModel(model_dir + "/__model__");
-  return ImportPaddleModel(program_proto);
+  return ImportPaddleModel(program_proto, arg_has_map);
 }
 
 mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
-    const std::string &model_file, const std::string &param_file) {
+    const std::string &model_file,
+    const std::string &param_file,
+    bool arg_has_map) {
+  model_file_ = model_file;
+  params_file_ = param_file;
   infrt::paddle::framework_proto::ProgramDesc program_proto =
       ParsePaddleModel(model_file);
-  return ImportPaddleModel(program_proto);
+  return ImportPaddleModel(program_proto, arg_has_map);
 }
 
 mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
-    const infrt::paddle::framework_proto::ProgramDesc &program) {
+    const infrt::paddle::framework_proto::ProgramDesc &program,
+    bool arg_has_map) {
   main_block_ = program.blocks(0);
-  llvm::SmallVector<mlir::Type, 4> operandTypes = GetModelInputsType(program);
+  llvm::SmallVector<mlir::Type, 4> operandTypes =
+      GetModelInputsType(program, arg_has_map);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetModelOutputsType(program);
   mlir::FuncOp mainFunc = UpdateModelModule(operandTypes, resultTypes);
-  UpdateModelParams(program, &mainFunc);
+  UpdateModelParams(program, &mainFunc, arg_has_map);
   UpdateModelOps(program);
   UpdateModelOutputs(program);
   return module_;
@@ -83,9 +93,12 @@ mlir::FuncOp MLIRModelGenImpl::UpdateModelModule(
 }
 
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
-    const infrt::paddle::framework_proto::ProgramDesc &program) {
+    const infrt::paddle::framework_proto::ProgramDesc &program,
+    bool arg_has_map) {
   llvm::SmallVector<mlir::Type, 4> operandTypes;
-  operandTypes.push_back(infrt::phi::DenseTensorMapType::get(context_));
+  if (arg_has_map) {
+    operandTypes.push_back(infrt::phi::DenseTensorMapType::get(context_));
+  }
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() != "feed") continue;
     for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -155,9 +168,14 @@ void MLIRModelGenImpl::UpdateModelOps(
 
 void MLIRModelGenImpl::UpdateModelParams(
     const infrt::paddle::framework_proto::ProgramDesc &program,
-    mlir::FuncOp *mainFunc) {
+    mlir::FuncOp *mainFunc,
+    bool arg_has_map) {
   // update input vars
-  int input_index = 1;
+  int input_index;
+  if (arg_has_map)
+    input_index = 1;
+  else
+    input_index = 0;
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() == "feed") {
       for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -170,9 +188,28 @@ void MLIRModelGenImpl::UpdateModelParams(
       }
     }
   }
+  ::mlir::Value map;
+  if (arg_has_map) {
+    map = mainFunc->getArgument(0);
+  } else {
+    builder_.setInsertionPointToStart(&mainFunc->body().front());
+    if (!model_dir_.empty()) {
+      auto load_op = builder_.create<::infrt::phi::LoadParamsOp>(
+          mlir::UnknownLoc::get(context_),
+          ::infrt::phi::DenseTensorMapType::get(context_),
+          builder_.getStringAttr(model_dir_));
+      map = load_op.out();
+    } else if (!model_file_.empty()) {
+      auto load_op = builder_.create<::infrt::phi::LoadCombinedParamsOp>(
+          mlir::UnknownLoc::get(context_),
+          ::infrt::phi::DenseTensorMapType::get(context_),
+          builder_.getStringAttr(model_file_),
+          builder_.getStringAttr(params_file_));
+      map = load_op.out();
+    }
+  }
 
   // update persistable tensors
-  ::mlir::Value map = mainFunc->getArgument(0);
   for (int i = 0; i < main_block_.vars_size(); i++) {
     auto var_desc = main_block_.vars(i);
     if (params_map_.find(var_desc.name()) != params_map_.end()) continue;

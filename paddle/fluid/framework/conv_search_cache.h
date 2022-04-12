@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {

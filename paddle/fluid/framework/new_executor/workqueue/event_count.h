@@ -54,6 +54,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <vector>
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -255,6 +256,7 @@ class EventCount {
     std::unique_lock<std::mutex> lock(w->mu);
     while (w->state != Waiter::kSignaled) {
       w->state = Waiter::kWaiting;
+      VLOG(10) << "Go to wait " << &(w->cv);
       w->cv.wait(lock);
     }
   }
@@ -270,7 +272,10 @@ class EventCount {
         w->state = Waiter::kSignaled;
       }
       // Avoid notifying if it wasn't waiting.
-      if (state == Waiter::kWaiting) w->cv.notify_one();
+      if (state == Waiter::kWaiting) {
+        VLOG(10) << "Go to notify " << &(w->cv);
+        w->cv.notify_one();
+      }
     }
   }
 };

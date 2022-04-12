@@ -18,8 +18,8 @@ import op_test
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.static import Program, program_guard
+from paddle.static import Program, program_guard, Executor
+from paddle.framework import _non_static_mode
 from paddle.fluid.framework import _test_eager_guard
 
 SUPPORTED_DTYPES = [
@@ -109,13 +109,13 @@ TEST_META_WRONG_SHAPE_DATA = {
 
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
-    startup_program = fluid.Program()
-    main_program = fluid.Program()
+    startup_program = Program()
+    main_program = Program()
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    with fluid.program_guard(main_program, startup_program):
+    exe = Executor(place)
+    with program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
         op = getattr(paddle, op_str)
         feed_list = {'x': x_np}
@@ -132,7 +132,7 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
@@ -147,7 +147,7 @@ def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     with _test_eager_guard():
@@ -213,16 +213,16 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not fluid._non_static_mode():
+            if not _non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not fluid._non_static_mode():
+            if not _non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
         meta_data = dict(op_data)
