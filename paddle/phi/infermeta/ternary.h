@@ -52,6 +52,15 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void FcInferMeta(const MetaTensor& input,
+                 const MetaTensor& weight,
+                 paddle::optional<const MetaTensor&> bias,
+                 int in_num_col_dims,
+                 const std::string& activation_type,
+                 bool padding_weights,
+                 MetaTensor* out,
+                 MetaConfig config = MetaConfig());
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
