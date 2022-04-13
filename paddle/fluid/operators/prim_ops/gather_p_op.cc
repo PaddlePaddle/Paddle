@@ -93,6 +93,16 @@ class GatherPrimOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_name = Input(ctx, "X")[0];
     auto y_name = Output(ctx, "Y")[0];
+    if (ctx->HasInput("IndexTensor")) {
+      auto index_name = Input(ctx, "IndexTensor")[0];
+      auto index_dtype = GetDataType(ctx, index_name);
+      PADDLE_ENFORCE_EQ(
+          index_dtype, framework::proto::VarType_Type_INT32,
+          platform::errors::InvalidArgument(
+              "The datatype of input tensor should be VarType_Type_INT32(%d), "
+              "but get %d",
+              framework::proto::VarType_Type_INT32, index_dtype));
+    }
     SetType(ctx, y_name, GetType(ctx, x_name));
     SetDataType(ctx, y_name, GetDataType(ctx, x_name));
   }

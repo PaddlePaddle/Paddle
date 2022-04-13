@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestAdamOp1(OpTest):
@@ -188,6 +189,10 @@ class TestAdamOpMultipleSteps(OpTest):
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
                 -1, 1, (102, 105)).astype("float32")
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_check_output()
 
 
 def adam_step(inputs, attributes):
@@ -731,6 +736,14 @@ class TestAdamOpV2(unittest.TestCase):
             out.backward()
             adam.step()
         paddle.enable_static()
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_adam_op_dygraph()
+            self.test_adam_op_with_state_dict()
+            self.test_adam_with_grad_clip()
+            self.test_adam_op_with_set_lr()
+            self.test_adam_op_with_sparse_input_and_weight_decay()
 
 
 class TestAdamOptimizer(unittest.TestCase):
