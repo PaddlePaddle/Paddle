@@ -73,7 +73,7 @@ class MulPrimOpShapeInference : public framework::InferShapeBase {
           platform::errors::InvalidArgument(
               "The shape of two input tensor at dimension %d should be same, "
               "but get %d and %d",
-              i, x_rank, y_rank));
+              i, x_shape[i], y_shape[i]));
     }
 
     BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);

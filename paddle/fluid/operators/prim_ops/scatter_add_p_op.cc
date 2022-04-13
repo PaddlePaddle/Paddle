@@ -119,7 +119,33 @@ class ScatterAddPrimOpVarTypeInference
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_name = Input(ctx, "X")[0];
+    auto y_name = Input(ctx, "Y")[0];
     auto z_name = Output(ctx, "Z")[0];
+    auto x_type = GetType(ctx, x_name);
+    auto y_type = GetType(ctx, y_name);
+    auto x_dtype = GetDataType(ctx, x_name);
+    auto y_dtype = GetDataType(ctx, y_name);
+    PADDLE_ENFORCE_EQ(x_type, y_type,
+                      platform::errors::InvalidArgument(
+                          "The type of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_type, y_type));
+    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                      platform::errors::InvalidArgument(
+                          "The datatype of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_dtype, y_dtype));
+
+    if (ctx->HasInput("IndexTensor")) {
+      auto index_name = Input(ctx, "IndexTensor")[0];
+      auto index_dtype = GetDataType(ctx, index_name);
+      PADDLE_ENFORCE_EQ(
+          index_dtype, framework::proto::VarType_Type_INT64,
+          platform::errors::InvalidArgument(
+              "The datatype of input tensor should be VarType_Type_INT64(%d), "
+              "but get %d",
+              framework::proto::VarType_Type_INT64, index_dtype));
+    }
     SetType(ctx, z_name, GetType(ctx, x_name));
     SetDataType(ctx, z_name, GetDataType(ctx, x_name));
   }

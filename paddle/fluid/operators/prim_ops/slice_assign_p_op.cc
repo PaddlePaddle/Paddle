@@ -101,11 +101,8 @@ class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
                           x_rank, y_rank));
     std::vector<int64_t> y_target_shape(x_shape);
     for (size_t i = 0; i < axis.size(); ++i) {
-      if ((ends[i] - starts[i]) % strides[i] == 0) {
-        y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i];
-      } else {
-        y_target_shape[axis[i]] = (ends[i] - starts[i]) / strides[i] + 1;
-      }
+      y_target_shape[axis[i]] =
+          (ends[i] - starts[i] + strides[i] - 1) / strides[i];
     }
     for (size_t i = 0; i < x_rank; ++i) {
       PADDLE_ENFORCE_EQ(y_target_shape[i], y_shape[i],
@@ -124,7 +121,23 @@ class SliceAssignPrimOpVarTypeInference
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_name = Input(ctx, "X")[0];
+    auto y_name = Input(ctx, "Y")[0];
     auto z_name = Output(ctx, "Z")[0];
+    auto x_type = GetType(ctx, x_name);
+    auto y_type = GetType(ctx, y_name);
+    auto x_dtype = GetDataType(ctx, x_name);
+    auto y_dtype = GetDataType(ctx, y_name);
+    PADDLE_ENFORCE_EQ(x_type, y_type,
+                      platform::errors::InvalidArgument(
+                          "The type of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_type, y_type));
+    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                      platform::errors::InvalidArgument(
+                          "The datatype of two input tensor should be same, "
+                          "but get %d and %d",
+                          x_dtype, y_dtype));
+
     SetType(ctx, z_name, GetType(ctx, x_name));
     SetDataType(ctx, z_name, GetDataType(ctx, x_name));
   }
