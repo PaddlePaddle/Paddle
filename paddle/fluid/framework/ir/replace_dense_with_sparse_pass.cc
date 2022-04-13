@@ -77,7 +77,7 @@ void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
 
       // copy all attr
       if (fc_op->HasAttr("x_num_col_dims")) {
-        desc.SetAttr("in_num_col_dims", fc_op->GetAttr("x_num_col_dims"));
+        desc.SetAttr("x_num_col_dims", fc_op->GetAttr("x_num_col_dims"));
       }
       desc.SetAttr("activation_type", fc_op->GetAttr("activation_type"));
       if (fc_op->HasAttr("enable_int8")) {
