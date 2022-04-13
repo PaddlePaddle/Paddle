@@ -31,6 +31,7 @@ class BaseAPI(object):
         # outputs:
         #     names : [], list of output names
         #     types : [], list of output types
+        #     out_size_expr : [], expression for getting size of vector<Tensor>
         #     return_type : Tensor, vector<Tensor>, ..., the return type of api
         # args_str:
         #     args_declare : "str" // str of function params with default value. Example: (..., bool flag=false)
@@ -67,11 +68,12 @@ class BaseAPI(object):
             ]
         inputs, attrs, args_str = self.parse_input_and_attr(
             api_name, api_item_yaml['args'], optional_vars)
-        output_type_list, output_names, return_type = self.parse_output(
+        output_type_list, output_names, out_size_expr, return_type = self.parse_output(
             api_name, api_item_yaml['output'])
         return inputs, attrs, {
             'names': output_names,
             'types': output_type_list,
+            'out_size_expr': out_size_expr,
             'return_type': return_type
         }, args_str, optional_vars
 
@@ -184,39 +186,36 @@ class BaseAPI(object):
                 'Tensor': 'Tensor',
                 'Tensor[]': 'std::vector<Tensor>'
             }
-            if re.search(r'\([a-zA-Z0-9_@]*\)', output_item):
-                result = re.search(
-                    r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*\((?P<name>[a-zA-Z0-9_@]+)\)",
-                    output_item)
-                out_type = result.group('out_type')
-                assert out_type in output_type_map, \
-                    f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
-                      but now is {out_type}."
+            result = re.search(
+                r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
+                output_item)
+            assert result is not None, f"{api_name} : the output config parse error."
+            out_type = result.group('out_type')
+            assert out_type in output_type_map, \
+                f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
+                  but now is {out_type}."
 
-                return output_type_map[out_type], result.group('name')
-
-            else:
-                if output_item.strip() in output_type_map:
-                    return output_type_map[output_item.strip()], 'out'
-                else:
-                    raise ValueError(
-                        "{} : Output type error: the output type only support Tensor and Tensor[], \
-                      but now is {}.".format(api_name, output_item.strip()))
+            out_name = 'out' if result.group('name') is None else result.group(
+                'name')[1:-1]
+            out_size_expr = None if result.group(
+                'expr') is None else result.group('expr')[1:-1]
+            return output_type_map[out_type], out_name, out_size_expr
 
         temp_list = output_config.split(',')
 
         if len(temp_list) == 1:
-            out_type, out_name = parse_output_item(temp_list[0])
-            return [out_type], [out_name], self.get_return_type([out_type])
+            out_type, out_name, size_expr = parse_output_item(temp_list[0])
+            return [out_type], [out_name], size_expr, self.get_return_type(
+                [out_type])
         else:
             out_type_list = []
             out_name_list = []
             for output_item in temp_list:
-                out_type, out_name = parse_output_item(output_item)
+                out_type, out_name, size_expr = parse_output_item(output_item)
                 out_type_list.append(out_type)
                 out_name_list.append(out_name)
 
-            return out_type_list, out_name_list, self.get_return_type(
+            return out_type_list, out_name_list, size_expr, self.get_return_type(
                 out_type_list)
 
     def parse_infer_meta(self, infer_meta_config):
@@ -462,9 +461,8 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
         attr_names = self.attrs['names']
         infer_meta = self.infer_meta
 
-        infer_meta_params = infer_meta[
-            'param'] + kernel_output_names if infer_meta[
-                'param'] is not None else input_names + attr_names + kernel_output_names
+        infer_meta_params = infer_meta['param'] if infer_meta[
+            'param'] is not None else input_names + attr_names
         # generate meta tensors
         meta_tensor_code = ""
         param_code = ""
@@ -500,11 +498,6 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
                     )
-            elif param in kernel_output_names:
-                meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + param.replace(
-                    'kernel_', PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"
-                param_code = param_code + "&" + param.replace(
-                    'kernel_', PREFIX_META_TENSOR_NAME) + ", "
             elif param in attr_names:
                 param_code = param_code + param + ", "
             elif isinstance(param, str):
@@ -513,6 +506,23 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 param_code = param_code + str(param).lower() + ", "
             else:
                 param_code = param_code + str(param) + ", "
+
+        for i, out_name in enumerate(kernel_output_names):
+            if self.outputs['types'][i] == 'std::vector<Tensor>':
+                meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec = MakeMetaTensor({out_name});
+{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas({out_name}_{PREFIX_META_TENSOR_NAME}vec.size());
+{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec.size(); ++i) {{
+{code_indent}    {out_name}_metas[i] = &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i];
+{code_indent}  }}"""
+
+                param_code = param_code + out_name + '_metas, '
+            else:
+                meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + out_name.replace(
+                    'kernel_',
+                    PREFIX_META_TENSOR_NAME) + "(" + out_name + ");\n"
+                param_code = param_code + "&" + out_name.replace(
+                    'kernel_', PREFIX_META_TENSOR_NAME) + ", "
 
         param_code = param_code[:-2]
         return f"""{meta_tensor_code}
@@ -600,7 +610,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     if self.inputs['input_info'][param] == "const Tensor&":
                         kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
                     elif self.inputs['input_info'][
-                            input_name] == "const std::vector<Tensor>&":
+                            param] == "const std::vector<Tensor>&":
                         kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
                     else:
                         # do nothing

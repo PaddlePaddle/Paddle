@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
@@ -62,6 +62,15 @@ _complex_dtypes = [
 _already_patch_varbase = False
 _already_patch_eager_tensor = False
 
+# Dispatch to final state Python-C functions
+_final_state_op_type_mapping = {
+    "elementwise_add": "final_state_add",
+    "elementwise_sub": "final_state_subtract",
+    "elementwise_div": "final_state_divide",
+    "elementwise_mul": "final_state_multiply",
+    "matmul_v2": "final_state_matmul",
+}
+
 
 def monkey_patch_math_varbase():
     """
@@ -102,13 +111,14 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+
+        if _in_legacy_dygraph():
+            return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
         if framework.in_dygraph_mode():
-            if type(scale) == np.float64:
-                scale = float(scale)
-            return _C_ops.final_state_scale(var, scale, bias, True)
+            return _C_ops.final_state_scale(var, float(scale), bias, True)
         return _C_ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
@@ -165,7 +175,10 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
-        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(var, 'axis', perm)
+        else:
+            out = _C_ops.final_state_transpose(var, perm)
         return out
 
     def _scalar_add_(var, value):

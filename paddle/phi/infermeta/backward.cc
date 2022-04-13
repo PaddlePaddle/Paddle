@@ -308,6 +308,38 @@ void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
   }
 }
 
+void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+                           const MetaTensor& out_grad,
+                           std::vector<MetaTensor*> x_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      x_grad.size(),
+      errors::InvalidArgument(
+          "Number of Inputs(X) should be equal with Outputs(X@Grad)."
+          "But received Inputs(X)' size = %d , Outputs(X@Grad)' size = %d.",
+          x.size(),
+          x_grad.size()));
+  for (size_t i = 0; i < x.size(); i++) {
+    if (x_grad[i] != nullptr) {
+      x_grad[i]->set_dims(x[i]->dims());
+      x_grad[i]->share_lod(*x[i]);
+    }
+  }
+}
+
+void MultiplexGradInferMeta(const MetaTensor& ids,
+                            const MetaTensor& out_grad,
+                            std::vector<MetaTensor*> ins_grad) {
+  PADDLE_ENFORCE_NE(
+      ins_grad.empty(),
+      true,
+      errors::InvalidArgument("Output(X@Grad) should not be null."));
+  auto dout_dim = out_grad.dims();
+  for (auto in_grad : ins_grad) {
+    in_grad->set_dims(dout_dim);
+  }
+}
+
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
                           paddle::optional<const MetaTensor&> weight,

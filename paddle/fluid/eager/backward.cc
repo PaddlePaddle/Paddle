@@ -485,6 +485,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
+
   return node_in_degree_map;
 }
 
@@ -526,6 +527,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     bool allow_unused = false,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
   VLOG(6) << "Start Backward";
+
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
@@ -729,6 +731,16 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           continue;
         }
 
+        auto* next_node = next_node_shared.get();
+        if (!node_input_buffers_dict.count(next_node)) {
+          const auto& input_meta = next_node->InputMeta();
+          auto grad_tensor_holder =
+              std::make_unique<GradTensorHolder>(input_meta);
+          VLOG(6) << "Construct GradTensorHolder for grad node: "
+                  << next_node->name();
+          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+        }
+
         PADDLE_ENFORCE_LT(
             j, grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
@@ -748,15 +760,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 << ", rank: " << j
                 << " 's name is: " << grad_output_tensor.name();
 
-        auto* next_node = next_node_shared.get();
-        if (!node_input_buffers_dict.count(next_node)) {
-          const auto& input_meta = next_node->InputMeta();
-          auto grad_tensor_holder =
-              std::make_unique<GradTensorHolder>(input_meta);
-          VLOG(6) << "Construct GradTensorHolder for grad node: "
-                  << next_node->name();
-          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
-        }
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
         node_input_buffers_dict[next_node]->add(
