@@ -76,15 +76,15 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
                           "But received input tensor's dimension is %d",
                           x_rank));
 
+    PADDLE_ENFORCE_EQ(
+        x_shape[x_rank - 1], y_shape[y_rank - 2],
+        platform::errors::InvalidArgument(
+            "Invalid shape for matmul, the last dimension of first input and "
+            "the penultimate dimension for the second input should be same."
+            "But received  %d and %d.",
+            x_shape[x_rank - 1], y_shape[y_rank - 2]));
     if (x_rank == 2) {
-      PADDLE_ENFORCE_EQ(
-          x_shape[1], y_shape[0],
-          platform::errors::InvalidArgument(
-              "Invalid shape for matmul, the last dimension of first input and "
-              "the first dimension for the second input should be same."
-              "But received  %d and %d.",
-              x_shape[1], y_shape[0]));
-      std::vector<int64_t> z_shape{x_shape[0], y_shape[1]};
+      std::vector<int64_t> z_shape{x_shape[x_rank - 2], y_shape[y_rank - 1]};
       BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     } else {
       PADDLE_ENFORCE_EQ(x_shape[0], y_shape[0],
@@ -95,15 +95,8 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
                             "But received  %d and %d.",
                             x_shape[0], y_shape[0]));
 
-      PADDLE_ENFORCE_EQ(
-          x_shape[2], y_shape[1],
-          platform::errors::InvalidArgument(
-              "Invalid shape for matmul when input tensor's dimension is 3, "
-              "the last dimension of first input and the second dimension for "
-              "the second input should be same."
-              "But received  %d and %d.",
-              x_shape[2], y_shape[1]));
-      std::vector<int64_t> z_shape{x_shape[0], x_shape[1], y_shape[2]};
+      std::vector<int64_t> z_shape{x_shape[0], x_shape[x_rank - 2],
+                                   y_shape[y_rank - 1]};
       BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     }
   }
