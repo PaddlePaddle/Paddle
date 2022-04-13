@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/reduce_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
@@ -106,6 +105,7 @@ void AnyRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
@@ -123,4 +123,56 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(all_raw, XPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
 
 PD_REGISTER_KERNEL(any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+#else
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(sum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   bfloat16,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(mean_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MeanRawKernel,
+                   float,
+                   double,
+                   bool,
+                   float16,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(prod_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ProdRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(
+    max_raw, GPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    min_raw, GPU, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(all_raw, GPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
+
+PD_REGISTER_KERNEL(any_raw, GPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
 #endif
