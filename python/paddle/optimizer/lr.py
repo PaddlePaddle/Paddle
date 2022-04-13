@@ -1360,6 +1360,8 @@ class ReduceOnPlateau(LRScheduler):
         if not _in_legacy_dygraph():
             tmp = core.eager.Tensor
         else:
+            # need to declarate explicitly
+            from paddle.framework import VarBase as Tensor
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (tmp, numpy.ndarray)):

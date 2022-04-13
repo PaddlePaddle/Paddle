@@ -20,9 +20,6 @@
 
 set -e
 
-# TARGET: CPU/GPU/TensorRt
-TARGET=GPU
-
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
@@ -35,14 +32,8 @@ function update_pd_ops() {
    # compile and install paddle
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
-
-   INFER_WITH_GPU=OFF
-   if [ "${TARGET}" == "GPU" ] || [ "${TARGET}" == "gpu" ] || [ "${TARGET}" == "TensorRt" ] || [ "${TARGET}" == "tensorrt" ]; then
-      INFER_WITH_GPU=ON
-   fi
-
-   cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=$INFER_WITH_GPU -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j24 paddle_python print_pten_kernels kernel_signature_generator
+   cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j8 paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
    ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
    ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
@@ -90,7 +81,6 @@ function init() {
 }
 
 function infrt_gen_and_build() {
-    parallel_number=24
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
@@ -103,13 +93,7 @@ function infrt_gen_and_build() {
     # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
-
-    INFER_WITH_GPU=OFF
-    if [ "${TARGET}" == "GPU" ] || [ "${TARGET}" == "gpu" ] || [ "${TARGET}" == "TensorRt" ]; then
-       INFER_WITH_GPU=ON
-    fi
-
-    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=${INFER_WITH_GPU} -DWITH_TENSORRT=ON -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DINFRT_WITH_GPU=ON -DINFRT_WITH_TRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
+    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -172,34 +156,28 @@ function main() {
         echo "      (2)bash infrt_build.sh build_only"
         echo "      (3)bash infrt_build.sh test_only"
         echo "      optional command: --update_pd_ops : pd_ops.td will be updated according to paddle's code."
-        echo "                        --target= : GPU/gpu/CPU/cpu/TensorRt/tensorrt, default value is GPU."
         exit 0
     fi
 
     init
 
-    for i in "$@"; do
-        case $i in
-            --target=*)
-              TARGET="${i#*=}"
-              shift
-              ;;
-            build_and_test)
-              infrt_gen_and_build ${parallel_number}
-              test_infrt
-              ;;
-            build_only)
-              infrt_gen_and_build ${parallel_number}
-              ;;
-            test_only)
-              test_infrt
-              ;;
-            *)
-              print_usage
-              exit 1
-              ;;
-        esac
-    done
+    case $CMD in
+      build_and_test)
+        infrt_gen_and_build ${parallel_number}
+        test_infrt
+        ;;
+      build_only)
+        infrt_gen_and_build ${parallel_number}
+        ;;
+      test_only)
+        test_infrt
+        ;;
+      *)
+        print_usage
+        exit 1
+        ;;
+    esac
+
     set +x
     if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
       echo "=====================build summary======================"

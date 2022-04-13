@@ -41,7 +41,12 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      pg->Broadcast(x, out);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*x);
+      out_tensor.push_back(*out);
+      auto task = pg->Broadcast(in_tensor, out_tensor);
+      task->Wait();
       return;
     }
 
