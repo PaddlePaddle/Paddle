@@ -17,7 +17,6 @@
 #include <map>
 #include <set>
 #include <string>
-#include <unordered_set>
 
 // NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
 // determined by the OP`s proto automatically, i.e., all the inputs registered
@@ -276,8 +275,4 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
 std::set<std::string> special_inplace_op_set = {
     "sum",     // `sum` op has duplicate input
     "assign",  // output of `assign` op is in `op_passing_outs_map`
-};
-
-std::map<std::string, std::unordered_set<std::string>> no_need_buffer_map = {
-    {"slice", {"Input"}},
 };

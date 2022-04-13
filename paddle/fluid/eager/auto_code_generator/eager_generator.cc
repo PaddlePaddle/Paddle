@@ -150,20 +150,12 @@ class ForwardGenerationInfo {
   }
   std::vector<proto::OpProto::Var>* GetMutableOutVars() { return &out_vars_; }
 
-  const std::unordered_set<std::string>& GetNoNeedBufferInputs() const {
-    return no_need_buffer_ins_;
-  }
-  std::unordered_set<std::string>* GetMutableNoNeedBufferInputs() {
-    return &no_need_buffer_ins_;
-  }
-
  private:
   std::string op_type_;
   std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map_;
   std::unordered_map<std::string, size_t> fwd_outputs_name_pos_map_;
   std::vector<proto::OpProto::Var> in_vars_;
   std::vector<proto::OpProto::Var> out_vars_;
-  std::unordered_set<std::string> no_need_buffer_ins_;
 };
 
 class GradNodeGenerationInfo {
@@ -225,6 +217,13 @@ class GradNodeGenerationInfo {
       return &grad_attrs_;
     }
 
+    const std::unordered_set<std::string>& GetNoNeedBufferInputs() const {
+      return no_need_buffer_ins_;
+    }
+    std::unordered_set<std::string>* GetMutableNoNeedBufferInputs() {
+      return &no_need_buffer_ins_;
+    }
+
    private:
     std::string op_base_type_;
     std::map<std::string, std::string> grad_outs_slotname_map_;
@@ -237,6 +236,7 @@ class GradNodeGenerationInfo {
              std::vector<std::shared_ptr<paddle::imperative::VariableWrapper>>>
         grad_outs_;
     paddle::framework::AttributeMap grad_attrs_;
+    std::unordered_set<std::string> no_need_buffer_ins_;
   };
 
  public:
@@ -770,21 +770,6 @@ static void CollectForwardInformationFromOpInfo(
   for (const proto::OpProto::Var& output : op_proto.outputs()) {
     fwd_info->GetMutableOutVars()->push_back(output);
   }
-
-  auto& inferer = op_info.NoNeedBufferVarsInferer();
-  if (inferer) {
-    paddle::imperative::NameVarMap<paddle::imperative::VariableWrapper> inputs =
-        {};
-    paddle::imperative::NameVarMap<paddle::imperative::VariableWrapper>
-        outputs = {};
-    paddle::framework::AttributeMap attrs = {};
-    *fwd_info->GetMutableNoNeedBufferInputs() = inferer(inputs, outputs, attrs);
-  }
-  if (fwd_info->GetNoNeedBufferInputs().empty() &&
-      no_need_buffer_map.count(op_proto.type())) {
-    *fwd_info->GetMutableNoNeedBufferInputs() =
-        no_need_buffer_map[op_proto.type()];
-  }
 }
 
 static bool CollectGradInformationFromOpInfo(
@@ -981,6 +966,13 @@ static bool CollectGradInformationFromOpInfo(
         VLOG(6) << "GradOuts Name: " << it.first;
       }
     }
+
+    auto& inferer = op_base.Info().NoNeedBufferVarsInferer();
+    // TODO(pangyoki): sequence_conv op will raise error and needs to be fixed
+    if (op_type != "sequence_conv" && inferer) {
+      *(*op_base_infos)[index].GetMutableNoNeedBufferInputs() =
+          inferer(g_ins, g_outs, *op_base_grad_attrs);
+    }
   }
 
   /* ------ Slot Name Matching ---- */
@@ -1017,8 +1009,6 @@ static std::string GenerateGradNodeCreationContent(
       fwd_info.GetFwdOutputsNamePosMap();
   const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
   const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
-  const std::unordered_set<std::string>& no_need_buffer_ins =
-      fwd_info.GetNoNeedBufferInputs();
 
   const auto& op_base_infos = bwd_info.GetOpBaseInfos();
 
@@ -1154,6 +1144,8 @@ static std::string GenerateGradNodeCreationContent(
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
+    const std::unordered_set<std::string>& no_need_buffer_ins =
+        iter.GetNoNeedBufferInputs();
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
       std::string full_reserved = "false";
@@ -2482,8 +2474,6 @@ static std::string GenerateGradNodeHeaderContents(
   const std::string& op_type = fwd_info.GetOpType();
   const std::vector<proto::OpProto::Var>& in_vars = fwd_info.GetInVars();
   const std::vector<proto::OpProto::Var>& out_vars = fwd_info.GetOutVars();
-  const std::unordered_set<std::string>& no_need_buffer_ins =
-      fwd_info.GetNoNeedBufferInputs();
 
   const auto& op_base_infos = bwd_info.GetOpBaseInfos();
 
@@ -2561,6 +2551,8 @@ static std::string GenerateGradNodeHeaderContents(
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
+    const std::unordered_set<std::string>& no_need_buffer_ins =
+        iter.GetNoNeedBufferInputs();
 
     for (const auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
@@ -2805,11 +2797,6 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     VLOG(6) << "-------- CollectInformationFromOpInfo -------";
 
     CollectForwardInformationFromOpInfo(op_info, &fwd_info);
-    // std::cout << "yoki op_type: " << fwd_info.GetOpType() << "\n";
-    // if (!fwd_info.GetNoNeedBufferInputs().empty()) {
-    //   std:: cout << "yoki no_need_buffer: " <<
-    //   *fwd_info.GetNoNeedBufferInputs().begin() << "\n";
-    // }
 
     bool is_available = CollectGradInformationFromOpInfo(op_info, &bwd_info);
 
