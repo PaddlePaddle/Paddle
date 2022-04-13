@@ -1058,7 +1058,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                            std::to_string(fraction_of_gpu_memory);
         VLOG(3) << "set flag: " << flag;
         gflags.push_back(flag);
-        gflags.push_back("--cudnn_deterministic=True");
       }
 
       // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
@@ -1756,6 +1755,8 @@ USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(roll)
+USE_TRT_CONVERTER(strided_slice)
 #endif
 
 namespace paddle_infer {
