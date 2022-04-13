@@ -108,7 +108,7 @@ class Transform(object):
 
     def __init__(self, block):
         self.block = block
-        self.vars = init_vars(block)
+        self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
         self.dot2bar = VarMap('dot2var', self.vars)
 
