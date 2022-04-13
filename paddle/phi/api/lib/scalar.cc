@@ -30,7 +30,7 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         "The Scalar only supports Tensor with 1 element, but "
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
-  if (tensor_in.place() == PlaceType::kGPU) {
+  if (tensor_in.place().GetType() == phi::AllocationType::CPU) {
     Tensor dst_tensor;
     copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
     GetDataFromTensor(dst_tensor);
@@ -39,8 +39,8 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Now, it is not supported to construct Scalar using tensor that its "
-        "PlaceType is (%d)",
-        static_cast<int>(tensor_in.place())));
+        "Place is (%s)",
+        tensor_in.place()));
   }
 }
 
