@@ -79,9 +79,9 @@ class TensorWrapper {
 
     auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     if (tensor_autograd_meta) {
-      auto autograd_meta = std::make_shared<AutogradMeta>(
-          Edge(nullptr, EagerUtils::OutRankInfo(tensor)));
-      autograd_meta->SetStopGradient(tensor_autograd_meta->StopGradient());
+      auto autograd_meta =
+          std::make_shared<AutogradMeta>(*tensor_autograd_meta);
+      autograd_meta->ResetGradNode();
       intermidiate_tensor_.set_autograd_meta(autograd_meta);
       weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
@@ -98,8 +98,11 @@ class TensorWrapper {
     check_inplace_version();
 
     // if it's full_reserved just return the full copy of tensor
-    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
-    if (!full_reserved_) {
+    if (full_reserved_) {
+      return intermidiate_tensor_;
+    } else {
+      paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+
       std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
       if (new_grad_node) {
         VLOG(3) << "Recovered TensorWrapper with GradNode "
@@ -109,17 +112,13 @@ class TensorWrapper {
       }
       auto* intermediate_autograd_meta =
           EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
-      auto p_ab_autograd_meta = std::make_shared<AutogradMeta>(
-          Edge(new_grad_node, intermediate_autograd_meta->OutRankInfo()));
-      p_ab_autograd_meta->SetStopGradient(
-          intermediate_autograd_meta->StopGradient());
+      auto p_ab_autograd_meta =
+          std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
+      p_ab_autograd_meta->SetGradNode(new_grad_node);
+      recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
 
-      recovered_tensor.set_autograd_meta(
-          std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-              p_ab_autograd_meta));
+      return recovered_tensor;
     }
-
-    return recovered_tensor;
   }
 
   void check_inplace_version() {
