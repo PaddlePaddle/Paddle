@@ -17,7 +17,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.optimizer import Optimizer
+from paddle.fluid.optimizer import Optimizer
 from paddle.distributed import get_rank, get_world_size
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
@@ -42,11 +42,7 @@ class DistributedFusedLamb(Optimizer):
         assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
         super(DistributedFusedLamb, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=None,
-            name=name)
+            learning_rate=learning_rate, grad_clip=None, name=name)
 
         self._beta1 = beta1
         self._beta2 = beta2

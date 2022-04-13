@@ -35,8 +35,9 @@ namespace cub = hipcub;
 
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-// #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h" // 重复了
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -588,11 +589,11 @@ struct ReduceConfig {
 
   void SetBlockDim() {
     // init
-    // int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
     dim3 block_dim;
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
+
 #ifdef PADDLE_WITH_XPU_KP
     if (reduce_last_dim) {
       block_dim.x = 64;
@@ -1054,7 +1055,7 @@ CubTensorReduceImpl(const Tx* x_data,
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
-#endif  // CubTensorReduceImpl
+#endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
           typename Ty,

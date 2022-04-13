@@ -55,6 +55,27 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
+#ifdef PADDLE_WITH_PSLIB
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  virtual ~AfsWrapper() {}
+  void init(const std::string& fs_name, const std::string& fs_user,
+            const std::string& pass_wd, const std::string& conf);
+  int remove(const std::string& path);
+  int mkdir(const std::string& path);
+  std::vector<std::string> list(const std::string& path);
+
+  int exist(const std::string& path);
+  int upload(const std::string& local_file, const std::string& afs_file);
+
+  int download(const std::string& local_file, const std::string& afs_file);
+
+ private:
+  paddle::ps::AfsApiWrapper afs_handler_;
+};
+#endif
+
 class PSGPUWrapper {
  public:
   virtual ~PSGPUWrapper() { delete HeterPs_; }
@@ -62,6 +83,10 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -378,6 +403,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:
   static bool is_initialized_;
