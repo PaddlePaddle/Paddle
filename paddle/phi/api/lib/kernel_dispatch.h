@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
@@ -40,8 +42,10 @@ std::size_t CountLeadingZeros(uint64_t val);
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
-  DENSE_TENSOR_KENREL,  // kernel for DenseTensor
-  SELECTED_ROWS_KENREL  // kernel for SelectedRows
+  DENSE_TENSOR_KENREL,   // kernel for DenseTensor
+  SELECTED_ROWS_KENREL,  // kernel for SelectedRows
+  SPARSE_COO_KERNEL,     // kernel for SparseCooTensor
+  SPARSE_CSR_KERNEL      // kernel for SparseCsrTensor
 };
 
 // TODO(chenweihang): support DataLayout and DataType selected
@@ -130,6 +134,10 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   void operator()(const Tensor& x) {
     if (phi::SelectedRows::classof(x.impl().get())) {
       kernel_type = KernelType::SELECTED_ROWS_KENREL;
+    } else if (phi::SparseCooTensor::classof(x.impl().get())) {
+      kernel_type = KernelType::SPARSE_COO_KERNEL;
+    } else if (phi::SparseCsrTensor::classof(x.impl().get())) {
+      kernel_type = KernelType::SPARSE_CSR_KERNEL;
     }
   }
 

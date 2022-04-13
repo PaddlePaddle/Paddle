@@ -30,6 +30,7 @@ from paddle.fluid import compiler
 from paddle.fluid import Program, program_guard
 
 from op_test import OpTest, _set_use_system_allocator
+from decorator_helper import prog_scope
 
 _set_use_system_allocator(True)
 
@@ -105,6 +106,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     sgd_opt.backward(out)
         return main, startup, [out, conv, bn]
 
+    @prog_scope()
     def _compare(self, place, layout, only_forward):
         """Compare results."""
         seed = 10

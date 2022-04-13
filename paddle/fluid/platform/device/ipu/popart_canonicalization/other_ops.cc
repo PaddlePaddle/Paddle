@@ -77,6 +77,11 @@ Node *detach_handler(Graph *graph, Node *node) {
                       node->outputs);
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(custom_op, custom_op_handler);
 REGISTER_HANDLER(print, print_handler);
 REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
@@ -84,8 +89,3 @@ REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
 REGISTER_HANDLER(custom_nll_loss, custom_nll_loss_handler);
 REGISTER_HANDLER(identity, identity_handler);
 REGISTER_HANDLER(detach, detach_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

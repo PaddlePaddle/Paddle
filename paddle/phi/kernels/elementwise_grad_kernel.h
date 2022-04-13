@@ -31,9 +31,9 @@ void AddGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& y,
+                         const DenseTensor& dout,
                          paddle::optional<const DenseTensor&> ddx,
                          paddle::optional<const DenseTensor&> ddy,
-                         const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout);
 

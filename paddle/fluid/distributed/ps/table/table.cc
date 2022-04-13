@@ -17,15 +17,11 @@
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 
-#include "paddle/fluid/distributed/ps/table/common_dense_table.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
-#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
-#include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
-#include "paddle/fluid/distributed/ps/table/sparse_geo_table.h"
-#ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
-#endif
+#include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
+
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/ps/table/memory_sparse_geo_table.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
@@ -34,14 +30,11 @@
 namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
-REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
-REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
+REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
 #ifdef PADDLE_WITH_HETERPS
-REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(GraphSampler, CompleteGraphSampler);
 REGISTER_PSCORE_CLASS(GraphSampler, BasicBfsGraphSampler);
 #endif
-REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
 REGISTER_PSCORE_CLASS(Table, TensorTable);
 REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
@@ -56,7 +49,7 @@ REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 
-int32_t TableManager::initialize() {
+int32_t TableManager::Initialize() {
   static bool initialized = false;
   if (initialized) {
     return 0;
@@ -65,10 +58,10 @@ int32_t TableManager::initialize() {
   return 0;
 }
 
-int32_t Table::initialize(const TableParameter &config,
+int32_t Table::Initialize(const TableParameter &config,
                           const FsClientParameter &fs_config) {
   _config = config;
-  if (initialize_accessor() != 0) {
+  if (InitializeAccessor() != 0) {
     LOG(WARNING) << "Table accessor initialize failed";
     return -1;
   }
@@ -77,10 +70,10 @@ int32_t Table::initialize(const TableParameter &config,
     LOG(WARNING) << "Table fs_client initialize failed";
     // return -1;
   }
-  return initialize();
+  return Initialize();
 }
 
-int32_t Table::initialize_accessor() {
+int32_t Table::InitializeAccessor() {
   if (!_config.has_accessor() || !_config.accessor().has_accessor_class()) {
     LOG(ERROR) << "missing accessor config in table, table_id:"
                << _config.table_id();
@@ -97,13 +90,12 @@ int32_t Table::initialize_accessor() {
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
-  if (accessor->configure(_config.accessor()) || accessor->initialize() != 0) {
+  if (accessor->Configure(_config.accessor()) || accessor->Initialize() != 0) {
     LOG(ERROR) << " accessor initialize failed, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
   _value_accesor.reset(accessor);
-  // _value_accesor->SetTableInfo(_table_info);
   return 0;
 }
 

@@ -17,7 +17,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.optimizer import Optimizer
+from paddle.fluid.optimizer import Optimizer
 from paddle.distributed import get_rank, get_world_size
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
@@ -42,11 +42,7 @@ class DistributedFusedLamb(Optimizer):
         assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
         super(DistributedFusedLamb, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=None,
-            name=name)
+            learning_rate=learning_rate, grad_clip=None, name=name)
 
         self._beta1 = beta1
         self._beta2 = beta2
@@ -75,8 +71,17 @@ class DistributedFusedLamb(Optimizer):
             name=unique_name.generate('found_inf'),
             shape=[1],
             dtype=core.VarDesc.VarType.BOOL)
+        self._step = None
 
         self._param_to_master_param = {}
+
+    def _set_step(self, step):
+        self._step = step
+
+    def _get_or_create_step(self):
+        if self._step is None:
+            self._step = self._create_persistable_var('step', dtype='int64')
+        return self._step
 
     def _set_scale(self, scale):
         assert scale is not None
@@ -189,6 +194,8 @@ class DistributedFusedLamb(Optimizer):
         param_order = self._create_persistable_var('param_order', dtype='int32')
         param_order.is_distributed = True
 
+        step = self._get_or_create_step()
+
         rank = get_rank()
         nranks = get_world_size()
         scale = self._get_or_create_scale()
@@ -234,6 +241,7 @@ class DistributedFusedLamb(Optimizer):
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
                 'ParamOrder': [param_order],
+                'Step': [step],
             },
             attrs={
                 'alignment': self._alignment,
@@ -290,6 +298,7 @@ class DistributedFusedLamb(Optimizer):
                 'ParamOut': params,
                 'GradOut': grads,
                 'FoundInf': [self._found_inf],
+                'Step': [step],
             },
             attrs={
                 'weight_decay': self._weight_decay,

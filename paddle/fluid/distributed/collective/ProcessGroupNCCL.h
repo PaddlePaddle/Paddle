@@ -147,6 +147,10 @@ class ProcessGroupNCCL : public ProcessGroup {
       Fn fn, CommType op_type);
 
   template <typename Fn>
+  void Collective(const phi::DenseTensor*, phi::DenseTensor*, Fn fn,
+                  CommType op_type);
+
+  template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> PointToPoint(
       std::vector<Tensor>& tensors,  // NOLINT
       Fn fn, int dst_rank, CommType op_type);

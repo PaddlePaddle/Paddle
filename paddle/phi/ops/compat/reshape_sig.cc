@@ -47,7 +47,7 @@ KernelSignature ReshapeGradOpArgumentMapping(
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
+  return KernelSignature("reshape_double_grad", {"DOut", "DDX"}, {}, {"DDOut"});
 }
 
 }  // namespace phi

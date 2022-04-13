@@ -53,8 +53,6 @@ endif()
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules})
-elseif(WITH_IPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules} paddle_ipu)
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()

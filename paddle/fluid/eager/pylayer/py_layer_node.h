@@ -40,11 +40,6 @@ class GradNodePyLayer : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
-
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
@@ -70,6 +65,12 @@ class GradNodePyLayer : public GradNodeBase {
         forward_outputs_place_[i].emplace_back(tensor->inner_place());
       }
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
+    return copied_node;
   }
 
  private:

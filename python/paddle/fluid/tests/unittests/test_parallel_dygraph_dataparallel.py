@@ -23,6 +23,7 @@ import os
 import subprocess
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.fluid.framework import _test_eager_guard
 
 
 def get_cluster_from_args(selected_gpus):
@@ -205,12 +206,9 @@ class TestDataParallelGradientCheck(TestMultipleGpus):
 
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
+        with _test_eager_guard():
+            self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
-
-
-class TestDataParallelInEagerMode(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
 
 
 class TestGradientCheckInEagerMode(TestMultipleGpus):
