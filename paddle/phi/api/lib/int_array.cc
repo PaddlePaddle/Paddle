@@ -23,7 +23,7 @@ namespace experimental {
 template <>
 IntArrayBase<Tensor>::IntArrayBase(const Tensor& tensor) {  // NOLINT
   is_from_tensor_ = true;
-  if (tensor.inner_place().GetType() == phi::AllocationType::CPU) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     AssignDataFromTensor(tensor);
   } else {
     Tensor tensor_tmp;
@@ -40,7 +40,7 @@ IntArrayBase<Tensor>::IntArrayBase(const std::vector<Tensor>& tensor_list) {
     DataType data_type = tensor_list[i].dtype();
     switch (data_type) {
       case DataType::INT32:
-        if (tensor_list[i].inner_place().GetType() == AllocationType::CPU) {
+        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
           array_.push_back(*tensor_list[i].template data<int32_t>());
         } else {
           Tensor tensor_tmp;

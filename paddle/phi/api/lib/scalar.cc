@@ -39,8 +39,8 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Now, it is not supported to construct Scalar using tensor that its "
-        "PlaceType is (%d)",
-        static_cast<int>(tensor_in.place())));
+        "PlaceType is (%s)",
+        tensor_in.place()));
   }
 }
 
