@@ -276,3 +276,7 @@ std::set<std::string> special_inplace_op_set = {
     "sum",     // `sum` op has duplicate input
     "assign",  // output of `assign` op is in `op_passing_outs_map`
 };
+
+std::set<std::string> special_no_need_buffer_op_set = {
+    "sequence_conv", "gru_unit",
+};

@@ -969,7 +969,7 @@ static bool CollectGradInformationFromOpInfo(
 
     auto& inferer = op_base.Info().NoNeedBufferVarsInferer();
     // TODO(pangyoki): sequence_conv op will raise error and needs to be fixed
-    if (op_type != "sequence_conv" && inferer) {
+    if (inferer && !special_no_need_buffer_op_set.count(op_type)) {
       *(*op_base_infos)[index].GetMutableNoNeedBufferInputs() =
           inferer(g_ins, g_outs, *op_base_grad_attrs);
     }
