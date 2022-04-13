@@ -59,8 +59,8 @@ KernelKeyMap KernelFactory::SelectKernelMap(
   return iter->second;
 }
 
-bool KernelFactory::IsSelectKernelValid(const std::string& kernel_name,
-                                        const KernelKey& kernel_key) const {
+bool KernelFactory::HasKernel(const std::string& kernel_name,
+                              const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
@@ -126,6 +126,16 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
     DataType dtype) const {
   return SelectKernelOrThrowError(kernel_name,
                                   KernelKey(backend, layout, dtype));
+}
+
+const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
+    const std::string& kernel_name) const {
+  auto iter = kernels_.find(kernel_name);
+  PADDLE_ENFORCE_NE(
+      iter,
+      kernels_.end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  return iter->second.cbegin()->second.args_def();
 }
 
 // print kernel info with json format:

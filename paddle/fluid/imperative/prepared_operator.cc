@@ -200,8 +200,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << ", using_kernel_key:" << expected_kernel_key;
         phi::KernelKey try_pt_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-        if (!phi::KernelFactory::Instance().IsSelectKernelValid(
-                pt_kernel_name, try_pt_kernel_key)) {
+        if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                      try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
           VLOG(3) << "modify XPU KP kernel: " << op.Type() << " is failed "
                   << expected_kernel_key;

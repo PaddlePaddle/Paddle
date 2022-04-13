@@ -394,8 +394,8 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
   return result;
 }
 
-phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                            const std::string& op_type) {
+CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                             const std::string& op_type) {
   // 1. get kernel args
   InitDefaultKernelSignatureMap();
   auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
@@ -414,17 +414,14 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
 
-  auto kernels_map =
-      phi::KernelFactory::Instance().SelectKernelMap(signature.name);
-  if (kernels_map.size() == 0) {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not find `%s` kernels when construct "
-                                        "InferMetaContext.",
-                                        signature.name));
-  }
-  auto attr_defs = kernels_map.cbegin()->second.args_def().attribute_defs();
+  VLOG(3) << "BuildInferMetaContext: after signature";
 
-  phi::InferMetaContext infer_mete_context;
+  const auto& args_def =
+      phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
+  const auto& attr_defs = args_def.attribute_defs();
+
+  VLOG(3) << "BuildInferMetaContext: after get attr def";
+
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
       auto input_var = ctx->GetInputVarPtrs(in_name);
@@ -443,6 +440,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       infer_meta_context.EmplaceBackInput(CompatMetaTensor());
     }
   }
+
+  VLOG(3) << "BuildInferMetaContext: Done inputs";
 
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
@@ -680,6 +679,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     }
   }
 
+  VLOG(3) << "BuildInferMetaContext: Done attrs";
+
   for (auto& out_name : output_names) {
     if (ctx->HasOutputs(out_name)) {
       auto output_var = ctx->GetOutputVarPtrs(out_name);
@@ -698,6 +699,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       infer_meta_context.EmplaceBackOutput(CompatMetaTensor());
     }
   }
+
+  VLOG(3) << "BuildInferMetaContext: Done outputs";
 
   return infer_meta_context;
 }

@@ -1318,8 +1318,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                   << ", using_kernel_key:" << *kernel_type_.get();
           auto try_pt_kernel_key =
               TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-          if (!phi::KernelFactory::Instance().IsSelectKernelValid(
-                  pt_kernel_name, try_pt_kernel_key)) {
+          if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                        try_pt_kernel_key)) {
             kernel_type_->library_type_ = expected_kernel_key_library_type;
             VLOG(3) << "modify XPU KP kernel in static graph: " << type_
                     << " is failed " << *kernel_type_.get();

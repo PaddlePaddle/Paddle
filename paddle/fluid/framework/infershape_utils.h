@@ -121,8 +121,8 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   paddle::SmallVector<CompatMetaTensor> compat_outputs_;
 };
 
-phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                            const std::string& op_type);
+CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                             const std::string& op_type);
 
 #define DECLARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
   struct functor_name : public paddle::framework::InferShapeBase {  \

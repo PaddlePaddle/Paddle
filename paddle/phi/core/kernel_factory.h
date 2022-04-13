@@ -246,13 +246,16 @@ class KernelFactory {
                                          DataLayout layout,
                                          DataType dtype) const;
 
-  bool IsSelectKernelValid(const std::string& kernel_name,
-                           const KernelKey& kernel_key) const;
+  bool HasKernel(const std::string& kernel_name,
+                 const KernelKey& kernel_key) const;
 
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
+
+  const KernelArgsDef& GetFirstKernelArgsDef(
+      const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;
