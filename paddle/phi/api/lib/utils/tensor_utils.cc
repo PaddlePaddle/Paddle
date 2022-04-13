@@ -67,7 +67,6 @@ phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src) {
 }
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
-  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     return MakePhiIntArray(tensor);
