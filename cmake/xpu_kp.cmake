@@ -162,7 +162,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 ${ABI_VERSION} ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
         -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
-        --xpu-host-only -c -v
+        --xpu-host-only -c -v 
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS
