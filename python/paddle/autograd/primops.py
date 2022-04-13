@@ -45,7 +45,7 @@ def _manipulation_unop(helper):
 
     attrs = {
         k: helper.kwargs[k]
-        for k in ('shape', 'axis', 'indexes') if k in helper.kwargs
+        for k in ('shape', 'axis', 'index') if k in helper.kwargs
     }
 
     if out is None:
@@ -140,7 +140,7 @@ def split(x, num_or_sections, axis=0, outs=None):
     return outs
 
 
-@REGISTER_FN('concat')
+@REGISTER_FN('concat_p')
 def concat(xs, axis=0, out=None):
     assert isinstance(xs, (list, tuple)) and len(xs) > 0
     attrs = {'axis': axis}

@@ -32,8 +32,8 @@ class Registry(object):
 
 
 _primop_fn = Registry('primop_fn')
-_primop_jvp = Registry('primop_jvps')
-_primop_transpose = Registry('primop_vjps')
+_primop_jvp = Registry('primop_jvp')
+_primop_transpose = Registry('primop_transpose')
 
 
 def lookup_fn(optype):
@@ -63,7 +63,7 @@ def REGISTER_JVP(op_type):
     
     Usage:
     .. code-block:: python
-        @RegisterJVP('add')
+        @REGISTER_JVP('add')
         def add_jvp(op, x_dot, y_dot):
             return primops.add(x_dot, y_dot)
     
@@ -85,7 +85,7 @@ def REGISTER_TRANSPOSE(op_type):
     
     Usage:
     .. code-block:: python
-        @RegisterJVP('add')
+        @REGISTER_TRANSPOSE('add')
         def add_transpose(op, z_bar):
             return z_bar, z_bar
     

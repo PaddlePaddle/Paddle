@@ -129,6 +129,8 @@ class Transform(object):
             del self.vars[id(var)]
         self.dot2bar.delete_keyvars(vars_to_erase)
         self.var2dot.delete_valuevars(vars_to_erase)
+        for var in vars_to_erase:
+            del var.block.vars[var.name]
 
     def is_dot(self, var):
         return self.var2dot.contain_value(var)
