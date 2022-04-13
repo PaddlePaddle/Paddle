@@ -166,6 +166,25 @@ def _in_eager_without_dygraph_check():
     return _in_eager_mode_
 
 
+# FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
+# only GPU/CPU. Remove this after we improve this feature.
+def _fallback_legacy_dygraph():
+    global _in_eager_mode_
+    if core._is_compiled_with_xpu() or core._is_compiled_with_npu(
+    ) or core._is_compiled_with_ipu() or core._is_compiled_with_mlu(
+    ) or core._is_compiled_with_rocm():
+        _in_eager_mode_ = False
+        # switch into legacy dygraph mode
+        _enable_legacy_dygraph()
+        return True
+
+    return False
+
+
+# switch into legacy mode if need while import paddle
+_fallback_legacy_dygraph()
+
+
 def in_dygraph_mode():
     """
 
@@ -206,11 +225,16 @@ def _non_static_mode():
 
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
-    _disable_legacy_dygraph()
+    # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
+    # only GPU/CPU. Remove this after we improve this feature.
+    already_fallback = _fallback_legacy_dygraph()
+    if not already_fallback:
+        _disable_legacy_dygraph()
     try:
         yield
     finally:
-        _enable_legacy_dygraph()
+        if not already_fallback:
+            _enable_legacy_dygraph()
 
 
 global_ipu_index = None
