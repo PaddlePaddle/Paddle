@@ -144,7 +144,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
         SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
