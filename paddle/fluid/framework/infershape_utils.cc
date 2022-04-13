@@ -682,7 +682,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: Done attrs";
 
   for (auto& out_name : output_names) {
-    if (ctx->HasOutputs(out_name)) {
+    if (ctx->HasOutputs(out_name, true)) {
       auto output_var = ctx->GetOutputVarPtrs(out_name);
       if (output_var.size() == 1) {
         infer_meta_context.EmplaceBackOutput(
@@ -691,7 +691,16 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         paddle::SmallVector<CompatMetaTensor> outputs;
         outputs.reserve(output_var.size());
         for (const auto& out : output_var) {
-          outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
+          if (ctx->IsRuntime()) {
+            if (BOOST_GET_CONST(Variable*, out)) {
+              outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
+              continue;
+            }
+          } else if (BOOST_GET_CONST(VarDesc*, out)) {
+            outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
+            continue;
+          }
+          outputs.emplace_back(CompatMetaTensor());
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
