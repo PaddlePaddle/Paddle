@@ -748,6 +748,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                   << ", rank: " << j << " as uninitialized or undefined tensor";
         }
 
+        VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
+                << ", rank: " << j
+                << " 's name is: " << grad_output_tensor.name();
+
         auto* next_node = next_node_shared.get();
         if (!node_input_buffers_dict.count(next_node)) {
           const auto& input_meta = next_node->InputMeta();
@@ -757,10 +761,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                   << next_node->name();
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
-
-        VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
-                << ", rank: " << j
-                << " 's name is: " << grad_output_tensor.name();
 
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
