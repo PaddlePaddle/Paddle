@@ -62,7 +62,7 @@ def vars_on_path(xs, ys, block=None):
 
     for op in topo_path(xs, ys, block):
         if op not in sink_ops:
-            for out in get_output_vars(op)
+            for out in get_output_vars(op):
                 vars[id(out)] = out
 
     return vars
