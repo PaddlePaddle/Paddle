@@ -408,15 +408,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());
 
-  for (size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
-    LOG(INFO) << "========One Op Begin======";
-    LOG(INFO) << block_desc_temp.Op(i)->Type();
-    auto ins = block_desc_temp.Op(i)->InputArgumentNames();
-    for (size_t j = 0; j < ins.size(); ++j) {
-      LOG(INFO) << ins[j];
-    }
-    LOG(INFO) << "========One Op End======";
-  }
+//  for (size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
+//    LOG(INFO) << "========One Op Begin======";
+//    LOG(INFO) << block_desc_temp.Op(i)->Type();
+//    auto ins = block_desc_temp.Op(i)->InputArgumentNames();
+//    for (size_t j = 0; j < ins.size(); ++j) {
+//      LOG(INFO) << ins[j];
+//    }
+//    LOG(INFO) << "========One Op End======";
+//  }
 
   inference::Singleton<inference::tensorrt::OpConverter>::Global()
       .ConvertBlockToTRTEngine(

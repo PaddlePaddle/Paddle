@@ -13,16 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+using half = paddle::platform::float16;
 class PrelnResidualBiasOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
+    framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
@@ -45,7 +48,16 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
     auto* ele_bias = get_persistable_data("EleBias", &ele_bias_dims);
+
+
+
     int bias_size = phi::product(bias_dims);
+    auto half_ele_bias_data = new half[bias_size];
+
+    for (int i = 0; i < bias_size; i++) {
+        half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
+    }
+
     int scale_size = phi::product(scale_dims);
     int ele_bias_size = phi::product(ele_bias_dims);
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
@@ -53,10 +65,9 @@ class PrelnResidualBiasOpConverter : public OpConverter {
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     VLOG(3) << "preln_residual_bias with_fp16: " << with_fp16;
     nvinfer1::ILayer* layer = nullptr;
-
-    plugin::DynamicPluginTensorRT* plugin = plugin::PrelnResidualBiasPluginDynamic<half>(bias, scale, ele_bias,
+    plugin::DynamicPluginTensorRT* plugin = new plugin::PrelnResidualBiasPluginDynamic<half>(bias, scale, half_ele_bias_data,
                                            bias_size, scale_size, ele_bias_size,
-                                           epsilon, with_fp16)
+                                           epsilon, with_fp16);
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(input1);

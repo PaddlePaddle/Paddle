@@ -91,7 +91,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
             scale_weights.get(), power_weights.get(), dynamic_shape_offset);
         VLOG(3) << "Add IScaleLayer for elemnetwise_add, and set channel axis to 2;";
         // debugggggggggggggggg
-        scale_layer->setChannelAxis(2);
+//        scale_layer->setChannelAxis(2);
 
         layer = scale_layer;
       } else if (op_type_ == "mul") {

@@ -273,7 +273,7 @@ void TensorRTEngine::FreezeNetwork() {
     cur_profile_num_ = 0;
   }
 
-  GetEngineInfo();
+//  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,

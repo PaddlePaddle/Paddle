@@ -220,12 +220,12 @@ class OpConverter {
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
 
-      framework::OpDesc op_desc_tmp(op, nullptr);
-      LOG(INFO) << op_desc_tmp.Type();
-      auto ins = op_desc_tmp.InputArgumentNames();
-      for (size_t k = 0; k < ins.size(); ++k) {
-        LOG(INFO) << ins[k];
-      }
+//      framework::OpDesc op_desc_tmp(op, nullptr);
+//      LOG(INFO) << op_desc_tmp.Type();
+//      auto ins = op_desc_tmp.InputArgumentNames();
+//      for (size_t k = 0; k < ins.size(); ++k) {
+//        LOG(INFO) << ins[k];
+//      }
 
       ConvertOp(op, parameters, scope, engine);
     }

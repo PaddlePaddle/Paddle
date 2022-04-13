@@ -115,15 +115,14 @@ template<typename T>
 nvinfer1::DataType PrelnResidualBiasPluginDynamic<T>::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
-                    platform::errors::InvalidArgument(
-                        "The PrelnResidualBias Plugin only has one input, so the "
-                        "index value should be 0, but get %d.",
-                        index));
-  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
-                     input_types[0] == nvinfer1::DataType::kHALF),
-                    true, platform::errors::InvalidArgument(
-                              "The input type should be half or float"));
+//  PADDLE_ENFORCE_EQ(index, 0,
+//                    platform::errors::InvalidArgument(
+//                        "The PrelnResidualBias Plugin only has one input, so the "
+//                        "index value should be 0, but get %d.",
+//                        index));
+//  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kHALF),
+//                    true, platform::errors::InvalidArgument(
+//                              "The input type should be half or float"));
   return input_types[0];
 }
 
@@ -174,7 +173,8 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
           rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
           increment, epsilon, src, residual, bias, scale, layernorm_bias,
           mask_data, dst, layernorm_dst, mean, var, stream);
-
+//    cudaDeviceSynchronize();
+    VLOG(6) << "finish FusedLayernormResidualDropoutBiasFunctor";
 //    operators::math::PrelnResidualBiasFunctor<half> skip_layer_norm_func;
 //    skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
 //                         output, static_cast<half>(eps_), stream);
@@ -192,6 +192,8 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
   }
   return cudaGetLastError() != cudaSuccess;
 }
+
+template class PrelnResidualBiasPluginDynamic<half>; 
 #endif
 
 }  // namespace plugin

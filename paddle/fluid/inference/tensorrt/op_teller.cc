@@ -180,6 +180,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "preln_residual_bias",
       "c_allreduce_sum"};
 };
 
