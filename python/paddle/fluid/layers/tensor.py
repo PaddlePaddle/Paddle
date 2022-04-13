@@ -1649,6 +1649,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
             :name: logspace-example
+
             import paddle
             data = paddle.logspace(0, 10, 5, 2, 'float32')
             # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
