@@ -21,14 +21,14 @@ from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       strided_slice_grad)
 
 
-def _orig2prim(op):
+def _orig2prim(op, *args):
     _lowerrule = lookup_orig2prim(op.type)
-    return _lowerrule(op)
+    return _lowerrule(op, *args)
 
 
-def _prim2orig(op):
+def _prim2orig(op, *args):
     _lowerrule = lookup_prim2orig(op.type)
-    return _lowerrule(op)
+    return _lowerrule(op, *args)
 
 
 def _jvp(op, *args):
@@ -61,7 +61,6 @@ These original ops are fully supported:
 
 elementwise_add
 tanh
-reshape2
 fill_zeros_like
 sum
 index_select
@@ -72,6 +71,7 @@ assign
 These original ops are partially supported:
 
 matmul_v2
+reshape2
 concat
 slice
 p_norm
@@ -79,14 +79,13 @@ p_norm
 
 
 @REGISTER_ORIG2PRIM('matmul_v2')
-def matmul_v2_orig2prim(op):
+def matmul_v2_orig2prim(op, x, y):
     def trans(shape):
         last_shape = shape[-1]
         shape[-1] = shape[-2]
         shape[-2] = last_shape
         return shape
 
-    x, y = get_input_vars(op)
     assert len(x.shape) < 4 and len(
         y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
     if op.attr('trans_x'):
@@ -97,8 +96,7 @@ def matmul_v2_orig2prim(op):
 
 
 @REGISTER_ORIG2PRIM('elementwise_add')
-def elementwise_add_orig2prim(op):
-    x, y = get_input_vars(op)
+def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
@@ -118,29 +116,27 @@ def elementwise_add_orig2prim(op):
 
 
 @REGISTER_ORIG2PRIM('tanh')
-def tanh_orig2prim(op):
-    x = get_input_vars(op)
+def tanh_orig2prim(op, x):
     return tanh(x)
 
 
 ## NOTE(lml): The second output of reshape2 Xshape, can't be described by prim ops, use paddle.shape() interface instead.
 @REGISTER_ORIG2PRIM('reshape2')
-def reshape2_orig2prim(op):
-    _, _, x = get_input_vars(op)
+def reshape2_orig2prim(op, shape_t, shape_tl, x):
+    assert shape_t is None, 'Can not lower reshape2 into prim ops with shapetensor.'
+    assert shape_tl is None, 'Can not lower reshape2 into prim ops with shapetensorlist.'
     y, _ = get_output_vars(op)
     return reshape(x, shape=y.shape), paddle.shape(x)
 
 
 @REGISTER_ORIG2PRIM('concat')
-def concat_orig2prim(op):
-    axis_t, *xs = get_input_vars(op)
+def concat_orig2prim(op, axis_t, *xs):
     assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
     return concat(xs, axis=op.attr('axis'))
 
 
 @REGISTER_ORIG2PRIM('slice')
-def slice_orig2prim(op):
-    ends_t, ends_tl, x, starts_t, starts_tl = get_input_vars(op)
+def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
 
     assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'
     assert ends_t is None, 'Can not lower concat into prim ops with endstensor.'
@@ -157,21 +153,19 @@ def slice_orig2prim(op):
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
-def fill_zeros_like_orig2prim(op):
-    x, = get_input_vars(op)
+def fill_zeros_like_orig2prim(op, x):
     return fill_constant(x, shape=x.shape, value=0.0)
 
 
 @REGISTER_ORIG2PRIM('sum')
-def sum_orig2prim(op):
-    x0, *x_other = get_input_vars(op)
-    for x in x_other:
+def sum_orig2prim(op, x0, *x_others):
+    for x in x_others:
         x0 = add(x0, x)
     return x0
 
 
 @REGISTER_ORIG2PRIM('p_norm')
-def p_norm_orig2prim(op):
+def p_norm_orig2prim(op, x):
     def num_el(shape):
         n = 1
         for s in shape:
@@ -182,21 +176,18 @@ def p_norm_orig2prim(op):
         'porder') - 2.0 < 1e-5, 'Only support lower l2 norm currently'
     assert op.attr(
         'asvector'), 'Only support lower pnorm when asvector=True currently'
-    x, = get_input_vars(op)
     if len(x.shape) > 1:
         x = reshape(x, shape=[num_el(x.shape)])
     return sqrt(reduce(mul(x, x), axis=0))
 
 
 @REGISTER_ORIG2PRIM('index_select')
-def index_select_orig2prim(op):
-    index_t, x = get_input_vars(op)
+def index_select_orig2prim(op, index_t, x):
     return gather(x, indextensor=index_t, axis=op.attr('dim'))
 
 
 @REGISTER_ORIG2PRIM('elementwise_sub')
-def elementwise_sub_orig2prim(op):
-    x, y = get_input_vars(op)
+def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
@@ -216,8 +207,7 @@ def elementwise_sub_orig2prim(op):
 
 
 @REGISTER_ORIG2PRIM('scale')
-def scale_orig2prim(op):
-    x = get_input_vars(op)
+def scale_orig2prim(op, x):
     scale_t = fill_constant(
         shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
     bias_t = fill_constant(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
@@ -228,8 +218,7 @@ def scale_orig2prim(op):
 
 
 @REGISTER_ORIG2PRIM('assign')
-def assign_orig2prim(op):
-    x = get_input_vars(op)
+def assign_orig2prim(op, x):
     zero_t = fill_constant(shape=x.shape, dtype=x.dtype, value=0.0)
     return add(x, zero_t)
 
@@ -238,63 +227,53 @@ def assign_orig2prim(op):
 
 
 @REGISTER_PRIM2ORIG('add_p')
-def add_prim2orig(op):
-    x, y = get_input_vars(op)
+def add_prim2orig(op, x, y):
     return paddle.add(x, y)
 
 
 @REGISTER_PRIM2ORIG('sub_p')
-def sub_prim2orig(op):
-    x, y = get_input_vars(op)
+def sub_prim2orig(op, x, y):
     return paddle.sub(x, y)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
-def mul_prim2orig(op):
-    x, y = get_input_vars(op)
+def mul_prim2orig(op, x, y):
     return paddle.mul(x, y)
 
 
 @REGISTER_PRIM2ORIG('div_p')
-def div_prim2orig(op):
-    x, y = get_input_vars(op)
+def div_prim2orig(op, x, y):
     return paddle.div(x, y)
 
 
 @REGISTER_PRIM2ORIG('sqrt_p')
-def sqrt_prim2orig(op):
-    x, = get_input_vars(op)
+def sqrt_prim2orig(op, x):
     return paddle.sqrt(x)
 
 
 @REGISTER_PRIM2ORIG('tanh_p')
-def tanh_prim2orig(op):
-    x, = get_input_vars(op)
+def tanh_prim2orig(op, x):
     return paddle.tanh(x)
 
 
 @REGISTER_PRIM2ORIG('reshape_p')
-def reshape_prim2orig(op):
-    x, = get_input_vars(op)
+def reshape_prim2orig(op, x):
     y, _ = paddle.reshape(x, shape=op.attr('shape'))
     return y
 
 
 @REGISTER_PRIM2ORIG('broadcast_p')
-def broadcast_prim2orig(op):
-    x, = get_input_vars(op)
+def broadcast_prim2orig(op, x):
     return paddle.broadcast_to(x, shape=op.attr('shape'))
 
 
 @REGISTER_PRIM2ORIG('transpose_p')
-def transpose_prim2orig(op):
-    x, = get_input_vars(op)
+def transpose_prim2orig(op, x):
     return paddle.transpose(x, perm=op.attr('axis'))
 
 
 @REGISTER_PRIM2ORIG('split_p')
-def split_prim2orig(op):
-    x, = get_input_vars(op)
+def split_prim2orig(op, x):
     num_or_sections = op.attr('num_or_sections')
     if len(num_or_sections) == 1:
         num_or_sections = num_or_sections[0]
@@ -303,26 +282,22 @@ def split_prim2orig(op):
 
 
 @REGISTER_PRIM2ORIG('concat_p')
-def concat_prim2orig(op):
-    xs = get_input_vars(op)
+def concat_prim2orig(op, *xs):
     return paddle.concat(xs, axis=op.attr('axis'))
 
 
 @REGISTER_PRIM2ORIG('reduce_p')
-def reduce_prim2orig(op):
-    xs = get_input_vars(op)
+def reduce_prim2orig(op, *xs):
     return paddle.sum(xs, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
 
 
 @REGISTER_PRIM2ORIG('matmul_p')
-def matmul_prim2orig(op):
-    x, y = get_input_vars(op)
+def matmul_prim2orig(op, x, y):
     return paddle.matmul(x, y)
 
 
 @REGISTER_PRIM2ORIG('slice_select_p')
-def slice_select_prim2orig(op):
-    x, = get_input_vars(op)
+def slice_select_prim2orig(op, x):
     return paddle.strided_slice(
         x,
         axes=op.attr('axis'),
@@ -340,8 +315,7 @@ def strided_slice_grad(y_grad, x, axis, starts, ends, strides, x_grad=None):
 
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
-def slice_assign_prim2orig(op):
-    x, y = get_input_vars(op)
+def slice_assign_prim2orig(op, x, y):
     return paddle.add(x,
                       strided_slice_grad(
                           y,
@@ -353,14 +327,12 @@ def slice_assign_prim2orig(op):
 
 
 @REGISTER_PRIM2ORIG('gather_p')
-def gather_prim2orig(op):
-    index_t, x = get_input_vars(op)
+def gather_prim2orig(op, index_t, x):
     return paddle.gather(x, index_t, axis=op.attr('axis'))
 
 
 @REGISTER_PRIM2ORIG('scatter_add_p')
-def scatter_add_prim2orig(op):
-    index_t, x, y = get_input_vars(op)
+def scatter_add_prim2orig(op, index_t, x, y):
     return paddle.put_along_axis(
         x, index_t, y, axis=op.attr('axis'), reduce='add')
 

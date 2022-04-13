@@ -95,33 +95,36 @@ class Transform(object):
     def check_dot(self, x):
         return x in self.var2dot.values()
 
-    ## TODO(lml): finish these function
-    def get_var_lookup_tab(self, block):
-        tab = {}
-        for var in block.allvars():
-            tab[var.name] = var
-
-    def bind(self):
-        pass
-
-    def update_vlt(self):
-        pass
-
-    def orig2prim(self, block=None):
+    def lower(self, block=None, reverse=False):
+        lower_fn = _prim2orig if reverse else _orig2prim
         if block is None:
-            block = default_main_program().current_block()
-        vlt = get_var_lookup_tab(block)
+            program = default_main_program()
+            assert program.num_blocks == 1, "The orig2prim transform is designed to process only one block."
+            block = program.current_block()
+
+        vlt = {}
+        to_bind = {}
+        for var in block.desc.all_vars():
+            vlt[var.name()] = var
+
+        vars_to_remove = []
         ops_to_remove = []
         for op_idx in range(len(block.ops)):
             op = block.ops(op_idx)
-            if _orig2prim.lookup(op.type()) is not None:
-                for name in op.input_arg_names():
-                    if name in to_bind:
-                        bind(name, to_bind[name])
-                    update_vlt(vlt, to_bind[name], name)
+            if lookup_orig2prim(op.type()) is not None:
                 ops_to_remove.append(op_idx)
-                for out_name, new_out in zip(get_output_names(op), _lower(op)):
-                    to_bind[out_name] = new_out
+                input_args = list(get_input_vars(op))
+                for i in range(len(input_args)):
+                    if input_args[i] is not None and input_args[i].name(
+                    ) in to_bind:
+                        input_args[i] = to_bind[input_args[i].name()]
+                for orig_out, new_out in zip(
+                        get_output_vars(op), lower_fn(op, input_args)):
+                    assert not (orig_out is None ^ new_out is None
+                                ), "orig_out and new_out should match."
+                    vars_to_remove.append(orig_out.name())
+                    vlt[new_out.name()] = new_out
+                    to_bind[orig_out.name()] = new_out.name()
 
         for op_idx in reversed(ops_to_remove):
             block.desc._remove_op(op_idx, op_idx + 1)
