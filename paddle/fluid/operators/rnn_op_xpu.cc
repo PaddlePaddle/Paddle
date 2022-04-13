@@ -305,13 +305,24 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     phi::funcs::SetConstant<platform::XPUDeviceContext, T> zero;
     zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
+    Tensor a, b;
+    Tensor* dynamic_grad_pre_h = &a;
+    Tensor* dynamic_grad_pre_c = &b;
     if (init_h_grad) {
-      init_h_grad->mutable_data<T>(init_h->dims(), ctx.GetPlace());
+      init_h_grad->mutable_data<T>(last_h_grad->dims(), ctx.GetPlace());
       zero(dev_ctx, init_h_grad, static_cast<T>(0.0));
+    } else {
+      dynamic_grad_pre_h->Resize(last_h_grad->dims());
+      dynamic_grad_pre_h->mutable_data<T>(ctx.GetPlace());
+      zero(dev_ctx, dynamic_grad_pre_h, static_cast<T>(0.0));
+      init_h_grad = dynamic_grad_pre_h;
     }
     if (init_c_grad) {
-      init_c_grad->mutable_data<T>(init_c->dims(), ctx.GetPlace());
-      zero(dev_ctx, init_c_grad, static_cast<T>(0.0));
+      init_c_grad->mutable_data<T>(last_c_grad->dims(), ctx.GetPlace());
+    } else {
+      dynamic_grad_pre_c->Resize(last_h_grad->dims());
+      dynamic_grad_pre_c->mutable_data<T>(ctx.GetPlace());
+      init_c_grad = dynamic_grad_pre_c;
     }
 
     Tensor temp_input_grad_1, temp_input_grad_2;
