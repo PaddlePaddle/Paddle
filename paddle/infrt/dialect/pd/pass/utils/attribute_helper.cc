@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/pass/utils/attribute_helper.h"
+#include "paddle/infrt/dialect/pd/pass/utils/attribute_helper.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 namespace infrt {

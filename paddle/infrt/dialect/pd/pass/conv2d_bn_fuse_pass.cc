@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mlir/IR/PatternMatch.h>
-#include <mlir/Pass/Pass.h>
-#include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-
+#include "paddle/infrt/dialect/pd/pass/conv2d_bn_fuse_pass.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
-#include "paddle/infrt/dialect/phi/pass/utils/attribute_helper.h"
+#include "paddle/infrt/dialect/pd/pass/utils/attribute_helper.h"
 
 namespace infrt {
 namespace dialect {
@@ -156,28 +153,3 @@ void compute_bias(const ::phi::CPUContext& context,
 
 }  // namespace dialect
 }  // namespace infrt
-
-#include "paddle/infrt/dialect/phi/pass/phi_op_fuse.cpp.inc"
-
-namespace {
-struct Conv2dBnFusePass
-    : public mlir::PassWrapper<Conv2dBnFusePass, mlir::FunctionPass> {
- public:
-  ::llvm::StringRef getName() const override { return "Conv2dBnFusePass"; }
-
-  llvm::StringRef getArgument() const override { return "conv2d-bn-fuse"; }
-
-  void runOnFunction() override;
-};
-
-// Implementation of the Conv2dBnFusePass.
-void Conv2dBnFusePass::runOnFunction() {
-  ::mlir::RewritePatternSet patterns(&getContext());
-  populateWithGenerated(patterns);
-  if (::mlir::failed(
-          applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
-    signalPassFailure();
-}
-}  // namespace
-
-mlir::PassRegistration<Conv2dBnFusePass> conv2d_bn_fuse_pass;

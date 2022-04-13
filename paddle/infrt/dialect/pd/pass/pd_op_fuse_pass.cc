@@ -15,6 +15,7 @@
 
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
+#include "paddle/infrt/dialect/pd/pass/conv2d_bn_fuse_pass.h"
 
 namespace {
 #include "paddle/infrt/dialect/pd/pass/pd_op_fuse.cpp.inc"  // NOLINT

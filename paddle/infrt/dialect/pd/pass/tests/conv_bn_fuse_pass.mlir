@@ -1,4 +1,4 @@
-// RUN: infrtopt --conv2d-bn-fuse %s | FileCheck %s
+// RUN: infrtopt --pd-op-fuse %s | FileCheck %s
 
 module  {
   func @main_graph(%arg0: !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW> {
