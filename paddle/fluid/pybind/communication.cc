@@ -119,26 +119,7 @@ void BindTCPStore(py::module *m) {
                     print(ret)
                )DOC")
           .def("wait", &distributed::Store::wait,
-               py::call_guard<py::gil_scoped_release>(), R"DOC(
-               The OP throws an exception for adding a key to a storage timeout.
-
-               Args:
-                    key (str): The key that needs to wait.
-
-               Returns:
-                    None.
-
-               Examples:
-               .. code-block:: python
-
-               import datetime
-               import paddle
-
-               store = paddle.distributed.TCPStore("127.0.0.1", 6173, True, 1,
-                                                       datetime.timedelta(0))
-               store.wait("my")
-
-               )DOC");
+               py::call_guard<py::gil_scoped_release>());
 
   py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
       .def(py::init([](std::string hostname, uint16_t port, bool is_master,
