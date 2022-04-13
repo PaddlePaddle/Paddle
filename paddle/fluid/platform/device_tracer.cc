@@ -356,6 +356,7 @@ void bufferRequested(uint64_t **buffer, size_t *size, size_t *maxNumRecords) {
       reinterpret_cast<uint64_t *>(malloc(kBufferSize + kBufferAlignSize));
   *size = kBufferSize;
   *buffer = ALIGN_BUFFER(buf, kBufferAlignSize);
+  buf = nullptr;
   *maxNumRecords = 0;
 }
 
