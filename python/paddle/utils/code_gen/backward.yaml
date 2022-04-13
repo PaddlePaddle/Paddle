@@ -492,6 +492,16 @@
     func : expand_as_grad
   no_need_buffer : x
 
+- backward_api : expand_grad
+  forward : expand (Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expand_grad
+
 - backward_api : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1159,6 +1169,16 @@
   kernel :
     func : pixel_shuffle_grad
 
+- backward_api : poisson_grad
+  forward : poisson (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : poisson_grad
+
 - backward_api : pool2d_grad
   forward : pool2d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1438,7 +1458,7 @@
     func : GeneralTernaryGradInferMeta
     param : [out, fwd_grad_out, grad_grad_x]
   kernel :
-    func : sigmoid_double_grad
+    func : sigmoid_triple_grad
 
 - backward_api : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
@@ -1684,6 +1704,16 @@
     param : [out_grad, axis]
   kernel :
     func : transpose_grad
+
+- backward_api : triangular_solve_grad
+  forward : triangular_solve (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper, bool tranpose, bool unitriangular)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : triangular_solve_grad
 
 - backward_api : tril_triu_grad
   forward : tril_triu(Tensor x,  int diagonal,  bool lower) -> Tensor(out)

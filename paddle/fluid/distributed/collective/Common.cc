@@ -17,11 +17,11 @@
 namespace paddle {
 namespace distributed {
 
-std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
+std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors) {
   std::vector<Place> places;
   places.reserve(tensors.size());
   for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
+    places.push_back(tensor.place());
   }
   return places;
 }
@@ -40,15 +40,11 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places) {
   return placeList;
 }
 
-static bool CheckTensorsInPlace(const std::vector<Tensor>& tensors,
-                                phi::AllocationType type) {
-  return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
-    return t.place().GetType() == type;
-  });
-}
-
-bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors) {
-  return CheckTensorsInPlace(tensors, phi::AllocationType::GPU);
+bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
+  return std::all_of(tensors.cbegin(), tensors.cend(),
+                     [&](const phi::DenseTensor& t) {
+                       return platform::is_gpu_place(t.place());
+                     });
 }
 
 }  //  namespace distributed
