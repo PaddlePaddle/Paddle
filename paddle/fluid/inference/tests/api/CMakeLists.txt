@@ -345,13 +345,15 @@ inference_analysis_test(test_analyzer_transformer_profile SRCS analyzer_transfor
        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
 # VIT-OCR
+set(VIT_OCR_URL "https://paddle-qa.bj.bcebos.com/inference_model/2.1.1/ocr")
 set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit_ocr")
 if (NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
-    inference_download_and_uncompress_without_verify(${VIT_OCR_INSTALL_DIR} "https://paddle-qa.bj.bcebos.com" "inference_model/2.1.1/ocr/vit_ocr.tgz")
+    inference_download_and_uncompress_without_verify(${VIT_OCR_INSTALL_DIR} ${VIT_OCR_URL} vit_ocr.tgz)
+    inference_download(${VIT_OCR_INSTALL_DIR} ${VIT_OCR_URL} datavit.txt )
 endif()
 inference_analysis_test(test_analyzer_vit_ocr SRCS analyzer_vit_ocr_tester.cc
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-  ARGS --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr)
+  ARGS --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr --infer_data=${VIT_OCR_INSTALL_DIR}/datavit.txt)
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
