@@ -87,11 +87,11 @@ class XPUResource {
 #if defined(PADDLE_WITH_CUDA)
 using DevResource = GPUResource;
 using DevPlace = platform::CUDAPlace;
-using AnyDeviceGuard= platform::CUDADeviceGuard;
+using AnyDeviceGuard = platform::CUDADeviceGuard;
 #elif defined(PADDLE_WITH_XPU_KP)
 using DevResource = XPUResource;
 using DevPlace = platform::XPUPlace;
-using AnyDeviceGuard= platform::XPUDeviceGuard;
+using AnyDeviceGuard = platform::XPUDeviceGuard;
 #endif
 
 class HeterPsResource {

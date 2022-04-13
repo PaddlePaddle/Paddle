@@ -15,8 +15,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "heter_resource.h"  //NOLINT
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -77,7 +77,6 @@ XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
   }
 }
 
-
 XPUResource::~XPUResource() {
   platform::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
@@ -127,7 +126,6 @@ HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   }
 }
 
-
 ppStream HeterPsResource::comm_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->comm_stream(stream_num);
 }
@@ -138,8 +136,6 @@ ppStream HeterPsResource::local_stream(int dev_num, int stream_num) {
 ppStream HeterPsResource::remote_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->remote_stream(stream_num);
 }
-
-
 
 int HeterPsResource::dev_id(int num) { return dev_ids_[num]; }
 

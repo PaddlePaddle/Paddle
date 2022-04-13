@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
+#include <thread>
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
@@ -154,19 +155,20 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
                                                        d_vals, len);
 }
 
-// template <typename KeyType, typename ValType>
-// template <typename StreamType>
-// void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-//                                      size_t len, StreamType stream) {
-//  if (len == 0) {
-//    return;
-//  }
-//  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-//  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-//      container_, d_keys, d_vals, len, pull_feature_value_size_);
-// }
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
+                                      size_t len, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, d_vals, len, pull_feature_value_size_);
+}
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
                                          StreamType stream) {
@@ -178,7 +180,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                                        d_vals, len);
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
                                          char* pool, size_t start_index,
                                          StreamType stream) {
@@ -283,18 +286,18 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                                        d_grads, len, sgd);
 }
 
-// template <typename KeyType, typename ValType>
-// template <typename Sgd, typename StreamType>
-// void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
-//                                         const char* d_grads, size_t len,
-//                                         Sgd sgd, StreamType stream) {
-//  if (len == 0) {
-//    return;
-//  }
-//  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-//  dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-//      container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
-// }
+template <typename KeyType, typename ValType>
+template <typename Sgd, typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const char* d_grads, size_t len,
+                                         Sgd sgd, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
+}
 
 template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 

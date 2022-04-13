@@ -25,6 +25,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
@@ -39,8 +41,6 @@ limitations under the License. */
 #include "xpu/kernel/simd.h"
 #endif
 // #include "cudf/concurrent_unordered_map.cuh.h"
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
