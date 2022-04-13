@@ -35,7 +35,7 @@ void InferMetaContext::EmplaceBackAttr(paddle::any attr) {
 }
 
 void InferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<MetaTensor> inputs) {
+    paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs) {
   int index = inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -43,7 +43,7 @@ void InferMetaContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 void InferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<MetaTensor> outputs) {
+    paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs) {
   int index = outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));

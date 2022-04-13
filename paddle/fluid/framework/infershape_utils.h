@@ -98,8 +98,11 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   void EmplaceBackInput(CompatMetaTensor input);
   void EmplaceBackOutput(CompatMetaTensor output);
 
-  void EmplaceBackInputs(paddle::SmallVector<CompatMetaTensor> inputs);
-  void EmplaceBackOutputs(paddle::SmallVector<CompatMetaTensor> outputs);
+  void EmplaceBackInputs(
+      paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs);
+  void EmplaceBackOutputs(
+      paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+          outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
   paddle::optional<const phi::MetaTensor&> OptionalInputAt(
@@ -117,8 +120,10 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   virtual ~CompatInferMetaContext() = default;
 
  private:
-  paddle::SmallVector<CompatMetaTensor> compat_inputs_;
-  paddle::SmallVector<CompatMetaTensor> compat_outputs_;
+  paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+      compat_inputs_;
+  paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+      compat_outputs_;
 };
 
 CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,

@@ -320,7 +320,7 @@ void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
 }
 
 void CompatInferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<CompatMetaTensor> inputs) {
+    paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
   int index = compat_inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   compat_inputs_.insert(compat_inputs_.end(),
@@ -329,7 +329,8 @@ void CompatInferMetaContext::EmplaceBackInputs(
 }
 
 void CompatInferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<CompatMetaTensor> outputs) {
+    paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+        outputs) {
   int index = compat_outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -424,12 +425,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
-      auto input_var = ctx->GetInputVarPtrs(in_name);
+      auto input_var = std::move(ctx->GetInputVarPtrs(in_name));
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
             CompatMetaTensor(input_var[0], ctx->IsRuntime()));
       } else {
-        paddle::SmallVector<CompatMetaTensor> inputs;
+        paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+            inputs;
         inputs.reserve(input_var.size());
         for (const auto& in : input_var) {
           inputs.emplace_back(CompatMetaTensor(in, ctx->IsRuntime()));
@@ -449,7 +451,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       // When attr is a vector_tensor or tensor, transform it to IntArray
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
-        const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+        auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
         if (ctx->IsRuntime()) {
           // If is in runtime, we will get tensor's value for IntArray
           // and push it into attrs
@@ -539,7 +541,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name));
         }
       } else if (ctx->HasInput(attr_name)) {
-        const auto& infershape_input = ctx->GetInputVarPtrs(attr_name);
+        auto infershape_input = std::move(ctx->GetInputVarPtrs(attr_name));
         if (infershape_input.size() == 1) {
           if (ctx->IsRuntime()) {
             Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
@@ -664,7 +666,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       // convert from data
       if (attr_defs[i].type_index == std::type_index(typeid(int32_t))) {
         if (ctx->IsRuntime()) {
-          const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+          auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
           auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);
           auto val = experimental::MakePhiScalarFromVar(*var_temp);
           int32_t val_int = val.template to<int32_t>();
@@ -683,7 +685,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   for (auto& out_name : output_names) {
     if (ctx->HasOutputs(out_name, true)) {
-      auto output_var = ctx->GetOutputVarPtrs(out_name);
+      auto output_var = std::move(ctx->GetOutputVarPtrs(out_name));
       if (output_var.size() == 1) {
         infer_meta_context.EmplaceBackOutput(
             CompatMetaTensor(output_var[0], ctx->IsRuntime()));

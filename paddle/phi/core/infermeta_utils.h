@@ -43,8 +43,10 @@ class InferMetaContext {
   void EmplaceBackOutput(MetaTensor output);
   void EmplaceBackAttr(paddle::any attr);
 
-  void EmplaceBackInputs(paddle::SmallVector<MetaTensor> inputs);
-  void EmplaceBackOutputs(paddle::SmallVector<MetaTensor> outputs);
+  void EmplaceBackInputs(
+      paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs);
+  void EmplaceBackOutputs(
+      paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
   virtual const MetaTensor& InputAt(size_t idx) const;
   virtual paddle::optional<const MetaTensor&> OptionalInputAt(size_t idx) const;
@@ -79,14 +81,16 @@ class InferMetaContext {
  protected:
   MetaConfig config_;
 
-  paddle::SmallVector<paddle::any> attrs_;
+  paddle::SmallVector<paddle::any, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::SmallVector<std::pair<int, int>, phi::kInputSmallVectorSize>
+      input_range_;
+  paddle::SmallVector<std::pair<int, int>, phi::kOutputSmallVectorSize>
+      output_range_;
 
  private:
-  paddle::SmallVector<MetaTensor> inputs_;
-  paddle::SmallVector<MetaTensor> outputs_;
+  paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs_;
+  paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs_;
 };
 
 #define PD_INFER_META(...) \
