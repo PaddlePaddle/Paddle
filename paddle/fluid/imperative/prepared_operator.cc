@@ -170,7 +170,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #endif
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
-    pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
+    pt_kernel_signature =
+        std::move(op.GetExpectedPhiKernelArgs(dygraph_exe_ctx));
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
@@ -227,7 +228,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
-      // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {

@@ -48,14 +48,15 @@ KernelSignature StridedSliceOpArgumentMapping(
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<std::string> inputs = {"Input"};
-  paddle::SmallVector<std::string> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<std::string> outputs = {"Out"};
+  paddle::SmallVector<std::string, kInputSmallVectorSize> inputs = {"Input"};
+  paddle::SmallVector<std::string, kAttrSmallVectorSize> attrs = {
+      "axes",
+      starts_key,
+      ends_key,
+      strides_key,
+      "infer_flags",
+      "decrease_axis"};
+  paddle::SmallVector<std::string, kOutputSmallVectorSize> outputs = {"Out"};
 
   std::string kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
@@ -97,14 +98,17 @@ KernelSignature StridedSliceGradOpArgumentMapping(
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<std::string> inputs = {"Input", GradVarName("Out")};
-  paddle::SmallVector<std::string> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<std::string> outputs = {GradVarName("Input")};
+  paddle::SmallVector<std::string, kInputSmallVectorSize> inputs = {
+      "Input", GradVarName("Out")};
+  paddle::SmallVector<std::string, kAttrSmallVectorSize> attrs = {
+      "axes",
+      starts_key,
+      ends_key,
+      strides_key,
+      "infer_flags",
+      "decrease_axis"};
+  paddle::SmallVector<std::string, kOutputSmallVectorSize> outputs = {
+      GradVarName("Input")};
 
   std::string kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {

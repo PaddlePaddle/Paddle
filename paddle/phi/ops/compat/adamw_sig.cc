@@ -19,22 +19,24 @@
 namespace phi {
 
 KernelSignature AdamwOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  paddle::SmallVector<std::string> in_names = {"Param",
-                                               "Grad",
-                                               "LearningRate",
-                                               "Moment1",
-                                               "Moment2",
-                                               "Beta1Pow",
-                                               "Beta2Pow",
-                                               "MasterParam",
-                                               "SkipUpdate"};
-  paddle::SmallVector<std::string> out_names = {"ParamOut",
-                                                "Moment1Out",
-                                                "Moment2Out",
-                                                "Beta1PowOut",
-                                                "Beta2PowOut",
-                                                "MasterParamOut"};
-  paddle::SmallVector<std::string> attr_names;
+  paddle::SmallVector<std::string, kInputSmallVectorSize> in_names = {
+      "Param",
+      "Grad",
+      "LearningRate",
+      "Moment1",
+      "Moment2",
+      "Beta1Pow",
+      "Beta2Pow",
+      "MasterParam",
+      "SkipUpdate"};
+  paddle::SmallVector<std::string, kOutputSmallVectorSize> out_names = {
+      "ParamOut",
+      "Moment1Out",
+      "Moment2Out",
+      "Beta1PowOut",
+      "Beta2PowOut",
+      "MasterParamOut"};
+  paddle::SmallVector<std::string, kAttrSmallVectorSize> attr_names;
 
   attr_names.emplace_back(ctx.HasInput("Beta1Tensor") ? "Beta1Tensor"
                                                       : "beta1");
