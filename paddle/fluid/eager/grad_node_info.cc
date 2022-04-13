@@ -19,6 +19,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -60,6 +61,10 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
       if (!node || !node.get()) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
+      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
+              << this->name() << " (addr: " << this << ") "
+              << " to " << meta->GetMutableGradNode()->name()
+              << " (addr: " << meta->GetMutableGradNode().get() << ")";
 
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
@@ -83,7 +88,9 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
-            << this->name() << " to " << meta->GetMutableGradNode()->name();
+            << this->name() << " (addr: " << this << ") "
+            << " to " << meta->GetMutableGradNode()->name()
+            << " (addr: " << meta->GetMutableGradNode().get() << ")";
 
     adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                      meta->OutRankInfo());
@@ -124,28 +131,31 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
     return;
   }
 
+  phi::DenseTensor* dense_tensor = nullptr;
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
-    phi::DenseTensor* dense_tensor =
-        static_cast<phi::DenseTensor*>(fwd_out.impl().get());
-
-    PADDLE_ENFORCE_NE(
-        dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
-        paddle::platform::errors::Fatal(
-            "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
-            "which is illegal."));
-
-    meta.SetTensorMeta(dense_tensor->meta());
-    meta.SetPlace(fwd_out.inner_place());
-
-    if (paddle::framework::IsComplexType(
-            paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
-      need_complex_to_real_ = true;
-    }
+    dense_tensor = static_cast<phi::DenseTensor*>(fwd_out.impl().get());
+  } else if (phi::SparseCooTensor::classof(fwd_out.impl().get())) {
+    phi::SparseCooTensor* coo_tensor =
+        static_cast<phi::SparseCooTensor*>(fwd_out.impl().get());
+    dense_tensor = coo_tensor->mutable_non_zero_elements();
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
+  }
+  PADDLE_ENFORCE_NE(
+      dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
+      paddle::platform::errors::Fatal(
+          "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
+          "which is illegal."));
+
+  meta.SetTensorMeta(dense_tensor->meta());
+  meta.SetPlace(fwd_out.inner_place());
+
+  if (paddle::framework::IsComplexType(
+          paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
+    need_complex_to_real_ = true;
   }
 }
 
@@ -319,6 +329,10 @@ int64_t GradNodeBase::RegisterGradientHook(
 }
 
 const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
+  return adj_edges_;
+}
+
+std::vector<std::vector<Edge>>& GradNodeBase::GetMutableEdges() {
   return adj_edges_;
 }
 

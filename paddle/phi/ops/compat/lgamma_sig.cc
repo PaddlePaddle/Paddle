@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature LgammaGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "lgamma_grad", {GradVarName("Out"), "X"}, {}, {GradVarName("X")});
+      "lgamma_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
 }
 
 }  // namespace phi

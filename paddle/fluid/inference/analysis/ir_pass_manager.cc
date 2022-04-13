@@ -43,6 +43,7 @@ IRPassManager::IRPassManager(Argument *argument) {
                                 "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
+  disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   CreatePasses(argument, argument->ir_analysis_passes());

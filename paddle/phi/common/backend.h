@@ -55,6 +55,8 @@ enum class Backend : uint8_t {
   // paddle kernel primitives backend
   KPS,
 
+  IPU,
+
   // end of backend types
   NUM_BACKENDS,
 
@@ -121,6 +123,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::KPS:
       os << "KPS";
       break;
+    case Backend::IPU:
+      os << "IPU";
+      break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
@@ -154,7 +159,16 @@ inline Backend StringToBackend(const char* backend_cstr) {
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    // NOTE(chenweihang) KPS is not yet a complete backend, and it still needs
+    // to be converted
+    // to GPU in the GPU environment
+    return Backend::GPU;
+#else
     return Backend::KPS;
+#endif
+  } else if (s == std::string("IPU")) {
+    return Backend::IPU;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));

@@ -20,7 +20,7 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable, _non_static_mode, _varbase_creator
+from ..framework import Variable, _non_static_mode, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from .. import core
 from ..param_attr import ParamAttr
 from . import nn

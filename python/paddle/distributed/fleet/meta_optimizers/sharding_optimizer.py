@@ -1621,13 +1621,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable=True,
             force_cpu=True)
 
-        cond_var = layers.create_global_var(
-            name="gradient_merge_cond",
-            shape=[1],
-            value=bool(0),
-            dtype='bool',
-            persistable=False,
-            force_cpu=True)
+        cond_var = main_block.create_var(
+            name="gradient_merge_cond", shape=[1], dtype='bool')
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step

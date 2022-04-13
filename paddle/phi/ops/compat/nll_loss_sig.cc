@@ -29,7 +29,7 @@ KernelSignature NllLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "nll_loss_grad",
-      {"X", "Label", "Total_weight", "Weight", GradVarName("Out")},
+      {"X", "Label", "Weight", "Total_weight", GradVarName("Out")},
       {"ignore_index", "reduction"},
       {GradVarName("X")});
 }

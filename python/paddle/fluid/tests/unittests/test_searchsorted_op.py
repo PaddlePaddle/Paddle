@@ -25,7 +25,7 @@ from op_test import OpTest
 
 class TestSearchSorted(OpTest):
     def setUp(self):
-
+        self.python_api = paddle.searchsorted
         self.op_type = "searchsorted"
         self.init_test_case()
 
@@ -41,7 +41,7 @@ class TestSearchSorted(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")

@@ -46,7 +46,7 @@ class TestComplexAbsOp(OpTest):
         self.grad_x = self.grad_out * (self.x / np.abs(self.x))
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -54,7 +54,7 @@ class TestComplexAbsOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
 
 class TestComplexAbsOpZeroValues(OpTest):
@@ -80,7 +80,7 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.grad_x = np.zeros(self.shape, self.dtype)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -88,7 +88,7 @@ class TestComplexAbsOpZeroValues(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
 
 class TestAbs(unittest.TestCase):
@@ -133,7 +133,7 @@ class TestRealAbsOp(OpTest):
         self.grad_x = self.grad_out * (self.x / np.abs(self.x))
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -141,7 +141,7 @@ class TestRealAbsOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
 
 if __name__ == '__main__':

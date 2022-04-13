@@ -162,6 +162,11 @@ inline void EmplaceDeviceContext(
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
               framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
@@ -517,8 +522,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
   cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
   auto& instance = memory::allocation::AllocatorFacade::Instance();
   instance.SetDefaultStream(place, phi::GPUContext::stream());
-  workspace_.reset(
-      new phi::DnnWorkspaceHandle(instance.GetAllocator(place).get()));
+  workspace_.reset(new phi::DnnWorkspaceHandle(
+      instance.GetAllocator(place).get(), stream()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -618,7 +623,8 @@ phi::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
     return phi::DnnWorkspaceHandle(
         memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(GetPlace())
-            .get());
+            .get(),
+        stream());
   }
   return phi::GPUContext::cudnn_workspace_handle();
 }
@@ -742,6 +748,7 @@ dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
 }
 
 void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
+  VLOG(4) << tls().get_curr_exec() << " " << ptr;
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";
