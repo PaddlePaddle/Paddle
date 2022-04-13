@@ -43,7 +43,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.input1_np = np.random.random(size=(2, 3)).astype(np.float32)
         self.input2_np = np.random.random(size=(2, 3)).astype(np.float32)
-        self.label_np = np.random.randint(low=0, high=2, size=2)
+        self.label_np = np.random.randint(low=0, high=2, size=2).astype(np.int32)
 
     def run_dynamic(self):
         input1 = paddle.to_tensor(self.input1_np)
@@ -113,7 +113,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         label = paddle.to_tensor(self.label_np)
 
         def test_label_shape_error():
-            label = paddle.to_tensor(np.random.randint(low=0, high=1, size=(2, 3)))
+            label = paddle.to_tensor(np.random.randint(low=0, high=2, size=(2, 3)))
             paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
 
         self.assertRaises(ValueError, test_label_shape_error)
@@ -143,7 +143,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.input1_np = np.random.random(size=(2, 3)).astype(np.float32)
         self.input2_np = np.random.random(size=(2, 3)).astype(np.float32)
-        self.label_np = np.random.randint(low=0, high=2, size=2)
+        self.label_np = np.random.randint(low=0, high=2, size=2).astype(np.int32)
 
     def run_dynamic(self):
         input1 = paddle.to_tensor(self.input1_np)
