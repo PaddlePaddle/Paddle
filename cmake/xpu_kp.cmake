@@ -130,9 +130,15 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
 	  ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
     COMMAND
-    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-       -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
-        --xpu-device-only -c -v 
+    if(WITH_HETERPS AND WITH_PSLIB)
+      ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
+         -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
+          --xpu-device-only -c -v 
+    else()
+      ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
+         -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
+          --xpu-device-only -c -v 
+    endif()
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
     WORKING_DIRECTORY
@@ -153,9 +159,15 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
 	  ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
     COMMAND
-    ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-        -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
-        --xpu-host-only -c -v 
+    if(WITH_HETERPS AND WITH_PSLIB)
+      ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
+          -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
+          --xpu-host-only -c -v
+    else()
+      ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
+          -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
+          --xpu-host-only -c -v
+    endif()
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS
