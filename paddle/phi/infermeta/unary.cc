@@ -1284,7 +1284,7 @@ void Pad3dInferMeta(const MetaTensor& x,
                         "5, but received %d. ",
                         x_dim.size()));
 
-  std::vector<int64_t> out_dims(x_dim.size());
+  std::vector<int64_t> out_dims(x_dim.size(), -1);
   out_dims[0] = x_dim[0];
   auto& paddings = paddings_int_array.GetData();
   if (data_format == "NCDHW") {
