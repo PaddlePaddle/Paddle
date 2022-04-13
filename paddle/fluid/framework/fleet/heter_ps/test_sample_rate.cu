@@ -299,7 +299,7 @@ void testSampleRate() {
       while (st < size) {
         int len = std::min(fixed_key_size, (int)ids.size() - st);
         auto r = g.graph_neighbor_sample_v2(i, (int64_t *)(key[i] + st),
-                                            sample_size, len);
+                                            sample_size, len, false);
         st += len;
         delete r;
       }

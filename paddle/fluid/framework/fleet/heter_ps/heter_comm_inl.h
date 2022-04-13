@@ -223,6 +223,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
     cudaMemcpyAsync(node.key_storage,
                     reinterpret_cast<char*>(src_key + h_left[i]),
                     node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+    cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
     if (need_copy_val) {
       cudaMemcpyAsync(node.val_storage,
                       reinterpret_cast<char*>(src_val + h_left[i]),
