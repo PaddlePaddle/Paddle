@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -114,6 +115,9 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
     }
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    phi::funcs::SetConstant<platform::XPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
 
     PADDLE_ENFORCE_EQ(
         mode, "LSTM",
@@ -190,7 +194,6 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
     for (int i = 0; i < num_layers; i++) {

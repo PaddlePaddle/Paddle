@@ -1333,7 +1333,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // NOTE(Liu-xiandong): Determine whether the selected kernel is valid
 // If not, use the kernel registered in fluid. And if the fluid do not
 // contains the related heterogeneous kernel, use phi CPU kernel.
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU)
     bool is_xpu_unsupport =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
             !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
@@ -1373,7 +1373,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
           || is_xpu_unsupport
 #endif
-          ) {
+#if defined(PADDLE_WITH_XPU_KP)
+          || (is_xpu_unsupport && !is_xpu_kp_support)
+#endif
+              ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(

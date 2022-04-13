@@ -23,7 +23,7 @@ from .. import framework
 from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase, in_dygraph_mode
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -99,7 +99,7 @@ def monkey_patch_varbase():
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
-        attr_not_need_keys = ['grad', 'T']
+        attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
         else:
@@ -798,6 +798,9 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
+        if in_dygraph_mode():
+            return _C_ops.final_state_assign(self)
+
         if _in_legacy_dygraph():
             output = core.VarBase()
         else:

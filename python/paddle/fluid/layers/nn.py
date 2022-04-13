@@ -28,6 +28,7 @@ from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -5970,8 +5971,11 @@ def multiplex(inputs, index, name=None):
             print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
-    if _non_static_mode():
+
+    if _in_legacy_dygraph():
         return _C_ops.multiplex(index, inputs)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -9033,7 +9037,10 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu(x)
+    if _in_legacy_dygraph():
         return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
@@ -10964,7 +10971,15 @@ def gaussian_random(shape,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',

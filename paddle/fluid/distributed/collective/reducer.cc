@@ -414,20 +414,13 @@ void EagerReducer::InitializeDenseGroups(
     p_group->dense_tensors_.push_back(phi::DenseTensor());
 
     const auto &dtype = tensor.dtype();
-    const auto &place = tensor.place();
     const auto &inner_place = tensor.impl()->place();
     if (index > 0) {
       PADDLE_ENFORCE_EQ(dtype, p_group->dtype_,
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has unexpected dtype.", tensor_name));
-      PADDLE_ENFORCE_EQ(place, place_,
-                        platform::errors::PreconditionNotMet(
-                            "Tensor %s has different place. Expected place is "
-                            "%s, but actual place is %s",
-                            tensor_name, inner_place_, inner_place));
     } else {
       p_group->dtype_ = dtype;
-      place_ = place;
       inner_place_ = inner_place;
     }
   }
