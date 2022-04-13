@@ -188,6 +188,37 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         os.remove(perfstat_filepath)
         shutil.rmtree('./profiler_log')
 
+    def test_executor_statistics(self):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
+
+        paddle.seed(2020)
+        main_program, startup_program, fetch_list = build_program()
+        fetch_list = [x.name for x in fetch_list]
+
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
+        executor = paddle.static.Executor(self.place)
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+        executor.run(startup_program)
+
+        helper_profiler = profiler.Profiler(
+            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
+        helper_profiler.start()
+        for i in range(self.iter_n):
+            executor.run(main_program, fetch_list=fetch_list)
+            helper_profiler.step()
+        helper_profiler.stop()
+
+        perfstat_filepath = os.environ[
+            'FLAGS_static_executor_perfstat_filepath']
+        self.assertTrue(os.path.exists(perfstat_filepath))
+        with open(perfstat_filepath, 'r') as load_f:
+            stat_res = json.load(load_f)
+            self.assertTrue(len(stat_res) > 0)
+
+        os.remove(perfstat_filepath)
+        shutil.rmtree('./profiler_log')
+
 
 class MultiStreamModelTestCase(unittest.TestCase):
     def setUp(self):
