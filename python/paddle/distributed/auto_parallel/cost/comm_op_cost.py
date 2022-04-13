@@ -26,8 +26,39 @@ class AllreduceSumOpCost(CommOpCost):
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        # NOTE: The actual formula will be filled in the future.
-        return 0
+        # use tree if cross machine and use ring if in a single machine
+        time = None
+        cluster = self.comm_context.cluster
+        if not cluster.cross_machine(self.group_ranks):
+            time = self.calc_time_ring()
+        else:
+            time = self.calc_time_tree()
+
+        return time
+
+    def calc_time_ring(self):
+        alpha = self.comm_context.base_ring
+        alpha += 2 * (
+            self.rank_count - self.machine_count) * self.comm_context.intra_ring
+        alpha += 2 * (self.machine_count - 1) * (
+            self.comm_context.inter_ring + self.hops * self.comm_context.switch)
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = alpha + 2 * (self.rank_count - 1
+                            ) / self.rank_count * self.comm_count * beta
+
+        return time
+
+    def calc_time_tree(self):
+        alpha = self.comm_context.base_tree
+        alpha += 2 * (self.rank_count / self.machine_count - 1
+                      ) * self.comm_context.intra_tree
+        alpha += math.log2(self.machine_count) * (
+            self.comm_context.inter_tree + self.hops * self.comm_context.switch)
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+
+        time = alpha + 2 * self.comm_count * beta
+
+        return time
 
 
 @register_op_cost
@@ -39,8 +70,19 @@ class AllgatherOpCost(CommOpCost):
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        # NOTE: The actual formula will be filled in the future.
-        return 0
+        time = self.calc_time_ring()
+        return time
+
+    def calc_time_ring(self):
+        alpha = self.comm_context.base_ring
+        alpha += (
+            self.rank_count - self.machine_count) * self.comm_context.intra_ring
+        alpha += (self.machine_count - 1) * (
+            self.comm_context.inter_ring + self.hops * self.comm_context.switch)
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = alpha + (self.rank_count - 1
+                        ) / self.rank_count * self.comm_count * beta
+        return time
 
 
 @register_op_cost
@@ -52,8 +94,19 @@ class BroadcastOpCost(CommOpCost):
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        # NOTE: The actual formula will be filled in the future.
-        return 0
+        time = self.calc_time_ring()
+        return time
+
+    def calc_time_ring(self):
+        alpha = self.comm_context.base_ring
+        if self.machine_count > 1:
+            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+        else:
+            alpha += self.comm_context.intra_ring
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = alpha + self.comm_count * beta
+
+        return time
 
 
 @register_op_cost
@@ -65,8 +118,15 @@ class SendOpCost(CommOpCost):
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        # NOTE: The actual formula will be filled in the future.
-        return 0
+        alpha = self.comm_context.base_ring
+        if self.machine_count > 1:
+            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+        else:
+            alpha += self.comm_context.intra_ring
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = alpha + self.comm_count * beta
+
+        return time
 
 
 @register_op_cost
@@ -78,5 +138,11 @@ class RecvOpCost(CommOpCost):
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        # NOTE: The actual formula will be filled in the future.
-        return 0
+        alpha = self.comm_context.base_ring
+        if self.machine_count > 1:
+            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+        else:
+            alpha += self.comm_context.intra_ring
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = alpha + self.comm_count * beta
+        return time
