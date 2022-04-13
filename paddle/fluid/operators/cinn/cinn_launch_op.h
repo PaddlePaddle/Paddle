@@ -109,8 +109,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
-    // Step 5. use PE to execute the compiled CINN instructions
-    //         in nodes of the runtime graph
+    // Step 4. Execute the compiled CINN instructions by a PE or
+    //         by the CINN compiled program in sequential order
     if (FLAGS_enable_pe_launch_cinn) {
       VLOG(4) << "Execute the runtime graph by PE";
       framework::Scope& exec_scope = scope.NewScope();
