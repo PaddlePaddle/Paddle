@@ -1657,9 +1657,12 @@ class Resharder:
 
     def parse_op_desc_for_cost(self, reshard_op_desc, dtype):
         def _get_idx(comm_ranks, group_ranks):
-            res = None
+            res, is_the_same = None, False
             idx = 0
             while idx < len(comm_ranks):
+                if comm_ranks[idx] == set(group_ranks):
+                    is_the_same = True
+
                 for rank in group_ranks:
                     if rank in comm_ranks[idx]:
                         res = idx
@@ -1668,13 +1671,13 @@ class Resharder:
                     idx += 1
                 else:
                     break
-            return res
+            return res, is_the_same
 
         # run communication op before computation op
         # TODO: Communication cost is not calculated when the var has been transfered by the same group in the past
         comm_costs = []
-        local_rank_comp_cost = {}
         comm_ranks = []
+        local_rank_comp_cost = {}
         for key in reshard_op_desc:
             partition_tensor_list = []
             op_desc_list = reshard_op_desc[key]
@@ -1684,14 +1687,17 @@ class Resharder:
                     shape = op_desc.shape
                     send_desc = build_comm_desc("send_v2", group_ranks, dtype,
                                                 shape)
-                    idx = _get_idx(comm_ranks, group_ranks)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
                     if idx is None:
                         comm_costs.append([(group_ranks, SendOpCost(
                             op_desc=send_desc,
                             comm_context=self.comm_context))])
+                        comm_ranks.append(set(group_ranks))
                     else:
-                        comm_costs[idx].append((group_ranks, SendOpCost(
-                            op_desc=send_desc, comm_context=self.comm_context)))
+                        if not is_the_same:
+                            comm_costs[idx].append((group_ranks, SendOpCost(
+                                op_desc=send_desc,
+                                comm_context=self.comm_context)))
                 elif isinstance(op_desc, AllGatherOpDesc):
                     # NOTE: fill_const and other unnecessary op is not calculated because those cost is very small
                     group_ranks = op_desc.group
@@ -1704,15 +1710,18 @@ class Resharder:
                             split_inputs_shape.append(dim * len(group_ranks))
                         else:
                             split_inputs_shape.append(dim)
-                    idx = _get_idx(comm_ranks, group_ranks)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
                     if idx is None:
                         comm_costs.append([(group_ranks, AllgatherOpCost(
                             op_desc=allgather_desc,
                             comm_context=self.comm_context))])
+                        comm_ranks.append(set(group_ranks))
                     else:
-                        comm_costs[idx].append((group_ranks, AllgatherOpCost(
-                            op_desc=allgather_desc,
-                            comm_context=self.comm_context)))
+                        if not is_the_same:
+                            comm_costs[idx].append(
+                                (group_ranks, AllgatherOpCost(
+                                    op_desc=allgather_desc,
+                                    comm_context=self.comm_context)))
                     # calc the split op cost
                     if key not in local_rank_comp_cost:
                         local_rank_comp_cost[key] = []
