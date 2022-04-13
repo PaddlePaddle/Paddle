@@ -316,6 +316,7 @@ XPUOpMap& get_kl2_ops() {
       {"sigmoid", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sigmoid_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sign", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"slice_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                    pOpKernelType(vartype::FP16, XPUPlace()),
                                    pOpKernelType(vartype::INT32, XPUPlace())})},
