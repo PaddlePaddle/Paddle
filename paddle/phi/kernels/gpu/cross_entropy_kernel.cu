@@ -39,7 +39,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace phi {
-using funcs = phi::funcs;
 
 #define ALIGN_BYTES 16
 
@@ -1201,9 +1200,9 @@ void LaunchVectorizedSoftmaxForward(T* loss,
 }
 
 static void show_size(phi::TensorBase::DDim d, const char* name) {
-  VLOG(0) << name << "size:";
+  VLOG(8) << name << "size:";
   for (int i = 0; i < d.size(); i++) {
-    VLOG(0) << d[i];
+    VLOG(8) << d[i];
   }
 }
 
@@ -1441,58 +1440,19 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     set_constant(dev_ctx, loss, static_cast<T>(0));
     return;
   }
-  bool split_batch = true;
-  int min_batch = 10;
   if (soft_label) {
     auto* logits_data = logits.data<T>();
     auto* labels_data = label.data<T>();
-
-    if (axis_v == 0 || !split_batch) {
-      SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
-                                          rank,
-                                          axis_v,
-                                          logits_data,
-                                          labels_data,
-                                          softmax_data,
-                                          loss_data,
-                                          n,
-                                          axis_dim,
-                                          d / axis_dim);
-    } else {
-      int step = logits.dims()[0] / min_batch;
-      if (step * min_batch < logits.dims()[0]) {
-        step += 1;
-      }
-      int stride = logits.numel() / logits.dims()[0] * min_batch;
-      int stride_loss = loss->numel() / logits.dims()[0] * min_batch;
-
-      show_size(logits.dims(), "logits");
-      show_size(label.dims(), "label");
-      show_size(softmax->dims(), "softmax");
-      show_size(loss->dims(), "loss");
-      VLOG(0) << "Out:";
-
-      for (int i = 0; i < step; i++) {
-        int len = (i + 1) * min_batch <= logits.dims()[0]
-                      ? min_batch
-                      : logits.dims()[0] - i * min_batch;
-        auto tmp_n = n / logits.dims()[0] * len;
-        VLOG(0) << "batch id: " << i << " batch size:" << len << " N:" << tmp_n
-                << " D:" << d << "n:" << n;
-        VLOG(0) << "softmax data start:" << (stride * i)
-                << " loss start:" << (stride_loss * i);
-        SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
-                                            rank,
-                                            axis_v,
-                                            logits_data + stride * i,
-                                            labels_data + stride * i,
-                                            softmax_data + stride * i,
-                                            loss_data + stride_loss * i,
-                                            tmp_n,
-                                            axis_dim,
-                                            d / axis_dim);
-      }
-    }
+    SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
+                                        rank,
+                                        axis_v,
+                                        logits_data,
+                                        labels_data,
+                                        softmax_data,
+                                        loss_data,
+                                        n,
+                                        axis_dim,
+                                        d / axis_dim);
   } else {
     if (!numeric_stable_mode) {
       // CUDNN kernel only suppoer 2-D tensor and perfome softmax on last dim
@@ -1558,40 +1518,102 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
   auto dtype = label.dtype();
-  if (soft_label) {
-    PADDLE_ENFORCE_EQ(
-        dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as Input(Logits)."));
-    VLOG(0) << "==== star cuda kernel : softmax_with_cross_entropy ====";
-    CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
-                                            logits,
-                                            label,
-                                            soft_label,
-                                            use_softmax,
-                                            numeric_stable_mode,
-                                            ignore_index,
-                                            axis,
-                                            softmax,
-                                            loss);
-  } else {
-    PD_DISPATCH_INTEGRAL_TYPES(
-        dtype, "CrossEntropyWithSoftmaxCUDAKernel", ([&] {
-          CrossEntropyWithSoftmaxCUDAKernel<T, data_t>(dev_ctx,
-                                                       logits,
-                                                       label,
-                                                       soft_label,
-                                                       use_softmax,
-                                                       numeric_stable_mode,
-                                                       ignore_index,
-                                                       axis,
-                                                       softmax,
-                                                       loss);
-        }));
+  VLOG(8) << "softlabel: " << soft_label << "use_softmax: " << use_softmax
+          << "num_stable_mode: " << numeric_stable_mode
+          << "ignore_index: " << ignore_index << "axis: " << axis;
+  auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
+  auto* loss_data = dev_ctx.template Alloc<T>(loss);
+
+  /*
+  In some case in ernie traning, putting total batch into a kernel may cause OOM
+  error.
+  Here we will split a large batch into a few small batches by specifying an env
+  variable.
+  FLAGS_softmax_with_cross_entropy_mini_batch_size.
+  */
+
+  const char* str_mini_batch =
+      std::getenv("FLAGS_softmax_with_cross_entropy_mini_batch_size");
+  int64_t mini_batch_size = logits.dims()[0];
+
+  // Only when env var is set, axis > 0 and input dim size > 1 are all satisfied
+  // the function will affects
+  const int axis_v_ = phi::funcs::CanonicalAxis(axis, logits.dims().size());
+  if (str_mini_batch && axis_v_ > 0) {
+    sscanf(str_mini_batch, "%d", &mini_batch_size);
+    if (mini_batch_size == 0) {
+      mini_batch_size = logits.dims()[0];
+    }
+  }
+
+  int64_t step = logits.dims()[0] / mini_batch_size;
+  if (step * mini_batch_size < logits.dims()[0]) {
+    step += 1;
+  }
+  for (int64_t i = 0; i < step; i++) {
+    int64_t start = i * mini_batch_size;
+    int64_t end =
+        std::min(i * mini_batch_size + mini_batch_size, logits.dims()[0]);
+    DenseTensor mini_logits, mini_label, mini_softmax, mini_loss;
+
+    /*
+      why using branch step > 1?
+      Because when step == 1 and using Slice function, there will occurs some
+      error as following:
+        "IndexError: (OutOfRange) The end row index is out of bound.
+        [Hint: Expected end_idx <= meta_.dims[0], but received end_idx:3 >
+      meta_.dims[0]:1.]"
+      In this case, we use ShareDataWith function instead.
+    */
+    if (step > 1) {
+      mini_logits = logits.Slice(start, end);
+      mini_label = label.Slice(start, end);
+      mini_softmax = softmax->Slice(start, end);
+      mini_loss = loss->Slice(start, end);
+    } else {
+      mini_logits.ShareDataWith(logits);
+      mini_label.ShareDataWith(label);
+      mini_softmax.ShareDataWith(*softmax);
+      mini_loss.ShareDataWith(*loss);
+    }
+    VLOG(8) << "batch id:" << i;
+    show_size(mini_logits.dims(), "mini_logits");
+    show_size(mini_label.dims(), "mini_labels");
+    show_size(mini_softmax.dims(), "mini_siftmax");
+    show_size(mini_loss.dims(), "mini_loss");
+    if (soft_label) {
+      PADDLE_ENFORCE_EQ(
+          dtype,
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::errors::InvalidArgument("The Input(Label) should be with the "
+                                       "same data type as Input(Logits)."));
+      CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
+                                              mini_logits,
+                                              mini_label,
+                                              soft_label,
+                                              use_softmax,
+                                              numeric_stable_mode,
+                                              ignore_index,
+                                              axis,
+                                              &mini_softmax,
+                                              &mini_loss);
+    } else {
+      PD_DISPATCH_INTEGRAL_TYPES(
+          dtype, "CrossEntropyWithSoftmaxCUDAKernel", ([&] {
+            CrossEntropyWithSoftmaxCUDAKernel<T, data_t>(dev_ctx,
+                                                         mini_logits,
+                                                         mini_label,
+                                                         soft_label,
+                                                         use_softmax,
+                                                         numeric_stable_mode,
+                                                         ignore_index,
+                                                         axis,
+                                                         &mini_softmax,
+                                                         &mini_loss);
+          }));
+    }
   }
 }
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
