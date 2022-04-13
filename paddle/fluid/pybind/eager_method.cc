@@ -617,7 +617,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   PADDLE_ENFORCE_EQ(
-      self->tensor.is_initialized(), true,
+      self->tensor.initialized(), true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
@@ -1146,7 +1146,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-  if (self->tensor.is_initialized()) {
+  if (self->tensor.initialized()) {
     PADDLE_ENFORCE_EQ(self->tensor.dtype(), src.dtype(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
