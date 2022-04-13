@@ -40,12 +40,7 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
 
   registry->AddKernel(
       "phi_dt.create_inited_dense_tensor.cpu.f32",
-      INFRT_KERNEL(infrt::kernel::phi::CreateInitedCPUDenseTensorF32),
-      {"dims", "lod", "layout", "value"});
-
-  registry->AddKernel(
-      "phi_dt.create_inited_dense_tensor.gpu.f32",
-      INFRT_KERNEL(infrt::kernel::phi::CreateInitedGPUDenseTensorF32),
+      INFRT_KERNEL(infrt::kernel::phi::CreateInitedDenseTensorF32),
       {"dims", "lod", "layout", "value"});
 
   registry->AddKernel(

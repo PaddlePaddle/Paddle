@@ -32,15 +32,8 @@ namespace phi {
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision);
 
-::phi::DenseTensor CreateInitedCPUDenseTensorF32(
+::phi::DenseTensor CreateInitedDenseTensorF32(
     const ::phi::CPUContext& context,
-    host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod,
-    host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<float> value);
-
-::phi::DenseTensor CreateInitedGPUDenseTensorF32(
-    const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,

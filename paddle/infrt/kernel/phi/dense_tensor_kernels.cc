@@ -57,7 +57,7 @@ namespace phi {
                              {}));
 }
 
-::phi::DenseTensor CreateInitedCPUDenseTensorF32(
+::phi::DenseTensor CreateInitedDenseTensorF32(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
@@ -74,37 +74,6 @@ namespace phi {
   for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
     a_data[i] = value.get();
   }
-  return dense_tensor;
-}
-
-::phi::DenseTensor CreateInitedGPUDenseTensorF32(
-    const ::phi::GPUContext& context,
-    host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod,
-    host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<float> value) {
-
-  ::phi::DenseTensor dense_tensor(
-      const_cast<::phi::Allocator*>(&context.GetAllocator()),
-      ::phi::DenseTensorMeta(
-          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
-          ::phi::make_ddim(dims.get()),
-          ConvertLayoutToPhi(layout.get()),
-          {}));
-#ifdef INFRT_WITH_GPU
-  float* data = dense_tensor.mutable_data<float>(context.GetPlace());
-
-  std::vector<float> a_data(dense_tensor.numel());
-  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
-    a_data[i] = value.get();
-  }
-  cudaMemcpy(data,
-             a_data.data(),
-             sizeof(float) * dense_tensor.numel(),
-             cudaMemcpyHostToDevice);
-#else
-  LOG(FATAL) << "CreateInitedGPUDenseTensorF32 is not supported if WITH_GPU=OFF";
-#endif
   return dense_tensor;
 }
 
