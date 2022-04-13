@@ -373,12 +373,14 @@ def _getitem_impl_(var, item):
             step = 1 if step is None else step
 
             if start is None:
-                if var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                if paddle.fluid.framework._non_static_mode() or var.desc.type(
+                ) != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
                     start = 0 if step > 0 else var.shape[dim]
                 else:
                     start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                if var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                if paddle.fluid.framework._non_static_mode() or var.desc.type(
+                ) != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
                     end = var.shape[dim] if step > 0 else -1
                 else:
                     end = MAX_INTEGER if step > 0 else -1
