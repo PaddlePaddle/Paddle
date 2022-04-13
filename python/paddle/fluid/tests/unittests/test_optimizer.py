@@ -24,6 +24,7 @@ import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 from paddle.io import Dataset
 import numpy
@@ -1113,6 +1114,11 @@ class TestOptimizerDtype(unittest.TestCase):
 
     def test_float32(self):
         self.check_with_dtype('float32')
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_float64()
+            self.test_float32()
 
 
 class TestMasterWeightSaveForFP16(unittest.TestCase):

@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,18 +28,17 @@ from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import GroupShardedStage3
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
 
 epoch = 10
-paddle.seed(2021)
-np.random.seed(2021)
+paddle.seed(2022)
+np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -101,15 +100,19 @@ def train_mlp(model,
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype='float32')
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
-        scaler = ShardingScaler(scaler)
+        scaler = GroupShardedScaler(scaler)
     if sharding_stage == 2:
-        optimizer = ShardingOptimizerStage2(
-            params=model.parameters(), optim=optimizer, group=group)
-        model = ShardingStage2(
+        optimizer = GroupShardedOptimizerStage2(
+            params=optimizer._parameter_list, optim=optimizer, group=group)
+        model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21)
     elif sharding_stage == 3:
-        model = ShardingStage3(
-            model, optimizer=optimizer, group=group, sync_comm=sync_comm)
+        model = GroupShardedStage3(
+            model,
+            optimizer=optimizer,
+            group=group,
+            sync_comm=sync_comm,
+            segment_size=2**15)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -174,6 +177,7 @@ def train_mlp(model,
 
 
 def test_stage2_stage3():
+    paddle.distributed.init_parallel_env()
     mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = MLP(
     ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()
@@ -276,5 +280,4 @@ def test_stage2_stage3():
 
 if __name__ == '__main__':
     with _test_eager_guard():
-        pass
-    test_stage2_stage3()
+        test_stage2_stage3()

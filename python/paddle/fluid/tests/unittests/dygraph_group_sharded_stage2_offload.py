@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,11 +25,11 @@ from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
 
-from dygraph_sharding_stage2 import MLP, reader_decorator, optimizer_setting
+from dygraph_group_sharded_stage2 import MLP, reader_decorator, optimizer_setting
 
 seed = 2021
 epoch = 2
@@ -45,11 +45,11 @@ def train_mlp(model, offload=False):
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-    scaler = ShardingScaler(scaler)
+    scaler = GroupShardedScaler(scaler)
 
-    optimizer = ShardingOptimizerStage2(
-        params=model.parameters(), optim=optimizer, offload=offload)
-    model = ShardingStage2(model, optimizer, buffer_max_size=2**21)
+    optimizer = GroupShardedOptimizerStage2(
+        params=optimizer._parameter_list, optim=optimizer, offload=offload)
+    model = GroupShardedStage2(model, optimizer, buffer_max_size=2**21)
 
     train_reader = paddle.batch(
         reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
@@ -90,6 +90,7 @@ def train_mlp(model, offload=False):
 
 
 def test_sharding_stage2_offload():
+    paddle.distributed.init_parallel_env()
     mlp = MLP(linear_size)
     mlp_offload = MLP(linear_size)
     mlp_offload.set_state_dict(mlp.state_dict())
@@ -108,5 +109,4 @@ def test_sharding_stage2_offload():
 
 if __name__ == '__main__':
     with _test_eager_guard():
-        pass
-    test_sharding_stage2_offload()
+        test_sharding_stage2_offload()
