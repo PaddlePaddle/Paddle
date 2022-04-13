@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import register_op_cost, CommOpCost, OP_COST_FACTORY
+import math
+
+from .base_cost import register_op_cost, CommOpCost, _g_op_cost_factory
 
 
 @register_op_cost
-class AllreduceSumCost(CommOpCost):
+class AllreduceSumOpCost(CommOpCost):
     OP_TYPE = "c_allreduce_sum"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
-        super(OP_COST_FACTORY["c_allreduce_sum"], self).__init__(
+        super(AllreduceSumOpCost, self).__init__(
+            op=op, op_desc=op_desc, comm_context=comm_context)
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future.
+        return 0
+
+
+@register_op_cost
+class AllgatherOpCost(CommOpCost):
+    OP_TYPE = "c_allgather"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super(AllgatherOpCost, self).__init__(
+            op=op, op_desc=op_desc, comm_context=comm_context)
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future.
+        return 0
+
+
+@register_op_cost
+class BroadcastOpCost(CommOpCost):
+    OP_TYPE = "c_broadcast"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super(BroadcastOpCost, self).__init__(
+            op=op, op_desc=op_desc, comm_context=comm_context)
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future.
+        return 0
+
+
+@register_op_cost
+class SendOpCost(CommOpCost):
+    OP_TYPE = "send_v2"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super(SendOpCost, self).__init__(
+            op=op, op_desc=op_desc, comm_context=comm_context)
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future.
+        return 0
+
+
+@register_op_cost
+class RecvOpCost(CommOpCost):
+    OP_TYPE = "recv_v2"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super(RecvOpCost, self).__init__(
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
