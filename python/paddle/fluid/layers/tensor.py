@@ -1586,35 +1586,43 @@ def linspace(start, stop, num, dtype=None, name=None):
 
 def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     r"""
-    This OP return fixed number of logarithmical-evenly spaced values within a given interval.
+    Return fixed number of logarithmical-evenly spaced values within the interval \
+    :math:`[base^{start}, base^{stop}]`.
+    
+    Notes:
+        This API does not compute the gradient.
+    
     Args:
-        start(int|float|Tensor): The input :attr:`start` is exponent of first entry in 
-            the sequence. It is a scalar, or a Tensor of shape [1] with input data 
+        start(int|float|Tensor): The input :attr:`start` is exponent of first entry in \
+            the sequence. It is a scalar, or a Tensor of shape [1] with input data \
             type int32, int64, float32 or float64.
-        stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the 
-            sequence. It is a scalar, or a Tensor of shape [1] with input data 
+        stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
+            sequence. It is a scalar, or a Tensor of shape [1] with input data \
             type int32, int64, float32 or float64.
-        num(int|Tensor): The input :attr:`num` is given number of items in the sequence. 
+        num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
             It is an int scalar, or a Tensor of shape [1] with data type int32.
-        base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. 
-            It is a scalar, or a Tensor of shape [1] with input data type int32, int64, 
+        base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
+            It is a scalar, or a Tensor of shape [1] with input data type int32, int64, \
             float32 or float64.
-        dtype(np.dtype|str, optional): The data type of output tensor, it could be
-            int32, int64, float32 and float64. Default: if None, the data type is float32.
-        name(str, optional): Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+        dtype(np.dtype|str, optional): The data type of output tensor, it could be \
+            int32, int64, float32 or float64. Default: if None, the data type is float32. \
+        name(str, optional): Normally there is no need for user to set this property. \
+            For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
     Returns:
-        Tensor: the output data type will be float32, float64. The 1-D tensor with 
-            fixed number of evenly spaced values, the data shape of this tensor 
-            is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just 
-            has the value with exponential of :attr:`start` with base :attr:`base`. 
+        Tensor: The output data type will be float32, float64. The 1-D tensor with \
+        fixed number of logarithmical-evenly spaced values, the data shape of this \
+        tensor is :math:`[num]`. If the :attr:`num` is set 1, the output tensor \
+        just has the value with exponential of :attr:`start` with base :attr:`base`. 
+
     Examples:
         .. code-block:: python
-             import paddle
-             data = paddle.logspace(0, 10, 5, 2, 'float32')
-             # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
-             data = paddle.logspace(0, 10, 1, 2, 'float32')
-             # [1.]
+            :name: logspace-example
+            import paddle
+            data = paddle.logspace(0, 10, 5, 2, 'float32')
+            # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
+            data = paddle.logspace(0, 10, 1, 2, 'float32')
+            # [1.]
     """
     if dtype is None:
         dtype = 'float32'
