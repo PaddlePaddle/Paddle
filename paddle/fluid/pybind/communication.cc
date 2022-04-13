@@ -100,8 +100,8 @@ void BindTCPStore(py::module *m) {
                to increase the amount.
 
                Args:
-                    key (str):The key that increments the counter in the store.
-                    value(int):The value increased by the counter.
+                    key (str): The key that increments the counter in the store.
+                    value (int): The value increased by the counter.
 
                Returns:
                     None.
