@@ -173,20 +173,24 @@ def scatter_add_jvp(op, x_dot, y_dot):
 def add_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) and check_dot(y)
-    return z_bar, z_bar
+    x_bar = z_bar if check_dot(x) else None
+    y_bar = z_bar if check_dot(y) else None
+    return x_bar, y_bar
 
 
 def sub_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) and check_dot(y)
-    return z_bar, neg(z_bar)
+    x_bar = z_bar if check_dot(x) else None
+    y_bar = neg(z_bar) if check_dot(y) else None
+    return x_bar, y_bar
 
 
 @REGISTER_TRANSPOSE('mul_p')
 def mul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) ^ check_dot(y)
-    if x.is_dot:
+    if check_dot(x):
         return mul(z_bar, y), None
     else:
         return None, mul(x, z_bar)
@@ -248,9 +252,8 @@ def concat_transpose(op, check_dot, y_bar):
 def reduce_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
     assert check_dot(x)
-    shape = x.shape
-    for i in op.attr('axis'):
-        shape[i] = 1
+    axes = op.attr('axis')
+    shape = tuple(1 if i in axes else size for i, size in enumerate(x.shape))
     t = reshape(y_bar, shape=shape)
     return broadcast(t, shape=x.shape)
 
@@ -259,7 +262,7 @@ def reduce_transpose(op, check_dot, y_bar):
 def matmul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) ^ check_dot(y)
-    if x.is_dot:
+    if check_dot(x):
         return matmul(z_bar, transpose(y)), None
     else:
         return None, matmul(transpose(x), z_bar)
