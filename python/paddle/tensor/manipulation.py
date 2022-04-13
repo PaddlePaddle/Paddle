@@ -784,6 +784,8 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
+        if isinstance(shifts, paddle.Tensor):
+            shifts = shifts.cpu()
         return _C_ops.final_state_roll(x, shifts, axis)
 
     if _in_legacy_dygraph():
@@ -1998,6 +2000,9 @@ def expand(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+
     if paddle.in_dynamic_mode():
         return _C_ops.expand_v2(x, 'shape', shape)
 
