@@ -20,13 +20,16 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
+from .common import set_comm_op_dist_attr_for_program
 from .dist_default import DistributedDefaultImpl0
 from ..reshard import Resharder
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import compute_compatible_dim_mapping, set_dist_op_desc_original_id, _get_comm_group
+from ..dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
 from paddle.fluid import core, unique_name
+from paddle.fluid.framework import Operator
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
@@ -39,7 +42,7 @@ class DistributedPNorm(DistributedOperatorImplContainer):
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 
 
-def _insert_fill_constant_op(block, idx, op_role):
+def _insert_fill_constant_op(block, op_role):
     """Insert fill constant op into block at the given index."""
     helper = LayerHelper("fill_constant", **locals())
     with paddle.static.program_guard(block.program):
@@ -52,14 +55,13 @@ def _insert_fill_constant_op(block, idx, op_role):
     attrs['op_role'] = op_role
     utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant')
-    block._insert_op(
-        idx,
+    fill_constant_op = block.append_op(
         type='fill_constant',
         inputs=inputs,
         outputs={'Out': [out]},
         attrs=attrs)
     out.stop_gradient = True
-    return out
+    return out, fill_constant_op
 
 
 # Row Parallel
@@ -177,17 +179,35 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'norm')
 
-        # insert barrier op
-        fill_constant_out = _insert_fill_constant_op(main_block,
-                                                     len(main_block.ops),
-                                                     src_op.attr('op_role'))
-        main_block.append_op(
+        # 1. insert barrier op
+        ref_process_mesh = op_dist_attr.process_mesh
+        constant_out_dims_mapping = [-1]
+        fill_constant_out, fill_constant_op = _insert_fill_constant_op(
+            main_block, src_op.attr('op_role'))
+        # set fill_constant_out tensor dist_attr
+        constant_out_dist_attr = TensorDistributedAttribute()
+        constant_out_dist_attr.process_mesh = ref_process_mesh
+        constant_out_dist_attr.dims_mapping = constant_out_dims_mapping
+        ctx.set_tensor_dist_attr_for_program(fill_constant_out,
+                                             constant_out_dist_attr)
+        # set fill_constant op dist_attr
+        constant_op_dist_attr = OperatorDistributedAttribute()
+        constant_op_dist_attr.process_mesh = ref_process_mesh
+        constant_op_dist_attr.set_output_dims_mapping(fill_constant_out.name,
+                                                      constant_out_dims_mapping)
+        ctx.set_op_dist_attr_for_program(fill_constant_op,
+                                         constant_op_dist_attr)
+        barrier_op = main_block.append_op(
             type='barrier',
             inputs={'X': [fill_constant_out]},
             outputs={'Out': [fill_constant_out]},
             attrs={'ring_id': group.id})
+        # set barrier op dist attr
+        set_comm_op_dist_attr_for_program(barrier_op, ref_process_mesh,
+                                          constant_out_dist_attr, ctx)
 
-        # insert c_allgather op
+        # 2. insert c_allgather op
+        # create c_allgather output var
         allgather_out = main_block.create_var(
             name=".".join(["c_allgather", X_var.name]),
             dtype=X_var.dtype,
@@ -195,7 +215,15 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=X_var.stop_gradient)
-        main_block.append_op(
+        # set allgather_out tensor dist_attr
+        allgather_out_dist_attr = TensorDistributedAttribute()
+        allgather_out_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_out_dist_attr.dims_mapping = [
+            -1 for i in range(len(allgather_out.shape))
+        ]
+        ctx.set_tensor_dist_attr_for_program(allgather_out,
+                                             allgather_out_dist_attr)
+        c_allgather_op = main_block.append_op(
             type='c_allgather',
             inputs={'X': [X_var]},
             outputs={'Out': [allgather_out]},
@@ -205,7 +233,16 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 'nranks': group.nranks,
                 'op_role': src_op.attr('op_role')
             })
+        # set c_allgather op dist_attr
+        allgather_op_dist_attr = OperatorDistributedAttribute()
+        allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_op_dist_attr.set_input_dims_mapping(X_var.name,
+                                                      in_dims_mapping)
+        allgather_op_dist_attr.set_output_dims_mapping(
+            allgather_out.name, allgather_out_dist_attr.dims_mapping)
+        ctx.set_op_dist_attr_for_program(c_allgather_op, allgather_op_dist_attr)
 
+        # 3. copy p_norm op desc and reset input name
         # rename input
         kwargs['X'] = [allgather_out.name]
         # replicate op in dist program
@@ -216,6 +253,10 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
+        pnorm_op = Operator(main_block, dist_op_desc)
+        op_dist_attr.set_input_dims_mapping(
+            allgather_out.name, allgather_out_dist_attr.dims_mapping)
+        ctx.set_op_dist_attr_for_program(pnorm_op, op_dist_attr)
 
         main_block._sync_with_cpp()
 
@@ -247,10 +288,10 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         X_var = main_block.var(kwargs['X'][0])
         X_grad_var = main_block.var(kwargs['X@GRAD'][0])
 
+        # 1. copy p_norm_grad op and reset input name and output name
         new_kwargs = copy.deepcopy(kwargs)
         new_kwargs['X'] = [".".join(["c_allgather", X_var.name])]
         new_X_var = main_block.var(new_kwargs['X'][0])
-        # insert p_norm_grad pp
         new_X_grad = main_block.create_var(
             name=".".join(["c_allgather", X_grad_var.name]),
             dtype=X_grad_var.dtype,
@@ -259,7 +300,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             persistable=False,
             stop_gradient=X_grad_var.stop_gradient)
         new_kwargs['X@GRAD'] = [new_X_grad.name]
-
+        new_X_var_dist_attr = ctx.get_tensor_dist_attr_for_program(new_X_var)
+        ctx.set_tensor_dist_attr_for_program(new_X_grad, new_X_var_dist_attr)
         # replicate op in dist program with new kwargs
         dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
@@ -269,9 +311,15 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             dist_op_desc.set_input(input_name, new_kwargs[input_name])
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, new_kwargs[output_name])
+        p_norm_grad_op = Operator(main_block, dist_op_desc)
+        op_dist_attr.set_input_dims_mapping(new_X_var.name,
+                                            new_X_var_dist_attr.dims_mapping)
+        op_dist_attr.set_output_dims_mapping(new_X_grad.name,
+                                             new_X_var_dist_attr.dims_mapping)
+        ctx.set_op_dist_attr_for_program(p_norm_grad_op, op_dist_attr)
         main_block._sync_with_cpp()
 
-        # insert slice op
+        # 2. insert slice op
         process_mesh_shape = op_dist_attr.process_mesh.topology
         process_mesh_group = op_dist_attr.process_mesh.processes
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
@@ -294,11 +342,20 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             "infer_flags": infer_flags,
             "op_role": backward_op.attr('op_role')
         }
-        main_block.append_op(
+        slice_op = main_block.append_op(
             type='slice',
             inputs={'Input': [new_X_grad]},
             outputs={'Out': [X_grad_var]},
             attrs=attrs)
+        X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            X_grad_var.name)
+        slice_op_dist_attr = OperatorDistributedAttribute()
+        slice_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        slice_op_dist_attr.set_input_dims_mapping(
+            new_X_grad.name, new_X_var_dist_attr.dims_mapping)
+        slice_op_dist_attr.set_output_dims_mapping(X_grad_var.name,
+                                                   X_grad_var_dims_mapping)
+        ctx.set_op_dist_attr_for_program(slice_op, slice_op_dist_attr)
         main_block._sync_with_cpp()
 
 

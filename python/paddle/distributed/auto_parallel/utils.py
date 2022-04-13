@@ -1042,15 +1042,15 @@ def set_grad_var_shape(program, dist_context):
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
-                "softmax", "cross_entropy2", "dropout", "tanh", "slice_grad",
-                "assign", "matmul_v2_grad_grad", "elementwise_add_grad_grad",
-                "shape"
+                "softmax", "cross_entropy2", "dropout", "tanh",
+                ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
+                "elementwise_add_grad_grad", "shape"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
                     idx = need_set_shape_list.index(op.type)
                     forward_op_name = forward_list[idx]
-                    if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
+                    if forward_op.type in forward_op_name and forward_var_name in forward_op.input_arg_names:
                         op_dist_attr = dist_context.get_op_dist_attr_for_program(
                             forward_op)
                         break
