@@ -66,6 +66,19 @@ PD_REGISTER_KERNEL(sparse_coo_to_dense_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+PD_REGISTER_KERNEL(sparse_coo_tensor_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooTensorGradKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(coo_values_grad,
                    GPU,
@@ -94,5 +107,17 @@ PD_REGISTER_KERNEL(sparse_coo_to_dense_grad,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+PD_REGISTER_KERNEL(sparse_coo_tensor_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooTensorGradKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 #endif
