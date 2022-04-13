@@ -27,5 +27,4 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool reduce_all,
                           DenseTensor* x_grad);
 
-
 }  // namespace phi

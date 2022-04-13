@@ -31,7 +31,6 @@ void AnyKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-
 PD_REGISTER_KERNEL(any, CPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

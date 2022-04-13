@@ -19,7 +19,6 @@
 
 namespace phi {
 
-
 template <typename T, typename Context>
 void AllKernel(const Context& dev_ctx,
                const DenseTensor& x,
@@ -29,7 +28,6 @@ void AllKernel(const Context& dev_ctx,
   bool reduce_all = false;
   AllRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
-
 
 }  // namespace phi
 

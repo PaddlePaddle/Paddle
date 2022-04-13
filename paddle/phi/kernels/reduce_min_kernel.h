@@ -26,7 +26,6 @@ void MinRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out);
 
-
 template <typename T, typename Context>
 void MinKernel(const Context& dev_ctx,
                const DenseTensor& x,

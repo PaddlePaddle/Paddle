@@ -26,4 +26,3 @@ PD_REGISTER_KERNEL(prod_grad,
                    double,
                    int,
                    int64_t) {}
-

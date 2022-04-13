@@ -32,5 +32,4 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out);
 
-
 }  // namespace phi

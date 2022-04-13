@@ -25,13 +25,11 @@ void ProdRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out);
 
-
 template <typename T, typename Context>
 void ProdKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
                 DenseTensor* out);
-
 
 }  // namespace phi

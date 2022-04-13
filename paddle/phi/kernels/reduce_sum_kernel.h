@@ -27,7 +27,6 @@ void SumRawKernel(const Context& dev_ctx,
                   DataType out_dtype,
                   DenseTensor* out);
 
-
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,

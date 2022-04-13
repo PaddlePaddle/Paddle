@@ -43,4 +43,3 @@ PD_REGISTER_KERNEL(mean_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-

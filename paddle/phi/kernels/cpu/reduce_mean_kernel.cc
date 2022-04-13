@@ -33,7 +33,6 @@ void MeanRawKernel(const Context& dev_ctx,
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
