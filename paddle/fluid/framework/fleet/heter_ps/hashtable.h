@@ -20,9 +20,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
 #endif
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
+#elif defined(PADDLE_WITH_PSLIB)
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #endif
+
 #include "paddle/phi/core/utils/rw_lock.h"
 #include "thrust/pair.h"
 // #include "cudf/concurrent_unordered_map.cuh.h"
