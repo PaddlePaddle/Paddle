@@ -18,20 +18,18 @@
 
 namespace phi {
 template <typename T, typename Context>
-void ProdRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out);
-
+void AnyRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out);
 
 template <typename T, typename Context>
-void ProdKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::vector<int64_t>& dims,
-                bool keep_dim,
-                DenseTensor* out);
-
+void AnyKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               DenseTensor* out);
 
 }  // namespace phi
