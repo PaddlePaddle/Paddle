@@ -122,7 +122,6 @@ macro(compile_kernel COMPILE_ARGS)
   string(REPLACE ";" " " XPU_CXX_DEFINES "${XPU_CXX_DEFINES}" )
   separate_arguments(XPU_CXX_DEFINES UNIX_COMMAND "${XPU_CXX_DEFINES}")
 
-
   set(ABI_VERSION, "")
   if(WITH_HETERPS AND WITH_PSLIB)
     set(ABI_VERSION, "-D_GLIBCXX_USE_CXX11_ABI=0")
