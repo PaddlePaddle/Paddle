@@ -118,7 +118,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",

@@ -63,6 +63,11 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
     bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+          with_fp16 = true;
+    }
+
     VLOG(3) << "preln_residual_bias with_fp16: " << with_fp16;
     nvinfer1::ILayer* layer = nullptr;
     plugin::DynamicPluginTensorRT* plugin = new plugin::PrelnResidualBiasPluginDynamic<half>(bias, scale, half_ele_bias_data,

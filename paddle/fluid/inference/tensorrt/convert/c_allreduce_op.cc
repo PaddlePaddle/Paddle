@@ -67,6 +67,11 @@ class CAllReduceOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+      if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+          with_fp16 = true;
+      }
+
       plugin::CAllReducePluginDynamic* plugin =
           new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream, RedType,
                                               with_fp16);
