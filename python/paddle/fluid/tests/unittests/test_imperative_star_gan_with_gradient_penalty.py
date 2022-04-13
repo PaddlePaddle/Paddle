@@ -613,12 +613,13 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
 
         for (g_loss_s, d_loss_s), (g_loss_d, d_loss_d) in zip(static_loss,
                                                               dygraph_loss):
-            self.assertEqual(g_loss_s, g_loss_d)
-            self.assertEqual(d_loss_s, d_loss_d)
+            np.testing.assert_allclose(g_loss_s, g_loss_d, rtol=2e-2)
+            np.testing.assert_allclose(d_loss_s, d_loss_d, rtol=2e-2)
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        with _test_eager_guard():
             self.func_main()
+        self.func_main()
 
 
 if __name__ == '__main__':
