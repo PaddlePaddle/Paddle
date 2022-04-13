@@ -131,9 +131,9 @@ void BindTCPStore(py::module *m) {
            py::arg("world_size"),
            py::arg("timeout") = distributed::tcputils::kNoTimeout,
            py::call_guard<py::gil_scoped_release>(), R"DOC(
-          The OP is to realize the storage of TCP distributed key-value. By the 
-          initialization of the server storage, the client will connect to the 
-          server through TCP, which can insert key value pair using set(), return 
+          The OP is to realize the storage of TCP distributed key-value. By the
+          initialization of the server storage, the client will connect to the
+          server through TCP, which can insert key value pair using set(), return
           key value peer using get() and some operations.
 
           Args:
