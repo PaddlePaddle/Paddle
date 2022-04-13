@@ -30,12 +30,6 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
-// bool CheckTensorsInNPUPlace(const std::vector<Tensor>& tensors) {
-//   return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
-//     return t.place() == platform::DeviceType::NPU;
-//   });
-// }
-
 void SyncDefaultStream(
     const std::vector<Place>& places,
     std::vector<NPUEventManager>& hcclEvents,                   // NOLINT

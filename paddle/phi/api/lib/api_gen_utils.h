@@ -53,6 +53,9 @@ phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor);
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors);
 
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::DenseTensor*>& tensors);
+
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
 
 phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor);

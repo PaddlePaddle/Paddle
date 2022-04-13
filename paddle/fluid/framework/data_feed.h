@@ -41,6 +41,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 
 DECLARE_int32(record_pool_max_size);
 DECLARE_int32(slotpool_thread_num);
@@ -408,6 +412,266 @@ class CustomParser {
     return false;
   }
 };
+
+struct UsedSlotGpuType {
+  int is_uint64_value;
+  int slot_value_idx;
+};
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#define CUDA_CHECK(val) CHECK(val == gpuSuccess)
+template <typename T>
+struct CudaBuffer {
+  T* cu_buffer;
+  uint64_t buf_size;
+
+  CudaBuffer<T>() {
+    cu_buffer = NULL;
+    buf_size = 0;
+  }
+  ~CudaBuffer<T>() { free(); }
+  T* data() { return cu_buffer; }
+  uint64_t size() { return buf_size; }
+  void malloc(uint64_t size) {
+    buf_size = size;
+    CUDA_CHECK(
+        cudaMalloc(reinterpret_cast<void**>(&cu_buffer), size * sizeof(T)));
+  }
+  void free() {
+    if (cu_buffer != NULL) {
+      CUDA_CHECK(cudaFree(cu_buffer));
+      cu_buffer = NULL;
+    }
+    buf_size = 0;
+  }
+  void resize(uint64_t size) {
+    if (size <= buf_size) {
+      return;
+    }
+    free();
+    malloc(size);
+  }
+};
+template <typename T>
+struct HostBuffer {
+  T* host_buffer;
+  size_t buf_size;
+  size_t data_len;
+
+  HostBuffer<T>() {
+    host_buffer = NULL;
+    buf_size = 0;
+    data_len = 0;
+  }
+  ~HostBuffer<T>() { free(); }
+
+  T* data() { return host_buffer; }
+  const T* data() const { return host_buffer; }
+  size_t size() const { return data_len; }
+  void clear() { free(); }
+  T& back() { return host_buffer[data_len - 1]; }
+
+  T& operator[](size_t i) { return host_buffer[i]; }
+  const T& operator[](size_t i) const { return host_buffer[i]; }
+  void malloc(size_t len) {
+    buf_size = len;
+    CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
+                             buf_size * sizeof(T), cudaHostAllocDefault));
+    CHECK(host_buffer != NULL);
+  }
+  void free() {
+    if (host_buffer != NULL) {
+      CUDA_CHECK(cudaFreeHost(host_buffer));
+      host_buffer = NULL;
+    }
+    buf_size = 0;
+  }
+  void resize(size_t size) {
+    if (size <= buf_size) {
+      data_len = size;
+      return;
+    }
+    data_len = size;
+    free();
+    malloc(size);
+  }
+};
+
+struct BatchCPUValue {
+  HostBuffer<int> h_uint64_lens;
+  HostBuffer<uint64_t> h_uint64_keys;
+  HostBuffer<int> h_uint64_offset;
+
+  HostBuffer<int> h_float_lens;
+  HostBuffer<float> h_float_keys;
+  HostBuffer<int> h_float_offset;
+
+  HostBuffer<int> h_rank;
+  HostBuffer<int> h_cmatch;
+  HostBuffer<int> h_ad_offset;
+};
+
+struct BatchGPUValue {
+  CudaBuffer<int> d_uint64_lens;
+  CudaBuffer<uint64_t> d_uint64_keys;
+  CudaBuffer<int> d_uint64_offset;
+
+  CudaBuffer<int> d_float_lens;
+  CudaBuffer<float> d_float_keys;
+  CudaBuffer<int> d_float_offset;
+
+  CudaBuffer<int> d_rank;
+  CudaBuffer<int> d_cmatch;
+  CudaBuffer<int> d_ad_offset;
+};
+
+class MiniBatchGpuPack {
+ public:
+  MiniBatchGpuPack(const paddle::platform::Place& place,
+                   const std::vector<UsedSlotInfo>& infos);
+  ~MiniBatchGpuPack();
+  void reset(const paddle::platform::Place& place);
+  void pack_instance(const SlotRecord* ins_vec, int num);
+  int ins_num() { return ins_num_; }
+  int pv_num() { return pv_num_; }
+  BatchGPUValue& value() { return value_; }
+  BatchCPUValue& cpu_value() { return buf_; }
+  UsedSlotGpuType* get_gpu_slots(void) {
+    return reinterpret_cast<UsedSlotGpuType*>(gpu_slots_.data());
+  }
+  SlotRecord* get_records(void) { return &ins_vec_[0]; }
+
+  // tensor gpu memory reused
+  void resize_tensor(void) {
+    if (used_float_num_ > 0) {
+      int float_total_len = buf_.h_float_lens.back();
+      if (float_total_len > 0) {
+        float_tensor_.mutable_data<float>({float_total_len, 1}, this->place_);
+      }
+    }
+    if (used_uint64_num_ > 0) {
+      int uint64_total_len = buf_.h_uint64_lens.back();
+      if (uint64_total_len > 0) {
+        uint64_tensor_.mutable_data<int64_t>({uint64_total_len, 1},
+                                             this->place_);
+      }
+    }
+  }
+  LoDTensor& float_tensor(void) { return float_tensor_; }
+  LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
+
+  HostBuffer<size_t>& offsets(void) { return offsets_; }
+  HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
+
+  void* gpu_slot_offsets(void) { return gpu_slot_offsets_->ptr(); }
+
+  void* slot_buf_ptr(void) { return slot_buf_ptr_->ptr(); }
+
+  void resize_gpu_slot_offsets(const size_t slot_total_bytes) {
+    if (gpu_slot_offsets_ == nullptr) {
+      gpu_slot_offsets_ = memory::AllocShared(place_, slot_total_bytes);
+    } else if (gpu_slot_offsets_->size() < slot_total_bytes) {
+      auto buf = memory::AllocShared(place_, slot_total_bytes);
+      gpu_slot_offsets_.swap(buf);
+      buf = nullptr;
+    }
+  }
+  const std::string& get_lineid(int idx) {
+    if (enable_pv_) {
+      return ins_vec_[idx]->ins_id_;
+    }
+    return batch_ins_[idx]->ins_id_;
+  }
+
+ private:
+  void transfer_to_gpu(void);
+  void pack_all_data(const SlotRecord* ins_vec, int num);
+  void pack_uint64_data(const SlotRecord* ins_vec, int num);
+  void pack_float_data(const SlotRecord* ins_vec, int num);
+
+ public:
+  template <typename T>
+  void copy_host2device(CudaBuffer<T>* buf, const T* val, size_t size) {
+    if (size == 0) {
+      return;
+    }
+    buf->resize(size);
+    CUDA_CHECK(cudaMemcpyAsync(buf->data(), val, size * sizeof(T),
+                               cudaMemcpyHostToDevice, stream_));
+  }
+  template <typename T>
+  void copy_host2device(CudaBuffer<T>* buf, const HostBuffer<T>& val) {
+    copy_host2device(buf, val.data(), val.size());
+  }
+
+ private:
+  paddle::platform::Place place_;
+  cudaStream_t stream_;
+  BatchGPUValue value_;
+  BatchCPUValue buf_;
+  int ins_num_ = 0;
+  int pv_num_ = 0;
+
+  bool enable_pv_ = false;
+  int used_float_num_ = 0;
+  int used_uint64_num_ = 0;
+  int used_slot_size_ = 0;
+
+  CudaBuffer<UsedSlotGpuType> gpu_slots_;
+  std::vector<UsedSlotGpuType> gpu_used_slots_;
+  std::vector<SlotRecord> ins_vec_;
+  const SlotRecord* batch_ins_ = nullptr;
+
+  // uint64 tensor
+  LoDTensor uint64_tensor_;
+  // float tensor
+  LoDTensor float_tensor_;
+  // batch
+  HostBuffer<size_t> offsets_;
+  HostBuffer<void*> h_tensor_ptrs_;
+
+  std::shared_ptr<phi::Allocation> gpu_slot_offsets_ = nullptr;
+  std::shared_ptr<phi::Allocation> slot_buf_ptr_ = nullptr;
+};
+class MiniBatchGpuPackMgr {
+  static const int MAX_DEIVCE_NUM = 16;
+
+ public:
+  MiniBatchGpuPackMgr() {
+    for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
+      pack_list_[i] = nullptr;
+    }
+  }
+  ~MiniBatchGpuPackMgr() {
+    for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
+      if (pack_list_[i] == nullptr) {
+        continue;
+      }
+      delete pack_list_[i];
+      pack_list_[i] = nullptr;
+    }
+  }
+  // one device one thread
+  MiniBatchGpuPack* get(const paddle::platform::Place& place,
+                        const std::vector<UsedSlotInfo>& infos) {
+    int device_id = place.GetDeviceId();
+    if (pack_list_[device_id] == nullptr) {
+      pack_list_[device_id] = new MiniBatchGpuPack(place, infos);
+    } else {
+      pack_list_[device_id]->reset(place);
+    }
+    return pack_list_[device_id];
+  }
+
+ private:
+  MiniBatchGpuPack* pack_list_[MAX_DEIVCE_NUM];
+};
+// global mgr
+inline MiniBatchGpuPackMgr& BatchGpuPackMgr() {
+  static MiniBatchGpuPackMgr mgr;
+  return mgr;
+}
+#endif
 
 typedef paddle::framework::CustomParser* (*CreateParserObjectFunc)();
 
@@ -1126,7 +1390,13 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
   SlotRecordInMemoryDataFeed() {}
-  virtual ~SlotRecordInMemoryDataFeed() {}
+  virtual ~SlotRecordInMemoryDataFeed() {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+    if (pack_ != nullptr) {
+      pack_ = nullptr;
+    }
+#endif
+  }
   virtual void Init(const DataFeedDesc& data_feed_desc);
   virtual void LoadIntoMemory();
   void ExpandSlotRecord(SlotRecord* ins);
@@ -1149,6 +1419,23 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   }
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
   virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
+  virtual void AssignFeedVar(const Scope& scope);
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  void BuildSlotBatchGPU(const int ins_num);
+  void FillSlotValueOffset(const int ins_num, const int used_slot_num,
+                           size_t* slot_value_offsets,
+                           const int* uint64_offsets,
+                           const int uint64_slot_size, const int* float_offsets,
+                           const int float_slot_size,
+                           const UsedSlotGpuType* used_slots);
+  void CopyForTensor(const int ins_num, const int used_slot_num, void** dest,
+                     const size_t* slot_value_offsets,
+                     const uint64_t* uint64_feas, const int* uint64_offsets,
+                     const int* uint64_ins_lens, const int uint64_slot_size,
+                     const float* float_feas, const int* float_offsets,
+                     const int* float_ins_lens, const int float_slot_size,
+                     const UsedSlotGpuType* used_slots);
+#endif
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;
@@ -1157,6 +1444,10 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   std::vector<UsedSlotInfo> used_slots_info_;
   size_t float_total_dims_size_ = 0;
   std::vector<int> float_total_dims_without_inductives_;
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  MiniBatchGpuPack* pack_ = nullptr;
+#endif
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
