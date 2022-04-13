@@ -1812,8 +1812,12 @@ class GPUPSUtil(FleetUtil):
 
         if not self._afs.is_file(donefile_path):
             return [-1, -1, int(time.time())]
-        # self._afs.download(donefile_path, "./xbox_base_done.txt")
-        pre_content = self._afs.cat(donefile_path)
+        self._afs.download(donefile_path, "./xbox_base_done.txt")
+        # pre_content = self._afs.cat(donefile_path)
+        pre_content = ""
+        with open("xbox_base_done.txt", "r") as f:
+            pre_content = f.read()
+        pre_content = pre_content.strip()
         last_dict = json.loads(pre_content.split("\n")[-1])
         last_day = int(last_dict["input"].split("/")[-3])
         last_path = "/".join(last_dict["input"].split("/")[:-1])
