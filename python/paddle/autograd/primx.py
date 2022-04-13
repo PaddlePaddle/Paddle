@@ -59,13 +59,36 @@ def topo_path(xs, ys, block=None):
             if any(out is y for y in ys):
                 # Found an output op
                 assert not any(out is y for y in sink_ops)
-                sink_ops[out] = op
+                sink_ops[id(out)] = op
             else:
-                def_vars.append(op)
+                def_vars.append(out)
     if len(sink_ops) != len(ys):
-        not_reachable = (var for var in ys if var not in sink_ops)
+        not_reachable = (var for var in ys if id(var) not in sink_ops)
         raise f"Output vars: {' '.join(not_reachable)} are not reachable from inputs."
     return path
+
+
+class VarMap(object):
+    __slots__ = ['tab']
+
+    def __init__(self, name):
+        self.name = name
+        self.tab = {}
+    
+    def set(self, var, value):
+        self.tab[id(var)] = value
+  
+    def lookup(self, var):
+        return self.tab.get(id(var))
+    
+    def delete(self, var):
+        del self.tab[id(var)]
+
+    def contain_key(self, var):
+        return self.tab.__contains__(id(var))
+
+    def contain_value(self, value):
+        return self.tab.values().__contains__(value)
 
 
 class Transform(object):
@@ -74,25 +97,13 @@ class Transform(object):
 
     def __init__(self, block):
         self.block = block
-        self.vardefs = {}
-        self.varuses = {}
-        self.var2dot = {}
-        self.dot2bar = {}
-    
-    def get_var2dot(self, var):
-        return getattr(self.var2dot, var, None)
+        self.vardefs = VarMap('vardefs')
+        self.varuses = VarMap('varuses')
+        self.var2dot = VarMap('var2dot')
+        self.dot2bar = VarMap('dot2var')
 
-    def set_var2dot(self, var, dot_var):
-        self.var2dot[var] = dot_var
-
-    def get_dot2bar(self, var):
-        return getattr(self.dot2bar, var, None)
-
-    def set_dot2bar(self, dot, bar):
-        self.dot2bar[dot] = bar
-
-    def check_dot(self, x):
-        return x in self.var2dot.values()
+    def is_dot(self, var):
+        return self.var2dot.contain_value(var)
 
     def lower2prim(self):
         pass
@@ -127,17 +138,16 @@ class Transform(object):
                 xs_dot.append(fill_const(1.0, shape=x.shape, dtype=x.dtype))
         else:
             assert len(xs) == len(xs_dot)
-            for x, x_dot in zip(xs, xs_dot):
-                assert x.shape == x_dot.shape
-                assert x.dtype == x_dot.dtype
+            assert all(x.dtype == x_dot.dtype for x, x_dot in zip(xs, xs_dot))
+            assert all(x.shape == x_dot.shape for x, x_dot in zip(xs, xs_dot))
         
-        map(self.set_var2dot, xs, xs_dot)
+        map(self.var2dot.set, xs, xs_dot)
         for op in topo_path(xs, ys, self.block):
-            xs_dot = list(map(self.get_var2dot, get_input_vars(op)))
-            ys_dot = _jvp(op,  *xs_dot)
-            map(self.set_var2dot, op.get_output_vars(op), ys_dot)
+            xs_dot = list(map(self.var2dot.lookup, get_input_vars(op)))
+            ys_dot = _jvp(op, *xs_dot)
+            map(self.var2dot.set, op.get_output_vars(op), ys_dot)
         
-        ys_dot = map(self.get_var2dot, ys)
+        ys_dot = map(self.var2dot.lookup, ys)
         return xs_dot, ys_dot
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
@@ -151,31 +161,30 @@ class Transform(object):
                 assert y_dot.shape == y_bar.shape
                 assert y_dot.dtype == y_bar.dtype
         
-        map(self.set_dot2bar, ys_dot, ys_bar)
+        map(self.dot2bar.set, ys_dot, ys_bar)
         for op in reversed(topo_path(xs_dot, ys_dot, self.block)):
-            ys_bar = list(map(self.get_dot2bar, get_output_vars(op)))
-            xs_bar = _transpose(op, self.check_dot, *ys_bar)
-            map(self.set_dot2bar, op.get_input_vars(), xs_bar)
+            ys_bar = list(map(self.dot2bar.lookup, get_output_vars(op)))
+            xs_bar = _transpose(op, self.is_dot, *ys_bar)
+            map(self.dot2bar.set, op.get_input_vars(), xs_bar)
 
-        xs_bar = list(map(self.get_dot2bar, xs_dot))
+        xs_bar = list(map(self.dot2bar.lookup, xs_dot))
 
         if not retain_fwd:
             dots_to_remove = set()
             for op in topo_path(xs_dot, ys_dot):
                 for var in get_input_vars(op):
-                    if self.check_dot(var):
+                    if self.is_dot(var):
                         dots_to_remove.add(var)
                 block = op.block
                 op_idx = block.ops.index(op)
                 block._remove_op(op_idx)
-                # remove this op and input dots
+
             for k, v in self.var2dot:
                 if v in dots_to_remove:
-                    del self.var2dot[k] 
+                    del self.var2dot[k]
             for k, v in self.dot2bar:
                 if k in dots_to_remove:
                     del self.dot2bar[k]
        
         return ys_bar, xs_bar
-
 
