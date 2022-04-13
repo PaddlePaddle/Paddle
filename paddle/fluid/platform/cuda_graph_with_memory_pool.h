@@ -32,7 +32,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 
 inline bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
-  return CUDAGraph::IsCapturing();
+  return CUDAGraph::IsThisThreadCapturing();
 #else
   return false;
 #endif

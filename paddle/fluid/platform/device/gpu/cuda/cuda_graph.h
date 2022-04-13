@@ -150,7 +150,7 @@ class CUDAGraphCaptureModeGuard {
  public:
   explicit CUDAGraphCaptureModeGuard(
       cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
-    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+    if (UNLIKELY(CUDAGraph::IsThisThreadCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
       // After cudaThreadExchangeStreamCaptureMode is called,
       // the variable "mode" would be set to the old capturing mode.
@@ -159,7 +159,7 @@ class CUDAGraphCaptureModeGuard {
   }
 
   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
-    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+    if (UNLIKELY(CUDAGraph::IsThisThreadCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaThreadExchangeStreamCaptureMode(&old_mode_));
     }
