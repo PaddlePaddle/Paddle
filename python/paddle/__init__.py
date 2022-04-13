@@ -495,6 +495,7 @@ __all__ = [  # noqa
            'numel',
            'median',
            'quantile',
+           'nanquantile',
            'no_grad',
            'set_grad_enabled',
            'is_grad_enabled',
