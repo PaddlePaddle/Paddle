@@ -469,6 +469,8 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
       ret.d[3] = exprBuilder.constant(1);
 
       return ret;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("nbDims should be 4 or 5"));
     }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
