@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#referenced docs:
+#   https://github.com/laekov/fastmoe/blob/master/fmoe/gates/base_gate.py
+
 import paddle.nn as nn
 
 

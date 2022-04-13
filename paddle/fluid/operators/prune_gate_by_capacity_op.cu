@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// referenced docs:
+//    https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cu
+
 #include "paddle/fluid/operators/prune_gate_by_capacity_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 

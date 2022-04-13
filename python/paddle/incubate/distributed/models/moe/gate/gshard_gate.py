@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# referenced docs:
+#   https://github.com/laekov/fastmoe/blob/master/fmoe/gates/gshard_gate.py
+
 import math
 import paddle
 import paddle.nn.functional as F

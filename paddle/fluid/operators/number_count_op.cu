@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Referenced docs:
+//    https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cu
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/number_count_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
