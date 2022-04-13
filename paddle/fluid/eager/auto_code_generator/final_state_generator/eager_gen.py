@@ -205,6 +205,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 #endif
     }}
     // Forward API Call
+    VLOG(3) << \"Final State Running: \" << \"{}\"; 
 {}
     // Get Outputs
 {}
@@ -235,7 +236,7 @@ FORWARD_BODY_TEMPLATE = \
 {}
       // SetAttributes
 {}
-      // SetTensorWrappers
+      // Set TensorWrappers for Forward Inputs
 {}
       // SetGradOutMeta & SetEdges
 {}
@@ -244,6 +245,8 @@ FORWARD_BODY_TEMPLATE = \
 {}
 {}
 {}
+{}
+      // Set TensorWrappers for Forward Outputs
 {}
     }}
 """
@@ -505,15 +508,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         for i in range(len(forward_attrs_list)):
             orig_attr_type = orig_forward_attrs_list[i][1]
-            orig_attr_default = orig_forward_attrs_list[i][2]
             orig_attr_pos = orig_forward_attrs_list[i][3]
             forward_attr_type = forward_attrs_list[i][1]
-            forward_attr_default = forward_attrs_list[i][2]
             forward_attr_pos = forward_attrs_list[i][3]
             assert orig_attr_type == forward_attr_type, AssertMessage(
                 orig_attr_type, forward_attr_type)
-            assert orig_attr_default == forward_attr_default, AssertMessage(
-                orig_attr_default, forward_attr_default)
             assert orig_attr_pos == forward_attr_pos, AssertMessage(
                 orig_attr_pos, forward_attr_pos)
 
@@ -723,7 +722,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_attributes_str = "\n".join(set_attributes_list)
 
         # SetTensorWrappers
-        set_tensor_wrappers_list = []
+        set_input_tensor_wrappers_list = []
+        set_output_tensor_wrappers_list = []
         num_fwd_outputs = len(forward_outputs_position_map.keys())
         for name, (atype, is_fwd_input,
                    pos) in backward_forward_inputs_map.items():
@@ -735,6 +735,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, {need_input_data});"
+                set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
@@ -746,13 +747,25 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
-            set_tensor_wrappers_list.append(set_tensor_wrappers)
-        set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
+                set_output_tensor_wrappers_list.append(set_tensor_wrappers)
+        set_input_tensor_wrappers_str = "\n".join(
+            set_input_tensor_wrappers_list)
+        set_output_tensor_wrappers_str = "\n".join(
+            set_output_tensor_wrappers_list)
 
         # SetGradOutMeta & SetEdges
         set_grad_out_meta_list = []
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
+            # Has corresponding grad output
+            has_corresponding_grad_output = False
+            for _, (_, corresponding_pos,
+                    _) in backward_grad_outputs_map.items():
+                if pos == corresponding_pos:
+                    has_corresponding_grad_output = True
+            if not has_corresponding_grad_output:
+                continue
+
             input_autograd_meta_name = GetAutoGradMetaName(name)
             is_optional = (name in self.optional_inputs)
             if is_optional:
@@ -795,9 +808,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
-            node_construction_str, set_attributes_str, set_tensor_wrappers_str,
-            set_grad_out_meta_str, set_edges_str, set_out_rank_str,
-            set_history_str, set_grad_in_meta_str, set_retain_grad_str)
+            node_construction_str, set_attributes_str,
+            set_input_tensor_wrappers_str, set_grad_out_meta_str, set_edges_str,
+            set_out_rank_str, set_history_str, set_grad_in_meta_str,
+            set_retain_grad_str, set_output_tensor_wrappers_str)
 
     def run(self):
         # Basic Validation Check
@@ -1063,9 +1077,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
             returns_type_str, forward_function_name, inputs_args_definition_str,
             dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
-            forward_call_str, get_outputs_str, outputs_autograd_meta_str,
-            compute_require_grad_args_str, check_inplace_str,
-            bump_inplace_version_str, node_creation_str, returns_str)
+            forward_function_name, forward_call_str, get_outputs_str,
+            outputs_autograd_meta_str, compute_require_grad_args_str,
+            check_inplace_str, bump_inplace_version_str, node_creation_str,
+            returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
         logging.info(
@@ -1289,7 +1304,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
-            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
@@ -1439,28 +1454,18 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});"
 
         # Construct grad_api returns
-        num_bwd_outputs = len(backward_grad_outputs_map.keys())
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         returns_str = f"{indent}std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
 
-            # Infer Grad API Return Type
-            if num_bwd_outputs == 1:
-                # Single tensor output, return as is
-                if IsPlainTensorType(ttype):
-                    returns_str += f"{indent}returns[0] = {{ {transformed_tensor_name} }};\n"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    returns_str += f"{indent}returns[0] = {transformed_tensor_name};\n"
+            # Rearrange output order accordingly
+            if IsPlainTensorType(ttype):
+                returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
             else:
-                # Rearrange output order accordingly
-                if IsPlainTensorType(ttype):
-                    returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
+                assert IsVectorTensorType(ttype)
+                returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
 
         returns_str += f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
