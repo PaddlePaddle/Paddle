@@ -22,10 +22,10 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
 
@@ -799,6 +799,7 @@ void Backward(
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::Operator, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
+  phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
 std::vector<paddle::experimental::Tensor> Grad(
