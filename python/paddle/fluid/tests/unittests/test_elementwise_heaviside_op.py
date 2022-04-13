@@ -54,7 +54,6 @@ class TestHeavisideBroadcast(unittest.TestCase):
         self.np_expected3 = np.heaviside(self.input_2, self.input_4)
         self.np_expected4 = np.heaviside(self.input_4, self.input_5)
 
-
     def test_broadcast(self):
         paddle.disable_static()
         self.tensor_1 = paddle.to_tensor(self.input_1)
@@ -164,7 +163,9 @@ class TestHeavisideError(unittest.TestCase):
                 paddle.heaviside(
                     paddle.randn([100], 'float32'),
                     paddle.randn([100], 'float64'))
+
         self.assertRaises(ValueError, test_input_xy)
+
 
 if __name__ == '__main__':
     unittest.main()
