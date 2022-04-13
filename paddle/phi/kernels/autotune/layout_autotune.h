@@ -24,6 +24,20 @@ namespace autotune {
 
 using DataLayout = paddle::experimental::DataLayout;
 
+template <typename VarType>
+std::shared_ptr<VarType> TraceTransposeOp(
+    const std::shared_ptr<VarType>& var,
+    const std::vector<int>& axis,
+    const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+  paddle::imperative::NameVarMap<VarType> ins = {{"X", {var}}};
+  auto out =
+      std::shared_ptr<VarType>(new VarType(tracer->GenerateUniqueName()));
+  paddle::imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
+  paddle::framework::AttributeMap attrs = {{"axis", axis}};
+  tracer->TraceOp("transpose2", ins, outs, std::move(attrs));
+  return out;
+}
+
 class LayoutAutoTune {
  public:
   static LayoutAutoTune& Instance() {
@@ -44,7 +58,7 @@ class LayoutAutoTune {
     VLOG(4) << "insert var " << name;
   }
 
-  bool NeedTuneLayout(const std::string name) {
+  bool IsLayoutAlreadyTuned(const std::string name) {
     return layout_optimized_vars_.count(name) == 0;
   }
 
@@ -73,8 +87,23 @@ class LayoutAutoTune {
 
   bool use_layout_autotune_ = false;
 
-  std::unordered_set<std::string> layout_agnostic_ops_ = {"relu",
-                                                          "elementwise_add"};
+  std::unordered_set<std::string> layout_agnostic_ops_ = {
+      "relu",
+      "elementwise_add",
+      "transpose2",
+      "matmul_v2",
+      "not_equal",
+      "elementwise_mul",
+      "reduce_min",
+      "reduce_max",
+      "reduce_mean",
+      "fill_constant",
+      "less_than",
+      "greater_equal",
+      "softmax_with_cross_entropy",
+      "mean",
+      "softmax_with_cross_entropy",
+      "cast"};
 
   // Both functionality and performance are affected by data layout.
   // Such as operators with data_format attribute.
@@ -185,13 +214,13 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
       VLOG(4) << "Origin layout: "
               << boost::get<std::string>((*attrs)["data_format"])
               << ", Desired layout: " << dst_format;
-      (*attrs)["data_format"] = std::string("NHWC");
+      (*attrs)["data_format"] = dst_format;
     } else if (attrs->find("data_layout") != attrs->end() &&
                boost::get<std::string>((*attrs)["data_layout"]) != dst_format) {
       VLOG(4) << "Origin layout: "
               << boost::get<std::string>((*attrs)["data_layout"])
               << ", Desired layout: " << dst_format;
-      (*attrs)["data_layout"] = std::string("NHWC");
+      (*attrs)["data_layout"] = dst_format;
     }
 
     // Step 2: Transpose op's input and record the transposed var
@@ -199,8 +228,10 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
       auto& in_vars = new_ins[name];
       for (auto& var : in_vars) {
         auto origin_var = paddle::imperative::GetNameFromVar(var);
-        if (LayoutAutoTune::Instance().NeedTuneLayout(origin_var)) {
-          var = TraceTransposeOp(var, tracer);
+        if (LayoutAutoTune::Instance().IsLayoutAlreadyTuned(origin_var)) {
+          // NCHW -> NHWC
+          std::vector<int> axis = {0, 2, 3, 1};
+          var = TraceTransposeOp(var, axis, tracer);
           auto transposed_var = paddle::imperative::GetNameFromVar(var);
           LayoutAutoTune::Instance().InsertOptimizedVars(transposed_var);
           VLOG(4) << "Transpose " << origin_var << " to " << transposed_var;
@@ -213,21 +244,12 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
 
     return new_ins;
   }
-
-  std::shared_ptr<VarType> TraceTransposeOp(
-      const std::shared_ptr<VarType>& var,
-      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    paddle::imperative::NameVarMap<VarType> ins = {{"X", {var}}};
-    auto out =
-        std::shared_ptr<VarType>(new VarType(tracer->GenerateUniqueName()));
-    paddle::imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
-    std::vector<int> axis = {0, 2, 3, 1};
-    paddle::framework::AttributeMap attrs = {{"axis", axis}};
-    tracer->TraceOp("transpose2", ins, outs, std::move(attrs));
-    return out;
-  }
 };
 
+/*
+ * The functionality may be affected layout transformation before them.
+ * Such as operators with axis attribute.
+ */
 template <typename VarType>
 class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
  public:
@@ -239,7 +261,87 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "Optimze heavily layout sensitive op " << this->Type();
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    paddle::imperative::NameVarMap<VarType> new_ins(ins);
+    // If input's layout is not tuned, transformation is unnecessary.
+    // If input's layout is already tuned, it will be transformed back to NCHW.
+    // TODO(zhiqiang): The op of this type should be adapted to the previous
+    // operator output data layout. Currently only a few operators are
+    // supported,
+    // and transposers need to be carefully designed to ensure that they do not
+    // cause exceptions.
+    for (auto& name : this->Inputs()) {
+      auto& in_vars = new_ins[name];
+      for (auto& var : in_vars) {
+        auto origin_var = paddle::imperative::GetNameFromVar(var);
+        if (LayoutAutoTune::Instance().IsLayoutAlreadyTuned(origin_var)) {
+          // NHWC -> NCHW
+          std::vector<int> axis = {0, 3, 1, 2};
+          var = TraceTransposeOp(var, axis, tracer);
+          auto transposed_var = paddle::imperative::GetNameFromVar(var);
+          VLOG(4) << "Transpose " << origin_var << " to " << transposed_var;
+        }
+      }
+    }
+    return new_ins;
+  }
+};
+
+/*
+template <typename VarType>
+class TransposeOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType>
+{
+ public:
+  explicit FlattenOpTransposer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransposer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Run(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    // Flatten the C, H, W dimensions will not affect functionality.
+    // Transformation is unnecessary. But in other cases, it needs to
+    // fall back to the LightlyLayoutSensitiveOpTransposer.
+    // flatten_contiguous_range
+    auto axis = boost::get<std::vector<int>>((*attrs)["axis"]);
+    // NCHW->NHWC
+    std::vector<int> perm = {0, 2, 3, 1};
+    if (axis == perm) {
+      return ins;
+    } else {
+      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(ins, outs,
+      attrs, tracer);
+    }
+  }
+};
+*/
+
+template <typename VarType>
+class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
+ public:
+  explicit FlattenOpTransposer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransposer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Run(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    // Flatten the C, H, W dimensions will not affect functionality.
+    // Transformation is unnecessary. But in other cases, it needs to
+    // fall back to the LightlyLayoutSensitiveOpTransposer.
+    // flatten_contiguous_range
+    auto start_axis = boost::get<int>((*attrs)["start_axis"]);
+    auto stop_axis = boost::get<int>((*attrs)["stop_axis"]);
+    if (start_axis == 1 && stop_axis == 3) {
+      return ins;
+    } else {
+      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(
+          ins, outs, attrs, tracer);
+    }
   }
 };
 
@@ -287,7 +389,9 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
   }
 
   std::shared_ptr<LayoutTransposer<VarType>> transposer = nullptr;
-  if (op_type == "conv2d") {
+  if (LayoutAutoTune::Instance().IsLayoutAgnostic(op_type)) {
+    transposer = std::make_shared<LayoutTransposer<VarType>>(op_type);
+  } else if (op_type == "conv2d") {
     transposer =
         std::make_shared<HeavilyLayoutSensitiveOpTransposer<VarType>>(op_type);
     transposer->SetArguments({"Input"}, {"Output"}, {"data_format"});
@@ -299,14 +403,15 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     transposer =
         std::make_shared<HeavilyLayoutSensitiveOpTransposer<VarType>>(op_type);
     transposer->SetArguments({"X"}, {"Out"}, {"data_format"});
+  } else if (op_type == "flatten_contiguous_range") {
+    transposer = std::make_shared<FlattenOpTransposer<VarType>>(op_type);
   } else {
-    transposer = std::make_shared<LayoutTransposer<VarType>>(op_type);
-    /*
-    PADDLE_ENFORCE_NOT_NULL(transposer,
+    PADDLE_ENFORCE_NOT_NULL(
+        transposer,
         phi::errors::Unimplemented("%s 's LayoutTransposer is unimplemented.",
-    op_type));
-    */
+                                   op_type));
   }
+
   return transposer->Run(ins, outs, attrs, tracer);
 }
 
