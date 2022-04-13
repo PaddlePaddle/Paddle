@@ -119,6 +119,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "roll",
       "preln_skip_layernorm"};
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -182,6 +183,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "roll",
       "multiclass_nms3"};
 };
 
@@ -924,6 +926,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
+        return false;
+      }
+    }
+
+    if (op_type == "roll") {
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3) << "roll converter does not support trt versions below 7.0";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "strided_slice") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
+        VLOG(3)
+            << "The necessary attributes of the strided_slice operator miss ";
         return false;
       }
     }
