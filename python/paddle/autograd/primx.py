@@ -16,6 +16,8 @@ from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primops import fill_const
 from .primrules import get_input_vars, get_output_vars, _jvp, _transpose
+from collections import OrderedDict
+
 
 def make_var(dtype, shape, block=None, namekey='', stop_gradient=False):
     """ Create a type inferred variable. """
@@ -69,26 +71,39 @@ def topo_path(xs, ys, block=None):
 
 
 class VarMap(object):
-    __slots__ = ['tab']
+    __slots__ = ['name', 'varset', 'tab']
 
-    def __init__(self, name):
+    def __init__(self, name, varset):
         self.name = name
-        self.tab = {}
+        self.varset = varset
+        self.tab = OrderedDict()
     
-    def set(self, var, value):
-        self.tab[id(var)] = value
+    def set(self, key_var, value_var):
+        self.tab[id(key_var)] = id(value_var)
   
-    def lookup(self, var):
-        return self.tab.get(id(var))
-    
-    def delete(self, var):
-        del self.tab[id(var)]
+    def lookup(self, key_var):
+        value_id = self.tab.get(id(key_var))
+        value_var = self.varset.get(value_id)
+        return value_var
 
-    def contain_key(self, var):
-        return self.tab.__contains__(id(var))
+    def delete(self, key_var):
+        del self.tab[id(key_var)]
 
-    def contain_value(self, value):
-        return self.tab.values().__contains__(value)
+    def delete_keyvars(self, key_vars):
+        for var in key_vars:
+            del self.tab[id(var)]
+
+    def delete_valuevars(self, value_vars):
+        ids = [id(v) for v in value_vars]
+        keys = [k for k, v in self.tab.items() if v in ids]
+        for k in keys:
+            del self.tab[k]
+
+    def contain_var(self, key_var):
+        return self.tab.__contains__(id(key_var))
+
+    def contain_value(self, value_var):
+        return self.tab.values().__contains__(id(value_var))
 
 
 class Transform(object):
@@ -97,39 +112,29 @@ class Transform(object):
 
     def __init__(self, block):
         self.block = block
-        self.vardefs = VarMap('vardefs')
-        self.varuses = VarMap('varuses')
-        self.var2dot = VarMap('var2dot')
-        self.dot2bar = VarMap('dot2var')
+        self.init_varset(block)
+        self.var2dot = VarMap('var2dot', self.vars)
+        self.dot2bar = VarMap('dot2var', self.vars)
+
+    def init_varset(self, block):
+        self.vars = OrderedDict()
+        for _, var in block.vars.items():
+            self.vars[id(var)] = var
+
+    def update_varset(self, new_vars):
+        self.vars.update({id(v) : v for v in new_vars})
+
+    def erase_dots(self, vars_to_erase):
+        for var in vars_to_erase:
+            del self.vars[id(var)]
+        self.dot2bar.delete_keyvars(vars_to_erase)
+        self.var2dot.delete_valuevars(vars_to_erase)
 
     def is_dot(self, var):
         return self.var2dot.contain_value(var)
 
     def lower2prim(self):
         pass
-
-    def update_defuse(self, op):
-        for var in get_input_vars(op):
-            if var not in self.varuses:
-                self.varuses[var] = set([op])
-            else:
-                self.varuses[var].add(op)
-        for var in get_output_vars(op):
-            if var in self.vardefs:
-                assert self.vardefs[var] == op, f'{var} is doubly assigned.'  
-            else:
-                self.vardefs[var] = op
-
-    def build_defuse(self, block=None):
-        if block is None:
-            block = default_main_program().current_block()
-        for op in block.ops:
-            if op.has_attr("sub_block"):
-                sub_block_id = op._block_attr_id("sub_block")
-                sub_block = block.program.block(sub_block_id)
-                self.build_defuse(sub_block)
-            else:
-                self.update_defuse(op)
 
     def linearize(self, xs, ys, xs_dot=None):
         if xs_dot is None:
@@ -140,11 +145,13 @@ class Transform(object):
             assert len(xs) == len(xs_dot)
             assert all(x.dtype == x_dot.dtype for x, x_dot in zip(xs, xs_dot))
             assert all(x.shape == x_dot.shape for x, x_dot in zip(xs, xs_dot))
-        
+
+        self.update_varset(xs_dot)
         map(self.var2dot.set, xs, xs_dot)
         for op in topo_path(xs, ys, self.block):
             xs_dot = list(map(self.var2dot.lookup, get_input_vars(op)))
             ys_dot = _jvp(op, *xs_dot)
+            self.update_varset(ys_dot)
             map(self.var2dot.set, op.get_output_vars(op), ys_dot)
         
         ys_dot = map(self.var2dot.lookup, ys)
@@ -160,11 +167,13 @@ class Transform(object):
             for y_dot, y_bar in zip(ys_dot, ys_bar):
                 assert y_dot.shape == y_bar.shape
                 assert y_dot.dtype == y_bar.dtype
-        
+
+        self.update_varset(ys_bar)
         map(self.dot2bar.set, ys_dot, ys_bar)
         for op in reversed(topo_path(xs_dot, ys_dot, self.block)):
             ys_bar = list(map(self.dot2bar.lookup, get_output_vars(op)))
             xs_bar = _transpose(op, self.is_dot, *ys_bar)
+            self.update_varset(xs_bar)
             map(self.dot2bar.set, op.get_input_vars(), xs_bar)
 
         xs_bar = list(map(self.dot2bar.lookup, xs_dot))
@@ -179,12 +188,7 @@ class Transform(object):
                 op_idx = block.ops.index(op)
                 block._remove_op(op_idx)
 
-            for k, v in self.var2dot:
-                if v in dots_to_remove:
-                    del self.var2dot[k]
-            for k, v in self.dot2bar:
-                if k in dots_to_remove:
-                    del self.dot2bar[k]
-       
+            self.erase_dots(dots_to_remove)
+
         return ys_bar, xs_bar
 
