@@ -110,9 +110,11 @@ def map(map_func, *args, **kwargs):
 
                 return {'image': image, 'label': label}
 
-            dataloader = paddle.io.DataLoader(imagenet_pipeline)
-            for data in dataloader:
-                print(data['image'].shape, data['label'].shape)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                dataloader = paddle.io.DataLoader(imagenet_pipeline)
+                for data in dataloader:
+                    print(data['image'].shape, data['label'].shape)
 
     """
     if _non_static_mode():
@@ -274,9 +276,11 @@ def data_reader(reader_func,
 
                 return {'image': image, 'label': label}
 
-            dataloader = paddle.io.DataLoader(imagenet_pipeline)
-            for data in dataloader:
-                print(data['image'].shape, data['label'].shape)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                dataloader = paddle.io.DataLoader(imagenet_pipeline)
+                for data in dataloader:
+                    print(data['image'].shape, data['label'].shape)
 
     """
     assert not _non_static_mode(), \

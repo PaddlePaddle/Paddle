@@ -847,17 +847,17 @@ def read_file(filename, name=None):
     Examples:
         .. code-block:: python
 
-             import cv2
-             import paddle
+            import cv2
+            import paddle
 
-             fake_img = (np.random.random(
-                         (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
 
-             cv2.imwrite('fake.jpg', fake_img)
+            cv2.imwrite('fake.jpg', fake_img)
 
-             img_bytes = paddle.vision.ops.read_file('fake.jpg')
-             
-             print(img_bytes.shape)
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            
+            print(img_bytes.shape)
 
     """
 
@@ -917,13 +917,17 @@ def image_decode(x,
             
             cv2.imwrite('fake.jpg', fake_img)
             
-            img_bytes = paddle.vision.ops.read_file('fake.jpg')
-            imgs = paddle.vision.ops.image_decode([img_bytes])
-            
-            print(imgs[0].shape)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                img_bytes = paddle.vision.ops.read_file('fake.jpg')
+                imgs = paddle.vision.ops.image_decode([img_bytes])
+                
+                print(imgs[0].shape)
 
     """
 
+    assert paddle.is_compiled_with_cuda(), \
+            "image_decode can only be used in Paddle GPU version"
     local_rank = paddle.distributed.get_rank()
 
     if in_dygraph_mode():
@@ -1022,12 +1026,17 @@ def image_decode_random_crop(x,
             
             cv2.imwrite('fake.jpg', fake_img)
             
-            img_bytes = paddle.vision.ops.read_file('fake.jpg')
-            imgs = paddle.vision.ops.image_decode_random_crop([img_bytes])
-            
-            print(imgs[0].shape)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                img_bytes = paddle.vision.ops.read_file('fake.jpg')
+                imgs = paddle.vision.ops.image_decode_random_crop([img_bytes])
+                
+                print(imgs[0].shape)
 
     """
+
+    assert paddle.is_compiled_with_cuda(), \
+        "image_decode_random_crop can only be used in Paddle GPU version"
 
     local_rank = paddle.distributed.get_rank()
     if in_dygraph_mode():
@@ -1142,13 +1151,18 @@ def mirror_normalize(x,
 
             import paddle
             
-            x = paddle.rand(shape=[8, 3, 32, 32])
-            mirror = paddle.vision.ops.random_flip(x)
-            out = paddle.vision.ops.mirror_normalize(x, mirror)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                x = paddle.rand(shape=[8, 3, 32, 32])
+                mirror = paddle.vision.ops.random_flip(x)
+                out = paddle.vision.ops.mirror_normalize(x, mirror)
 
-            print(out.shape)
+                print(out.shape)
 
     """
+
+    assert paddle.is_compiled_with_cuda(), \
+            "mirror_normalize can only be used in Paddle GPU version"
 
     def _to_list_3(l):
         if isinstance(l, (list, tuple)):
@@ -1697,12 +1711,17 @@ def random_crop_and_resize(x,
 
             import paddle
 
-            data = paddle.randn(shape=[3, 256, 256])
-            data = paddle.cast(data, dtype='uint8')
-            out = paddle.vision.ops.random_crop_and_resize([data], size=224)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                data = paddle.randn(shape=[3, 256, 256])
+                data = paddle.cast(data, dtype='uint8')
+                out = paddle.vision.ops.random_crop_and_resize([data], size=224)
 
-            print(out.shape)
+                print(out.shape)
     """
+
+    assert paddle.is_compiled_with_cuda(), \
+            "random_crop_and_resize can only be used in Paddle GPU version"
 
     check_type(size, 'size', (int, tuple), 'batch_random_crop_and_resize')
     assert interp_method in ['bilinear', 'nearest']
@@ -1790,13 +1809,18 @@ def image_resize(x,
 
             import paddle
 
-            data = paddle.randn(shape=[3, 256, 256])
-            data = paddle.cast(data, dtype='uint8')
-            out = paddle.vision.ops.image_resize([data], size=224)
+            # only support GPU version
+            if paddle.is_compiled_with_cuda():
+                data = paddle.randn(shape=[3, 256, 256])
+                data = paddle.cast(data, dtype='uint8')
+                out = paddle.vision.ops.image_resize([data], size=224)
 
-            print(out.shape)
+                print(out.shape)
 
     """
+    assert paddle.is_compiled_with_cuda(), \
+            "image_resize can only be used in Paddle GPU version"
+
     check_type(size, 'size', (int, tuple), 'image_resize')
     assert interp_method in ['bilinear', 'nearest']
     assert data_format in ['NCHW', 'NHWC']

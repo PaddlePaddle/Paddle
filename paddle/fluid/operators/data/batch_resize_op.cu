@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/data/batch_resize_op.h"
+#include "paddle/fluid/operators/interpolate_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -21,138 +22,6 @@ namespace operators {
 namespace data {
 
 using DataLayout = framework::DataLayout;
-
-template <typename T>
-__global__ void KeNearestNeighborInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_format) {
-  int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
-  for (; tid < nthreads; tid += stride) {
-    // batch size
-    int out_id_h = tid / output_w;
-    // single image's index
-    int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w, img_size = h * w
-    int in_img_size = input_w / num_channels;
-    int out_img_size = output_w / num_channels;
-
-    // get output c, h, w index
-    int channel_id, out_img_idy, out_img_idx;
-    if (data_format == DataLayout::kNCHW) {
-      channel_id = out_id_w / out_img_size;
-      out_img_idy = (out_id_w % out_img_size) / out_img_w;
-      out_img_idx = tid % out_img_w;
-    } else {
-      out_img_idy = out_id_w / (out_img_w * num_channels);
-      out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
-      channel_id = tid % num_channels;
-    }
-
-    // get input h index with offset
-    int in_img_idy = (align_corners)
-                         ? static_cast<int>(ratio_h * out_img_idy + 0.5)
-                         : static_cast<int>(ratio_h * out_img_idy);
-    // get input w index with offset
-    int in_img_idx = (align_corners)
-                         ? static_cast<int>(ratio_w * out_img_idx + 0.5)
-                         : static_cast<int>(ratio_w * out_img_idx);
-
-    if (data_format == DataLayout::kNCHW) {
-      out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
-                    in_img_idy * in_img_w + in_img_idx];
-    } else {
-      out[tid] = in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-                    in_img_idx * num_channels + channel_id];
-    }
-  }
-}
-
-template <typename T>
-__global__ void KeBilinearInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const int align_mode,
-    const DataLayout data_format) {
-  int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
-  bool align_flag = (align_mode == 0 && !align_corners);
-  for (; tid < nthreads; tid += stride) {
-    // batch size
-    int out_id_h = tid / output_w;
-    // single image's index
-    int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w, img_size = h * w
-    int in_img_size = input_w / num_channels;
-    int out_img_size = output_w / num_channels;
-
-    // get output c, h, w index
-    int channel_id, out_img_idy, out_img_idx;
-    if (data_format == DataLayout::kNCHW) {
-      channel_id = out_id_w / out_img_size;
-      out_img_idy = (out_id_w % out_img_size) / out_img_w;
-      out_img_idx = tid % out_img_w;
-    } else {
-      out_img_idy = out_id_w / (out_img_w * num_channels);
-      out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
-      channel_id = tid % num_channels;
-    }
-
-    // get input h index with offset
-    int in_img_idy = align_flag
-                         ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
-                         : static_cast<int>(ratio_h * out_img_idy);
-    in_img_idy = in_img_idy > 0 ? in_img_idy : 0;
-    int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    float src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
-    src_h = src_h > 0 ? src_h : 0;
-    float h1lambda =
-        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
-    float h2lambda = 1.f - h1lambda;
-
-    // get input w index with offset
-    int in_img_idx = align_flag
-                         ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
-                         : static_cast<int>(ratio_w * out_img_idx);
-    in_img_idx = in_img_idx > 0 ? in_img_idx : 0;
-    int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    float src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
-    src_w = src_w > 0 ? src_w : 0;
-    float w1lambda =
-        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
-    float w2lambda = 1.f - w1lambda;
-
-    if (data_format == DataLayout::kNCHW) {
-      const T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
-                            in_img_idy * in_img_w + in_img_idx];
-
-      // bilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
-          (T)(h2lambda * (w2lambda * in_pos[0] + w1lambda * in_pos[w_id]) +
-              h1lambda * (w2lambda * in_pos[h_id * in_img_w] +
-                          w1lambda * in_pos[h_id * in_img_w + w_id]));
-    } else {
-      const T* in_pos =
-          &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-              in_img_idx * num_channels + channel_id];
-
-      // bilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
-          (T)(h2lambda * (w2lambda * in_pos[0] +
-                          w1lambda * in_pos[w_id * num_channels]) +
-              h1lambda * (w2lambda * in_pos[h_id * in_img_w * num_channels] +
-                          w1lambda * in_pos[h_id * in_img_w * num_channels +
-                                            w_id * num_channels]));
-    }
-  }
-}
 
 template <typename T>
 static void ResizeFwd(const framework::ExecutionContext& ctx,
