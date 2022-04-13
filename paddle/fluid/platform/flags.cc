@@ -751,6 +751,21 @@ PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
  */
 PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
                               "It controls the cinn op subset to be not used.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_use_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
+ * program
+ * of a paddle graph with ParallelExecutor, otherwise using default scheduler of
+ * CINN.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn, true,
+                            "It controls whether to execute cinn compiled "
+                            "program with ParallelExecutor");
+
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
