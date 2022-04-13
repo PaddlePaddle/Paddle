@@ -62,6 +62,6 @@ class GShardGate(NaiveGate):
         if self.random_routing:
             rand_routing_prob = paddle.rand(
                 shape=[gate_score.shape[0]], dtype="float32")
-            topk_idx = paddle.distributed.utils.random_routing(
+            topk_idx = paddle.distributed.models.moe.utils._random_routing(
                 topk_idx, topk_val, rand_routing_prob)
         return topk_val, topk_idx
