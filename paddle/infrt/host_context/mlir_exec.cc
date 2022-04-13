@@ -92,16 +92,6 @@ int main(int argc, char** argv) {
   context->loadAllAvailableDialects();
   mlir::PassManager pm(context);
 
-#ifdef INFRT_WITH_PHI
-  mlir::OpPassManager& phi_pass_manager = pm.nest<mlir::FuncOp>();
-
-  std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
-                                             infrt::PrecisionType::FLOAT32,
-                                             infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(infrt::CreatePhiOpCvtPass(valid_places));
-  phi_pass_manager.addPass(infrt::CreateInfrtOpFusePass());
-#endif
-
   if (mlir::failed(pm.run(*module))) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;

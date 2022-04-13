@@ -22,7 +22,9 @@ cc_test_tiny(test_infrt_mlir_loader SRCS mlir_loader_test.cc DEPS infrt ${MLIR_I
 
 add_subdirectory(infrt)
 add_subdirectory(pd)
-add_subdirectory(tensorrt)
+if (WITH_TENSORRT)
+    add_subdirectory(tensorrt)
+endif()
 
 if (INFRT_WITH_PHI)
     add_subdirectory(phi)

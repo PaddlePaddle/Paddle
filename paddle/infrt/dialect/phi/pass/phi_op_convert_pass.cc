@@ -122,6 +122,8 @@ void PhiOpConvertPass::updateInputsAndResults(infrt::TargetType target) {
   mlir::Operation &operation = body.front();
   mlir::MLIRContext *context = operation.getContext();
   size_t num_input = body.getNumArguments();
+
+  // step1. update input cpu tensors into gpu tensors
   for (size_t index = 0; index < num_input; index++) {
     auto argument = body.getArgument(index);
     if (auto t = argument.getType().dyn_cast<::infrt::DenseTensorType>()) {
@@ -132,6 +134,7 @@ void PhiOpConvertPass::updateInputsAndResults(infrt::TargetType target) {
       getFunction().eraseArgument(index + 1);
     }
   }
+  // update output tensors
   unsigned int num_result = getFunction().getNumResults();
   for (unsigned int index = 0; index < num_result; index++) {
     mlir::Type replace_type =
@@ -141,6 +144,14 @@ void PhiOpConvertPass::updateInputsAndResults(infrt::TargetType target) {
                                     infrt::LayoutType::NCHW);
     getFunction().eraseResult(index);
     getFunction().insertResult(index, replace_type, {});
+  }
+  // update dense_tensor_map
+  mlir::Type replace_type = infrt::DenseTensorType::get(
+      context, target, infrt::PrecisionType::FLOAT32, infrt::LayoutType::NCHW);
+
+  for (auto &op : body.without_terminator()) {
+    if (op.getName().getIdentifier().str() == "phi_dt.tensor_map_get_tensor")
+      op.getResult(0).setType(replace_type);
   }
 }
 
