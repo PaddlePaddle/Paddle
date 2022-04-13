@@ -177,7 +177,7 @@ class HeterClient {
     VLOG(4) << "peer role is: " << peer_role
             << ", addr is: " << peer_endpoints[0];
     switch_s_instance_.SetPeerSwitchList(peer_endpoints);
-    switch_s_instance_.InitClientChannels(false, peer_endpoints, peer_role);
+    switch_s_instance_.InitClientChannels(true, peer_endpoints, peer_role);
     return switch_s_instance_;
   }
 

@@ -107,7 +107,7 @@ void StartSwitchServer(
                                  request, response, cntl);
                            });
   */
-  switch_server_ptr->StartHeterService(false);
+  switch_server_ptr->StartHeterService(true);
 }
 
 void StartSwitchInterServer(
