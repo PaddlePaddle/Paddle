@@ -27,6 +27,22 @@ _HYBRID_PARALLEL_GROUP = None
 
 
 class ParallelMode(object):
+    """
+    There are all the parallel modes currently supported:
+    - DATA_PARALLEL: Distribute input data to different devices.
+    - TENSOR_PARALLEL: Shards tensors in the network to different devices.
+    - PIPELINE_PARALLEL: Place different layers of the network on different devices.
+    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states 
+                         corresponding to the parameters to each device.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            parallel_mode = paddle.distributed.ParallelMode
+            print(parallel_mode.DATA_PARALLEL)  # 0
+
+    """
     DATA_PARALLEL = 0
     TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
