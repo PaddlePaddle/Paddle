@@ -251,7 +251,7 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
       cpu_val[0] = gpu_val.slot;
       if (gpu_val.mf_size > 0) {
         for (int x = 0; x < gpu_val.mf_size; x++) {
-          d cpu_val[x + 7] = gpu_val.mf[x];
+          cpu_val[x + 7] = gpu_val.mf[x];
         }
       }
 #endif

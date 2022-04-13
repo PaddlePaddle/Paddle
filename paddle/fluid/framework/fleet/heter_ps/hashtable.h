@@ -25,9 +25,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
-#elif defined(PADDLE_WITH_PSLIB)
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #if defined(PADDLE_WITH_CUDA)
@@ -74,7 +73,9 @@ class XPUCacheArray {
   void print() {}
   // ValType* find(const KeyType& key) { return NULL; }
   // bool insert(const KeyType& key, const ValType& val) { return true; }
-  size_t size() { return 0; }
+
+  int prefetch(const int dev_id, XPUStream stream = NULL) {}
+  size_t size() { return size_; }
 
  private:
   long long capacity_;
