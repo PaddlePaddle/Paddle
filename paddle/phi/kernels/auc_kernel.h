@@ -29,6 +29,7 @@ void AucKernel(const Context& dev_ctx,
                const std::string& curve,
                int num_thresholds,
                int slide_steps,
+               bool ignore_illegal_label,
                DenseTensor* auc,
                DenseTensor* stat_pos_out,
                DenseTensor* stat_neg_out);

@@ -133,7 +133,8 @@ def auc(input,
         curve='ROC',
         num_thresholds=2**12 - 1,
         topk=1,
-        slide_steps=1):
+        slide_steps=1,
+        ignore_illegal_label=False):
     r"""
     **Area Under the Curve (AUC) Layer**
 
@@ -163,7 +164,7 @@ def auc(input,
                              the roc curve. Default 200.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-
+        ignore_illegal_label(boolean): If input label contains values other than 0 and 1, it will be ignored.
 
     Returns:
         Variable: A tuple representing the current AUC.
@@ -183,9 +184,12 @@ def auc(input,
             paddle.enable_static()
             data = static.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = static.data(name="label", shape=[-1], dtype="int")
+            mask = static.data(name="mask", shape=[-1], dtype="bool")
             fc_out = static.nn.fc(x=data, size=2)
             predict = F.softmax(x=fc_out)
-            result = static.auc(input=predict, label=label)
+            # ignore data where the mask is not True
+            masked_label = label + (static.cast(mask, dtype="int") - 1) * 2
+            result = static.auc(input=predict, label=masked_label, ignore_illegal_label=True)
 
             place = paddle.CPUPlace()
             exe = static.Executor(place)
@@ -244,7 +248,8 @@ def auc(input,
         attrs={
             "curve": curve,
             "num_thresholds": num_thresholds,
-            "slide_steps": slide_steps
+            "slide_steps": slide_steps,
+            "ignore_illegal_label": ignore_illegal_label
         },
         outputs={
             "AUC": [batch_auc_out],
@@ -263,7 +268,8 @@ def auc(input,
         attrs={
             "curve": curve,
             "num_thresholds": num_thresholds,
-            "slide_steps": 0
+            "slide_steps": 0,
+            "ignore_illegal_label": ignore_illegal_label
         },
         outputs={
             "AUC": [auc_out],

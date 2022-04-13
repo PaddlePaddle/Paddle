@@ -27,7 +27,7 @@ from paddle.fluid.layers import nn
 __all__ = ['ctr_metric_bundle']
 
 
-def ctr_metric_bundle(input, label):
+def ctr_metric_bundle(input, label, mask=None):
     """
     ctr related metric layer
 
@@ -48,6 +48,8 @@ def ctr_metric_bundle(input, label):
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
+        mask(Variable): A 2D bool Variable indicates whither a training data 
+                         would be computed.
 
     Returns:
         local_sqrerr(Variable): Local sum of squared error
@@ -84,8 +86,6 @@ def ctr_metric_bundle(input, label):
         persistable=False, dtype='float32', shape=[-1])
     tmp_res_sigmoid = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[-1])
-    tmp_ones = helper.create_global_variable(
-        persistable=False, dtype='float32', shape=[-1])
 
     batch_prob = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[1])
@@ -107,13 +107,16 @@ def ctr_metric_bundle(input, label):
         helper.set_variable_initializer(
             var, Constant(
                 value=0.0, force_cpu=True))
+        
+    if mask is not None:
+        input = input * mask
+        label = label * mask
 
     helper.append_op(
         type="elementwise_sub",
         inputs={"X": [input],
                 "Y": [label]},
         outputs={"Out": [tmp_res_elesub]})
-
     helper.append_op(
         type="squared_l2_norm",
         inputs={"X": [tmp_res_elesub]},
@@ -165,19 +168,23 @@ def ctr_metric_bundle(input, label):
         inputs={"X": [batch_pos_num],
                 "Y": [local_pos_num]},
         outputs={"Out": [local_pos_num]})
-
-    helper.append_op(
-        type='fill_constant_batch_size_like',
-        inputs={"Input": label},
-        outputs={'Out': [tmp_ones]},
-        attrs={
-            'shape': [-1, 1],
-            'dtype': tmp_ones.dtype,
-            'value': float(1.0),
-        })
+    
+    if mask is None:
+        mask = helper.create_global_variable(
+            persistable=False, dtype='float32', shape=[-1])
+        helper.append_op(
+            type='fill_constant_batch_size_like',
+            inputs={"Input": label},
+            outputs={'Out': [mask]},
+            attrs={
+                'shape': [-1, 1],
+                'dtype': mask.dtype,
+                'value': float(1.0),
+            })
+            
     helper.append_op(
         type="reduce_sum",
-        inputs={"X": [tmp_ones]},
+        inputs={"X": [mask]},
         outputs={"Out": [batch_ins_num]})
     helper.append_op(
         type="elementwise_add",

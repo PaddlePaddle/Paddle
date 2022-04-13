@@ -59,7 +59,8 @@ __global__ void AddDataKernel(const int64_t *label_data,
                               int64_t *pos,
                               int64_t *neg,
                               const int numel,
-                              const int slide_steps) {
+                              const int slide_steps,
+                              bool ignore_illegal_label) {
   int cur_step_begin = 0;
   if (slide_steps > 0) {
     int cur_step_index =
@@ -68,12 +69,18 @@ __global__ void AddDataKernel(const int64_t *label_data,
     cur_step_begin = cur_step_index * (1 + num_thresholds);
   }
   CUDA_KERNEL_LOOP(i, numel) {
+    int64_t label = label_data[i];
+    if (ignore_illegal_label) {
+      if (label != 0 && label != 1) {
+        continue;
+      }
+    }
     auto predict_data = pred_data[i * inference_width + (inference_width - 1)];
     PADDLE_ENFORCE(predict_data <= 1, "The predict data(%f) must less or equal 1.", predict_data);
     PADDLE_ENFORCE(predict_data >= 0,
                    "The predict data(%f) must gather or equal 0.", predict_data);
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-    if (label_data[i]) {
+    if (label) {
       paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
       paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
@@ -122,6 +129,7 @@ void statAuc(const Context &dev_ctx,
              const DenseTensor &predict,
              const int num_thresholds,
              const int slide_steps,
+             bool ignore_illegal_label,
              int64_t *origin_stat_pos,
              int64_t *origin_stat_neg) {
   size_t batch_size = predict.dims()[0];
@@ -142,7 +150,8 @@ void statAuc(const Context &dev_ctx,
                                         origin_stat_pos,
                                         origin_stat_neg,
                                         batch_size,
-                                        slide_steps);
+                                        slide_steps,
+                                        ignore_illegal_label);
     return;
   }
   // the last number of origin_stat_pos store the index should be used in
@@ -171,7 +180,8 @@ void statAuc(const Context &dev_ctx,
                                       origin_stat_pos,
                                       origin_stat_neg,
                                       batch_size,
-                                      slide_steps);
+                                      slide_steps,
+                                      ignore_illegal_label);
   UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
                             PADDLE_CUDA_NUM_THREADS,
                         PADDLE_CUDA_NUM_THREADS,
@@ -189,6 +199,7 @@ void AucKernel(const Context &dev_ctx,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
+               bool ignore_illegal_label,
                DenseTensor *auc,
                DenseTensor *stat_pos_out,
                DenseTensor *stat_neg_out) {
@@ -244,6 +255,7 @@ void AucKernel(const Context &dev_ctx,
                       input,
                       num_thresholds,
                       slide_steps,
+                      ignore_illegal_label,
                       origin_stat_pos,
                       origin_stat_neg);
   int sum_offset = slide_steps * (num_thresholds + 1);
