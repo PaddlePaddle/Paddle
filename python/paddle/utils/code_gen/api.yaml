@@ -45,6 +45,12 @@
   kernel :
     func : adadelta
 
+- api : adam
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  optional : master_param, skip_update
+  invoke : adam_impl(param, grad, learning_rate, moment1, moment2, beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon, lazy_mode, min_row_size_to_use_multithread, multi_precision, use_global_beta_pow)
+
 - api : adamax
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, float beta1, float beta2, float epsilon)
   output : Tensor(param_out), Tensor(avg_squared_grad_out), Tensor(avg_squared_update_out)
@@ -174,7 +180,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : assign_raw
+    func : assign
   backward : assign_grad
 
 # atan
@@ -444,6 +450,16 @@
   kernel :
     func : cumsum
   backward : cumsum_grad
+
+- api : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(out)
+  infer_meta : 
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+  optional : mask
+  backward : deformable_conv_grad
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -782,6 +798,18 @@
   kernel :
     func : gather_tree
 
+- api : gaussian_random
+  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
+  output: Tensor
+  infer_meta :
+    func : GaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+    backend : place
+
 - api : gelu
   args : (Tensor x,  bool approximate)
   output : Tensor(out)
@@ -1001,6 +1029,16 @@
     data_type : label
   optional : prior_dist
   backward : label_smooth_grad
+
+- api : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+  backward : layer_norm_grad
+  optional : scale, bias
 
 # leaky_relu
 - api : leaky_relu
@@ -1713,6 +1751,7 @@
     func : SearchsortedInferMeta
   kernel :
     func : searchsorted
+    data_type : sorted_sequence
 
 # segment_pool
 - api : segment_pool
