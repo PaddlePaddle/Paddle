@@ -24,10 +24,10 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         const DenseTensor &mean,
-                         const DenseTensor &variance,
                          paddle::optional<const DenseTensor &> scale_opt,
                          paddle::optional<const DenseTensor &> bias_opt,
+                         const DenseTensor &mean,
+                         const DenseTensor &variance,
                          const DenseTensor &out_grad,
                          float epsilon,
                          int begin_norm_axis,

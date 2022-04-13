@@ -263,7 +263,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
       || is_xpu_unsupport
 #endif
-      ) {
+#if defined(PADDLE_WITH_XPU_KP)
+      || (is_xpu_unsupport && !is_xpu_kp_support)
+#endif
+          ) {
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);

@@ -110,7 +110,8 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     std::vector<ncclUniqueId>& nccl_ids) {  // NOLINT
   if (rank_ == 0) {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       auto nccl_id = std::vector<uint8_t>(
           reinterpret_cast<uint8_t*>(&nccl_ids[i]),
           reinterpret_cast<uint8_t*>(&nccl_ids[i]) + NCCL_UNIQUE_ID_BYTES);
@@ -118,7 +119,8 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     }
   } else {
     for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       auto ret = store_->get(key);
       std::memcpy(&nccl_ids[i], ret.data(), ret.size());
     }

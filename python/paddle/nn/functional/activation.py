@@ -28,6 +28,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -386,8 +387,10 @@ def hardswish(x, name=None):
             out = F.hardswish(x) # [0., 5., 0.666667]
     """
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.hard_swish(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_hard_swish(x, 6, 6, 3)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
@@ -681,10 +684,10 @@ def maxout(x, groups, axis=1, name=None):
             #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
             #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
     """
-
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.maxout(x, 'groups', groups, 'axis', axis)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_maxout(x, groups, axis)
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -1178,8 +1181,9 @@ def swish(x, name=None):
             x = paddle.to_tensor(np.array([-2., 0., 1.]))
             out = F.swish(x) # [-0.238406, 0., 0.731059]
     """
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_swish(x, 1.0)
+    if _in_legacy_dygraph():
         return _C_ops.swish(x, 'beta', 1.0)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
@@ -1521,6 +1525,9 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
         
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_gumbel_softmax(x, temperature, hard, axis)
+
     if in_dynamic_mode():
         return _C_ops.gumbel_softmax(x, 'temperature', temperature, 'hard',
                                      hard, 'axis', axis)
