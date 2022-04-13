@@ -603,6 +603,14 @@
   kernel :
     func : equal
 
+- api : equal_all
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : CompareAllInferMeta
+  kernel :
+    func : equal_all
+
 # erf
 - api : erf
   args : (Tensor x)
@@ -632,6 +640,16 @@
   kernel :
     func : exp
   backward : exp_grad
+
+# expand
+- api : expand
+  args : (Tensor x, IntArray shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+  backward : expand_grad
 
 # expand_as
 - api : expand_as
@@ -1513,7 +1531,7 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
-# poisson  // no need grad
+# poisson
 - api : poisson
   args : (Tensor x)
   output : Tensor
@@ -1521,6 +1539,7 @@
     func : UnchangedInferMeta
   kernel :
     func : poisson
+  backward : poisson_grad
 
 - api : pool2d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1775,6 +1794,12 @@
     func : selu
   backward : selu_grad
 
+- api : sgd
+  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
+  output : Tensor(param_out), Tensor(master_param_out)
+  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  optional : master_param
+
 - api : shape
   args : (Tensor input)
   output : Tensor
@@ -1892,6 +1917,7 @@
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
+  backward : split_grad
 
 - api : sqrt
   args : (Tensor x)
@@ -2066,7 +2092,7 @@
     func : TriangularSolveInferMeta
   kernel :
     func : triangular_solve
-  # backward : triangular_solve_grad
+  backward : triangular_solve_grad
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
