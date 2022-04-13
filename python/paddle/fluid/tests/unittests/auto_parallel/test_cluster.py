@@ -18,8 +18,6 @@ import json
 
 import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CommContext
-from paddle.distributed.auto_parallel.cost import build_comm_desc
 
 cluster_json = """
 { 
