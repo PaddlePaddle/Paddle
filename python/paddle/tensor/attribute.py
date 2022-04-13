@@ -167,9 +167,9 @@ def real(x, name=None):
 
     Examples:
         .. code-block:: python
+         :name: code-example1
 
             import paddle
-
             x = paddle.to_tensor(
                 [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
             # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
