@@ -281,6 +281,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     }
   }
 
+#ifdef WITH_GPU
   ::phi::GPUContext ctx;
   ctx.PartialInitWithoutAllocator();
 
@@ -290,6 +291,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
+#endif
 
   return map;
 }
