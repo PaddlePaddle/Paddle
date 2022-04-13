@@ -281,7 +281,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     }
   }
 
-#ifdef WITH_GPU
+#ifdef INFRT_WITH_GPU
   ::phi::GPUContext ctx;
   ctx.PartialInitWithoutAllocator();
 
