@@ -111,9 +111,8 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_2(self):
-        # TODO: need to process no_need_buffer in eager mode
-        # with _test_eager_guard():
-        #     self.func_test_backward_success_2()
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 

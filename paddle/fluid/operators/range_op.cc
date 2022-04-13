@@ -61,6 +61,6 @@ class RangeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(range, RangeInferMetaFunctor,
-                            PD_INFER_META(phi::RangeInferMeta));
+                            PD_INFER_META(phi::ArangeInferMeta));
 REGISTER_OP_WITHOUT_GRADIENT(range, ops::RangeOp, ops::RangeOpMaker,
                              RangeInferMetaFunctor);

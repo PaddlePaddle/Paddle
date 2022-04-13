@@ -47,10 +47,12 @@ class TestNanInf(unittest.TestCase):
         print(out)
         print(err)
 
-        assert returncode == 0
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err
-                ).find('There are `nan` or `inf` in tensor'.encode()) != -1
+        if paddle.fluid.core.is_compiled_with_cuda():
+            assert (out + err).find('find nan or inf==='.encode()) != -1
+        else:
+            assert (out + err
+                    ).find('There are `nan` or `inf` in tensor'.encode()) != -1
 
     def test_nan_inf_in_static_mode(self):
         self._python_interp += " check_nan_inf_base.py"

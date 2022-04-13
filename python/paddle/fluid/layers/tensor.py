@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place, convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode, _get_paddle_place
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -323,13 +323,23 @@ def concat(input, axis=0, name=None):
                 #  [14 15 16]]
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.concat(input, 'axis', axis)
+        return _C_ops.final_state_concat(input, axis)
+
+    if _in_legacy_dygraph():
+        if isinstance(axis, Variable):
+            axis = axis.numpy()
+            axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if t.shape.count(0) == 0]
+        out = _varbase_creator()
+        _C_ops.concat(input, out, 'axis', axis)
+        return out
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
     if not isinstance(input, Variable):
@@ -612,12 +622,15 @@ def assign(input, output=None):
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
         if _non_static_mode():
-            if output is None:
-                if _in_legacy_dygraph():
-                    output = core.VarBase()
-                else:
-                    output = core.eager.Tensor()
-            _C_ops.assign(input, output)
+            if in_dygraph_mode() and output is None:
+                output = _C_ops.final_state_assign(input)
+            else:
+                if output is None:
+                    if _in_legacy_dygraph():
+                        output = core.VarBase()
+                    else:
+                        output = core.eager.Tensor()
+                _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
@@ -741,22 +754,36 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['value'] = float(value)
 
     if _non_static_mode():
-        shape = utils.convert_shape_to_list(shape)
-        if out is None:
-            out = _varbase_creator(dtype=dtype)
+        if out is None and in_dygraph_mode():
+            #Currently, final state mode don't support out is None.
+            place = _current_expected_place()
+            if force_cpu:
+                place = core.CPUPlace()
 
-        if isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value.numpy().item(0)))
-            else:
-                attrs['str_value'] = str(float(value.numpy().item(0)))
+            shape = utils.convert_shape_to_list(shape)
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+            out = _C_ops.final_state_full(shape, float(value), dtype, place)
+            out.stop_gradient = True
+            return out
 
-        _C_ops.fill_constant(out, 'value',
-                             float(value), 'force_cpu', force_cpu, 'dtype',
-                             out.dtype, 'str_value', attrs['str_value'],
-                             'shape', shape)
-        out.stop_gradient = True
-        return out
+        else:
+            shape = utils.convert_shape_to_list(shape)
+            if out is None:
+                out = _varbase_creator(dtype=dtype)
+
+            if isinstance(value, Variable):
+                if dtype in ['uint8', 'int16', 'int32', 'int64']:
+                    attrs['str_value'] = str(int(value.numpy().item(0)))
+                else:
+                    attrs['str_value'] = str(float(value.numpy().item(0)))
+
+            _C_ops.fill_constant(out, 'value',
+                                 float(value), 'force_cpu', force_cpu, 'dtype',
+                                 out.dtype, 'str_value', attrs['str_value'],
+                                 'shape', shape)
+            out.stop_gradient = True
+            return out
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}
@@ -836,6 +863,18 @@ def fill_constant_batch_size_like(input,
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        place = _current_expected_place()
+        if force_cpu:
+            place = core.CPUPlace()
+        out = _C_ops.final_state_full_batch_size_like(
+            input, shape, dtype, value, input_dim_idx, output_dim_idx, place)
+        out.stop_gradient = True
+        return out
+
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs = {
@@ -1451,7 +1490,11 @@ def range(start, end, step, dtype, name=None):
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_arange(start, end, step, dtype,
+                                         _current_expected_place())
+
+    if _in_legacy_dygraph():
         out = _C_ops.range(start, end, step)
         out.stop_gradient = True
         return out
@@ -1522,10 +1565,12 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_linspace(tensor_start, tensor_stop,
+                                           tensor_num, dtype)
     helper = LayerHelper("linspace", **locals())
 
     start_dtype = convert_dtype(tensor_start.dtype)
@@ -1710,10 +1755,12 @@ def eye(num_rows,
     else:
         num_columns = num_rows
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                     _current_expected_place())
+    elif _in_legacy_dygraph():
         out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
                          num_columns)
-
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',

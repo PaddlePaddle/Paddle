@@ -139,13 +139,13 @@ KernelSignature TanhTripleGradOpArgumentMapping(
 KernelSignature SigmoidDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "sigmoid_double_grad", {"Out", "DDX", "DOut"}, {}, {"DOutNew", "DDOut"});
+      "sigmoid_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
 }
 
 KernelSignature SigmoidTripleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sigmoid_triple_grad",
-                         {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
+                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
                          {},
                          {"D_OutNew", "D_DOut", "D_DDx"});
 }

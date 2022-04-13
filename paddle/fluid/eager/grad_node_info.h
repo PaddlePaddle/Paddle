@@ -87,7 +87,7 @@ class GradSlotMeta {
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
-class GradNodeBase {
+class GradNodeBase : public std::enable_shared_from_this<GradNodeBase> {
  public:
   GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
@@ -113,7 +113,11 @@ class GradNodeBase {
 
   virtual void ClearTensorWrappers() = 0;
 
-  virtual bool IsTensorWrappersCleared() = 0;
+  /**
+       * Self-Copy interface designed for use in DoubleGrad
+       * **/
+  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
+
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -191,6 +195,16 @@ class GradNodeBase {
   /**
        * GetEdges is designed to get all edges of current node**/
   const std::vector<std::vector<Edge>>& GetEdges() const;
+  std::vector<std::vector<Edge>>& GetMutableEdges();
+
+  /**
+       * The following interfaces are designed for no_need_buffer
+       * **/
+  bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
+
+  void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
+    is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
+  }
 
  private:
   // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
@@ -218,6 +232,7 @@ class GradNodeBase {
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
   int64_t next_hook_id_{0};
+  bool is_tensor_wrappers_cleared_ = false;
 };
 
 class Edge {
@@ -244,6 +259,11 @@ class Edge {
 
   std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
+  }
+
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
+    VLOG(6) << "Reseting Edge's Grad Node";
+    grad_node_ = node;
   }
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {

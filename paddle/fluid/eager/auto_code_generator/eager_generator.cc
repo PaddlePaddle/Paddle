@@ -2011,8 +2011,7 @@ static std::string GenerateSingleOpBase(
           "egr::EagerUtils::TrySyncToVars(egr::EagerUtils::"
           "RecoverTensorWrapper("
           "&"
-          "this->%s, "
-          "nullptr)) },";
+          "this->%s)) },";
       ins_contents_str +=
           paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
                                   grad_input_name, struct_fwd_input_name);
@@ -2058,15 +2057,15 @@ static std::string GenerateSingleOpBase(
           const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
               "  if(this->%s.size() > 0) %s[\"%s\"] = "
               "egr::EagerUtils::TrySyncToVars(egr::EagerUtils::"
-              "RecoverTensorWrapper(&this->%s, nullptr));\n";
+              "RecoverTensorWrapper(&this->%s));\n";
           generated_grad_function_body += paddle::string::Sprintf(
               DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, struct_fwd_input_name,
               ins_name, grad_input_name, struct_fwd_input_name);
         } else {
           const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
-              "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s, "
-              "nullptr);\n  if(%s.initialized()) %s[\"%s\"] = "
-              "egr::EagerUtils::TrySyncToVars(%s);\n";
+              "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s);\n"
+              "  if(%s.initialized()) %s[\"%s\"] = "
+              "     egr::EagerUtils::TrySyncToVars(%s);\n";
           generated_grad_function_body += paddle::string::Sprintf(
               DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name,
               struct_fwd_input_name, grad_input_name, ins_name, grad_input_name,
@@ -2479,22 +2478,23 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  void ClearTensorWrappers() override { \n"
       "%s\n"
-      "    is_tensor_wrappers_cleared = true;\n"
+      "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
+      "\n"
+      "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
+      "    auto copied_node = std::shared_ptr<GradNode%s>(new "
+      "GradNode%s(*this));\n "
+      "    return copied_node;\n "
+      "}}\n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
-      "  bool IsTensorWrappersCleared() override { \n"
-      "    return is_tensor_wrappers_cleared;\n"
-      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
-      "   bool is_tensor_wrappers_cleared = false;\n"
-      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2601,8 +2601,9 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
-      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, op_type, op_type,
+      set_tensor_wrappers_str, set_attr_map_str, tensor_wrapper_members_str,
+      attr_members_str);
 
   return grad_node_str;
 }
@@ -2651,7 +2652,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
+      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);

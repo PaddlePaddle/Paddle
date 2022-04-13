@@ -360,32 +360,15 @@ void EagerUtils::Output2Result(
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  return tw->recover(grad_node);
-}
-
-paddle::optional<const paddle::experimental::Tensor&>
-EagerUtils::RecoverOptionalTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  PADDLE_ENFORCE_NOT_NULL(
-      tw, phi::errors::InvalidArgument("TensorWrapper in "
-                                       "RecoverOptionalTensorWrapper function "
-                                       "should not be null"));
-  auto tmp = tw->recover(grad_node);
-
-  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
-  if (tmp.initialized()) {
-    res = tmp;
-  }
-  return res;
+    TensorWrapper* tw) {
+  return tw->recover();
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
-    std::vector<TensorWrapper>* tw,
-    const std::shared_ptr<GradNodeBase>& grad_node) {
+    std::vector<TensorWrapper>* tw) {
   std::vector<paddle::experimental::Tensor> ret;
   for (auto& t : *tw) {
-    ret.emplace_back(t.recover(grad_node));
+    ret.emplace_back(t.recover());
   }
   return ret;
 }

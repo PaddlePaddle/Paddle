@@ -113,7 +113,8 @@ def minimize_lbfgs(objective_func,
         check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
         H0 = initial_inverse_hessian_estimate
 
-    xk = initial_position
+    # use detach and assign to create new tensor rather than =, or xk will share memory and grad with initial_position
+    xk = paddle.assign(initial_position.detach())
     value, g1 = _value_and_gradient(objective_func, xk)
 
     k = paddle.full(shape=[1], fill_value=0, dtype='int64')
