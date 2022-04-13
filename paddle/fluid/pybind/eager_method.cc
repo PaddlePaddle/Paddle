@@ -473,7 +473,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
   }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   Py_INCREF(Py_None);
   return Py_None;

@@ -1,6 +1,4 @@
-# -*- coding: UTF-8 -*-
-
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import argparse
-import ast
 import time
+import shutil
+import tempfile
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
+from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
 epoch = 10
 paddle.seed(2022)
@@ -34,7 +31,7 @@ np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
+batch_size = 100
 
 
 class MLP(fluid.Layer):
@@ -64,10 +61,10 @@ def reader_decorator(linear_size=1000):
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    optimizer = paddle.optimizer.AdamW(
+    optimizer = paddle.optimizer.Momentum(
         parameters=[{
-            "params": model.parameters()
-        }] if opt_group else model.parameters(),
+            "params": list(model.parameters())
+        }] if opt_group else list(model.parameters()),
         learning_rate=0.001,
         weight_decay=0.00001,
         grad_clip=clip,
@@ -76,23 +73,13 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
     return optimizer
 
 
-def train_mlp(model,
-              use_pure_fp16=False,
-              accumulate_grad=False,
-              offload=False,
-              batch_size=100,
-              convert2cpu=False):
-    group = paddle.distributed.new_group([0, 1])
+def train_mlp(model, shard_level, use_pure_fp16, output_dir):
     optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
+    model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
+    scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
 
-    if use_pure_fp16:
-        model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32')
-        scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
-        scaler = ShardingScaler(scaler)
-
-    model = ShardingStage3(
-        model, optimizer=optimizer, group=group, offload=offload)
+    model, optimizer, scaler = group_sharded_parallel(
+        model=model, optimizer=optimizer, level=shard_level, scaler=scaler)
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
@@ -117,86 +104,44 @@ def train_mlp(model,
                     input=out, label=label)
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
 
-            if accumulate_grad:
-                avg_loss = avg_loss / 5
-
             if not use_pure_fp16:
                 avg_loss.backward()
-            else:
-                scaler.scale(avg_loss).backward()
-
-            if not accumulate_grad:
-                if not use_pure_fp16:
-                    optimizer.step()
-                else:
-                    scaler.step(optimizer)
-                    scaler.update()
-                optimizer.clear_grad()
-        if accumulate_grad:
-            if not use_pure_fp16:
                 optimizer.step()
             else:
+                scaler.scale(avg_loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
+
             optimizer.clear_grad()
-    if not convert2cpu:
-        model.get_all_parameters()
-    else:
-        model.get_all_parameters(convert2cpu)
+
+    save_group_sharded_model(model, output=output_dir, optimizer=optimizer)
     return model.parameters()
 
 
-def test_stage3_offload():
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6 = MLP(), MLP(), MLP(), MLP(), MLP(
-    ), MLP(), MLP()
+def test_sharding_api():
+    paddle.distributed.init_parallel_env()
+    mlp, mlp1, mlp2 = MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
-    mlp3.set_state_dict(state_dict)
-    mlp4.set_state_dict(state_dict)
-    mlp5.set_state_dict(state_dict)
-    mlp6.set_state_dict(state_dict)
 
-    # fp32 offload
-    stage3_params = train_mlp(mlp1, use_pure_fp16=False)
-    stage3_params_offload = train_mlp(mlp2, use_pure_fp16=False, offload=True)
-    for i in range(len(stage3_params)):
-        np.testing.assert_allclose(
-            stage3_params[i].numpy(),
-            stage3_params_offload[i].numpy(),
-            rtol=1e-6,
-            atol=1e-8)
+    output_dir = tempfile.mkdtemp()
 
-    # fp16 offload
-    stage3_params = train_mlp(mlp3, use_pure_fp16=True)
-    stage3_params_offload = train_mlp(mlp4, use_pure_fp16=True, offload=True)
-    for i in range(len(stage3_params)):
-        np.testing.assert_allclose(
-            stage3_params[i].numpy(),
-            stage3_params_offload[i].numpy(),
-            rtol=1e-2,
-            atol=1e-2)
-
-    # fp32 accumulate grad offload
+    # fp16
+    stage2_params = train_mlp(
+        mlp1, shard_level="os_g", use_pure_fp16=True, output_dir=output_dir)
     stage3_params = train_mlp(
-        mlp5, use_pure_fp16=False, batch_size=20, accumulate_grad=True)
-    stage3_params_offload = train_mlp(
-        mlp6,
-        use_pure_fp16=False,
-        accumulate_grad=True,
-        offload=True,
-        batch_size=20,
-        convert2cpu=True)
+        mlp2, shard_level="p_g_os", use_pure_fp16=True, output_dir=output_dir)
+
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
+            stage2_params[i].numpy(),
             stage3_params[i].numpy(),
-            stage3_params_offload[i].numpy(),
-            rtol=1e-6,
-            atol=1e-8)
-    return
+            rtol=1e-4,
+            atol=1e-3)
+    shutil.rmtree(output_dir)
 
 
 if __name__ == '__main__':
     with _test_eager_guard():
-        pass
-    test_stage3_offload()
+        test_sharding_api()
