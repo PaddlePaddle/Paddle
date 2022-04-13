@@ -45,6 +45,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
+#ifdef PADDLE_WITH_PSLIB
+#include "downpour_accessor.h"  // NOLINT
+#endif
 
 namespace paddle {
 namespace framework {
@@ -281,12 +284,58 @@ class PSGPUWrapper {
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
+    std::cout << "yxf set: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " <<std::endl;
   }
 
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
-    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
+  }
+
+  void InitSlotInfo() {
+    if (slot_info_initialized_) {
+      return;
+    }
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    auto slots_vec = dataset->GetSlots();
+    auto multi_slot_desc = dataset_->GetDataFeedDesc().multi_slot_desc();
+    std::vector<std::string> slots_vec_test;
+    for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+      const auto& slot = multi_slot_desc.slots(i);
+      // VLOG(0) << "yxfslotname: " << slot.name();
+      if (slot.type() == "uint64" || slot.type() == "uint32") {
+        slots_vec_test.push_back(slot.name());
+      }
+    }
+    std::cout << "yxf wrapper use slots: ";
+    for (auto s : slots_vec_test) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end wrapper " <<std::endl;
+    
+
+    VLOG(0) << "get slot desc";
+
+    slot_offset_vector_.clear();
+    for (auto& slot : slot_vector_) {
+      for (size_t i = 0; i < slots_vec.size(); ++i) {
+        if (std::to_string(slot) == slots_vec[i]) {
+          // VLOG(0) << "yxf slot: " << slot;
+          slot_offset_vector_.push_back(i);
+          break;
+        }
+      }
+    }
+    std::cout << "yxf1111set: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " <<std::endl;
+    for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
 
@@ -315,6 +364,7 @@ class PSGPUWrapper {
         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+    slot_info_initialized_ = true;
   }
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
@@ -363,6 +413,7 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  bool slot_info_initialized_ = false;
 
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm

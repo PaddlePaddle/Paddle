@@ -107,10 +107,6 @@ __global__ void dy_mf_search_kernel(Table* table,
       cur->cpu_ptr = input.cpu_ptr;
       cur->delta_score = input.delta_score;
       cur->lr_g2sum = input.lr_g2sum;
-      assert(cur->mf_dim == 8 || cur->mf_dim == 64);
-      if (cur->mf_dim != 8 && cur->mf_dim !=64) {
-        printf("yxf:::i: %d, mfdim: %d\n", i, cur->mf_dim);
-      }
       for(int j = 0; j < cur->mf_dim + 1; ++j) {
          cur->mf[j] = input.mf[j];
       }

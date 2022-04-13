@@ -127,7 +127,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
         for (const auto feasign : feasign_v) {
           int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_dim_keys_[i][shard_id][0].insert(feasign);
+          if (slot_idx >= slot_index_vec_.size()) {
+            VLOG(0) << "yxf::WRONG:::slot_idx: " << slot_idx << " size: " << slot_index_vec_.size();
+          }
+          int dim_id = slot_index_vec_[slot_idx];
+          if (feasign_v[j] != 0) {
+            this->thread_dim_keys_[i][shard_id][dim_id].insert(feasign_v[j]);
+          }
         }
       }
       */
@@ -150,7 +156,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
     timeline.Pause();
-    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   } else {
     CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
     VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
@@ -184,7 +190,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
     timeline.Pause();
-    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   }
 
   timeline.Start();
@@ -224,13 +230,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
   gpu_task->UniqueKeys();
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
+  VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
 
   if (!multi_mf_dim_) {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
@@ -690,6 +696,12 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     // }
     this->mem_pools_[i * this->multi_mf_dim_ + j] = new MemoryPool(len, feature_value_size);
     auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
+    // auto accessor =
+    //     std::make_shared<paddle::ps::ValueAccessor>();
+    // paddle::ps::DownpourCtrDymfAccessor* accessor = new paddle::ps::DownpourCtrDymfAccessor();
+    // VLOG(0) << "yxf init accessor";
+    // // // auto* accessor = CREATE_CLASS(paddle::ps::ValueAccessor, "DownpourCtrDymfAccessor");
+    // VLOG(0) << "yxf::acc dim: " << accessor->dim();
     for (size_t k = 0; k < len; k++) {
       FeatureValue* val = (FeatureValue*)(mem_pool->mem_address(k));
       // VLOG(0) << "yxf:: buildgpufunc1: k: " << k << "ptr: " << device_dim_ptrs[k];
@@ -697,22 +709,22 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       // VLOG(0) << "yxf:: buildgpufunc2";
       size_t dim = device_dim_ptrs[k]->size();
       // VLOG(0) << "yxf:: buildgpufunc3: dim: " << dim << "ptr[1]: " <<  ptr_val[1];
-      val->delta_score = ptr_val[1];
+      val->delta_score = ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::delta_score_index()];
       // VLOG(0) << "yxf:: buildgpufunc4";
-      val->show = ptr_val[2];
+      val->show = ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::show_index()];
       // VLOG(0) << "yxf:: buildgpufunc5";
-      val->clk = ptr_val[3];
+      val->clk = ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::click_index()];
       // VLOG(0) << "yxf:: buildgpufunc6";
-      val->slot = int(ptr_val[6]);
+      val->slot = int(ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::slot_index()]);
       // VLOG(0) << "yxf:: buildgpufunc7";
-      val->lr = ptr_val[4];
+      val->lr = ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::embed_w_index()];
       // VLOG(0) << "yxf:: buildgpufunc8";
-      val->lr_g2sum = ptr_val[5];
+      val->lr_g2sum = ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::embed_g2sum_index()];
       // VLOG(0) << "yxf:: buildgpufunc9";
       val->cpu_ptr = (uint64_t)(device_dim_ptrs[k]);
 
       // TODO(xuefeng) set mf_dim while using DownpourCtrDymfAccessor
-      ptr_val[7] = float(mf_dim);
+      ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::mf_dim_index()] = float(mf_dim);
       val->mf_dim = mf_dim;
       if (dim > 8) {  // CpuPS alreay expand as mf_dim
         // VLOG(0) << "yxf build gputask1111 dim: " << dim;
@@ -825,10 +837,12 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   if (is_shuffle) {
     dataset_->LocalShuffle();
   }
-
+  InitSlotInfo();
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
+  
   data_ready_channel_->Put(gpu_task);
+  
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
 
@@ -968,13 +982,14 @@ void PSGPUWrapper::EndPass() {
     }
     */
     uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
-    for (size_t i = 0; i < device_keys.size(); ++i) {
+    for (size_t i = 0; i < len; ++i) {
       if (device_keys[i] == unuse_key) {
         VLOG(0) << "yxfff::00000000:";
         continue;
       }
       //VLOG(0) << "yxfff::2: " << device_keys[i];
-      FeatureValue* gpu_val = (FeatureValue*)(test_build_values + i * feature_value_size);
+      size_t offset = i * feature_value_size;
+      FeatureValue* gpu_val = (FeatureValue*)(test_build_values + offset);
       //VLOG(0) << "yxfff::3";
       auto* downpour_value =
         (paddle::ps::DownpourFixedFeatureValue*)(gpu_val->cpu_ptr);
@@ -986,25 +1001,34 @@ void PSGPUWrapper::EndPass() {
         downpour_value->resize(gpu_val->mf_dim + 1 + downpour_value_size);
       }
       //VLOG(0) << "yxfff::7: ";
+      // if (downpour_value_size >= 8) {
+      //   VLOG(0) << "yxff: " << downpour_value_size;
+      // }
+      // if (downpour_value_size < 8) {
+      //   VLOG(0) << "yxfff::7: " << downpour_value_size;
+      // }
       float* cpu_val = downpour_value->data();
       //VLOG(0) << "yxfff::8: ";
       // cpu_val[0] = 0;
-      cpu_val[1] = gpu_val->delta_score;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::delta_score_index()] = gpu_val->delta_score;
       //VLOG(0) << "yxfff::9: ";
-      cpu_val[2] = gpu_val->show;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::show_index()] = gpu_val->show;
       //VLOG(0) << "yxfff::10: ";
-      cpu_val[3] = gpu_val->clk;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::click_index()] = gpu_val->clk;
       //VLOG(0) << "yxfff::11: ";
-      cpu_val[4] = gpu_val->lr;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::embed_w_index()] = gpu_val->lr;
       //VLOG(0) << "yxfff::12: ";
-      cpu_val[5] = gpu_val->lr_g2sum;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::embed_g2sum_index()] = gpu_val->lr_g2sum;
       //VLOG(0) << "yxfff::13: ";
-      cpu_val[6] = gpu_val->slot;
+      cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::slot_index()] = gpu_val->slot;
       //VLOG(0) << "yxfff::14: ";
       //cpu_val[7] = gpu_val->mf_dim;
       if (gpu_val->mf_size > 0) {
         for (int x = 0; x < gpu_val->mf_dim + 1; x++) {
           //VLOG(0) << "yxfff::15: x: " << x;
+          if (x + 8 >= int(downpour_value->size())) {
+            VLOG(0) << "yxfff::14: x: " << x << " size: " << downpour_value_size;
+          }
           cpu_val[x + 8] = gpu_val->mf[x];
         }
       }

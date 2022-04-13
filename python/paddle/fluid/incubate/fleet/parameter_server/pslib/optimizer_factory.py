@@ -192,7 +192,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 if op.type in self.supported_embedding_types:
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
-                        print("yxf table name: {}".format(table_name))
                         if table_name not in table_names:
                             table_names.add(table_name)
                             tmp_list.append([table_name, cnt])
@@ -339,6 +338,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         # set sparse_embedx_dim in the strategy according to accessor and use_cvm config
         if accessor == "DownpourFeatureValueAccessor" \
                 or accessor == "DownpourCtrAccessor" \
+                or accessor == "DownpourCtrDymfAccessor" \
                 or accessor == "DownpourDoubleUnitAccessor" \
                 or accessor == "DownpourUnitAccessor":
             if st.get("sparse_embedx_dim") is not None \
@@ -586,6 +586,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 # set sparse_embedx_dim in strategy,
                 # user do not have to set it in config_fleet
                 if accessor == "DownpourFeatureValueAccessor" \
+                        or accessor == "DownpourCtrDymfAccessor" \
                         or accessor == "DownpourCtrAccessor" \
                         or accessor == "DownpourDoubleUnitAccessor" \
                         or accessor == "DownpourUnitAccessor":
@@ -611,6 +612,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             st = self._check_config_fleet_with_program_op(strategy, tn,
                                                           emb_to_size)
             if st.get(tn) is not None:
+                print("yxf add sparse table: {}".format(st[tn]))
                 server.add_sparse_table(sparse_table_index, st[tn])
             else:
                 server.add_sparse_table(sparse_table_index, None)
@@ -873,7 +875,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
-                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor"
+                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor", "DownpourCtrDymfAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[

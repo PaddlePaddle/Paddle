@@ -1095,7 +1095,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(node.out_stream);
   }
 
-  VLOG(0) << "yxf::finish walk to src: " << num;
+  // VLOG(0) << "yxf::finish walk to src: " << num;
 
   if (!multi_mf_dim_) {
     fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals,
@@ -1109,7 +1109,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   // VLOG(0) << "yxf::finish walk to fill: " << num;
   for (int i = 0; i < total_gpu; ++i) {
     destroy_storage(num, i);
-    VLOG(0) << "yxf::end get device: " << num << "from device: " << i;
+    // VLOG(0) << "yxf::end get device: " << num << "from device: " << i;
   }
 }
 
