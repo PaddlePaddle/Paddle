@@ -250,36 +250,98 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
                                        int axis,
                                        DenseTensor* logits_grad) {
   auto dtype = label.dtype();
-  if (soft_label) {
-    PADDLE_ENFORCE_EQ(
-        dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as kernel data type."));
-    CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,
-                                               label,
-                                               softmax,
-                                               loss_grad,
-                                               soft_label,
-                                               use_softmax,
-                                               numeric_stable_mode,
-                                               ignore_index,
-                                               axis,
-                                               logits_grad);
-  } else {
-    PD_DISPATCH_INTEGRAL_TYPES(
-        dtype, "CrossEntropyWithSoftmaxGradGPUKernel", ([&] {
-          CrossEntropyWithSoftmaxGradGPUKernel<T, data_t>(dev_ctx,
-                                                          label,
-                                                          softmax,
-                                                          loss_grad,
-                                                          soft_label,
-                                                          use_softmax,
-                                                          numeric_stable_mode,
-                                                          ignore_index,
-                                                          axis,
-                                                          logits_grad);
-        }));
+
+  auto* logits_grad_data = dev_ctx.template Alloc<T>(logits_grad);
+
+  /*
+  In some case in ernie traning, putting total batch into a kernel may cause OOM
+  error.
+  Here we will split a large batch into a few small batches by specifying an env
+  variable.
+  FLAGS_softmax_with_cross_entropy_mini_batch_size.
+  */
+
+  const char* str_mini_batch =
+      std::getenv("FLAGS_softmax_with_cross_entropy_grad_mini_batch_size");
+  int64_t mini_batch_size = logits_grad->dims()[0];
+
+  // Only when env var is set, axis > 0 and input dim size > 1 are all satisfied
+  // the function will affects
+  const int axis_v_ =
+      phi::funcs::CanonicalAxis(axis, logits_grad->dims().size());
+  if (str_mini_batch && axis_v_ > 0) {
+    sscanf(str_mini_batch, "%d", &mini_batch_size);
+    if (mini_batch_size == 0) {
+      mini_batch_size = logits_grad->dims()[0];
+    }
+  }
+
+  int64_t step = logits_grad->dims()[0] / mini_batch_size;
+  if (step * mini_batch_size < logits_grad->dims()[0]) {
+    step += 1;
+  }
+
+  for (int64_t i = 0; i < step; i++) {
+    int64_t start = i * mini_batch_size;
+    int64_t end =
+        std::min(i * mini_batch_size + mini_batch_size, logits_grad->dims()[0]);
+    DenseTensor mini_logits_grad, mini_label, mini_softmax, mini_loss_grad;
+
+    /*
+      why using branch step > 1?
+      Because when step == 1 and using Slice function, there will occurs some
+      error as following:
+        "IndexError: (OutOfRange) The end row index is out of bound.
+        [Hint: Expected end_idx <= meta_.dims[0], but received end_idx:3 >
+      meta_.dims[0]:1.]"
+      In this case, we use ShareDataWith function instead.
+    */
+    if (step > 1) {
+      mini_logits_grad = logits_grad->Slice(start, end);
+      mini_label = label.Slice(start, end);
+      mini_softmax = softmax.Slice(start, end);
+      mini_loss_grad = loss_grad.Slice(start, end);
+    } else {
+      mini_logits_grad.ShareDataWith(*logits_grad);
+      mini_label.ShareDataWith(label);
+      mini_softmax.ShareDataWith(softmax);
+      mini_loss_grad.ShareDataWith(loss_grad);
+    }
+
+    VLOG(8) << "splited batch id:" << i << " start: " << start
+            << " end: " << end;
+
+    if (soft_label) {
+      PADDLE_ENFORCE_EQ(
+          dtype,
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::errors::InvalidArgument("The Input(Label) should be with the "
+                                       "same data type as kernel data type."));
+      CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,
+                                                 mini_label,
+                                                 mini_softmax,
+                                                 mini_loss_grad,
+                                                 soft_label,
+                                                 use_softmax,
+                                                 numeric_stable_mode,
+                                                 ignore_index,
+                                                 axis,
+                                                 &mini_logits_grad);
+    } else {
+      PD_DISPATCH_INTEGRAL_TYPES(
+          dtype, "CrossEntropyWithSoftmaxGradGPUKernel", ([&] {
+            CrossEntropyWithSoftmaxGradGPUKernel<T, data_t>(dev_ctx,
+                                                            mini_label,
+                                                            mini_softmax,
+                                                            mini_loss_grad,
+                                                            soft_label,
+                                                            use_softmax,
+                                                            numeric_stable_mode,
+                                                            ignore_index,
+                                                            axis,
+                                                            &mini_logits_grad);
+          }));
+    }
   }
 }
 
