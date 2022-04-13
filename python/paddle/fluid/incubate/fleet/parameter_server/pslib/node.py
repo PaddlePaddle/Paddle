@@ -88,7 +88,7 @@ class DownpourServer(Server):
                                    'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                                    'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                                    'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate']
+                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'sparse_mem_cache_rate']
 
         for key in strategy:
             if key not in support_sparse_key_list:
@@ -111,6 +111,8 @@ class DownpourServer(Server):
                 'sparse_enable_cache', True)
             table.sparse_table_cache_rate = strategy.get('sparse_cache_rate',
                                                          0.00055)
+            table.sparse_table_mem_cache_rate = strategy.get(
+                'sparse_mem_cache_rate', 0.5)
             table.sparse_table_cache_file_num = strategy.get(
                 'sparse_cache_file_num', 16)
             table.compress_in_save = strategy.get('sparse_compress_in_save',
