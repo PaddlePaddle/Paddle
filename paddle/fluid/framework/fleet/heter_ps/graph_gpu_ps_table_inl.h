@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <thrust/device_vector.h>
-#include <thrust/transform.h>
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
@@ -32,20 +31,10 @@ sample_size;
 
 */
 
-struct TransformFunctor {
-  HOSTDEVICE explicit inline TransformFunctor() {}
-  HOSTDEVICE inline int operator()(int x) const {
-    if (x == -1) {
-      return 1;
-    }
-    return 0;
-  }
-};
-
 __global__ void get_cpu_id_index(int64_t* key, int* val, int64_t* cpu_key,
                                  int* index, int len) {
   CUDA_KERNEL_LOOP(i, len) {
-    if (val[i] == 1) {
+    if (val[i] == -1) {
       int old = atomicAdd(index, 1);
       cpu_key[old - 1] = key[i];
       index[old] = i;
