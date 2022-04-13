@@ -23,6 +23,7 @@ from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
 from paddle.fluid import program_guard
+from paddle.fluid.executor import global_scope
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -128,6 +129,12 @@ class Engine:
         self._pass_contexts[mode] = PassContext()
 
     def _plan(self, mode):
+
+        # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
+        # dependency of backward-forward ops in forward completition.
+        defualt_ctx = get_default_distributed_context()
+        self._dist_contexts[mode]._dist_op_context = defualt_ctx.dist_op_context
+
         # Complete the distributed annotation
         serial_main_prog = self._serial_main_progs[mode]
         self._completer = Completer(self._dist_contexts[mode])
@@ -161,8 +168,16 @@ class Engine:
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
-        dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-        self._executor.run(dist_startup_prog)
+            uninitialized = []
+            dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
+            for var in dist_startup_prog.list_vars():
+                scope_var = global_scope().find_var(var.name)
+                if scope_var and scope_var.get_tensor()._is_initialized():
+                    continue
+                uninitialized.append(var)
+            if uninitialized:
+                prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                self._executor.run(prune_startup_prog)
 
     def _parallel_program(self, mode, rank):
         serial_main_program = self._serial_main_progs[mode]
@@ -276,13 +291,18 @@ class Engine:
                 [main_program], [startup_program],
                 self._pass_contexts[self.mode])
 
-    def fit(self, train_data, batch_size=1, epochs=1, steps_per_epoch=None):
+    def fit(self,
+            train_data,
+            batch_size=1,
+            epochs=1,
+            steps_per_epoch=None,
+            sample_generator=True):
         # TODO: callbacks
         # TODO: evaluate after training
         self.mode = 'train'
-        assert isinstance(train_data, Dataset)
-        train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs, steps_per_epoch)
+        # assert isinstance(train_data, Dataset)
+        train_dataloader = self._create_dataloader(
+            train_data, batch_size, epochs, steps_per_epoch, sample_generator)
 
         outputs = []
         for epoch in range(epochs):
@@ -354,7 +374,8 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           steps_per_epoch=None):
+                           steps_per_epoch=None,
+                           sample_generator=True):
         feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
             self.mode]["labels"]
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
@@ -366,7 +387,6 @@ class Engine:
         op_size = len(dist_main_block.ops)
         places = paddle.static.cuda_places()
         with fluid.program_guard(dist_main_prog, dist_startup_prog):
-            inputs = self._feed_vars[self.mode]["inputs"]
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
@@ -374,7 +394,7 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                inputs=inputs)
+                sample_generator=sample_generator)
         new_op_size = len(dist_main_block.ops)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
@@ -447,3 +467,35 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         self._saver.load(path, dist_main_prog, dist_context, strict,
                          load_optimizer)
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        self._mode = mode
+
+    @property
+    def metrics(self):
+        return self._metrics
+
+    @property
+    def main_program(self):
+        return self._dist_main_progs[self._mode][self._cur_rank]
+
+    @property
+    def startup_program(self):
+        return self._dist_startup_progs[self._mode][self._cur_rank]
+
+    @property
+    def dist_context(self):
+        return self._dist_contexts[self._mode]
+
+    @property
+    def serial_main_program(self):
+        return self._serial_main_progs[self._mode]
+
+    @property
+    def serial_startup_program(self):
+        return self._serial_startup_progs[self._mode]
