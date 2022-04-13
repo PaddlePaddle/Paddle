@@ -1286,6 +1286,7 @@ void Pad3dInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> out_dims(x_dim.size());
   out_dims[0] = x_dim[0];
+  auto& paddings = paddings_int_array.GetData();
   if (data_format == "NCDHW") {
     out_dims[1] = x_dim[1];
   } else {
@@ -1294,14 +1295,22 @@ void Pad3dInferMeta(const MetaTensor& x,
   if (paddings_int_array.FromTensor()) {
     if (config.is_runtime) {
       PADDLE_ENFORCE_EQ(
-          paddings_int_array.GetData().size(),
+          paddings.size(),
           6,
           errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
                                   "[6], but received [%d].",
-                                  paddings_int_array.GetData().size()));
+                                  paddings.size()));
+      if (data_format == "NCDHW") {
+        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
+      } else {
+        out_dims[2] = x_dim[2] + paddings[4] + paddings[5];
+        out_dims[3] = x_dim[3] + paddings[2] + paddings[3];
+        out_dims[4] = x_dim[4] + paddings[0] + paddings[1];
+      }
     }
   } else {
-    auto paddings = paddings_int_array.GetData();
     PADDLE_ENFORCE_EQ(
         paddings.size(),
         6,
