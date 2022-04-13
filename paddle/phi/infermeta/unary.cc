@@ -1294,13 +1294,13 @@ void Pad3dInferMeta(const MetaTensor& x,
                                   "[6], but received [%d].",
                                   paddings.size()));
       if (data_format == "NCDHW") {
-        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
-        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
-        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
-      } else {
         out_dims[2] = x_dim[2] + paddings[4] + paddings[5];
         out_dims[3] = x_dim[3] + paddings[2] + paddings[3];
         out_dims[4] = x_dim[4] + paddings[0] + paddings[1];
+      } else {
+        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
       }
     }
   } else {
