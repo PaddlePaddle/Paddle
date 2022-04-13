@@ -336,7 +336,23 @@ class Adam(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            found_inf = self._get_auxiliary_var('found_inf')
+
+            _beta1 = self._beta1 if not isinstance(
+                self._beta1, Variable) else self._beta1.numpy().item(0)
+            _beta2 = self._beta2 if not isinstance(
+                self._beta2, Variable) else self._beta2.numpy().item(0)
+
+            _, _, _, _, _, _ = _C_ops.final_state_adam(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, master_weight, found_inf, _beta1,
+                _beta2, self._epsilon, self._lazy_mode, 1000, find_master,
+                False)
+
+            return None
+
+        if framework._in_legacy_dygraph():
 
             _beta1 = self._beta1 if not isinstance(
                 self._beta1, Variable) else self._beta1.numpy().item(0)

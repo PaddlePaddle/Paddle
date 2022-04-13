@@ -23,7 +23,7 @@ import os
 ########################
 ops_to_fill_zero_for_empty_grads = set([
     "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
-    "sigmoid_triple_grad"
+    "sigmoid_triple_grad, add_double_grad"
 ])
 
 # For API dispatch used at python-level
