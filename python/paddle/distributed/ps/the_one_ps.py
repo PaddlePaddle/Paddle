@@ -1053,9 +1053,9 @@ class TheOnePSRuntime(RuntimeBase):
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(server_desc))
+        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        # if debug:
+        #     print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,
