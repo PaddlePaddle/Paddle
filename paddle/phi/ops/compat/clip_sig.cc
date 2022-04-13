@@ -57,27 +57,19 @@ KernelSignature ClipOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature ClipGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Min")) {
     if (ctx.HasInput("Max")) {
-      return KernelSignature("clip_grad",
-                             {"X", GradVarName("Out")},
-                             {"Min", "Max"},
-                             {GradVarName("X")});
+      return KernelSignature(
+          "clip_grad", {"X", "Out@GRAD"}, {"Min", "Max"}, {"X@GRAD"});
     } else {
-      return KernelSignature("clip_grad",
-                             {"X", GradVarName("Out")},
-                             {"Min", "max"},
-                             {GradVarName("X")});
+      return KernelSignature(
+          "clip_grad", {"X", "Out@GRAD"}, {"Min", "max"}, {"X@GRAD"});
     }
   } else {
     if (ctx.HasInput("Max")) {
-      return KernelSignature("clip_grad",
-                             {"X", GradVarName("Out")},
-                             {"min", "Max"},
-                             {GradVarName("X")});
+      return KernelSignature(
+          "clip_grad", {"X", "Out@GRAD"}, {"min", "Max"}, {"X@GRAD"});
     } else {
-      return KernelSignature("clip_grad",
-                             {"X", GradVarName("Out")},
-                             {"min", "max"},
-                             {GradVarName("X")});
+      return KernelSignature(
+          "clip_grad", {"X", "Out@GRAD"}, {"min", "max"}, {"X@GRAD"});
     }
   }
 }

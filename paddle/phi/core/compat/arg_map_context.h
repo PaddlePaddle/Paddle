@@ -39,29 +39,25 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 // tuple(input_names, attr_names, output_names)
-using KernelArgsTuple =
-    std::tuple<paddle::SmallVector<std::string, kInputSmallVectorSize>,
-               paddle::SmallVector<std::string, kAttrSmallVectorSize>,
-               paddle::SmallVector<std::string, kOutputSmallVectorSize>>;
+using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>>;
 
 struct KernelSignature {
-  std::string name;
+  const char* name;
   KernelArgsTuple args;
 
   KernelSignature() = default;
 
-  KernelSignature(
-      std::string&& kernel_name,
-      paddle::SmallVector<std::string, kInputSmallVectorSize>&& inputs,
-      paddle::SmallVector<std::string, kAttrSmallVectorSize>&& attrs,
-      paddle::SmallVector<std::string, kOutputSmallVectorSize>&& outputs)
-      : name(std::move(kernel_name)),
-        args(std::make_tuple(inputs, attrs, outputs)) {}
-  KernelSignature(
-      const std::string& kernel_name,
-      const paddle::SmallVector<std::string, kInputSmallVectorSize>& inputs,
-      const paddle::SmallVector<std::string, kAttrSmallVectorSize>& attrs,
-      const paddle::SmallVector<std::string, kOutputSmallVectorSize>& outputs)
+  KernelSignature(const char* kernel_name,
+                  paddle::SmallVector<const char*>&& inputs,
+                  paddle::SmallVector<const char*>&& attrs,
+                  paddle::SmallVector<const char*>&& outputs)
+      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+  KernelSignature(const char* kernel_name,
+                  const paddle::SmallVector<const char*>& inputs,
+                  const paddle::SmallVector<const char*>& attrs,
+                  const paddle::SmallVector<const char*>& outputs)
       : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
 
   // TODO(chenweihang): add assign constructor to solve windows compile

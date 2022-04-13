@@ -55,12 +55,9 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 class KernelArgsNameMaker {
  public:
   virtual ~KernelArgsNameMaker() {}
-  virtual const paddle::SmallVector<std::string, phi::kInputSmallVectorSize>&
-  GetInputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string, phi::kOutputSmallVectorSize>&
-  GetOutputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string, phi::kAttrSmallVectorSize>&
-  GetAttrsArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetInputArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetOutputArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetAttrsArgsNames() = 0;
 };
 
 void InitDefaultKernelSignatureMap();
