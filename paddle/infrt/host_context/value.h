@@ -84,8 +84,8 @@ using ValueVariantType =
             backends::CpuPhiContext,
 #ifdef INFRT_WITH_GPU
             backends::GpuPhiContext,
-            ::phi::GPUContext,
 #endif  // INFRT_WITH_GPU
+            ::phi::GPUContext,
             ::phi::CPUContext,
             std::vector<const ::phi::DenseTensor*>,
             std::vector<::phi::DenseTensor*>,

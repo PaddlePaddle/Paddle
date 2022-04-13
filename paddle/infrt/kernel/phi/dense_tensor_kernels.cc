@@ -83,6 +83,7 @@ namespace phi {
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<float> value) {
+
   ::phi::DenseTensor dense_tensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
       ::phi::DenseTensorMeta(
@@ -90,7 +91,7 @@ namespace phi {
           ::phi::make_ddim(dims.get()),
           ConvertLayoutToPhi(layout.get()),
           {}));
-
+#ifdef INFRT_WITH_GPU
   float* data = dense_tensor.mutable_data<float>(context.GetPlace());
 
   std::vector<float> a_data(dense_tensor.numel());
@@ -101,7 +102,9 @@ namespace phi {
              a_data.data(),
              sizeof(float) * dense_tensor.numel(),
              cudaMemcpyHostToDevice);
-
+#else
+  LOG(FATAL) << "CreateInitedGPUDenseTensorF32 is not supported if WITH_GPU=OFF";
+#endif
   return dense_tensor;
 }
 
