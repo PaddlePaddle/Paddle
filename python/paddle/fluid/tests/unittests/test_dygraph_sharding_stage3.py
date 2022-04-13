@@ -24,9 +24,11 @@ class TestDygraphShardingStage3(TestMultipleGpus):
 
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage3(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage3.py')
         self.run_mnist_2gpu('dygraph_sharding_stage3.py')
 
     def test_dygraph_sharding_stage3_offload(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage3_offload.py')
         self.run_mnist_2gpu('dygraph_sharding_stage3_offload.py')
 
 

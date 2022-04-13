@@ -459,5 +459,24 @@ class API_TestDygraphSplit(unittest.TestCase):
         self.assertTrue(np.allclose(ex_x2, x2_out))
 
 
+class API_TestEmptySplit(unittest.TestCase):
+    def test_axis_input_empty_section(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([8, 6, 6]).astype("float32")
+            # input is a variable which shape is [8, 6, 6]
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[5, 0, 3])
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, [
+                5,
+                5,
+            ])
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
+
+
 if __name__ == '__main__':
     unittest.main()

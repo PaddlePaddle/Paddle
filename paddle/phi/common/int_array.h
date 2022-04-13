@@ -56,6 +56,8 @@ class IntArrayBase {
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
 
+  size_t size() const { return array_.size(); }
+
   const std::vector<int64_t>& GetData() const { return array_; }
 
  private:

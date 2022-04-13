@@ -3,11 +3,13 @@ if(WITH_GPU OR APPLE)
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
     py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
+    py_test(test_context_pool SRCS test_context_pool.py)
 
     # Compiling shared library will cost some time, but running process is very fast.
     set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
 endif()
 
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
@@ -21,6 +23,7 @@ py_test(test_custom_concat SRCS test_custom_concat.py)
 py_test(test_custom_conj SRCS test_custom_conj.py)
 py_test(test_custom_linear SRCS test_custom_linear.py)
 py_test(test_custom_simple_slice SRCS test_custom_simple_slice.py)
+py_test(test_custom_tanh_double_grad SRCS test_custom_tanh_double_grad.py)
 
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)

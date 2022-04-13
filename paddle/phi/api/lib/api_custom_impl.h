@@ -30,6 +30,38 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
+    const Tensor& param,
+    const Tensor& grad,
+    const Tensor& learning_rate,
+    const Tensor& moment1,
+    const Tensor& moment2,
+    const Tensor& beta1_pow,
+    const Tensor& beta2_pow,
+    paddle::optional<const Tensor&> master_param,
+    paddle::optional<const Tensor&> skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow);
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu);
+
 Tensor conv2d_impl(const Tensor& input,
                    const Tensor& filter,
                    const std::vector<int>& strides,
@@ -62,8 +94,6 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
 
-std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
-
 std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     const Tensor& param,
     const Tensor& grad,
@@ -77,49 +107,14 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     bool multi_precision,
     float rescale_grad);
 
-std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
-
 ////////////////// Backward(grad) api impls //////////////////////
 
 std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
                                     const Tensor& out_grad);
 
-std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
-    const Tensor& x,
-    const Tensor& scale,
-    const Tensor& bias,
-    const Tensor& mean,
-    const Tensor& variance,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    bool fuse_with_relu);
-
-/************************   backward api impl   ***************************/
-
-std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
-                                     const Tensor& out_grad,
-                                     const Scalar& axis);
-
 Tensor imag_grad_impl(const Tensor& x);
 
 Tensor real_grad_impl(const Tensor& x);
-
-std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad,
-                                    int axis);
-std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
-                                       const std::vector<Tensor>& outputs_grad);
-
-std::vector<Tensor> multi_dot_grad_impl(const std::vector<Tensor>& x,
-                                        const Tensor& out_grad);
-
-std::vector<Tensor> multiplex_grad_impl(const std::vector<Tensor>& inputs,
-                                        const Tensor& ids,
-                                        const Tensor& out_grad);
 
 }  // namespace experimental
 }  // namespace paddle
