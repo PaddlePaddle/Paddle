@@ -36,7 +36,7 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
             return np.ones([1, 56, 56, 192]).astype(np.float32)
 
         for axis in [[1, 2]]:
-            for shifts in [[-1, -1], [-3, -3], [2, 2]]:
+            for shifts in [[-1, -1], [-3, -3]]:
                 dics = [{
                     "axis": axis,
                     "shifts": shifts,
