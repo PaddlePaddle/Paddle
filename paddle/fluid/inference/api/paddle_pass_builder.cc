@@ -20,6 +20,7 @@
 #include <miopen/miopen.h>
 #endif
 #include <glog/logging.h>
+#include <algorithm>
 #include <sstream>
 
 namespace paddle {
@@ -58,6 +59,12 @@ void PaddlePassBuilder::DeletePass(const std::string &pass_type) {
       ++it;
     }
   }
+}
+
+size_t PaddlePassBuilder::GetPassIndex(const std::string &pass_type) {
+  auto iter = std::find(std::begin(passes_), std::end(passes_), pass_type);
+  if (iter == std::end(passes_)) return -1;
+  return std::distance(std::begin(passes_), iter);
 }
 
 void PaddlePassBuilder::InsertPass(size_t idx, const std::string &pass_type) {
@@ -296,6 +303,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // Disabled due to topology-dependent speed-up
              //  "fc_mkldnn_pass",
              //  "fc_act_mkldnn_fuse_pass",
+             "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
              "elt_act_mkldnn_fuse_pass",              //
