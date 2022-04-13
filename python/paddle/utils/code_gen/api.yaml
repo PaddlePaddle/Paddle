@@ -376,6 +376,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    use_gpudnn : true
   backward : conv2d_transpose_grad
 
 - api : conv3d_transpose
@@ -385,6 +386,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv3d_transpose
+    use_gpudnn : true
   backward : conv3d_transpose_grad
 
 - api : copy_to
@@ -1548,6 +1550,7 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
+    use_gpudnn : true
   backward : pool2d_grad
 
 - api : pool3d
@@ -1557,6 +1560,7 @@
     func : PoolInferMeta
   kernel :
     func : pool3d
+    use_gpudnn : true
   backward : pool3d_grad
 
 - api : pow
@@ -1911,6 +1915,7 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
+    use_gpudnn : true
   backward : softmax_grad
 
 - api : split
