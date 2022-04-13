@@ -191,7 +191,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         attrs={
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
-                            "op_device": op_device
+                            "op_device": op_device,
+                            "op_role": op.attr("op_role"),
                         })
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
@@ -241,7 +242,8 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
             attrs={
                 "in_dtype": target_var.dtype,
                 "out_dtype": cast_var.dtype,
-                "op_device": op.attr("op_device")
+                "op_device": op.attr("op_device"),
+                "op_role": op.attr("op_role"),
             })
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
@@ -384,7 +386,11 @@ def fp16_guard():
         yield
 
 
-def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
+def cast_model_to_fp16(program,
+                       amp_lists=None,
+                       use_fp16_guard=True,
+                       keep_fp32_input=True,
+                       keep_fp32_output=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -395,6 +401,10 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
         amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
         use_fp16_guard(bool): Determine whether to use `fp16_guard` when
                               constructing the program. Default True.
+        keep_fp32_input(bool): Determine whether to use FP32 input for some 
+                               special ops.  Default True.
+        keep_fp32_output(bool): Determine whether to use FP32 output for some 
+                                special ops. Default True.
     """
 
     if amp_lists is None:
@@ -415,7 +425,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if _keep_fp32_input(op, in_name):
+                if keep_fp32_input and _keep_fp32_input(op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -443,7 +453,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if _keep_fp32_output(op, out_name):
+                if keep_fp32_output and _keep_fp32_output(op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
