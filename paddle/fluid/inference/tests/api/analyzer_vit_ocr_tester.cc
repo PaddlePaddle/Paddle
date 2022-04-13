@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include <fstream>
 #include <iostream>
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -37,15 +37,15 @@ Record ProcessALine(const std::string &line) {
   for (auto &d : data_strs) {
     record.data.push_back(std::stof(d));
   }
-  
+
   std::vector<std::string> shape_strs;
   split(columns[1], ' ', &shape_strs);
   for (auto &s : shape_strs) {
     record.shape.push_back(std::stoi(s));
   }
-  
+
   return record;
-}  
+}
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   std::string line;
