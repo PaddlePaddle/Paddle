@@ -7,7 +7,12 @@ if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
 endif()
 
-# parse and validate apis
+# install extra dependencies
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+)
+
+# parse apis
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
 set(generated_op_path ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
 set(generated_argument_mapping_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
@@ -34,6 +39,7 @@ if (_result)
     message(FATAL_ERROR "api yaml parsing failed, exiting.")
 endif()
 
+# validation of api yamls
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${PYTHON_EXECUTABLE} cross_validate.py
@@ -45,6 +51,7 @@ if (_result)
     message(FATAL_ERROR "api validation failed, exiting." )
 endif()
 
+# code generation for op, op makers, and argument mapping functions
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${PYTHON_EXECUTABLE} generate_op.py
