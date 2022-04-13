@@ -355,6 +355,14 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
     int rid = ctx.Attr<int>("ring_id");
 
+    auto place = ctx.GetPlace();
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data<T>();
+    out->Resize(in->dims());
+    void* recvbuff = out->mutable_data<T>(place);
+
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
@@ -391,14 +399,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       task->Wait();
       return;
     }
-
-    auto place = ctx.GetPlace();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
-    int64_t numel = in->numel();
-    const void* sendbuff = in->data<T>();
-    out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
 
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
