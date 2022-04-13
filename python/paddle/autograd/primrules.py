@@ -470,21 +470,25 @@ def scatter_add_jvp(op, x_dot, y_dot):
 @REGISTER_TRANSPOSE('add_p')
 def add_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and check_dot(y)
-    return z_bar, z_bar
+    assert check_dot(x) or check_dot(y)
+    x_bar = z_bar if check_dot(x) else None
+    y_bar = z_bar if check_dot(y) else None
+    return x_bar, y_bar
 
 
 def sub_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and check_dot(y)
-    return z_bar, neg(z_bar)
+    assert check_dot(x) or check_dot(y)
+    x_bar = z_bar if check_dot(x) else None
+    y_bar = neg(z_bar) if check_dot(y) else None
+    return x_bar, y_bar
 
 
 @REGISTER_TRANSPOSE('mul_p')
 def mul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) ^ check_dot(y)
-    if x.is_dot:
+    if check_dot(x):
         return mul(z_bar, y), None
     else:
         return None, mul(x, z_bar)
@@ -493,8 +497,9 @@ def mul_transpose(op, check_dot, z_bar):
 @REGISTER_TRANSPOSE('div_p')
 def div_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and not check_dot(y)
-    return div(z_bar, y), None
+    assert not check_dot(y)
+    x_bar = div(z_bar, y) if check_dot(x) else None
+    return x_bar, None
 
 
 @REGISTER_TRANSPOSE('reshape_p')
@@ -512,7 +517,8 @@ def broadcast_transpose(op, check_dot, y_bar):
     axis = list(range(bat))
     keepdim = [(bat + i) for i, s in enumerate(x.shape) if s == 1]
     axis += keepdim
-    return reduce(y_bar, axis=axis, keepdim=keepdim)
+    # TODO: Change it. keepdim boolean
+    return reduce(y_bar, axis=axis, keepdim=False)
 
 
 @REGISTER_TRANSPOSE('transpose_p')
@@ -546,9 +552,8 @@ def concat_transpose(op, check_dot, y_bar):
 def reduce_transpose(op, check_dot, y_bar):
     x, = get_input_vars(op)
     assert check_dot(x)
-    shape = x.shape
-    for i in op.attr('axis'):
-        shape[i] = 1
+    axes = op.attr('axis')
+    shape = tuple(1 if i in axes else size for i, size in enumerate(x.shape))
     t = reshape(y_bar, shape=shape)
     return broadcast(t, shape=x.shape)
 
@@ -557,10 +562,12 @@ def reduce_transpose(op, check_dot, y_bar):
 def matmul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) ^ check_dot(y)
-    if x.is_dot:
-        return matmul(z_bar, transpose(y)), None
+    # TODO: replace it. this is hacky
+    axis = [1, 0] if len(x.shape) == 2 else [0, 2, 1]
+    if check_dot(x):
+        return matmul(z_bar, transpose(y, axis=axis)), None
     else:
-        return None, matmul(transpose(x), z_bar)
+        return None, matmul(transpose(x, axis=axis), z_bar)
 
 
 @REGISTER_TRANSPOSE('slice_select_p')

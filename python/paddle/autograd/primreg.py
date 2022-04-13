@@ -34,8 +34,8 @@ class Registry(object):
 _primop_fn = Registry('primop_fn')
 _orig2prim = Registry('orig2prim')
 _prim2orig = Registry('prim2orig')
-_primop_jvp = Registry('primop_jvps')
-_primop_transpose = Registry('primop_vjps')
+_primop_jvp = Registry('primop_jvp')
+_primop_transpose = Registry('primop_transpose')
 
 
 def lookup_fn(optype):
