@@ -105,10 +105,10 @@ class Transform(object):
         vlt = {}
         to_bind = {}
         for var in block.desc.all_vars():
-            vlt[var.name()] = var
+            vlt[var.name()] = block.var(var.name())
 
-        vars_to_remove = []
         ops_to_remove = []
+        vars_to_remove = []
         for op_idx in range(len(block.ops)):
             op = block.ops(op_idx)
             if lookup_orig2prim(op.type()) is not None:
@@ -127,9 +127,9 @@ class Transform(object):
                     to_bind[orig_out.name()] = new_out.name()
 
         for op_idx in reversed(ops_to_remove):
-            block.desc._remove_op(op_idx, op_idx + 1)
-        ## TODO(lml): call correct interface to infer shape and dtype
-        block.infer_shape()
+            block._remove_op(op_idx)
+        for var_name in vars_to_remove:
+            block._remove_var(var_name)
 
     def update_defuse(self, op):
         for var in get_input_vars(op):
