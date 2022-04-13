@@ -173,8 +173,10 @@ ProcessGroupGloo::GlooTask::GlooTask(int rank,
 
 ProcessGroupGloo::ProcessGroupGloo(
     const std::shared_ptr<paddle::distributed::Store>& store, int rank,
-    int world_size, const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size), _tag(0), _store(new GlooStore(store)) {
+    int world_size, int gid, const std::shared_ptr<GlooOptions> options)
+    : ProcessGroup(rank, world_size, gid),
+      _tag(0),
+      _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
   auto prefix_store =
       ::gloo::rendezvous::PrefixStore(std::to_string(0), *_store);

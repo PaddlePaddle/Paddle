@@ -34,7 +34,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace distributed {
-class HeterRequestHandler;
+class ServiceHandlerBase;
 class HeterServer;
 }  // namespace distributed
 }  // namespace paddle
@@ -82,10 +82,10 @@ class HeterListenAndServOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
+  mutable std::shared_ptr<paddle::distributed::HeterServer> heter_server_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::RequestSendAndRecvHandler>
-      request_send_and_recv_handler_;
+  mutable std::shared_ptr<paddle::distributed::SendAndRecvVariableHandler>
+      send_and_recv_variable_handler_;
 };
 
 }  // namespace operators

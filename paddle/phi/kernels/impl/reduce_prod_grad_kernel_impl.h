@@ -29,19 +29,9 @@ void ReduceProdGradKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DataType in_dtype,
-                          DataType out_dtype,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::ProdGradFunctor>(dev_ctx,
-                                                       x,
-                                                       out,
-                                                       out_grad,
-                                                       dims,
-                                                       keep_dim,
-                                                       reduce_all,
-                                                       in_dtype,
-                                                       out_dtype,
-                                                       x_grad);
+  ReduceGradKernel<Context, T, funcs::ProdGradFunctor>(
+      dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
 }  // namespace phi

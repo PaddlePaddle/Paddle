@@ -14,14 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 
+#include <algorithm>
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -69,27 +70,42 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR;
+                       });
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::SELECTED_ROWS;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR_ARRAY;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR_ARRAY;
+                       });
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR;
+                       });
   }
 
   bool IsSelectedRowsOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return var_types[0] == proto::VarType::SELECTED_ROWS;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
   }
 
   bool IsForInferShape() const override { return true; }
@@ -347,12 +363,12 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto attr_name = attr_names[i];
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
-      // When attr is a vector_tensor or tensor, transform it to ScalarArray
+    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
+      // When attr is a vector_tensor or tensor, transform it to IntArray
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
         const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
         if (ctx->IsRuntime()) {
-          // If is in runtime, we will get tensor's value for ScalarArray
+          // If is in runtime, we will get tensor's value for IntArray
           // and push it into attrs
           std::vector<Variable*> vars;
           vars.reserve(infershape_inputs.size());
@@ -361,13 +377,13 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
           if (infershape_inputs.size() != 1) {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePhiScalarArrayFromVarList(vars)));
+                std::move(experimental::MakePhiIntArrayFromVarList(vars)));
           } else {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePhiScalarArrayFromVar(*vars[0])));
+                std::move(experimental::MakePhiIntArrayFromVar(*vars[0])));
           }
         } else {
-          // If is not in runtime, we will set default value(-1) for ScalarArray
+          // If is not in runtime, we will set default value(-1) for IntArray
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
           for (size_t i = 0; i < infershape_inputs.size(); ++i) {
@@ -381,10 +397,18 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
             }
+
+            if (num_ele <= 0) {
+              PADDLE_THROW(platform::errors::Unimplemented(
+                  "Invalid number for construct phi::IntArray, expected "
+                  "number > 0, but actually is %d. ",
+                  num_ele));
+            }
+
           } else {
             num_ele = vars.size();
           }
-          phi::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
+          phi::IntArray tensor_attr(std::vector<int32_t>(num_ele, -1));
           tensor_attr.SetFromTensor(true);
           infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
         }
@@ -393,18 +417,18 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int32_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(std::vector<int64_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(
-              phi::ScalarArray({BOOST_GET_CONST(int, attr)}));
+              phi::IntArray({BOOST_GET_CONST(int, attr)}));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to ScalarArray when "
+              "Unsupported cast op attribute `%s` to IntArray when "
               "construct InferMetaContext.",
               attr_name));
         }

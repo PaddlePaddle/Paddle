@@ -137,5 +137,44 @@ class BadInputTest(unittest.TestCase):
             self.assertRaises(TypeError, test_bad_x)
 
 
+class TestIgnoreVarNameInWhile(unittest.TestCase):
+    def test_ignore_var(self):
+        def cond(i, ten, temp, y):
+            return i < ten
+
+        def body_func(i, ten, batch_info, origin_seq):
+            print(batch_info)
+            batch_info = fluid.contrib.layers.shuffle_batch(batch_info)
+            print(batch_info)
+            i = i + 1
+            return [i, ten, batch_info, origin_seq]
+
+        x = fluid.layers.data(name='x', shape=[-1, 1, 4])
+        y = fluid.layers.data(name='y', shape=[-1, 1, 1])
+        temp = layers.concat(input=[x, y], axis=-1)
+        i = layers.fill_constant(shape=[1], value=0, dtype='int32')
+        num = layers.fill_constant(shape=[1], value=5, dtype='int32')
+
+        i, ten, shuffle_temp, y = layers.while_loop(cond, body_func,
+                                                    [i, num, temp, y])
+
+        output = shuffle_temp
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
+        input_x = input_x.reshape(3, 1, 4)
+        input_y = numpy.array([[10], [12], [33]])
+        input_y = input_y.reshape(3, 1, 1)
+
+        res, = exe.run(fluid.default_main_program(),
+                       feed={'x': input_x,
+                             'y': input_y},
+                       fetch_list=[output])
+
+        self.assertListEqual(list(res.shape), [3, 1, 5])
+
+
 if __name__ == '__main__':
     unittest.main()

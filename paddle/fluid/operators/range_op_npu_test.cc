@@ -30,7 +30,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(range);
+USE_OP_ITSELF(range);
 USE_OP_DEVICE_KERNEL(range, NPU);
 
 template <typename T>

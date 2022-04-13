@@ -14,11 +14,31 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
+#include "paddle/fluid/eager/pylayer/py_layer_node.h"
+#include "paddle/phi/core/dense_tensor.h"
+
 namespace paddle {
 namespace pybind {
 
+typedef struct {
+  PyObject_HEAD paddle::experimental::Tensor tensor;
+} TensorObject;
+
+typedef struct {
+  PyObject_HEAD
+
+      PyObject* container;
+  PyObject* non_differentiable;
+  PyObject* dirty_tensors;
+  bool materialize_grads;
+  std::vector<bool> forward_input_tensor_is_duplicable;
+  std::vector<bool> forward_output_tensor_is_duplicable;
+  std::weak_ptr<egr::GradNodePyLayer> grad_node;
+} PyLayerObject;
+
 void BindEager(pybind11::module* m);
 void BindFunctions(PyObject* module);
+void BindEagerPyLayer(PyObject* module);
 
 }  // namespace pybind
 }  // namespace paddle

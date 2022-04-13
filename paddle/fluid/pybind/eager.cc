@@ -72,15 +72,25 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::make_shared<phi::DenseTensor>(
-            phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                                 ddims));
-    if (phi::product(ddims) > 0) {
-      dense_tensor->mutable_data(place);
+    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    if (dims.empty()) {
+      std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          allocation_ptr,
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
+    } else {
+      // TODO(dev): we need enhance check for ddims.
+      dense_tensor = std::make_shared<phi::DenseTensor>(
+          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
     }
     self->tensor.set_impl(dense_tensor);
+  } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
+    std::shared_ptr<phi::SelectedRows> tensor =
+        std::make_shared<phi::SelectedRows>();
+    self->tensor.set_impl(tensor);
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
@@ -92,6 +102,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
 }
 
 void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
+                              const paddle::platform::Place& place,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(), true,
@@ -102,7 +113,6 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
           "eager tensor before init it with NumPy."));
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  paddle::platform::Place place = impl_ptr->place();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
@@ -238,7 +248,7 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
     }
   } else {
     if (flag_kwargs) {
-      if (kws_map["name"] == NULL) {
+      if ((kws_map["name"] == NULL) || (kws_map["name"] == Py_None)) {
         act_name =
             egr::Controller::Instance().GenerateUniqueName("generated_tensor");
       } else {
@@ -289,7 +299,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
 
   EmptyTensorInitializer(py_tensor_ptr, act_name, place, persistable,
                          stop_gradient);
-  InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
+  InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
 // initialize Tensor by Tensor or framework::Tensor (mix args and
@@ -399,6 +409,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
    * ** name: std::string)
    *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
   if (kwargs) flag_kwargs = true;
@@ -693,7 +704,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         "make sure u call the existed constructor."));
   }
 
-  return 1;
+  return -1;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 static void TensorDealloc(TensorObject* self) {
@@ -753,6 +765,7 @@ void BindEager(pybind11::module* module) {
   }
 
   BindFunctions(m.ptr());
+  BindEagerPyLayer(m.ptr());
   BindEagerOpFunctions(&m);
 }
 

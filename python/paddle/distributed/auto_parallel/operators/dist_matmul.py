@@ -28,7 +28,7 @@ from ..utils import compute_compatible_and_update_dim_mapping
 from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
@@ -1837,6 +1837,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                                 out_var_dist_attr)
 
         intermediate_var_0 = main_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_allreduce_sum", 'tmp'])),
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,
@@ -1936,7 +1938,6 @@ class DistributedMulImpl2(DistributedOperatorImpl):
         if is_valid_list_index(x_dims_mapping,
                                -2) and is_dim_shard(x_dims_mapping[-2]):
             return False
-
         if is_dim_shard(y_dims_mapping[-1]):
             return False
         if is_valid_list_index(y_dims_mapping,

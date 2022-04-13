@@ -79,34 +79,25 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad) {
   if (dims.size() == 1) {
-    if (out_dtype != DataType::UNDEFINED) {
-      DenseTensorMeta x_grad_meta(out_dtype, x_grad->dims(), x_grad->layout());
+    if (out_grad.dtype() != x.dtype()) {
+      DenseTensorMeta x_grad_meta(
+          out_grad.dtype(), x_grad->dims(), x_grad->layout());
       DenseTensor x_grad_tmp =
           phi::Empty<Context>(dev_ctx, std::move(x_grad_meta));
 
       ComputeFromInput<T, Context>(dev_ctx, x, out_grad, dims, &x_grad_tmp);
 
-      phi::CastKernel<T>(dev_ctx, x_grad_tmp, in_dtype, x_grad);
+      phi::CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
 
     } else {
       ComputeFromInput<T, Context>(dev_ctx, x, out_grad, dims, x_grad);
     }
   }
 
-  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
-                                                            x,
-                                                            paddle::none,
-                                                            out_grad,
-                                                            dims,
-                                                            keep_dim,
-                                                            reduce_all,
-                                                            in_dtype,
-                                                            out_dtype,
-                                                            x_grad);
+  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(
+      dev_ctx, x, paddle::none, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
 template <typename T, typename Context>
@@ -116,19 +107,9 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DataType in_dtype,
-                          DataType out_dtype,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(dev_ctx,
-                                                             x,
-                                                             paddle::none,
-                                                             out_grad,
-                                                             dims,
-                                                             keep_dim,
-                                                             reduce_all,
-                                                             in_dtype,
-                                                             out_dtype,
-                                                             x_grad);
+  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(
+      dev_ctx, x, paddle::none, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
 }  // namespace phi

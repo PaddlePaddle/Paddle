@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
@@ -85,7 +87,7 @@ class GradSlotMeta {
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
-class GradNodeBase {
+class GradNodeBase : public std::enable_shared_from_this<GradNodeBase> {
  public:
   GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
@@ -111,7 +113,11 @@ class GradNodeBase {
 
   virtual void ClearTensorWrappers() = 0;
 
-  virtual bool IsTensorWrappersCleared() = 0;
+  /**
+       * Self-Copy interface designed for use in DoubleGrad
+       * **/
+  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
+
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -147,7 +153,6 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
-
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -190,6 +195,16 @@ class GradNodeBase {
   /**
        * GetEdges is designed to get all edges of current node**/
   const std::vector<std::vector<Edge>>& GetEdges() const;
+  std::vector<std::vector<Edge>>& GetMutableEdges();
+
+  /**
+       * The following interfaces are designed for no_need_buffer
+       * **/
+  bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
+
+  void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
+    is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
+  }
 
  private:
   // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
@@ -217,6 +232,7 @@ class GradNodeBase {
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
   int64_t next_hook_id_{0};
+  bool is_tensor_wrappers_cleared_ = false;
 };
 
 class Edge {
@@ -243,6 +259,11 @@ class Edge {
 
   std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
+  }
+
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
+    VLOG(6) << "Reseting Edge's Grad Node";
+    grad_node_ = node;
   }
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {
@@ -278,5 +299,30 @@ class Edge {
   size_t in_rank_;
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
+
+inline void CheckTensor(const paddle::experimental::Tensor& pre,
+                        const paddle::experimental::Tensor& post) {
+  if (!pre.initialized() && post.initialized()) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "The tensor in before and after hook are not consistent"));
+  }
+  if (pre.initialized() && post.initialized()) {
+    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+            << paddle::framework::DataType2String(post.dtype());
+    PADDLE_ENFORCE_EQ(
+        pre.dtype(), post.dtype(),
+        paddle::platform::errors::PermissionDenied(
+            "The dtype of tensor before(%s) and after(%s) hook are not "
+            "consistent",
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+    PADDLE_ENFORCE_EQ(
+        pre.inner_place(), post.inner_place(),
+        paddle::platform::errors::PermissionDenied(
+            "The place of tensor before(%s) and after(%s) "
+            "hook are not consistent",
+            pre.inner_place().DebugString(), post.inner_place().DebugString()));
+  }
+}
 
 }  // namespace egr

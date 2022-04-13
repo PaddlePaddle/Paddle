@@ -26,7 +26,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
+#include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
@@ -65,10 +65,10 @@ class HeterContext {
       device_dim_ptr_;
 #endif
 #ifdef PADDLE_WITH_PSCORE
-  std::vector<std::vector<paddle::distributed::VALUE*>> value_ptr_;
-  std::vector<std::vector<std::vector<paddle::distributed::VALUE*>>>
+  std::vector<std::vector<paddle::distributed::FixedFeatureValue*>> value_ptr_;
+  std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       value_dim_ptr_;
-  std::vector<std::vector<std::vector<paddle::distributed::VALUE*>>>
+  std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       device_dim_ptr_;
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;

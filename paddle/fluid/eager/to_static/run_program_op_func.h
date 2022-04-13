@@ -57,7 +57,6 @@ inline void run_program_dygraph_function(
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
     grad_node->SetFwdOutNames(out_names);
-    grad_node->SetOut(out);
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers

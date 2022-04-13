@@ -31,6 +31,7 @@ constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
 namespace paddle {
 namespace distributed {
 
+constexpr int IGNORE_ID = -1;
 using Tensor = paddle::experimental::Tensor;
 
 enum class CommType : std::uint8_t {
@@ -47,14 +48,6 @@ enum class CommType : std::uint8_t {
   RECV = 10,
   BARRIER = 11,
   UNKNOWN = 100,
-};
-
-struct ProcessGroupStrategy {
-  int nranks_{1};
-  int local_rank_{0};
-  std::vector<std::string> trainer_endpoints_{};
-  std::string current_endpoint_{""};
-  int nrings_{1};
 };
 
 class ProcessGroup {
@@ -76,7 +69,7 @@ class ProcessGroup {
     bool is_completed_ = false;
   };
 
-  explicit ProcessGroup(int rank, int size);
+  explicit ProcessGroup(int rank, int size, int gid);
   virtual ~ProcessGroup() {}
 
   int GetRank() const { return rank_; }
@@ -97,6 +90,12 @@ class ProcessGroup {
       const BroadcastOptions& = BroadcastOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support broadcast", GetBackendName()));
+  }
+
+  virtual void Broadcast(const phi::DenseTensor* in, phi::DenseTensor* out) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "ProcessGroup%s does not support broadcast for static mode runtime",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
@@ -149,6 +148,44 @@ class ProcessGroup {
  protected:
   const int rank_;
   const int size_;
+  const int gid_;
+};
+
+class ProcessGroupMapFromGid {
+ public:
+  bool has(int gid) {
+    auto it = map_.find(gid);
+    return it != map_.end();
+  }
+
+  void insert(int gid, ProcessGroup* pg) {
+    // TODO(sandyhouse): address ut and uncomment the following codes
+    // PADDLE_ENFORCE_EQ(has(gid), false,
+    //                   platform::errors::PreconditionNotMet(
+    //                       "The process group with id %d doesnot exist.",
+    //                       gid));
+    map_[gid] = pg;
+  }
+
+  ProcessGroup* get(int gid) {
+    // TODO(sandyhouse): address ut and uncomment the following codes
+    // PADDLE_ENFORCE_EQ(has(gid), true,
+    //                   platform::errors::PreconditionNotMet(
+    //                       "The process group with id %d doesnot exist.",
+    //                       gid));
+    return map_.find(gid)->second;
+  }
+
+  static std::shared_ptr<ProcessGroupMapFromGid> getInstance() {
+    static auto s_instance = std::make_shared<ProcessGroupMapFromGid>();
+    return s_instance;
+  }
+
+  ProcessGroupMapFromGid() = default;
+  ~ProcessGroupMapFromGid() = default;
+
+ private:
+  std::unordered_map<int, ProcessGroup*> map_;
 };
 
 }  //  namespace distributed

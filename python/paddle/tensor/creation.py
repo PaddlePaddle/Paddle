@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dty
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..framework import _in_eager_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
 
 __all__ = []
 
@@ -127,7 +127,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, (paddle.Tensor, core.eager.Tensor)):
+        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
+            data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+            return data
+        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -136,7 +141,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to VarBase first
             # Currenly, there is no copy when places are same
-            data = paddle.Tensor(data)
+            if in_dygraph_mode():
+                data = core.eager.Tensor(data)
+            else:
+                data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
@@ -164,9 +172,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    # TOOD(jiabin): Support kwargs in eager tensor constructor
-    if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
+    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+        return core.eager.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            name=None,
+            stop_gradient=stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
@@ -211,7 +224,10 @@ def full_like(x, fill_value, dtype=None, name=None):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_full_like(x, fill_value, dtype, x.place)
+
+    if _in_legacy_dygraph():
         return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
@@ -507,7 +523,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             it is the istance between two adjacent values, out[i+1] - out[i].
             If ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with
             data type int32, int64, float32, float64. Default is 1.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+        dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dytpe`` is None, the data type is float32. Default is None.
         name(str, optional): The default value is None. Normally there is no
@@ -645,7 +661,10 @@ def tril(x, diagonal=0, name=None):
             #        [ 9, 10,  0,  0]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tril_triu(x, diagonal, True)
+
+    if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
 
@@ -712,7 +731,10 @@ def triu(x, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tril_triu(x, diagonal, False)
+
+    if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)
 
@@ -754,10 +776,12 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         num = len(args)
         out = _C_ops.meshgrid(list(args), num)
         return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_meshgrid(list(args))
 
     name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
@@ -973,35 +997,36 @@ def diag(x, offset=0, padding_value=0, name=None):
           print(y.numpy())
           # [4]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_diag(x, offset, padding_value)
-        return _C_ops.diag_v2(x, "offset", offset, "padding_value",
-                              padding_value)
+    if in_dygraph_mode():
+        return _C_ops.final_state_diag(x, offset, padding_value)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.diag_v2(x, "offset", offset, "padding_value",
+                                  padding_value)
+        else:
+            check_type(x, 'x', (Variable), 'diag_v2')
+            check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
+                        'diag_v2')
+            check_type(offset, 'offset', (int), 'diag_v2')
+            check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
+            if len(x.shape) != 1 and len(x.shape) != 2:
+                raise ValueError(
+                    "The dimension of input x must be either 1 or 2, but received {}".
+                    format(len(x.shape)))
 
-    check_type(x, 'x', (Variable), 'diag_v2')
-    check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
-                'diag_v2')
-    check_type(offset, 'offset', (int), 'diag_v2')
-    check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
-    if len(x.shape) != 1 and len(x.shape) != 2:
-        raise ValueError(
-            "The dimension of input x must be either 1 or 2, but received {}".
-            format(len(x.shape)))
+            helper = LayerHelper("diag_v2", **locals())
 
-    helper = LayerHelper("diag_v2", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='diag_v2',
+                inputs={'X': x},
+                outputs={'Out': out},
+                attrs={'offset': offset,
+                       'padding_value': padding_value})
 
-    helper.append_op(
-        type='diag_v2',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'offset': offset,
-               'padding_value': padding_value})
-
-    out.stop_gradient = True
-    return out
+            out.stop_gradient = True
+            return out
 
 
 def empty(shape, dtype=None, name=None):

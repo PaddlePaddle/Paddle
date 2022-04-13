@@ -49,6 +49,16 @@ DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
 DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 // Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
+// Create the definition of Maximum
+DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
+// Create the definition of Minimum
+DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
+// Create the definition of Modulo
+DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
+// Create the definition of FloorDivide
+DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
+// Create the definition of Pow
+DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 
 }  // namespace phi
 
@@ -114,3 +124,45 @@ PD_REGISTER_KERNEL(multiply_raw,
                    complex64,
                    complex128,
                    bfloat16) {}
+PD_REGISTER_KERNEL(maximum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaximumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(minimum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MinimumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(modulo_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ModuloRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(floor_divide_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FloorDivideRawKernel,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

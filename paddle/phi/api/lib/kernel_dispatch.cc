@@ -14,27 +14,58 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 
-#include "paddle/phi/api/include/context_pool.h"
-#include "paddle/phi/core/compat/convert_utils.h"
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
+
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/string_tensor_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
 namespace detail {
 
-BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
-  BackendSet backend_set(phi::TransToPhiBackend(t.place()));
-  switch (t.layout()) {
-    case DataLayout::MKLDNN:
-      backend_set = backend_set | BackendSet(Backend::MKLDNN);
-      break;
-    default:
-      // do nothing
-      break;
+// We need judge whether the allocation is nullptr,
+// whether the allocation is initialized, wo we need GetHolder method
+bool HasAllocation(const phi::TensorBase& t) {
+  if (phi::DenseTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::DenseTensor&>(t)) != nullptr;
+  } else if (phi::SelectedRows::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SelectedRows&>(t).value()) != nullptr;
+  } else if (phi::SparseCsrTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SparseCsrTensor&>(t)
+                   .non_zero_elements()) != nullptr;
+  } else if (phi::SparseCooTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SparseCooTensor&>(t)
+                   .non_zero_elements()) != nullptr;
+  } else if (phi::StringTensor::classof(&t)) {
+    return phi::StringTensorUtils::GetHolder(
+               static_cast<const phi::StringTensor&>(t)) != nullptr;
+  } else {
+    return false;
   }
-  return backend_set;
+}
+
+BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
+  if (HasAllocation(t)) {
+    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
+    switch (t.layout()) {
+      case DataLayout::MKLDNN:
+        backend_set = backend_set | BackendSet(Backend::MKLDNN);
+        break;
+      default:
+        // do nothing
+        break;
+    }
+    return backend_set;
+  }
+  return BackendSet(Backend::UNDEFINED);
 }
 
 std::size_t CountLeadingZeros(uint64_t val) {

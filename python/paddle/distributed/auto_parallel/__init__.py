@@ -15,7 +15,7 @@
 from .interface import shard_tensor  # noqa: F401
 from .interface import shard_op  # noqa: F401
 from .process_mesh import ProcessMesh
-from .reshard import reshard  # noqa: F401
+from .reshard import Resharder  # noqa: F401
 from .cost_model import estimate_cost
 
 __all__ = []

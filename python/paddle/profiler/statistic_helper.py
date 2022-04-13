@@ -96,6 +96,7 @@ def merge_ranges(range_list1, range_list2, is_sorted=False):
             else:
                 indx1 += 1
         while indx2 < len2:
+            range2 = range_list2[indx2]
             if range2[1] > merged_ranges[-1][1]:
                 if range2[0] <= merged_ranges[-1][1]:
                     merged_ranges[-1] = (merged_ranges[-1][0], range2[1])

@@ -19,8 +19,8 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -54,6 +54,8 @@ class InferMetaContext {
   const MetaTensor& InputAt(size_t idx) const;
   paddle::optional<const phi::MetaTensor&> OptionalInputAt(size_t idx) const;
   std::vector<MetaTensor*> InputsBetween(size_t start, size_t end) const;
+  paddle::optional<const std::vector<const phi::MetaTensor*>>
+  OptionalInputsBetween(size_t start, size_t end) const;
 
   MetaTensor* MutableOutputAt(size_t idx);
   std::vector<MetaTensor*> MutableOutputBetween(size_t start, size_t end);
@@ -174,6 +176,26 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<
+      paddle::optional<const std::vector<const MetaTensor*>>,
+      Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+      paddle::optional<const std::vector<const MetaTensor*>> arg =
+          ctx->OptionalInputsBetween(range.first, range.second);
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
   // TODO(chenweihang): support other attr type later
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
@@ -192,7 +214,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const IntArray&);
 
   // TODO(chenweihang): support vector<MetaTensor> input later
 

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
+#include "paddle/fluid/distributed/collective/Common.h"
+#include "paddle/fluid/distributed/collective/HCCLTools.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -27,61 +29,6 @@ constexpr int64_t kWaitBlockTImeout = 10;
 
 namespace paddle {
 namespace distributed {
-
-static HcclReduceOp ToHCCLRedType(ReduceOp reduction) {
-  static const std::map<ReduceOp, HcclReduceOp> red_type = {
-      {ReduceOp::MIN, HCCL_REDUCE_MIN},
-      {ReduceOp::MAX, HCCL_REDUCE_MAX},
-      {ReduceOp::SUM, HCCL_REDUCE_SUM},
-      {ReduceOp::PRODUCT, HCCL_REDUCE_PROD},
-  };
-  auto it = red_type.find(reduction);
-  PADDLE_ENFORCE_EQ(
-      it != red_type.end(), true,
-      platform::errors::InvalidArgument("Invalid hccl reduction. "
-                                        "Must be Min | Max | Prod | Sum"));
-  return it->second;
-}
-
-std::string SerializeHCCLUniqueId(const HcclRootInfo& hcclID) {
-  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&hcclID);
-  std::ostringstream oss;
-  for (size_t i = 0; i < sizeof(hcclID); ++i) {
-    oss << std::hex << static_cast<int>(bytes[i]);
-  }
-  return oss.str();
-}
-
-// Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
-  std::vector<Place> places;
-  places.reserve(tensors.size());
-  for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
-  }
-  return places;
-}
-
-// Get the deviceList String from the list of devices
-std::string GetKeyFromPlaces(const std::vector<Place>& places) {
-  std::string placeList;
-  for (auto& place : places) {
-    std::stringstream tmp;
-    tmp << place;
-    if (placeList.empty()) {
-      placeList += tmp.str();
-    } else {
-      placeList += "," + tmp.str();
-    }
-  }
-  return placeList;
-}
-
-// bool CheckTensorsInNPUPlace(const std::vector<Tensor>& tensors) {
-//   return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
-//     return t.place() == platform::DeviceType::NPU;
-//   });
-// }
 
 void SyncDefaultStream(
     const std::vector<Place>& places,
@@ -150,8 +97,8 @@ bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
-                                   int rank, int size)
-    : ProcessGroup(rank, size), store_(store) {}
+                                   int rank, int size, int gid)
+    : ProcessGroup(rank, size, gid), store_(store) {}
 
 void ProcessGroupHCCL::BroadcastUniqueHCCLID(
     std::vector<HcclRootInfo>& hccl_ids) {  // NOLINT

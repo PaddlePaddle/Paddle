@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_utils.h"
@@ -36,32 +37,36 @@ template <typename KernelFunc,
           KernelFunc kernel,
           typename InferShapedFunc,
           InferShapedFunc infershape>
-void KernelLauncherFunc(host_context::KernelFrame* frame) {
-  static InferShapedKernelLauncher launcher(
-      FuncArgStatics<InferShapedFunc>::arg_size);
+::infrt::host_context::KernelImplementation KernelLauncherFunc() {
+  InferShapedKernelLauncher launcher(FuncArgStatics<InferShapedFunc>::arg_size);
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
 
+  return [=](host_context::KernelFrame* frame) mutable {
 #ifndef NDEBUG
-  LOG(INFO) << "Kernel.frame: " << frame->DumpArgTypes();
+    LOG(INFO) << "Kernel.frame: " << frame->DumpArgTypes();
 #endif
-  // Build the infershape KernelFrame if needed.
-  // TODO(Superjomn) add unlikely here.
-  if (launcher.infershape_kernel_frame_builder.IsEmpty()) {
-    launcher.CreateKernelFrameForInferShape(frame);
+    // Build the infershape KernelFrame if needed.
+    // TODO(Superjomn) add unlikely here.
+    if (launcher.infershape_kernel_frame_builder.IsEmpty()) {
+      launcher.CreateKernelFrameForInferShape(frame);
 #ifndef NDEBUG
-    LOG(INFO) << "infershape.frame: "
-              << launcher.infershape_kernel_frame_builder.DumpArgTypes();
+      LOG(INFO) << "infershape.frame: "
+                << launcher.infershape_kernel_frame_builder.DumpArgTypes();
 #endif
-  }
-  if (turn_on_infer_shape_cache) {
-    if (launcher.IsShapeChanged(num_input_tensors)) {
+    }
+    if (turn_on_infer_shape_cache) {
+      if (launcher.IsShapeChanged(num_input_tensors)) {
+        ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
+            &launcher.infershape_kernel_frame_builder);
+        launcher.BuildInferShapeCache(num_input_tensors);
+      }
+    } else {
       ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
           &launcher.infershape_kernel_frame_builder);
-      launcher.BuildInferShapeCache(num_input_tensors);
     }
-  }
-  ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
+    ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
+  };
 }
 
 }  // namespace kernel

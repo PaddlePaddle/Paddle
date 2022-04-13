@@ -201,7 +201,7 @@ class EncoderNet(fluid.dygraph.Layer):
                                                                          0.02))
         bias_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Normal(0.0, 0.02), learning_rate=2.0)
-        if fluid.framework.in_dygraph_mode():
+        if fluid.framework._non_static_mode():
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32")
             h_0 = to_variable(h_0)

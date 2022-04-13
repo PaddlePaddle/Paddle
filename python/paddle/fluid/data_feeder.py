@@ -22,7 +22,7 @@ from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode, _in_eager_mode
+from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
@@ -93,7 +93,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # in dynamic graph mode.
     # 2. Performance considerations. Because these checks are executed at
     # each step in dynamic graph mode, it will bring a heavy performance burden.
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
 
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
@@ -105,7 +105,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
-        if core._in_eager_mode():
+        if _in_eager_without_dygraph_check():
             expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
@@ -130,7 +130,7 @@ def check_dtype(input_dtype,
                 op_name,
                 extra_message=''):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
@@ -155,7 +155,7 @@ def check_shape(shape,
                 expected_element_type=(int, Variable),
                 expected_tensor_dtype=('int32', 'int64')):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
     if expected_element_type is not None and not isinstance(shape, Variable):

@@ -78,6 +78,28 @@ def test_convert():
     convert_tensor_dict = converter.convert(strict=False)
     assert np.equal(convert_tensor_dict[new_name], tensor_row[rank_id]).all()
 
+    # test sliced_shape is 1
+    complete_tensor = np.arange(4).reshape([2, 2])
+    tensor_row = np.split(complete_tensor, 2, axis=0)
+    complet_strategy = {
+        "tensor_2": {
+            "process_shape": [2],
+            "process_group": [0, 1],
+            "dims_mapping": [-1, -1]
+        }
+    }
+    row_strategy = {
+        "tensor_2": {
+            "process_shape": [2],
+            "process_group": [0, 1],
+            "dims_mapping": [0, -1]
+        }
+    }
+    tensor_dict = {"tensor_2": [complete_tensor]}
+    converter = Converter(tensor_dict, complet_strategy, row_strategy)
+    convert_tensor_dict = converter.convert()
+    assert np.equal(convert_tensor_dict["tensor_2"], tensor_row[rank_id]).all()
+
 
 if __name__ == "__main__":
     test_convert()

@@ -360,8 +360,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   if (attrs.size()) {
     if (attr_names.empty()) {
       LOG(WARNING) << "The kernel `" << kernel_name
-                   << "` has not been registered with "
-                      "`KernelRegistry::AddKernelWithAttrs()`.";
+                   << "` has not been registered with attributes order ";
     } else {
       CHECK_EQ(attr_names.size(), attrs.size())
           << "The number of kernel `" << kernel_name
@@ -380,8 +379,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
       }
     }
     LOG(WARNING) << "The attribute `" << attr << "` of kernel `" << kernel_name
-                 << "` is not properly registered with "
-                    "`KernelRegistry::AddKernelWithAttrs()`.";
+                 << "` is not properly register";
     return -1;
   };
 

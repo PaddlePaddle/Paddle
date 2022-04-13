@@ -59,13 +59,15 @@ class OpAttrTypeMap {
 extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
+extern PyTypeObject* p_tensor_type;
 
 bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
   }
 

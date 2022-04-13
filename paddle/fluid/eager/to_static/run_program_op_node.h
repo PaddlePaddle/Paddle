@@ -185,7 +185,13 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOpKernel Compute";
   auto start_op_index = BOOST_GET_CONST(int64_t, attrs.at("start_op_index"));
   auto end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
-  auto is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  // In the original run_program OP, the default value of the is_test
+  // attribute is false, we should check if there is is_test parameter
+  // in attrs
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  }
   auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -362,12 +368,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       std::vector<std::vector<paddle::experimental::Tensor>> &grads,  // NOLINT
       bool create_graph) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    PADDLE_ENFORCE_EQ(
-        grads.size(), 1,
-        paddle::platform::errors::InvalidArgument(
-            "The out_grads.size() of RunProgramGradOp should be equal to 1."));
+    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
+        GradNodeRunProgram::ApplyGradientHooks(grads);
+    PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
+                      paddle::platform::errors::InvalidArgument(
+                          "The hooked_grads.size() of RunProgramGradOp should "
+                          "be equal to 1."));
 
-    VLOG(3) << "out_grads[0].size() : " << grads[0].size();
+    egr::EagerUtils::FillZeroForEmptyGradInputs(&hooked_grads,
+                                                this->InputMeta());
+    VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
     ConstructXGradTensors(x_, &x_grad);
@@ -378,33 +388,25 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       x_grad_ptr.emplace_back(&i);
     }
     for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
+      if (i.defined()) {
+        params_grad_ptr.emplace_back(&i);
+      }
     }
 
-    PADDLE_ENFORCE_EQ(
-        grads[0].size(), fwd_out_names_.size(),
-        paddle::platform::errors::InvalidArgument(
-            "The grads[0].size() and fwd_out_names_.size() should be equal."));
+    PADDLE_ENFORCE_EQ(hooked_grads[0].size(), fwd_out_names_.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The hooked_grads[0].size() and "
+                          "fwd_out_names_.size() should be equal."));
     for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
-      auto &out_grad = egr::EagerUtils::unsafe_autograd_meta(*out_[i])->Grad();
-      const_cast<paddle::experimental::Tensor &>(out_grad).set_impl(
-          grads[0][i].impl());
-
-      const_cast<paddle::experimental::Tensor &>(grads[0][i])
-          .set_name(fwd_out_names_[i] + "@GRAD");
+      hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
     }
-
-    RunProgramGradAPI(x_, params_, grads[0], step_scope_, attrs_, x_grad_ptr,
-                      params_grad_ptr);
+    RunProgramGradAPI(x_, params_, hooked_grads[0], step_scope_, attrs_,
+                      x_grad_ptr, params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
@@ -427,10 +429,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     fwd_out_names_ = out_names;
   }
 
-  void SetOut(const std::vector<paddle::experimental::Tensor *> &out) {
-    out_ = out;
-  }
-
  protected:
   void ConstructXGradTensors(
       const std::vector<paddle::experimental::Tensor> &x,
@@ -451,9 +449,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       const std::vector<paddle::experimental::Tensor> &param,
       std::vector<paddle::experimental::Tensor> *param_grad) {
     for (auto &t : param) {
-      auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
-      if (t_meta->StopGradient()) {
+      // In eager mode, the number of param_grad should be the same as
+      // param, so here an empty Tensor is added for the param with
+      // stop_gradient=True
+      if (!t_grad.defined()) {
         param_grad->emplace_back();
       } else if (t_grad.is_dense_tensor()) {
         param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
@@ -464,6 +464,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     }
   }
 
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
+    return copied_node;
+  }
+
  private:
   // TensorWrappers
   std::vector<paddle::experimental::Tensor> x_;
@@ -471,7 +477,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::framework::Scope *> step_scope_;
 
   std::vector<std::string> fwd_out_names_;
-  std::vector<paddle::experimental::Tensor *> out_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;
