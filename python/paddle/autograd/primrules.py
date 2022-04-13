@@ -172,7 +172,7 @@ def scatter_add_jvp(op, x_dot, y_dot):
 @REGISTER_TRANSPOSE('add_p')
 def add_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and check_dot(y)
+    assert check_dot(x) or check_dot(y)
     x_bar = z_bar if check_dot(x) else None
     y_bar = z_bar if check_dot(y) else None
     return x_bar, y_bar
@@ -180,7 +180,7 @@ def add_transpose(op, check_dot, z_bar):
 
 def sub_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and check_dot(y)
+    assert check_dot(x) or check_dot(y)
     x_bar = z_bar if check_dot(x) else None
     y_bar = neg(z_bar) if check_dot(y) else None
     return x_bar, y_bar
@@ -199,8 +199,9 @@ def mul_transpose(op, check_dot, z_bar):
 @REGISTER_TRANSPOSE('div_p')
 def div_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
-    assert check_dot(x) and not check_dot(y)
-    return div(z_bar, y), None
+    assert not check_dot(y)
+    x_bar = div(z_bar, y) if check_dot(x) else None
+    return x_bar, None
 
 
 @REGISTER_TRANSPOSE('reshape_p')
