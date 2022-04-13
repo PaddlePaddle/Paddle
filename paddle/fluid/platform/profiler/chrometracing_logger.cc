@@ -325,7 +325,7 @@ void ChromeTracingLogger::HandleTypeKernel(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
@@ -376,7 +376,7 @@ void ChromeTracingLogger::HandleTypeMemcpy(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
@@ -411,7 +411,7 @@ void ChromeTracingLogger::HandleTypeMemset(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",

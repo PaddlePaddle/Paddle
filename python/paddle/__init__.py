@@ -269,6 +269,7 @@ from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
 from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
+from .tensor.math import frac  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -608,6 +609,7 @@ __all__ = [  # noqa
            'concat',
            'check_shape',
            'trunc',
+           'frac',
            'digamma',
            'standard_normal',
            'diagonal',

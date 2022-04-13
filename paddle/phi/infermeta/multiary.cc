@@ -1924,7 +1924,7 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
-void SGDInferMeta(const MetaTensor& param,
+void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
                   paddle::optional<const MetaTensor&> master_param,

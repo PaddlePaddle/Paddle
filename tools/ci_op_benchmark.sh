@@ -135,6 +135,8 @@ function load_CHANGE_OP_MAP {
   for change_file in ${CHANGE_OP_FILES[@]}
   do
     change_file_name=${change_file#*paddle/fluid/operators/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpu/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpudnn/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]
     then
       for op_name in ${PADDLE_FILENAME_OP_MAP[$change_file_name]}
