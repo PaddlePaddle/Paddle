@@ -5088,7 +5088,11 @@ def split(input, num_or_sections, dim=-1, name=None):
             # out2.shape [3, 3, 5]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        if isinstance(num_or_sections, int):
+            num_or_sections = [num_or_sections]
+        return _C_ops.final_state_split(input, num_or_sections, dim)
+    elif _in_legacy_dygraph():
         num = None
         attrs = ()
 

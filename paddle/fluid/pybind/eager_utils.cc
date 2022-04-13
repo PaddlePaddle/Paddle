@@ -1012,18 +1012,18 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "int") {
+  if (PyLong_Check(obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (type_name == "float") {
+  } else if (PyFloat_Check(obj)) {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
 
-  } else if (type_name == "bool") {
+  } else if (PyBool_Check(obj)) {
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
 
-  } else if (type_name == "Tensor") {
+  } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
