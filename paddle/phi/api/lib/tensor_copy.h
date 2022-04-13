@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/ext/place.h"
-#include "paddle/phi/common/backend.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p);
-
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
-
-Backend ConvertExtPlaceToBackend(PlaceType p);
+void copy(const Tensor& src, Place place, bool blocking, Tensor* dst);
 
 }  // namespace experimental
 }  // namespace paddle

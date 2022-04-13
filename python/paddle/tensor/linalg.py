@@ -348,7 +348,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         if in_dygraph_mode():
             if dim is None:
-                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+                return _C_ops.final_state_frobenius_norm(input, [], keepdim,
+                                                         True)
             return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
@@ -2834,6 +2835,10 @@ def triangular_solve(x,
         print(out)
         # [7, -2, -5]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
+                                                   unitriangular)
+
     if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',
