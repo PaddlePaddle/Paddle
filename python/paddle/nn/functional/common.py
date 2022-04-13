@@ -1356,29 +1356,31 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy()
+            pad = pad.numpy().tolist()
+        out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
+    else:
         if _in_legacy_dygraph():
+            if isinstance(pad, Variable):
+                pad = pad.numpy().tolist()
             out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
                                "data_format", data_format, "name", name)
         else:
-            out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
-    else:
-        attrs = {'mode': mode, 'value': value, 'data_format': data_format}
-        inputs = {'X': [x]}
-        if isinstance(pad, Variable):
-            inputs['Paddings'] = [pad]
-            attrs['paddings'] = []
-        else:
-            attrs['paddings'] = pad
+            attrs = {'mode': mode, 'value': value, 'data_format': data_format}
+            inputs = {'X': [x]}
+            if isinstance(pad, Variable):
+                inputs['Paddings'] = [pad]
+                attrs['paddings'] = []
+            else:
+                attrs['paddings'] = pad
 
-        helper = LayerHelper('pad3d', **locals())
+            helper = LayerHelper('pad3d', **locals())
 
-        dtype = helper.input_dtype(input_param_name='input')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
+            dtype = helper.input_dtype(input_param_name='input')
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axis=unsqueezed_dim)
@@ -1531,38 +1533,50 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dynamic_mode():
-        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
-                                    False)
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_matmul(x, weight, False, False)
 
         if bias is None:
             return pre_bias
 
-        return _C_ops.elementwise_add(pre_bias, bias)
+        return _C_ops.final_state_add(pre_bias, bias)
     else:
-        helper = LayerHelper('linear', **locals())
-        dtype = x.dtype
+        if _in_legacy_dygraph():
+            pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
+                                        False)
 
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'linear')
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+            if bias is None:
+                return pre_bias
 
-        inputs = {'X': [x], 'Y': [weight]}
-        attrs = {'trans_x': False, 'trans_y': False}
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
-        if bias is not None:
-            res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [tmp],
-                        'Y': [bias]},
-                outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1})
+            return _C_ops.elementwise_add(pre_bias, bias)
         else:
-            res = tmp
-        return res
+            helper = LayerHelper('linear', **locals())
+            dtype = x.dtype
+
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     'linear')
+            check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                        'linear')
+
+            inputs = {'X': [x], 'Y': [weight]}
+            attrs = {'trans_x': False, 'trans_y': False}
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs=inputs,
+                outputs={'Out': tmp},
+                attrs=attrs)
+            if bias is not None:
+                res = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [tmp],
+                            'Y': [bias]},
+                    outputs={'Out': [res]},
+                    attrs={'axis': len(x.shape) - 1})
+            else:
+                res = tmp
+            return res
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):

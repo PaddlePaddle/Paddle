@@ -53,7 +53,6 @@ class ThreadPoolTempl {
     all_coprimes_.reserve(num_threads_);
     for (int i = 1; i <= num_threads_; ++i) {
       all_coprimes_.emplace_back();
-      all_coprimes_.back().push_back(i);
       ComputeCoprimes(i, &(all_coprimes_.back()));
     }
     for (int i = 0; i < num_threads_; i++) {
@@ -130,8 +129,11 @@ class ThreadPoolTempl {
     // this. We expect that such scenario is prevented by program, that is,
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
-      if (num_tasks > num_threads_ - blocked_.load(std::memory_order_relaxed)) {
+      if (num_tasks > num_threads_ - blocked_) {
+        VLOG(6) << "Add task, Notify";
         ec_.Notify(false);
+      } else {
+        VLOG(6) << "Add task, No Notify";
       }
     } else {
       num_tasks_.fetch_sub(1, std::memory_order_relaxed);
@@ -376,17 +378,21 @@ class ThreadPoolTempl {
       ec_.CancelWait();
       return false;
     }
+
+    // Number of blocked threads is used as termination condition.
+    // If we are shutting down and all worker threads blocked without work,
+    // that's we are done.
+    blocked_++;
+
     // Now do a reliable emptiness check.
     int victim = NonEmptyQueueIndex();
     if (victim != -1) {
       ec_.CancelWait();
       *t = thread_data_[victim].queue.PopBack();
+      blocked_--;
       return true;
     }
-    // Number of blocked threads is used as termination condition.
-    // If we are shutting down and all worker threads blocked without work,
-    // that's we are done.
-    blocked_++;
+
     if (done_ && blocked_ == static_cast<unsigned>(num_threads_)) {
       ec_.CancelWait();
       // Almost done, but need to re-check queues.
