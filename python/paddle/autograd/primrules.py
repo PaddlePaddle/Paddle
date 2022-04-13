@@ -219,7 +219,8 @@ def broadcast_transpose(op, check_dot, y_bar):
     axis = list(range(bat))
     keepdim = [(bat + i) for i, s in enumerate(x.shape) if s == 1]
     axis += keepdim
-    return reduce(y_bar, axis=axis, keepdim=keepdim)
+    # TODO: Change it. keepdim boolean
+    return reduce(y_bar, axis=axis, keepdim=False)
 
 
 @REGISTER_TRANSPOSE('transpose_p')
@@ -263,10 +264,12 @@ def reduce_transpose(op, check_dot, y_bar):
 def matmul_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) ^ check_dot(y)
+    # TODO: replace it. this is hacky
+    axis = [1, 0] if len(x.shape) == 2 else [0, 2, 1]
     if check_dot(x):
-        return matmul(z_bar, transpose(y)), None
+        return matmul(z_bar, transpose(y, axis=axis)), None
     else:
-        return None, matmul(transpose(x), z_bar)
+        return None, matmul(transpose(x, axis=axis), z_bar)
 
 
 @REGISTER_TRANSPOSE('slice_select_p')

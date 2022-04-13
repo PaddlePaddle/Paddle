@@ -124,7 +124,8 @@ class Transform(object):
 
     def erase_dots(self, vars_to_erase):
         for var in vars_to_erase:
-            del self.vars[id(var)]
+            if id(var) in self.vars:
+                del self.vars[id(var)]
         self.dot2bar.delete_keyvars(vars_to_erase)
         self.var2dot.delete_valuevars(vars_to_erase)
         for var in vars_to_erase:
