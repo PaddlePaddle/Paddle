@@ -1755,6 +1755,7 @@ USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(strided_slice)
 #endif
 
 namespace paddle_infer {

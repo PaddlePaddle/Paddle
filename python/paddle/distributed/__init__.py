@@ -25,6 +25,7 @@ from .parallel_with_gloo import gloo_release
 
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
+from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import broadcast  # noqa: F401
 from .collective import all_reduce  # noqa: F401
@@ -88,4 +89,5 @@ __all__ = [  # noqa
       "get_rank",
       "ProbabilityEntry",
       "TCPStore",
+      "ParallelMode",
 ]

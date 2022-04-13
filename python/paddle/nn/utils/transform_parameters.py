@@ -37,6 +37,39 @@ def _inplace_reshape_dygraph(x, shape):
 
 
 @dygraph_only
+def _stride_column(param):
+    """
+    A tool function. Permute date of parameter as a 'columns' stride. Now, it only support 2-D parameter.
+
+    Args:
+        param(Tensor]): The param that will be strided according to 'columns'.
+    
+    Examples:
+       .. code-block:: python
+
+            import paddle
+            paddle.seed(100)
+
+            linear = paddle.nn.Linear(2, 3)
+            print(linear.weight)
+            # [[-0.31485492, -1.02896988,  0.45741916],
+            #  [-0.65525872, -1.04643178,  1.07262802]]
+
+            paddle.nn.utils.stride_column(linear.weight)
+            print(linear.weight)
+            # [[-0.31485492,  0.45741916, -1.04643178],
+            #  [-1.02896988, -0.65525872,  1.07262802]]
+
+    """
+    assert len(param.shape) == 2
+    shape = [param.shape[1], param.shape[0]]
+    with paddle.fluid.dygraph.no_grad():
+        reshape_var = paddle.reshape(param, shape)
+        transpose_var = paddle.transpose(reshape_var, [1, 0])
+        transpose_var._share_underline_tensor_to(param)
+
+
+@dygraph_only
 def parameters_to_vector(parameters, name=None):
     """
     Flatten parameters to a 1-D Tensor.

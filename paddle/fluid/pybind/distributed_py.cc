@@ -39,6 +39,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+#include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
+#endif
+
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
@@ -217,6 +222,21 @@ void BindDistributed(py::module *m) {
                     int>(),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+  py::class_<distributed::ProcessGroupHeter,
+             std::shared_ptr<distributed::ProcessGroupHeter>>(
+      *m, "ProcessGroupHeter", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int, int,
+                    int, int, int, int, bool, std::string>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("gid") = 0, py::arg("local_rank") = 0,
+           py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
+           py::arg("gloo_size") = 1, py::arg("with_switch") = false,
+           py::arg("switch_endpoint") = "",
+           py::call_guard<py::gil_scoped_release>());
+#endif
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -227,6 +247,21 @@ void BindDistributed(py::module *m) {
                     int>(),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+  py::class_<distributed::ProcessGroupHeter,
+             std::shared_ptr<distributed::ProcessGroupHeter>>(
+      *m, "ProcessGroupHeter", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int, int,
+                    int, int, int, int, bool, std::string>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("gid") = 0, py::arg("local_rank") = 0,
+           py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
+           py::arg("gloo_rank") = 1, py::arg("with_switch") = false,
+           py::arg("switch_endpoint") = "",
+           py::call_guard<py::gil_scoped_release>());
+#endif
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
