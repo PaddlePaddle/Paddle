@@ -112,13 +112,13 @@ uint32_t Place::Hash::operator()(const Place &place) const {
 
 namespace paddle {
 
-phi::Place PlaceType::kUNK = phi::Place();
-phi::Place PlaceType::kCPU = phi::Place(phi::AllocationType::CPU);
+thread_local phi::Place PlaceType::kUNK = phi::Place();
+thread_local phi::Place PlaceType::kCPU = phi::Place(phi::AllocationType::CPU);
 // GPU Place contains device id, here we use default value 0, so it cannot
 // use for multi-casd cases, but because it is static variable, it is difficult
 // to get the exact device id at all time.
 // NOTE: Please DO NOT use this place in the framework!!!
 // It only for external compatibility
-phi::Place PlaceType::kGPU = phi::Place(phi::AllocationType::GPU);
+thread_local phi::Place PlaceType::kGPU = phi::Place(phi::AllocationType::GPU);
 
 }  // namespace paddle

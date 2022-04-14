@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include "paddle/extension.h"
@@ -109,6 +110,11 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   // TODO(chenweihang): Check Input
+  std::cout << std::this_thread::get_id() << " - x.place: " << x.place()
+            << std::endl;
+  std::cout << std::this_thread::get_id()
+            << " - PlaceType gpu place: " << paddle::PlaceType::kGPU
+            << std::endl;
   if (x.place() == paddle::PlaceType::kCPU) {
     return relu_cpu_forward(x);
   } else if (x.place() == paddle::PlaceType::kGPU) {

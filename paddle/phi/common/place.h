@@ -234,9 +234,9 @@ The new type cannot be used as int value! If you use as int, please modify
 the implementation.
 */
 struct PADDLE_API PlaceType {
-  static phi::Place kUNK;
-  static phi::Place kCPU;
-  static phi::Place kGPU;
+  static thread_local phi::Place kUNK;
+  static thread_local phi::Place kCPU;
+  static thread_local phi::Place kGPU;
 };
 
 }  // namespace paddle

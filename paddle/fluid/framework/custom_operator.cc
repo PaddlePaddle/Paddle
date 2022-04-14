@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
@@ -650,6 +651,14 @@ static void RegisterOperatorKernel(const std::string& name,
     op_kernel_func = [kernel_func, inputs, outputs,
                       attrs](const framework::ExecutionContext& ctx) {
       VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
+// NOTE: In order to remove and be compatible with the enumeration type
+// `PlaceType` equal operation in custom operator like:
+// - PD_CHECK(x.place() == paddle::PlaceType::kGPU)
+// TODO(chenweihang): Remove this trick later
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      paddle::PlaceType::kGPU =
+          phi::Place(phi::AllocationType::GPU, platform::GetCurrentDeviceId());
+#endif
       RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
     };
   } else {
