@@ -223,8 +223,8 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1 || amp_level_ == AmpLevel::O2) {
-    // auto agnostic_ops = LayoutAutotuneOperators::Instance().GetAgnosticOps();
-    // phi::autotune::LayoutAutoTune::Instance().SetAgnosticOps(agnostic_ops);
+    auto agnostic_ops = LayoutAutotuneOperators::Instance().GetAgnosticOps();
+    phi::autotune::LayoutAutoTune::Instance().SetAgnosticOps(agnostic_ops);
     const auto& tracer = imperative::GetCurrentTracer();
     new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
                                                       place, tracer);
