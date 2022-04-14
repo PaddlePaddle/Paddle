@@ -73,7 +73,7 @@ Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,
                    bool blocking) {
-  if (!src.is_initialized()) {
+  if (!src.initialized()) {
     VLOG(8) << "Src is empty, skip copy";
     return;
   }
@@ -81,7 +81,7 @@ void Tensor::copy_(const Tensor &src,
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   KernelType kernel_type = ParseKernelTypeByInputArgs(src);
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
-  if (is_initialized()) {
+  if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
                       src.dtype(),
                       phi::errors::PreconditionNotMet(
@@ -97,16 +97,15 @@ void Tensor::copy_(const Tensor &src,
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
-                      inner_place(),
+                      place(),
                       phi::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
                           target_place,
-                          inner_place()));
-    kernel_key_set.backend_set =
-        kernel_key_set.backend_set |
-        BackendSet(phi::TransToPhiBackend(inner_place()));
+                          place()));
+    kernel_key_set.backend_set = kernel_key_set.backend_set |
+                                 BackendSet(phi::TransToPhiBackend(place()));
   } else {
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
