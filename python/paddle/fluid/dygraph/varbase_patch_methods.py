@@ -878,10 +878,13 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
         Get the values of current SparseTensor(COO or CSR).
+
         Returns:
             Tensor: A DenseTensor
+
         Examples:
             .. code-block:: python
+
                 import paddle
                 from paddle.fluid.framework import _test_eager_guard
                 with _test_eager_guard():
@@ -907,10 +910,13 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
+
         Returns:
             Tensor: A DenseTensor
+
         Examples:
             .. code-block:: python
+
                 import paddle
                 from paddle.fluid.framework import _test_eager_guard
                 with _test_eager_guard():
@@ -937,10 +943,13 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
         Convert the current DenseTensor to SparseTensor in COO format.
+
         Returns:
             Tensor: A SparseCooTensor
+
         Examples:
             .. code-block:: python
+
                 import paddle
                 from paddle.fluid.framework import _test_eager_guard
                 with _test_eager_guard():
