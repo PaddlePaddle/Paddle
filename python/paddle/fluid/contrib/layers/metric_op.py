@@ -109,6 +109,7 @@ def ctr_metric_bundle(input, label, mask=None):
                 value=0.0, force_cpu=True))
         
     if mask is not None:
+        mask = nn.cast(mask, dtype='float32')
         input = input * mask
         label = label * mask
 
@@ -149,6 +150,14 @@ def ctr_metric_bundle(input, label, mask=None):
         type="sigmoid",
         inputs={"X": [input]},
         outputs={"Out": [tmp_res_sigmoid]})
+
+    if mask is not None:
+        helper.append_op(
+            type="elementwise_mul",
+            inputs={"X": [mask],
+                    "Y": [tmp_res_sigmoid]},
+            outputs={"Out": [tmp_res_sigmoid]})
+
     helper.append_op(
         type="reduce_sum",
         inputs={"X": [tmp_res_sigmoid]},
@@ -171,7 +180,7 @@ def ctr_metric_bundle(input, label, mask=None):
     
     if mask is None:
         mask = helper.create_global_variable(
-            persistable=False, dtype='float32', shape=[-1])
+            persistable=False, dtype='float32', shape=[-1, 1])
         helper.append_op(
             type='fill_constant_batch_size_like',
             inputs={"Input": label},
