@@ -136,9 +136,9 @@ class Optimizer {
     }
   }
 
-#endif
 };
 
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif

@@ -17,9 +17,17 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <vector>
+
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+
+#ifdef PADDLE_WITH_XPU_KP
+#include <xpu/runtime.h>  // NOLINT
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
@@ -33,10 +41,9 @@ namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 using ppStream = cudaStream_t;
-// using ppStreamCreate = cudaStreamCreate;
+
 #elif defined(PADDLE_WITH_XPU_KP)
 using ppStream = XPUStream;
-// using ppStreamCreate = xpu_stream_create;;
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -60,6 +67,38 @@ class GPUResource {
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
 };
+#elif defined(PADDLE_WITH_XPU_KP)
+class XPUResource {
+ public:
+  XPUResource(std::vector<int>& device_id, int index);  // NOLINT
+  virtual ~XPUResource();
+  XPUResource(const XPUResource&) = delete;
+  XPUResource& operator=(const XPUResource&) = delete;
+
+  int dev_id() const { return dev_id_; }
+  int index() const { return index_; }
+  XPUStream local_stream(int num) { return local_streams_[num]; }
+  XPUStream remote_stream(int num) { return remote_streams_[num]; }
+  XPUStream comm_stream(int num) { return comm_streams_[num]; }
+
+  int dev_id_;
+  int index_;
+  std::vector<int> dev_ids_;
+  std::vector<XPUStream> remote_streams_;
+  std::vector<XPUStream> local_streams_;
+  std::vector<XPUStream> comm_streams_;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+using DevResource = GPUResource;
+using DevPlace = platform::CUDAPlace;
+using AnyDeviceGuard = platform::CUDADeviceGuard;
+#elif defined(PADDLE_WITH_XPU_KP)
+using DevResource = XPUResource;
+using DevPlace = platform::XPUPlace;
+using AnyDeviceGuard = platform::XPUDeviceGuard;
+#endif
 
 #elif defined(PADDLE_WITH_XPU_KP)
 class XPUResource {

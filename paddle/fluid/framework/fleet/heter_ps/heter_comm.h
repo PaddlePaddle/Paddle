@@ -15,21 +15,19 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
-#include "cub/cub.cuh"
-#include "cub/util_allocator.cuh"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "thrust/pair.h"
-#endif
-#ifdef PADDLE_WITH_XPU_KP
+#elif defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
-#include "heter_resource.h"                                   // NOLINT
-#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"  // NOLINT
+
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
@@ -66,6 +64,7 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
+
   int log2i(int x);
 
   template <typename DstPlace, typename SrcPlace, typename StreamType>
@@ -94,7 +93,6 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
-#endif
 
   bool need_transfer(int send_id, int receive_id) {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
@@ -102,9 +100,11 @@ class HeterComm {
 
   // void dump_to_cpu(int index);
 
-  void end_pass();
-
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
+
+#endif
+
+  void end_pass();
 
   struct Node {
     ppStream in_stream;
@@ -153,8 +153,12 @@ class HeterComm {
       }
     }
 
+#if defined(PADDLE_WITH_CUDA)
     platform::CUDAPlace place_;
 
+#elif defined(PADDLE_WITH_XPU_KP)
+    platform::XPUPlace place_;
+#endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
 
@@ -171,13 +175,12 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(const StreamType& stream) {
-// if (stream >= 0) {
+
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU_KP)
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
 #endif
-    // }
   }
 
   template <typename StreamType>

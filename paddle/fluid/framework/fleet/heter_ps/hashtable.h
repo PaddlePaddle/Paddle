@@ -19,28 +19,31 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
+
 #ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
 #endif
-#ifdef PADDLE_WITH_PSCORE
+
+#if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/phi/core/utils/rw_lock.h"
-#ifdef PADDLE_WITH_CUDA
+
+
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
-#endif
-#if defined(__xpu__)
-// #include "paddle/phi/kernels/primitive/kernel_primitives.h"
+
+#elif defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-// #include "cudf/concurrent_unordered_map.cuh.h"
+
 
 namespace paddle {
 namespace framework {
@@ -56,9 +59,9 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
-#endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#elif defined(PADDLE_WITH_XPU_KP)
+
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
@@ -74,20 +77,18 @@ class XPUCacheArray {
 
   void print() {}
 
-  // __device__ ValType* find(const KeyType& key) { return &vals[0]; }
+  // ValType* find(const KeyType& key) { return NULL; }
+  // bool insert(const KeyType& key, const ValType& val) { return true; }
 
-  // __device__ bool insert(const KeyType& key, const ValType& val) { return
-  // true; }
-
-  size_t size() { return 0; }
+  int prefetch(const int dev_id, XPUStream stream = NULL) {}
+  size_t size() { return size_; }
 
  private:
-  long long capacity_ = 1;  // NOLINT
-  long long size_;          // NOLINT
+  long long capacity_;
+  long long size_;
   KeyType* keys;
   ValType* vals;
 };
-
 #endif
 
 template <typename KeyType, typename ValType>
