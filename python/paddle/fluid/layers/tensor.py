@@ -622,12 +622,15 @@ def assign(input, output=None):
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
         if _non_static_mode():
-            if output is None:
-                if _in_legacy_dygraph():
-                    output = core.VarBase()
-                else:
-                    output = core.eager.Tensor()
-            _C_ops.assign(input, output)
+            if in_dygraph_mode() and output is None:
+                output = _C_ops.final_state_assign(input)
+            else:
+                if output is None:
+                    if _in_legacy_dygraph():
+                        output = core.VarBase()
+                    else:
+                        output = core.eager.Tensor()
+                _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
