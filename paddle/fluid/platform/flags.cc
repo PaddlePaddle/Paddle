@@ -754,13 +754,12 @@ PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
 
 /*
  * CINN related FLAG
- * Name: FLAGS_use_cinn
+ * Name: FLAGS_enable_pe_launch_cinn
  * Since Version: 2.3
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * program
- * of a paddle graph with ParallelExecutor, otherwise using default scheduler of
- * CINN.
+ * instructions of a paddle graph with ParallelExecutor, otherwise with the
+ * CINN compiled runtime program in sequential order.
  */
 PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn, true,
                             "It controls whether to execute cinn compiled "
