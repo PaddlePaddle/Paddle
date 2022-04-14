@@ -117,6 +117,8 @@ void MatrixWrapper::sample(const uint16_t sample_slot, const std::vector<uint16_
     t.wait();
   }
   std::cout<< "end push path" << std::endl;
+  sleep(20);
+  std::cout<< "end push path sleep 20s" << std::endl;
 
   // pull path
   std::vector<uint64_t> fea_keys;
@@ -139,6 +141,7 @@ void MatrixWrapper::sample(const uint16_t sample_slot, const std::vector<uint16_
   }
   std::cout << "pull keys:" << fea_keys[0] << ", pull path:" << node->paths[0] << ", " << node->paths[1];
 
+  sleep(20);
   sample_results->clear();
   for (auto& data : *src_datas) {
     VLOG(1) << "src record";
