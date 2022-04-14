@@ -58,8 +58,12 @@ if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_layer_op)
 endif()
 
+# used to set eigen include path inside paddle_bfloat files
+add_definitions(-DPADDLE_BFLOAT_USE_PADDLE_PATH)
+
 set(PYBIND_SRCS
   paddle_bfloat/bfloat16.cc
+  #${PADDLE_BFLOAT_INCLUDE_DIR}/bfloat16.cc
   pybind.cc
   exception.cc
   protobuf.cc

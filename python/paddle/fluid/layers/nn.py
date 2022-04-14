@@ -335,7 +335,7 @@ def fc(input,
         for i, input_x in enumerate(input):
             check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
     dtype = helper.input_dtype()
-    check_dtype(dtype, 'input', ['float16', bfloat16, 'float32', 'float64'],
+    check_dtype(dtype, 'input', ['float16', 'bfloat16', 'float32', 'float64'],
                 'fc')
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
@@ -6384,7 +6384,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     check_variable_and_dtype(x, 'x', [
         'float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'bool',
-        bfloat16
+        'bfloat16'
     ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
@@ -10843,7 +10843,7 @@ def uniform_random_batch_size_like(input,
 
 
     """
-    check_variable_and_dtype(input, 'Input', ("float32", 'float64', bfloat16),
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64', 'bfloat16'),
                              'uniform_random_batch_size_like')
     check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
     check_dtype(dtype, 'dtype', ('float32', 'float64', 'bfloat16'),
@@ -11796,10 +11796,12 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', bfloat16, 'float32', 'float64', 'int32', 'int64'],
+        x, 'x',
+        ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
         op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', bfloat16, 'float32', 'float64', 'int32', 'int64'],
+        y, 'y',
+        ['float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64'],
         op_type)
 
     axis = helper.kwargs.get('axis', -1)
@@ -11875,7 +11877,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
-        'float16', bfloat16, 'float32', 'float64', 'int8', 'int16', 'int32',
+        'float16', 'bfloat16', 'float32', 'float64', 'int8', 'int16', 'int32',
         'int64', 'uint8'
     ], "scale")
     inputs = {'X': [x]}
@@ -12900,7 +12902,7 @@ def mean(x, name=None):
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', bfloat16], 'mean')
+        x, 'x', ['float16', 'float32', 'float64', 'bfloat16'], 'mean')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -15631,7 +15633,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                                      float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64', bfloat16),
+    check_dtype(dtype, 'dtype', ('float32', 'float64', 'bfloat16'),
                 'uniform_random/rand')
 
     inputs = dict()

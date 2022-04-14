@@ -208,6 +208,7 @@ include(external/boost)     # download boost
 include(external/eigen)     # download eigen3
 include(external/threadpool)# download threadpool
 include(external/dlpack)    # download dlpack
+include(external/paddle_bfloat) # download paddle_bfloat
 include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
 include(external/utf8proc)   # download, build, install utf8proc
