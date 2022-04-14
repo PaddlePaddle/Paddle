@@ -278,5 +278,5 @@ std::set<std::string> special_inplace_op_set = {
 };
 
 std::set<std::string> special_no_need_buffer_op_set = {
-    "sequence_conv", "gru_unit",
+    "sequence_conv",
 };

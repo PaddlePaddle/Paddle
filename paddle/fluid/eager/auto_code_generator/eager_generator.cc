@@ -1141,6 +1141,12 @@ static std::string GenerateGradNodeCreationContent(
 
   // [GradOpNode] Set TensorWrappers
   grad_node_creation_str += "      // Set Tensor Wrappers\n";
+  std::unordered_set<std::string> dispensable_input_name_set;
+  for (const proto::OpProto::Var& input : in_vars) {
+    if (input.dispensable()) {
+      dispensable_input_name_set.insert(input.name());
+    }
+  }
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -1151,7 +1157,8 @@ static std::string GenerateGradNodeCreationContent(
       std::string full_reserved = "false";
       if (fwd_outputs_name_pos_map.find(tensor_wrapper_name) ==
               fwd_outputs_name_pos_map.end() &&
-          !no_need_buffer_ins.count(tensor_wrapper_name)) {
+          !(no_need_buffer_ins.count(tensor_wrapper_name) &&
+            !dispensable_input_name_set.count(tensor_wrapper_name))) {
         full_reserved = "true";
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2533,6 +2540,12 @@ static std::string GenerateGradNodeHeaderContents(
   VLOG(6) << "Generated SetAttr";
 
   // [Generation] Handle TensorWrappers
+  std::unordered_set<std::string> dispensable_input_name_set;
+  for (const proto::OpProto::Var& input : in_vars) {
+    if (input.dispensable()) {
+      dispensable_input_name_set.insert(input.name());
+    }
+  }
   std::unordered_set<std::string> duplicable_tensors;
   for (const proto::OpProto::Var& input : in_vars) {
     if (input.duplicable()) {
@@ -2562,7 +2575,8 @@ static std::string GenerateGradNodeHeaderContents(
       std::string tensor_wrapper_body_str;
       std::string full_reserved_str = "full_reserved";
       std::string no_need_buffer_str = "false";
-      if (no_need_buffer_ins.count(tensor_wrapper_name)) {
+      if (no_need_buffer_ins.count(tensor_wrapper_name) &&
+          !dispensable_input_name_set.count(tensor_wrapper_name)) {
         no_need_buffer_str = "true";
       }
       if (duplicable_tensors.count(tensor_wrapper_name)) {
