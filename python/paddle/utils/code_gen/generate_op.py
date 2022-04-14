@@ -88,21 +88,13 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
 
 if __name__ == "__main__":
-    current_dir = Path(__file__).parent
-    gen_op_dir = (current_dir / "../../../../paddle/fluid/operators/").resolve()
-    gen_arg_map_dir = (current_dir /
-                       "../../../../paddle/phi/ops/compat/").resolve()
     parser = argparse.ArgumentParser(
         description="Generate operator file from api yaml.")
     parser.add_argument(
-        '--api_yaml_path',
-        type=str,
-        default=str(current_dir / "new_api.parsed.yaml"),
-        help="parsed api yaml file.")
+        '--api_yaml_path', type=str, help="parsed api yaml file.")
     parser.add_argument(
         '--backward_api_yaml_path',
         type=str,
-        default=str(current_dir / "new_backward_api.parsed.yaml"),
         help="parsed backward api yaml file.")
     parser.add_argument(
         "--output_op_path", type=str, help="path to save generated operators.")

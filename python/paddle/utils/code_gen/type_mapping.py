@@ -25,7 +25,7 @@ optional_input_types_map = {
 
 attr_types_map = {
     # special types
-    'IntArray': 'const ScalarArray&',
+    'IntArray': 'const IntArray&',
     'Scalar': 'const Scalar&',
     'Scalar(bool)': 'const Scalar&',
     'Scalar(int)': 'const Scalar&',
@@ -84,7 +84,7 @@ output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
 #------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()
 phi_attr_types_map.update({
-    'ScalarArray': 'const phi::ScalarArray&',
+    'ScalarArray': 'const phi::IntArray&',
     'Scalar': 'const phi::Scalar&'
 })
 
@@ -102,7 +102,7 @@ dense_optional_input_types_map = {
 
 dense_output_types_map = {
     'Tensor': 'phi::DenseTensor*',
-    'Tensor[]': 'std::vector<phi::DenseTensor*>&'
+    'Tensor[]': 'std::vector<phi::DenseTensor*>'
 }
 
 #---------------------- phi selected rows------------------------------

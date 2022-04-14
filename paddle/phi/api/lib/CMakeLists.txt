@@ -68,7 +68,65 @@ if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
 endif()
 
+# install extra dependencies
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+)
 
+# parse apis
+set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
+set(generated_op_path ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
+set(generated_argument_mapping_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
+  COMMAND ${PYTHON_EXECUTABLE} parse_api.py 
+      --api_yaml_path ./api.yaml 
+      --output_path ./parsed_apis/api.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_api.py 
+      --api_yaml_path ./new_api.yaml 
+      --output_path ./parsed_apis/new_api.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_api.py
+      --api_yaml_path ./backward.yaml
+      --output_path ./parsed_apis/backward_api.parsed.yaml
+      --backward
+  COMMAND ${PYTHON_EXECUTABLE} parse_api.py
+      --api_yaml_path ./new_backward.yaml
+      --output_path ./parsed_apis/new_backward_api.parsed.yaml
+      --backward
+  RESULTS_VARIABLE _results
+)
+foreach(_result in ${_results})
+  if (${_result})
+    message(FATAL_ERROR "api yaml parsing failed, exiting.")
+  endif()
+endforeach()
+
+# validation of api yamls
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  COMMAND ${PYTHON_EXECUTABLE} cross_validate.py
+      --forward_yaml_paths ./parsed_apis/api.parsed.yaml ./parsed_apis/new_api.parsed.yaml 
+      --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml ./parsed_apis/new_backward_api.parsed.yaml
+  RESULT_VARIABLE _result
+)
+if (${_result}) 
+    message(FATAL_ERROR "api validation failed, exiting." )
+endif()
+
+# code generation for op, op makers, and argument mapping functions
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  COMMAND ${PYTHON_EXECUTABLE} generate_op.py
+      --api_yaml_path ./parsed_apis/new_api.parsed.yaml
+      --backward_api_yaml_path ./parsed_apis/new_backward_api.parsed.yaml
+      --output_op_path "${generated_op_path}"
+      --output_arg_map_path "${generated_argument_mapping_path}"
+  RESULT_VARIABLE _result
+)
+if (${_result})
+    message(FATAL_ERROR "operator codegen failed, exiting." )
+endif()
 
 # generate forward api
 add_custom_command(
@@ -167,7 +225,7 @@ cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS phi_tensor_raw phi_conte
 cc_library(api_gen_utils SRCS api_gen_utils.cc DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
 cc_library(phi_data_transform SRCS data_transform.cc DEPS phi_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
 cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta phi_data_transform)
-cc_library(sparse_api_custom_impl SRCS sparse_api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
+cc_library(sparse_api_custom_impl SRCS sparse_api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform tensor_copy)
 
 cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform api_custom_impl)
 cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta phi_data_transform phi_function_api api_custom_impl global_utils)
@@ -176,3 +234,5 @@ cc_library(sparse_bw_api SRCS ${sparse_bw_api_source_file} DEPS phi_tensor_raw p
 cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform phi_function_api sparse_api)
 cc_library(strings_api SRCS ${strings_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api api_gen_utils kernel_dispatch infermeta sparse_api strings_api)
+cc_library(tensor_copy SRCS tensor_copy.cc DEPS phi_tensor_raw copy_kernel kernel_dispatch api_gen_utils)
+cc_library(api_scalar SRCS scalar.cc DEPS tensor_copy)

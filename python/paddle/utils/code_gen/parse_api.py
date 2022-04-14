@@ -36,19 +36,11 @@ def main(api_yaml_path, output_path, backward):
 
 
 if __name__ == "__main__":
-    current_dir = Path(__file__).parent
     parser = argparse.ArgumentParser(
         description="Parse api yaml into canonical format.")
+    parser.add_argument('--api_yaml_path', type=str, help="api yaml file.")
     parser.add_argument(
-        '--api_yaml_path',
-        type=str,
-        default=str(current_dir / "new_api.yaml"),
-        help="api yaml file.")
-    parser.add_argument(
-        "--output_path",
-        type=str,
-        default=str(current_dir / "new_api.parsed.yaml"),
-        help="path to save parsed yaml file.")
+        "--output_path", type=str, help="path to save parsed yaml file.")
     parser.add_argument("--backward", action="store_true", default=False)
 
     args = parser.parse_args()
