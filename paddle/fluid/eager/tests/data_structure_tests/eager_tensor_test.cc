@@ -89,7 +89,7 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
-  CHECK(paddle::platform::is_cpu_place(et3.inner_place()));
+  CHECK(paddle::platform::is_cpu_place(et3.place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();

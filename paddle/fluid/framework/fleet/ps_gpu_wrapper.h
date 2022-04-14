@@ -83,6 +83,10 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -142,7 +146,7 @@ class PSGPUWrapper {
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
-      keys_tensor.resize(resource_->total_gpu());
+      keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -308,8 +312,8 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map[index_dim_vec_[i]] = i;
     }
-    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
-    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
@@ -399,6 +403,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:
   static bool is_initialized_;

@@ -276,11 +276,12 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                 args.handle, args.idesc.desc(), args.wdesc.desc(),
                 args.cdesc.desc(), args.odesc.desc(),
                 static_cast<cudnnConvolutionFwdAlgo_t>(algo), &workspace_size);
-        if (status == CUDNN_STATUS_SUCCESS) {
+        if (status == CUDNN_STATUS_SUCCESS &&
+            workspace_size <= workspace_size_limit) {
           max_workspace_size = std::max(workspace_size, max_workspace_size);
         }
       }
-      return std::min(max_workspace_size, workspace_size_limit);
+      return max_workspace_size;
     } else {
       return workspace_size_limit;
     }
@@ -425,11 +426,12 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                 args.cdesc.desc(), args.idesc.desc(),
                 static_cast<cudnnConvolutionBwdDataAlgo_t>(algo),
                 &workspace_size);
-        if (status == CUDNN_STATUS_SUCCESS) {
+        if (status == CUDNN_STATUS_SUCCESS &&
+            workspace_size <= workspace_size_limit) {
           max_workspace_size = std::max(workspace_size, max_workspace_size);
         }
       }
-      return std::min(max_workspace_size, workspace_size_limit);
+      return max_workspace_size;
     } else {
       return workspace_size_limit;
     }
@@ -588,11 +590,12 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                 args.cdesc.desc(), args.wdesc.desc(),
                 static_cast<cudnnConvolutionBwdFilterAlgo_t>(algo),
                 &workspace_size);
-        if (status == CUDNN_STATUS_SUCCESS) {
+        if (status == CUDNN_STATUS_SUCCESS &&
+            workspace_size <= workspace_size_limit) {
           max_workspace_size = std::max(workspace_size, max_workspace_size);
         }
       }
-      return std::min(max_workspace_size, workspace_size_limit);
+      return max_workspace_size;
     } else {
       return workspace_size_limit;
     }
