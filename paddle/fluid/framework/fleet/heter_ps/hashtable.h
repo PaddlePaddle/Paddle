@@ -85,37 +85,6 @@ class XPUCacheArray {
 };
 #endif
 
-#elif defined(PADDLE_WITH_XPU_KP)
-
-template <typename KeyType, typename ValType>
-class XPUCacheArray {
- public:
-  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
-  }
-
-  virtual ~XPUCacheArray() {
-    xpu_free(keys);
-    xpu_free(vals);
-  }
-
-  void print() {}
-
-  // ValType* find(const KeyType& key) { return NULL; }
-  // bool insert(const KeyType& key, const ValType& val) { return true; }
-
-  int prefetch(const int dev_id, XPUStream stream = NULL) {}
-  size_t size() { return size_; }
-
- private:
-  long long capacity_;
-  long long size_;
-  KeyType* keys;
-  ValType* vals;
-};
-#endif
-
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
