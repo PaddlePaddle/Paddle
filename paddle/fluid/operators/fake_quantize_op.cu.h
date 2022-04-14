@@ -305,7 +305,7 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
     T s = scale[(i / quant_stride) % nScale];
-    T inv_s = 1.0 / s;
+    T inv_s = inverse(s);
     T x = in[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;

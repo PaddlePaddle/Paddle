@@ -114,7 +114,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var" || !tensors[i].is_initialized()) {
+    if (name == "Fake_var" || !tensors[i].initialized()) {
       continue;
     }
     auto *var = scope->Var(name);
