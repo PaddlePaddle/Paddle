@@ -2665,28 +2665,8 @@ PDNode *patterns::UnsupportedBfloat16::operator()() {
   return op;
 }
 
-PDNode *patterns::LastBfloat16Ops::operator()() {
-  auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
-  op->LinksTo({op_out});
-  return op_out;
-}
-
-PDNode *patterns::DuplicatedInputs::operator()() {
+PDNode *patterns::Bloat16Ops::operator()() {
   auto op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  return op;
-}
-
-PDNode *patterns::DuplicatedOutputs::operator()() {
-  auto op = pattern->NewNode(op_repr())->assert_is_ops({"split"});
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";

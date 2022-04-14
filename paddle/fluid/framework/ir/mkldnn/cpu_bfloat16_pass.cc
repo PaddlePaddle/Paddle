@@ -24,83 +24,34 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void AddReoderAfterDuplicatedOutputs(ir::Graph* graph, int& dequantize_counter);
-void AddReoderAfterSingleOutputs(ir::Graph* graph, int& dequantize_counter);
-
 void AddQuantizes(Graph* g, ir::Node* op, int& quantize_counter);
 void AddDequantizes(Graph* g, ir::Node* op, int& dequantize_counter);
-void AddDequantize(Graph* g, ir::Node* op, ir::Node* op_out, int& dequantize_counter);
 
 bool IsAlreadyLinked(const std::vector<std::string>& node_names, std::string node_name);
-ir::Node* create_quantize_op(const std::string& input_name, const std::string& output_name, Graph* g, ir::Node* op);
+ir::Node* create_quant_op(const std::string& op_type, const std::string& input_name, const std::string& output_name, Graph* g, ir::Node* op);
 void UnlinkNodes(ir::Node* a, ir::Node* b);
 bool IsNotPermittedInputName(const std::string& input_name);
-bool IsPermittedOutputName(const std::string& output_name);
+bool IsNotPermittedOutputName(const std::string& output_name);
 
 void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
-  SetInputDataType(graph);
-  SetOutputDataType(graph);
-}
-
-void CPUBFloat16Pass::SetInputDataType(ir::Graph* graph) const {
   int quantize_counter = 0;
+  int dequantize_counter = 0;
 
   GraphPatternDetector gpd;
-  patterns::DuplicatedInputs duplicated_inputs{gpd.mutable_pattern(),
-                                               "duplicated_inputs"};
-  duplicated_inputs();
+  patterns::Bloat16Ops Bloat16Ops{gpd.mutable_pattern(), "Bloat16Ops"};
+  Bloat16Ops();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(op, op, duplicated_inputs);
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, Bloat16Ops);
     AddQuantizes(g, op, quantize_counter);
+    AddDequantizes(g, op, dequantize_counter);
   };
   gpd(graph, handler);
 
   PrettyLogDetail("---    added %d quantize ops before bfloat16 op",
                   quantize_counter);
-}
-
-void CPUBFloat16Pass::SetOutputDataType(ir::Graph* graph) const {
-  int dequantize_counter = 0;
-  AddReoderAfterDuplicatedOutputs(graph, dequantize_counter);
-  AddReoderAfterSingleOutputs(graph, dequantize_counter);
   PrettyLogDetail("---    added %d dequantize ops after bfloat16 op",
                   dequantize_counter);
-}
-
-// Operators like split have a single output name Out, which actually
-// consists of multiple outputs. Such operators require a different way to find
-// pattern and add dequantize ops.
-void AddReoderAfterDuplicatedOutputs(ir::Graph* graph,
-                                     int& dequantize_counter) {
-  GraphPatternDetector gpd;
-  patterns::DuplicatedOutputs duplicated_outputs{gpd.mutable_pattern(),
-                                                 "duplicated_outputs"};
-  duplicated_outputs();
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(op, op, duplicated_outputs);
-    AddDequantizes(g, op, dequantize_counter);
-  };
-  gpd(graph, handler);
-}
-
-// Adding dequantize ops after all operators except split, which has
-// already been handled in AddReoderAfterDuplicatedOutputs
-void AddReoderAfterSingleOutputs(ir::Graph* graph, int& dequantize_counter) {
-  GraphPatternDetector gpd;
-  patterns::LastBfloat16Ops bfloat16_ops{gpd.mutable_pattern(),
-                                         "last_bfloat16_ops"};
-  bfloat16_ops();
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(op_out, op_out, bfloat16_ops);
-    GET_IR_NODE_FROM_SUBGRAPH(op, op, bfloat16_ops);
-    if (op->Op()->Type() != "split") {
-      AddDequantize(g, op, op_out, dequantize_counter);
-    }
-  };
-  gpd(graph, handler);
 }
 
 void AddQuantizes(Graph* g, ir::Node* op, int& quantize_counter) {
@@ -135,7 +86,7 @@ void AddQuantizes(Graph* g, ir::Node* op, int& quantize_counter) {
       auto output_name = quantize_out_node->Name();
       quantize_output_names.emplace_back(output_name);
 
-      auto quantize_op = create_quantize_op(physical_input_name, output_name, g, op);
+      auto quantize_op = create_quant_op("quantize", physical_input_name, output_name, g, op);
 
       auto physical_input_node = inputs_map[physical_input_name];
       UnlinkNodes(physical_input_node, op);
@@ -156,81 +107,45 @@ void AddDequantizes(Graph* g, ir::Node* op, int& dequantize_counter) {
                     platform::errors::InvalidArgument(
                         "OP(%s)'s outputs(%d) must be equal or greater than 1.",
                         op->Name(), outputs.size()));
-  PADDLE_ENFORCE_EQ(op->inputs.size(), 1,
-                    platform::errors::InvalidArgument(
-                        "OP(%s)'s inputs(%d) must be equal to 1.", op->Name(),
-                        op->inputs.size()));
 
-  OpDesc deq_desc;
-  deq_desc.SetType("dequantize");
+  std::map<std::string, ir::Node*> outputs_map;
+  for(auto output: outputs)
+    outputs_map[output->Name()] = output;
 
-  std::vector<Node*> dequantize_in_nodes(outputs.size());
-  std::vector<std::string> dequantize_in_node_names(outputs.size());
+  std::vector<std::string> linked_outputs;
 
-  for (size_t i = 0; i < outputs.size(); i++) {
-    VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
-    dequantize_in_nodes[i] = g->CreateVarNode(&dequantize_in_desc);
-    dequantize_in_node_names[i] = dequantize_in_nodes[i]->Name();
+  auto op_outputs = op->Op()->Outputs();
+  for(auto logical_output : op_outputs) {
+    std::vector<std::string> dequantize_input_names;
+    dequantize_input_names.reserve(outputs.size());
 
-    deq_desc.SetInput("Input",
-                      std::vector<std::string>({dequantize_in_node_names[i]}));
-    deq_desc.SetOutput("Output",
-                       std::vector<std::string>({outputs[i]->Name()}));
+    auto logical_output_name = logical_output.first;
+    if(IsNotPermittedOutputName(logical_output_name))
+      continue;
 
-    deq_desc.SetAttr("Scale", 1.f);
-    deq_desc.SetAttr("Shift", 0.0f);
-    deq_desc.SetAttr("bfloat16", true);
-    deq_desc.SetAttr("output_format", op->Op()->HasAttr("data_layout")
-                                          ? op->Op()->GetAttr("data_layout")
-                                          : std::string("NCHW"));
-    auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
+    auto physical_outputs_names = logical_output.second;
+    for(auto physical_output_name: physical_outputs_names) {
+      if(IsAlreadyLinked(linked_outputs, physical_output_name))
+        continue;
 
-    UnlinkNodes(op, outputs[i]);
-    IR_NODE_LINK_TO(op, dequantize_in_nodes[i]);
-    IR_NODE_LINK_TO(dequantize_in_nodes[i], dequantize_op);
-    IR_NODE_LINK_TO(dequantize_op, outputs[i]);
+      VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
+      auto dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
+      auto input_name = dequantize_in_node->Name();
+      dequantize_input_names.emplace_back(input_name);
 
-    dequantize_counter++;
+      auto dequantize_op = create_quant_op("dequantize", input_name, physical_output_name, g, op);
+
+      auto physical_output_node = outputs_map[physical_output_name];
+      UnlinkNodes(op, physical_output_node);
+      IR_NODE_LINK_TO(dequantize_op, physical_output_node);
+      IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
+      IR_NODE_LINK_TO(op, dequantize_in_node);
+      dequantize_counter++;
+      linked_outputs.push_back(physical_output_name);
+    }
+
+    op->Op()->SetOutput(logical_output_name, dequantize_input_names);
   }
-
-  op->Op()->SetOutput("Out", dequantize_in_node_names);
-}
-
-void AddDequantize(Graph* g, ir::Node* op, ir::Node* op_out,
-                   int& dequantize_counter) {
-  if (op->Op()->Type() == "prior_box") return;
-
-  // Find the name of the output linking op to op_out
-  std::vector<std::string> output_names;
-  for (auto name : op->Op()->OutputNames())
-    for (auto output_name : op->Op()->Output(name))
-      if (output_name == op_out->Name() && IsPermittedOutputName(name))
-        output_names.push_back(name);
-
-  if (output_names.empty()) return;
-
-  VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
-  auto* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
-
-  OpDesc deq_desc;
-  deq_desc.SetType("dequantize");
-  deq_desc.SetInput("Input",
-                    std::vector<std::string>({dequantize_in_node->Name()}));
-  deq_desc.SetOutput("Output", std::vector<std::string>({op_out->Name()}));
-  deq_desc.SetAttr("Scale", 1.0f);
-  deq_desc.SetAttr("Shift", 0.0f);
-  auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
-
-  for (auto name = output_names.begin(); name < output_names.end(); name++)
-    op->Op()->SetOutput(*name,
-                        std::vector<std::string>({dequantize_in_node->Name()}));
-
-  UnlinkNodes(op, op_out);
-  IR_NODE_LINK_TO(op, dequantize_in_node);
-  IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
-  IR_NODE_LINK_TO(dequantize_op, op_out);
-
-  dequantize_counter++;
 }
 
 bool IsAlreadyLinked(const std::vector<std::string>& node_names, std::string node_name)
@@ -238,20 +153,20 @@ bool IsAlreadyLinked(const std::vector<std::string>& node_names, std::string nod
   return std::find(node_names.begin(), node_names.end(), node_name) != node_names.end();
 }
 
-ir::Node* create_quantize_op(const std::string& input_name, const std::string& output_name, Graph* g, ir::Node* op) {
-  OpDesc q_desc;
-  q_desc.SetType("quantize");
+ir::Node* create_quant_op(const std::string& op_type, const std::string& input_name, const std::string& output_name, Graph* g, ir::Node* op) {
+  OpDesc op_desc;
+  op_desc.SetType(op_type);
 
-  q_desc.SetInput("Input", std::vector<std::string>({input_name}));
-  q_desc.SetOutput("Output",
+  op_desc.SetInput("Input", std::vector<std::string>({input_name}));
+  op_desc.SetOutput("Output",
                    std::vector<std::string>({output_name}));
-  q_desc.SetAttr("Scale", 1.f);
-  q_desc.SetAttr("Shift", 0.0f);
-  q_desc.SetAttr("bfloat16", true);
-  q_desc.SetAttr("output_format", op->Op()->HasAttr("data_layout")
-                                      ? op->Op()->GetAttr("data_layout")
-                                      : std::string("NCHW"));
-  return g->CreateOpNode(&q_desc);  // OpDesc will be copied.
+  op_desc.SetAttr("Scale", 1.f);
+  op_desc.SetAttr("Shift", 0.0f);
+  op_desc.SetAttr("bfloat16", true);
+  op_desc.SetAttr("output_format", op->Op()->HasAttr("data_layout")
+                                       ? op->Op()->GetAttr("data_layout")
+                                       : std::string("NCHW"));
+  return g->CreateOpNode(&op_desc);  // OpDesc will be copied.
 }
 
 void UnlinkNodes(ir::Node* a, ir::Node* b) {
@@ -280,10 +195,10 @@ bool IsNotPermittedInputName(const std::string& input_name) {
 
 // Checking whether a reorder from BF16 to FP32 should be added after the output
 // to the operator
-bool IsPermittedOutputName(const std::string& output_name) {
+bool IsNotPermittedOutputName(const std::string& output_name) {
   // XShape is output in transpose2 and reshape2 operators used to store the
   // shape and lod of X. So this output do not need dequantize before.
-  return (output_name != "XShape");
+  return (output_name == "XShape");
 }
 
 }  // namespace ir
