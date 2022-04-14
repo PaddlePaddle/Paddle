@@ -62,10 +62,6 @@ class LayoutAutoTune {
     return layout_optimized_vars_.count(name) == 0;
   }
 
-  bool IsHeavilyLayoutSensitive(const std::string& op_type) {
-    return heavily_layout_sensitive_ops_.count(op_type) != 0;
-  }
-
   bool IsLightlyLayoutSensitive(const std::string& op_type) {
     return lightly_layout_sensitive_ops_.count(op_type) != 0;
   }
@@ -87,33 +83,24 @@ class LayoutAutoTune {
 
   bool use_layout_autotune_ = false;
 
+  std::unordered_set<std::string> layout_agnostic_ops_;
+
+  /*
   std::unordered_set<std::string> layout_agnostic_ops_ = {
       "relu",
       "elementwise_add",
-      "transpose2",
       "matmul_v2",
       "not_equal",
       "elementwise_mul",
-      "reduce_min",
-      "reduce_max",
-      "reduce_mean",
       "fill_constant",
       "less_than",
       "greater_equal",
-      "softmax_with_cross_entropy",
       "mean",
-      "softmax_with_cross_entropy",
       "cast"};
+    */
 
-  // Both functionality and performance are affected by data layout.
-  // Such as operators with data_format attribute.
-  std::unordered_set<std::string> heavily_layout_sensitive_ops_ = {
-      "conv2d", "batch_norm", "pool2d",
-  };
-
-  // The functionality may be affected layout transformation before them.
-  // Such as operators with axis attribute.
-  std::unordered_set<std::string> lightly_layout_sensitive_ops_ = {"mean"};
+  std::unordered_set<std::string> lightly_layout_sensitive_ops_ = {
+      "reduce_max", "reduce_min", "reduce_mean", "softmax_with_cross_entropy"};
 
   std::unordered_set<std::string> layout_optimized_vars_;
 
@@ -287,12 +274,11 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
   }
 };
 
-/*
 template <typename VarType>
-class TransposeOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType>
-{
+class TransposeOpTransposer
+    : public LightlyLayoutSensitiveOpTransposer<VarType> {
  public:
-  explicit FlattenOpTransposer(const std::string& type)
+  explicit TransposeOpTransposer(const std::string& type)
       : LightlyLayoutSensitiveOpTransposer<VarType>(type) {}
 
   paddle::imperative::NameVarMap<VarType> Run(
@@ -301,22 +287,26 @@ class TransposeOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType>
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
     VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
-    // Flatten the C, H, W dimensions will not affect functionality.
-    // Transformation is unnecessary. But in other cases, it needs to
-    // fall back to the LightlyLayoutSensitiveOpTransposer.
-    // flatten_contiguous_range
+    // When the input layout has not been tuned and desired format is NHWC,
+    // the output of the current transpose op needs to be marked as tuned.
+    // Otherwise, it will fall back to the LightlyLayoutSensitiveOpTransposer,
+    // Because this means that there is a transpose layer in the network, it
+    // is better to transpose the result to the original format.
     auto axis = boost::get<std::vector<int>>((*attrs)["axis"]);
     // NCHW->NHWC
     std::vector<int> perm = {0, 2, 3, 1};
-    if (axis == perm) {
+    auto& in_var = ins.at("X")[0];
+    if (!LayoutAutoTune::Instance().IsLayoutAlreadyTuned(
+            paddle::imperative::GetNameFromVar(in_var)) &&
+        axis == perm) {
+      this->AddOptimizedVars(outs);
       return ins;
     } else {
-      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(ins, outs,
-      attrs, tracer);
+      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(
+          ins, outs, attrs, tracer);
     }
   }
 };
-*/
 
 template <typename VarType>
 class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
@@ -333,9 +323,9 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
     // Flatten the C, H, W dimensions will not affect functionality.
     // Transformation is unnecessary. But in other cases, it needs to
     // fall back to the LightlyLayoutSensitiveOpTransposer.
-    // flatten_contiguous_range
     auto start_axis = boost::get<int>((*attrs)["start_axis"]);
     auto stop_axis = boost::get<int>((*attrs)["stop_axis"]);
+    // TODO(zhangting): Rank checker need be added.
     if (start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
@@ -389,9 +379,7 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
   }
 
   std::shared_ptr<LayoutTransposer<VarType>> transposer = nullptr;
-  if (LayoutAutoTune::Instance().IsLayoutAgnostic(op_type)) {
-    transposer = std::make_shared<LayoutTransposer<VarType>>(op_type);
-  } else if (op_type == "conv2d") {
+  if (op_type == "conv2d") {
     transposer =
         std::make_shared<HeavilyLayoutSensitiveOpTransposer<VarType>>(op_type);
     transposer->SetArguments({"Input"}, {"Output"}, {"data_format"});
@@ -403,8 +391,15 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     transposer =
         std::make_shared<HeavilyLayoutSensitiveOpTransposer<VarType>>(op_type);
     transposer->SetArguments({"X"}, {"Out"}, {"data_format"});
+  } else if (op_type == "transpose2") {
+    transposer = std::make_shared<TransposeOpTransposer<VarType>>(op_type);
   } else if (op_type == "flatten_contiguous_range") {
     transposer = std::make_shared<FlattenOpTransposer<VarType>>(op_type);
+  } else if (LayoutAutoTune::Instance().IsLayoutAgnostic(op_type)) {
+    transposer = std::make_shared<LayoutTransposer<VarType>>(op_type);
+  } else if (LayoutAutoTune::Instance().IsLightlyLayoutSensitive(op_type)) {
+    transposer =
+        std::make_shared<LightlyLayoutSensitiveOpTransposer<VarType>>(op_type);
   } else {
     PADDLE_ENFORCE_NOT_NULL(
         transposer,
