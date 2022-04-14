@@ -325,6 +325,12 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         linear1 = paddle.nn.Linear(13, 8)
         linear2 = paddle.nn.Linear(8, 5)
 
+        # fix the linear name, simple_lr_setting function will use the name
+        linear1.weight.name = "linear_1.w_0"
+        linear1.bias.name = "linear_1.b_0"
+        linear2.weight.name = "linear_2.w_0"
+        linear2.bias.name = "linear_2.b_0"
+
         simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
 
         adam = paddle.optimizer.AdamW(
