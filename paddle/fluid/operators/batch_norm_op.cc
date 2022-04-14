@@ -46,16 +46,15 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                    "BatchNorm");
     OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
                    "BatchNorm");
+    // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
+    PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
+                      platform::errors::InvalidArgument(
+                          "Mean and MeanOut should share the same memory"));
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
+        platform::errors::InvalidArgument(
+            "Variance and VarianceOut should share the same memory"));
   }
-
-  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                    platform::errors::InvalidArgument(
-                        "Mean and MeanOut should share the same memory"));
-  PADDLE_ENFORCE_EQ(
-      ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
-      platform::errors::InvalidArgument(
-          "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
 
@@ -138,10 +137,17 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
   ctx->SetOutputDim("Y", x_dims);
   VLOG(4) << x_dims;
-  ctx->SetOutputDim("MeanOut", {C});
-  ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
+  auto set_output_dim = [](framework::InferShapeContext *ctx,
+                           const std::string &name, ::phi::DDim &&dim) {
+    if (ctx->HasOutput(name)) {
+      ctx->SetOutputDim(name, std::move(dim));
+    }
+  };
+  // some outputs are not required in inference cases.
+  set_output_dim(ctx, "MeanOut", {C});
+  set_output_dim(ctx, "VarianceOut", {C});
+  set_output_dim(ctx, "SavedMean", {C});
+  set_output_dim(ctx, "SavedVariance", {C});
   ctx->ShareLoD("X", "Y");
 }
 

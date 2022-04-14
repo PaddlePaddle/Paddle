@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/pd/pass/conv2d_bn_fuse_pass.h"
+#include "paddle/infrt/dialect/pd/pass/conv2d_bn_fuse_utils.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"

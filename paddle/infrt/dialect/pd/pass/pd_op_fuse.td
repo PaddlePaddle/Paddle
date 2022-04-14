@@ -1,5 +1,5 @@
-#ifndef INFRT_REWRITE
-#define INFRT_REWRITE
+#ifndef PD_OP_FUSE
+#define PD_OP_FUSE
 
 include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -111,4 +111,4 @@ def Conv2dBnFuse: Pat<(PD_Batch_normOp
                         (Conv2dBnFuse_CreateBias $Mean, $Variance, $Scale, $Bias, $epsilon),
                         (INFRT_createSI32Attr<"1">))>;
 
-#endif // INFRT_REWRITE
+#endif // PD_OP_FUSE

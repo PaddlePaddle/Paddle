@@ -6,6 +6,4 @@ gather_srcs(infrt_src SRCS
     kernel_op_desc.cc
    )
 
-mlir_add_rewriter(phi_op_fuse)
-
 cc_test(test_kernel_op_desc SRCS kernel_op_desc_test.cc DEPS infrt)
