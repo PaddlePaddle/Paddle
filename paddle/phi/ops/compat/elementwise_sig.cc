@@ -18,10 +18,6 @@ namespace phi {
 
 KernelSignature ElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("add", {"X", "Y"}, {}, {"Out"});
-  }
   return KernelSignature("add_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
