@@ -120,7 +120,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
-  std::string name() override {{ return \" {} \"; }}
+  std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
       {}
@@ -791,7 +791,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_retain_grad_str = "\n".join(set_retain_grad_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
+        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
