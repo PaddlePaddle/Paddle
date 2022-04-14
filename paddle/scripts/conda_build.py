@@ -115,7 +115,7 @@ about:
     """
 
         self.cuda_info = [(self.cuda101, "cuda10.1", ".post101"),
-                          (self.cuda102, "cuda10.2", ""),
+                          (self.cuda102, "cuda10.2", ".post102"),
                           (self.cuda112, "cuda11.2", ".post112")]
         self.py_str = ["py36", "py37", "py38", "py39"]
         self.pip_end = ".whl --no-deps"
