@@ -61,13 +61,16 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         decrease_axis = op_desc.attr('decrease_axis')
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        if len(out_dims_mapping) != len(in_dims_mapping) - len(decrease_axis):
+        if len(in_dims_mapping) - len(decrease_axis) != 0 and len(
+                out_dims_mapping) != len(in_dims_mapping) - len(decrease_axis):
             return False
 
         new_out_dims_mapping = []
         for i in range(len(in_dims_mapping)):
             if i not in decrease_axis:
                 new_out_dims_mapping.append(in_dims_mapping[i])
+        if new_out_dims_mapping == []:
+            new_out_dims_mapping = [-1]
         if new_out_dims_mapping != out_dims_mapping:
             return False
 

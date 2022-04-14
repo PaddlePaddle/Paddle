@@ -1032,6 +1032,15 @@ def set_grad_var_shape(program, dist_context):
                     "fill_zeros_like"
             ]:
                 forward_var_name = op.input_arg_names[0]
+            elif op.type == "matmul_v2_grad":
+                forward_var_name = None
+                for output_name in op.output_names:
+                    if var_name in op.output(output_name):
+                        assert "@GRAD" in output_name
+                        input_name = output_name[:output_name.find("@GRAD")]
+                        assert len(op.input(input_name)) == 1
+                        forward_var_name = op.input(input_name)[0]
+                assert forward_var_name is not None
 
             need_set_shape_list = [
                 "reshape2_grad", "softmax_with_cross_entropy_grad",
