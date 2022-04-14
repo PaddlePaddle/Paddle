@@ -435,24 +435,74 @@ class PReLU(Layer):
             self._num_parameters, self._data_format, self._init, self._dtype,
             name_str)
 
+
 class RReLU(Layer):
-    def __init__(self,
-                 lower=1./8.,
-                 upper=1./3.,
-                 name=None):
-        super(PReLU, self).__init__()
+    """
+    rrelu activation.
+
+    `Empirical Evaluation of Rectified Activations in Convolutional Network`:
+    https://arxiv.org/abs/1505.00853
+
+    .. math::
+        \text{RReLU}(x) =
+        \begin{cases}
+            x & \text{if } x \geq 0 \\
+            ax & \text{ otherwise }
+        \end{cases}
+
+    where :math:`a` is randomly sampled from uniform distribution
+    :math:`\mathcal{U}(\text{lower}, \text{upper})`.
+
+    Parameters:
+        lower (float, optional): The lower bound of uniform distribution. Default: :math:`\frac{1}{8}`.
+        upper (float, optional): The upper bound of uniform distribution. Default: :math:`\frac{1}{3}`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape. Default dtype is float32.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.set_default_dtype("float64")
+
+            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                            [ 3.0, -4.0,  5.0, -6.0],
+                            [-7.0, -8.0,  8.0,  9.0]],
+                            [[ 1.0, -2.0, -3.0,  4.0],
+                            [-5.0,  6.0,  7.0, -8.0],
+                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float64')
+            x = paddle.to_tensor(data)
+            m = paddle.nn.RReLU(0.1, 0.3)
+            out = m(x)
+            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+            #    [ 3.  , -1.  ,  5.  , -1.5 ],
+            #    [-1.75, -2.  ,  8.  ,  9.  ]],
+            #   [[ 1.  , -0.5 , -0.75,  4.  ],
+            #    [-1.25,  6.  ,  7.  , -2.  ],
+            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+    """
+
+    def __init__(self, lower=1. / 8., upper=1. / 3., name=None):
+        super(RReLU, self).__init__()
         self._lower = lower
         self._upper = upper
         self._name = name
 
     def forward(self, x):
-        return F.rrelu(x, lower=self._lower, upper=self._upper, training=self.training)
+        return F.rrelu(
+            x, lower=self._lower, upper=self._upper, training=self.training)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'lower={}, upper={}, training={}, dtype={}{}'.format(
-            self._lower, self._upper, self.training, self._dtype,
-            name_str)
+            self._lower, self._upper, self.training, self._dtype, name_str)
+
 
 class ReLU(Layer):
     """

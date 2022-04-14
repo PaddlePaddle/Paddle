@@ -34,14 +34,10 @@ void RReluKernel(const Context& dev_ctx,
   int numel = x.numel();
   auto dim = x.dims();
   RReluElementWiseDirectCUDAFunctor<T> rrelu_element_wise;
-  rrelu_element_wise(dev_ctx.stream(), x_ptr, o_ptr, n_ptr, lower, upper, numel);
+  rrelu_element_wise(
+      dev_ctx.stream(), x_ptr, o_ptr, n_ptr, lower, upper, numel);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rrelu,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RReluKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(rrelu, GPU, ALL_LAYOUT, phi::RReluKernel, float, phi::dtype::float16, double) {}

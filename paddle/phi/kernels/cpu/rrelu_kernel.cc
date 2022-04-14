@@ -29,21 +29,22 @@ void RReluKernel(const Context& dev_ctx,
   const T* x_ptr = x.data<T>();
   T* o_ptr = dev_ctx.template Alloc<T>(out);
   T* n_ptr = dev_ctx.template Alloc<T>(noise);
+  T zero = static_cast<T>(0);
 
-  std::uniform_real_distribution<T> dist(lower, upper);
+  std::uniform_real_distribution<float> dist(lower, upper);
   auto gen_ptr = dev_ctx.GetGenerator();
   auto engine = gen_ptr->GetCPUEngine();
 
   int numel = x.numel();
   int i = 0;
   for (i = 0; i < numel; i++) {
-    if (x_ptr[i] < 0) {
-        T scale = static_cast<T>(dist(*engine));
-        o_ptr[i] = scale * x_ptr[i];
-        n_ptr[i] = scale;
+    if (x_ptr[i] < zero) {
+      T scale = static_cast<T>(dist(*engine));
+      o_ptr[i] = scale * x_ptr[i];
+      n_ptr[i] = scale;
     } else {
-        o_ptr[i] = x_ptr[i];
-        n_ptr[i] = 1.0;
+      o_ptr[i] = x_ptr[i];
+      n_ptr[i] = 1.0;
     }
   }
 }

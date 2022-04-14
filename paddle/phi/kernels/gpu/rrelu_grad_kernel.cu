@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T>
-__global__ void PReluOpGradKernel(const T* x_ptr,
+__global__ void RReluOpGradKernel(const T* x_ptr,
                                   const T* noise_ptr,
                                   const T* out_grad_ptr,
                                   T* x_grad_ptr,
@@ -48,13 +48,9 @@ class RReluOpGradFunctor {
                   const T* out_grad,
                   T* x_grad,
                   int numel) {
-    PReluOpGradKernel<
+    RReluOpGradKernel<
         T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x,
-        noise,
-        out_grad,
-        x_grad,
-        numel);
+        x, noise, out_grad, x_grad, numel);
   }
 };
 
@@ -77,19 +73,10 @@ void RReluGradKernel(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
 
   RReluOpGradFunctor<T> rrelu_grad;
-  rrelu_grad(stream,
-             x_ptr,
-             n_ptr,
-             out_grad_ptr,
-             x_grad_ptr,
-             numel);
+  rrelu_grad(stream, x_ptr, n_ptr, out_grad_ptr, x_grad_ptr, numel);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rrelu_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RReluGradKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    rrelu_grad, GPU, ALL_LAYOUT, phi::RReluGradKernel, float, phi::dtype::float16, double) {}

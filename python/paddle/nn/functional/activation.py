@@ -532,31 +532,80 @@ def prelu(x, weight, data_format="NCHW", name=None):
                "data_format": data_format})
     return out
 
-def rrelu(x, lower, upper, training=False, name=None):
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
+def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
+    """
+    rrelu activation.
+
+    .. _`Empirical Evaluation of Rectified Activations in Convolutional Network`:
+    https://arxiv.org/abs/1505.00853
+
+    .. math::
+        \text{RReLU}(x) =
+        \begin{cases}
+            x & \text{if } x \geq 0 \\
+            ax & \text{ otherwise }
+        \end{cases}
+
+    where :math:`a` is randomly sampled from uniform distribution
+    :math:`\mathcal{U}(\text{lower}, \text{upper})`.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float 16 float32, float64.
+        lower (float, optional): The lower bound of uniform distribution. Default: :math:`\frac{1}{8}`.
+        upper (float, optional): The upper bound of uniform distribution. Default: :math:`\frac{1}{3}`.
+        training (bool, optional): Current is training mode or others.  Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                               [ 3.0, -4.0,  5.0, -6.0],
+                               [-7.0, -8.0,  8.0,  9.0]],
+                              [[ 1.0, -2.0, -3.0,  4.0],
+                               [-5.0,  6.0,  7.0, -8.0],
+                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+            x = paddle.to_tensor(data)
+            out = F.rrelu(x, 0.1, 0.3)
+            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+            #    [ 3.  , -1.  ,  5.  , -1.5 ],
+            #    [-1.75, -2.  ,  8.  ,  9.  ]],
+            #   [[ 1.  , -0.5 , -0.75,  4.  ],
+            #    [-1.25,  6.  ,  7.  , -2.  ],
+            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+    """
+    check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'rrelu')
 
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
-            "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
-                lower, upper))
+            "The lower and upper values must be float type. Received: lower {}, upper {}.".
+            format(lower, upper))
 
     if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".format(
-                lower))
+            "The lower value must be no less than zero or greater than one. Received: {}.".
+            format(lower))
 
     if upper < lower:
         raise ValueError(
-            "The upper value must be greater than lower value. Received: lower {}, upper {}.".format(
-                lower, upper))
+            "The upper value must be greater than lower value. Received: lower {}, upper {}.".
+            format(lower, upper))
 
     if upper > 1:
         raise ValueError(
             "The upper value must be no greater than one. Received: {}.".format(
                 upper))
 
-    if training:
+    if not training:
         negative_slope = (lower + upper) / 2.0
         return leaky_relu(x, negative_slope, name)
 
@@ -565,13 +614,15 @@ def rrelu(x, lower, upper, training=False, name=None):
 
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
+    noise = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="rrelu",
         inputs={"X": x},
-        outputs={"Out": out},
+        outputs={"Out": out, "Noise": noise},
         attrs={"lower": lower,
                "upper": upper})
     return out
+
 
 def relu(x, name=None):
     """

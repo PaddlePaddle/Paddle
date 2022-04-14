@@ -301,9 +301,9 @@ void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
 void RReluInferMeta(const MetaTensor& x,
-                   float lower,
-                   float upper,
-                   MetaTensor* out,
-                   MetaTensor* noise);
+                    float lower,
+                    float upper,
+                    MetaTensor* out,
+                    MetaTensor* noise);
 
 }  // namespace phi

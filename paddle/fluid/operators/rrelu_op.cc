@@ -87,7 +87,7 @@ where :math:`a` is randomly sampled from uniform distribution
   }
 };
 
-class RReluOpGrad : public framework::OperatorWithKernel {
+class RReluGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -120,7 +120,7 @@ class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("Noise", this->Output("Noise"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
+//    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -135,4 +135,4 @@ REGISTER_OPERATOR(rrelu, ops::RReluOp, ops::RReluOpMaker,
                   ops::RReluGradOpMaker<paddle::framework::OpDesc>,
                   ops::RReluGradOpMaker<paddle::imperative::OpBase>,
                   RReluInferShapeFunctor);
-REGISTER_OPERATOR(rrelu_grad, ops::RReluOpGrad);
+REGISTER_OPERATOR(rrelu_grad, ops::RReluGradOp);

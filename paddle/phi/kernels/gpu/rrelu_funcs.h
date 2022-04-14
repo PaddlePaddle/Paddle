@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <thrust/random.h>
+#include <thrust/transform.h>
 #include <string>
 #include <vector>
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include <thrust/random.h>
-#include <thrust/transform.h>
 
 namespace phi {
 
@@ -32,28 +32,27 @@ template <typename T>
 __global__ void RReluElementWiseKernel(const T *input,
                                        T *output,
                                        T *noise,
-                                       const float& lower,
-                                       const float& upper,
+                                       const float &lower,
+                                       const float &upper,
                                        size_t numel) {
   CUDA_KERNEL_LOOP(index, numel) {
     T x = input[index];
     T zero = static_cast<T>(0);
 
     if (x < zero) {
-        thrust::minstd_rand rng;
-        rng.seed(0);
-        thrust::uniform_real_distribution<T> dist(lower, upper);
-        rng.discard(index);
-        T scale = dist(rng);
-        output[index] = scale * x;
-        noise[index] = scale;
+      thrust::minstd_rand rng;
+      rng.seed(0);
+      thrust::uniform_real_distribution<float> dist(lower, upper);
+      rng.discard(index);
+      T scale = static_cast<T>(dist(rng));
+      output[index] = scale * x;
+      noise[index] = scale;
     } else {
-        output[index] = x;
-        noise[index] = 1.0;
+      output[index] = x;
+      noise[index] = 1.0;
     }
   }
 }
-
 
 template <typename T>
 class RReluElementWiseDirectCUDAFunctor {
@@ -62,8 +61,8 @@ class RReluElementWiseDirectCUDAFunctor {
                   const T *input,
                   T *output,
                   T *noise,
-                  const float& lower,
-                  const float& upper,
+                  const float &lower,
+                  const float &upper,
                   size_t numel);
 };
 
@@ -72,16 +71,16 @@ void RReluElementWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                       const T *input,
                                                       T *output,
                                                       T *noise,
-                                                      const float& lower,
-                                                      const float& upper,
+                                                      const float &lower,
+                                                      const float &upper,
                                                       size_t numel) {
   RReluElementWiseKernel<<<PADDLE_GET_BLOCKS(numel),
                            CUDA_NUM_THREADS,
                            0,
-                           stream>>>(
-      input, output, noise, lower, upper, numel);
+                           stream>>>(input, output, noise, lower, upper, numel);
 }
 
 template class RReluElementWiseDirectCUDAFunctor<float>;
 template class RReluElementWiseDirectCUDAFunctor<double>;
+template class RReluElementWiseDirectCUDAFunctor<phi::dtype::float16>;
 }  // namespace phi
