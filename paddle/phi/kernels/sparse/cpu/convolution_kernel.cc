@@ -15,9 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -159,7 +158,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCPUKernel", ([&] {
         Conv3dCPUKernel<T, data_t>(dev_ctx,
                                    x,

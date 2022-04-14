@@ -249,20 +249,10 @@ class PADDLE_API Tensor final {
 
   /**
    * @brief Return the place (device) of Tensor.
-   * This is a deprecated method and may be removed in the future!
    *
    * @return Place
    */
   Place place() const;
-
-  /**
-   * @brief Return the place (device) of Tensor.
-   *
-   * This is a deprecated method and may be removed in the future!!!
-   *
-   * @return Place
-   */
-  Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU

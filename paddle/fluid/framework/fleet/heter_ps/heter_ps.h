@@ -16,7 +16,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#endif
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -35,9 +37,13 @@ class HeterPs : public HeterPsBase {
                            size_t len) override;
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) override;
+
+#if defined(PADDLE_WITH_CUDA)
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms, int comm_size) override;
+#endif
+
   virtual void end_pass() override;
   virtual int get_index_by_devid(int devid) override;
   virtual void show_one_table(int gpu_num) override;
@@ -46,7 +52,9 @@ class HeterPs : public HeterPsBase {
 
  private:
   std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;
+#if defined(PADDLE_WITH_CUDA)
   Optimizer<FeatureValue, FeaturePushValue> opt_;
+#endif
 };
 
 }  // end namespace framework
