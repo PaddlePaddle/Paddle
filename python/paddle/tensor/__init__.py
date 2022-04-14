@@ -446,7 +446,7 @@ tensor_method_func  = [ #noqa
            'numel',
            'median',
            'quantile',
-           'nanquantile'
+           'nanquantile',
            'is_complex',
            'is_integer',
            'rank',
