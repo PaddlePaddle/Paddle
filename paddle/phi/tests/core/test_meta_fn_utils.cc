@@ -94,7 +94,7 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
 
   phi::DenseTensor dense_out1;
   phi::DenseTensor dense_out2;
-  paddle::SmallVector<phi::MetaTensor> out;
+  paddle::SmallVector<phi::MetaTensor, kOutputSmallVectorSize> out;
   out.emplace_back(phi::MetaTensor(&dense_out1));
   out.emplace_back(phi::MetaTensor(&dense_out2));
 
