@@ -2028,8 +2028,7 @@ static std::string GenerateSingleOpBase(
           "egr::EagerUtils::TrySyncToVars(egr::EagerUtils::"
           "RecoverTensorWrapper("
           "&"
-          "this->%s, "
-          "nullptr)) },";
+          "this->%s)) },";
       ins_contents_str +=
           paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE,
                                   grad_input_name, struct_fwd_input_name);
@@ -2075,15 +2074,15 @@ static std::string GenerateSingleOpBase(
           const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
               "  if(this->%s.size() > 0) %s[\"%s\"] = "
               "egr::EagerUtils::TrySyncToVars(egr::EagerUtils::"
-              "RecoverTensorWrapper(&this->%s, nullptr));\n";
+              "RecoverTensorWrapper(&this->%s));\n";
           generated_grad_function_body += paddle::string::Sprintf(
               DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, struct_fwd_input_name,
               ins_name, grad_input_name, struct_fwd_input_name);
         } else {
           const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
-              "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s, "
-              "nullptr);\n  if(%s.defined()) %s[\"%s\"] = "
-              "egr::EagerUtils::TrySyncToVars(%s);\n";
+              "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s);\n"
+              "  if(%s.defined()) %s[\"%s\"] = "
+              "     egr::EagerUtils::TrySyncToVars(%s);\n";
           generated_grad_function_body += paddle::string::Sprintf(
               DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name,
               struct_fwd_input_name, grad_input_name, ins_name, grad_input_name,
@@ -2498,7 +2497,7 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
-      "  std::string name() override { return \" GradNode%s \"; } \n "
+      "  std::string name() override { return \"GradNode%sMid\"; } \n "
       "\n"
       "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
       "    auto copied_node = std::shared_ptr<GradNode%s>(new "

@@ -338,7 +338,7 @@ int ProductRuleBook(const Context& dev_ctx,
                     SparseCooTensor* out,
                     std::vector<int>* h_counter,
                     std::vector<int>* h_offsets) {
-  // TODO(zhangkaihuo): use PD_DISPATCH_INTEGRAL_TYPES for secondary dispatch
+  // TODO(zhangkaihuo): use PD_VISIT_INTEGRAL_TYPES for secondary dispatch
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
