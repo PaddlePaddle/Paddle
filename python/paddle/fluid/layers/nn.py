@@ -5089,11 +5089,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             # out2.shape [3, 3, 5]
 
     """
-    if in_dygraph_mode():
-        if isinstance(num_or_sections, int):
-            num_or_sections = [num_or_sections]
-        return _C_ops.final_state_split(input, num_or_sections, dim)
-    elif _in_legacy_dygraph():
+    if _non_static_mode():
         num = None
         attrs = ()
 
@@ -5121,9 +5117,12 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        out = [_varbase_creator() for n in range(num)]
-        _C_ops.split(input, out, *attrs)
-        return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(input, [num], dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
     check_variable_and_dtype(
         input, 'input',
