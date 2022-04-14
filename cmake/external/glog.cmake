@@ -32,28 +32,31 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
 if(WITH_ARM_BRPC)
-        set(GLOG_SOURCE_DIR ${THIRD_PARTY_PATH}/glog/src/extern_glog)
-        FILE(WRITE ${GLOG_SOURCE_DIR}/CMakeLists.txt
-        "PROJECT(ARM_GLOGS)\n"
-        "cmake_minimum_required(VERSION 3.0)\n"
-        "install(DIRECTORY arm_glog/include arm_glog/lib \n"
-        "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
-        ExternalProject_Add(
-            extern_glog
-            ${EXTERNAL_PROJECT_LOG_ARGS}
-            ${SHALLOW_CLONE}
-            DEPENDS         gflags
-            PREFIX          ${GLOG_PREFIX_DIR}
-            DOWNLOAD_DIR          ${GLOG_SOURCE_DIR}
-            DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_glog.tar.gz .
-                                && tar zxvf arm_glog.tar.gz
-            UPDATE_COMMAND  ""
-            CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
-                            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-            CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
-                            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-            BUILD_BYPRODUCTS ${GLOG_LIBRARIES}
-        )
+    SET(ARM_GLOG_URL "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/arm_glog.tar.gz" CACHE STRING "" FORCE)
+    set(GLOG_SOURCE_DIR ${THIRD_PARTY_PATH}/glog/src/extern_glog)
+    FILE(WRITE ${GLOG_SOURCE_DIR}/CMakeLists.txt
+    "PROJECT(ARM_GLOGS)\n"
+    "cmake_minimum_required(VERSION 3.0)\n"
+    "install(DIRECTORY arm_glog/include arm_glog/lib \n"
+    "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
+    ExternalProject_Add(
+        extern_glog
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
+        DEPENDS         gflags
+        PREFIX          ${GLOG_PREFIX_DIR}
+        DOWNLOAD_DIR          ${GLOG_SOURCE_DIR}
+        DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_GLOG_URL} -c -q -O arm_glog.tar.gz
+                            && tar zxvf arm_glog.tar.gz
+        #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_glog.tar.gz .
+        #                    && tar zxvf arm_glog.tar.gz
+        UPDATE_COMMAND  ""
+        CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+        CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GLOG_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+        BUILD_BYPRODUCTS ${GLOG_LIBRARIES}
+    )
 else()
     ExternalProject_Add(
         extern_glog

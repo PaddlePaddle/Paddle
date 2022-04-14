@@ -30,6 +30,7 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
 if(WITH_ARM_BRPC)
+    SET(ARM_GFLAGS_URL "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/arm_gflags.tar.gz" CACHE STRING "" FORCE)
     set(GFLAGS_SOURCE_DIR ${THIRD_PARTY_PATH}/gflags/src/extern_gflags)
     FILE(WRITE ${GFLAGS_SOURCE_DIR}/CMakeLists.txt
     "PROJECT(ARM_GFLAGS)\n"
@@ -42,8 +43,10 @@ if(WITH_ARM_BRPC)
         ${SHALLOW_CLONE}
         PREFIX          ${GFLAGS_PREFIX_DIR}
         DOWNLOAD_DIR          ${GFLAGS_SOURCE_DIR}
-        DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
+        DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_GFLAGS_URL} -c -q -O arm_gflags.tar.gz
                             && tar zxvf arm_gflags.tar.gz
+        #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
+        #                    && tar zxvf arm_gflags.tar.gz
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${GFLAGS_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

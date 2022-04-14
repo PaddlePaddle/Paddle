@@ -220,6 +220,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
     if(WITH_ARM_BRPC)
+        SET(ARM_PROTOBUF_URL "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/arm_protobuf.tar.gz" CACHE STRING "" FORCE)
         FILE(WRITE ${PROTOBUF_SOURCE_DIR}/CMakeLists.txt
         "PROJECT(ARM_PROTOBUF)\n"
         "cmake_minimum_required(VERSION 3.0)\n"
@@ -231,8 +232,10 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             ${SHALLOW_CLONE}
             PREFIX          ${PROTOBUF_PREFIX_DIR}
             DOWNLOAD_DIR          ${PROTOBUF_SOURCE_DIR}
-            DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
-                                && tar zxvf arm_protobuf.tar.gz
+            DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_PROTOBUF_URL} -c -q -O arm_protobuf.tar.gz
+                                 && tar zxvf arm_protobuf.tar.gz
+            #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
+            #                    && tar zxvf arm_protobuf.tar.gz
             UPDATE_COMMAND  ""
             CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
                                 -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
