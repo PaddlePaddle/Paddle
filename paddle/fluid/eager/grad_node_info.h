@@ -317,11 +317,11 @@ inline void CheckTensor(const paddle::experimental::Tensor& pre,
             paddle::framework::DataType2String(pre.dtype()),
             paddle::framework::DataType2String(post.dtype())));
     PADDLE_ENFORCE_EQ(
-        pre.inner_place(), post.inner_place(),
+        pre.place(), post.place(),
         paddle::platform::errors::PermissionDenied(
             "The place of tensor before(%s) and after(%s) "
             "hook are not consistent",
-            pre.inner_place().DebugString(), post.inner_place().DebugString()));
+            pre.place().DebugString(), post.place().DebugString()));
   }
 }
 

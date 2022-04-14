@@ -137,7 +137,7 @@ void InitTensorWithTensor(TensorObject* self,
                           const paddle::platform::Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
-  if (place == src.inner_place()) {
+  if (place == src.place()) {
     auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";

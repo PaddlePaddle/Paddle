@@ -97,16 +97,15 @@ void Tensor::copy_(const Tensor &src,
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
-                      inner_place(),
+                      place(),
                       phi::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
                           target_place,
-                          inner_place()));
-    kernel_key_set.backend_set =
-        kernel_key_set.backend_set |
-        BackendSet(phi::TransToPhiBackend(inner_place()));
+                          place()));
+    kernel_key_set.backend_set = kernel_key_set.backend_set |
+                                 BackendSet(phi::TransToPhiBackend(place()));
   } else {
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
