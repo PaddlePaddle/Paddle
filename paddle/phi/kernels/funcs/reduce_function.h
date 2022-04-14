@@ -466,12 +466,14 @@ struct ReduceConfig {
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
+    constexpr int max_reduce_num_for_higher = 2048;
 #endif
     if (reduce_last_dim && (reduce_rank == 1)) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
     } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-      if (rank == 3 && not_higher) {
+      if ((rank == 3 && not_higher) ||
+          reduce_dim[0] >= max_reduce_num_for_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
     } else {
