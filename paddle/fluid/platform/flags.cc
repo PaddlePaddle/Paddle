@@ -765,6 +765,18 @@ PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn, true,
                             "It controls whether to execute cinn compiled "
                             "program with ParallelExecutor");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_cinn_auto_tune
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_enable_cinn_auto_tune=true would use CINN with its
+ * auto-tune feature enabled
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune, false,
+                            "It controls whether to use cinn with "
+                            "its auto-tune feature enabled");
+
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
