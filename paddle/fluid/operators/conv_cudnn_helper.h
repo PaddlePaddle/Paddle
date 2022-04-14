@@ -117,13 +117,13 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
         // The algorithm which has minimize time cost and need a workspace_size
         // fitting the workspace_limit constraint.
         best_algo_idx = i;
+        // Each perf_results[i].time is set to be -1 in heuristic search.
+        if (perf_results[best_algo_idx].time < 0) {
+          break;
+        }
       } else {
-        /* Each perf_results[i].time is set to be -1 in heuristic search,
-           so codes below only work for exhaustive search mode, while the
-           perf_results[i].time is valid. */
         float best_algo_time = perf_results[best_algo_idx].time;
-        if (best_algo_time > 0 &&
-            ((result.time - best_algo_time) / best_algo_time) < 0.01) {
+        if ((result.time - best_algo_time) / best_algo_time < 0.01) {
           best_algo_idx = (result.memory < perf_results[best_algo_idx].memory)
                               ? i
                               : best_algo_idx;
