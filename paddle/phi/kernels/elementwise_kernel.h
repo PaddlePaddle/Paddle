@@ -34,32 +34,6 @@ void FMinKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void DivideRawKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     int axis,
-                     DenseTensor* out);
-
-template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out);
-
-template <typename T, typename Context>
-void MultiplyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       int axis,
-                       DenseTensor* out);
-
-template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out);
-
-template <typename T, typename Context>
 void MaximumRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
@@ -123,28 +97,6 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out);
-
-template <typename T, typename Context>
-DenseTensor Divide(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  ElementwiseInferMeta(x, y, &meta_out);
-  DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename Context>
-DenseTensor Multiply(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  ElementwiseInferMeta(x, y, &meta_out);
-  MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
-  return dense_out;
-}
 
 template <typename T, typename Context>
 DenseTensor Maximum(const Context& dev_ctx,
