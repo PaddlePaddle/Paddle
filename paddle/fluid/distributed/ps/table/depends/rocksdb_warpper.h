@@ -153,5 +153,5 @@ class RocksDBHandler {
   std::vector<rocksdb::ColumnFamilyHandle*> _handles;
   rocksdb::DB* _db;
 };
-} // distributed
-} // paddle
+}  // distributed
+}  // paddle

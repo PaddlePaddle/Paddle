@@ -1169,6 +1169,8 @@ class Layer(object):
                     # add a persistable buffer.
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
+                    if not value.name:
+                        value.name = unique_name.generate('_buffers_' + name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
