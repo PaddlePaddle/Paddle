@@ -99,52 +99,52 @@ def neg(x, out=None):
     return sub(zero, x)
 
 
-@REGISTER_FN('add_p')
+@REGISTER_FN('add_p', 'X', 'Y', 'Z')
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))
 
 
-@REGISTER_FN('sub_p')
+@REGISTER_FN('sub_p', 'X', 'Y', 'Z')
 def sub(x, y, out=None):
     return _simple_binop(LayerHelper('sub_p', **locals()))
 
 
-@REGISTER_FN('mul_p')
+@REGISTER_FN('mul_p', 'X', 'Y', 'Z')
 def mul(x, y, out=None):
     return _simple_binop(LayerHelper('mul_p', **locals()))
 
 
-@REGISTER_FN('div_p')
+@REGISTER_FN('div_p', 'X', 'Y', 'Z')
 def div(x, y, out=None):
     return _simple_binop(LayerHelper('div_p', **locals()))
 
 
-@REGISTER_FN('sqrt_p')
+@REGISTER_FN('sqrt_p', 'X', 'Y')
 def sqrt(x, out=None):
     return _simple_unop(LayerHelper('sqrt_p', **locals()))
 
 
-@REGISTER_FN('tanh_p')
+@REGISTER_FN('tanh_p', 'X', 'Y')
 def tanh(x, out=None):
     return _simple_unop(LayerHelper('tanh_p', **locals()))
 
 
-@REGISTER_FN('reshape_p')
+@REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
 
 
-@REGISTER_FN('broadcast_p')
+@REGISTER_FN('broadcast_p', 'X', 'Y')
 def broadcast(x, shape, out=None):
     return _manipulation_unop(LayerHelper('broadcast_p', **locals()))
 
 
-@REGISTER_FN('transpose_p')
+@REGISTER_FN('transpose_p', 'X', 'Y')
 def transpose(x, axis=None, out=None):
     return _manipulation_unop(LayerHelper('transpose_p', **locals()))
 
 
-@REGISTER_FN('split_p')
+@REGISTER_FN('split_p', 'X', 'YS')
 def split(x, num_or_sections, axis=0, outs=None):
     if isinstance(num_or_sections, (list, tuple)):
         n = len(num_or_sections)
@@ -168,7 +168,7 @@ def split(x, num_or_sections, axis=0, outs=None):
     return outs
 
 
-@REGISTER_FN('concat_p')
+@REGISTER_FN('concat_p', 'XS', 'Y')
 def concat(xs, axis=0, out=None):
     assert isinstance(xs, (list, tuple)) and len(xs) > 0
     attrs = {'axis': axis}
@@ -183,7 +183,7 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-@REGISTER_FN('reduce_p')
+@REGISTER_FN('reduce_p', 'X', 'Y')
 def reduce(x, axis, keepdim=False, out=None):
     assert isinstance(axis, (tuple, list))
     assert isinstance(keepdim, bool)
@@ -202,12 +202,12 @@ def reduce(x, axis, keepdim=False, out=None):
     return out
 
 
-@REGISTER_FN('matmul_p')
+@REGISTER_FN('matmul_p', 'X', 'Y', 'Z')
 def matmul(x, y, out=None):
     return _simple_binop(LayerHelper('matmul_p', **locals()))
 
 
-@REGISTER_FN('slice_select_p')
+@REGISTER_FN('slice_select_p', 'X', 'Y')
 def slice_select(x, axis, starts, ends, strides, out=None):
     assert isinstance(axis, (list, tuple)), (
         f'Argument type error. `axis` is supposed to be int, list or'
@@ -228,7 +228,7 @@ def slice_select(x, axis, starts, ends, strides, out=None):
     return out
 
 
-@REGISTER_FN('slice_assign_p')
+@REGISTER_FN('slice_assign_p', 'X', 'Y', 'Z')
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
     assert len(starts) == len(ends) == len(strides) == len(axis)
     assert len(y.shape) <= len(x.shape)
@@ -246,7 +246,7 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
     return out
 
 
-@REGISTER_FN('gather_p')
+@REGISTER_FN('gather_p', 'X', 'Y')
 def gather(x, indextensor, axis, out=None):
     attrs = {'axis': axis}
     helper = LayerHelper('gather_p', **locals())
@@ -261,7 +261,7 @@ def gather(x, indextensor, axis, out=None):
     return out
 
 
-@REGISTER_FN('scatter_add_p')
+@REGISTER_FN('scatter_add_p', 'X', 'Y', 'IndexTensor' ,'Z')
 def scatter_add(x, y, indextensor, axis, out=None):
     assert len(x.shape) == len(y.shape)
     assert len(indextensor.shape) == 1

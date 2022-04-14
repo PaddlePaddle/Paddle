@@ -178,6 +178,7 @@ def add_transpose(op, check_dot, z_bar):
     return x_bar, y_bar
 
 
+@REGISTER_TRANSPOSE('sub_p')
 def sub_transpose(op, check_dot, z_bar):
     x, y = get_input_vars(op)
     assert check_dot(x) or check_dot(y)

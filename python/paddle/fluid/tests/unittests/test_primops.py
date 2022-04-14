@@ -21,7 +21,8 @@ from paddle.autograd.primops import (neg, add, sub, mul, div, sqrt, tanh,
                                      concat, reduce, matmul, slice_select,
                                      slice_assign, gather, scatter_add, 
                                      fill_const)
-from paddle.autograd.primx import Transform
+from paddle.autograd.primx import Transform, topo_path
+
 
 class TestPyPrimOps(unittest.TestCase):
     """ Test Python wrappers of primitive ops. """
@@ -131,10 +132,25 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
 
-    def test_jvps(self):
-        pass
+    def test_vjp_set1(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
+            W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
+            T = concat([X, W], axis=0)
+            Z = reduce(T, [0, 1])
+            ad = Transform(X.block)
+            xs_dot, ys_dot = ad.linearize([X, W], [Z])
+            ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
+            assert xs_bar[0].shape == X.shape
+            assert xs_bar[1].shape == W.shape
+            
+            print(f'-------test_vjp_set1-------')
+            for op in topo_path(ys_bar, xs_bar):
+                print(op)
 
-    def test_linearize(self):
+    def test_vjp_set2(self):
         X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
         W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
         act = tanh
@@ -146,9 +162,18 @@ class TestPyPrimOps(unittest.TestCase):
             ad = Transform(y.block)
             xs_dot, ys_dot = ad.linearize([x], [y])
             ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
-            return xs_bar
-        grad, = loss(Y, W)
-        assert grad.shape == W.shape
+            # ad = Transform(y.block)
+            # xs_dot, ys_dot = ad.linearize([x], xs_bar)
+            # for op in topo_path(xs_dot, ys_dot):
+                # print(op)
+            # ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
+            return ys_bar, xs_bar
+        vs, grads = loss(Y, W)
+        assert grads[0].shape == W.shape
+
+        print(f'-------test_vjp_set2-------')
+        for op in topo_path(vs, grads):
+            print(op)
 
 if __name__ == '__main__':
     unittest.main()

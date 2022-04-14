@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primops import fill_const, add
+from .primreg import op_position_inputs, op_position_output
 from .primrules import get_input_vars, get_output_vars, _jvp, _transpose
 from collections import OrderedDict
 
@@ -77,6 +79,13 @@ class VarMap(object):
     def add(self, key_var, value_var):
         self.tab[id(key_var)] = id(value_var)
   
+    def add_rec(self, key_vars, value_vars):
+        if isinstance(key_vars, paddle.fluid.framework.Variable):
+            self.tab[id(key_vars)] = id(value_vars)
+        else:
+            for key_var, value_var in zip(key_vars, value_vars):
+                self.add_rec(key_var, value_var)
+
     def lookup(self, key_var):
         value_id = self.tab.get(id(key_var))
         if value_id is not None:
@@ -122,6 +131,14 @@ class Transform(object):
     def add_vars(self, new_vars):
         self.vars.update({id(v) : v for v in new_vars if v is not None})
 
+    def add_vars_rec(self, new_vars):
+        if isinstance(new_vars, paddle.fluid.framework.Variable):
+            self.vars.update({id(new_vars) : new_vars})
+            return
+        assert isinstance(new_vars, list)
+        for var in new_vars:
+            self.add_vars_rec(var)
+
     def erase_dots(self, vars_to_erase):
         for var in vars_to_erase:
             if id(var) in self.vars:
@@ -137,6 +154,22 @@ class Transform(object):
     def lower2prim(self):
         pass
 
+    def var2dot_rec(self, vars, defaults=None):
+
+        if isinstance(vars, paddle.fluid.framework.Variable):
+            dot = self.var2dot.lookup(vars)
+            if dot is None and defaults is not None:
+                dot = defaults
+            return dot
+
+        if defaults is None:
+            defaults = [None for _ in range(vars)]
+
+        dots = [self.var2dot_rec(var, default) for var, default 
+                            in zip(vars, defaults)]
+  
+        return dots
+
     def linearize(self, xs, ys, xs_dot=None):
         if xs_dot is None:
             xs_dot = [fill_const(1.0, shape=x.shape, dtype=x.dtype) for x in xs]
@@ -150,32 +183,17 @@ class Transform(object):
             self.var2dot.add(x, dot)
 
         for op in topo_path(xs, ys, self.block):
-            ins = get_input_vars(op)
-            # an input var may not be on the input-output path, therefore
-            # there's no forward gradient linked to it. This implies 
+            # An input var may not be on the input-output path, which implies 
             # there may be None's in `ins_dot`. In this case we place
             # the original input in the position of the otherwise forward
             # gradient.
-            jvp_ins = []
-            for var in ins:
-                dot = self.var2dot.lookup(var)
-                if dot is None:
-                    jvp_ins.append(var)
-                else:
-                    jvp_ins.append(dot)
-
+            ins = op_position_inputs(op)
+            jvp_ins = self.var2dot_rec(ins, defaults=ins)
             # apply op's forward ad rule
             outs_dot = _jvp(op, *jvp_ins)
-
-            if not isinstance(outs_dot, list):
-                outs_dot = [outs_dot]
-
-            self.add_vars(outs_dot)
-
-            outs = get_output_vars(op)
-            assert len(outs) == len(outs_dot)
-            for out, dot in zip(outs, outs_dot):
-                self.var2dot.add(out, dot)
+            self.add_vars_rec(outs_dot)
+            outs = op_position_output(op)
+            self.var2dot.add_rec(outs, outs_dot)
         
         ys_dot = [self.var2dot.lookup(y) for y in ys]
         return xs_dot, ys_dot
@@ -208,6 +226,7 @@ class Transform(object):
             else:
                 ins_bar = [ins_bar]
             self.add_vars(ins_bar)
+            assert len(get_input_vars(op)) == len(ins_bar)
             for dot, bar in zip(get_input_vars(op), ins_bar):
                 if bar is not None:
                     # aggregate gradient
