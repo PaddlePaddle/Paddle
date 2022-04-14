@@ -55,4 +55,4 @@ If malicious input can trigger memory corruption or non-clean exit, such bug is 
 
 
 
-[security advisories](https://github.com/PaddlePaddle/Paddle/security/README.md)
+[security advisories](https://github.com/PaddlePaddle/Paddle/blob/develop/security/README.md)
