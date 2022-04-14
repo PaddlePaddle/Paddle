@@ -108,8 +108,9 @@ struct NeighborSampleResult {
     val_mem =
         memory::AllocShared(place, _sample_size * _key_size * sizeof(int64_t));
     val = (int64_t *)val_mem->ptr();
-    actual_sample_size_mem = memory::AllocShared(place, _key_size * sizeof(int))
-        actual_sample_size = (int *)actual_sample_size_mem->ptr();
+    actual_sample_size_mem =
+        memory::AllocShared(place, _key_size * sizeof(int));
+    actual_sample_size = (int *)actual_sample_size_mem->ptr();
     offset = NULL;
   };
   ~NeighborSampleResult() {
