@@ -105,29 +105,30 @@ int GpuPsGraphTable::init_cpu_table(
     const paddle::distributed::GraphParameter& graph) {
   cpu_graph_table.reset(new paddle::distributed::GraphTable);
   cpu_table_status = cpu_graph_table->initialize(graph);
-  if (cpu_table_status != 0) return cpu_table_status;
-  std::function<void(std::vector<GpuPsCommGraph>&)> callback =
-      [this](std::vector<GpuPsCommGraph>& res) {
-        pthread_rwlock_wrlock(this->rw_lock.get());
-        this->clear_graph_info();
-        this->build_graph_from_cpu(res);
-        pthread_rwlock_unlock(this->rw_lock.get());
-        cv_.notify_one();
-      };
-  cpu_graph_table->set_graph_sample_callback(callback);
+  // if (cpu_table_status != 0) return cpu_table_status;
+  // std::function<void(std::vector<GpuPsCommGraph>&)> callback =
+  //     [this](std::vector<GpuPsCommGraph>& res) {
+  //       pthread_rwlock_wrlock(this->rw_lock.get());
+  //       this->clear_graph_info();
+  //       this->build_graph_from_cpu(res);
+  //       pthread_rwlock_unlock(this->rw_lock.get());
+  //       cv_.notify_one();
+  //     };
+  // cpu_graph_table->set_graph_sample_callback(callback);
   return cpu_table_status;
 }
 
-int GpuPsGraphTable::load(const std::string& path, const std::string& param) {
-  int status = cpu_graph_table->load(path, param);
-  if (status != 0) {
-    return status;
-  }
-  std::unique_lock<std::mutex> lock(mutex_);
-  cpu_graph_table->start_graph_sampling();
-  cv_.wait(lock);
-  return 0;
-}
+// int GpuPsGraphTable::load(const std::string& path, const std::string& param)
+// {
+//   int status = cpu_graph_table->load(path, param);
+//   if (status != 0) {
+//     return status;
+//   }
+//   std::unique_lock<std::mutex> lock(mutex_);
+//   cpu_graph_table->start_graph_sampling();
+//   cv_.wait(lock);
+//   return 0;
+// }
 /*
  comment 1
 
@@ -347,6 +348,8 @@ gpu i saves the ith graph from cpu_graph_list
 
 void GpuPsGraphTable::build_graph_from_cpu(
     std::vector<GpuPsCommGraph>& cpu_graph_list) {
+  VLOG(0) << "in build_graph_from_cpu cpu_graph_list size = "
+          << cpu_graph_list.size();
   PADDLE_ENFORCE_EQ(
       cpu_graph_list.size(), resource_->total_gpu(),
       platform::errors::InvalidArgument("the cpu node list size doesn't match "

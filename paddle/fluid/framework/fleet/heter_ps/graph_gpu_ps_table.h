@@ -22,24 +22,24 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-
 class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
       : HeterComm<int64_t, int, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
+    gpu_num = resource_->total_gpu();
     cpu_table_status = -1;
     if (topo_aware) {
       int total_gpu = resource_->total_gpu();
       std::map<int, int> device_map;
       for (int i = 0; i < total_gpu; i++) {
         device_map[resource_->dev_id(i)] = i;
-        VLOG(0) << " device " << resource_->dev_id(i) << " is stored on " << i;
+        VLOG(1) << " device " << resource_->dev_id(i) << " is stored on " << i;
       }
       path_.clear();
       path_.resize(total_gpu);
-      VLOG(0) << "topo aware overide";
+      VLOG(1) << "topo aware overide";
       for (int i = 0; i < total_gpu; ++i) {
         path_[i].resize(total_gpu);
         for (int j = 0; j < total_gpu; ++j) {
@@ -77,9 +77,9 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
     }
   }
   ~GpuPsGraphTable() {
-    if (cpu_table_status != -1) {
-      end_graph_sampling();
-    }
+    // if (cpu_table_status != -1) {
+    //   end_graph_sampling();
+    // }
   }
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
   NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
@@ -100,12 +100,11 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
   //                                              int *actual_sample_size,
   //                                              int *total_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
-  int load(const std::string &path, const std::string &param);
-  virtual int32_t end_graph_sampling() {
-    return cpu_graph_table->end_graph_sampling();
-  }
-
- private:
+  // int load(const std::string &path, const std::string &param);
+  // virtual int32_t end_graph_sampling() {
+  //   return cpu_graph_table->end_graph_sampling();
+  // }
+  int gpu_num;
   std::vector<GpuPsCommGraph> gpu_graph_list;
   std::vector<int *> sample_status;
   const int parallel_sample_size = 1;
