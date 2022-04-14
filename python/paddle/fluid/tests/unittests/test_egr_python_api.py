@@ -251,9 +251,6 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
         self.assertTrue(np.array_equal(egr_tensor12.numpy(), x))
 
-        egr_tensor13 = paddle.randn([2, 2])
-        self.assertTrue("eager_tmp" in egr_tensor13.name)
-
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
             eager_param = EagerParamBase(shape=None, dtype="float32")
@@ -680,7 +677,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             tensor2 = None
             tensor = paddle.to_tensor(arr, core.VarDesc.VarType.FP32,
                                       core.CPUPlace())
-            tensor3 = core.eager.Tensor()
+            tensor3 = core.eager.Tensor(value=tensor, place=core.CPUPlace())
             if core.is_compiled_with_cuda():
                 tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
                                            core.CUDAPlace(0))
