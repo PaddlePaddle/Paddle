@@ -125,7 +125,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
   auto& meta = metas[0];
   meta.SetStopGradient(fwd_out_meta->StopGradient());
 
-  if (!fwd_out.is_initialized()) {
+  if (!fwd_out.initialized()) {
     VLOG(6)
         << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
     return;
@@ -192,7 +192,7 @@ void GradNodeBase::SetGradInMeta(
       meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
-    if (!fwd_out_tensor.is_initialized()) {
+    if (!fwd_out_tensor.initialized()) {
       VLOG(6)
           << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
       return;

@@ -461,15 +461,6 @@ class PADDLE_API Tensor final {
   bool initialized() const;
 
   /**
-   * @brief Determine whether Tensor is initialized.
-   * This is a deprecated method and may be removed in the future!
-   *
-   * @return true
-   * @return false
-   */
-  bool is_initialized() const;
-
-  /**
    * @brief Reset the Tensor implementation
    */
   void reset();

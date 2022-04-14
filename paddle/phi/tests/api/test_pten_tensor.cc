@@ -200,9 +200,9 @@ void GroupTestDtype() {
 
 void TestInitilized() {
   experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
-  CHECK(test_tensor.is_initialized() == true);
+  CHECK(test_tensor.initialized() == true);
   test_tensor.mutable_data<float>(paddle::PlaceType::kCPU);
-  CHECK(test_tensor.is_initialized() == true);
+  CHECK(test_tensor.initialized() == true);
   float* tensor_data = test_tensor.mutable_data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;
