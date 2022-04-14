@@ -2083,7 +2083,6 @@ static std::string GenerateSingleOpBase(
               "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s);\n"
               "  if(%s.defined()) %s[\"%s\"] = "
               "     egr::EagerUtils::TrySyncToVars(%s);\n";
-
           generated_grad_function_body += paddle::string::Sprintf(
               DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name,
               struct_fwd_input_name, grad_input_name, ins_name, grad_input_name,
