@@ -19,23 +19,27 @@ from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
 
-def make_var(dtype, varset=None, shape=None, block=None, namekey='',
+def make_var(dtype,
+             varset=None,
+             shape=None,
+             block=None,
+             namekey='',
              stop_gradient=False):
     """ Create a type inferred variable. """
 
     if block is None:
         block = default_main_program().current_block()
-        
+
     name = unique_name.generate_with_ignorable_key(namekey + '%')
 
     var = block.create_var(
-            name=name,
-            dtype=dtype,
-            shape=shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=stop_gradient)
-    
+        name=name,
+        dtype=dtype,
+        shape=shape,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=stop_gradient)
+
     if varset is not None:
         varset.add(var)
 
@@ -99,11 +103,23 @@ def neg(x, out=None):
     return sub(zero, x)
 
 
-def strided_slice_grad(y_grad, x, axis, starts, ends, strides, out=None):
-    attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'strides': strides}
-    helper = LayerHelper('strided_slice_grad', **locals())
+def set_value(x, y, axis, starts, ends, strides, out=None):
+    attrs = {
+        'axes': axis,
+        'starts': starts,
+        'ends': ends,
+        'steps': strides,
+        'dtype': x.dtype
+    }
+    helper = LayerHelper('set_value', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'Input': x,
+                'ValueTensor': y},
+        outputs={'Out': out},
+        attrs=attrs)
     return out
 
 

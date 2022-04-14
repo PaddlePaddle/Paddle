@@ -17,8 +17,7 @@ from .primreg import REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG, REGISTER_JVP, REGIS
 from .primreg import lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp, lookup_transpose
 from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       transpose, split, concat, reduce, matmul, slice_select,
-                      slice_assign, gather, scatter_add, fill_const,
-                      strided_slice_grad)
+                      slice_assign, gather, scatter_add, fill_const, set_value)
 
 
 def _orig2prim(op, *args):
@@ -316,14 +315,15 @@ def strided_slice_grad(y_grad, x, axis, starts, ends, strides, x_grad=None):
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
 def slice_assign_prim2orig(op, x, y):
-    return paddle.add(x,
-                      strided_slice_grad(
-                          y,
-                          x,
-                          axis=op.attr('axis'),
-                          starts=op.attr('starts'),
-                          ends=op.attr('ends'),
-                          strides=op.attr(strides)))
+    x_copy = add(x, fill_const(0.0, x.shape, x.dtype))
+    return set_value(
+        x_copy,
+        y,
+        axis=op.attr('axis'),
+        starts=op.attr('starts'),
+        ends=op.attr('ends'),
+        strides=op.attr(strides),
+        out=x_copy)
 
 
 @REGISTER_PRIM2ORIG('gather_p')
