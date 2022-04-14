@@ -43,7 +43,8 @@ if(WITH_ARM_BRPC)
         ${SHALLOW_CLONE}
         PREFIX          ${GFLAGS_PREFIX_DIR}
         DOWNLOAD_DIR          ${GFLAGS_SOURCE_DIR}
-        DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_GFLAGS_URL}
+        DOWNLOAD_COMMAND    rm -rf arm_gflags.tar.gz
+                            wget --no-check-certificate ${ARM_GFLAGS_URL}
                             && tar zxvf arm_gflags.tar.gz
         #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_gflags.tar.gz .
         #                    && tar zxvf arm_gflags.tar.gz

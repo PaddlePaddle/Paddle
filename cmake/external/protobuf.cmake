@@ -232,7 +232,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             ${SHALLOW_CLONE}
             PREFIX          ${PROTOBUF_PREFIX_DIR}
             DOWNLOAD_DIR          ${PROTOBUF_SOURCE_DIR}
-            DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_PROTOBUF_URL}
+            DOWNLOAD_COMMAND     rm -rf arm_protobuf.tar.gz
+                                 && wget --no-check-certificate ${ARM_PROTOBUF_URL}
                                  && tar zxvf arm_protobuf.tar.gz
             #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
             #                    && tar zxvf arm_protobuf.tar.gz
