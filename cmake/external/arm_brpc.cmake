@@ -26,9 +26,8 @@ INCLUDE(ExternalProject)
 #SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
 IF((NOT DEFINED ARM_BRPC_NAME) OR (NOT DEFINED ARM_BRPC_URL))
-  SET(ARM_BRPC_VER "0.1.0" CACHE STRING "" FORCE)
+  SET(ARM_BRPC_VER "1.1.0" CACHE STRING "" FORCE)
   SET(ARM_BRPC_NAME "arm_brpc" CACHE STRING "" FORCE)
-  SET(ARM_BRPC_URL "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/output.tar.gz" CACHE STRING "" FORCE)
 ENDIF()
 
 MESSAGE(STATUS "ARM_BRPC_NAME: ${ARM_BRPC_NAME}, ARM_BRPC_URL: ${ARM_BRPC_URL}")
@@ -51,7 +50,8 @@ FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${ARM_BRPC_DST_DIR} ${ARM_BRPC_DST_DIR} \n"
   "        DESTINATION ${ARM_BRPC_NAME})\n")
-
+  
+SET(ARM_BRPC_URL "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/output.tar.gz" CACHE STRING "" FORCE)
 ExternalProject_Add(
     ${ARM_BRPC_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
