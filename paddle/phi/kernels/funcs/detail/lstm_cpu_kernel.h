@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/activation_op.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
 
@@ -409,11 +409,10 @@ void avx_lstm_backward_one_sequence(Op op,
 #endif
 }
 
-template <class T>
-void eigen_lstm_forward_one_sequence(
-    const paddle::platform::CPUDeviceContext &context,
-    phi::funcs::LstmMetaValue<T> value,
-    int frame_size) {
+template <class T, class Context>
+void eigen_lstm_forward_one_sequence(const Context &context,
+                                     phi::funcs::LstmMetaValue<T> value,
+                                     int frame_size) {
   auto eigen_value_ig =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
   auto eigen_value_fg = typename EigenVector<T>::Type(
@@ -430,10 +429,10 @@ void eigen_lstm_forward_one_sequence(
       typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
 
   auto &place = *context.eigen_device();
-  paddle::operators::TanhFunctor<T>()(place, eigen_value_in, eigen_value_in);
-  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_ig, eigen_value_ig);
-  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_fg, eigen_value_fg);
-  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_og, eigen_value_og);
+  TanhFunctor<T>()(place, eigen_value_in, eigen_value_in);
+  SigmoidFunctor<T>()(place, eigen_value_ig, eigen_value_ig);
+  SigmoidFunctor<T>()(place, eigen_value_fg, eigen_value_fg);
+  SigmoidFunctor<T>()(place, eigen_value_og, eigen_value_og);
 
   eigen_state.device(place) = eigen_value_in * eigen_value_ig;
   if (value.prev_state_value) {
@@ -442,16 +441,15 @@ void eigen_lstm_forward_one_sequence(
     eigen_state.device(place) = eigen_state + eigen_prev_state * eigen_value_fg;
   }
 
-  paddle::operators::TanhFunctor<T>()(place, eigen_state, eigen_state_act);
+  TanhFunctor<T>()(place, eigen_state, eigen_state_act);
   eigen_output.device(place) = eigen_value_og * eigen_state_act;
 }
 
-template <class T>
-void eigen_lstm_backward_one_sequence(
-    const paddle::platform::CPUDeviceContext &context,
-    phi::funcs::LstmMetaValue<T> value,
-    phi::funcs::LstmMetaGrad<T> grad,
-    int frame_size) {
+template <class T, class Context>
+void eigen_lstm_backward_one_sequence(const Context &context,
+                                      phi::funcs::LstmMetaValue<T> value,
+                                      phi::funcs::LstmMetaGrad<T> grad,
+                                      int frame_size) {
   auto eigen_value_ig =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
   auto eigen_value_fg = typename EigenVector<T>::Type(
@@ -477,38 +475,35 @@ void eigen_lstm_backward_one_sequence(
       typename EigenVector<T>::Type(grad.state_grad, Array1(frame_size));
 
   auto &place = *context.eigen_device();
-  paddle::operators::SigmoidGradFunctor<T>()(
-      place,
-      1 /*useless*/,
-      eigen_value_og,
-      eigen_grad_output * eigen_state_act,
-      eigen_grad_og);
+  SigmoidGradFunctor<T>()(place,
+                          1 /*useless*/,
+                          eigen_value_og,
+                          eigen_grad_output * eigen_state_act,
+                          eigen_grad_og);
   eigen_grad_state.device(place) =
       eigen_grad_state +
       eigen_grad_output * eigen_value_og *
           (static_cast<T>(1) - eigen_state_act * eigen_state_act);
-  paddle::operators::TanhGradFunctor<T>()(place,
-                                          1,
-                                          eigen_value_in,
-                                          eigen_grad_state * eigen_value_ig,
-                                          eigen_grad_in);
-  paddle::operators::SigmoidGradFunctor<T>()(place,
-                                             1,
-                                             eigen_value_ig,
-                                             eigen_grad_state * eigen_value_in,
-                                             eigen_grad_ig);
+  TanhGradFunctor<T>()(place,
+                       1,
+                       eigen_value_in,
+                       eigen_grad_state * eigen_value_ig,
+                       eigen_grad_in);
+  SigmoidGradFunctor<T>()(place,
+                          1,
+                          eigen_value_ig,
+                          eigen_grad_state * eigen_value_in,
+                          eigen_grad_ig);
   if (value.prev_state_value) {
     auto eigen_prev_state = typename EigenVector<T>::ConstType(
         value.prev_state_value, Array1(frame_size));
-    paddle::operators::SigmoidGradFunctor<T>()(
-        place,
-        1,
-        eigen_value_fg,
-        eigen_grad_state * eigen_prev_state,
-        eigen_grad_fg);
+    SigmoidGradFunctor<T>()(place,
+                            1,
+                            eigen_value_fg,
+                            eigen_grad_state * eigen_prev_state,
+                            eigen_grad_fg);
   } else {
-    paddle::operators::SigmoidGradFunctor<T>()(
-        place, 1, eigen_value_fg, 0, eigen_grad_fg);
+    SigmoidGradFunctor<T>()(place, 1, eigen_value_fg, 0, eigen_grad_fg);
   }
   if (grad.prev_state_grad) {
     auto eigen_grad_pre_state =
@@ -517,8 +512,8 @@ void eigen_lstm_backward_one_sequence(
   }
 }
 
-template <class T, class Op>
-void cpu_lstm_forward(const paddle::platform::CPUDeviceContext &context,
+template <class T, class Op, class Context>
+void cpu_lstm_forward(const Context &context,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -552,8 +547,8 @@ void cpu_lstm_forward(const paddle::platform::CPUDeviceContext &context,
   }
 }
 
-template <class T, class Op>
-void cpu_lstm_backward(const paddle::platform::CPUDeviceContext &context,
+template <class T, class Op, class Context>
+void cpu_lstm_backward(const Context &context,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,

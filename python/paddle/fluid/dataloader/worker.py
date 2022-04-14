@@ -22,7 +22,7 @@ from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 from .flat import _flatten_batch
 
 # NOTE: queue has a different name in python2 and python3

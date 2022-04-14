@@ -23,6 +23,20 @@ KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ConcatGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("AxisTensor")) {
+    return KernelSignature("concat_grad",
+                           {"X", {GradVarName("Out")}},
+                           {"AxisTensor"},
+                           {{GradVarName("X")}});
+  }
+  return KernelSignature("concat_grad",
+                         {"X", {GradVarName("Out")}},
+                         {"axis"},
+                         {{GradVarName("X")}});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(concat, phi::ConcatOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(concat_grad, phi::ConcatGradOpArgumentMapping);

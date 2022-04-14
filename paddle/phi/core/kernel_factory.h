@@ -238,12 +238,16 @@ class KernelFactory {
   }
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
-                                         const KernelKey& kernel_key) const;
+                                         const KernelKey& kernel_key,
+                                         bool use_cudnn = false) const;
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          Backend backend,
                                          DataLayout layout,
                                          DataType dtype) const;
+
+  bool IsSelectKernelValid(const std::string& kernel_name,
+                           const KernelKey& kernel_key) const;
 
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;

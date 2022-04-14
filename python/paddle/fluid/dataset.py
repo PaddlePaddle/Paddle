@@ -862,9 +862,9 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): shuffle thread num. Default is 12.
 
         """
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         if fleet is not None:
-            if not isinstance(fleet, PSLib):
+            if hasattr(fleet, "barrier_worker"):
+                print("pscore fleet")
                 fleet.barrier_worker()
             else:
                 fleet._role_maker.barrier_worker()
@@ -879,20 +879,20 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            if not isinstance(fleet, PSLib):
+            if hasattr(fleet, "barrier_worker"):
                 fleet.barrier_worker()
             else:
                 fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            if not isinstance(fleet, PSLib):
+            if hasattr(fleet, "barrier_worker"):
                 fleet.barrier_worker()
             else:
                 fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            if not isinstance(fleet, PSLib):
+            if hasattr(fleet, "barrier_worker"):
                 fleet.barrier_worker()
             else:
                 fleet._role_maker.barrier_worker()
@@ -1026,9 +1026,8 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         print('global shuffle local_data_size: ', local_data_size)
         if fleet is not None:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
             global_data_size = local_data_size * 0
-            if not isinstance(fleet, PSLib):
+            if hasattr(fleet, "util"):
                 global_data_size = fleet.util.all_reduce(local_data_size)
             else:
                 fleet._role_maker.all_reduce_worker(local_data_size,

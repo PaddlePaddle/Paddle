@@ -101,6 +101,19 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   CheckMemLeak(place);
 }
 
+TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorWithDefaultStreamTest) {
+  auto &instance = allocation::AllocatorFacade::Instance();
+  platform::CUDAPlace place = platform::CUDAPlace();
+  const std::shared_ptr<Allocator> allocator_implicit_stream =
+      instance.GetAllocator(place);
+  const std::shared_ptr<Allocator> allocator_default_stream =
+      instance.GetAllocator(
+          place, static_cast<phi::GPUContext *>(
+                     platform::DeviceContextPool::Instance().Get(place))
+                     ->stream());
+  EXPECT_EQ(allocator_implicit_stream.get(), allocator_default_stream.get());
+}
+
 TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   std::shared_ptr<Allocation> zero_size_allocation = AllocShared(place, 0);

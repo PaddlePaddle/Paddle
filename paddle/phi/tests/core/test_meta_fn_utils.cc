@@ -100,7 +100,7 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
 
   phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
-  ScalarArray num_or_sections{2, 2};
+  IntArray num_or_sections{2, 2};
   Scalar axis{0};
   ctx.EmplaceBackAttr(num_or_sections);
   ctx.EmplaceBackAttr(axis);

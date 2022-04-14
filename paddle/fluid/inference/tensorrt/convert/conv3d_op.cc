@@ -48,17 +48,10 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
-    float in_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
-    auto weight_scale =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
-    weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
-                                           true, weight_scale);
+    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
-  } else {
-    weight_data =
-        engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
   }
+  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(), 5UL,
                     platform::errors::InvalidArgument(

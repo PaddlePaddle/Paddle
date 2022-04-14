@@ -10,7 +10,7 @@ repos:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    sha: 5bf6c09bfa1297d3692cadd621ef95f1284e33c0
+    rev: v4.1.0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -18,6 +18,8 @@ repos:
     -   id: detect-private-key
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
+    -   id: sort-simple-yaml
+        files: (api|backward)\.yaml$
 -   repo: local
     hooks:
     -   id: clang-format-with-version-check

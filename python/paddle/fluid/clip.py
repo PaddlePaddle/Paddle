@@ -26,7 +26,7 @@ from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
-from .framework import in_dygraph_mode
+from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from .layer_helper import LayerHelper
 from .framework import default_main_program
 from paddle import _C_ops
@@ -71,7 +71,13 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
+        if x.is_selected_rows():
+            new_x = paddle.to_tensor(x.numpy())
+            return _C_ops.squared_l2_norm(new_x)
         return _C_ops.squared_l2_norm(x)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
@@ -183,7 +189,7 @@ class ClipGradBase(object):
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:

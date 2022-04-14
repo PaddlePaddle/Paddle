@@ -44,6 +44,14 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
   return std::unique_ptr<Profiler>(new Profiler(options));
 }
 
+bool Profiler::IsCuptiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_CUPTI
+  supported = true;
+#endif
+  return supported;
+}
+
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   std::bitset<32> trace_switch(options_.trace_switch);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,17 +13,17 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-
 using TensorList = std::vector<framework::Tensor>;
-
 template <typename TensorType, typename T>
 void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
                             const int& num_layers, const bool& is_bidirec,
@@ -55,37 +55,39 @@ template <typename DeviceContext, typename T>
 class RnnXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    // Input
     auto* input = ctx.Input<Tensor>("Input");
     auto pre_state = ctx.MultiInput<Tensor>("PreState");
     auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+    bool has_seq_length = ctx.HasInput("SequenceLength");
+    // Output
     auto state = ctx.MultiOutput<Tensor>("State");
     auto* output = ctx.Output<Tensor>("Out");
+    auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
     auto* reserve_data = ctx.Output<Tensor>("Reserve");
+    // Attrbutes
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const std::string& mode = ctx.Attr<std::string>("mode");
 
-    bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
 
+    if (dropout_mask->IsInitialized()) {
+      if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
+    }
+    dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    phi::funcs::SetConstant<platform::XPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
+
     PADDLE_ENFORCE_EQ(
         mode, "LSTM",
         platform::errors::InvalidArgument(
             "XPU only support LSTM mode now, current mode is %s", mode));
-
-    PADDLE_ENFORCE_EQ(is_bidirec, false,
-                      platform::errors::InvalidArgument(
-                          "XPU only support unidirectional LSTM now"));
-
-    PADDLE_ENFORCE_EQ(
-        num_layers, 1,
-        platform::errors::InvalidArgument(
-            "XPU only support 1 layer LSTM now, current layer num is %s",
-            num_layers));
 
     auto init_h = pre_state[0];
     auto init_c = pre_state[1];
@@ -93,12 +95,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto last_c = state[1];
 
     // check shape
-    int seq_len = input->dims()[0];
-    int batch_size = input->dims()[1];
-    int input_dim = input->dims()[2];
+    const int& seq_len = input->dims()[0];  // time_step
+    const int& batch_size = input->dims()[1];
+    const int& input_dim = input->dims()[2];
+    const int& direction_num = is_bidirec ? 2 : 1;
 
     PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers,
+        init_h->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
                                           " be the same as first dim of init "
                                           "hidden, but received num_layers:%d,"
@@ -106,13 +109,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
                                           num_layers, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
-        init_c->dims()[0], num_layers,
+        init_c->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument(
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
             " num_layers:%d, dim:%d",
             num_layers, init_c->dims()[0]));
-
+    // weightlist
     std::vector<std::vector<const T*>> parameter_lists;
     parameter_lists.resize(num_layers);
     reset_parameter_vector(weight_list, num_layers, is_bidirec,
@@ -122,41 +125,109 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     last_h->mutable_data<T>(ctx.GetPlace());
     last_c->mutable_data<T>(ctx.GetPlace());
-    reserve_data->Resize({seq_len * batch_size * hidden_size * 5});
-    reserve_data->mutable_data<T>(ctx.GetPlace());
 
+    reserve_data->Resize(
+        {num_layers * direction_num * seq_len * batch_size * hidden_size * 5});
+    reserve_data->mutable_data<T>(ctx.GetPlace());
+    Tensor internal_output_1_tensor, internal_output_2_tensor;
+    T* internal_output_1_ptr = nullptr;
+    T* internal_output_2_ptr = nullptr;
+    if (num_layers >= 2) {
+      internal_output_1_tensor.Resize(output->dims());
+      internal_output_1_ptr =
+          internal_output_1_tensor.mutable_data<T>(ctx.GetPlace());
+    }
+    if (num_layers >= 3) {
+      internal_output_2_tensor.Resize(output->dims());
+      internal_output_2_ptr =
+          internal_output_2_tensor.mutable_data<T>(ctx.GetPlace());
+    }
     // get ptr from tensor
     auto x = input->data<T>();
-    auto h_0 = init_h->data<T>();
-    auto c_0 = init_c->data<T>();
-    auto w_x = parameter_lists[0][0];
-    auto w_h = parameter_lists[0][1];
-    auto b_x = parameter_lists[0][2];
-    auto b_h = parameter_lists[0][3];
+    auto init_h_ptr = init_h->data<T>();
+    auto init_c_ptr = init_c->data<T>();
     auto y = output->data<T>();
     auto last_h_ptr = last_h->data<T>();
     auto last_c_ptr = last_c->data<T>();
-    auto i_f_g_o = reserve_data->data<T>();
-    auto c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+    auto i_f_g_o_ptr = reserve_data->data<T>();
+    auto c_ptr =
+        i_f_g_o_ptr +
+        num_layers * direction_num * seq_len * batch_size * hidden_size * 4;
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    // run kernel
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::lstm_train<T, T, int16_t>(
-        dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
-        (const T*)w_x, (const T*)w_h, (const T*)b_x, (const T*)b_h,
-        reinterpret_cast<T*>(y), reinterpret_cast<T*>(last_h_ptr),
-        reinterpret_cast<T*>(last_c_ptr), batch_size, input_dim, hidden_size,
-        seq_len, seq_len_tensor, nullptr, nullptr, nullptr, nullptr,
-        reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c));
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("RnnXPU(lstm) return wrong "
-                                                 "value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
+    int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
+
+    for (int i = 0; i < num_layers; i++) {
+      auto i_f_g_o = i_f_g_o_ptr +
+                     i * direction_num * seq_len * batch_size * hidden_size * 4;
+      auto c = c_ptr + i * direction_num * seq_len * batch_size * hidden_size;
+
+      const T* cur_input_ptr = nullptr;
+      int cur_xdim = -1;
+      if (i == 0) {
+        cur_input_ptr = x;
+        cur_xdim = input_dim;
+      } else if (i % 2 != 0) {
+        cur_input_ptr = internal_output_1_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      } else {
+        cur_input_ptr = internal_output_2_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      }
+
+      T* cur_output_ptr = nullptr;
+      if (i == num_layers - 1) {
+        cur_output_ptr = y;
+      } else if (i % 2 != 0) {
+        cur_output_ptr = internal_output_2_ptr;
+      } else {
+        cur_output_ptr = internal_output_1_ptr;
+      }
+
+      auto h_0 = init_h_ptr + direction_num * i * state_offset;
+      auto c_0 = init_c_ptr + direction_num * i * state_offset;
+      auto last_h = last_h_ptr + direction_num * i * state_offset;
+      auto last_c = last_c_ptr + direction_num * i * state_offset;
+
+      auto w_x = parameter_lists[i][0];
+      auto w_h = parameter_lists[i][1];
+      auto b_x = parameter_lists[i][2];
+      auto b_h = parameter_lists[i][3];
+      if (is_bidirec) {
+        auto bw_x = parameter_lists[i][4];
+        auto bw_h = parameter_lists[i][5];
+        auto bb_x = parameter_lists[i][6];
+        auto bb_h = parameter_lists[i][7];
+
+        int r = xpu::bilstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, (const T*)bw_x, (const T*)bw_h, (const T*)bb_x,
+            (const T*)bb_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, nullptr, nullptr,
+            reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c));
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_train");
+      } else {
+        int r = xpu::lstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, reinterpret_cast<T*>(i_f_g_o),
+            reinterpret_cast<T*>(c), xpu::Activation_t::TANH,
+            xpu::Activation_t::SIGMOID);
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
+      }
+    }
   }
 };
 
@@ -221,7 +292,6 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     int seq_len = input->dims()[0];
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
-
     PADDLE_ENFORCE_EQ(
         init_h->dims()[0], num_layers,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"

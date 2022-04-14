@@ -45,6 +45,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+
 using namespace paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #define MAX_RANK_SUPPORTED 6
@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
-                    const ScalarArray& repeat_times,
+                    const IntArray& repeat_times,
                     DenseTensor* x_grad);
 
 }  // namespace phi

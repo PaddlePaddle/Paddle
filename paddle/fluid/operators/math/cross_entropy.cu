@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -93,46 +94,48 @@ struct HardLabelCrossEntropyCUDAFunctorImpl {
   gpuStream_t stream_;
 };
 
-template <typename T>
-class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  framework::Tensor* out, const framework::Tensor* prob,
-                  const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index, const int axis_dim) {
-    const T* prob_data = prob->data<T>();
-    T* loss_data = out->mutable_data<T>(ctx.GetPlace());
+template <typename DeviceContext, typename T>
+void CrossEntropyFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& ctx, framework::Tensor* out,
+    const framework::Tensor* prob, const framework::Tensor* labels,
+    const bool softLabel, const int ignore_index, const int axis_dim) {
+  const T* prob_data = prob->data<T>();
+  T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 
-    int batch_size = prob->dims()[0];
-    int class_num = prob->dims()[1];
+  int batch_size = prob->dims()[0];
+  int class_num = prob->dims()[1];
 #ifdef __HIPCC__
-    constexpr int kMaxBlockDim = 256;
+  constexpr int kMaxBlockDim = 256;
 #else
-    constexpr int kMaxBlockDim = 512;
+  constexpr int kMaxBlockDim = 512;
 #endif
 
-    if (softLabel) {
-      const T* label_data = labels->data<T>();
-      int block = class_num > kMaxBlockDim
-                      ? kMaxBlockDim
-                      : pow(2, static_cast<int>(std::log2(class_num)));
+  if (softLabel) {
+    const T* label_data = labels->data<T>();
+    int block = class_num > kMaxBlockDim
+                    ? kMaxBlockDim
+                    : pow(2, static_cast<int>(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
-          loss_data, prob_data, label_data, class_num);
-    } else {
-      HardLabelCrossEntropyCUDAFunctorImpl<T> functor(
-          loss_data, prob_data, labels->data(), batch_size, class_num,
-          ignore_index, kMaxBlockDim, ctx.stream());
-      framework::VisitDataType(framework::TransToProtoVarType(labels->dtype()),
-                               functor);
-    }
+    SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
+        loss_data, prob_data, label_data, class_num);
+  } else {
+    HardLabelCrossEntropyCUDAFunctorImpl<T> functor(
+        loss_data, prob_data, labels->data(), batch_size, class_num,
+        ignore_index, kMaxBlockDim, ctx.stream());
+    framework::VisitDataType(framework::TransToProtoVarType(labels->dtype()),
+                             functor);
   }
-};
+}
 
 template class CrossEntropyFunctor<platform::CUDADeviceContext, float>;
 template class CrossEntropyFunctor<platform::CUDADeviceContext, double>;
 template class CrossEntropyFunctor<platform::CUDADeviceContext,
                                    platform::float16>;
+
+template class CrossEntropyFunctor<phi::GPUContext, float>;
+template class CrossEntropyFunctor<phi::GPUContext, double>;
+template class CrossEntropyFunctor<phi::GPUContext, platform::float16>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

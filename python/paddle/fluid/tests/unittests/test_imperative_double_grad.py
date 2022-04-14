@@ -20,13 +20,13 @@ import unittest
 from unittest import TestCase
 import numpy as np
 import paddle.compat as cpt
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 import paddle.fluid.core as core
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -385,25 +385,22 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward(retain_graph=True)
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward(retain_graph=True)
 
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 / float(numel) *
+                           (x_np + dx_expected *
+                            (x_np > 0) * 2 / float(numel))).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+        for i in range(5):
+            loss.backward(retain_graph=True)
             x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 / float(numel) * (
+            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
                 x_np + dx_expected *
                 (x_np > 0) * 2 / float(numel))).astype('float32')
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
-
-            for i in range(5):
-                loss.backward(retain_graph=True)
-                x_grad_actual = x.gradient()
-                x_grad_expected = (i + 2) * (2.0 / float(numel) * (
-                    x_np + dx_expected *
-                    (x_np > 0) * 2 / float(numel))).astype('float32')
-                self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_create_graph(self):
         with _test_eager_guard():
@@ -426,7 +423,10 @@ class TestDygraphDoubleGrad(TestCase):
         del y1, z, w
 
         dx_actual, = self.grad(
-            [w_mean], [x], create_graph=True, no_grad_vars=[y2])
+            [w_mean], [x],
+            retain_graph=True,
+            create_graph=True,
+            no_grad_vars=[y2])
 
         self.assertFalse(y2.stop_gradient)
         self.assertFalse(dx_actual.stop_gradient)
@@ -435,17 +435,14 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward()
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward()
 
-            x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 / float(numel) * (
-                x_np + dx_expected *
-                (x_np > 0) * 4 / float(numel))).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 / float(numel) *
+                           (x_np + dx_expected *
+                            (x_np > 0) * 4 / float(numel))).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         with _test_eager_guard():
@@ -476,15 +473,12 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward()
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward()
 
-            x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
         with _test_eager_guard():
@@ -568,13 +562,32 @@ class TestRaiseNoDoubleGradOp(TestCase):
         self.assertRaises(RuntimeError, self.raise_no_grad_op)
 
 
-class TestDoubleGradResNetBase(TestCase):
+class TestDoubleGradResNet(TestCase):
+    def setUp(self):
+        paddle.seed(123)
+        paddle.framework.random._manual_program_seed(123)
+        self.data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+
     @dygraph_guard
-    def check_resnet(self):
-        data = np.random.rand(1, 3, 224, 224).astype(np.float32)
-        data = paddle.to_tensor(data)
+    def test_resnet_resnet50(self):
+        with _test_eager_guard():
+            model = resnet50(pretrained=False)
+            egr_data = paddle.to_tensor(self.data)
+            egr_data.stop_gradient = False
+            egr_out = model(egr_data)
+            egr_preds = paddle.argmax(egr_out, axis=1)
+            egr_label_onehot = paddle.nn.functional.one_hot(
+                paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1])
+            egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
+
+            egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
+            egr_g_numpy = egr_g.numpy()
+            self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
+
+        model = resnet50(pretrained=False)
+        data = paddle.to_tensor(self.data)
         data.stop_gradient = False
-        out = self.model(data)
+        out = model(data)
         preds = paddle.argmax(out, axis=1)
         label_onehot = paddle.nn.functional.one_hot(
             paddle.to_tensor(preds), num_classes=out.shape[1])
@@ -584,21 +597,75 @@ class TestDoubleGradResNetBase(TestCase):
         g_numpy = g.numpy()
         self.assertEqual(list(g_numpy.shape), list(out.shape))
 
+        self.assertTrue(np.array_equal(egr_out, out))
+        self.assertTrue(np.array_equal(egr_g_numpy, g_numpy))
 
-class TestDoubleGradResNet50(TestDoubleGradResNetBase):
-    def setUp(self):
-        self.model = resnet50(pretrained=False)
+    @dygraph_guard
+    def test_resnet_resnet101(self):
+        with _test_eager_guard():
+            model = resnet101(pretrained=False)
+            egr_data = paddle.to_tensor(self.data)
+            egr_data.stop_gradient = False
+            egr_out = model(egr_data)
+            egr_preds = paddle.argmax(egr_out, axis=1)
+            egr_label_onehot = paddle.nn.functional.one_hot(
+                paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1])
+            egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
 
-    def test_main(self):
-        self.check_resnet()
+            egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
+            egr_g_numpy = egr_g.numpy()
+            self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
+
+        model = resnet101(pretrained=False)
+        data = paddle.to_tensor(self.data)
+        data.stop_gradient = False
+        out = model(data)
+        preds = paddle.argmax(out, axis=1)
+        label_onehot = paddle.nn.functional.one_hot(
+            paddle.to_tensor(preds), num_classes=out.shape[1])
+        target = paddle.sum(out * label_onehot, axis=1)
+
+        g = paddle.grad(outputs=target, inputs=out)[0]
+        g_numpy = g.numpy()
+        self.assertEqual(list(g_numpy.shape), list(out.shape))
+
+        self.assertTrue(np.array_equal(egr_out, out))
+        self.assertTrue(np.array_equal(egr_g_numpy, g_numpy))
 
 
-class TestDoubleGradResNet101(TestDoubleGradResNetBase):
-    def setUp(self):
-        self.model = resnet101(pretrained=False)
+class TestDoubleGradBasics(TestCase):
+    def test_matmul(self):
+        input_numpy = np.ones([3, 3]) * 2
+        with _test_eager_guard():
+            x = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            y = paddle.to_tensor(
+                input_numpy, stop_gradient=False, dtype='float32')
+            grad_out = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32')
 
-    def test_main(self):
-        self.check_resnet()
+            out = paddle.matmul(x, y, False, False)
+            new_x_g, new_y_g = paddle.grad(
+                [out], [x, y], [grad_out], retain_graph=True, create_graph=True)
+            new_x_g.backward()
+
+            out_ref = np.ones([3, 3]) * 12.0
+            self.assertTrue(np.array_equal(out.numpy(), out_ref))
+
+            new_x_g_ref = np.ones([3, 3]) * 6.0
+            new_y_g_ref = np.ones([3, 3]) * 6.0
+            self.assertTrue(np.array_equal(new_x_g.numpy(), new_x_g_ref))
+            self.assertTrue(np.array_equal(new_y_g.numpy(), new_y_g_ref))
+
+            x_grad_ref = np.ones([3, 3]) * 0.0
+            self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_ref))
+
+            y_grad_ref = np.ones([3, 3]) * 3.0
+            self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_ref))
+
+            grad_out_grad_ref = np.ones([3, 3]) * 6.0
+            self.assertTrue(
+                np.array_equal(grad_out.grad.numpy(), grad_out_grad_ref))
 
 
 if __name__ == '__main__':

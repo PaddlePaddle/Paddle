@@ -29,7 +29,14 @@ __global__ void FillOutputKernel(const InT* p_in_data,
                                  const int64_t numel,
                                  const int depth) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < numel && p_in_data[idx] >= 0 && p_in_data[idx] < depth) {
+  if (idx < numel) {
+    PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
+                   "Illegal index value, Input(input) value should be "
+                   "greater than or equal to 0, and less than depth [%d], "
+                   "but received [%lld].",
+                   depth,
+                   p_in_data[idx]);
+
     *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
   }
 }

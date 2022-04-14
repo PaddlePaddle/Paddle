@@ -272,6 +272,14 @@ void BuildDygraphPhiKernelContext(
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
+      } else if (input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<
+                            const std::vector<const phi::DenseTensor*>>))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
       } else {
         PADDLE_THROW(phi::errors::NotFound(
             "Can not find input variable '%s' for %s OP, please check whether "
@@ -361,26 +369,26 @@ void BuildDygraphPhiKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
         auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int64_t))) {
           kernel_ctx->EmplaceBackAttr(
-              std::move(phi::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+              std::move(phi::IntArray(&BOOST_GET_CONST(int64_t, attr), 1)));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int32_t))) {
           kernel_ctx->EmplaceBackAttr(
-              std::move(phi::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
+              std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else if (attr_defs[i].type_index ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
@@ -395,15 +403,15 @@ void BuildDygraphPhiKernelContext(
         auto& ins_vector = ins.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVar(ins_vector[0]->Var())));
+              experimental::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
         } else {  // ShapeTensorList
           std::vector<framework::Variable*> variables;
           variables.reserve(ins_vector.size());
           for (const auto& var_base : ins_vector) {
             variables.push_back(var_base->MutableVar());
           }
-          kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVarList(variables)));
+          kernel_ctx->EmplaceBackAttr(
+              std::move(experimental::MakePhiIntArrayFromVarList(variables)));
         }
       }
     } else if (attr_defs[i].type_index ==
@@ -545,6 +553,9 @@ void BuildDygraphPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         kernel_ctx->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

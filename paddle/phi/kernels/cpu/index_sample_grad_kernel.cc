@@ -68,9 +68,9 @@ void IndexSampleGradInner(const Context& context,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& out_grad,
                            const DenseTensor& x,
                            const DenseTensor& index,
+                           const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   auto index_type = index.dtype();
   bool index_type_match =

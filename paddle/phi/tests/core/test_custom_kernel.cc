@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -52,7 +52,7 @@ void FakeDot(const Context& dev_ctx,
              phi::dtype::float16 fake_attr_f16,
              phi::DataType fake_attr_dtype,
              const phi::Scalar& fake_attr_scalar,
-             const phi::ScalarArray& fake_attr_scalar_array,
+             const phi::IntArray& fake_attr_int_array,
              const std::vector<int64_t>& fake_attr_int64_vec,
              const std::vector<int>& fake_attr_int_vec,
              phi::DenseTensor* out,
@@ -253,7 +253,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   paddle::framework::LoDTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
-  phi::ScalarArray fake_attr_scalar_array;
+  phi::IntArray fake_attr_int_array;
   std::vector<int64_t> fake_attr_int64_vec;
   std::vector<int> fake_attr_int_vec;
 
@@ -265,7 +265,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_f16);
   kernel_context.EmplaceBackAttr(fake_attr_dtype);
   kernel_context.EmplaceBackAttr(fake_attr_scalar);
-  kernel_context.EmplaceBackAttr(fake_attr_scalar_array);
+  kernel_context.EmplaceBackAttr(fake_attr_int_array);
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 
