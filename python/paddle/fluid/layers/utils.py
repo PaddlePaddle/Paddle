@@ -68,6 +68,18 @@ def convert_to_list(value, n, name, dtype=int):
         return value_list
 
 
+def _numpy_as_scalar(x):
+    """
+    numpy.float32 -> "python float"
+    numpy.float64 -> "python float"
+    numpy.uint32  -> "python int"
+    numpy.int16   -> "python int"
+    """
+    if isinstance(x, np.generic):
+        return x.item()
+    return x
+
+
 def is_sequence(seq):
     """
     Whether `seq` is an entry or nested structure

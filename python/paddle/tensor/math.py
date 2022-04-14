@@ -31,6 +31,7 @@ import paddle
 from ..static import Variable
 from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper
 from ..fluid.framework import _in_legacy_dygraph
+from ..fluid.layers import utils
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
@@ -2595,8 +2596,12 @@ def clip(x, min=None, max=None, name=None):
     if in_dygraph_mode():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
+        else:
+            min = utils._numpy_as_scalar(min)
         if isinstance(max, Variable):
             max = max.numpy().item(0)
+        else:
+            max = utils._numpy_as_scalar(max)
         min = min_ if min is None else min
         max = max_ if max is None else max
         return _C_ops.final_state_clip(x, min, max)
@@ -2663,6 +2668,8 @@ def clip_(x, min=None, max=None, name=None):
     max = fmax if max is None else max
 
     if in_dygraph_mode():
+        min = utils._numpy_as_scalar(min)
+        max = utils._numpy_as_scalar(max)
         return _C_ops.final_state_clip_(x, min, max)
 
     if _in_legacy_dygraph():
