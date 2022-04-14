@@ -386,11 +386,7 @@ def fp16_guard():
         yield
 
 
-def cast_model_to_fp16(program,
-                       amp_lists=None,
-                       use_fp16_guard=True,
-                       keep_fp32_input=True,
-                       keep_fp32_output=True):
+def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the fp16 data type. This function will do some special process for
@@ -401,10 +397,6 @@ def cast_model_to_fp16(program,
         amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
         use_fp16_guard(bool): Determine whether to use `fp16_guard` when
                               constructing the program. Default True.
-        keep_fp32_input(bool): Determine whether to use FP32 input for some 
-                               special ops.  Default True.
-        keep_fp32_output(bool): Determine whether to use FP32 output for some 
-                                special ops. Default True.
     """
 
     if amp_lists is None:
@@ -425,7 +417,9 @@ def cast_model_to_fp16(program,
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if keep_fp32_input and _keep_fp32_input(op, in_name):
+                # for ipu, all inputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_input(
+                        op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -453,7 +447,9 @@ def cast_model_to_fp16(program,
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if keep_fp32_output and _keep_fp32_output(op, out_name):
+                # for ipu, all outputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_output(
+                        op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
