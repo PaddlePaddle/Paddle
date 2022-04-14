@@ -473,7 +473,7 @@ struct ReduceConfig {
     } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       if ((rank == 3 && not_higher) ||
-          reduce_dim[0] >= max_reduce_num_for_higher) {
+          x_dim[reduce_dim[0]] >= max_reduce_num_for_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
     } else {
