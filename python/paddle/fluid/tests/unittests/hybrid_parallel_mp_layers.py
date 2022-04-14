@@ -24,6 +24,7 @@ import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle import framework
+from paddle.fluid.framework import _test_eager_guard
 
 
 def set_random_seed(seed):
@@ -328,4 +329,6 @@ class TestDistTraning(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
     unittest.main()

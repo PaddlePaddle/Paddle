@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+import paddle
+from paddle.fluid.framework import _test_eager_guard
+from hybrid_parallel_mp_layers import TestDistTraning
 
-
-class TestModelParallelLayer(TestMultipleGpus):
-    def test_hybrid_parallel_mp_layer(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
-
-    def test_hybrid_parallel_mp_layer_eager(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_layers_eager.py')
-
-
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    with _test_eager_guard():
+        unittest.main()
