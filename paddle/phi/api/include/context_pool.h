@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <mutex>
 
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -55,8 +56,12 @@ struct DefaultDeviceContextType<AllocationType::GPU> {
  * In order not to depend on the fluid's DeviceContextPool,
  * the DeviceContextPool here needs to be initialized in the fluid, and cannot
  * be initialized by itself.
+ *
+ * Note: DeviceContextPool is an experimental API and may be removed in the
+ * future. From 2.3, we recommend directly using the C++ API to combine new
+ * perators.
  */
-class DeviceContextPool {
+class PADDLE_API DeviceContextPool {
  public:
   static DeviceContextPool& Instance();
 
