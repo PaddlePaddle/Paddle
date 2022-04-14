@@ -1406,19 +1406,18 @@ def nms(boxes,
 
     Args:
         boxes(Tensor): The input boxes data to be computed, it's a 2D-Tensor with 
-            the shape of [num_boxes, 4] and boxes should be sorted by their 
-            confidence scores. The data type is float32 or float64. 
+            the shape of [num_boxes, 4]. The data type is float32 or float64. 
             Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates. 
             Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
-        iou_threshold(float32): IoU threshold for determine overlapping boxes. Default value: 0.3.
+        iou_threshold(float32, optional): IoU threshold for determine overlapping boxes. Default value: 0.3.
         scores(Tensor, optional): Scores corresponding to boxes, it's a 1D-Tensor with 
-            shape of [num_boxes]. The data type is float32 or float64.
+            shape of [num_boxes]. The data type is float32 or float64. Default: None.
         category_idxs(Tensor, optional): Category indices corresponding to boxes. 
-            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64.
-        categories(List, optional): A list of unique id of all categories. The data type is int64.
+            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64. Default: None.
+        categories(List, optional): A list of unique id of all categories. The data type is int64. Default: None.
         top_k(int64, optional): The top K boxes who has higher score and kept by NMS preds to 
-            consider. top_k should be smaller equal than num_boxes.
+            consider. top_k should be smaller equal than num_boxes. Default: None.
 
     Returns:
         Tensor: 1D-Tensor with the shape of [num_boxes]. Indices of boxes kept by NMS.
