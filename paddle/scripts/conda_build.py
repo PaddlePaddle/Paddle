@@ -120,7 +120,7 @@ about:
         self.py_str = ["py36", "py37", "py38", "py39"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
-        self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
+        self.pip_prefix_windows = r"pip install D:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
