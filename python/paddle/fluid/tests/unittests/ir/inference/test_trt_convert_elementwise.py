@@ -32,7 +32,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
         def generate_weight():
             return np.random.randn(32).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for shape in [[32], [batch, 32], [batch, 32, 32],
                           [batch, 32, 16, 32]]:
                 for op_type in ["elementwise_add", "elementwise_mul"]:
@@ -72,7 +72,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [4]}
-                self.dynamic_shape.max_input_shape = {"input_data": [256]}
+                self.dynamic_shape.max_input_shape = {"input_data": [32]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [16]}
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
@@ -80,19 +80,17 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {"input_data": [2, 32]}
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 32, 4]}
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 32, 256]
-                }
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 32]}
             elif self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [1, 32, 4, 4]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 32, 128, 256]
+                    "input_data": [4, 32, 32, 32]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 32, 32, 16]
+                    "input_data": [4, 32, 16, 32]
                 }
 
         def clear_dynamic_shape():
