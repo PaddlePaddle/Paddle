@@ -179,6 +179,9 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   // param = 1, save delta feature
   // param = 3, save all feature with time decay
   virtual bool Save(float* value, int param) override;
+  bool SaveCache(float* value, int param,
+                 double global_cache_threshold) override;
+  bool SaveSSD(float* value) override;
   // update delta_score and unseen_days after save
   virtual void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
