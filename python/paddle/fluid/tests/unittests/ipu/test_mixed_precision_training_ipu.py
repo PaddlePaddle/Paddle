@@ -100,10 +100,7 @@ class TestBase(IPUOpTest):
                 # cast model to fp16
                 if exec_mode == ExecutionModeFull.IPU_MIXED_PRECISION:
                     to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
-                        main_prog,
-                        self.amp_list,
-                        keep_fp32_input=False,
-                        keep_fp32_output=False)
+                        main_prog, self.amp_list)
                     self.dtype_check(main_prog, to_fp16_var_names)
 
                 if exec_mode == ExecutionModeFull.CPU_FP32:
