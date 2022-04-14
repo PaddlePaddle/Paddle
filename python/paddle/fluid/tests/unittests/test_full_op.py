@@ -80,8 +80,10 @@ class TestFullAPI(unittest.TestCase):
         with fluid.dygraph.base.guard():
             with _test_eager_guard():
                 positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
-
                 positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+                positive_4_int64 = fluid.layers.fill_constant([1], "int64", 4,
+                                                              True)
+
                 out_1 = paddle.full(
                     shape=[1, 2], dtype="float32", fill_value=1.1)
 
@@ -109,6 +111,16 @@ class TestFullAPI(unittest.TestCase):
                 out_7 = paddle.full(
                     shape=[1, 2], dtype=np.float32, fill_value=val)
 
+                out_8 = paddle.full(
+                    shape=positive_2_int32, dtype="float32", fill_value=1.1)
+
+                out_9 = paddle.full(
+                    shape=[
+                        positive_2_int32, positive_2_int64, positive_4_int64
+                    ],
+                    dtype="float32",
+                    fill_value=1.1)
+
                 assert np.array_equal(
                     out_1, np.full(
                         [1, 2], 1.1, dtype="float32"))
@@ -130,6 +142,10 @@ class TestFullAPI(unittest.TestCase):
                 assert np.array_equal(
                     out_7, np.full(
                         [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(out_8, np.full([2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_9, np.full(
+                        [2, 2, 4], 1.1, dtype="float32"))
 
 
 class TestFullOpError(unittest.TestCase):
