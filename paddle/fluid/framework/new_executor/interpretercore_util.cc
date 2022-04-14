@@ -640,6 +640,7 @@ std::map<int, std::list<int>> get_downstream_map(
     }
     return oss.str();
   };
+
   auto downstream_map_count = [&]() -> size_t {
     size_t count = 0;
     for (auto pair : downstream) {
@@ -647,6 +648,7 @@ std::map<int, std::list<int>> get_downstream_map(
     }
     return count;
   };
+
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
@@ -662,9 +664,9 @@ std::map<int, std::list<int>> get_downstream_map(
   // since there are some ops that have no downstream-op.
   auto op_num = op2dependences.size();
   // happens_before[i][j] means i should be executed before j
-  op_happens_before->reserve(op_num);
+  op_happens_before->resize(op_num);
   for (size_t i = 0; i < op_num; ++i) {
-    (*op_happens_before)[i].reserve(op_num);
+    (*op_happens_before)[i].resize(op_num);
     std::fill((*op_happens_before)[i].begin(), (*op_happens_before)[i].end(),
               false);
   }
@@ -699,21 +701,23 @@ std::map<int, std::list<int>> get_downstream_map(
   for (size_t i = 0; i < op_num; ++i) {
     bfs(i);
   }
+
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
   for (size_t i = 0; i < op_num; ++i) {
     std::list<int> minumum_nexts;
     for (size_t item : downstream[i]) {
-      bool not_before_any = true;
+      bool not_after_any = true;
+      // find the op that is not executed after any
       for (size_t other_item : downstream[i]) {
         if ((*op_happens_before)[other_item][item]) {
-          VLOG(8) << "happens_before: " << other_item << " " << item
+          VLOG(8) << "happens_before: " << other_item << "->" << item
                   << ", so skip " << item;
-          not_before_any = false;
+          not_after_any = false;
           break;
         }
       }
-      if (not_before_any) {
+      if (not_after_any) {
         VLOG(8) << "downstream op of " << i << ": " << item;
         minumum_nexts.push_back(item);
       }
@@ -971,8 +975,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
     }
   }
   for (auto pair : op2dependences) {
-    VLOG(10) << pair.first << " Depends on " << pair.second.size();
     std::ostringstream oss;
+    oss << pair.first << " Depends on " << pair.second.size() << " ops: ";
     std::copy(pair.second.begin(), pair.second.end(),
               std::ostream_iterator<int>(oss, " "));
     VLOG(10) << oss.str();

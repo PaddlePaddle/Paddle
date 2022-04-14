@@ -285,16 +285,19 @@ void InterpreterCore::Convert(
     std::set<size_t> minumum_last_live_ops;
     for (size_t item : last_live_ops_[i]) {
       bool not_before_any = true;
+      // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
-        if (op_happens_before_[other_item][item]) {
-          VLOG(8) << "happens_before: " << other_item << " " << item
+        if (op_happens_before_[item][other_item]) {
+          VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
           not_before_any = false;
           break;
         }
       }
       if (not_before_any) {
-        VLOG(8) << "last live op of var " << i << ": " << item;
+        VLOG(8) << "last live op of var " << i << " "
+                << global_scope_->GetNameById(i) << " : " << item << " "
+                << vec_instruction_[item].OpBase()->Type();
         minumum_last_live_ops.insert(item);
         vec_instruction_[item].AddGCCheckVar(i);
       }
