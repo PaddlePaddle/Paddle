@@ -347,7 +347,6 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
   }
   int dev_id = resource_->dev_id(dev_num);
 
-  int dev_id = resource_->dev_id(dev_num);
   std::vector<memory::allocation::AllocationPtr> d_key_bufs;
   std::vector<memory::allocation::AllocationPtr> d_val_bufs;
 
