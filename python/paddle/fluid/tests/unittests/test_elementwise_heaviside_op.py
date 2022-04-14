@@ -16,8 +16,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 
 
 class TestElementwiseOp(OpTest):
@@ -88,18 +86,20 @@ class TestHeavisideAPI_float64(unittest.TestCase):
 
     def test_static(self):
         for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+                         if paddle.device.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x = paddle.fluid.data(
-                name=f"x_{self.dtype}", shape=[13, 17], dtype=self.dtype)
-            y = paddle.fluid.data(
-                name=f"y_{self.dtype}", shape=[13, 17], dtype=self.dtype)
-            out = paddle.heaviside(x, y)
+            prog = paddle.static.Program()
+            with paddle.static.program_guard(prog):
+                x = paddle.static.data(
+                    name=f"x_{self.dtype}", shape=[13, 17], dtype=self.dtype)
+                y = paddle.static.data(
+                    name=f"y_{self.dtype}", shape=[13, 17], dtype=self.dtype)
+                out = paddle.heaviside(x, y)
 
             exe = paddle.static.Executor(place=place)
-            res = exe.run(fluid.default_main_program(),
+            res = exe.run(prog,
                           feed={
                               f"x_{self.dtype}": self.x_np,
                               f"y_{self.dtype}": self.y_np
@@ -111,7 +111,7 @@ class TestHeavisideAPI_float64(unittest.TestCase):
 
     def test_dygraph(self):
         for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+                         if paddle.device.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             result = paddle.heaviside(
@@ -146,23 +146,21 @@ class TestHeavisideAPI_int32(TestHeavisideAPI_float64):
 
 class TestHeavisideError(unittest.TestCase):
     def test_input(self):
+        paddle.disable_static()
+
         def test_input_x():
-            with paddle.fluid.dygraph.guard():
-                paddle.heaviside(1, paddle.randn([100]))
+            paddle.heaviside(1, paddle.randn([100]))
 
         self.assertRaises(ValueError, test_input_x)
 
         def test_input_y():
-            with paddle.fluid.dygraph.guard():
-                paddle.heaviside(paddle.randn([100]), 1)
+            paddle.heaviside(paddle.randn([100]), 1)
 
         self.assertRaises(ValueError, test_input_y)
 
         def test_input_xy():
-            with paddle.fluid.dygraph.guard():
-                paddle.heaviside(
-                    paddle.randn([100], 'float32'),
-                    paddle.randn([100], 'float64'))
+            paddle.heaviside(
+                paddle.randn([100], 'float32'), paddle.randn([100], 'float64'))
 
         self.assertRaises(ValueError, test_input_xy)
 
