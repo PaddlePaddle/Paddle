@@ -114,7 +114,9 @@ class TensorWrapper {
           EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
-      p_ab_autograd_meta->SetGradNode(new_grad_node);
+      if (new_grad_node) {
+        p_ab_autograd_meta->SetGradNode(new_grad_node);
+      }
       recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
 
       return recovered_tensor;
