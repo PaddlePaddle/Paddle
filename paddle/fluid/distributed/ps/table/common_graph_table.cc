@@ -1204,8 +1204,8 @@ int32_t GraphTable::Initialize(const TableParameter &config,
 }
 int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
-  _db = NULL;
 #ifdef PADDLE_WITH_HETERPS
+  _db = NULL;
   search_level = graph.search_level();
   if (search_level >= 2) {
     _db = paddle::distributed::RocksDBHandler::GetInstance();
