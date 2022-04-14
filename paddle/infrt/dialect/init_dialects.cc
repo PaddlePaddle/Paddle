@@ -34,9 +34,7 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
                   InfrtDialect,
                   dt::DTDialect,
                   pd::PaddleDialect,
-#ifdef INFRT_WITH_TRT
                   trt::TensorRTDialect,
-#endif
 #ifdef INFRT_WITH_PHI
                   phi::PHIDenseTensorDialect,
                   phi::PHICPUKernelDialect,

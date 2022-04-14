@@ -107,11 +107,8 @@ set(infrt_mlir_incs
         tensor_shape_inc
         dense_tensor_inc
         pd_extra_ops_inc
+        trt_ops_inc
         )
-if(WITH_TENSORRT)
-    set(infrt_mlir_incs ${infrt_mlir_incs}
-        trt_ops_inc)
-endif()
 
 if (INFRT_WITH_PHI)
     set(phi_libs phi)
