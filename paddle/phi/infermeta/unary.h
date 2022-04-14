@@ -209,7 +209,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
                              int downscale_factor,
                              const std::string& data_format,
                              MetaTensor* out);
- 
+
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
                     int axis,
