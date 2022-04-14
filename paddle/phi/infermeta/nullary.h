@@ -65,4 +65,11 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       DataType dtype,
                                       MetaTensor* out);
 
+void UniformRandomInferMeta(const IntArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            MetaTensor* out);
+
 }  // namespace phi

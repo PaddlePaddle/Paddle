@@ -331,7 +331,7 @@ Node *shape_handler(Graph *graph, Node *node) {
 Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   Node *starts = nullptr;
-  if (!op->Input("StartsTensor").empty()) {
+  if (!op->HasAttr("starts")) {
     starts = GetInputVarNode("StartsTensor", node);
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
@@ -341,7 +341,7 @@ Node *slice_handler(Graph *graph, Node *node) {
     starts = starts->outputs[0];
   }
   Node *ends = nullptr;
-  if (!op->Input("EndsTensor").empty()) {
+  if (!op->HasAttr("ends")) {
     ends = GetInputVarNode("EndsTensor", node);
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));

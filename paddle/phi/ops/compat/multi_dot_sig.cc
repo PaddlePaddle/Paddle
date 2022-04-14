@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature MultiDotGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "multi_dot_grad", {GradVarName("Out"), "X"}, {}, {GradVarName("X")});
+      "multi_dot_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
 }
 
 }  // namespace phi

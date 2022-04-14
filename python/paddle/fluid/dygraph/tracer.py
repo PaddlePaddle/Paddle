@@ -22,6 +22,14 @@ from paddle.fluid import framework
 from paddle import _C_ops
 
 final_state_name_mapping = {
+    "graph_send_recv": {
+        "final_op_name": "final_state_graph_send_recv",
+        "x": "X",
+        "src_index": "Src_index",
+        "dst_index": "Dst_index",
+        "out": "Out",
+        "dst_count": "Dst_count"
+    },
     "matmul_v2": {
         "final_op_name": "final_state_matmul",
         "transpose_x": "trans_x",
