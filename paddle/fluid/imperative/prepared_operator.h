@@ -289,7 +289,7 @@ void BuildDygraphPhiKernelContext(
       }
     }
 
-    auto ins_vector = it->second;
+    auto& ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -587,7 +587,7 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
     auto& ins_vector = ins.at(input_names[i]);
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      auto var = ins_vector[offset];
+      auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {

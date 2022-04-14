@@ -22,7 +22,7 @@ class Kernel;
 class KernelKey;
 class KernelArgsDef;
 class KernelContext;
-class KernelSignature;
+struct KernelSignature;
 class ArgumentMappingContext;
 class InferMetaContext;
 

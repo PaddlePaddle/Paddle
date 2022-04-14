@@ -428,18 +428,19 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       auto input_var = std::move(ctx->GetInputVarPtrs(in_name));
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
-            CompatMetaTensor(input_var[0], ctx->IsRuntime()));
+            std::move(CompatMetaTensor(input_var[0], ctx->IsRuntime())));
       } else {
         paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
             inputs;
         inputs.reserve(input_var.size());
         for (const auto& in : input_var) {
-          inputs.emplace_back(CompatMetaTensor(in, ctx->IsRuntime()));
+          inputs.emplace_back(
+              std::move(CompatMetaTensor(in, ctx->IsRuntime())));
         }
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
-      infer_meta_context.EmplaceBackInput(CompatMetaTensor());
+      infer_meta_context.EmplaceBackInput(std::move(CompatMetaTensor()));
     }
   }
 
@@ -688,26 +689,29 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       auto output_var = std::move(ctx->GetOutputVarPtrs(out_name));
       if (output_var.size() == 1) {
         infer_meta_context.EmplaceBackOutput(
-            CompatMetaTensor(output_var[0], ctx->IsRuntime()));
+            std::move(CompatMetaTensor(output_var[0], ctx->IsRuntime())));
       } else {
-        paddle::SmallVector<CompatMetaTensor> outputs;
+        paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+            outputs;
         outputs.reserve(output_var.size());
         for (const auto& out : output_var) {
           if (ctx->IsRuntime()) {
             if (BOOST_GET_CONST(Variable*, out)) {
-              outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
+              outputs.emplace_back(
+                  std::move(CompatMetaTensor(out, ctx->IsRuntime())));
               continue;
             }
           } else if (BOOST_GET_CONST(VarDesc*, out)) {
-            outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
+            outputs.emplace_back(
+                std::move(CompatMetaTensor(out, ctx->IsRuntime())));
             continue;
           }
-          outputs.emplace_back(CompatMetaTensor());
+          outputs.emplace_back(std::move(CompatMetaTensor()));
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      infer_meta_context.EmplaceBackOutput(CompatMetaTensor());
+      infer_meta_context.EmplaceBackOutput(std::move(CompatMetaTensor()));
     }
   }
 
