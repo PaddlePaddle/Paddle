@@ -1399,9 +1399,11 @@ def nms(boxes,
         IoU = \frac{intersection\_area(box1, box2)}{union\_area(box1, box2)}
 
     If scores are provided, input boxes will be sorted by their scores firstly.
+
     If category_idxs and categories are provided, NMS will be performed with a batched style, 
     which means NMS will be applied to each category respectively and results of each category
     will be concated and sorted by scores.
+    
     If K is provided, only the first k elements will be returned. Otherwise, all box indices sorted by scores will be returned.
 
     Args:
