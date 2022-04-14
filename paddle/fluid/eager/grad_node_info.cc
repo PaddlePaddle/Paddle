@@ -151,7 +151,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
           "which is illegal."));
 
   meta.SetTensorMeta(dense_tensor->meta());
-  meta.SetPlace(fwd_out.inner_place());
+  meta.SetPlace(fwd_out.place());
 
   if (paddle::framework::IsComplexType(
           paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
@@ -210,7 +210,7 @@ void GradNodeBase::SetGradInMeta(
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
-      meta.SetPlace(fwd_out_tensor.inner_place());
+      meta.SetPlace(fwd_out_tensor.place());
 
       if (paddle::framework::IsComplexType(
               paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
@@ -256,7 +256,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
-      meta.SetPlace(fwd_in.inner_place());
+      meta.SetPlace(fwd_in.place());
     }
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -301,7 +301,7 @@ void GradNodeBase::SetGradOutMeta(
                               "phi::DataType::UNDEFINED,"
                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor->meta());
-        meta.SetPlace(fwd_in_tensor.inner_place());
+        meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
       VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
