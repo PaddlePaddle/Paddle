@@ -2114,8 +2114,11 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
-      arg_mapping_ctx);
+  if (arg_map_fn_ == nullptr) {
+    arg_map_fn_.reset(new phi::ArgumentMappingFn(
+        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
+  }
+  return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePhiData(

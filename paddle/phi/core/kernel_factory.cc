@@ -19,7 +19,7 @@
 
 namespace phi {
 
-static Kernel empty_kernel;  // NOLINT
+const static Kernel empty_kernel;  // NOLINT
 
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;

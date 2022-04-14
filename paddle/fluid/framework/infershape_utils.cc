@@ -398,7 +398,6 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
 CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
-  InitDefaultKernelSignatureMap();
   auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   PADDLE_ENFORCE_NOT_NULL(
       arg_map_fn, platform::errors::NotFound(
@@ -415,13 +414,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
 
-  VLOG(3) << "BuildInferMetaContext: after signature";
-
   const auto& args_def =
       phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
   const auto& attr_defs = args_def.attribute_defs();
-
-  VLOG(3) << "BuildInferMetaContext: after get attr def";
 
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
@@ -432,7 +427,6 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       } else {
         paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
             inputs;
-        inputs.reserve(input_var.size());
         for (const auto& in : input_var) {
           inputs.emplace_back(
               std::move(CompatMetaTensor(in, ctx->IsRuntime())));
@@ -444,11 +438,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     }
   }
 
-  VLOG(3) << "BuildInferMetaContext: Done inputs";
+  VLOG(6) << "BuildInferMetaContext: Done inputs";
 
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto attr_name = attr_names[i];
+    auto& attr_name = attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       // When attr is a vector_tensor or tensor, transform it to IntArray
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
@@ -682,7 +676,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     }
   }
 
-  VLOG(3) << "BuildInferMetaContext: Done attrs";
+  VLOG(6) << "BuildInferMetaContext: Done attrs";
 
   for (auto& out_name : output_names) {
     if (ctx->HasOutputs(out_name, true)) {
@@ -693,7 +687,6 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       } else {
         paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
             outputs;
-        outputs.reserve(output_var.size());
         for (const auto& out : output_var) {
           if (ctx->IsRuntime()) {
             if (BOOST_GET_CONST(Variable*, out)) {
@@ -715,7 +708,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     }
   }
 
-  VLOG(3) << "BuildInferMetaContext: Done outputs";
+  VLOG(6) << "BuildInferMetaContext: Done outputs";
 
   return infer_meta_context;
 }

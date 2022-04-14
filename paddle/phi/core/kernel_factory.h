@@ -217,7 +217,7 @@ class Kernel {
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
-  bool IsValid() { return fn_ != nullptr; }
+  bool IsValid() const { return fn_ != nullptr; }
 
  private:
   KernelFn fn_{nullptr};

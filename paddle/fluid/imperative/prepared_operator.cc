@@ -36,6 +36,8 @@ DECLARE_bool(run_kp_kernel);
 namespace paddle {
 namespace imperative {
 
+static const phi::Kernel empty_kernel;
+
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
     const std::shared_ptr<paddle::imperative::VarBase>& var) {
   return var->SharedVar();
@@ -108,12 +110,13 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       ctx_(ctx),
       kernel_type_(kernel_type),
       func_(func),
-      dev_ctx_(dev_ctx) {}
+      dev_ctx_(dev_ctx),
+      pt_kernel_(empty_kernel) {}
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
-                       const framework::KernelSignature& kernel_signature,
+                       framework::KernelSignature&& kernel_signature,
                        const phi::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
@@ -122,7 +125,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       func_(nullptr),
       dev_ctx_(dev_ctx),
       run_phi_kernel_(true),
-      pt_kernel_signature_(kernel_signature),
+      pt_kernel_signature_(std::move(kernel_signature)),
       pt_kernel_(pt_kernel) {}
 
 template <typename VarType>
@@ -212,8 +215,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
     pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-    auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
-                                                                 pt_kernel_key);
+    auto& pt_kernel = phi::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_kernel_key);
 
     if (pt_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
@@ -228,8 +231,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
-      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, dev_ctx);
+      return PreparedOp(op, ctx, expected_kernel_key,
+                        std::move(pt_kernel_signature), pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -277,8 +280,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_cpu_kernel, cpu_ctx);
+        return PreparedOp(op, ctx, expected_kernel_key,
+                          std::move(pt_kernel_signature), pt_cpu_kernel,
+                          cpu_ctx);
       }
     }
   }

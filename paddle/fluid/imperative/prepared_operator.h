@@ -154,7 +154,7 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             const framework::KernelSignature& kernel_signature,
+             framework::KernelSignature&& kernel_signature,
              const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
@@ -206,7 +206,7 @@ class PreparedOp {
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
-  phi::Kernel pt_kernel_;
+  const phi::Kernel& pt_kernel_;
 };
 
 const inline framework::Attribute& GetAttr(

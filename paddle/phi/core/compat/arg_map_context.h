@@ -26,18 +26,6 @@ limitations under the License. */
 
 namespace phi {
 
-constexpr char kGradVarSuffix[] = "@GRAD";
-
-constexpr size_t kGradVarSuffixSize = 5U;
-
-inline std::string GradVarName(const std::string& var_name) {
-  std::string result;
-  result.reserve(var_name.size() + kGradVarSuffixSize);
-  result += var_name;
-  result += kGradVarSuffix;
-  return result;
-}
-
 // tuple(input_names, attr_names, output_names)
 using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
                                    paddle::SmallVector<const char*>,

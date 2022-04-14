@@ -26,7 +26,7 @@ limitations under the License. */
 
 namespace phi {
 
-static std::string deprecated_kernel_name = "deprecated";  // NOLINT
+const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
 
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
@@ -152,7 +152,7 @@ class OpUtilsMap {
     auto it = arg_mapping_fn_map_.find(op_type);
     if (it == arg_mapping_fn_map_.end()) {
       auto func =
-          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
+          [&op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
         return DefaultKernelSignatureMap::Instance().Get(op_type);
       };
       return func;
