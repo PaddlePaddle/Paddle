@@ -13,55 +13,61 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
 
-// Create the definition of Multiply
-DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+DEFINE_CUDA_ELEMENTWISE_OP(Add)
 
 template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
+void AddKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
   int axis = -1;
-  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
+  AddRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
+
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
+#else
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(multiply_raw,
-                   GPU,
+PD_REGISTER_KERNEL(add_raw,
+                   KPS,
                    ALL_LAYOUT,
-                   phi::MultiplyRawKernel,
+                   phi::AddRawKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   bool,
                    float16,
+                   bfloat16,
                    complex64,
-                   complex128,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(multiply,
-                   GPU,
+                   complex128) {}
+PD_REGISTER_KERNEL(add,
+                   KPS,
                    ALL_LAYOUT,
-                   phi::MultiplyKernel,
+                   phi::AddKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   bool,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
+#endif

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
@@ -33,19 +35,28 @@ DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(maximum_raw, KPS, ALL_LAYOUT, phi::MaximumRawKernel, float) {
+}
+PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
+}
+PD_REGISTER_KERNEL(
+    floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
+
+#else
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(
-    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+    fmax, KPS, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(
-    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
+    fmin, KPS, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MaximumRawKernel,
                    float,
@@ -55,7 +66,7 @@ PD_REGISTER_KERNEL(maximum_raw,
                    float16,
                    bfloat16) {}
 PD_REGISTER_KERNEL(minimum_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MinimumRawKernel,
                    float,
@@ -65,7 +76,7 @@ PD_REGISTER_KERNEL(minimum_raw,
                    float16,
                    bfloat16) {}
 PD_REGISTER_KERNEL(modulo_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::ModuloRawKernel,
                    float,
@@ -73,16 +84,17 @@ PD_REGISTER_KERNEL(modulo_raw,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
                    float,
                    double,
                    int,
                    int64_t) {}
+#endif

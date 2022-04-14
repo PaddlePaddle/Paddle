@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
@@ -34,13 +36,17 @@ void DivideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(divide_raw, KPS, ALL_LAYOUT, phi::DivideRawKernel, float) {}
+#else
+
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(divide_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
                    float,
@@ -53,7 +59,7 @@ PD_REGISTER_KERNEL(divide_raw,
                    complex128) {}
 
 PD_REGISTER_KERNEL(divide,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::DivideKernel,
                    float,
@@ -64,3 +70,4 @@ PD_REGISTER_KERNEL(divide,
                    phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
+#endif

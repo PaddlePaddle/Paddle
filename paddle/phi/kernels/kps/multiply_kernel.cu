@@ -13,55 +13,63 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
 
-// Create the definition of Subtract
-DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
+// Create the definition of Multiply
+DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 
 template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
+void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
   int axis = -1;
-  SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
+  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
+
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(
+    multiply_raw, KPS, ALL_LAYOUT, phi::MultiplyRawKernel, float) {}
+#else
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(subtract_raw,
-                   GPU,
+PD_REGISTER_KERNEL(multiply_raw,
+                   KPS,
                    ALL_LAYOUT,
-                   phi::SubtractRawKernel,
+                   phi::MultiplyRawKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
+                   bool,
                    float16,
-                   bfloat16,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(subtract,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
                    complex64,
                    complex128,
-                   phi::dtype::bfloat16) {}
+                   bfloat16) {}
+PD_REGISTER_KERNEL(multiply,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MultiplyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
+#endif
