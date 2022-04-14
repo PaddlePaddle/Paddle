@@ -32,11 +32,11 @@ sample_size;
 */
 
 __global__ void get_cpu_id_index(int64_t* key, int* val, int64_t* cpu_key,
-                                 int* index, int len) {
+                                 int* sum, int* index, int len) {
   CUDA_KERNEL_LOOP(i, len) {
     if (val[i] == -1) {
-      int old = atomicAdd(index, 1);
-      cpu_key[old - 1] = key[i];
+      int old = atomicAdd(sum, 1);
+      cpu_key[old] = key[i];
       index[old] = i;
     }
   }
@@ -774,20 +774,21 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
     // cpu_graph_table->random_sample_neighbors
     if (cpu_query_switch) {
       thrust::device_vector<int64_t> cpu_keys_ptr(shard_len);
-      thrust::device_vector<int> index_ptr(shard_len + 1, 1);
+      thrust::device_vector<int> index_ptr(shard_len + 1, 0);
       int64_t* node_id_array = reinterpret_cast<int64_t*>(node.key_storage);
       int grid_size2 = (shard_len - 1) / block_size_ + 1;
       get_cpu_id_index<<<grid_size2, block_size_, 0,
                          resource_->remote_stream(i, gpu_id)>>>(
           node_id_array, id_array,
           thrust::raw_pointer_cast(cpu_keys_ptr.data()),
-          thrust::raw_pointer_cast(index_ptr.data()), shard_len);
+          thrust::raw_pointer_cast(index_ptr.data()),
+          thrust::raw_pointer_cast(index_ptr.data() + 1), shard_len);
 
       int* cpu_index = new int[shard_len + 1];
       cudaMemcpy(cpu_index, thrust::raw_pointer_cast(index_ptr.data()),
                  (shard_len + 1) * sizeof(int), cudaMemcpyDeviceToHost);
-      if (cpu_index[0] > 1) {
-        int number_on_cpu = cpu_index[0] - 1;
+      if (cpu_index[0] > 0) {
+        int number_on_cpu = cpu_index[0];
         std::vector<std::shared_ptr<char>> buffers(number_on_cpu);
         std::vector<int> ac(number_on_cpu);
         int64_t* cpu_keys_ = new int64_t[number_on_cpu];
