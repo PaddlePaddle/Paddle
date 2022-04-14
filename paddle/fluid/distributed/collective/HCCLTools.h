@@ -18,6 +18,7 @@
 #include <string>
 
 #include "boost/variant.hpp"
+#include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -169,6 +170,9 @@ class HCCLCommManager {
   int rank_;
   mutable std::mutex mutex_;
 };
+
+HcclReduceOp ToHCCLRedType(ReduceOp reduction);
+std::string SerializeHCCLUniqueId(const HcclRootInfo& hcclID);
 
 }  // namespace distributed
 }  // namespace paddle

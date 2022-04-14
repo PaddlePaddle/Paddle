@@ -1731,4 +1731,163 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MatmulWithFlattenGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& out_grad,
+                                 int x_num_col_dims,
+                                 int y_num_col_dims,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad) {
+  auto x_matrix = x.dims().size() > 2
+                      ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
+                      : x;
+  auto y_matrix = y.dims().size() > 2
+                      ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
+                      : y;
+  auto* dout = &out_grad;
+
+  DenseTensor dout_mat(*dout);
+  dout_mat.Resize({phi::flatten_to_2d(x.dims(), x_num_col_dims)[0],
+                   phi::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
+
+  auto* dx = x_grad;
+  auto* dy = y_grad;
+
+  if (dx != nullptr) {
+    dx->set_lod(x.lod());
+  }
+  if (dy != nullptr) {
+    dy->set_lod(y.lod());
+  }
+
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  if (dx) {
+    dev_ctx.template Alloc<T>(dx);
+    DenseTensor dx_matrix =
+        dx->dims().size() > 2
+            ? paddle::framework::ReshapeToMatrix(*dx, x_num_col_dims)
+            : *dx;
+
+    // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
+    blas.MatMul(dout_mat, false, y_matrix, true, &dx_matrix);
+  }
+  if (dy) {
+    dev_ctx.template Alloc<T>(dy);
+    DenseTensor dy_matrix =
+        dy->dims().size() > 2
+            ? paddle::framework::ReshapeToMatrix(*dy, y_num_col_dims)
+            : *dy;
+    // dy = x' * dout. dy K x N, dout : M x N, x : M x K
+    blas.MatMul(x_matrix, true, dout_mat, false, &dy_matrix);
+  }
+}
+
+template <typename T, typename Context>
+void MatmulWithFlattenDoubleGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    const DenseTensor& out_grad,
+    paddle::optional<const DenseTensor&> x_grad_grad,
+    paddle::optional<const DenseTensor&> y_grad_grad,
+    int x_num_col_dims,
+    int y_num_col_dims,
+    DenseTensor* x_grad,
+    DenseTensor* y_grad,
+    DenseTensor* out_grad_grad) {
+  auto x_mat = x.dims().size() > 2
+                   ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
+                   : x;
+  auto y_mat = y.dims().size() > 2
+                   ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
+                   : y;
+
+  const int m = phi::flatten_to_2d(x.dims(), x_num_col_dims)[0];
+  const int n = phi::flatten_to_2d(y.dims(), y_num_col_dims)[1];
+
+  auto* dout = &out_grad;
+  DenseTensor dout_mat(*dout);
+  dout_mat.Resize({m, n});
+
+  auto* ddx = x_grad_grad.get_ptr();
+  auto* ddy = y_grad_grad.get_ptr();
+
+  auto* dx = x_grad;
+  auto* dy = y_grad;
+  auto* ddout = out_grad_grad;
+
+  DenseTensor ddout_mat;
+  if (ddout) {
+    ddout->set_lod(dout->lod());
+    // allocate and reshape ddout
+    dev_ctx.template Alloc<T>(ddout);
+    ddout_mat.ShareDataWith(*ddout);
+    ddout_mat.Resize({m, n});
+  }
+
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  // a flag to specify whether ddout value has been set, if flag
+  // is false, MatMul beta should be 0 to set ddout, if flag is
+  // true, MatMul beta should be 1 to add result to ddout.
+  bool ddout_flag = false;
+  if (ddx) {
+    auto ddx_mat =
+        ddx->dims().size() > 2
+            ? paddle::framework::ReshapeToMatrix(*ddx, x_num_col_dims)
+            : static_cast<const DenseTensor&>(*ddx);
+
+    // dy = ddx' * dout. dy : K x M, ddx' : K x M, dout : M x N
+    if (dy) {
+      dy->set_lod(y.lod());
+      // allocate and reshape dy
+      dev_ctx.template Alloc<T>(dy);
+      DenseTensor dy_mat =
+          dy->dims().size() > 2
+              ? paddle::framework::ReshapeToMatrix(*dy, y_num_col_dims)
+              : *dy;
+      blas.MatMul(ddx_mat, true, dout_mat, false, &dy_mat);
+    }
+    // ddout1 = ddx * y. ddx : M x K, y : K x N, ddout1 : M x N
+    if (ddout) {
+      blas.MatMul(ddx_mat,
+                  false,
+                  y_mat,
+                  false,
+                  static_cast<T>(1.0),
+                  &ddout_mat,
+                  static_cast<T>(ddout_flag));
+      ddout_flag = true;
+    }
+  }
+  if (ddy) {
+    auto ddy_mat =
+        ddy->dims().size() > 2
+            ? paddle::framework::ReshapeToMatrix(*ddy, y_num_col_dims)
+            : static_cast<const DenseTensor&>(*ddy);
+    // dx = dout * ddy'. dout : M x N, ddy' : N x K, dx : M x K
+    if (dx) {
+      dx->set_lod(x.lod());
+      // allocate and reshape dx
+      dev_ctx.template Alloc<T>(dx);
+      DenseTensor dx_mat =
+          dx->dims().size() > 2
+              ? paddle::framework::ReshapeToMatrix(*dx, x_num_col_dims)
+              : *dx;
+      blas.MatMul(dout_mat, false, ddy_mat, true, &dx_mat);
+    }
+    // ddout2 = x * ddy. x : M x K, ddy : K x N, ddout2 : M x N
+    if (ddout) {
+      blas.MatMul(x_mat,
+                  false,
+                  ddy_mat,
+                  false,
+                  static_cast<T>(1.0),
+                  &ddout_mat,
+                  static_cast<T>(ddout_flag));
+    }
+  }
+}
+
 }  // namespace phi

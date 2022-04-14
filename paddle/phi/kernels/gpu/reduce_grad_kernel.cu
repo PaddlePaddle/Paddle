@@ -31,18 +31,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad) {
-  ReduceGradKernel<T, Context, kps::IdentityFunctor>(dev_ctx,
-                                                     x,
-                                                     out_grad,
-                                                     dims,
-                                                     keep_dim,
-                                                     reduce_all,
-                                                     in_dtype,
-                                                     out_dtype,
-                                                     x_grad);
+  ReduceGradKernel<T, Context, kps::IdentityFunctor>(
+      dev_ctx, x, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
 template <typename T, typename Context>
@@ -52,18 +43,9 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DataType in_dtype,
-                          DataType out_dtype,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<T, Context, kps::DivideFunctor>(dev_ctx,
-                                                   x,
-                                                   out_grad,
-                                                   dims,
-                                                   keep_dim,
-                                                   reduce_all,
-                                                   in_dtype,
-                                                   out_dtype,
-                                                   x_grad);
+  ReduceGradKernel<T, Context, kps::DivideFunctor>(
+      dev_ctx, x, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
 }  // namespace phi

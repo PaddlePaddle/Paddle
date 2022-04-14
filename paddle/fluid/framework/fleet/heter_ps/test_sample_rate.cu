@@ -40,6 +40,7 @@
 
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_sampler.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
@@ -54,10 +55,10 @@ namespace distributed = paddle::distributed;
 std::string input_file;
 int exe_count = 100;
 int use_nv = 1;
-int fixed_key_size = 100, sample_size = 100,
+int fixed_key_size = 50000, sample_size = 32,
     bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
     bfs_sample_edges = 20, gpu_num1 = 8, gpu_num = 8;
-std::string gpu_str;
+std::string gpu_str = "0,1,2,3,4,5,6,7";
 int64_t *key[8];
 std::vector<std::string> edges = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
@@ -87,7 +88,7 @@ void testSampleRate() {
   pthread_rwlock_init(&rwlock, NULL);
   {
     ::paddle::distributed::GraphParameter table_proto;
-    table_proto.set_gpups_mode(false);
+    // table_proto.set_gpups_mode(false);
     table_proto.set_shard_num(127);
     table_proto.set_task_pool_size(24);
     std::cerr << "initializing begin";
@@ -192,20 +193,22 @@ void testSampleRate() {
   VLOG(0) << "got a new device id" << id;
   device_id_mapping.push_back(id);
   gpu_num = device_id_mapping.size();
-  VLOG(0) << "gpu_num = " << gpu_num;
   ::paddle::distributed::GraphParameter table_proto;
-  table_proto.set_gpups_mode(true);
-  table_proto.set_shard_num(127);
-  table_proto.set_gpu_num(gpu_num);
-  table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
-  table_proto.set_gpups_graph_sample_args(std::to_string(init_search_size) +
-                                          ",100000000,10000000,1,1");
+  table_proto.set_shard_num(24);
+  // table_proto.set_gpups_graph_sample_class("CompleteGraphSampler");
+
   std::shared_ptr<HeterPsResource> resource =
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   GpuPsGraphTable g(resource, use_nv);
   g.init_cpu_table(table_proto);
-  g.load(std::string(input_file), std::string("e>"));
+  std::vector<std::string> arg;
+  AllInGpuGraphSampler sampler;
+  sampler.init(&g, arg);
+  // g.load(std::string(input_file), std::string("e>"));
+  // sampler.start(std::string(input_file));
+  // sampler.load_from_ssd(std::string(input_file));
+  sampler.start_service(input_file);
   /*
   NodeQueryResult *query_node_res;
   query_node_res = g.query_node_list(0, 0, ids.size() + 10000);
@@ -323,7 +326,7 @@ void testSampleRate() {
 #endif
 }
 
-// TEST(testSampleRate, Run) { testSampleRate(); }
+TEST(TEST_FLEET, sample_rate) { testSampleRate(); }
 
 int main(int argc, char *argv[]) {
   for (int i = 0; i < argc; i++)

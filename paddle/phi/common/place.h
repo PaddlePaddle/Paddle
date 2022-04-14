@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/phi/api/include/dll_decl.h"
+
 namespace phi {
 
 enum class AllocationType : int8_t {
@@ -33,11 +35,13 @@ enum class AllocationType : int8_t {
 
 const char* AllocationTypeStr(AllocationType type);
 
-size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
-std::string GetGlobalDeviceType(size_t device_type_id_);
+PADDLE_API size_t
+GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+
+PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
-class Place {
+class PADDLE_API Place {
  public:
   Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
 
@@ -203,5 +207,36 @@ namespace paddle {
 namespace experimental {
 using AllocationType = phi::AllocationType;
 using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using GPUPlace = phi::GPUPlace;
+using GPUPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
+
+/* NOTE: In order to remove and be compatible with the enumeration type
+`PlaceType` of custom operator, we define a temporary type.
+
+This type cannot add any new type!!! It is only used for compatibility with
+historical writing and we will remove this temporary type in the future.
+This Type cannot be used in framework! only used for custom operator!
+
+The historical PlaceType define:
+
+- enum class PlaceType { kUNK = -1, kCPU, kGPU };
+
+The historical PlaceType using:
+
+- PD_CHECK(x.place() == paddle::PlaceType::kCPU)
+- auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+
+The new type cannot be used as int value! If you use as int, please modify
+the implementation.
+*/
+struct PADDLE_API PlaceType {
+  static phi::Place kUNK;
+  static phi::Place kCPU;
+  static phi::Place kGPU;
+};
+
 }  // namespace paddle

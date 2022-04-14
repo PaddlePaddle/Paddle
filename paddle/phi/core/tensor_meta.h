@@ -64,4 +64,24 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
+struct StringTensorMeta {
+  StringTensorMeta() = default;
+  explicit StringTensorMeta(const DDim& dims);
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
+
+  /// During the entire life cycle of a DenseTensor, the following attributes
+  /// marked with `const` are expected to remain unchanged.
+  bool is_scalar{false};
+  DDim dims;
+  size_t offset{0};
+};
+
+inline bool operator==(const StringTensorMeta& lhs,
+                       const StringTensorMeta& rhs) {
+  return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.offset == rhs.offset);
+}
+
 }  // namespace phi

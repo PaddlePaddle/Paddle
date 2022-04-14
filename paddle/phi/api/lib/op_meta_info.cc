@@ -192,6 +192,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
       break;
     case 2:
       name_ = name_ + "_grad_grad";
+      break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Not support index `%d` when construct OpMetaInfoBuilder, "

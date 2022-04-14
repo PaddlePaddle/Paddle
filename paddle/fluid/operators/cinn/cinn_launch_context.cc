@@ -22,12 +22,15 @@
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
+#include "cinn/runtime/intrinsic.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
@@ -211,10 +214,16 @@ void CinnLaunchContext::CheckTensorEquivalent(
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::PreconditionNotMet(
                         "Tensors' shape in variable(%s) are not equivalent, "
-                        "paddle's shape = [%s], but cinn's shape = [%s].",
+                        "paddle is = [%s], but cinn is = [%s].",
                         var_name, paddle_tensor.dims(), cinn_dims));
 
-  // TODO(CtfGo): check the underlying data type after CINN ready
+  auto cinn_dtype =
+      framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type());
+  PADDLE_ENFORCE_EQ(paddle_tensor.dtype(), cinn_dtype,
+                    platform::errors::PreconditionNotMet(
+                        "Tensors' dtype in variable(%s) are not equivalent, "
+                        "paddle is = [%s], but cinn is = [%s].",
+                        var_name, paddle_tensor.dtype(), cinn_dtype));
 }
 
 void CinnLaunchContext::InitializeArguments() {
@@ -224,13 +233,15 @@ void CinnLaunchContext::InitializeArguments() {
     // assign dimensions with corresponding compiled tensor
     cinn_buffer->resize(cinn_tensor->shape().data().data(),
                         cinn_tensor->shape().data().size());
+    cinn_buffer->type = cinn::runtime::ToRuntimeType(cinn_tensor->type());
     VLOG(4) << string::Sprintf(
-        "Append an argument:name(%s),dims(%s),argument size:(%lu)", arg,
+        "Append an argument:name(%s),dims(%s),type(%s)",
         framework::DDim(cinn_buffer->dims, cinn_buffer->dimensions).to_str(),
-        name2argument_.size());
+        cinn_tensor->type());
     name2argument_.emplace(arg, cinn_buffer.get());
     hold_buffers_.emplace_back(std::move(cinn_buffer));
   }
+  VLOG(4) << "Total argument size:" << name2argument_.size();
 }
 
 void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
@@ -325,9 +336,8 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
     }
 
     auto cinn_tensor = GetCinnTensorOfVar(var_name);
-    // TODO(CtfGo): set the corresponding data type after CINN ready,
-    //              currently set as FP32 in default
-    var_desc->SetDataType(framework::proto::VarType::FP32);
+    var_desc->SetDataType(framework::TransToProtoVarType(
+        framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type())));
     var_desc->SetShape(std::vector<int64_t>(cinn_tensor->shape().data().begin(),
                                             cinn_tensor->shape().data().end()));
   }

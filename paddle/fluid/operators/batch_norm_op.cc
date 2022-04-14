@@ -94,7 +94,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
           "must smaller than or equal to 5. But received: the shape of input X "
           "= [%s], the dimension of input X = [%d]",
           x_dims, x_dims.size()));
-
+  VLOG(4) << ctx->IsRunMKLDNNKernel();
+  VLOG(4) << data_layout;
   const int64_t C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
@@ -136,6 +137,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           C, bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
+  VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
   ctx->SetOutputDim("SavedMean", {C});

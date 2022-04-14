@@ -36,11 +36,11 @@ std::vector<T2> cast(const std::vector<T1>& in) {
   }
   return out;
 }
-template <typename T>
-void TestMaxPoolBase(const std::vector<int>& indices,
+template <typename T, typename IntT = int>
+void TestMaxPoolBase(const std::vector<IntT>& indices,
                      const std::vector<T>& features,
                      const DDim& x_dims,
-                     const std::vector<int>& correct_out_indices,
+                     const std::vector<IntT>& correct_out_indices,
                      const std::vector<T>& correct_out_features,
                      const DDim& correct_out_dims,
                      const int non_zero_num,
@@ -56,16 +56,22 @@ void TestMaxPoolBase(const std::vector<int>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx_cpu.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
   const int out_channels = in_channels;
 
+  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
   DenseTensor indices_tensor = phi::Empty(
       dev_ctx_cpu,
-      DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  memcpy(
-      indices_tensor.data<int>(), indices.data(), indices.size() * sizeof(int));
+      DenseTensorMeta(indices_dtype, {4, non_zero_num}, DataLayout::NCHW));
+  memcpy(indices_tensor.data<IntT>(),
+         indices.data(),
+         indices.size() * sizeof(IntT));
   DenseTensor features_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
@@ -84,8 +90,7 @@ void TestMaxPoolBase(const std::vector<int>& indices,
   };
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    DenseTensor rulebook = phi::Empty(
-        dev_ctx_cpu, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+    DenseTensor rulebook;
     SparseCooTensor out = sparse::MaxPool<T>(dev_ctx_cpu,
                                              x_tensor,
                                              kernel_sizes,
@@ -101,20 +106,16 @@ void TestMaxPoolBase(const std::vector<int>& indices,
     ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, out.nnz());
 
     int cmp_indices = memcmp(correct_out_indices.data(),
-                             out.non_zero_indices().data<int>(),
-                             correct_out_indices.size() * sizeof(int));
+                             out.non_zero_indices().data<IntT>(),
+                             correct_out_indices.size() * sizeof(IntT));
     ASSERT_EQ(cmp_indices, 0);
 
     f_verify(out.non_zero_elements().data<T>(), correct_out_features);
 
     if (backward) {
-      DenseTensor x_grad = sparse::MaxPoolGrad<T>(dev_ctx_cpu,
-                                                  x_tensor,
-                                                  rulebook,
-                                                  out,
-                                                  out.non_zero_elements(),
-                                                  kernel_sizes);
-      f_verify(x_grad.data<T>(), features_grad);
+      SparseCooTensor x_grad = sparse::MaxPoolGrad<T>(
+          dev_ctx_cpu, x_tensor, rulebook, out, out, kernel_sizes);
+      f_verify(x_grad.non_zero_elements().data<T>(), features_grad);
     }
   }
 
@@ -130,26 +131,26 @@ void TestMaxPoolBase(const std::vector<int>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
   DenseTensor d_indices_tensor = phi::Empty(
       dev_ctx_gpu,
-      DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
+      DenseTensorMeta(indices_dtype, {4, non_zero_num}, DataLayout::NCHW));
   phi::Copy(
       dev_ctx_gpu, indices_tensor, phi::GPUPlace(), true, &d_indices_tensor);
 
-  DenseTensor d_features_tensor = phi::Empty(
-      dev_ctx_gpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {non_zero_num, in_channels},
-                      DataLayout::NHWC));
+  DenseTensor d_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_gpu, features_tensor);
   phi::Copy(
       dev_ctx_gpu, features_tensor, phi::GPUPlace(), true, &d_features_tensor);
 
   SparseCooTensor d_x_tensor(d_indices_tensor, d_features_tensor, x_dims);
 
-  DenseTensor d_rulebook = phi::Empty(
-      dev_ctx_gpu, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor d_rulebook;
   SparseCooTensor d_out = sparse::MaxPool<T>(dev_ctx_gpu,
                                              d_x_tensor,
                                              kernel_sizes,
@@ -166,7 +167,7 @@ void TestMaxPoolBase(const std::vector<int>& indices,
 
   DenseTensor h_indices_tensor = phi::Empty(
       dev_ctx_cpu,
-      DenseTensorMeta(DataType::INT32, {4, d_out.nnz()}, DataLayout::NCHW));
+      DenseTensorMeta(indices_dtype, {4, d_out.nnz()}, DataLayout::NCHW));
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_indices(),
             phi::CPUPlace(),
@@ -174,15 +175,12 @@ void TestMaxPoolBase(const std::vector<int>& indices,
             &h_indices_tensor);
 
   int cmp_indices2 = memcmp(correct_out_indices.data(),
-                            h_indices_tensor.data<int>(),
-                            correct_out_indices.size() * sizeof(int));
+                            h_indices_tensor.data<IntT>(),
+                            correct_out_indices.size() * sizeof(IntT));
   ASSERT_EQ(cmp_indices2, 0);
 
-  DenseTensor h_features_tensor = phi::Empty(
-      dev_ctx_cpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {d_out.nnz()},
-                      d_out.layout()));
+  DenseTensor h_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
@@ -192,25 +190,25 @@ void TestMaxPoolBase(const std::vector<int>& indices,
   f_verify(h_features_tensor.data<T>(), correct_out_features);
 
   if (backward) {
-    DenseTensor x_grad = sparse::MaxPoolGrad<T>(dev_ctx_gpu,
-                                                d_x_tensor,
-                                                d_rulebook,
-                                                d_out,
-                                                d_out.non_zero_elements(),
-                                                kernel_sizes);
-    DenseTensor h_features_grad = phi::Empty(
-        dev_ctx_cpu,
-        DenseTensorMeta(x_grad.dtype(), x_grad.dims(), x_grad.layout()));
-    phi::Copy(dev_ctx_gpu, x_grad, phi::CPUPlace(), true, &h_features_grad);
+    SparseCooTensor x_grad = sparse::MaxPoolGrad<T>(
+        dev_ctx_gpu, d_x_tensor, d_rulebook, d_out, d_out, kernel_sizes);
+    DenseTensor h_features_grad =
+        phi::EmptyLike<T>(dev_ctx_cpu, x_grad.non_zero_elements());
+    phi::Copy(dev_ctx_gpu,
+              x_grad.non_zero_elements(),
+              phi::CPUPlace(),
+              true,
+              &h_features_grad);
     f_verify(h_features_grad.data<T>(), features_grad);
   }
 #endif
 }
 
-void TestMaxPool(const std::vector<int>& indices,
+template <typename IntT = int>
+void TestMaxPool(const std::vector<IntT>& indices,
                  const std::vector<float>& features,
                  const DDim& x_dims,
-                 const std::vector<int>& correct_out_indices,
+                 const std::vector<IntT>& correct_out_indices,
                  const std::vector<float>& correct_out_features,
                  const DDim& correct_out_dims,
                  const int non_zero_num,
@@ -222,35 +220,35 @@ void TestMaxPool(const std::vector<int>& indices,
                  const bool backward = false,
                  const std::vector<float> features_grad = {}) {
   // test float
-  TestMaxPoolBase<float>(indices,
-                         features,
-                         x_dims,
-                         correct_out_indices,
-                         correct_out_features,
-                         correct_out_dims,
-                         non_zero_num,
-                         kernel_sizes,
-                         paddings,
-                         strides,
-                         dilations,
-                         diff,
-                         backward,
-                         features_grad);
+  TestMaxPoolBase<float, IntT>(indices,
+                               features,
+                               x_dims,
+                               correct_out_indices,
+                               correct_out_features,
+                               correct_out_dims,
+                               non_zero_num,
+                               kernel_sizes,
+                               paddings,
+                               strides,
+                               dilations,
+                               diff,
+                               backward,
+                               features_grad);
   // test double
-  TestMaxPoolBase<double>(indices,
-                          cast<float, double>(features),
-                          x_dims,
-                          correct_out_indices,
-                          cast<float, double>(correct_out_features),
-                          correct_out_dims,
-                          non_zero_num,
-                          kernel_sizes,
-                          paddings,
-                          strides,
-                          dilations,
-                          diff,
-                          backward,
-                          cast<float, double>(features_grad));
+  TestMaxPoolBase<double, IntT>(indices,
+                                cast<float, double>(features),
+                                x_dims,
+                                correct_out_indices,
+                                cast<float, double>(correct_out_features),
+                                correct_out_dims,
+                                non_zero_num,
+                                kernel_sizes,
+                                paddings,
+                                strides,
+                                dilations,
+                                diff,
+                                backward,
+                                cast<float, double>(features_grad));
 }
 
 TEST(DEV_API, sparse_maxpool) {

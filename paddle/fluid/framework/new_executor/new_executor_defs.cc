@@ -93,19 +93,24 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return true;
     }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -691,6 +696,10 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
 phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+const std::map<int, int>& Instruction::InplaceBackMap() const {
+  return op_func_node_.inplace_back_map;
+}
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;

@@ -12,11 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/warpctc_op.h"
-
 #include <memory>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,40 +26,6 @@ namespace operators {
 class WarpCTCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasOutput("WarpCTCGrad"), "Output", "WarpCTCGrad",
-                   "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "WarpCTC");
-
-    auto logits_dims = ctx->GetInputDim("Logits");
-    int blank = ctx->Attrs().Get<int>("blank");
-    int sequence_width = 0;
-
-    if (ctx->HasInput("LogitsLength")) {
-      sequence_width = logits_dims[2];
-    } else {
-      sequence_width =
-          static_cast<int>(phi::product(logits_dims) / logits_dims[0]);
-    }
-
-    PADDLE_ENFORCE_GE(
-        blank, 0, platform::errors::InvalidArgument(
-                      "The value of Attr(blank) should be in interval [0, %d), "
-                      "but received %d",
-                      blank));
-    PADDLE_ENFORCE_LT(
-        blank, sequence_width,
-        platform::errors::InvalidArgument(
-            "The value of Attr(blank) should be in interval [0, %d), "
-            "but received %d",
-            blank));
-
-    // TODO(liuyiqun): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Loss", {-1, 1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -189,15 +157,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(warpctc, WarpctcInferShapeFunctor,
+                            PD_INFER_META(phi::WarpctcInferMeta));
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
-                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
+                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>,
+                  WarpctcInferShapeFunctor);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -61,8 +61,6 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
 
-    export FLAGS_use_curand=True
-
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
@@ -209,6 +207,9 @@ function cmake_base() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -262,6 +263,9 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -774,12 +778,12 @@ set +x
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
         if [[ "$on_precision" == "0" ]];then
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -848,7 +852,7 @@ set +x
                                 fi
                             done
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --output-on-failure -j 2 | tee $tmpfile
+                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
@@ -919,12 +923,11 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
-    if [ ! "${pr_whl_size}" ];then
-        echo "pr whl size not found "         
-        exit 1
-    fi
 
     set +x
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
@@ -945,11 +948,20 @@ function check_whl_size() {
 }
 
 function generate_upstream_develop_api_spec() {
-    fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
+    echo "pr_whl_size: ${pr_whl_size}"
+
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [[ ${cmake_change} ]];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+
+    cd ${PADDLE_ROOT}
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
-    startTime_firstBuild=`date +%s`
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
@@ -960,21 +972,11 @@ function generate_upstream_develop_api_spec() {
         cmake_gen $1
         build $2
     fi
-
-    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
-    echo "pr_whl_size: ${pr_whl_size}"
-    
-
-    git checkout $cur_branch
     generate_api_spec "$1" "DEV"
-    git branch -D develop_base_pr
-    ENABLE_MAKE_CLEAN="ON"
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
+
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 function generate_api_spec() {
@@ -1018,6 +1020,9 @@ function generate_api_spec() {
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
     deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
 }
 
 function check_approvals_of_unittest() {
@@ -1356,6 +1361,7 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
+
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
@@ -1513,7 +1519,7 @@ set +x
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_forth_high_parallel" 1 5          # run cases 5 job each time with single GPU
         card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
         card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
@@ -2768,7 +2774,8 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 gpu; example_error=$?
+        SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -2918,6 +2925,41 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+function check_coverage_build() {
+    if [ ! "${buildSize}" ];then
+        echo "build size not found"
+        exit 1
+    fi
+
+    if [ ${WITH_COVERAGE} != "ON" ];then
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+        exit 1
+    fi
+
+    rm -f build_size
+    curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    dev_coverage_build_size=`cat build_size|sed 's#G##g'`
+    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+
+    diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
+
+    set +x
+    if [ ${diff_coverage_build_size} -gt 3 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917 43953930`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
+           echo "Then you must have one RD (tianshuo78520a (Recommend) or luotao1 or phlrain) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2953,15 +2995,13 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
-        check_whl_size
         ;;
       build_and_check_cpu)
         set +e
-        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        check_whl_size
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        check_sequence_op_unittest
         ;;
       build_and_check_gpu)
         set +e
@@ -2977,6 +3017,9 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        ;;
+      check_whl_size)
+        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -3044,6 +3087,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1

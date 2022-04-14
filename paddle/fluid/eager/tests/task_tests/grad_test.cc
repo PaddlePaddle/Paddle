@@ -33,6 +33,8 @@
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 TEST(Grad, SingleNodeEmptyGrad) {

@@ -577,5 +577,23 @@ TEST(ARG_MAP, allclose) {
   ASSERT_EQ(attr_names2[1], "Atol");
 }
 
+TEST(ARG_MAP, reshape) {
+  TestArgumentMappingContext arg_case1({"X", "ShapeTensor"}, {}, {}, {"Out"});
+  auto signature1 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("reshape2")(arg_case1);
+  ASSERT_EQ(signature1.name, "reshape");
+
+  TestArgumentMappingContext arg_case2({"X", "Shape"}, {}, {}, {"Out"});
+  auto signature2 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("reshape2")(arg_case2);
+  ASSERT_EQ(signature2.name, "reshape");
+
+  TestArgumentMappingContext arg_case3(
+      {"X"}, {}, {{"shape", paddle::any(std::vector<int>({1, 2}))}}, {"Out"});
+  auto signature3 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("reshape2")(arg_case3);
+  ASSERT_EQ(signature3.name, "reshape");
+}
+
 }  // namespace tests
 }  // namespace phi

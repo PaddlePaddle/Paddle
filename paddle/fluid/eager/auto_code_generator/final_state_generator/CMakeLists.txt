@@ -8,6 +8,8 @@ set(forwards_cc_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eage
 set(forwards_h_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h")
 set(nodes_cc_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.cc")
 set(nodes_h_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h")
+# StringTensor only needs forward api
+set(fwd_api_yaml_path "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api.yaml")
 
 message("Final State Eager CodeGen")
 add_custom_target(eager_final_state_codegen
@@ -30,7 +32,7 @@ set(python_c_output_path "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_s
 
 add_custom_target(eager_final_state_python_c_codegen
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/python_c_gen.py" 
-            "--api_yaml_path=${api_yaml_path}"
+            "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path}"
             "--output_path=${tmp_python_c_output_path}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_python_c_output_path} ${python_c_output_path}
     VERBATIM
