@@ -21,6 +21,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "cinn/auto_schedule/auto_tuner.h"
+#include "cinn/auto_schedule/tunning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/frontend/decomposer/use_decomposer.h"
@@ -48,6 +50,7 @@
 #include "paddle/phi/core/utils/rw_lock.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_cinn_auto_tune);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -58,6 +61,7 @@ using inference::analysis::Dot;
 using ::cinn::common::Target;
 using ::cinn::common::Float;
 using ::cinn::hlir::framework::GraphCompiler;
+using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::frontend::ProgramPass;
 using ::cinn::hlir::framework::ApplyPass;
@@ -277,10 +281,20 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   if (!FLAGS_enable_pe_launch_cinn) {
     options.with_buffer_handle_instruction_inserted = true;
   }
+  std::unique_ptr<AutoTuner> auto_tuner;
+  if (FLAGS_enable_cinn_auto_tune) {
+    VLOG(4) << "Compile with auto-tune" auto_tuner =
+        std::make_unique<AutoTuner>(target, graph);
+    auto_tuner->Initialize(AutoTuner::Config(), graph_compiler.get());
+    ::cinn::auto_schedule::TuningOptions tuning_options;
+    tuning_options.num_measure_trials = 0;
+    auto tuning_result = auto_tuner->Tune(tuning_options);
+    options.Apply(tuning_result);
+  }
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {std::move(graph_compiler),
+  *compiled_obj = {std::move(graph_compiler), std::move(auto_tuner),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;
