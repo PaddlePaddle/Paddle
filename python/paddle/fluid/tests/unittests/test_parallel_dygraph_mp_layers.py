@@ -14,11 +14,11 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestModelParallelLayer(TestMultipleGpus):
@@ -28,5 +28,5 @@ class TestModelParallelLayer(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    with _test_eager_guard():
-        unittest.main()
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+    unittest.main()

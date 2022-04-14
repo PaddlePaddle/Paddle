@@ -14,35 +14,35 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_mp_random(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
+        # self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
         self.run_mnist_2gpu('hybrid_parallel_mp_random.py', eager_mode=False)
 
-    # def test_hybrid_parallel_mp_model(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_model.py', eager_mode=False)
+    def test_hybrid_parallel_mp_model(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_model.py', eager_mode=False)
 
-    # def test_hybrid_parallel_mp_amp(self):
-    #     # self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_amp.py', eager_mode=False)
+    def test_hybrid_parallel_mp_amp(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py', eager_mode=False)
 
-    # def test_hybrid_parallel_mp_fp16(self):
-    #     # self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py')
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py', eager_mode=False)
+    def test_hybrid_parallel_mp_fp16(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_fp16.py', eager_mode=False)
 
-    # def test_hybrid_parallel_mp_clip_grad(self):
-    #     # self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py', eager_mode=False)
+    def test_hybrid_parallel_mp_clip_grad(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py', eager_mode=False)
 
 
 if __name__ == "__main__":
-    with _test_eager_guard():
-        unittest.main()
+    os.environ["FLAGS_enable_eager_mode"] = "1"
+    unittest.main()
