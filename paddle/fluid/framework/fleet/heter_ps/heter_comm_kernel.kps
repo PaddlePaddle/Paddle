@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// #pragma once
-
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
-#ifdef PADDLE_WITH_XPU_KP
+
+#if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
@@ -26,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_XPU_KP
+#if defined(PADDLE_WITH_XPU_KP)
 
 struct XPUCustomGradMerger {
   template <typename T>
@@ -42,9 +41,6 @@ struct XPUCustomGradMerger {
     return out;
   }
 } xpu_merger;
-
-// template <typename T>
-// __attribute__((global)) void fill_idx_kernel(T* idx, long long len);
 
 template <typename T>
 __global__ void fill_idx_kernel(T* idx, long long len) {
@@ -184,6 +180,7 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
+
   const int buf_size = 100;
   __local__ KeyType local_keys[buf_size];
   __local__ GradType local_grads[buf_size];

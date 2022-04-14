@@ -360,16 +360,15 @@ void EagerUtils::Output2Result(
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  return tw->recover(grad_node);
+    TensorWrapper* tw) {
+  return tw->recover();
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
-    std::vector<TensorWrapper>* tw,
-    const std::shared_ptr<GradNodeBase>& grad_node) {
+    std::vector<TensorWrapper>* tw) {
   std::vector<paddle::experimental::Tensor> ret;
   for (auto& t : *tw) {
-    ret.emplace_back(t.recover(grad_node));
+    ret.emplace_back(t.recover());
   }
   return ret;
 }

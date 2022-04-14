@@ -80,20 +80,18 @@ __global__ void search_kernel(Table* table,
 
 template <typename Table>
 __global__ void dy_mf_search_kernel(Table* table,
-                                   const typename Table::key_type* const
-                                   keys,
-                                   char* const vals, size_t len,
-                                   size_t pull_feature_value_size) {
- const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
- if (i < len) {
-   auto it = table->find(keys[i]);
+                                    const typename Table::key_type* const keys,
+                                    char* const vals, size_t len,
+                                    size_t pull_feature_value_size) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
 
-   if (it != table->end()) {
-     *(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
-   }
- }
+    if (it != table->end()) {
+      *(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
+    }
+  }
 }
-
 
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,

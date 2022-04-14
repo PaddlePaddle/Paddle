@@ -23,6 +23,7 @@ limitations under the License. */
 namespace optimizer_config {
 
 #if defined(PADDLE_WITH_CUDA)
+
 __constant__ float nonclk_coeff = 0.1;
 __constant__ float clk_coeff = 1;
 

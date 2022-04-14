@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #endif
 
-
 namespace paddle {
 namespace framework {
 

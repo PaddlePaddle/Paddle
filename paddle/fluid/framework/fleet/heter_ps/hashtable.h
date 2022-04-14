@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <limits>
@@ -30,20 +29,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
-
 #elif defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-
 
 namespace paddle {
 namespace framework {
@@ -59,6 +55,35 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
+#elif defined(PADDLE_WITH_XPU_KP)
+
+template <typename KeyType, typename ValType>
+class XPUCacheArray {
+ public:
+  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
+    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
+    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+  }
+
+  virtual ~XPUCacheArray() {
+    xpu_free(keys);
+    xpu_free(vals);
+  }
+
+  void print() {}
+  // ValType* find(const KeyType& key) { return NULL; }
+  // bool insert(const KeyType& key, const ValType& val) { return true; }
+
+  int prefetch(const int dev_id, XPUStream stream = NULL) {}
+  size_t size() { return size_; }
+
+ private:
+  long long capacity_;
+  long long size_;
+  KeyType* keys;
+  ValType* vals;
+};
+#endif
 
 #elif defined(PADDLE_WITH_XPU_KP)
 

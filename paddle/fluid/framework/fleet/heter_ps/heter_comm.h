@@ -64,7 +64,6 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
-
   int log2i(int x);
 
   template <typename DstPlace, typename SrcPlace, typename StreamType>
@@ -175,7 +174,6 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(const StreamType& stream) {
-
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU_KP)

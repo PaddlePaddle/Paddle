@@ -60,7 +60,6 @@ __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
   if (*w < local_min_bound) *w = local_min_bound;
   if (*w > local_max_bound) *w = local_max_bound;
 
-
   add_g2sum += scaled_grad * scaled_grad;
 
   (*g2sum) += add_g2sum;
@@ -97,7 +96,6 @@ __device__ void update_mf(int n, float* w, float* g2sum, const float* g,
 }
 
 __device__ void xpu_rand_uniform(float* ret_val) { *ret_val = 0.1; }
-
 
 template <typename ValType, typename GradType>
 __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
@@ -136,14 +134,12 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
     }
   } else {
     update_mf(MF_DIM, &(*val).mf[1], &(*val).mf[0], (*grad).mf_g, (*grad).show);
-
   }
 }
 
 template <typename KeyType, typename ValType, typename Table>
 __global__ void insert_kernel(Table* table, const KeyType* keys,
                               const ValType* vals, long long len) {
-
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -169,10 +165,9 @@ __global__ void insert_kernel(Table* table, const KeyType* keys,
   }
 }
 
-
 template <typename KeyType, typename ValType, typename Table>
 __global__ void search_kernel(Table* table, const KeyType* const keys,
-                              ValType* const vals, size_t len) {
+                              ValType* const vals, long long len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -202,7 +197,7 @@ __global__ void search_kernel(Table* table, const KeyType* const keys,
 
 template <typename KeyType, typename ValType, typename Table, typename GradType>
 __global__ void update_kernel(Table* table, const KeyType* const keys,
-                              const GradType* const grads, size_t len) {
+                              const GradType* const grads, long long len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -259,7 +254,10 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   if (len == 0) {
     return;
   }
-  search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  long long c_len = (long long)len;
+  search_kernel<KeyType, ValType,
+                XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(
+      container_, d_keys, d_vals, c_len);
 }
 
 template <typename KeyType, typename ValType>
@@ -280,7 +278,10 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
-  insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+  long long c_len = (long long)len;
+  insert_kernel<KeyType, ValType,
+                XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(
+      container_, d_keys, d_vals, c_len);
 }
 
 template <typename KeyType, typename ValType>
@@ -313,7 +314,6 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
 //  }
 //  // TODO(zhangminxu): to be implemented
 // }
-
 
 template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 
@@ -348,7 +348,6 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<
 //    XPUStream>(const unsigned long* d_keys, const char* d_grads,
-
 //                          size_t len, XPUStream stream);
 
 #endif
