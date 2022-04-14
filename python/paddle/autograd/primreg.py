@@ -32,30 +32,10 @@ class Registry(object):
 
 
 _primop_fn = Registry('primop_fn')
-_orig2prim = Registry('orig2prim')
-_prim2orig = Registry('prim2orig')
-_primop_jvp = Registry('primop_jvp')
-_primop_transpose = Registry('primop_transpose')
 
 
 def lookup_fn(optype):
     return _primop_fn.lookup(optype)
-
-
-def lookup_orig2prim(optype):
-    return _orig2prim.lookup(optype)
-
-
-def lookup_prim2orig(optype):
-    return _prim2orig.lookup(optype)
-
-
-def lookup_jvp(optype):
-    return _primop_jvp.lookup(optype)
-
-
-def lookup_transpose(optype):
-    return _primop_transpose.lookup(optype)
 
 
 def REGISTER_FN(op_type):
@@ -65,99 +45,6 @@ def REGISTER_FN(op_type):
 
     def wrapper(f):
         _primop_fn.register(op_type, f)
-        return f
-
-    return wrapper
-
-
-def REGISTER_ORIG2PRIM(op_type):
-    """Decorator for registering the lower function for an original op into sequence of primitive ops.
-    
-    Usage:
-    .. code-block:: python
-        @REGISTER_ORIG2PRIM('tanh')
-        def tanh_orig2prim(op):
-            x = get_input_vars(op)
-            return primops.tanh(x)
-
-    """
-    assert isinstance(op_type, str)
-
-    def wrapper(f):
-        def _lower(op, *args, **kwargs):
-            assert op.type == op_type
-            return f(op, *args, **kwargs)
-
-        _orig2prim.register(op_type, _lower)
-
-    return wrapper
-
-
-def REGISTER_PRIM2ORIG(op_type):
-    """Decorator for registering the lower function for an primitive op into sequence of original ops.
-    
-    Usage:
-    .. code-block:: python
-        @REGISTER_PRIM2ORIG('tanh_p')
-        def tanh_prim2orig(op):
-            x = get_input_vars(op)
-            return paddle.tanh(x)
-
-    """
-    assert isinstance(op_type, str)
-
-    def wrapper(f):
-        def _lower(op, *args, **kwargs):
-            assert op.type == op_type
-            return f(op, *args, **kwargs)
-
-        _prim2orig.register(op_type, _lower)
-
-    return wrapper
-
-
-def REGISTER_JVP(op_type):
-    """Decorator for registering the JVP function for a primitive op.
-    
-    Usage:
-    .. code-block:: python
-        @REGISTER_JVP('add_p')
-        def add_jvp(op, x_dot, y_dot):
-            return primops.add(x_dot, y_dot)
-    
-    """
-    assert isinstance(op_type, str)
-
-    def wrapper(f):
-        def _jvp(op, *args, **kwargs):
-            assert op.type == op_type
-            return f(op, *args, **kwargs)
-
-        _primop_jvp.register(op_type, _jvp)
-        return f
-
-    return wrapper
-
-
-def REGISTER_TRANSPOSE(op_type):
-    """Decorator for registering the transpose function for a primitive op
-    that denotes a linear operation in the forward AD graph.
-    
-    Usage:
-    .. code-block:: python
-        @REGISTER_TRANSPOSE('add_p')
-        def add_transpose(op, z_bar):
-            return z_bar, z_bar
-    
-    """
-    assert isinstance(op_type, str)
-
-    def wrapper(f):
-        def _transpose(op, dot_checker, *args, **kwargs):
-            assert op.type == op_type
-            return f(op, dot_checker, *args, **kwargs)
-
-        _primop_transpose.register(op_type, _transpose)
         return f
 
     return wrapper

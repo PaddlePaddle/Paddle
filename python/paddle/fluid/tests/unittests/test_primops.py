@@ -17,10 +17,9 @@ import numpy as np
 
 import paddle
 from paddle.autograd.primops import (
-    neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast, transpose, split,
-    concat, reduce, matmul, slice_select, slice_assign, gather, scatter_add,
-    fill_const)
-from paddle.autograd.primx import Transform
+    neg, strided_slice_grad, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
+    transpose, split, concat, reduce, matmul, slice_select, slice_assign,
+    gather, scatter_add, fill_const)
 
 
 class TestPyPrimOps(unittest.TestCase):
@@ -129,27 +128,6 @@ class TestPyPrimOps(unittest.TestCase):
         scatter_add_1 = scatter_add(e, y, index, axis=0)
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
-
-    def test_jvps(self):
-        pass
-
-    def test_linearize(self):
-        X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
-        W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
-        act = tanh
-        W_ = broadcast(W, shape=[100, 5, 2])
-        X_ = reshape(X, shape=[100, 2, 1])
-        Z = tanh(matmul(W_, X_))
-        Y = reduce(Z, axis=[1, 2])
-
-        def loss(y, x):
-            ad = Transform(y.block)
-            xs_dot, ys_dot = ad.linearize([x], [y])
-            ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
-            return xs_bar
-
-        grad, = loss(Y, W)
-        assert grad.shape == W.shape
 
 
 if __name__ == '__main__':

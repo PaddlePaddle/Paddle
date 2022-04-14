@@ -19,32 +19,6 @@ from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
 
-def make_var(dtype, varset=None, shape=None, block=None, namekey='',
-             stop_gradient=False):
-    """ Create a type inferred variable. """
-
-    if block is None:
-        block = default_main_program().current_block()
-        
-    name = unique_name.generate_with_ignorable_key(namekey + '%')
-
-    var = block.create_var(
-            name=name,
-            dtype=dtype,
-            shape=shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=stop_gradient)
-    
-    if varset is not None:
-        varset.add(var)
-
-
-def make_varlike(x, block=None, namekey='', stop_gradient=False):
-    """ Make a variable using the dtype and shape of the given input. """
-    return make_var(x.dtype, x.shape, block, namekey, stop_gradient)
-
-
 def _simple_unop(helper):
     optype = helper.layer_type
     x, out = tuple(map(helper.kwargs.get, ('x', 'out')))
@@ -85,6 +59,7 @@ def _manipulation_unop(helper):
 
 
 # Each primitive op is given a Python constructor for sake of convenience.
+@REGISTER_FN('fill_constant_p')
 def fill_const(value, shape, dtype, out=None):
     attrs = {'value': value, 'shape': shape, 'dtype': dtype}
     helper = LayerHelper('fill_constant_p', **locals())
