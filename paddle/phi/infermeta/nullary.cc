@@ -136,8 +136,7 @@ void TrilIndicesInferMeta(int rows,
   if (diff_row > 0) {
     tril_size += diff_row * cols;
   }
-  std :: vector<int64_t> tmp ;
-  tmp.push_back(2);tmp.push_back(tril_size);
+  std :: vector<int64_t> tmp = {2,tril_size};
   auto out_dims = phi::make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);

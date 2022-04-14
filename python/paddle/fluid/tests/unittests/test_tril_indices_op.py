@@ -40,7 +40,6 @@ class TestTrilIndicesOp(OpTest):
 class TestTrilIndicesOpCase1(TestTrilIndicesOp):
     def init_config(self):
         self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
-        #self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
         self.target = np.tril_indices(0,0,0)
         self.target = np.array(self.target)
 
@@ -66,9 +65,7 @@ class TestTrilIndicesAPICase(unittest.TestCase):
         def test_dygraph(self):
             paddle.disable_static()
             out =  paddle.tril_indices(4,4,2)
-            #print(out)
             expected_result = np.tril_indices(4,2,4)
-            #print(expected_result)
             paddle.enable_static()
             self.assertEqual((out.numpy() == expected_result).all(), True)
         

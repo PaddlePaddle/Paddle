@@ -1415,8 +1415,7 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    # if dtype != 2 and dtype != 3:
-    #     dtype = 3
+
     if in_dygraph_mode():
         out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
        
@@ -1431,5 +1430,3 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
             outputs={'out': [out]},
             attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
     return out
-
-    
