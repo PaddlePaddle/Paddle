@@ -125,8 +125,13 @@ def sparse_coo_tensor(indices,
     values = _handle_dtype(values, dtype)
     values.stop_gradient = stop_gradient
 
+    min_shape = _infer_dense_shape(indices)
     if shape is None:
-        shape = _infer_dense_shape(indices)
+        shape = min_shape
+    else:
+        if shape < min_shape:
+            raise ValueError("the minimun shape required is {}, but get {}".
+                             format(min_shape, shape))
 
     return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
                                                               shape)

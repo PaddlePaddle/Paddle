@@ -39,9 +39,8 @@ class TestSparseCreate(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
-            dense_shape = [2, 3]
+            dense_shape = [3, 3]
             coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-            print(coo)
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
 
@@ -241,6 +240,17 @@ class TestSparseConvert(unittest.TestCase):
                 assert np.array_equal(indices_sorted,
                                       sparse_x.indices().numpy())
                 assert np.array_equal(values_sorted, sparse_x.values().numpy())
+
+
+class TestError(unittest.TestCase):
+    def test_sparse_coo_tensor(self):
+        with self.assertRaises(ValueError):
+            indices = [[2, 3], [0, 2]]
+            values = [1, 2]
+            #the shape too small
+            dense_shape = [2, 2]
+            sparse_x = paddle.sparse.sparse_coo_tensor(
+                indices, values, shape=dense_shape)
 
 
 if __name__ == "__main__":
