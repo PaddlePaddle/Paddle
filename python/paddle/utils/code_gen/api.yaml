@@ -1794,6 +1794,12 @@
     func : selu
   backward : selu_grad
 
+- api : sgd
+  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
+  output : Tensor(param_out), Tensor(master_param_out)
+  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  optional : master_param
+
 - api : shape
   args : (Tensor input)
   output : Tensor
@@ -1911,6 +1917,7 @@
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
+  backward : split_grad
 
 - api : sqrt
   args : (Tensor x)
