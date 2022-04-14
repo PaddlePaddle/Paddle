@@ -126,7 +126,7 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPhiBackend(tensor.inner_place());
+  return phi::TransToPhiBackend(tensor.place());
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {

@@ -15,12 +15,11 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
 #include "paddle/phi/kernels/sparse/sort_kernel.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -137,10 +136,9 @@ template <typename T, typename Context>
 void SortKernel(const Context& dev_ctx,
                 const SparseCooTensor& x,
                 SparseCooTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "SortGPUKernel", ([&] {
-        SortGPUKernel<T, data_t>(dev_ctx, x, out);
-      }));
+  PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(), "SortGPUKernel", ([&] {
+                            SortGPUKernel<T, data_t>(dev_ctx, x, out);
+                          }));
 }
 
 }  // namespace sparse

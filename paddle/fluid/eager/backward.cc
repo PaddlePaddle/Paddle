@@ -22,10 +22,10 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
 
@@ -485,6 +485,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
+
   return node_in_degree_map;
 }
 
@@ -526,6 +527,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     bool allow_unused = false,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
   VLOG(6) << "Start Backward";
+
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
@@ -641,7 +643,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Running GradNode:" << node->name();
 
     paddle::platform::RecordEvent node_record_event(
-        std::string(typeid(*node).name()) + " grad_node",
+        std::string((*node).name()) + " grad_node",
         paddle::platform::TracerEventType::Operator, 1);
 
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
@@ -757,8 +759,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                   << next_node->name();
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
+
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
+
         node_input_buffers_dict[next_node]->add(
             edge_rank.first, edge_rank.second, grad_output_tensor);
 
@@ -799,6 +803,7 @@ void Backward(
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::Operator, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
+  phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
 std::vector<paddle::experimental::Tensor> Grad(

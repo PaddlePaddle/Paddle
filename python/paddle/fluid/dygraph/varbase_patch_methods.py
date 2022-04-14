@@ -23,7 +23,7 @@ from .. import framework
 from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase, in_dygraph_mode
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -798,6 +798,9 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
+        if in_dygraph_mode():
+            return _C_ops.final_state_assign(self)
+
         if _in_legacy_dygraph():
             output = core.VarBase()
         else:
@@ -815,6 +818,10 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def _numel(self):
         return self.get_tensor()._numel()
+
+    @framework.dygraph_only
+    def _clear_data(self):
+        self.get_tensor()._clear()
 
     @framework.dygraph_only
     def _uva(self, device_id=0):
@@ -931,6 +938,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
         setattr(core.eager.Tensor, "_uva", _uva)
+        setattr(core.eager.Tensor, "_clear_data", _clear_data)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

@@ -46,8 +46,9 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             self.init_dtype()
             self.op_type = "rnn"
             self.place = paddle.XPUPlace(0)
-            self.sequence_length = np.ones(
-                (self.batch_size, ), dtype=np.int32) * self.seq_length
+            self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+            self.num_layers = 1
+            self.is_bidirec = False
             self.set_attrs()
             self.mode = "LSTM"
             self.is_test = False
@@ -61,6 +62,10 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                 high=0.1,
                 size=(self.seq_length, self.batch_size,
                       self.input_size)).astype(self.dtype)
+            input[11][1:][:] = 0
+            input[10][2:][:] = 0
+            input[9][3:][:] = 0
+            input[8][4:][:] = 0
 
             rnn1 = LSTM(
                 self.input_size,
@@ -126,10 +131,10 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                 no_check_set=['Reserve', 'DropoutState'])
 
         def init_size(self):
-            self.seq_length = 1
-            self.batch_size = 1
-            self.input_size = 5
-            self.hidden_size = 16
+            self.seq_length = 12
+            self.batch_size = 5
+            self.input_size = 3
+            self.hidden_size = 2
 
         def get_weight_names(self):
             weight_names = []
@@ -142,38 +147,18 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             return weight_names
 
         def set_attrs(self):
-            self.num_layers = 1
-            self.is_bidirec = False
+            pass
 
     class TestRNNOp1(TestRNNOp):
-        def init_size(self):
-            self.seq_length = 2
-            self.batch_size = 4
-            self.input_size = 10
-            self.hidden_size = 32
-
         def set_attrs(self):
-            self.num_layers = 1
-            self.is_bidirec = False
+            self.sequence_length = None
 
     class TestRNNOp2(TestRNNOp):
-        def init_size(self):
-            self.seq_length = 5
-            self.batch_size = 16
-            self.input_size = 30
-            self.hidden_size = 64
-
         def set_attrs(self):
             self.num_layers = 1
             self.is_bidirec = True
 
     class TestRNNOp3(TestRNNOp):
-        def init_size(self):
-            self.seq_length = 10
-            self.batch_size = 64
-            self.input_size = 50
-            self.hidden_size = 64
-
         def set_attrs(self):
             self.num_layers = 2
             self.is_bidirec = False
@@ -186,6 +171,17 @@ class XPUTestRNNOp(XPUOpTestWrapper):
     class TestRNNOp5(TestRNNOp):
         def set_attrs(self):
             self.num_layers = 2
+            self.is_bidirec = True
+
+    class TestRNNOp6(TestRNNOp):
+        def set_attrs(self):
+            self.num_layers = 2
+            self.is_bidirec = True
+            self.sequence_length = None
+
+    class TestRNNOp7(TestRNNOp):
+        def set_attrs(self):
+            self.num_layers = 3
             self.is_bidirec = True
 
 

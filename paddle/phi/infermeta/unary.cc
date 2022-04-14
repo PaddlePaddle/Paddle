@@ -405,6 +405,78 @@ void EighInferMeta(const MetaTensor& x,
   out_v->set_dims(input_dim);
 }
 
+void ExpandInferMeta(const MetaTensor& x,
+                     const IntArray& shape,
+                     MetaTensor* out) {
+#define MAX_RANK_SUPPORTED 6
+  auto x_dims = x.dims();
+  auto expand_shape = shape.GetData();
+
+  if (expand_shape.size() == 0) {
+    expand_shape = std::vector<int64_t>(x_dims.size(), -1);
+  }
+
+  PADDLE_ENFORCE_GE(
+      expand_shape.size(),
+      static_cast<size_t>(x_dims.size()),
+      phi::errors::InvalidArgument(
+          "The number of elements (%d) of 'shape' for "
+          "expand_v2 op must be greater than or equal to the rank "
+          "(%d) of the input.",
+          expand_shape.size(),
+          static_cast<size_t>(x_dims.size())));
+  PADDLE_ENFORCE_LE(
+      expand_shape.size(),
+      MAX_RANK_SUPPORTED,
+      phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
+                                   "must not be greater than %d.",
+                                   expand_shape.size(),
+                                   MAX_RANK_SUPPORTED));
+  PADDLE_ENFORCE_GE(
+      expand_shape.size(),
+      1,
+      phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
+                                   "must be a positive integer.",
+                                   expand_shape.size()));
+
+  auto out_rank =
+      std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
+  std::vector<int64_t> out_shape(out_rank);
+  auto x_dim_vec = phi::vectorize<int>(x_dims);
+  auto diff = expand_shape.size() - x_dim_vec.size();
+  x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+  for (size_t i = 0; i < expand_shape.size(); ++i) {
+    if (x_dims[i] == -1) {
+      out_shape[i] = -1;
+    } else if (expand_shape[i] == -1) {
+      if (static_cast<size_t>(x_dims.size()) > i) {
+        out_shape[i] = x_dims[i];
+      } else {
+        out_shape[i] = -1;
+      }
+    } else if (expand_shape[i] == -2) {
+      // We use -2 to represent the element in expand_shape is a var.
+      out_shape[i] = -1;
+    } else {
+      PADDLE_ENFORCE_GT(
+          expand_shape[i],
+          0,
+          phi::errors::InvalidArgument(
+              "The %uth element of 'shape' for expand_v2 op must be "
+              "greater than 0, but the value given is %d.",
+              i,
+              expand_shape[i]));
+      out_shape[i] = expand_shape[i];
+    }
+  }
+
+  out->set_dims(make_ddim(out_shape));
+  out->set_dtype(x.dtype());
+  if (out_shape[0] == x_dims[0]) {
+    out->share_lod(x);
+  }
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -2931,4 +3003,5 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
