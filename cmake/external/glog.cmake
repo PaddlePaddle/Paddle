@@ -63,6 +63,8 @@ else()
         extern_glog
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
+        GIT_REPOSITORY  ${GLOG_REPOSITORY}
+        GIT_TAG         ${GLOG_TAG}
         DEPENDS         gflags
         PREFIX          ${GLOG_PREFIX_DIR}
         UPDATE_COMMAND  ""
