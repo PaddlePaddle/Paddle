@@ -104,7 +104,7 @@ __global__ void neighbor_sample_example(GpuPsCommGraph graph, int* node_index,
 int GpuPsGraphTable::init_cpu_table(
     const paddle::distributed::GraphParameter& graph) {
   cpu_graph_table.reset(new paddle::distributed::GraphTable);
-  cpu_table_status = cpu_graph_table->initialize(graph);
+  cpu_table_status = cpu_graph_table->Initialize(graph);
   // if (cpu_table_status != 0) return cpu_table_status;
   // std::function<void(std::vector<GpuPsCommGraph>&)> callback =
   //     [this](std::vector<GpuPsCommGraph>& res) {

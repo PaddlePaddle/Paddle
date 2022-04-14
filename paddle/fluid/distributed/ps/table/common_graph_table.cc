@@ -1202,7 +1202,7 @@ int32_t GraphTable::Initialize(const TableParameter &config,
   LOG(INFO) << "in graphTable initialize over";
   return Initialize(graph);
 }
-int32_t GraphTable::initialize(const GraphParameter &graph) {
+int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
   _db = NULL;
 #ifdef PADDLE_WITH_HETERPS
