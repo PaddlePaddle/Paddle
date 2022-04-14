@@ -570,7 +570,8 @@ void BatchNormGradRawKernel(const Context &ctx,
                   /*sizeInBytes=*/&workspace_size));
 
       workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-      workspace_ptr = ctx.template Alloc<uint8_t>(&workspace_tensor);
+      workspace_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationBackwardEx(
@@ -603,8 +604,8 @@ void BatchNormGradRawKernel(const Context &ctx,
               /*activationDesc=*/nullptr,
               /*workspace=*/workspace_ptr,
               /*workSpaceSizeInBytes=*/workspace_size,
-              /*reserveSpace=*/const_cast<T *>(
-                  reserve_space->template data<T>()),
+              /*reserveSpace=*/const_cast<uint8_t *>(
+                  reserve_space->template data<uint8_t>()),
               /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #endif  // CUDNN_VERSION_MIN(7, 4, 1)
       if (!called) {
