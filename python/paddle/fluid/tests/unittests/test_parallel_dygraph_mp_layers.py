@@ -18,15 +18,15 @@ import unittest
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestModelParallelLayer(TestMultipleGpus):
     def test_hybrid_parallel_mp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
-
-    def test_hybrid_parallel_mp_layer_eager(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_layers_eager.py')
+        self.run_mnist_2gpu('hybrid_parallel_mp_layers.py', eager_mode=False)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    with _test_eager_guard():
+        unittest.main()
