@@ -21,7 +21,7 @@
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/divide_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
@@ -29,6 +29,8 @@
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/multiply_kernel.h"
+#include "paddle/phi/kernels/subtract_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #define EPSILON 1e-6

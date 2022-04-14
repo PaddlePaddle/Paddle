@@ -20,16 +20,17 @@
 
 namespace phi {
 
-// Create the definition of Maximum
-DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
-// Create the definition of Minimum
-DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
-// Create the definition of Modulo
-DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
-// Create the definition of FloorDivide
-DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
-// Create the definition of Pow
-DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
+// Create the definition of Multiply
+DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+
+template <typename T, typename Context>
+void MultiplyKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  int axis = -1;
+  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
+}
 
 }  // namespace phi
 
@@ -38,51 +39,29 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(
-    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
-
-PD_REGISTER_KERNEL(
-    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
-
-PD_REGISTER_KERNEL(maximum_raw,
+PD_REGISTER_KERNEL(multiply_raw,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MaximumRawKernel,
+                   phi::MultiplyRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
+                   bool,
                    float16,
+                   complex64,
+                   complex128,
                    bfloat16) {}
-PD_REGISTER_KERNEL(minimum_raw,
+PD_REGISTER_KERNEL(multiply,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MinimumRawKernel,
+                   phi::MultiplyKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(modulo_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ModuloRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-PD_REGISTER_KERNEL(floor_divide_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::FloorDivideRawKernel,
-                   int,
-                   int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}

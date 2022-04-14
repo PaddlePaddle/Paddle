@@ -26,6 +26,7 @@
 USE_OP_ITSELF(elementwise_add);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {

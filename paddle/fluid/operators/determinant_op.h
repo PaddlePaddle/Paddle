@@ -22,7 +22,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
@@ -32,6 +31,7 @@
 #include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/multiply_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {

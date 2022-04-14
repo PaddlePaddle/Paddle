@@ -16,7 +16,10 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/add_kernel.h"
+#include "paddle/phi/kernels/divide_kernel.h"
+#include "paddle/phi/kernels/multiply_kernel.h"
+#include "paddle/phi/kernels/subtract_kernel.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
