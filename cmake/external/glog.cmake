@@ -46,7 +46,7 @@ if(WITH_ARM_BRPC)
         DEPENDS         gflags
         PREFIX          ${GLOG_PREFIX_DIR}
         DOWNLOAD_DIR          ${GLOG_SOURCE_DIR}
-        DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_GLOG_URL} -c -q -O arm_glog.tar.gz
+        DOWNLOAD_COMMAND    wget --no-check-certificate ${ARM_GLOG_URL}
                             && tar zxvf arm_glog.tar.gz
         #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_glog.tar.gz .
         #                    && tar zxvf arm_glog.tar.gz
