@@ -1,7 +1,3 @@
-if (WITH_ARM_BRPC)
-set(BRPC_DEPS arm_brpc)
-endif()
-
 add_subdirectory(collective)
 add_subdirectory(store)
 if(NOT WITH_PSCORE)
