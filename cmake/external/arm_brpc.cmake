@@ -58,7 +58,7 @@ ExternalProject_Add(
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     DOWNLOAD_COMMAND      rm -rf output.tar.gz
-                          wget --no-check-certificate ${ARM_BRPC_URL}
+                          && wget --no-check-certificate ${ARM_BRPC_URL}
                           && tar zxvf output.tar.gz
     #DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/output.tar.gz . 
     #                      && tar zxvf output.tar.gz
