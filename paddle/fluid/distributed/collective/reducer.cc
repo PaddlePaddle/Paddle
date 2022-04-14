@@ -398,7 +398,7 @@ void EagerReducer::InitializeDenseGroups(
                           "GRAD is SelectedRows",
                           tensor_name));
 
-    PADDLE_ENFORCE_EQ(tensor.is_initialized(), true,
+    PADDLE_ENFORCE_EQ(tensor.initialized(), true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
@@ -710,7 +710,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
 
 bool EagerReducer::HasGrad(size_t var_index) {
   auto grad = egr::EagerUtils::mutable_grad(tensors_[var_index]);
-  if (grad && grad->is_initialized()) {
+  if (grad && grad->initialized()) {
     return true;
   } else {
     return false;
