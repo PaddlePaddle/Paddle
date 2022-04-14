@@ -151,30 +151,38 @@ class KernelArgsDef {
     attribute_defs_.emplace_back(AttributeArgDef(type_index));
   }
 
-  const paddle::SmallVector<TensorArgDef>& input_defs() const {
+  const paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs()
+      const {
     return input_defs_;
   }
 
-  const paddle::SmallVector<TensorArgDef>& output_defs() const {
+  const paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs()
+      const {
     return output_defs_;
   }
 
-  const paddle::SmallVector<AttributeArgDef>& attribute_defs() const {
+  const paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>&
+  attribute_defs() const {
     return attribute_defs_;
   }
 
-  paddle::SmallVector<TensorArgDef>& input_defs() { return input_defs_; }
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs() {
+    return input_defs_;
+  }
 
-  paddle::SmallVector<TensorArgDef>& output_defs() { return output_defs_; }
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs() {
+    return output_defs_;
+  }
 
-  paddle::SmallVector<AttributeArgDef>& attribute_defs() {
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>& attribute_defs() {
     return attribute_defs_;
   }
 
  private:
-  paddle::SmallVector<TensorArgDef> input_defs_{{}};
-  paddle::SmallVector<TensorArgDef> output_defs_{{}};
-  paddle::SmallVector<AttributeArgDef> attribute_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize> input_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize> output_defs_{{}};
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize> attribute_defs_{
+      {}};
 };
 
 class Kernel {
@@ -249,8 +257,8 @@ class KernelFactory {
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
 
-  Kernel SelectKernel(const std::string& kernel_name,
-                      const KernelKey& kernel_key) const;
+  const Kernel& SelectKernel(const std::string& kernel_name,
+                             const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 

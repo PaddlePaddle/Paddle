@@ -2113,7 +2113,6 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
-  InitDefaultKernelSignatureMap();
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   return phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
       arg_mapping_ctx);

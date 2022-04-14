@@ -46,7 +46,7 @@ KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_grad",
-                         {"Input", "Filter", GradVarName("Output")},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
@@ -56,7 +56,7 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "use_addto",
                           "workspace_size_MB",
                           "exhaustive_search"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature Conv2dDoubleGradOpArgumentMapping(

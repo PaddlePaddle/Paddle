@@ -19,6 +19,8 @@
 
 namespace phi {
 
+static Kernel empty_kernel;  // NOLINT
+
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
   // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -37,15 +39,15 @@ KernelFactory& KernelFactory::Instance() {
   return g_op_kernel_factory;
 }
 
-Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
-                                   const KernelKey& kernel_key) const {
+const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
+                                          const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
-    return Kernel();
+    return empty_kernel;
   }
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end()) {
-    return Kernel();
+    return empty_kernel;
   }
   return kernel_iter->second;
 }

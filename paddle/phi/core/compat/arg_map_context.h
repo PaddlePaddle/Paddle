@@ -19,6 +19,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -38,26 +39,25 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 // tuple(input_names, attr_names, output_names)
-using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>>;
+using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>>;
 
 struct KernelSignature {
-  std::string name;
+  const char* name;
   KernelArgsTuple args;
 
   KernelSignature() = default;
 
-  KernelSignature(std::string&& kernel_name,
-                  paddle::SmallVector<std::string>&& inputs,
-                  paddle::SmallVector<std::string>&& attrs,
-                  paddle::SmallVector<std::string>&& outputs)
-      : name(std::move(kernel_name)),
-        args(std::make_tuple(inputs, attrs, outputs)) {}
-  KernelSignature(const std::string& kernel_name,
-                  const paddle::SmallVector<std::string>& inputs,
-                  const paddle::SmallVector<std::string>& attrs,
-                  const paddle::SmallVector<std::string>& outputs)
+  KernelSignature(const char* kernel_name,
+                  paddle::SmallVector<const char*>&& inputs,
+                  paddle::SmallVector<const char*>&& attrs,
+                  paddle::SmallVector<const char*>&& outputs)
+      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+  KernelSignature(const char* kernel_name,
+                  const paddle::SmallVector<const char*>& inputs,
+                  const paddle::SmallVector<const char*>& attrs,
+                  const paddle::SmallVector<const char*>& outputs)
       : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
 
   // TODO(chenweihang): add assign constructor to solve windows compile
