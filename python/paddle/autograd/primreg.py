@@ -17,6 +17,7 @@ import functools
 
 class Registry(object):
     """ A general registry object. """
+    __slots__ = ['name', 'tab']
 
     def __init__(self, name):
         self.name = name
@@ -36,6 +37,7 @@ _orig2prim = Registry('orig2prim')
 _prim2orig = Registry('prim2orig')
 _primop_jvp = Registry('primop_jvp')
 _primop_transpose = Registry('primop_transpose')
+_primop_position_argnames = Registry('primop_position_argnames')
 
 
 def lookup_fn(optype):
@@ -58,10 +60,70 @@ def lookup_transpose(optype):
     return _primop_transpose.lookup(optype)
 
 
-def REGISTER_FN(op_type):
+def op_position_inputs(op):
+    """ Returns the position inputs of `op` as registered with REGISTER_FN.
+    
+    Example: 
+    
+    ```
+    @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+    def div(x, y, out=None):
+        ...
+    ```
+
+    The registered inputs are ['X', 'Y'] for div_p and accordingly this
+    function will return inputs in the order of X then Y.
+    """
+    args = _primop_position_argnames.lookup(op.type)
+    assert args is not None
+    *input_names, _ = args
+
+    inputs = []
+    for name in input_names:
+        vars = list(map(op.block.var, op.input(name)))
+        assert len(vars) >= 0
+        if len(vars) > 1:
+            inputs.append(vars)
+        else:
+            inputs.append(vars[0])
+
+    return inputs
+
+
+def op_position_output(op):
+    """ Returns the output of `op` as registered with REGISTER_FN..
+    
+    Example: 
+    
+    ```
+    @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+    def div(x, y, out=None):
+        ...
+    ```
+
+    The registered output is ['Z'] for div_p and accordingly this
+    function will return output Z.
+    """
+    args = _primop_position_argnames.lookup(op.type)
+    assert args is not None
+    *_, output_name = args
+
+    outvars = list(map(op.block.var, op.output(output_name)))
+    assert len(outvars) >= 0
+    if len(outvars) > 1:
+        output = outvars
+    else:
+        output = outvars[0]
+
+    return output
+
+
+def REGISTER_FN(op_type, *position_argnames):
     """Decorator for registering the Python function for a primitive op."""
 
     assert isinstance(op_type, str)
+
+    _primop_position_argnames.register(op_type, position_argnames)
 
     def wrapper(f):
         _primop_fn.register(op_type, f)
