@@ -27,6 +27,7 @@ class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
+        self.python_api = paddle.expand
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
@@ -39,10 +40,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):

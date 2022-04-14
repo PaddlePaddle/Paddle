@@ -186,7 +186,7 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
             create_scale_tensor_op->getLoc(),
             create_scale_tensor_op.output().getType(),
             create_scale_tensor_op.context(),
-            create_bias_tensor_op.dims(),
+            create_scale_tensor_op.dims(),
             ::infrt::LayoutAttr::get(rewriter.getContext(),
                                      ::infrt::LayoutType::NCHW),
             create_scale_tensor_op.lod(),
@@ -206,7 +206,6 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
             rewriter.getF32ArrayAttr(combile_bias_data));
     rewriter.replaceOp(create_bias_tensor_op, new_bias_op->getResults());
 
-    rewriter.setInsertionPoint(op);
     trt::ScaleNdOp scaleNd_op;
     // resultTypes
     ::mlir::SmallVector<::mlir::Type, 4> resultTypes;
@@ -215,6 +214,7 @@ struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
     }
 
     // attributes
+    rewriter.setInsertionPoint(op);
     ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
     auto result = rewriter
                       .create<trt::ScaleNdOp>(
@@ -258,6 +258,10 @@ void TRTOpConverterPass::runOnOperation() {
   if (::mlir::failed(
           applyPartialConversion(getOperation(), target, std::move(patterns))))
     signalPassFailure();
+}
+
+std::unique_ptr<mlir::Pass> CreateTrtOpConverterPass() {
+  return std::make_unique<TRTOpConverterPass>();
 }
 
 }  // namespace trt
