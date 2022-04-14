@@ -1718,6 +1718,7 @@ class OneCycleLR(LRScheduler):
             if steps_per_epoch < 0:
                 raise ValueError(
                     "'steps_per_epoch' must be a positive integer.")
+            self.total_steps = epochs * steps_per_epoch
 
         if not isinstance(pct_start, float):
             raise TypeError("'pct_start' must be 'float', but received {}".
