@@ -33,7 +33,8 @@ __all__ = [  # noqa
     'LambdaDecay',
     'ReduceOnPlateau',
     'CosineAnnealingDecay',
-    'MultiplicativeDecay'
+    'MultiplicativeDecay',
+    'OneCycleLR'
 ]
 
 
@@ -1591,3 +1592,215 @@ class MultiplicativeDecay(LRScheduler):
             return self.last_lr * self.lr_lambda(self.last_epoch)
         else:
             return self.base_lr
+
+
+class OneCycleLR(LRScheduler):
+    r"""
+    Sets the learning rate according to the 1cycle learning rate scheduler.
+    The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
+    from that maximum learning rate to the minimum learning rate, which is much lower than the initial learning rate.
+
+    It has been proposed in `Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates <https://arxiv.org/abs/1708.07120>`_.
+
+    Please note that the default behaviour of this scheduler follows the fastai implementation of 1cycle,
+    which claims that “unpublished work has shown even better results by using only two phases”.
+    Set ``three_phase=True``, If you want the behaviour of this scheduler to be consistent with the paper.
+
+    Args:
+        max_learning_rate (float): Upper boundary of learning rate in the whole training phase.
+             Functionally, it defines the initial learning rate and the minimum learning rate by ``divide_factor`` and
+             ``final_divide_factor`` respectively.
+        total_steps (int, optional): Number of total training steps.
+            Note that one of total_steps and (epochs, steps_per_epoch) must be specified.
+            If ``total_steps`` is not specified, it will be determined by ``epochs`` and ``steps_per_epoch``. Default: None.
+        epochs (int, optional): Number of total training epochs. Default: None.
+        steps_per_epoch (int, optional): Number of training steps for each epoch. Default: None.
+        pct_start (float): The percentage of learning rate increasing steps to total steps. Default: 0.3.
+        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
+            'linear' for linear annealing. Default: 'cos'.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_lr = max_lr/div_factor. Default: 25.
+        final_divide_factor (float, optional): Minimum learning rate will be determined by initial_lr = max_lr/div_factor. Default: 1e4.
+        three_phase (bool, optional): Whether to use three phase.
+            If ``True``:
+                1. The learning rate will first increase from initial learning rate to maximum learning rate.
+                2. Then it will be decrease to learning rate.
+                3. Finally, it decrease to minimum learning rate which is much less than initial learning rate.
+            If ``False``:
+                1. The learning rate will increase to maximum learning rate.
+                2. Then it will directly decrease to minimum learning rate.
+        last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
+    Returns:
+        ``OneCycleLR`` instance to schedule learning rate.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            # train on default dynamic graph mode
+            linear = paddle.nn.Linear(10, 10)
+            scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            for epoch in range(5):
+                for batch_id in range(20):
+                    x = paddle.uniform([10, 10])
+                    out = linear(x)
+                    loss = paddle.mean(out)
+                    loss.backward()
+                    sgd.step()
+                    sgd.clear_gradients()
+                    scheduler.step()        # You should update learning rate each step
+            # train on static graph mode
+            paddle.enable_static()
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[None, 4, 5])
+                y = paddle.static.data(name='y', shape=[None, 4, 5])
+                z = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(z)
+                scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
+                sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+                sgd.minimize(loss)
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(5):
+                for batch_id in range(20):
+                    out = exe.run(
+                        main_prog,
+                        feed={
+                            'x': np.random.randn(3, 4, 5).astype('float32'),
+                            'y': np.random.randn(3, 4, 5).astype('float32')
+                        },
+                        fetch_list=loss.name)
+                    scheduler.step()    # You should update learning rate each step
+    """
+
+    def __init__(self,
+                 max_learning_rate,
+                 total_steps=None,
+                 epochs=None,
+                 steps_per_epoch=None,
+                 pct_start=0.3,
+                 anneal_strategy='cos',
+                 divide_factor=25.,
+                 final_divide_factor=1e4,
+                 three_phase=False,
+                 last_epoch=-1,
+                 verbose=False):
+        if not isinstance(max_learning_rate, (float, int)):
+            raise TypeError(
+                "The type of learning rate must be float, but received {}".
+                format(type(max_learning_rate)))
+
+        if total_steps is None and epochs is None and steps_per_epoch is None:
+            raise ValueError(
+                "either total_steps or (epochs, steps_per_epoch) must be specified"
+            )
+        elif total_steps is not None:
+            if not isinstance(total_steps, int):
+                raise TypeError("'total_step' must be 'int', but received {}".
+                                format(type(total_steps)))
+            if total_steps <= 0:
+                raise ValueError("'total_step' must be a positive integer.")
+            self.total_steps = total_steps
+        else:
+            if not isinstance(epochs, int):
+                raise TypeError("'epochs' must be 'int', but received {}".
+                                format(type(epochs)))
+            if not isinstance(steps_per_epoch, int):
+                raise TypeError(
+                    "'steps_per_epoch', must be 'int', but received {}".format(
+                        type(steps_per_epoch)))
+            if epochs < 0:
+                raise ValueError("'epochs' must be a positive integer.")
+            if steps_per_epoch < 0:
+                raise ValueError(
+                    "'steps_per_epoch' must be a positive integer.")
+
+        if not isinstance(pct_start, float):
+            raise TypeError("'pct_start' must be 'float', but received {}".
+                            format(type(pct_start)))
+        if pct_start < 0 or pct_start > 1:
+            raise ValueError(
+                "'pct_start' must be between 0 and 1, but received {}".format(
+                    pct_start))
+
+        max_lr = max_learning_rate
+        initial_lr = max_lr / divide_factor
+        min_lr = initial_lr / final_divide_factor
+
+        if three_phase:
+            self._end_steps = [
+                float(pct_start * self.total_steps) - 1,
+                float(2 * pct_start * self.total_steps) - 2,
+                self.total_steps - 1
+            ]
+            self._schedule_phases = [
+                {
+                    'start_lr': initial_lr,
+                    'end_lr': max_lr,
+                },
+                {
+                    'start_lr': max_lr,
+                    'end_lr': initial_lr,
+                },
+                {
+                    'start_lr': initial_lr,
+                    'end_lr': min_lr,
+                },
+            ]
+        else:
+            self._end_steps = [
+                float(pct_start * self.total_steps) - 1, self.total_steps - 1
+            ]
+            self._schedule_phases = [
+                {
+                    'start_lr': initial_lr,
+                    'end_lr': max_lr,
+                },
+                {
+                    'start_lr': max_lr,
+                    'end_lr': min_lr,
+                },
+            ]
+
+        # Validate anneal_strategy
+        if anneal_strategy not in ['cos', 'linear']:
+            raise ValueError(
+                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".
+                format(anneal_strategy))
+        elif anneal_strategy == 'cos':
+            self.anneal_func = self._annealing_cos
+        elif anneal_strategy == 'linear':
+            self.anneal_func = self._annealing_linear
+
+        super(OneCycleLR, self).__init__(initial_lr, last_epoch, verbose)
+
+    def _annealing_cos(self, start, end, pct):
+        cos_out = math.cos(math.pi * pct) + 1
+        return end + (start - end) / 2.0 * cos_out
+
+    def _annealing_linear(self, start, end, pct):
+        return (end - start) * pct + start
+
+    def get_lr(self):
+        step_num = self.last_epoch
+
+        if step_num > self.total_steps:
+            raise ValueError(
+                "Tried to step {} times. The specified number of total steps is {}"
+                .format(step_num + 1, self.total_steps))
+
+        start_step = 0
+        for i, phase in enumerate(self._schedule_phases):
+            end_step = self._end_steps[i]
+            if step_num <= end_step or i == len(self._schedule_phases) - 1:
+                pct = (step_num - start_step) / (end_step - start_step)
+                computed_lr = self.anneal_func(phase['start_lr'],
+                                               phase['end_lr'], pct)
+                break
+            start_step = end_step
+
+        return computed_lr
