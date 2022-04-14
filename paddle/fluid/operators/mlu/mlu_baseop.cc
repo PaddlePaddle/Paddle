@@ -1143,6 +1143,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                                 output_desc, output));
 }
 
+/* static */ void MLUCnnl::SoftmaxBackward(
+    const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+    cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlSoftmaxBackward(handle, algorithm, mode, nullptr, y_desc, y,
+                          diff_y_desc, diff_y, nullptr, diff_x_desc, diff_x));
+}
+
 /* static */ void MLUCnnl::Softplus(const ExecutionContext& ctx,
                                     const cnnlTensorDescriptor_t features_desc,
                                     const void* features,
