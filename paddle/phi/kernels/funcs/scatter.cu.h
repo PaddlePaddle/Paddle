@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -155,9 +156,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   // set block and grid num
   int block = 512;
   int64_t n = slice_size * index_size;
-  int64_t grid = (n + block - 1) / block;
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
-  grid = grid > maxGridDimX ? maxGridDimX : grid;
+  dim3 grid = dim3((n + block - 1) / block);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -188,9 +188,8 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t block = 512;
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
-
-  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
-  int64_t grid = height < max_grid_dimx ? height : max_grid_dimx;
+  dim3 grid = dim3((n + block - 1) / block);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_index, p_output, index_size, slice_size);
@@ -230,9 +229,8 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
-  int64_t grid = (n + block - 1) / block;
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
-  grid = grid > maxGridDimX ? maxGridDimX : grid;
+  dim3 grid = dim3((n + block - 1) / block);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_update,

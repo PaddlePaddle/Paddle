@@ -43,6 +43,16 @@ def static_program(net, data):
     return loss
 
 
+def set_flags(enable_autotune):
+    if paddle.is_compiled_with_cuda():
+        if enable_autotune:
+            paddle.set_flags({'FLAGS_conv_workspace_size_limit': -1})
+            paddle.set_flags({'FLAGS_cudnn_exhaustive_search': 1})
+        else:
+            paddle.set_flags({'FLAGS_conv_workspace_size_limit': 512})
+            paddle.set_flags({'FLAGS_cudnn_exhaustive_search': 0})
+
+
 class TestAutoTune(unittest.TestCase):
     def test_autotune(self):
         paddle.fluid.core.disable_autotune()
@@ -61,6 +71,7 @@ class TestAutoTune(unittest.TestCase):
 
 class TestDygraphAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
+        set_flags(enable_autotune)
         if enable_autotune:
             paddle.fluid.core.enable_autotune()
         else:
@@ -87,16 +98,27 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
                 }
                 self.check_status(expected_res)
 
-    def test_enable_autotune(self):
+    def func_enable_autotune(self):
         self.run_program(enable_autotune=True)
 
-    def test_disable_autotune(self):
+    def test_enable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_enable_autotune()
+        self.func_enable_autotune()
+
+    def func_disable_autotune(self):
         self.run_program(enable_autotune=False)
+
+    def test_disable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_disable_autotune()
+        self.func_disable_autotune()
 
 
 class TestStaticAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
         paddle.enable_static()
+        set_flags(enable_autotune)
         if enable_autotune:
             paddle.fluid.core.enable_autotune()
         else:
@@ -136,11 +158,21 @@ class TestStaticAutoTuneStatus(TestAutoTune):
                 self.check_status(expected_res)
         paddle.disable_static()
 
-    def test_enable_autotune(self):
+    def func_enable_autotune(self):
         self.run_program(enable_autotune=True)
 
-    def test_disable_autotune(self):
+    def test_enable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_enable_autotune()
+        self.func_enable_autotune()
+
+    def func_disable_autotune(self):
         self.run_program(enable_autotune=False)
+
+    def test_disable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_disable_autotune()
+        self.func_disable_autotune()
 
 
 if __name__ == '__main__':

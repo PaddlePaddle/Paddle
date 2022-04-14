@@ -34,7 +34,8 @@ def CreateHostInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32"
     I64ArrayAttr:$dims,
     LayoutAttr:$layout,
     I64ArrayAttr:$lod,
-    F32ArrayAttr:$values
+    F32ArrayAttr:$values,
+    DefaultValuedAttr<BoolAttr, "true">:$run_once
   );
   let results = (outs DenseTensor:$output);
 }

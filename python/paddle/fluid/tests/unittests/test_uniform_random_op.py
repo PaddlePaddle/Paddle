@@ -26,6 +26,7 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 def output_hist(out):
@@ -52,6 +53,7 @@ def output_hist_diag(out):
 class TestUniformRandomOp_attr_tensorlist(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.new_shape = (1000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -84,6 +86,7 @@ class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
 class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.new_shape = (1000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -110,6 +113,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
 class TestUniformRandomOp_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -131,6 +135,7 @@ class TestUniformRandomOp_attr_tensor(OpTest):
 class TestUniformRandomOp_attr_tensor_int32(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int32")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -152,6 +157,7 @@ class TestUniformRandomOp_attr_tensor_int32(OpTest):
 class TestUniformRandomOp(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -173,6 +179,18 @@ class TestUniformRandomOp(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+    def test_check_api(self):
+        places = self._get_places()
+        for place in places:
+            with fluid.dygraph.base.guard(place=place):
+                out = self.python_api(self.attrs['shape'], 'float32',
+                                      self.attrs['min'], self.attrs['max'],
+                                      self.attrs['seed'])
+
+    def test_check_api_eager(self):
+        with _test_eager_guard():
+            self.test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):
