@@ -163,25 +163,12 @@ Place Tensor::place() const {
   return impl_->place();
 }
 
-Place Tensor::inner_place() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      impl_,
-      phi::errors::PermissionDenied(
-          "Null pointer error, the impl_ of Tensor should not be "
-          "Null when calling Tensor::inner_place()."));
-  return impl_->place();
-}
+bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
 
-bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(inner_place());
-}
-
-bool Tensor::is_gpu() const {
-  return paddle::platform::is_gpu_place(inner_place());
-}
+bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 
 bool Tensor::is_gpu_pinned() const {
-  return paddle::platform::is_cuda_pinned_place(inner_place());
+  return paddle::platform::is_cuda_pinned_place(place());
 }
 
 /* Part 4: Data Access methods */
