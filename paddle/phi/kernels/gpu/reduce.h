@@ -17,6 +17,7 @@
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
