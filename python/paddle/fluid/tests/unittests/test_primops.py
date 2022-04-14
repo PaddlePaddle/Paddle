@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 from paddle.autograd.primops import (
-    neg, strided_slice_grad, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
+    neg, set_value, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
     transpose, split, concat, reduce, matmul, slice_select, slice_assign,
     gather, scatter_add, fill_const)
 
@@ -128,6 +128,19 @@ class TestPyPrimOps(unittest.TestCase):
         scatter_add_1 = scatter_add(e, y, index, axis=0)
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
+
+        fill_const_1 = fill_const(value=10, shape=a.shape, dtype=a.dtype)
+        self.assertEqual(fill_const_1.shape, a.shape)
+        self.assertEqual(fill_const_1.dtype, a.dtype)
+
+        neg_1 = neg(x=b)
+        self.assertEqual(neg_1.shape, b.shape)
+        self.assertEqual(neg_1.dtype, b.dtype)
+
+        set_value_1 = set_value(
+            d, a, axis=[1], starts=[1], ends=[3], strides=[1])
+        self.assertEqual(set_value_1.shape, d.shape)
+        self.assertEqual(set_value_1.dtype, d.dtype)
 
 
 if __name__ == '__main__':
