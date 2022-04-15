@@ -16,7 +16,6 @@ import paddle
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primops import fill_const, add
-from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
 from collections import OrderedDict
@@ -266,6 +265,13 @@ def prim2orig(block=None):
     _lower(block, reverse=True)
 
 
+def to_tensors(xs):
+    if isinstance(xs, list or tuple):
+        return xs
+    else:
+        return [xs]
+
+
 def _lower(block, reverse):
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
@@ -293,7 +299,7 @@ def _lower(block, reverse):
             print("op_type: ", op.type)
             print("input_args: ", input_args)
             for orig_out, new_out in zip(
-                    get_output_vars(op), lower_fn(op, *input_args)):
+                    get_output_vars(op), to_tensors(lower_fn(op, *input_args))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
                 vars_to_remove.append(orig_out.name)

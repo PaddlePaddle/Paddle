@@ -98,14 +98,14 @@ def matmul_v2_orig2prim(op, x, y):
 def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
-    if op.attr('Scale_x'):
+    if op.attr('Scale_x') - 1.0 > 1e-5:
         tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
-    if op.attr('Scale_y'):
+    if op.attr('Scale_y') - 1.0 > 1e-5:
         tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = add(x, y)
-    if op.attr('Scale_out'):
+    if op.attr('Scale_out') - 1.0 > 1e-5:
         tmp = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
         z = mul(z, tmp)

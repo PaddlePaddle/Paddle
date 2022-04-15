@@ -175,7 +175,7 @@ class TestPyPrimOps(unittest.TestCase):
     #     for op in topo_path(vs, grads):
     #         print(op)
 
-    def test_orig2prim(self):
+    def test_lower(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
@@ -189,6 +189,11 @@ class TestPyPrimOps(unittest.TestCase):
             orig2prim(x.block)
 
             print(f'-------test_orig2prim: prim-------')
+            print(x.block)
+
+            prim2orig(x.block)
+
+            print(f'-------test_orig2prim: orig-------')
             print(x.block)
 
 
