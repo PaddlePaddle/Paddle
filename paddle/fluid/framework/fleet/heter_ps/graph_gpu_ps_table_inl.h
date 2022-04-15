@@ -745,6 +745,9 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   }
   walk_to_dest(gpu_id, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
+  // For cpu_query_switch, we need global items.
+  std::vector<thrust::device_vector<int64_t>> cpu_keys_list;
+  std::vector<thrust::device_vector<int>> cpu_index_list;
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
       continue;
@@ -787,20 +790,43 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
           thrust::raw_pointer_cast(index_ptr.data()),
           thrust::raw_pointer_cast(index_ptr.data() + 1), shard_len);
 
+      cpu_keys_list.emplace_back(cpu_keys_ptr);
+      cpu_index_list.emplace_back(index_ptr);
+    }
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1) {
+      continue;
+    }
+    cudaStreamSynchronize(resource_->remote_stream(i, gpu_id));
+  }
+
+  if (cpu_query_switch) {
+    for (int i = 0; i < total_gpu; ++i) {
+      if (h_left[i] == -1) {
+        continue;
+      }
+      auto shard_len = h_right[i] - h_left[i] + 1;
       int* cpu_index = new int[shard_len + 1];
-      cudaMemcpy(cpu_index, thrust::raw_pointer_cast(index_ptr.data()),
+      cudaMemcpy(cpu_index, thrust::raw_pointer_cast(cpu_keys_list[i].data()),
                  (shard_len + 1) * sizeof(int), cudaMemcpyDeviceToHost);
+
       if (cpu_index[0] > 0) {
         int number_on_cpu = cpu_index[0];
         std::vector<std::shared_ptr<char>> buffers(number_on_cpu);
         std::vector<int> ac(number_on_cpu);
-        int64_t* cpu_keys_ = new int64_t[number_on_cpu];
-        cudaMemcpy(cpu_keys_, thrust::raw_pointer_cast(cpu_keys_ptr.data()),
+        int64_t* cpu_keys = new int64_t[number_on_cpu];
+        cudaMemcpy(cpu_keys, thrust::raw_pointer_cast(cpu_keys_list[i].data()),
                    number_on_cpu * sizeof(int64_t), cudaMemcpyDeviceToHost);
 
         auto status = cpu_graph_table->random_sample_neighbors(
-            cpu_keys_, sample_size, buffers, ac, false);
+            cpu_keys, sample_size, buffers, ac, false);
         // VLOG(0) << "Finish cpu random sample neighbors";
+        auto& node = path_[gpu_id][i].nodes_.back();
+        int* id_array = reinterpret_cast<int*>(node.val_storage);
+        int* actual_size_array = id_array + shard_len;
+        int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
         for (int i = 0; i < number_on_cpu; i++) {
           int offset = cpu_index[i + 1] * sample_size;
           cudaMemcpy(sample_array + offset, (int64_t*)(buffers[i].get()),
@@ -810,13 +836,6 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
         }
       }
     }
-  }
-
-  for (int i = 0; i < total_gpu; ++i) {
-    if (h_left[i] == -1) {
-      continue;
-    }
-    cudaStreamSynchronize(resource_->remote_stream(i, gpu_id));
   }
   move_neighbor_sample_result_to_source_gpu(gpu_id, total_gpu, sample_size,
                                             h_left, h_right, d_shard_vals_ptr,
