@@ -161,8 +161,8 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                           nodes[i].key_storage);
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
                           nodes[i].val_storage);
-#endif
   }
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -804,9 +804,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place, h_left, src_place, d_left_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
   memory_copy(dst_place, h_right, src_place, d_right_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
