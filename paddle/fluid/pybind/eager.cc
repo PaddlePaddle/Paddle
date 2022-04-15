@@ -137,7 +137,7 @@ void InitTensorWithTensor(TensorObject* self,
                           const paddle::platform::Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
-  if (place == src.inner_place()) {
+  if (place == src.place()) {
     auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -709,6 +709,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 }
 
 static void TensorDealloc(TensorObject* self) {
+  if (self->weakrefs != NULL)
+    PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
   self->tensor.~Tensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
@@ -739,6 +741,7 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
+  type->tp_weaklistoffset = offsetof(TensorObject, weakrefs);
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=

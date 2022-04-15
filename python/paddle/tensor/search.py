@@ -14,7 +14,7 @@
 from __future__ import print_function
 import numpy as np
 import paddle
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
 from ..framework import core, in_dygraph_mode, _non_static_mode

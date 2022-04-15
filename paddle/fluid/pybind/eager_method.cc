@@ -343,11 +343,11 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
   }
 
@@ -939,7 +939,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value, value_tensor_tmp.inner_place(), false);
+            value, value_tensor_tmp.place(), false);
       }
 
       value_tensor = value_tensor_tmp;
@@ -1023,7 +1023,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                            platform::Place(platform::CPUPlace()), false);
 #endif
     } else {
-      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.inner_place(),
+      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.place(),
                            false);
     }
   }
@@ -1372,7 +1372,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
 #ifndef _WIN32
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Sharing memory only support CPU Tensor currently"));
   // 1. get LoDTensor
@@ -1424,7 +1424,7 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "DenseTensor currently."));
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
