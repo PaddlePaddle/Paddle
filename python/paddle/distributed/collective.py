@@ -20,6 +20,7 @@ from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
@@ -1132,13 +1133,36 @@ def _mp_allreduce(tensor,
                   group=None,
                   use_calc_stream=True,
                   use_model_parallel=True):
-    """[it is same as allreduce above, but it suuports model parallel. And it support inplace startegy]
+    """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]
     """
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
+
+        from paddle.autograd import EagerPyLayer
+
+        class mp_allreduce_eager(EagerPyLayer):
+            @staticmethod
+            def forward(ctx, tensor, use_calc_stream, ring_id,
+                        use_model_parallel):
+                ctx.ring_id = ring_id
+                return _C_ops.c_allreduce_sum_(
+                    tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
+                    ring_id, "use_model_parallel", use_model_parallel)
+
+            @staticmethod
+            def backward(ctx, dy):
+                return _C_ops.c_identity(dy, 'use_calc_stream', True, 'ring_id',
+                                         ctx.ring_id, 'use_model_parallel',
+                                         True)
+
+        return mp_allreduce_eager.apply(tensor, use_calc_stream, ring_id,
+                                        use_model_parallel)
+
+    elif _in_legacy_dygraph():
         if op == ReduceOp.SUM:
             return _C_ops.c_allreduce_sum_(
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
