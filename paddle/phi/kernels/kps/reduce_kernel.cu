@@ -106,23 +106,21 @@ void AnyRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(sum_raw, XPU, ALL_LAYOUT, phi::SumRawKernel, float) {
+PD_REGISTER_KERNEL(mean_raw, KPS, ALL_LAYOUT, phi::MeanRawKernel, float) {}
+
+PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PD_REGISTER_KERNEL(mean_raw, XPU, ALL_LAYOUT, phi::MeanRawKernel, float) {}
+PD_REGISTER_KERNEL(prod_raw, KPS, ALL_LAYOUT, phi::ProdRawKernel, float) {}
 
-PD_REGISTER_KERNEL(prod_raw, XPU, ALL_LAYOUT, phi::ProdRawKernel, float) {}
+PD_REGISTER_KERNEL(max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float) {}
 
-PD_REGISTER_KERNEL(
-    max_raw, XPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float) {}
 
-PD_REGISTER_KERNEL(
-    min_raw, XPU, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
 
-PD_REGISTER_KERNEL(all_raw, XPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
-
-PD_REGISTER_KERNEL(any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
 #else
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
@@ -130,7 +128,7 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(sum_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
                    bool,
@@ -147,7 +145,7 @@ PD_REGISTER_KERNEL(sum_raw,
 }
 
 PD_REGISTER_KERNEL(mean_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,
                    float,
@@ -158,7 +156,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(prod_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::ProdRawKernel,
                    float,
@@ -167,12 +165,12 @@ PD_REGISTER_KERNEL(prod_raw,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(
-    max_raw, GPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+    max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(
-    min_raw, GPU, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
+    min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(all_raw, GPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
 
-PD_REGISTER_KERNEL(any_raw, GPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
 #endif
