@@ -20,13 +20,13 @@ namespace experimental {
 /* ------------------ for input ----------------------- */
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+  return std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl());
+    return std::static_pointer_cast<phi::DenseTensor>(tensor->impl());
   }
   return nullptr;
 }
@@ -45,13 +45,13 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
+  return std::static_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl());
+    return std::static_pointer_cast<phi::SelectedRows>(tensor->impl());
   }
   return nullptr;
 }
@@ -64,6 +64,14 @@ std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor) {
 
 phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
   return phi::MetaTensor(tensor);
+}
+
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const phi::DenseTensor&>& tensor) {
+  if (tensor) {
+    return {phi::MetaTensor(*tensor)};
+  }
+  return {paddle::none};
 }
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
@@ -88,6 +96,14 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
   return phi::MetaTensor(tensor);
+}
+
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const phi::SelectedRows&>& tensor) {
+  if (tensor) {
+    return {phi::MetaTensor(*tensor)};
+  }
+  return {paddle::none};
 }
 
 phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {

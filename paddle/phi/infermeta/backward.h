@@ -79,10 +79,28 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           MetaTensor* logits_grad,
                                           MetaConfig config = MetaConfig());
 
+void DeformableConvGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& offset,
+                                 const MetaTensor& filter,
+                                 paddle::optional<const MetaTensor&> mask,
+                                 const MetaTensor& out_grad,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 int deformable_groups,
+                                 int groups,
+                                 int im2col_step,
+                                 MetaTensor* dx,
+                                 MetaTensor* offset_grad,
+                                 MetaTensor* filter_grad,
+                                 MetaTensor* mask_grad);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
                            MetaTensor* x_grad);
+
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
@@ -115,8 +133,6 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dz,
                                  MetaTensor* dk,
                                  MetaTensor* dl);
-
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
 
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
