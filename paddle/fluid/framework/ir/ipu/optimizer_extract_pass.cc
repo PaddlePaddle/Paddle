@@ -30,9 +30,10 @@ std::set<std::string> ignored_ops = {
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",           // adamax
-    "assign",          // adamw
-    "squared_l2_norm"  // gradient_clip_norm
+    "scale",            // adamax
+    "assign",           // adamw
+    "squared_l2_norm",  // gradient_clip_norm
+    "cast",             // mix-precision support
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {

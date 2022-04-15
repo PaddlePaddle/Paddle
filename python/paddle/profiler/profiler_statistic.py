@@ -869,7 +869,7 @@ def _build_table(statistic_data,
             '{} / - / - / - / {}'.format(
                 format_time(
                     other_gpu_time, unit=time_unit),
-                format_ratio(float(other_gpu_time) / gpu_total_time))
+                format_ratio(float(other_gpu_time) / total_time))
         ]
         all_row_values.append(row_values)
         # Calculate the column width

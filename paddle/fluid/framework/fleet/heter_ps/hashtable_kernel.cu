@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
+#include <thread>
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
 namespace paddle {
 namespace framework {
+
+#if defined(PADDLE_WITH_CUDA)
 
 template <typename value_type>
 struct ReplaceOp {
@@ -87,6 +92,7 @@ __global__ void dy_mf_search_kernel(Table* table,
     }
   }
 }
+
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,
                               const typename Table::key_type* const keys,
@@ -135,8 +141,9 @@ void HashTable<KeyType, ValType>::show() {
 }
 
 template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
-                                      size_t len, gpuStream_t stream) {
+                                      size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
@@ -146,8 +153,9 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 }
 
 template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, gpuStream_t stream) {
+                                      size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
@@ -157,9 +165,10 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
 }
 
 template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
-                                         gpuStream_t stream) {
+                                         StreamType stream) {
   if (len == 0) {
     return;
   }
@@ -169,22 +178,24 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
                                          char* pool, size_t start_index,
-                                         gpuStream_t stream) {
+                                         StreamType stream) {
   if (len == 0) {
     return;
   }
-  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   if (pool == NULL) {
     return;
   }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
                                                        pool, start_index);
 }
 
 template <typename KeyType, typename ValType>
-void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
+template <typename StreamType>
+void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
   container_->prefetch(cudaCpuDeviceId, stream);
   std::vector<std::thread> threads;
   size_t num = container_->size();
@@ -260,10 +271,10 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
 }
 
 template <typename KeyType, typename ValType>
-template <typename GradType, typename Sgd>
+template <typename GradType, typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const GradType* d_grads, size_t len,
-                                         Sgd sgd, gpuStream_t stream) {
+                                         Sgd sgd, StreamType stream) {
   if (len == 0) {
     return;
   }
@@ -273,19 +284,66 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
-template <typename Sgd>
+template <typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const char* d_grads, size_t len,
-                                         Sgd sgd, gpuStream_t stream) {
+                                         Sgd sgd, StreamType stream) {
   if (len == 0) {
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
 }
 
+template class HashTable<unsigned long, paddle::framework::FeatureValue>;
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
+    cudaStream_t>(const unsigned long* d_keys,
+                  paddle::framework::FeatureValue* d_vals, size_t len,
+                  cudaStream_t stream);
+
+// template void
+// HashTable<unsigned long, paddle::framework::FeatureValue>::get<cudaStream_t>(
+//    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
+//    stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    cudaStream_t>(const unsigned long* d_keys,
+                  const paddle::framework::FeatureValue* d_vals, size_t len,
+                  cudaStream_t stream);
+
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::insert<
+//    cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
+//                  size_t start_index, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::
+    dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    paddle::framework::FeaturePushValue,
+    Optimizer<paddle::framework::FeatureValue,
+              paddle::framework::FeaturePushValue>,
+    cudaStream_t>(const unsigned long* d_keys,
+                  const paddle::framework::FeaturePushValue* d_grads,
+                  size_t len, Optimizer<paddle::framework::FeatureValue,
+                                        paddle::framework::FeaturePushValue>
+                                  sgd,
+                  cudaStream_t stream);
+
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::update<
+//    Optimizer<paddle::framework::FeatureValue,
+//              paddle::framework::FeaturePushValue>,
+//    cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t
+//    len,
+//                  Optimizer<paddle::framework::FeatureValue,
+//                            paddle::framework::FeaturePushValue>
+//                      sgd,
+//                  cudaStream_t stream);
+
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif

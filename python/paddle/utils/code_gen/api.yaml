@@ -1917,6 +1917,7 @@
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
+  backward : split_grad
 
 - api : sqrt
   args : (Tensor x)
@@ -2166,7 +2167,7 @@
     data_type : x
 
 - api : unsqueeze
-  args : (Tensor x, IntArray axes)
+  args : (Tensor x, IntArray axis)
   output : Tensor(xshape), Tensor(out)
   infer_meta :
     func : UnsqueezeInferMeta
