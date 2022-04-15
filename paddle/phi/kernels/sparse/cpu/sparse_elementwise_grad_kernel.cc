@@ -130,25 +130,9 @@ void ElementWiseAddCsrGradKernel(const Context& dev_ctx,
                                  const SparseCsrTensor& dout,
                                  SparseCsrTensor* dx,
                                  SparseCsrTensor* dy) {
-  //  ElementwiseAddCsrGradImpl<T,Context>(dev_ctx, x, y, dout, dx, dy);
-  /*if (dx) {
-    //      dev_ctx.template Alloc<T>(x_grad);
-    //      blas.VCOPY(
-    //          dout.numel(), dout.data<T>(),
-    //          dx->mutable_data<T>(ctx.GetPlace()));
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-  }
 
-  if (dy) {
-    //      dev_ctx.template Alloc<T>(y_grad);
-    //      blas.VCOPY(
-    //          dout.numel(), dout.data<T>(),
-    //          dy->mutable_data<T>(ctx.GetPlace()));
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-  }*/
-
-  auto* out = &dout;
-  // Special case when y_grad is not needed and x_grad doesn't reduce
+  // 即使什么都不做，只要在sparse_api.yaml中指定了grad，就会139
+  // Special case when y_grad is not needed
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
     //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
@@ -187,13 +171,11 @@ void ElementWiseMultiplyCsrGradKernel(const Context& dev_ctx,
   if (dx) {
     //    dout*y
     sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, y, dx);
-    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   }
 
   if (dy) {
     //    dout*x
     sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, x, dy);
-    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
