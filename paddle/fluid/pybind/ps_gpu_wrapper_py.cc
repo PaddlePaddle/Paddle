@@ -81,6 +81,12 @@ void BindAfsWrapper(py::module* m) {
       .def("upload", &framework::AfsWrapper::upload,
            py::call_guard<py::gil_scoped_release>())
       .def("remove", &framework::AfsWrapper::remove,
+           py::call_guard<py::gil_scoped_release>())
+      .def("touchz", &framework::AfsWrapper::touchz,
+           py::call_guard<py::gil_scoped_release>())
+      .def("cat", &framework::AfsWrapper::cat,
+           py::call_guard<py::gil_scoped_release>())
+      .def("mv", &framework::AfsWrapper::mv,
            py::call_guard<py::gil_scoped_release>());
 }
 #endif
