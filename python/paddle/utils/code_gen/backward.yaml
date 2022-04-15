@@ -1,3 +1,9 @@
+# - backward_api : conv2d_grad
+#   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
+#   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+#   output : Tensor(input_grad), Tensor(filter_grad)
+#   invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+
 - backward_api : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -260,7 +266,13 @@
   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv2d_grad
+    data_type : input
+    use_cudnn : true
 
 - backward_api : conv2d_transpose_grad
   forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -356,7 +368,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : determinant_grad  
+    func : determinant_grad
 
 - backward_api : diagonal_grad
   forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
@@ -419,6 +431,7 @@
     param : [out_v]
   kernel :
     func : eigh_grad
+    data_type : out_w
 
 - backward_api : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
@@ -1490,6 +1503,7 @@
     param : [out]
   kernel :
     func : softmax_grad
+    use_cudnn : true
 
 - backward_api : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)

@@ -70,8 +70,8 @@ def valid_single_eigh_result(A, eigh_value, eigh_vector, uplo):
 
 class TestEighOp(OpTest):
     def setUp(self):
-        paddle.enable_static()
         self.op_type = "eigh"
+        self.python_api = paddle.tensor.eigh
         self.init_input()
         self.init_config()
         np.random.seed(123)
@@ -188,15 +188,18 @@ class TestEighAPI(unittest.TestCase):
                           actual_w.numpy(), actual_v.numpy(), self.UPLO)
 
     def test_eigh_grad(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.complex_symm, stop_gradient=False)
-        w, v = paddle.linalg.eigh(x)
-        (w.sum() + paddle.abs(v).sum()).backward()
-        np.testing.assert_allclose(
-            abs(x.grad.numpy()),
-            abs(x.grad.numpy().conj().transpose(self.trans_dims)),
-            rtol=self.rtol,
-            atol=self.atol)
+        with paddle.fluid.dygraph.base.guard():
+            x = paddle.to_tensor(self.complex_symm, stop_gradient=False)
+            print(x)
+            w, v = paddle.linalg.eigh(x)
+            print(w)
+            print(v)
+            (w.sum() + paddle.abs(v).sum()).backward()
+            np.testing.assert_allclose(
+                abs(x.grad.numpy()),
+                abs(x.grad.numpy().conj().transpose(self.trans_dims)),
+                rtol=self.rtol,
+                atol=self.atol)
 
 
 class TestEighBatchAPI(TestEighAPI):
@@ -232,4 +235,5 @@ class TestEighAPIError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

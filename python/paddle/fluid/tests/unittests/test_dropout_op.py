@@ -956,7 +956,7 @@ class TestDropoutBackward(unittest.TestCase):
 
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                out, mask = _C_ops.dropout(input, 'dropout_prob', 0.5)
                 out.backward()
 
                 self.assertTrue(
@@ -983,9 +983,9 @@ class TestDropoutBackward(unittest.TestCase):
                 prob = 0.5
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                             "dropout_implementation",
-                                             "upscale_in_train")
+                out, mask = _C_ops.dropout(input, 'dropout_prob', prob,
+                                           "dropout_implementation",
+                                           "upscale_in_train")
                 out.backward()
 
                 self.assertTrue(
@@ -1014,9 +1014,9 @@ class TestDropoutBackward(unittest.TestCase):
                 prob = 0.3
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
-                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                             "dropout_implementation",
-                                             "upscale_in_train")
+                out, mask = _C_ops.dropout(input, 'dropout_prob', prob,
+                                           "dropout_implementation",
+                                           "upscale_in_train")
                 out.backward()
 
                 self.assertTrue(

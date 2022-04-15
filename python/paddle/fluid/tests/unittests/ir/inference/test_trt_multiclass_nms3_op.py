@@ -22,6 +22,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+from paddle import _C_ops
 
 
 def multiclass_nms(bboxes,
@@ -131,8 +132,8 @@ def multiclass_nms(bboxes,
                  score_threshold, 'nms_top_k', nms_top_k, 'nms_threshold',
                  nms_threshold, 'keep_top_k', keep_top_k, 'nms_eta', nms_eta,
                  'normalized', normalized)
-        output, index, nms_rois_num = core.ops.multiclass_nms3(bboxes, scores,
-                                                               rois_num, *attrs)
+        output, index, nms_rois_num = _C_ops.multiclass_nms3(bboxes, scores,
+                                                             rois_num, *attrs)
         if not return_index:
             index = None
         return output, nms_rois_num, index

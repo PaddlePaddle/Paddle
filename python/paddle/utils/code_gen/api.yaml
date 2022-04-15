@@ -1,3 +1,9 @@
+# - api : conv2d
+#   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+#   output : Tensor
+#   invoke : conv2d_impl(input, filter, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+#   backward : conv2d_grad
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -360,7 +366,12 @@
 - api : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor
-  invoke : conv2d_impl(input, filter, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  infer_meta :
+    func : ConvInferMeta
+  kernel :
+    func : conv2d
+    data_type : input
+    use_cudnn : true
   backward : conv2d_grad
 
 - api : conv2d_transpose
@@ -1870,6 +1881,7 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
+    use_cudnn : true
   backward : softmax_grad
 
 - api : split

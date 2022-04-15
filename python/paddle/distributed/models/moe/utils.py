@@ -16,6 +16,7 @@ from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle import _C_ops
 
 
 def _number_count(numbers, upper_range):
@@ -41,7 +42,7 @@ def _number_count(numbers, upper_range):
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
     if _non_static_mode():
-        return core.ops.number_count(numbers, 'upper_range', upper_range)
+        return _C_ops.number_count(numbers, 'upper_range', upper_range)
     else:
         op_type = 'number_count'
 
@@ -87,7 +88,7 @@ def _assign_pos(x, cum_count):
             print(pos) # the result: (2, 0, 3, 1)
     """
     if _non_static_mode():
-        return core.ops.assign_pos(x, cum_count, cum_count[-1])
+        return _C_ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
 
@@ -121,7 +122,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
     """
     if topk == 2:
         if _non_static_mode():
-            return core.ops.random_routing(prob, topk_value, topk_idx)
+            return _C_ops.random_routing(prob, topk_value, topk_idx)
         else:
             raise RuntimeError("Not supporting static mode now")
     else:
@@ -150,8 +151,8 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             print(out) # the result: [1, 2, 2, 4, 3, 3]
     """
     if _non_static_mode():
-        return core.ops.limit_by_capacity(expert_count, capacity, 'n_worker',
-                                          n_worker)
+        return _C_ops.limit_by_capacity(expert_count, capacity, 'n_worker',
+                                        n_worker)
     else:
         op_type = 'limit_by_capacity'
 
@@ -194,8 +195,8 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     """
 
     if _non_static_mode():
-        return core.ops.prune_gate_by_capacity(
-            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
+        return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
+                                             n_expert, "n_worker", n_worker)
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
     check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],

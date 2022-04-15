@@ -603,8 +603,8 @@ void BatchNormGradRawKernel(const Context &ctx,
               /*activationDesc=*/nullptr,
               /*workspace=*/workspace_ptr,
               /*workSpaceSizeInBytes=*/workspace_size,
-              /*reserveSpace=*/const_cast<T *>(
-                  reserve_space->template data<T>()),
+              /*reserveSpace=*/const_cast<void *>(
+                  reserve_space->template data<unit8_t>()),
               /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #endif  // CUDNN_VERSION_MIN(7, 4, 1)
       if (!called) {
