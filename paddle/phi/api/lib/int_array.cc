@@ -49,7 +49,7 @@ IntArrayBase<Tensor>::IntArrayBase(const std::vector<Tensor>& tensor_list) {
         }
         break;
       case DataType::INT64:
-        if (tensor_list[i].inner_place().GetType() == AllocationType::CPU) {
+        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
           array_.push_back(*tensor_list[i].template data<int64_t>());
         } else {
           Tensor tensor_tmp;

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <tuple>
 #include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
@@ -106,6 +107,13 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     float regularization_coeff,
     bool multi_precision,
     float rescale_grad);
+
+std::tuple<Tensor, Tensor> sgd_impl(
+    const Tensor& param,
+    const Tensor& learning_rate,
+    const Tensor& grad,
+    paddle::optional<const Tensor&> master_param,
+    bool multi_precision);
 
 ////////////////// Backward(grad) api impls //////////////////////
 
