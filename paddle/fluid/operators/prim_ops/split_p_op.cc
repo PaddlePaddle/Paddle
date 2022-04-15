@@ -81,10 +81,18 @@ class SplitPrimOpShapeInference : public framework::InferShapeBase {
         BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
       }
     } else {
+      int64_t cnt_along_axis = 0;
       for (size_t i = 0; i < num_or_sections.size(); ++i) {
         y_shape[axis] = num_or_sections[i];
+        cnt_along_axis += num_or_sections[i];
         BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
       }
+      PADDLE_ENFORCE_EQ(
+          x_shape[axis], cnt_along_axis,
+          platform::errors::InvalidArgument(
+              "The input tensor has %d elements along axis %d, thus can't be "
+              "devided into %d tensor with %d elements totally.",
+              x_shape[axis], axis, num_or_sections.size(), cnt_along_axis));
     }
   }
 };

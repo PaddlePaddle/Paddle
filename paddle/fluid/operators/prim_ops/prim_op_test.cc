@@ -316,7 +316,10 @@ TEST(PrimOp, gather_p) {
   std::string index_t = "index_t";
   std::string x2 = "x2";
 
-  NewVar(block, index_t, std::vector<int64_t>{3});
+  auto *var_desc = block->Var(index_t);
+  var_desc->SetShape(std::vector<int64_t>{3});
+  var_desc->SetType(proto::VarType::LOD_TENSOR);
+  var_desc->SetDataType(proto::VarType_Type_INT32);
   AppendOp(block, "gather_p", {{"X", {x0}}, {"IndexTensor", {index_t}}},
            {{"Y", {x2}}}, {{"axis", int64_t{1}}});
   ASSERT_EQ(block->Var("x2")->GetType(), proto::VarType::LOD_TENSOR);
@@ -352,7 +355,10 @@ TEST(PrimOp, scatter_add_p) {
   std::string index_t = "index_t";
   std::string x3 = "x3";
 
-  NewVar(block, index_t, std::vector<int64_t>{3});
+  auto *var_desc = block->Var(index_t);
+  var_desc->SetShape(std::vector<int64_t>{3});
+  var_desc->SetType(proto::VarType::LOD_TENSOR);
+  var_desc->SetDataType(proto::VarType_Type_INT32);
   AppendOp(block, "scatter_add_p",
            {{"X", {x0}}, {"Y", {x1}}, {"IndexTensor", {index_t}}},
            {{"Z", {x3}}}, {{"axis", int64_t{1}}});

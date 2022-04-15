@@ -51,11 +51,28 @@ Autograd primitive reshape_p operator.
   }
 };
 
+static int64_t product(const std::vector<int64_t> &shape) {
+  int64_t rslt = 1;
+  for (size_t i = 0; i < shape.size(); ++i) {
+    rslt *= shape[i];
+  }
+  return rslt;
+}
+
 class ReshapePrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
+    framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
+    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    auto x_shape = x_var->GetShape();
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    PADDLE_ENFORCE_EQ(product(x_shape), product(shape),
+                      platform::errors::InvalidArgument(
+                          "The input tensor can't be reshaped to target shape, "
+                          "the input tensor has %d elements but target shape "
+                          "contains %d elements",
+                          product(x_shape), product(shape)));
     BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
   }
 };
