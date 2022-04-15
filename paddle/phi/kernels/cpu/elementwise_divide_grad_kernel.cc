@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
@@ -34,38 +32,18 @@ void DivideGradKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* dx,
                       DenseTensor* dy) {
-  const auto place = dev_ctx.GetPlace();
-  if (dx != nullptr && dy != nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
-  } else if (dx != nullptr && dy == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
-        dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
-  } else if (dy != nullptr && dx == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
-  }
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivGradDY<T>>(
+      dev_ctx, x, y, out, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(divide_grad,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::DivideGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    double,
                    int,
                    int64_t,
@@ -73,12 +51,10 @@ PD_REGISTER_KERNEL(divide_grad,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(divide_double_grad,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::DivideDoubleGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    double,
                    int,
                    int64_t,

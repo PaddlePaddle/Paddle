@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
 
 template <typename T>
-void AddGradFunc(const GPUContext& dev_ctx,
+void AddGradFunc(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  const DenseTensor& out,
@@ -38,7 +34,17 @@ void AddGradFunc(const GPUContext& dev_ctx,
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
     ElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy);
   } else {
-    DefaultElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy, axis);
+    ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
+        dev_ctx,
+        x,
+        y,
+        out,
+        dout,
+        axis,
+        dx,
+        dy,
+        IdentityGrad<T>(),
+        IdentityGrad<T>());
   }
 }
 
@@ -79,40 +85,37 @@ void AddTripleGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::AddGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(add_double_grad,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::AddDoubleGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(add_triple_grad,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::AddTripleGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

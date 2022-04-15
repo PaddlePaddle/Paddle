@@ -12,64 +12,71 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SubtractGradKernel(const Context& dev_ctx,
+void MultiplyGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         const DenseTensor& dout,
                         int axis,
                         DenseTensor* dx,
                         DenseTensor* dy) {
-  // skip out
-  auto* out = &dout;
-  ElementwiseSubGrad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
-}
-
-template <typename T, typename Context>
-void SubtractDoubleGradKernel(const Context& dev_ctx,
-                              const DenseTensor& y,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
-                              const DenseTensor& dout,
-                              int axis,
-                              DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  ElementwiseMulGrad<T>(dev_ctx, x, y, dout, dx, dy, axis);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(subtract_grad,
-                   CPU,
+PD_REGISTER_KERNEL(multiply_grad,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::SubtractGradKernel,
+                   phi::MultiplyGradKernel,
                    float,
+                   phi::dtype::float16,
                    double,
-                   int16_t,
                    int,
                    int64_t,
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(subtract_double_grad,
-                   CPU,
+PD_REGISTER_KERNEL(multiply_double_grad,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::SubtractDoubleGradKernel,
+                   phi::MultiplyDoubleGradKernel,
                    float,
+                   phi::dtype::float16,
                    double,
-                   int16_t,
                    int,
                    int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_triple_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyTripleGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

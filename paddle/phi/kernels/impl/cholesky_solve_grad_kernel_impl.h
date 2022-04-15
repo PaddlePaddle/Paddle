@@ -16,10 +16,10 @@
 
 #include "paddle/phi/kernels/cholesky_solve_grad_kernel.h"
 
-#include "paddle/phi/kernels/add_kernel.h"
 #include "paddle/phi/kernels/cholesky_solve_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"

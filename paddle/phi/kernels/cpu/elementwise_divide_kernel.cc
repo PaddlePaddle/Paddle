@@ -12,26 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
 
-// Create the definition of Add
-DEFINE_CPU_ELEMENTWISE_OP(Add)
+template <typename T, typename Context>
+void DivideRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
+    SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
+        dev_ctx, x, y, out);
+  } else {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    if (x_dims.size() >= y_dims.size()) {
+      funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
+    } else {
+      funcs::ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
+          dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
+    }
+  }
+}
 
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
+void DivideKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* out) {
   int axis = -1;
-  AddRawKernel<T>(dev_ctx, x, y, axis, out);
+  DivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
@@ -42,25 +63,22 @@ using complex128 = ::phi::dtype::complex<double>;
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
 
-PD_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddRawKernel,
+                   phi::DivideRawKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
                    complex64,
                    complex128) {}
-
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(divide,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::DivideKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
                    complex64,
