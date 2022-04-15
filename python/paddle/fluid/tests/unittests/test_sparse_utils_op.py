@@ -32,6 +32,8 @@ class TestSparseCreate(unittest.TestCase):
             dense_elements = paddle.to_tensor(values, dtype='float32')
             coo = paddle.sparse.sparse_coo_tensor(
                 dense_indices, dense_elements, dense_shape, stop_gradient=False)
+            # test the to_string.py
+            print(coo)
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
 
@@ -69,6 +71,8 @@ class TestSparseCreate(unittest.TestCase):
             dense_shape = [3, 4]
             csr = paddle.sparse.sparse_csr_tensor(crows, cols, values,
                                                   dense_shape)
+            # test the to_string.py
+            print(csr)
             assert np.array_equal(crows, csr.crows().numpy())
             assert np.array_equal(cols, csr.cols().numpy())
             assert np.array_equal(values, csr.values().numpy())
@@ -243,15 +247,112 @@ class TestSparseConvert(unittest.TestCase):
                 assert np.array_equal(values_sorted, sparse_x.values().numpy())
 
 
-class TestError(unittest.TestCase):
-    def test_sparse_coo_tensor(self):
-        with self.assertRaises(ValueError):
-            indices = [[2, 3], [0, 2]]
-            values = [1, 2]
-            #the shape too small
-            dense_shape = [2, 2]
-            sparse_x = paddle.sparse.sparse_coo_tensor(
-                indices, values, shape=dense_shape)
+class TestCooError(unittest.TestCase):
+    def test_small_shape(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                indices = [[2, 3], [0, 2]]
+                values = [1, 2]
+                # 1. the shape too small
+                dense_shape = [2, 2]
+                sparse_x = paddle.sparse.sparse_coo_tensor(
+                    indices, values, shape=dense_shape)
+
+    def test_same_nnz(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                # 2. test the nnz of indices must same as nnz of values
+                indices = [[1, 2], [1, 0]]
+                values = [1, 2, 3]
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+
+    def test_same_dimensions(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                indices = [[1, 2], [1, 0]]
+                values = [1, 2, 3]
+                shape = [2, 3, 4]
+                sparse_x = paddle.sparse.sparse_coo_tensor(
+                    indices, values, shape=shape)
+
+    def test_indices_dtype(self):
+        with _test_eager_guard():
+            with self.assertRaises(TypeError):
+                indices = [[1.0, 2.0], [0, 1]]
+                values = [1, 2]
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+
+
+class TestCsrError(unittest.TestCase):
+    def test_dimension1(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [0, 1, 2, 3]
+                cols = [0, 1, 2]
+                values = [1, 2, 3]
+                shape = [3]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_dimension2(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [0, 1, 2, 3]
+                cols = [0, 1, 2]
+                values = [1, 2, 3]
+                shape = [3, 3, 3, 3]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_same_shape1(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [0, 1, 2, 3]
+                cols = [0, 1, 2, 3]
+                values = [1, 2, 3]
+                shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_same_shape2(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [0, 1, 2, 3]
+                cols = [0, 1, 2, 3]
+                values = [1, 2, 3, 4]
+                shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_same_shape3(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [0, 1, 2, 3, 0, 1, 2]
+                cols = [0, 1, 2, 3, 0, 1, 2]
+                values = [1, 2, 3, 4, 0, 1, 2]
+                shape = [2, 3, 4]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_crows_first_value(self):
+        with _test_eager_guard():
+            with self.assertRaises(ValueError):
+                crows = [1, 1, 2, 3]
+                cols = [0, 1, 2]
+                values = [1, 2, 3]
+                shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
+
+    def test_dtype(self):
+        with _test_eager_guard():
+            with self.assertRaises(TypeError):
+                crows = [0, 1, 2, 3.0]
+                cols = [0, 1, 2]
+                values = [1, 2, 3]
+                shape = [3]
+                sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                           shape)
 
 
 if __name__ == "__main__":
