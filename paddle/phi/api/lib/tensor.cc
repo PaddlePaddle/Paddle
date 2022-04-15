@@ -67,13 +67,14 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
 }
 
 Tensor::Tensor(const Place &place) {
-  LOG(WARNING) << "The Tensor(place) constructor is deprecated since version "
-                  "2.3, and will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor instead. "
-                  "Reason: A legal tensor cannot be constructed only based on "
-                  "the `place`, and datatype, shape, layout, etc. is also "
-                  "required.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place) constructor is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place`, and datatype, shape, layout, etc. is also "
+         "required.";
   DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
@@ -82,13 +83,14 @@ Tensor::Tensor(const Place &place) {
 }
 
 Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
-  LOG(WARNING) << "The Tensor(place, shape) constructor is deprecated since "
-                  "version 2.3, and will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor instead. "
-                  "Reason: A legal tensor cannot be constructed only based on "
-                  "the `place` and `shape`, and datatype, layout, etc. is also "
-                  "required.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor(place, shape) constructor is deprecated since "
+         "version 2.3, and will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor instead. "
+         "Reason: A legal tensor cannot be constructed only based on "
+         "the `place` and `shape`, and datatype, layout, etc. is also "
+         "required.";
   DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
@@ -118,14 +120,15 @@ std::vector<int64_t> Tensor::shape() const {
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
-  LOG(WARNING) << "The function of resetting the shape of the uninitialized "
-                  "Tensor of the `reshape` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`paddle::empty/full` method to create a new Tensor "
-                  "instead. "
-                  "reason: `reshape` means changing the tensor shape without "
-                  "touching underlying data, this requires the total size of "
-                  "the tensor to remain constant.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The function of resetting the shape of the uninitialized "
+         "Tensor of the `reshape` method is deprecated since version "
+         "2.3, and will be removed in version 2.4, please use "
+         "`paddle::empty/full` method to create a new Tensor "
+         "instead. "
+         "reason: `reshape` means changing the tensor shape without "
+         "touching underlying data, this requires the total size of "
+         "the tensor to remain constant.";
   if (is_dense_tensor()) {
     static_cast<phi::DenseTensor *>(impl_.get())->Resize(phi::make_ddim(shape));
   } else {
@@ -175,15 +178,16 @@ bool Tensor::is_gpu_pinned() const {
 
 template <typename T>
 T *Tensor::mutable_data() {
-  LOG(WARNING) << "Allocating memory through `mutable_data` method is "
-                  "deprecated since version 2.3, and `mutable_data` method "
-                  "will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor with allocated memory, and use data<T>() method "
-                  "to get the memory pointer of tensor instead. "
-                  "Reason: When calling `mutable_data` to allocate memory, "
-                  "the place, datatype, and data layout of tensor may be in "
-                  "an illegal state.";
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the place, datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())
         ->mutable_data<T>(place());
@@ -208,15 +212,16 @@ Tensor::mutable_data<phi::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const Place &place) {
-  LOG(WARNING) << "Allocating memory through `mutable_data` method is "
-                  "deprecated since version 2.3, and `mutable_data` method "
-                  "will be removed in version 2.4! Please use "
-                  "`paddle::empty/full` method to create a new "
-                  "Tensor with allocated memory, and use data<T>() method "
-                  "to get the memory pointer of tensor instead. "
-                  "Reason: When calling `mutable_data` to allocate memory, "
-                  "the datatype, and data layout of tensor may be in "
-                  "an illegal state.";
+  LOG_FIRST_N(WARNING, 1)
+      << "Allocating memory through `mutable_data` method is "
+         "deprecated since version 2.3, and `mutable_data` method "
+         "will be removed in version 2.4! Please use "
+         "`paddle::empty/full` method to create a new "
+         "Tensor with allocated memory, and use data<T>() method "
+         "to get the memory pointer of tensor instead. "
+         "Reason: When calling `mutable_data` to allocate memory, "
+         "the datatype, and data layout of tensor may be in "
+         "an illegal state.";
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(place);
   }
@@ -328,9 +333,10 @@ bool Tensor::defined() const { return impl_ != nullptr; }
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  LOG(WARNING) << "The `is_initialized` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4! "
-                  "Please use `initialized` method instead.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The `is_initialized` method is deprecated since version "
+         "2.3, and will be removed in version 2.4! "
+         "Please use `initialized` method instead.";
   return defined() && impl_->initialized();
 }
 
