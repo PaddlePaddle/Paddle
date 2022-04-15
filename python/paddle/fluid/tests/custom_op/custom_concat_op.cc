@@ -75,8 +75,7 @@ std::vector<paddle::Tensor> ConcatForwardDynamicAxis(
   auto out_shape = ComputeOutShape(in_shapes, axis);
 
   // create output
-  auto out = paddle::empty(
-      out_shape, inputs[0].type(), paddle::experimental::CPUPlace());
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
 
   // calc
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
@@ -162,8 +161,7 @@ std::vector<paddle::Tensor> ConcatForwardStaticAxis(
   auto out_shape = ComputeOutShape(in_shapes, final_axis);
 
   // create output
-  auto out = paddle::empty(
-      out_shape, inputs[0].type(), paddle::experimental::CPUPlace());
+  auto out = paddle::empty(out_shape, inputs[0].type(), paddle::CPUPlace());
 
   // calc
   PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(
