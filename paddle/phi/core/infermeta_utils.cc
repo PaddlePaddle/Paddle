@@ -79,7 +79,8 @@ std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
   result.reserve(end - start);
 
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(&inputs_.at(i));
+    auto& in = inputs_.at(i);
+    result.emplace_back(in.initialized() ? &in : nullptr);
   }
 
   return result;
@@ -94,7 +95,8 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
     result.reserve(end - start);
 
     for (size_t i = start; i < end; ++i) {
-      result.emplace_back(&inputs_.at(i));
+      auto& in = inputs_.at(i);
+      result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
     return paddle::optional<const std::vector<const MetaTensor*>>(result);
@@ -103,7 +105,8 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
 }
 
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
-  return &outputs_.at(idx);
+  auto& out = outputs_.at(idx);
+  return out.initialized() ? &out : nullptr;
 }
 
 std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
@@ -111,7 +114,8 @@ std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
   std::vector<MetaTensor*> result;
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(&outputs_.at(i));
+    auto& out = outputs_.at(i);
+    result.emplace_back(out.initialized() ? &out : nullptr);
   }
   return result;
 }

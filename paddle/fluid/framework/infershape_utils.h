@@ -27,7 +27,8 @@ namespace framework {
 // TODO(chenweihang): Support TensorArray later
 class CompatMetaTensor : public phi::MetaTensor {
  public:
-  CompatMetaTensor() : initialized_(false) {}
+  explicit CompatMetaTensor(bool is_runtime)
+      : is_runtime_(is_runtime), initialized_(false) {}
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
       : var_(std::move(var)), is_runtime_(is_runtime) {}
 

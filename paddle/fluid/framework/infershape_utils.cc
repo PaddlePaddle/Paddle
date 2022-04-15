@@ -357,7 +357,8 @@ std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
   result.reserve(end - start);
 
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(&compat_inputs_.at(i));
+    auto& in = compat_inputs_.at(i);
+    result.emplace_back(in.initialized() ? &in : nullptr);
   }
 
   return result;
@@ -372,7 +373,8 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
     result.reserve(end - start);
 
     for (size_t i = start; i < end; ++i) {
-      result.emplace_back(&compat_inputs_.at(i));
+      auto& in = compat_inputs_.at(i);
+      result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
     return paddle::optional<const std::vector<const phi::MetaTensor*>>(result);
@@ -382,7 +384,8 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
 }
 
 phi::MetaTensor* CompatInferMetaContext::MutableOutputAt(size_t idx) {
-  return &compat_outputs_.at(idx);
+  auto& out = compat_outputs_.at(idx);
+  return out.initialized() ? &out : nullptr;
 }
 
 std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
@@ -390,7 +393,8 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
   std::vector<phi::MetaTensor*> result;
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(&compat_outputs_.at(i));
+    auto& out = compat_outputs_.at(i);
+    result.emplace_back(out.initialized() ? &out : nullptr);
   }
   return result;
 }
@@ -434,7 +438,8 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
-      infer_meta_context.EmplaceBackInput(std::move(CompatMetaTensor()));
+      infer_meta_context.EmplaceBackInput(
+          std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
   }
 
@@ -699,12 +704,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                 std::move(CompatMetaTensor(out, ctx->IsRuntime())));
             continue;
           }
-          outputs.emplace_back(std::move(CompatMetaTensor()));
+          outputs.emplace_back(std::move(CompatMetaTensor(ctx->IsRuntime())));
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      infer_meta_context.EmplaceBackOutput(std::move(CompatMetaTensor()));
+      infer_meta_context.EmplaceBackOutput(
+          std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
   }
 
