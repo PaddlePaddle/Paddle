@@ -218,6 +218,10 @@ void TestJudgeTensorType() {
 }
 
 TEST(PhiTensor, All) {
+  // In order to remove and be compatible with the enumeration type `PlaceType`,
+  // prepare global PlaceType
+  paddle::PlaceType::kCPU = phi::Place(phi::AllocationType::CPU);
+  paddle::PlaceType::kGPU = phi::Place(phi::AllocationType::GPU);
   VLOG(2) << "TestCopy";
   GroupTestCopy();
   VLOG(2) << "TestDtype";

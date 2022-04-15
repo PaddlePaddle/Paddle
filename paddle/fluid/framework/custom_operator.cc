@@ -648,13 +648,17 @@ static void RegisterOperatorKernel(const std::string& name,
   OperatorWithKernel::OpKernelFunc op_kernel_func;
   if (kernel_func) {
     VLOG(3) << "Register custom operator " << name << " with kernel func";
+    // NOTE: In order to remove and be compatible with the enumeration type
+    // `PlaceType` equal operation in custom operator like:
+    //
+    // - PD_CHECK(x.place() == paddle::PlaceType::kGPU);
+    // - Tensor(paddle::PlaceType::kGPU, shape);
+    //
+    // We have to set a valid value for PlaceType beforce running kernel
     op_kernel_func = [kernel_func, inputs, outputs,
                       attrs](const framework::ExecutionContext& ctx) {
       VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
-// NOTE: In order to remove and be compatible with the enumeration type
-// `PlaceType` equal operation in custom operator like:
-// - PD_CHECK(x.place() == paddle::PlaceType::kGPU)
-// TODO(chenweihang): Remove this trick later
+      paddle::PlaceType::kCPU = phi::Place(phi::AllocationType::CPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       paddle::PlaceType::kGPU =
           phi::Place(phi::AllocationType::GPU, platform::GetCurrentDeviceId());
