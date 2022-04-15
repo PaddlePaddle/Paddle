@@ -306,6 +306,7 @@ XPUOpMap& get_kl2_ops() {
                                  pOpKernelType(vartype::BOOL, XPUPlace()),
                                  pOpKernelType(vartype::FP32, XPUPlace())})},
       {"rnn", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"rnn_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"roi_align", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"roi_align_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

@@ -71,6 +71,10 @@ class AfsWrapper {
 
   int download(const std::string& local_file, const std::string& afs_file);
 
+  int touchz(const std::string& path);
+  std::string cat(const std::string& path);
+  int mv(const std::string& old_path, const std::string& dest_path);
+
  private:
   paddle::ps::AfsApiWrapper afs_handler_;
 };
@@ -146,7 +150,7 @@ class PSGPUWrapper {
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
-      keys_tensor.resize(resource_->total_gpu());
+      keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -312,8 +316,8 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map[index_dim_vec_[i]] = i;
     }
-    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
-    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);

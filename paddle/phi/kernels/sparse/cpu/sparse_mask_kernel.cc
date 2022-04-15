@@ -16,12 +16,11 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -78,7 +77,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       mask.non_zero_indices().dtype(), "SparseMaskCPUKernel", ([&] {
         SparseMaskCPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
@@ -145,7 +144,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
         SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));

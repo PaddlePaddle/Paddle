@@ -62,7 +62,7 @@ class GradNodePyLayer : public GradNodeBase {
         } else {
           forward_outputs_meta_[i].emplace_back();
         }
-        forward_outputs_place_[i].emplace_back(tensor->inner_place());
+        forward_outputs_place_[i].emplace_back(tensor->place());
       }
     }
   }
