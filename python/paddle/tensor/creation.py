@@ -1348,9 +1348,9 @@ def complex(real, imag, name=None):
     attrs = {}
     helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
     return out
-    
 
-def tril_indices(rows,cols,offset=0, dtype='int64'):
+
+def tril_indices(rows, cols, offset=0, dtype='int64'):
     """
     This op returns the indices of the lower triangular part of the 2-D matrix 
     whose rows and cols is knowed.Indices are ordered based on rows and then columns. 
@@ -1402,7 +1402,7 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
             #  [ 0, 0, 1, 0, 1, 2]]
     """
     if not isinstance(rows, int) or rows < 0:
-            raise TypeError("rows should be a non-negative int")
+        raise TypeError("rows should be a non-negative int")
 
     if cols is not None:
         if not isinstance(cols, int) or cols < 0:
@@ -1410,23 +1410,29 @@ def tril_indices(rows,cols,offset=0, dtype='int64'):
     else:
         cols = rows
 
-    if not isinstance(offset, int) :
-            raise TypeError("offset should be a  int")
+    if not isinstance(offset, int):
+        raise TypeError("offset should be a  int")
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset, "dtype", dtype)
-       
+        out = _C_ops.final_state_tril_indices('rows', rows, 'cols', cols,
+                                              'offset', offset, "dtype", dtype)
+
     else:
         helper = LayerHelper("tril_indices", **locals())
-        
+
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        
+
         helper.append_op(
             type='tril_indices',
             inputs={},
             outputs={'out': [out]},
-            attrs={'rows': rows, 'cols': cols, 'offset': offset, 'dtype': dtype})
+            attrs={
+                'rows': rows,
+                'cols': cols,
+                'offset': offset,
+                'dtype': dtype
+            })
     return out

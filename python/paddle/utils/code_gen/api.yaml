@@ -1,3 +1,15 @@
+# - api : tril_indices
+#   args : (int rows, int cols, int offset, int dtype)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : TrilIndicesInferMeta
+#     param : [rows, cols, offset, dtype]
+#   kernel :
+#     func : tril_indices
+#     param : [rows, cols, offset, dtype]
+#     data_type : dtype
+#     backend : place
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -454,7 +466,7 @@
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : DeformableConvInferMeta
   kernel :
     func : deformable_conv
