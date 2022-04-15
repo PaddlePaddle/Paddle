@@ -70,7 +70,7 @@ ProcessGroupHeter::ProcessGroupHeter(
     auto opts = ProcessGroupGloo::GlooOptions::create();
     opts->device = ProcessGroupGloo::createDefaultDevice();
     inter_pg_ = std::make_shared<ProcessGroupGloo>(
-        store, gloo_rank_, gloo_size_, IGNORE_ID, place_, opts);
+        store, gloo_rank_, gloo_size_, place_, IGNORE_ID, opts);
   }
 }
 
