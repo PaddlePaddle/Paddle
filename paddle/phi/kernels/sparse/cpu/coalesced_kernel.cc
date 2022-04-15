@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sort_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
@@ -21,9 +21,9 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-void SortCPUKernel(const CPUContext& dev_ctx,
-                   const SparseCooTensor& x,
-                   SparseCooTensor* out) {
+void CoalescedCPUKernel(const CPUContext& dev_ctx,
+                        const SparseCooTensor& x,
+                        SparseCooTensor* out) {
   const DenseTensor& x_indices = x.non_zero_indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -46,9 +46,25 @@ void SortCPUKernel(const CPUContext& dev_ctx,
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
 
-  std::map<IntT, int64_t> indices_to_index;
+  std::map<IntT, std::vector<int64_t>> indices_to_index;
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
-    indices_to_index[x_indexs[i]] = i;
+    IntT index = x_indexs[i];
+    if (indices_to_index.find(index) == indices_to_index.end()) {
+      std::vector<int64_t> indexs;
+      indexs.push_back(i);
+      indices_to_index[index] = indexs;
+    } else {
+      indices_to_index[index].push_back(i);
+    }
+  }
+
+  const int64_t out_nnz = indices_to_index.size();
+
+  out_indices.Resize({x_indices.dims()[0], out_nnz});
+  if (out_values.dims().size() == 1) {
+    out_values.Resize(phi::make_ddim({out_nnz}));
+  } else {
+    out_values.Resize(phi::make_ddim({out_nnz, x_values.dims()[1]}));
   }
 
   IntT* out_indices_ptr = out_indices.data<IntT>();
@@ -62,21 +78,29 @@ void SortCPUKernel(const CPUContext& dev_ctx,
 
   for (int i = 0; iter != indices_to_index.end(); iter++, i++) {
     phi::funcs::sparse::IndexToCoordinate(
-        iter->first, const_dims, x.nnz(), sparse_dim, i, out_indices_ptr);
+        iter->first, const_dims, out_nnz, sparse_dim, i, out_indices_ptr);
     memcpy(out_values_ptr + i * stride,
-           x_values_ptr + iter->second * stride,
+           x_values_ptr + iter->second[0] * stride,
            stride * sizeof(T));
+    for (uint64_t j = 1; j < iter->second.size(); j++) {
+      for (int k = 0; k < stride; k++) {
+        out_values_ptr[i * stride + k] +=
+            x_values_ptr[iter->second[j] * stride + k];
+      }
+    }
   }
+
   out->SetMember(out_indices, out_values, x.dims(), true);
 }
 
 template <typename T, typename Context>
-void SortKernel(const Context& dev_ctx,
-                const SparseCooTensor& x,
-                SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(), "SortCPUKernel", ([&] {
-                            SortCPUKernel<T, data_t>(dev_ctx, x, out);
-                          }));
+void CoalescedKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     SparseCooTensor* out) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "CoalescedCPUKernel", ([&] {
+        CoalescedCPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
 }
 
 }  // namespace sparse
@@ -85,7 +109,7 @@ void SortKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(sort,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SortKernel,
+                   phi::sparse::CoalescedKernel,
                    float,
                    double,
                    phi::dtype::float16,

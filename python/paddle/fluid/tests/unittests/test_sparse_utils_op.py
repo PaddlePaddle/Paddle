@@ -230,13 +230,14 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             for device in devices:
                 paddle.device.set_device(device)
-                indices = [[1, 0], [0, 1]]
-                values = [1.0, 2.0]
+                #test unsorted and duplicate indices 
+                indices = [[1, 0, 0], [0, 1, 1]]
+                values = [1.0, 2.0, 3.0]
                 indices = paddle.to_tensor(indices, dtype='int32')
                 values = paddle.to_tensor(values, dtype='float32')
                 sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
                 indices_sorted = [[0, 1], [1, 0]]
-                values_sorted = [2.0, 1.0]
+                values_sorted = [5.0, 1.0]
                 assert np.array_equal(indices_sorted,
                                       sparse_x.indices().numpy())
                 assert np.array_equal(values_sorted, sparse_x.values().numpy())

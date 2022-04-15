@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/sort_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -155,11 +155,9 @@ void SparseCooTensorKernel(const Context& dev_ctx,
                            const DenseTensor& indices,
                            const IntArray& dense_shape,
                            SparseCooTensor* out) {
-  SparseCooTensor before_sorted(
+  SparseCooTensor before_coalesced(
       indices, values, phi::make_ddim(dense_shape.GetData()));
-  // sort
-  SortKernel<T, Context>(dev_ctx, before_sorted, out);
-  // TODO(zhangkaihuo): merge the dumplicate indices
+  CoalescedKernel<T, Context>(dev_ctx, before_coalesced, out);
 }
 
 }  // namespace sparse

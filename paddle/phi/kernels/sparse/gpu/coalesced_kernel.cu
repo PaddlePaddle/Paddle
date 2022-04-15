@@ -17,31 +17,18 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
-#include "paddle/phi/kernels/sparse/sort_kernel.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 
 namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-__global__ void CopyValuesKernel(const T* x_values,
-                                 const IntT* indexs,
-                                 const int64_t n,
-                                 const int64_t stride,
-                                 T* out_values) {
-  CUDA_KERNEL_LOOP_TYPE(i, n * stride, int64_t) {
-    int64_t indices_i = i / stride;
-    int64_t slice_i = i - indices_i * stride;  // offset inside the slice
-    IntT in_i = indexs[indices_i];
-    out_values[i * stride + slice_i] = x_values[in_i * stride + slice_i];
-  }
-}
-
-template <typename T, typename IntT>
-void SortGPUKernel(const GPUContext& dev_ctx,
-                   const SparseCooTensor& x,
-                   SparseCooTensor* out) {
+void CoalescedGPUKernel(const GPUContext& dev_ctx,
+                        const SparseCooTensor& x,
+                        SparseCooTensor* out) {
   const DenseTensor& x_indices = x.non_zero_indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -93,10 +80,13 @@ void SortGPUKernel(const GPUContext& dev_ctx,
   DenseTensor values_indexs = phi::Empty(
       dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indexs_ptr = values_indexs.data<int>();
+  DenseTensor public_indexs = phi::EmptyLike<int>(dev_ctx, values_indexs);
 
   // values_indexs = [0,1,2,,,nnz-1]
   phi::IndexKernel<int, kps::IdentityFunctor<int>>(
       dev_ctx, &values_indexs, kps::IdentityFunctor<int>());
+  phi::IndexKernel<int, kps::IdentityFunctor<int>>(
+      dev_ctx, &public_indexs, kps::IdentityFunctor<int>());
 
 // 3. sort (indices, values index)
 #ifdef PADDLE_WITH_HIP
@@ -108,13 +98,52 @@ void SortGPUKernel(const GPUContext& dev_ctx,
                       indexs_ptr + nnz,
                       values_indexs_ptr);
 
+  // 4. unique index
+  thrust::pair<IntT*, int*> new_end =
+#ifdef PADDLE_WITH_HIP
+      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
+      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                            indexs_ptr,
+                            indexs_ptr + nnz,
+                            public_indexs.data<int>());
+
+  phi::funcs::sparse::DistanceKernel<<<1, 1, 0, dev_ctx.stream()>>>(
+      indexs_ptr, new_end.first, out_indices.data<IntT>());
+
+  IntT out_nnz = 0;
+  phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
+                                     out_indices.data<IntT>(),
+                                     sizeof(IntT),
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyDeviceToHost,
+#else
+                                     cudaMemcpyDeviceToHost,
+#endif
+                                     dev_ctx.stream());
+  dev_ctx.Wait();
+
+  out_indices.Resize({x_indices.dims()[0], out_nnz});
+  if (out_values.dims().size() == 1) {
+    out_values.Resize(phi::make_ddim({out_nnz}));
+  } else {
+    out_values.Resize(phi::make_ddim({out_nnz, x_values.dims()[1]}));
+  }
+
+  // 5. scatter the values
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
-  // 4. scatter the values
-  CopyValuesKernel<T, int><<<config.block_per_grid,
-                             config.thread_per_block,
-                             0,
-                             dev_ctx.stream()>>>(
-      x_values_ptr, values_indexs_ptr, nnz, stride, out_values.data<T>());
+  phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid,
+                                         config.thread_per_block,
+                                         0,
+                                         dev_ctx.stream()>>>(
+      x_values_ptr,
+      public_indexs.data<int>(),
+      values_indexs_ptr,
+      out_nnz,
+      nnz,
+      stride,
+      out_values.data<T>());
 
   // 6. convert index to coordinate
   Dim<DDim::kMaxRank> const_dims;
@@ -122,23 +151,24 @@ void SortGPUKernel(const GPUContext& dev_ctx,
     const_dims[i] = x.dims()[i];
   }
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz, 1);
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
   phi::funcs::sparse::IndexToCoordinateKernel<<<config.block_per_grid,
                                                 config.thread_per_block,
                                                 0,
                                                 dev_ctx.stream()>>>(
-      indexs_ptr, const_dims, nnz, sparse_dim, out_indices.data<IntT>());
+      indexs_ptr, const_dims, out_nnz, sparse_dim, out_indices.data<IntT>());
 
   out->SetMember(out_indices, out_values, x.dims(), true);
 }
 
 template <typename T, typename Context>
-void SortKernel(const Context& dev_ctx,
-                const SparseCooTensor& x,
-                SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(), "SortGPUKernel", ([&] {
-                            SortGPUKernel<T, data_t>(dev_ctx, x, out);
-                          }));
+void CoalescedKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     SparseCooTensor* out) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "CoalescedGPUKernel", ([&] {
+        CoalescedGPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
 }
 
 }  // namespace sparse
@@ -147,7 +177,7 @@ void SortKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(sort,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SortKernel,
+                   phi::sparse::CoalescedKernel,
                    float,
                    double,
                    phi::dtype::float16,

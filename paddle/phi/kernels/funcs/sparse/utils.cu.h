@@ -14,17 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-#include "paddle/phi/kernels/empty_kernel.h"
-
 namespace phi {
+namespace funcs {
 namespace sparse {
 
-template <typename T, typename Context>
-void SortKernel(const Context& dev_ctx,
-                const SparseCooTensor& x,
-                SparseCooTensor* out);
+// brief: calculation the distance between start and end
+template <typename T>
+__global__ void DistanceKernel(const T* start, const T* end, T* distance) {
+  if (threadIdx.x == 0) {
+    *distance = end - start;
+  }
+}
 
 }  // namespace sparse
+}  // namespace funcs
 }  // namespace phi

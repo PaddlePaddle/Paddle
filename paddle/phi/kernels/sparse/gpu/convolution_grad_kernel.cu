@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
@@ -222,17 +223,18 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
 
-  ScatterKernel<T><<<config.block_per_grid.x,
-                     config.thread_per_block.x,
-                     0,
-                     dev_ctx.stream()>>>(d_x_features_ptr,
-                                         unique_value.data<int>(),
-                                         out_index.data<int>(),
-                                         x.nnz(),
-                                         rulebook_len,
-                                         in_channels,
-                                         x_grad_values_ptr,
-                                         subm);
+  phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid.x,
+                                         config.thread_per_block.x,
+                                         0,
+                                         dev_ctx.stream()>>>(
+      d_x_features_ptr,
+      unique_value.data<int>(),
+      out_index.data<int>(),
+      x.nnz(),
+      rulebook_len,
+      in_channels,
+      x_grad_values_ptr,
+      subm);
 }
 
 template <typename T, typename Context>
