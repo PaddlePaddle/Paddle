@@ -22,41 +22,72 @@ from collections import OrderedDict
 
 
 def topo_path(xs, ys, block=None):
-    """ Returns the ops in topological on the paths from input `xs` to 
-    output `ys`. """
+    """ Returns the list of ops on the path from `xs` to `ys` in topological 
+    order.
+    
+    TODO(Tongxin): supporting control flow and nested blocks.
+
+    Args:
+
+        xs: a list|tuple of vars as source
+        ys: a list|tuple of vars as sink
+        block: the program block containing the path, optional
+
+    Returns:
+        path: a list of ops
+    """
 
     if block is None:
         block = default_main_program().current_block()
     path = []
-    def_vars = list(xs)
+    reached_vars = list(xs)
+    sink_vars = list(ys)
     sink_ops = {}
+
+    # block.ops are supposedly in topological order as of now
     for op in block.ops:
         if len(sink_ops) == len(ys):
             break
         ins = set(get_input_vars(op))
-        if any(ins.intersection(def_vars)):
+        if any(ins.intersection(reached_vars)):
             path.append(op)
             outs = set(get_output_vars(op))
             for out in outs:
-                if any(out is y for y in ys):
+                if any(out is y for y in sink_vars):
                     # Found an output op
                     assert not any(out is y for y in sink_ops)
                     sink_ops[id(out)] = op
+                    # TODO(Tongxin): handling cases where sink vars
+                    # have dependencies themselves 
                 else:
-                    def_vars.append(out)
-    if len(sink_ops) != len(ys):
-        not_reachable = (var for var in ys if id(var) not in sink_ops)
-        raise f"Output vars: {' '.join(not_reachable)} are not reachable from inputs."
+                    reached_vars.append(out)
+
+    if len(sink_ops) != len(sink_vars):
+        for var in sink_vars:
+            assert id(var) in sink_ops, (
+                f"{var} is not reachable from input vars.")
+
     return path
 
 
-def vars_on_path(xs, ys, block=None):
+def output_vars_on_path(xs, ys, block=None):
+    """ Returns the output variables of all the ops on the path from `xs`
+    to `ys`.
     
+    Args:
+
+        xs: a list|tuple of vars as source
+        ys: a list|tuple of vars as sink
+        block: the program block containing the path, optional
+
+    Returns:
+        vars: the output vars
+    """
     if block is None:
         block = default_main_program().current_block()
 
     vars = OrderedDict()
-    
+
     for var in xs + ys:
         vars[id(var)] = var
 
@@ -68,21 +99,30 @@ def vars_on_path(xs, ys, block=None):
                 vars[id(out)] = out
 
     return vars
+
+
 class VarMap(object):
+    """ A general map data structure for linking variables to variables.
+    
+    An example is linking variables to their gradients.
+    """
+
     __slots__ = ['name', 'varset', 'tab']
 
     def __init__(self, name, varset):
         self.name = name
         self.varset = varset
         self.tab = OrderedDict()
-    
+
     def add(self, key_var, value_var):
         self.tab[id(key_var)] = id(value_var)
-  
+
     def add_rec(self, key_vars, value_vars):
         if isinstance(key_vars, paddle.fluid.framework.Variable):
+            assert isinstance(value_vars, paddle.fluid.framework.Variable)
             self.tab[id(key_vars)] = id(value_vars)
         else:
+            assert len(key_vars) == len(value_vars)
             for key_var, value_var in zip(key_vars, value_vars):
                 self.add_rec(key_var, value_var)
 
@@ -112,6 +152,7 @@ class VarMap(object):
     def contain_value(self, value_var):
         return id(value_var) in self.tab.values()
 
+
 class Transform(object):
     """ An object that maintains the state of transformations applied to a 
     primitve program. """
@@ -129,11 +170,11 @@ class Transform(object):
         return vars
 
     def add_vars(self, new_vars):
-        self.vars.update({id(v) : v for v in new_vars if v is not None})
+        self.vars.update({id(v): v for v in new_vars if v is not None})
 
     def add_vars_rec(self, new_vars):
         if isinstance(new_vars, paddle.fluid.framework.Variable):
-            self.vars.update({id(new_vars) : new_vars})
+            self.vars.update({id(new_vars): new_vars})
             return
         assert isinstance(new_vars, list)
         for var in new_vars:
@@ -148,12 +189,6 @@ class Transform(object):
         for var in vars_to_erase:
             del var.block.vars[var.name]
 
-    # def is_dot(self, var):
-    #     return self.var2dot.contain_value(var)
-
-    def lower2prim(self):
-        pass
-
     def var2dot_rec(self, vars, defaults=None):
 
         if isinstance(vars, paddle.fluid.framework.Variable):
@@ -165,9 +200,11 @@ class Transform(object):
         if defaults is None:
             defaults = [None for _ in range(vars)]
 
-        dots = [self.var2dot_rec(var, default) for var, default 
-                            in zip(vars, defaults)]
-  
+        dots = [
+            self.var2dot_rec(var, default)
+            for var, default in zip(vars, defaults)
+        ]
+
         return dots
 
     def linearize(self, xs, ys, xs_dot=None):
@@ -194,7 +231,7 @@ class Transform(object):
             self.add_vars_rec(outs_dot)
             outs = op_position_output(op)
             self.var2dot.add_rec(outs, outs_dot)
-        
+
         ys_dot = [self.var2dot.lookup(y) for y in ys]
         return xs_dot, ys_dot
 
@@ -212,9 +249,9 @@ class Transform(object):
 
         for dot, bar in zip(ys_dot, ys_bar):
             self.dot2bar.add(dot, bar)
-        
+
         # find all the relevant forward gradients
-        dotvars = vars_on_path(xs_dot, ys_dot)
+        dotvars = output_vars_on_path(xs_dot, ys_dot)
 
         is_dot = lambda v: id(v) in dotvars
 
@@ -233,11 +270,11 @@ class Transform(object):
                     grad = self.dot2bar.lookup(dot)
                     if grad is None:
                         self.dot2bar.add(dot, bar)
-                    else: 
+                    else:
                         grad = add(grad, bar)
                         self.add_vars([grad])
                         self.dot2bar.add(dot, grad)
-                    
+
         xs_bar = [self.dot2bar.lookup(x) for x in xs_dot]
 
         if not retain_fwd:
@@ -253,4 +290,3 @@ class Transform(object):
             self.erase_dots(dots_to_remove)
 
         return ys_bar, xs_bar
-

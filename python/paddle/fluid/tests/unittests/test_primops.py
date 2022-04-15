@@ -16,11 +16,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd.primops import (neg, add, sub, mul, div, sqrt, tanh,       
-                                     reshape, broadcast, transpose, split, 
-                                     concat, reduce, matmul, slice_select,
-                                     slice_assign, gather, scatter_add, 
-                                     fill_const)
+from paddle.autograd.primops import (
+    neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast, transpose, split,
+    concat, reduce, matmul, slice_select, slice_assign, gather, scatter_add,
+    fill_const)
 from paddle.autograd.primx import Transform, topo_path
 
 
@@ -29,7 +28,6 @@ class TestPyPrimOps(unittest.TestCase):
 
     def setUp(self):
         paddle.enable_static()
-
 
     def test_ops(self):
         A = np.random.rand(1)
@@ -95,39 +93,39 @@ class TestPyPrimOps(unittest.TestCase):
 
         reduce_1 = reduce(d, axis=[1])
         self.assertEqual(reduce_1.dtype, d.dtype)
-        self.assertEqual(reduce_1.shape, (2,))
+        self.assertEqual(reduce_1.shape, (2, ))
 
         reduce_2 = reduce(c, axis=[0, 1])
         self.assertEqual(reduce_2.dtype, c.dtype)
-        self.assertEqual(reduce_2.shape, (1,))
+        self.assertEqual(reduce_2.shape, (1, ))
         # TODO: reduce + keepdim
 
         matmul_1 = matmul(d, e)
         self.assertEqual(matmul_1.dtype, d.dtype)
         self.assertEqual(matmul_1.shape, (2, 2))
 
-        slice_select_1 = slice_select(e, axis=[0], starts=[0], ends=[2],
-                                      strides=[1])
+        slice_select_1 = slice_select(
+            e, axis=[0], starts=[0], ends=[2], strides=[1])
         self.assertEqual(slice_select_1.dtype, e.dtype)
         self.assertEqual(slice_select_1.shape, (2, 2))
-        
-        slice_select_2 = slice_select(d, axis=[0, 1], starts=[0, 1],
-                                      ends=[2, 3], strides=[1, 2])
+
+        slice_select_2 = slice_select(
+            d, axis=[0, 1], starts=[0, 1], ends=[2, 3], strides=[1, 2])
         self.assertEqual(slice_select_2.dtype, d.dtype)
         self.assertEqual(slice_select_2.shape, (2, 1))
 
         y = broadcast(b, [2, 2])
-        slice_assign_1 = slice_assign(d, y, axis=[1], starts=[1], ends=[3],
-                                      strides=[1])
+        slice_assign_1 = slice_assign(
+            d, y, axis=[1], starts=[1], ends=[3], strides=[1])
         self.assertEqual(slice_assign_1.dtype, d.dtype)
         self.assertEqual(slice_assign_1.shape, d.shape)
 
-        index = paddle.static.data('index', shape=[5], dtype='int')
+        index = paddle.static.data('index', shape=[5], dtype='int32')
         gather_1 = gather(e, index, axis=0)
         self.assertEqual(gather_1.dtype, e.dtype)
         self.assertEqual(gather_1.shape, (5, 2))
 
-        y =  paddle.rand([5, 2])
+        y = paddle.rand([5, 2], dtype='float')
         scatter_add_1 = scatter_add(e, y, index, axis=0)
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
@@ -145,7 +143,7 @@ class TestPyPrimOps(unittest.TestCase):
             ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
             assert xs_bar[0].shape == X.shape
             assert xs_bar[1].shape == W.shape
-            
+
             print(f'-------test_vjp_set1-------')
             for op in topo_path(ys_bar, xs_bar):
                 print(op)
@@ -158,6 +156,7 @@ class TestPyPrimOps(unittest.TestCase):
         X_ = reshape(X, shape=[100, 2, 1])
         Z = tanh(matmul(W_, X_))
         Y = reduce(Z, axis=[1, 2])
+
         def loss(y, x):
             ad = Transform(y.block)
             xs_dot, ys_dot = ad.linearize([x], [y])
@@ -165,15 +164,17 @@ class TestPyPrimOps(unittest.TestCase):
             # ad = Transform(y.block)
             # xs_dot, ys_dot = ad.linearize([x], xs_bar)
             # for op in topo_path(xs_dot, ys_dot):
-                # print(op)
+            # print(op)
             # ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
             return ys_bar, xs_bar
+
         vs, grads = loss(Y, W)
         assert grads[0].shape == W.shape
 
         print(f'-------test_vjp_set2-------')
         for op in topo_path(vs, grads):
             print(op)
+
 
 if __name__ == '__main__':
     unittest.main()
