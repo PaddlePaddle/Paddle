@@ -57,6 +57,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     Reference:
         https://github.com/laekov/fastmoe/blob/master/examples/megatron/clip-grad-v2.2.patch
+        Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
 
 
     Args:
