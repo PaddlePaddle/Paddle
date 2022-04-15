@@ -162,7 +162,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         self.assertRaises(ValueError, check_perm_buffer_error)
 
     def test_sample_result_with_eids(self):
-        # Note: Currently return eid results is not initialized.
         paddle.disable_static()
         row = paddle.to_tensor(self.row)
         colptr = paddle.to_tensor(self.colptr)

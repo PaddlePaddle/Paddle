@@ -404,8 +404,7 @@ void GraphSampleNeighborsKernel(
       DenseTensor perm_buffer_out(perm_buffer->type());
       const auto* p_perm_buffer = perm_buffer.get_ptr();
       perm_buffer_out.ShareDataWith(*p_perm_buffer);
-      T* perm_buffer_out_data =
-          perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
+      T* perm_buffer_out_data = perm_buffer_out.template data<T>();
       FisherYatesSampleNeighbors<T, Context>(dev_ctx,
                                              row_data,
                                              col_ptr_data,
@@ -440,8 +439,7 @@ void GraphSampleNeighborsKernel(
       DenseTensor perm_buffer_out(perm_buffer->type());
       const auto* p_perm_buffer = perm_buffer.get_ptr();
       perm_buffer_out.ShareDataWith(*p_perm_buffer);
-      T* perm_buffer_out_data =
-          perm_buffer_out.mutable_data<T>(dev_ctx.GetPlace());
+      T* perm_buffer_out_data = perm_buffer_out.template data<T>();
       FisherYatesSampleNeighbors<T, Context>(dev_ctx,
                                              row_data,
                                              col_ptr_data,
