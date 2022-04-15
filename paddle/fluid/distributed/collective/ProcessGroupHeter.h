@@ -81,9 +81,9 @@ class ProcessGroupHeter : public ProcessGroup {
   };
 
   ProcessGroupHeter(const std::shared_ptr<Store>& store, int rank, int size,
-                    int gid, int local_rank, int local_size, int gloo_rank,
-                    int gloo_size, bool with_switch,
-                    std::string switch_endpoints);
+                    const platform::Place& place, int gid, int local_rank,
+                    int local_size, int gloo_rank, int gloo_size,
+                    bool with_switch, std::string switch_endpoints);
 
   const std::string GetBackendName() const override {
     return std::string(HETER_BACKEND_NAME);
