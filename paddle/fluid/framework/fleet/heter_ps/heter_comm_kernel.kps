@@ -249,7 +249,7 @@ void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right,
 
 template <typename KeyType, typename T, typename StreamType>
 void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
-                                       T* shard_index, int total_xpu,
+                                       T* shard_index, int total_devs,
                                        const StreamType& stream) {
   calc_shard_index_kernel<KeyType, T><<<4, 64, stream>>>(
       d_keys, len, shard_index, total_xpu);
@@ -308,7 +308,7 @@ template void HeterCommKernel::calc_shard_offset<int, XPUStream>(
     int* idx, int* left, int* right, long long len, int total_devs,
     const XPUStream& stream);
 template void HeterCommKernel::calc_shard_index<unsigned long, int, XPUStream>(
-    unsigned long* d_keys, long long len, int* shard_index, int total_gpu,
+    unsigned long* d_keys, long long len, int* shard_index, int total_devs,
     const XPUStream& stream);
 
 template void HeterCommKernel::fill_shard_key<unsigned long, int, XPUStream>(
