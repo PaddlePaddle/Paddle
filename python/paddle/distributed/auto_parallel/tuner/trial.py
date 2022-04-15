@@ -15,9 +15,10 @@
 # Notice that the following codes are modified from KerasTuner to implement our own tuner. 
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/trial.py.
 
-import hashlib
-import random
+
 import time
+import random
+import hashlib
 from enum import Enum
 
 from .storable import Storable
