@@ -78,7 +78,11 @@ def set_value(x, y, axis, starts, ends, strides, out):
     attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'steps': strides}
     helper = LayerHelper('set_value', **locals())
     helper.append_op(
-        type=helper.layer_type, inputs={'Input': x, 'ValueTensor' : y}, outputs={'Out': out}, attrs=attrs)
+        type=helper.layer_type,
+        inputs={'Input': x,
+                'ValueTensor': y},
+        outputs={'Out': out},
+        attrs=attrs)
     return out
 
 
