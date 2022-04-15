@@ -34,6 +34,8 @@ namespace imperative {
 class VarBase;
 class VariableWrapper;
 
+// using DataLayout = paddle::experimental::DataLayout;
+
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
 template <typename VarType>
@@ -62,6 +64,13 @@ framework::proto::VarType::Type GetType(std::shared_ptr<VarType> var);
 
 template <typename VarType>
 framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var);
+
+template <typename VarType>
+paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var);
+
+template <typename VarType>
+void SetDataLayout(std::shared_ptr<VarType> var,
+                   const paddle::experimental::DataLayout layout);
 
 template <typename VarType>
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(

@@ -14,13 +14,17 @@
 
 #pragma once
 #include <set>
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/phi/kernels/autotune/layout_agnostic_ops.h"
 
 namespace phi {
 namespace autotune {
+
+class DenseTensor;
 
 using DataLayout = paddle::experimental::DataLayout;
 
@@ -51,17 +55,6 @@ class LayoutAutoTune {
 
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
-  void Update() { layout_optimized_vars_.clear(); }
-
-  void InsertOptimizedVars(const std::string name) {
-    layout_optimized_vars_.insert(name);
-    VLOG(4) << "insert var " << name;
-  }
-
-  bool IsLayoutAlreadyTuned(const std::string name) {
-    return layout_optimized_vars_.count(name) == 0;
-  }
-
   bool IsLightlyLayoutSensitive(const std::string& op_type) {
     return lightly_layout_sensitive_ops_.count(op_type) != 0;
   }
@@ -79,30 +72,18 @@ class LayoutAutoTune {
   void SetDesiredLayout(const DataLayout& layout) { layout_ = layout; }
 
  private:
-  LayoutAutoTune() = default;
+  LayoutAutoTune() {
+    layout_agnostic_ops_ =
+        paddle::imperative::LayoutAutotuneOperators::Instance()
+            .GetAgnosticOps();
+  }
 
   bool use_layout_autotune_ = false;
 
   std::unordered_set<std::string> layout_agnostic_ops_;
 
-  /*
-  std::unordered_set<std::string> layout_agnostic_ops_ = {
-      "relu",
-      "elementwise_add",
-      "matmul_v2",
-      "not_equal",
-      "elementwise_mul",
-      "fill_constant",
-      "less_than",
-      "greater_equal",
-      "mean",
-      "cast"};
-    */
-
   std::unordered_set<std::string> lightly_layout_sensitive_ops_ = {
       "reduce_max", "reduce_min", "reduce_mean", "softmax_with_cross_entropy"};
-
-  std::unordered_set<std::string> layout_optimized_vars_;
 
   DataLayout layout_ = DataLayout::UNDEFINED;
 };
@@ -123,7 +104,19 @@ class LayoutTransposer {
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
     VLOG(3) << "Optimze Layout agnostic op: " << type_;
-    AddOptimizedVars(outs);
+    auto in_layout = DataLayout::UNDEFINED;
+    for (auto& pair : ins) {
+      for (auto& var : pair.second) {
+        // once the any input is desired layout, we set in_layout is desired
+        // layout.
+        if (paddle::imperative::GetDataLayout(var) ==
+            LayoutAutoTune::Instance().GetDesiredLayout()) {
+          in_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+          break;
+        }
+      }
+    }
+    SetVarsLayout(outs, in_layout);
     return ins;
   }
 
@@ -142,21 +135,19 @@ class LayoutTransposer {
   // not be repeatedly transformed later.
   // If outs_ is not specified, it means all outputs of the operator
   // will be recorded. Otherwise, it only records the specified outputs.
-  void AddOptimizedVars(
-      const paddle::imperative::NameVarMap<VarType>& outs) const {
+  void SetVarsLayout(const paddle::imperative::NameVarMap<VarType>& outs,
+                     DataLayout layout) const {
     if (outs_.empty()) {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
-          LayoutAutoTune::Instance().InsertOptimizedVars(
-              paddle::imperative::GetNameFromVar(var));
+          SetDataLayout(var, layout);
         }
       }
     } else {
       for (auto& name : outs_) {
         auto out_vars = outs.at(name);
         for (auto& var : out_vars) {
-          LayoutAutoTune::Instance().InsertOptimizedVars(
-              paddle::imperative::GetNameFromVar(var));
+          SetDataLayout(var, layout);
         }
       }
     }
@@ -194,40 +185,47 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
     paddle::imperative::NameVarMap<VarType> new_ins(ins);
 
     // Step 1: Adjust the data_layout attr to the desired layout
-    std::string dst_format = paddle::framework::DataLayoutToString(
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+    std::string desired_layout_str = paddle::framework::DataLayoutToString(
         LayoutAutoTune::Instance().GetDesiredLayout());
     if (attrs->find("data_format") != attrs->end() &&
-        boost::get<std::string>((*attrs)["data_format"]) != dst_format) {
+        boost::get<std::string>((*attrs)["data_format"]) !=
+            desired_layout_str) {
       VLOG(4) << "Origin layout: "
               << boost::get<std::string>((*attrs)["data_format"])
-              << ", Desired layout: " << dst_format;
-      (*attrs)["data_format"] = dst_format;
+              << ", Desired layout: " << desired_layout_str;
+      (*attrs)["data_format"] = desired_layout_str;
     } else if (attrs->find("data_layout") != attrs->end() &&
-               boost::get<std::string>((*attrs)["data_layout"]) != dst_format) {
+               boost::get<std::string>((*attrs)["data_layout"]) !=
+                   desired_layout_str) {
       VLOG(4) << "Origin layout: "
               << boost::get<std::string>((*attrs)["data_layout"])
-              << ", Desired layout: " << dst_format;
-      (*attrs)["data_layout"] = dst_format;
+              << ", Desired layout: " << desired_layout_str;
+      (*attrs)["data_layout"] = desired_layout_str;
     }
 
     // Step 2: Transpose op's input and record the transposed var
     for (auto& name : this->Inputs()) {
       auto& in_vars = new_ins[name];
       for (auto& var : in_vars) {
-        auto origin_var = paddle::imperative::GetNameFromVar(var);
-        if (LayoutAutoTune::Instance().IsLayoutAlreadyTuned(origin_var)) {
+        auto var_layout = paddle::imperative::GetDataLayout(var);
+        VLOG(4) << "Origin Var: " << paddle::imperative::GetNameFromVar(var)
+                << ", Layout: "
+                << paddle::framework::DataLayoutToString(var_layout);
+        if (var_layout != desired_layout) {
           // NCHW -> NHWC
           std::vector<int> axis = {0, 2, 3, 1};
           var = TraceTransposeOp(var, axis, tracer);
-          auto transposed_var = paddle::imperative::GetNameFromVar(var);
-          LayoutAutoTune::Instance().InsertOptimizedVars(transposed_var);
-          VLOG(4) << "Transpose " << origin_var << " to " << transposed_var;
+          SetDataLayout(var, desired_layout);
+          VLOG(4) << "Transposed Var: "
+                  << paddle::imperative::GetNameFromVar(var)
+                  << ", Layout: " << desired_layout_str;
         }
       }
     }
 
     // Step 3: record the Op's layout sensitive outs var
-    this->AddOptimizedVars(outs);
+    this->SetVarsLayout(outs, desired_layout);
 
     return new_ins;
   }
@@ -260,13 +258,14 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
     for (auto& name : this->Inputs()) {
       auto& in_vars = new_ins[name];
       for (auto& var : in_vars) {
-        auto origin_var = paddle::imperative::GetNameFromVar(var);
-        if (LayoutAutoTune::Instance().IsLayoutAlreadyTuned(origin_var)) {
+        auto var_layout = paddle::imperative::GetDataLayout(var);
+        if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
+          VLOG(4) << "Transpose " << paddle::imperative::GetNameFromVar(var)
+                  << "to NCHW";
           // NHWC -> NCHW
           std::vector<int> axis = {0, 3, 1, 2};
           var = TraceTransposeOp(var, axis, tracer);
-          auto transposed_var = paddle::imperative::GetNameFromVar(var);
-          VLOG(4) << "Transpose " << origin_var << " to " << transposed_var;
+          SetDataLayout(var, DataLayout::NCHW);
         }
       }
     }
@@ -296,10 +295,10 @@ class TransposeOpTransposer
     // NCHW->NHWC
     std::vector<int> perm = {0, 2, 3, 1};
     auto& in_var = ins.at("X")[0];
-    if (!LayoutAutoTune::Instance().IsLayoutAlreadyTuned(
-            paddle::imperative::GetNameFromVar(in_var)) &&
+    auto var_layout = paddle::imperative::GetDataLayout(in_var);
+    if (var_layout != LayoutAutoTune::Instance().GetDesiredLayout() &&
         axis == perm) {
-      this->AddOptimizedVars(outs);
+      this->SetVarsLayout(outs, LayoutAutoTune::Instance().GetDesiredLayout());
       return ins;
     } else {
       return LightlyLayoutSensitiveOpTransposer<VarType>::Run(
@@ -328,6 +327,7 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
     // TODO(zhangting): Rank checker need be added.
     if (start_axis == 1 && stop_axis == 3) {
       return ins;
+      this->SetVarsLayout(outs, DataLayout::UNDEFINED);
     } else {
       return LightlyLayoutSensitiveOpTransposer<VarType>::Run(
           ins, outs, attrs, tracer);
