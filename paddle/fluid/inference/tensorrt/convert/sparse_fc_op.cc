@@ -59,7 +59,8 @@ class SparseFcOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *before_fc);
     reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
     reshape_before_fc_layer->setName(
-        ("fc_op_reshape_before_fc: Shuffle (Output: " + output_name + ")")
+        ("sparse_fc_op_reshape_before_fc: Shuffle (Output: " + output_name +
+         ")")
             .c_str());
     return reshape_before_fc_layer;
   }
@@ -100,7 +101,7 @@ class SparseFcOpConverter : public OpConverter {
 
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
+    VLOG(3) << "convert a fluid sparse_fc op to tensorrt sparse_fc layer";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();
     auto input_names = op_desc.InputNames();
@@ -117,8 +118,9 @@ class SparseFcOpConverter : public OpConverter {
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(
-        Y_v, platform::errors::NotFound(
-                 "Can not find %s presistale var of fc in scope.", w_name));
+        Y_v,
+        platform::errors::NotFound(
+            "Can not find %s presistale var of sparse_fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -149,11 +151,12 @@ class SparseFcOpConverter : public OpConverter {
     }
     weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
-                      platform::errors::InvalidArgument(
-                          "The fc's weight should be a matrix with 2 dims, but "
-                          "it's %d-dimensional.",
-                          Y_t->dims().size()));  // a matrix
+    PADDLE_ENFORCE_EQ(
+        Y_t->dims().size(), 2UL,
+        platform::errors::InvalidArgument(
+            "The sparse_fc's weight should be a matrix with 2 dims, but "
+            "it's %d-dimensional.",
+            Y_t->dims().size()));  // a matrix
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
     auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
@@ -174,7 +177,7 @@ class SparseFcOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("out_threshold"), true,
               platform::errors::InvalidArgument(
-                  "must have out threshold in fc layers in int8 mode"));
+                  "must have out threshold in sparse_fc layers in int8 mode"));
           out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         } else {
           out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
@@ -186,14 +189,15 @@ class SparseFcOpConverter : public OpConverter {
         auto fc_layer_int8 = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
         fc_layer_int8->setName(
-            ("fc_op_int8_conv1x1: Convolution (Output: " + output_name + ")")
+            ("sparse_fc_op_int8_conv1x1: Convolution (Output: " + output_name +
+             ")")
                 .c_str());
         engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
 
         RreplenishLayerAndOutput(fc_after_reshape_int8,
-                                 "fc_op_int8_reshape_after_fc: Shuffle",
+                                 "sparse_fc_op_int8_reshape_after_fc: Shuffle",
                                  {output_name}, test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
@@ -203,13 +207,14 @@ class SparseFcOpConverter : public OpConverter {
         auto fc_layer_float = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
         fc_layer_float->setName(
-            ("fc_op_float: FullyConnected (Output: " + output_name + ")")
+            ("sparse_fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
 
-        RreplenishLayerAndOutput(fc_after_reshape_float, "shuffle_after_fc",
-                                 {output_name}, test_mode);
+        RreplenishLayerAndOutput(fc_after_reshape_float,
+                                 "shuffle_after_sparse_fc", {output_name},
+                                 test_mode);
       }
     };
 
@@ -262,7 +267,8 @@ class SparseFcOpConverter : public OpConverter {
         plugin_inputs.emplace_back(X);
         auto fc_layer_int8 = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        RreplenishLayerAndOutput(fc_layer_int8, "ernie_fc_op_int8: Convolution",
+        RreplenishLayerAndOutput(fc_layer_int8,
+                                 "ernie_sparse_fc_op_int8: Convolution",
                                  {output_name}, test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
@@ -271,14 +277,14 @@ class SparseFcOpConverter : public OpConverter {
         plugin_inputs.emplace_back(X);
         auto fc_layer_float = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        RreplenishLayerAndOutput(fc_layer_float, "ernie_fc_op_float",
+        RreplenishLayerAndOutput(fc_layer_float, "ernie_sparse_fc_op_float",
                                  {output_name}, test_mode);
       }
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
           x_dim.nbDims, x_num_col_dims,
           platform::errors::InvalidArgument(
-              "Params and input dims mismatch. Paddle-TRT FC "
+              "Params and input dims mismatch. Paddle-TRT SPARSE_FC "
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",
               x_dim.nbDims, x_num_col_dims));
