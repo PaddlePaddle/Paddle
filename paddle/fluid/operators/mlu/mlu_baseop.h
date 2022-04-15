@@ -740,6 +740,13 @@ class MLUCnnl {
                              const cnnlTensorDescriptor_t output_desc,
                              void* output);
 
+  static void SoftmaxBackward(
+      const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+      cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc,
+      const void* y, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
+
   static void Softplus(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t features_desc,
                        const void* features,
