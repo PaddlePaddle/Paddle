@@ -18,6 +18,7 @@ Contrib layers just related to metric.
 from __future__ import print_function
 
 import warnings
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.initializer import Normal, Constant
 from paddle.fluid.framework import Variable
@@ -48,7 +49,7 @@ def ctr_metric_bundle(input, label, mask=None):
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
-        mask(Variable): A 2D bool Variable indicates whither a training data 
+        mask(Variable): A 2D bool Variable indicates whither a training data
                          would be computed.
 
     Returns:
@@ -86,6 +87,8 @@ def ctr_metric_bundle(input, label, mask=None):
         persistable=False, dtype='float32', shape=[-1])
     tmp_res_sigmoid = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[-1])
+    tmp_ones = helper.create_global_variable(
+        persistable=False, dtype='float32', shape=[-1])
 
     batch_prob = helper.create_global_variable(
         persistable=False, dtype='float32', shape=[1])
@@ -107,9 +110,9 @@ def ctr_metric_bundle(input, label, mask=None):
         helper.set_variable_initializer(
             var, Constant(
                 value=0.0, force_cpu=True))
-        
+
     if mask is not None:
-        mask = nn.cast(mask, dtype='float32')
+        mask = paddle.cast(mask, dtype='float32')
         input = input * mask
         label = label * mask
 
@@ -177,20 +180,19 @@ def ctr_metric_bundle(input, label, mask=None):
         inputs={"X": [batch_pos_num],
                 "Y": [local_pos_num]},
         outputs={"Out": [local_pos_num]})
-    
+
     if mask is None:
-        mask = helper.create_global_variable(
-            persistable=False, dtype='float32', shape=[-1, 1])
         helper.append_op(
             type='fill_constant_batch_size_like',
             inputs={"Input": label},
-            outputs={'Out': [mask]},
+            outputs={'Out': [tmp_ones]},
             attrs={
                 'shape': [-1, 1],
-                'dtype': mask.dtype,
+                'dtype': tmp_ones.dtype,
                 'value': float(1.0),
             })
-            
+        mask = tmp_ones
+
     helper.append_op(
         type="reduce_sum",
         inputs={"X": [mask]},
