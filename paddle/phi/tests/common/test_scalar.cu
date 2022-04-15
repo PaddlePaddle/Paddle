@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-
 namespace phi {
 namespace tests {
 

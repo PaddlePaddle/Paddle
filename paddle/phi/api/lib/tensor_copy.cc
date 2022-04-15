@@ -30,11 +30,8 @@ void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "copy", kernel_key);
 
-  VLOG(6) << "copy API kernel key: " << kernel_key;
-  VLOG(6) << "copy API kernel: " << kernel;
+  VLOG(6) << "start copy. ";
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
 
