@@ -208,8 +208,20 @@ MLUCnnlTensorDesc::~MLUCnnlTensorDesc() {
 MLUCnnlActivationDesc::MLUCnnlActivationDesc(
     const cnnlActivationMode_t act_mode, const float ceof) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateActivationDescriptor(&active_desc_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor(
-      active_desc_, act_mode, CNNL_NOT_PROPAGATE_NAN, ceof));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor_v4(
+      active_desc_, act_mode, CNNL_ACTIVATION_HIGH_PRECISION,
+      CNNL_NOT_PROPAGATE_NAN, ceof, 1.0f /*sliced_dim*/,
+      1.67326319217681884765625 /*selu_alpha*/,
+      1.05070102214813232421875 /*selu_lambda*/));
+}
+
+MLUCnnlActivationDesc::MLUCnnlActivationDesc(
+    const cnnlActivationMode_t act_mode, const float ceof,
+    const float sliced_dim, const float selu_alpha, const float selu_lambda) {
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateActivationDescriptor(&active_desc_));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor_v4(
+      active_desc_, act_mode, CNNL_ACTIVATION_HIGH_PRECISION,
+      CNNL_NOT_PROPAGATE_NAN, ceof, sliced_dim, selu_alpha, selu_lambda));
 }
 
 const cnnlActivationDescriptor_t MLUCnnlActivationDesc::get() const {
@@ -541,12 +553,15 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                         output_desc, output));
 }
 
-/* static */ void MLUCnnl::Fill(const ExecutionContext& ctx, float value,
+/* static */ void MLUCnnl::Fill(const ExecutionContext& ctx,
+                                const cnnlPointerMode_t pointer_mode,
+                                const void* value_ptr,
                                 const cnnlTensorDescriptor_t output_desc,
                                 void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlFill(handle, value, output_desc, output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlFill_v3(handle, pointer_mode, value_ptr, output_desc, output));
 }
 
 /* static */ void MLUCnnl::QuantifyOffline(
