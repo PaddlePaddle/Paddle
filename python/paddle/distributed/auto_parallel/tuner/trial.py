@@ -16,9 +16,9 @@
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/trial.py.
 
 
-import time
-import random
 import hashlib
+import random
+import time
 from enum import Enum
 
 from .storable import Storable
