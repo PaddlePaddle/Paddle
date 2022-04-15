@@ -209,7 +209,9 @@ class TestDygraphTripleGrad(TestCase):
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        self.func_exception()
+        self.func_example_with_gradient_and_create_graph()
+        with _test_eager_guard():
             self.func_exception()
             self.func_example_with_gradient_and_create_graph()
 
@@ -296,7 +298,8 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
 
     def test_all_cases(self):
-        if _in_legacy_dygraph():
+        self.func_example_with_gradient_and_create_graph()
+        with _test_eager_guard():
             self.func_example_with_gradient_and_create_graph()
 
 

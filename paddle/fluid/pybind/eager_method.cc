@@ -342,11 +342,11 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
   }
 
@@ -473,7 +473,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
   }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   Py_INCREF(Py_None);
   return Py_None;
@@ -617,7 +617,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   PADDLE_ENFORCE_EQ(
-      self->tensor.is_initialized(), true,
+      self->tensor.initialized(), true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
@@ -934,7 +934,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value, value_tensor_tmp.inner_place(), false);
+            value, value_tensor_tmp.place(), false);
       }
 
       value_tensor = value_tensor_tmp;
@@ -1018,7 +1018,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                            platform::Place(platform::CPUPlace()), false);
 #endif
     } else {
-      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.inner_place(),
+      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.place(),
                            false);
     }
   }
@@ -1146,7 +1146,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-  if (self->tensor.is_initialized()) {
+  if (self->tensor.initialized()) {
     PADDLE_ENFORCE_EQ(self->tensor.dtype(), src.dtype(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
@@ -1367,7 +1367,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
 #ifndef _WIN32
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Sharing memory only support CPU Tensor currently"));
   // 1. get LoDTensor
@@ -1419,7 +1419,7 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "DenseTensor currently."));
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));

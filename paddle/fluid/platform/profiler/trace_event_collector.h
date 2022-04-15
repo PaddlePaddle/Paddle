@@ -52,6 +52,13 @@ class TraceEventCollector {
     return thread_names_;
   }
 
+  void ClearAll() {
+    thread_names_.clear();
+    host_events_.clear();
+    runtime_events_.clear();
+    device_events_.clear();
+  }
+
  private:
   std::unordered_map<uint64_t, std::string> thread_names_;
   std::list<HostTraceEvent> host_events_;
