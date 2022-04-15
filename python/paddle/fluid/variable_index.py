@@ -375,7 +375,13 @@ def _getitem_impl_(var, item):
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                end = MAX_INTEGER if step > 0 else -1
+                if var.shape[dim] != -1 and (
+                        paddle.fluid.framework._non_static_mode() or
+                        var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ):
+                    end = var.shape[dim] if step > 0 else -1
+                else:
+                    end = MAX_INTEGER if step > 0 else -1
 
         elif isinstance(slice_item, list):
             all_bool = True

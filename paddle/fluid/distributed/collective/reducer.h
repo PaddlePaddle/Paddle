@@ -26,7 +26,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
@@ -121,7 +120,6 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  PlaceType place_;
   platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;

@@ -16,13 +16,14 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 
+#include <ThreadPool.h>
 #include <algorithm>
 #include <map>
 #include <unordered_map>
 #include <vector>
 
 #ifdef PADDLE_WITH_PSLIB
-#include "common_value.h"  // NOLINT
+#include "common/common_value.h"  // NOLINT
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
@@ -38,7 +39,7 @@ namespace framework {
 
 class HeterContext {
  public:
-  ~HeterContext() {
+  virtual ~HeterContext() {
     if (!multi_mf_dim_) {
       for (size_t i = 0; i < mutex_.size(); ++i) {
         delete mutex_[i];
@@ -56,9 +57,12 @@ class HeterContext {
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> feature_dim_keys_;
+  std::vector<std::vector<std::vector<FeatureKey>>> device_task_keys_;
 
 #ifdef PADDLE_WITH_PSLIB
   std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
+  std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>>
+      device_task_ptr_;
   std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>>
       value_dim_ptr_;
   std::vector<std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>>>
@@ -68,6 +72,8 @@ class HeterContext {
   std::vector<std::vector<paddle::distributed::FixedFeatureValue*>> value_ptr_;
   std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       value_dim_ptr_;
+  std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
+      device_task_ptr_;
   std::vector<std::vector<std::vector<paddle::distributed::FixedFeatureValue*>>>
       device_dim_ptr_;
 #endif
@@ -93,6 +99,12 @@ class HeterContext {
     shard_num_ = shard_num;
     feature_keys_.resize(shard_num_);
     value_ptr_.resize(shard_num_);
+    device_task_ptr_.resize(shard_num_);
+    device_task_keys_.resize(shard_num_);
+    for (size_t i = 0; i < device_task_ptr_.size(); i++) {
+      device_task_ptr_[i].resize(device_num);
+      device_task_keys_[i].resize(device_num);
+    }
 
     device_values_.resize(device_num);
     device_keys_.resize(device_num);
@@ -108,6 +120,12 @@ class HeterContext {
     feature_dim_keys_.resize(shard_num_);
     value_ptr_.resize(shard_num_);
     value_dim_ptr_.resize(shard_num_);
+    device_task_ptr_.resize(shard_num_);
+    device_task_keys_.resize(shard_num_);
+    for (size_t i = 0; i < device_task_ptr_.size(); i++) {
+      device_task_ptr_[i].resize(device_num);
+      device_task_keys_[i].resize(device_num);
+    }
     for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
       feature_dim_keys_[i].resize(dim_num);
       value_dim_ptr_[i].resize(dim_num);
@@ -150,6 +168,12 @@ class HeterContext {
       }
       for (size_t i = 0; i < device_keys_.size(); ++i) {
         device_keys_[i].clear();
+      }
+      for (size_t i = 0; i < device_task_ptr_.size(); ++i) {
+        for (size_t j = 0; j < device_task_ptr_[i].size(); ++j) {
+          device_task_ptr_[i][j].clear();
+          device_task_keys_[i][j].clear();
+        }
       }
     } else {
       VLOG(3) << "Reset gpu task with dynamic mf dimention";
