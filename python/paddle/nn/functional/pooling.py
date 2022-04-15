@@ -1408,7 +1408,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     if _in_legacy_dygraph():
         return _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', output_size,
                              'global_pooling', False, 'adaptive', True,
-                             'data_format', data_format)
+                             'data_format', data_format, 'use_cudnn', True)
 
     l_type = 'pool2d'
 
