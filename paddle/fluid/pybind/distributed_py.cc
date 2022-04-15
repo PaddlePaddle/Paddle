@@ -296,8 +296,8 @@ void BindDistributed(py::module *m) {
                     std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
       .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
-                       int rank, int world_size, const platform::Place &place,
-                       int gid) {
+                       int rank, int world_size,
+                       const platform::CPUPlace &place, int gid) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
              if (ifname && strlen(ifname) > 1) {
