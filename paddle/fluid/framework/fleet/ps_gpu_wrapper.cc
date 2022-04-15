@@ -679,7 +679,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     }
 #endif
     VLOG(3) << "GpuPs build hbmps done";
-
   };
 
   if (multi_mf_dim_) {
@@ -995,6 +994,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
                       total_length);
+#endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "GpuPs/XpuPs: PullSparse Only Support CUDAPlace or XPUPlace Now."));
@@ -1004,7 +1004,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PullSparse";
-#endif
 }
 
 void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
