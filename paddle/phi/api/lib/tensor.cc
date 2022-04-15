@@ -328,13 +328,13 @@ bool Tensor::defined() const { return impl_ != nullptr; }
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
-  LOG(WARNING) << "The `is_initialized` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4! "
-                  "Please use `initialized` method instead.";
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+}
 
 /* Part 6: Operator overloading */
 
