@@ -17,7 +17,6 @@
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
-#include "paddle/fluid/framework/channel.h"
 
 namespace paddle {
 namespace distributed {
@@ -66,8 +65,8 @@ class SSDSparseTable : public MemorySparseTable {
   virtual int32_t SaveCache(
       const std::string& path, const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
-          shuffled_channel);
-  virtual double GetCacheThreshold() { return _local_show_threshold; }
+          shuffled_channel) override;
+  virtual double GetCacheThreshold() override { return _local_show_threshold; }
   virtual int64_t CacheShuffle(
       const std::string& path, const std::string& param, double cache_threshold,
       std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
@@ -75,7 +74,7 @@ class SSDSparseTable : public MemorySparseTable {
           send_msg_func,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
-      const std::vector<Table*>& table_ptrs);
+      const std::vector<Table*>& table_ptrs) override;
   //加载path目录下数据
   virtual int32_t Load(const std::string& path,
                        const std::string& param) override;

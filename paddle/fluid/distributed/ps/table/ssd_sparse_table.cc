@@ -306,6 +306,10 @@ int32_t SSDSparseTable::Save(const std::string& path,
   //    }
 
   // LOG(INFO) << "table cache rate is: " << _config.sparse_table_cache_rate();
+  LOG(INFO) << "table cache rate is: " << _config.sparse_table_cache_rate();
+  LOG(INFO) << "enable_sparse_table_cache: "
+            << _config.enable_sparse_table_cache();
+  LOG(INFO) << "LocalSize: " << LocalSize();
   if (_config.enable_sparse_table_cache()) {
     LOG(INFO) << "Enable sparse table cache, top n:" << _cache_tk_size;
   }
@@ -444,7 +448,7 @@ int32_t SSDSparseTable::Save(const std::string& path,
             << file_start_idx + _real_local_shard_num - 1;
   // return feasign_size_all;
   _local_show_threshold = tk.top();
-  // LOG(INFO) << "local cache threshold: " << _local_show_threshold;
+  LOG(INFO) << "local cache threshold: " << _local_show_threshold;
   // int32 may overflow need to change return value
   return 0;
 }
@@ -467,7 +471,7 @@ int64_t SSDSparseTable::CacheShuffle(
     // return -1;
   }
   int shuffle_node_num = _config.sparse_table_cache_file_num();
-  // LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
+  LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
   size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
@@ -478,14 +482,23 @@ int64_t SSDSparseTable::CacheShuffle(
       _real_local_shard_num);
 
   int feasign_size = 0;
+  std::vector<paddle::framework::Channel<std::pair<uint64_t, std::string>>>
+      tmp_channels;
+  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    tmp_channels.push_back(
+        paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
+  }
+
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < _real_local_shard_num; ++i) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[i];
-    writer.Reset(
-        paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>()
-            .get());
+    //    std::shared_ptr<paddle::framework::ChannelObject<std::pair<uint64_t,
+    //    std::string>>> tmp_chan =
+    //        paddle::framework::MakeChannel<std::pair<uint64_t,
+    //        std::string>>();
+    writer.Reset(tmp_channels[i].get());
 
     auto& shard = _local_shards[i];
     for (auto it = shard.begin(); it != shard.end(); ++it) {
@@ -502,9 +515,10 @@ int64_t SSDSparseTable::CacheShuffle(
     writer.Flush();
     writer.channel()->Close();
   }
-  // LOG(INFO) << "SSDSparseTable cache KV save success to Channel feasigh size:
-  // " << feasign_size << " and start sparse cache data shuffle real local shard
-  // num: " << _real_local_shard_num;
+  LOG(INFO) << "SSDSparseTable cache KV save success to Channel feasigh size: "
+            << feasign_size
+            << " and start sparse cache data shuffle real local shard num: "
+            << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;
   for (size_t idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
@@ -551,7 +565,7 @@ int64_t SSDSparseTable::CacheShuffle(
     }
   }
   shuffled_channel->Write(std::move(local_datas));
-  // LOG(INFO) << "cache shuffle finished";
+  LOG(INFO) << "cache shuffle finished";
   return 0;
 }
 

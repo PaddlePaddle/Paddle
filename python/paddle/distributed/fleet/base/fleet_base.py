@@ -869,6 +869,11 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_cache_model(self, dirname, **configs):
+        return self._runtime_handle._save_cache_model(dirname, **configs)
+
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
@@ -1784,13 +1789,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

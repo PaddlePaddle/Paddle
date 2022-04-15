@@ -754,6 +754,46 @@ std::future<int32_t> FleetWrapper::SendClientToClientMsg(
   return worker_ptr_->SendClient2ClientMsg(msg_type, to_client_id, msg);
 }
 
+double FleetWrapper::GetCacheThreshold(int table_id) {
+  double cache_threshold = 0.0;
+  auto ret = worker_ptr_->Flush();
+  ret.wait();
+  ret = worker_ptr_->GetCacheThreshold(table_id, cache_threshold);
+  ret.wait();
+  if (cache_threshold < 0) {
+    LOG(ERROR) << "get cache threshold failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return cache_threshold;
+}
+
+void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
+                                const int mode, const double cache_threshold) {
+  auto ret = worker_ptr_->CacheShuffle(table_id, path, std::to_string(mode),
+                                       std::to_string(cache_threshold));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "cache shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+}
+
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
+  auto ret = worker_ptr_->SaveCache(table_id, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+}
+
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
   struct engine_wrapper_t {
     std::default_random_engine engine;
