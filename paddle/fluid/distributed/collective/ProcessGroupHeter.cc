@@ -58,10 +58,10 @@ ProcessGroupHeter::ProcessGroupHeter(
       switch_endpoint_(switch_endpoint) {
 #if defined(PADDLE_WITH_NCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
-                                                 IGNORE_ID, place_);
+                                                 place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(store, local_rank, local_size,
-                                                 IGNORE_ID, place_);
+                                                 place_, IGNORE_ID);
 #else
   PADDLE_THROW(platform::errors::Fatal(
       "ProcessGroupHeter only supports NCCL and HCCL now.");
