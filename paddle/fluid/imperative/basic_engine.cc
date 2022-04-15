@@ -30,7 +30,6 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/autotune/layout_autotune.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -649,7 +648,6 @@ void BasicEngine::Execute() {
   VLOG(1) << "Backward op number: " << op_num;
 
   phi::autotune::AutoTuneStatus::Instance().Update();
-  phi::autotune::LayoutAutoTune::Instance().Update();
 }
 
 void BasicEngine::Clear() {

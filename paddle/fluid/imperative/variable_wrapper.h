@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {
@@ -33,6 +34,8 @@ class VariableWrapperHook;
 class InplaceVariableWrapperHook;
 class VarBase;
 class GradOpNode;
+
+// using DataLayout = paddle::experimental::DataLayout;
 
 class VariableWrapper {
  public:
@@ -184,6 +187,33 @@ class VariableWrapper {
 
   framework::proto::VarType::Type ForwardDataType() const {
     return fwd_data_type_;
+  }
+
+  paddle::experimental::DataLayout DataLayout() const {
+    const framework::Tensor* tensor = nullptr;
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      }
+    }
+
+    if (tensor && tensor->IsInitialized()) {
+      return tensor->layout();
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+      return paddle::experimental::DataLayout::UNDEFINED;
+    }
+  }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    // not work for matmul_v2
+    if (type_ == framework::proto::VarType::LOD_TENSOR) {
+      auto* tensor = var_.GetMutable<framework::LoDTensor>();
+      tensor->set_layout(layout);
+    } else {
+      PADDLE_THROW(
+          platform::errors::PermissionDenied("Only support LoDTensor."));
+    }
   }
 
   const platform::Place Place() const {
