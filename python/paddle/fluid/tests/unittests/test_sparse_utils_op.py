@@ -212,39 +212,45 @@ class TestSparseConvert(unittest.TestCase):
     def test_sparse_coo_tensor_grad(self):
         with _test_eager_guard():
             for device in devices:
-                paddle.device.set_device(device)
-                indices = [[0, 1], [0, 1]]
-                values = [1, 2]
-                indices = paddle.to_tensor(indices, dtype='int32')
-                values = paddle.to_tensor(
-                    values, dtype='float32', stop_gradient=False)
-                sparse_x = paddle.sparse.sparse_coo_tensor(
-                    indices, values, shape=[2, 2], stop_gradient=False)
-                grad_indices = [[0, 1], [1, 1]]
-                grad_values = [2, 3]
-                grad_indices = paddle.to_tensor(grad_indices, dtype='int32')
-                grad_values = paddle.to_tensor(grad_values, dtype='float32')
-                sparse_out_grad = paddle.sparse.sparse_coo_tensor(
-                    grad_indices, grad_values, shape=[2, 2])
-                sparse_x.backward(sparse_out_grad)
-                correct_values_grad = [0, 3]
-                assert np.array_equal(correct_values_grad, values.grad.numpy())
+                if device == 'cpu' or (device == 'gpu' and
+                                       paddle.is_compiled_with_cuda()):
+                    paddle.device.set_device(device)
+                    indices = [[0, 1], [0, 1]]
+                    values = [1, 2]
+                    indices = paddle.to_tensor(indices, dtype='int32')
+                    values = paddle.to_tensor(
+                        values, dtype='float32', stop_gradient=False)
+                    sparse_x = paddle.sparse.sparse_coo_tensor(
+                        indices, values, shape=[2, 2], stop_gradient=False)
+                    grad_indices = [[0, 1], [1, 1]]
+                    grad_values = [2, 3]
+                    grad_indices = paddle.to_tensor(grad_indices, dtype='int32')
+                    grad_values = paddle.to_tensor(grad_values, dtype='float32')
+                    sparse_out_grad = paddle.sparse.sparse_coo_tensor(
+                        grad_indices, grad_values, shape=[2, 2])
+                    sparse_x.backward(sparse_out_grad)
+                    correct_values_grad = [0, 3]
+                    assert np.array_equal(correct_values_grad,
+                                          values.grad.numpy())
 
     def test_sparse_coo_tensor_sorted(self):
         with _test_eager_guard():
             for device in devices:
-                paddle.device.set_device(device)
-                #test unsorted and duplicate indices 
-                indices = [[1, 0, 0], [0, 1, 1]]
-                values = [1.0, 2.0, 3.0]
-                indices = paddle.to_tensor(indices, dtype='int32')
-                values = paddle.to_tensor(values, dtype='float32')
-                sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
-                indices_sorted = [[0, 1], [1, 0]]
-                values_sorted = [5.0, 1.0]
-                assert np.array_equal(indices_sorted,
-                                      sparse_x.indices().numpy())
-                assert np.array_equal(values_sorted, sparse_x.values().numpy())
+                if device == 'cpu' or (device == 'gpu' and
+                                       paddle.is_compiled_with_cuda()):
+                    paddle.device.set_device(device)
+                    #test unsorted and duplicate indices 
+                    indices = [[1, 0, 0], [0, 1, 1]]
+                    values = [1.0, 2.0, 3.0]
+                    indices = paddle.to_tensor(indices, dtype='int32')
+                    values = paddle.to_tensor(values, dtype='float32')
+                    sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                    indices_sorted = [[0, 1], [1, 0]]
+                    values_sorted = [5.0, 1.0]
+                    assert np.array_equal(indices_sorted,
+                                          sparse_x.indices().numpy())
+                    assert np.array_equal(values_sorted,
+                                          sparse_x.values().numpy())
 
 
 class TestCooError(unittest.TestCase):
