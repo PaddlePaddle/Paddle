@@ -1550,7 +1550,7 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
-    use_gpudnn : true
+    #use_gpudnn : true
   backward : pool2d_grad
 
 - api : pool3d
