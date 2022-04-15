@@ -21,7 +21,6 @@ import numpy as np
 class MetricRecord(object):
     """
     One record for a single metric at a given execution step.
-    The code for now is mainly based on https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
     """
 
     def __init__(self, value, step):
