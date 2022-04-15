@@ -16,8 +16,8 @@
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/phi/infermeta/nullary.h"
@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out);
@@ -53,7 +53,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void Full(const Context& dev_ctx,
-          const ScalarArray& shape,
+          const IntArray& shape,
           const Scalar& val,
           DenseTensor* out) {
   FullKernel<T, Context>(dev_ctx,
@@ -65,7 +65,7 @@ void Full(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  const Scalar& val) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);

@@ -31,11 +31,7 @@ class TestInplace(unittest.TestCase):
             var[0] = 1.1
             self.assertEqual(var.inplace_version, 1)
 
-            # TODO1: assign don't support inplace in temporary
-            if in_dygraph_mode():
-                var[0] = 2
-            else:
-                paddle.assign(paddle.ones(shape=[3]), var)
+            paddle.assign(paddle.ones(shape=[3]), var)
 
             # NOTE(liym27): assign(input, output) is an inplace operation for output.
             # There is inplace-related processing for api assign, var.inplace_version should be 2 not 1.
@@ -65,18 +61,11 @@ class TestInplace(unittest.TestCase):
             var_d = var_b**2
 
             loss = paddle.nn.functional.relu(var_c + var_d)
-            if in_dygraph_mode():
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received current_inplace_version:{} != inplace_version_snapshot_:{}".
-                        format(1, 0)):
-                    loss.backward()
-            else:
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received tensor_version:{} != wrapper_version_snapshot:{}".
-                        format(1, 0)):
-                    loss.backward()
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
     def test_backward_error(self):
         with _test_eager_guard():
@@ -122,9 +111,8 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_2(self):
-        # TODO2: need to process no_need_buffer in eager mode
-        # with _test_eager_guard():
-        #     self.func_test_backward_success_2()
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 
@@ -207,18 +195,11 @@ class TestDygraphInplace(unittest.TestCase):
             self.inplace_api_processing(var_b)
 
             loss = paddle.nn.functional.relu(var_c)
-            if in_dygraph_mode():
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received current_inplace_version:{} != inplace_version_snapshot_:{}".
-                        format(1, 0)):
-                    loss.backward()
-            else:
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received tensor_version:{} != wrapper_version_snapshot:{}".
-                        format(1, 0)):
-                    loss.backward()
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
     def test_backward_error(self):
         with _test_eager_guard():
@@ -527,6 +508,20 @@ class TestContinuouslyInplace(unittest.TestCase):
         with _test_eager_guard():
             self.func_test_continuously_inplace()
         self.func_test_continuously_inplace()
+
+
+class TestGetitemBeforeInplace(unittest.TestCase):
+    def test_getitem_before_inplace(self):
+        with _test_eager_guard():
+            a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            a.stop_gradient = False
+            b = a**2
+            b[0] = 3
+            # getitem has no_need_buffer input
+            c = b[0:2]
+            loss = c.sum()
+            b[1] = 2
+            loss.backward()
 
 
 if __name__ == '__main__':

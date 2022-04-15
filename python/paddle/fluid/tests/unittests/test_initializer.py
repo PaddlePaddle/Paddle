@@ -244,7 +244,7 @@ class TestNormalInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        num_ops = 1
+        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -655,7 +655,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):
-    def test_uniform_initializer(self, dtype="float32"):
+    def func_uniform_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
@@ -679,9 +679,76 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_uniform_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_uniform_initializer()
+        self.func_uniform_initializer()
+
+
+class TestXavierInitializerDygraph(unittest.TestCase):
+    def func_xvarier_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([1024, 1024, 16])
+        tensor.stop_gradient = False
+
+        xavier_ = paddle.fluid.initializer.XavierInitializer(
+            uniform=False, fan_in=3, fan_out=5)
+        xavier_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16]))
+
+        self.assertTrue(
+            np.allclose(
+                hist, hist2, rtol=0, atol=0.01),
+            "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
+
+    def test_xavier_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_xvarier_initializer()
+        self.func_xvarier_initializer()
+
+
+class TestMSRAInitializerDygraph(unittest.TestCase):
+    def func_msra_initializer(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([1024, 1024, 16])
+        tensor.stop_gradient = False
+
+        msra_ = paddle.fluid.initializer.MSRAInitializer(
+            uniform=False, fan_in=4)
+        msra_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16]))
+
+        self.assertTrue(
+            np.allclose(
+                hist, hist2, rtol=0, atol=0.01),
+            "hist: " + str(hist) + " hist2: " + str(hist2))
+        paddle.enable_static()
+
+    def test_msra_initializer(self, dtype="float32"):
+        with framework._test_eager_guard():
+            self.func_msra_initializer()
+        self.func_msra_initializer()
+
 
 class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
-    def test_order(self):
+    def func_order(self):
         paddle.set_device('cpu')
         SEED = 123
         weight_attr = paddle.framework.ParamAttr(
@@ -723,6 +790,11 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
         self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
 
+    def test_order(self):
+        with framework._test_eager_guard():
+            self.func_order()
+        self.func_order()
+
 
 # 2-D Parameter with shape: [10, 15]
 class TestOrthogonalInitializer1(unittest.TestCase):
@@ -742,7 +814,7 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         self.assertTrue(np.array_equal(a, b))
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
 
-    def test_orthogonal(self):
+    def func_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -776,6 +848,11 @@ class TestOrthogonalInitializer1(unittest.TestCase):
             res_static = exe.run(start_prog, fetch_list=[linear.weight])[0]
 
         self.check_result(res_dygraph, res_static)
+
+    def test_orthogonal(self):
+        with framework._test_eager_guard():
+            self.func_orthogonal()
+        self.func_orthogonal()
 
 
 # 2-D Parameter with shape: [15, 10]
@@ -841,7 +918,7 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         a = a.reshape(6, -1)
         self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
 
-    def test_orthogonal(self):
+    def func_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -868,6 +945,11 @@ class TestOrthogonalInitializer4(unittest.TestCase):
             res_static = exe.run(paddle.static.default_startup_program(),
                                  fetch_list=[conv2d.weight])[0]
         self.check_result(res_dygraph, res_static)
+
+    def test_orthogonal(self):
+        with framework._test_eager_guard():
+            self.func_orthogonal()
+        self.func_orthogonal()
 
 
 # 4-D Parameter with shape: [50, 4, 3, 3]
@@ -928,7 +1010,7 @@ class TestDiracInitializer1(unittest.TestCase):
         self.assertTrue(np.array_equal(w_dygraph, w_static))
         self.assertTrue(np.array_equal(conv_out, conv_in[:, 0:2, 1:9]))
 
-    def test_dirac(self):
+    def func_dirac(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
 
@@ -970,6 +1052,11 @@ class TestDiracInitializer1(unittest.TestCase):
 
         self.check_result(weight_dygraph, weight_static, conv_input,
                           conv_output)
+
+    def test_dirac(self):
+        with framework._test_eager_guard():
+            self.func_dirac()
+        self.func_dirac()
 
 
 # initialize Conv2D weight

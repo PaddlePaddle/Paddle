@@ -88,8 +88,8 @@ def transform_and_save_int8_model(original_path,
                                   debug=False,
                                   quant_model_filename='',
                                   quant_params_filename='',
-                                  save_model_filename='',
-                                  save_params_filename=''):
+                                  save_model_filename="__model__",
+                                  save_params_filename=None):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()

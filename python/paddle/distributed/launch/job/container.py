@@ -145,31 +145,34 @@ class Container(object):
             self.errfile,
             self._env, )
 
-    def logs(self, fn=None, offset=0, whence=1, lines=1000):
+    def logs(self, fn=None, offset=0, whence=1, limit=1000):
         if not self._log_handler:
             self._log_handler = open(self._out)
 
         if fn is None:
             fn = sys.stdout
 
-        self._log_handler.seek(offset, whence)
-
         try:
-            idx = 0
-            for line in self._log_handler:
-                fn.write(line)
-                idx += 1
-                if idx > lines:
+            if offset != 0 or whence != 1:
+                self._log_handler.seek(offset, whence)
+
+            for _ in range(limit):
+                line = self._log_handler.readline()
+                if not line:
                     break
-        finally:
-            return self._log_handler.tell()
+                fn.write(line)
+        except:
+            return
 
     def tail(self, length=3000):
         if not self._log_handler:
             self._log_handler = open(self._out)
 
-        self._log_handler.seek(0, 2)
-        ed = self._log_handler.tell()
+        try:
+            self._log_handler.seek(0, 2)
+            ed = self._log_handler.tell()
+        except:
+            pass
 
         if ed > length:
             self.logs(offset=ed - length, whence=0)

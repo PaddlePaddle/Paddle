@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import math
 from op_test import OpTest
 import paddle.fluid.core as core
 
@@ -372,6 +373,145 @@ class TestChannelWiseFakeQuantDequantOp3(TestChannelWiseFakeQuantDequantOp):
     def set_arg(self):
         self.quant_axis = 1
         self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
+
+
+def quantize_max_abs(x, max_range):
+    scale = np.max(np.abs(x).flatten())
+    y = np.round(x / scale * max_range)
+    return y, scale
+
+
+def channel_wise_quantize_max_abs(x, quant_bit=8, quant_axis=0):
+    assert quant_axis in [0, 1], "The quant_axis should be 0 or 1."
+    scales = []
+    y = x.copy()
+    max_range = math.pow(2, quant_bit - 1) - 1
+    if quant_axis == 0:
+        for i in range(x.shape[0]):
+            scale = np.max(np.abs(x[i])).astype("float32")
+            scales.append(scale)
+            y[i] = np.round(x[i] * max_range / scale)
+    elif quant_axis == 1:
+        for i in range(x.shape[1]):
+            scale = np.max(np.abs(x[:, i])).astype("float32")
+            scales.append(scale)
+            y[:, i] = np.round(x[:, i] * max_range / scale)
+    return y, scales
+
+
+class TestChannelWiseQuantizeOp(OpTest):
+    def set_args(self):
+        self.bit_length = 8
+        self.data_type = "float32"
+        self.quant_axis = 0
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "quantize_linear"
+        x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
+        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
+                                                  self.quant_axis)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis
+        }
+        self.outputs = {'Y': yq}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestChannelWiseQuantizeOp1(TestChannelWiseQuantizeOp):
+    def set_args(self):
+        self.bit_length = 8
+        self.data_type = "float32"
+        self.quant_axis = 1
+
+
+class TestChannelWiseQuantizeOpTrain(OpTest):
+    def set_args(self):
+        self.bit_length = 8
+        self.data_type = "float32"
+        self.quant_axis = 0
+        self.is_test = False
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "quantize_linear"
+        x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
+        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
+                                                  self.quant_axis)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis,
+            'is_test': self.is_test
+        }
+        self.outputs = {'Y': yq, 'OutScale': scale}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestquantizeOp(OpTest):
+    def set_args(self):
+        self.bit_length = 8
+        self.quant_axis = -1
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float32"
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "quantize_linear"
+        x = np.random.randn(31, 65).astype(self.data_type)
+        yq, scale = quantize_max_abs(x, self.max_range)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis,
+        }
+        self.outputs = {'Y': yq}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestquantizeOpTrain(TestquantizeOp):
+    def set_args(self):
+        self.bit_length = 8
+        self.quant_axis = -1
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float32"
+        self.is_test = False
+
+    def setUp(self):
+        self.set_args()
+        self.op_type = "quantize_linear"
+        x = np.random.randn(31, 65).astype(self.data_type)
+        yq, scale = quantize_max_abs(x, self.max_range)
+        scale = np.array(scale).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+
+        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
+        self.attrs = {
+            'bit_length': self.bit_length,
+            'quant_axis': self.quant_axis,
+            'is_test': self.is_test
+        }
+        self.outputs = {'Y': yq, 'OutScale': scale}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == "__main__":

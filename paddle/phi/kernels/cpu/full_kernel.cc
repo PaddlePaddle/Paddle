@@ -31,7 +31,7 @@ void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {

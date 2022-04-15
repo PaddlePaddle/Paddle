@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/phi/kernels/copy_kernel.h"
@@ -48,9 +48,9 @@ inline void GetOffsets(const DDim& big_dim,
 template <typename T, typename Context, size_t RANK>
 void SetValueGradImpl(const Context& dev_ctx,
                       const DenseTensor& out_grad,
-                      const ScalarArray& starts,
-                      const ScalarArray& ends,
-                      const ScalarArray& steps,
+                      const IntArray& starts,
+                      const IntArray& ends,
+                      const IntArray& steps,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& decrease_axes,
                       const std::vector<int64_t>& none_axes,
@@ -249,9 +249,9 @@ void SetValueGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void SetValueGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
-                        const ScalarArray& starts,
-                        const ScalarArray& ends,
-                        const ScalarArray& steps,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& steps,
                         const std::vector<int64_t>& axes,
                         const std::vector<int64_t>& decrease_axes,
                         const std::vector<int64_t>& none_axes,

@@ -42,31 +42,31 @@ class PSCore {
   explicit PSCore() {}
   virtual ~PSCore() {}
 
-  virtual int init_server(
+  virtual int InitServer(
       const std::string& dist_desc,
       const std::vector<std::string>* host_sign_list, int node_num, int index,
       int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
-  virtual int init_worker(
+  virtual int InitWorker(
       const std::string& dist_desc,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
           regions,
       const std::vector<std::string>* host_sign_list, int node_num, int index);
-  virtual uint64_t run_server(const std::string& ip, uint32_t port);
-  virtual int stop_server();
-  virtual int finalize_worker();
-  virtual std::vector<uint64_t> get_client_info();
-  virtual int create_client2client_connection(int pserver_timeout_ms,
-                                              int pserver_connect_timeout_ms,
-                                              int max_retry);
+  virtual uint64_t RunServer(const std::string& ip, uint32_t port);
+  virtual int StopServer();
+  virtual int FinalizeWorker();
+  virtual std::vector<uint64_t> GetClientInfo();
+  virtual int CreateClient2ClientConnection(int pserver_timeout_ms,
+                                            int pserver_connect_timeout_ms,
+                                            int max_retry);
   std::shared_ptr<paddle::distributed::PSServer>
       _server_ptr;  // pointer to server
   std::shared_ptr<paddle::distributed::PSClient>
       _worker_ptr;  // pointer to worker
-  virtual paddle::distributed::PSParameter* get_param();
+  virtual paddle::distributed::PSParameter* GetParam();
 
  private:
-  void init_gflag(const std::string& gflags);
+  void InitGFlag(const std::string& gflags);
   paddle::distributed::PSParameter _ps_param;
   paddle::distributed::PaddlePSEnvironment _ps_env;
 };

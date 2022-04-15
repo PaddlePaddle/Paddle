@@ -53,7 +53,7 @@ template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
-                    const ScalarArray& repeat_times,
+                    const IntArray& repeat_times,
                     DenseTensor* x_grad) {
   auto x_dims = x.dims();
   auto vec_x_dims = phi::vectorize<int>(x_dims);
