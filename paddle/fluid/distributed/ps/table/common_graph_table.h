@@ -537,7 +537,7 @@ class GraphTable : public Table {
   virtual int32_t add_node_to_ssd(int64_t id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       std::vector<int64_t> ids);
-  virtual int32_t add_comm_edge(int64_t src_id, int64_t dist_id);
+  virtual int32_t add_comm_edge(int64_t src_id, int64_t dst_id);
   // virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
   int search_level;
 #endif
