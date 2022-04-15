@@ -24,7 +24,7 @@ endif()
 
 IF(WITH_AARCH64)
   SET(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  SET(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
+  SET(XPU_XDNN_DIR_NAME "XDNN-kylin_aarch64")
   SET(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
   SET(XPU_XDNN_URL "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 ELSEIF(WITH_SUNWAY)
