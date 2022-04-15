@@ -537,10 +537,10 @@ class GraphTable : public Table {
   virtual int32_t add_node_to_ssd(int64_t id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       std::vector<int64_t> ids);
-  virtual int32_t add_comm_edge(int64_t src_id, int64_t dst_id);
   // virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
   int search_level;
 #endif
+  virtual int32_t add_comm_edge(int64_t src_id, int64_t dst_id);
   std::vector<GraphShard *> shards, extra_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 24;
