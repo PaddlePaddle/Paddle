@@ -422,7 +422,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr + 3 * rulebook_len,
                                 -1);
     phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        rulebook_ptr, last, key_result.data<IntT>() + rulebook_len);
+        rulebook_ptr, last, bound_ptr);
     phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
                                        bound_ptr,
                                        sizeof(IntT),
@@ -489,7 +489,7 @@ int ProductRuleBook(const Context& dev_ctx,
     // thrust::distance doesn't support stream parameters
     // const int out_non_zero_num = thrust::distance(unique_key_ptr,
     // new_end.first);
-    DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
         unique_key_ptr,
         new_end,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1);
