@@ -138,7 +138,7 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(neg_1.dtype, b.dtype)
 
         set_value_1 = set_value(
-            d, a, axis=[1], starts=[1], ends=[3], strides=[1])
+            d, a, axis=[1], starts=[1], ends=[3], strides=[1], out=d)
         self.assertEqual(set_value_1.shape, d.shape)
         self.assertEqual(set_value_1.dtype, d.dtype)
 

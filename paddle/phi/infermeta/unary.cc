@@ -1824,7 +1824,6 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
       phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
-  out->share_meta(x);
 }
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
