@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// The file has been adapted from the file:
+// The file has been adapted from the two files:
 //     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cu
+//     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cuh
 //     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
 // We retain the following license from the original files:
 //     Copyright 2021, Jiaao He. All rights reserved.
