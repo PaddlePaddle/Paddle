@@ -36,7 +36,11 @@ namespace sparse {
     PADDLE_ENFORCE_EQ(                                                         \
         x.dims(),                                                              \
         y.dims(),                                                              \
-        "ValueError: Mismatched shape. Expected x.dim = y.dim.");      \
+        "ValueError: Mismatched shape. Expected x.dims = y.dims, "             \
+        "but got x.dims = %s, y.dims = %s",                                    \
+        x.dims().to_str(),                                                     \
+        y.dims().to_str());                                                    \
+    PADDLE_ENFORCE(true, "flag 1");                                            \
     const DDim& x_dims = x.dims();                                             \
     const auto& n_row = x_dims[0];                                             \
     const auto& n_col = x_dims[1];                                             \
@@ -56,17 +60,20 @@ namespace sparse {
     const auto* y_values_data = y_values.data<T>();                            \
     const auto place = dev_ctx.GetPlace();                                     \
     const auto func = funcs::name##Functor<T>();                               \
+                                                                               \
+    PADDLE_ENFORCE(true, "flag 2");                                            \
+                                                                               \
     std::vector<int64_t> next(n_col, -1);                                      \
     std::vector<T> A_row(n_col, 0);                                            \
     std::vector<T> B_row(n_col, 0);                                            \
     int64_t nnz = 0;                                                           \
     std::vector<int64_t> Cp;                                                   \
-    Cp.reserve(x_nnz + y_nnz);                                                 \
     std::vector<int64_t> Cj;                                                   \
-    Cj.reserve(x_nnz + y_nnz);                                                 \
     std::vector<T> Cx;                                                         \
-    Cx.reserve(x_nnz + y_nnz);                                                 \
     Cp.push_back(0);                                                           \
+                                                                               \
+    PADDLE_ENFORCE(true, "flag 3");                                            \
+                                                                               \
     for (int64_t i = 0; i < n_row; i++) {                                      \
       int64_t head = -2;                                                       \
       int64_t length = 0;                                                      \
@@ -82,7 +89,7 @@ namespace sparse {
           length++;                                                            \
         }                                                                      \
       }                                                                        \
-                                                                               \
+      PADDLE_ENFORCE(true, "flag 4");                                          \
       i_start = y_crows_data[i];                                               \
       i_end = y_crows_data[i + 1];                                             \
       for (int64_t jj = i_start; jj < i_end; jj++) {                           \
@@ -111,6 +118,7 @@ namespace sparse {
       }                                                                        \
       Cp.push_back(nnz);                                                       \
     }                                                                          \
+    PADDLE_ENFORCE(true, "flag 5");                                            \
     DenseTensorMeta crows_meta(                                                \
         DataType::INT64,                                                       \
         phi::make_ddim({static_cast<int64_t>(Cp.size())}),                     \
@@ -123,7 +131,7 @@ namespace sparse {
         paddle::experimental::CppTypeToDataType<T>::Type(),                    \
         phi::make_ddim({static_cast<int64_t>(Cx.size())}),                     \
         DataLayout::NCHW);                                                     \
-                                                                               \
+    PADDLE_ENFORCE(true, "flag 6");                                            \
     phi::DenseTensor out_crows = phi::Empty(dev_ctx, std::move(crows_meta));   \
     phi::DenseTensor out_cols = phi::Empty(dev_ctx, std::move(cols_meta));     \
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta)); \
@@ -133,8 +141,21 @@ namespace sparse {
     std::memcpy(out_crows_data, Cp.data(), sizeof(int64_t) * Cp.size());       \
     std::memcpy(out_cols_data, Cj.data(), sizeof(int64_t) * Cj.size());        \
     std::memcpy(out_values_data, Cx.data(), sizeof(T) * Cx.size());            \
+    PADDLE_ENFORCE(true, "flag 7");                                           \
+    PADDLE_ENFORCE_EQ(x.dims(),                                       \
+                      y.dims(),                                                     \
+                      "xdims is %s ydim is %s",                                \
+                      x.dims().to_str(),                                       \
+                      y.dims().to_str());                                      \
     out->SetMember(out_crows, out_cols, out_values, x.dims());                 \
+    PADDLE_ENFORCE(true, "flag 8");                                           \
   }
+
+/*PADDLE_ENFORCE_EQ(x.dims().to_str(),
+                  "[4,3]",
+                  "xdims is %s ydim is %s",
+                  x.dims().to_str(),
+                  y.dims().to_str());*/
 
 /*// template <typename T, typename Context, class Functor>
 // void ElementWiseCsrKernel(const Context& dev_ctx,
@@ -462,30 +483,43 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_API_NAME(add),
+// sparse_elementwise_add
+PD_REGISTER_KERNEL(sparse_elementwise_add,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CSR_ELEMENTWISE_KERNEL_NAME(Add),
+                   phi::sparse::ElementWiseAddCsrKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_API_NAME(sub),
+PD_REGISTER_KERNEL(sparse_elementwise_sub,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CSR_ELEMENTWISE_KERNEL_NAME(Subtract),
+                   phi::sparse::ElementWiseSubtractCsrKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_API_NAME(mul),
+PD_REGISTER_KERNEL(sparse_elementwise_mul,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CSR_ELEMENTWISE_KERNEL_NAME(Multiply),
+                   phi::sparse::ElementWiseMultiplyCsrKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_API_NAME(div),
+PD_REGISTER_KERNEL(sparse_elementwise_div,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CSR_ELEMENTWISE_KERNEL_NAME(Divide),
+                   phi::sparse::ElementWiseDivideCsrKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}

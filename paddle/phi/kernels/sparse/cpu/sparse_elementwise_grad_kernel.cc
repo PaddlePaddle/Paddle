@@ -131,7 +131,7 @@ void ElementWiseAddCsrGradKernel(const Context& dev_ctx,
                                  SparseCsrTensor* dx,
                                  SparseCsrTensor* dy) {
   //  ElementwiseAddCsrGradImpl<T,Context>(dev_ctx, x, y, dout, dx, dy);
-  if (dx) {
+  /*if (dx) {
     //      dev_ctx.template Alloc<T>(x_grad);
     //      blas.VCOPY(
     //          dout.numel(), dout.data<T>(),
@@ -145,6 +145,19 @@ void ElementWiseAddCsrGradKernel(const Context& dev_ctx,
     //          dout.numel(), dout.data<T>(),
     //          dy->mutable_data<T>(ctx.GetPlace()));
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+  }*/
+
+  auto* out = &dout;
+  // Special case when y_grad is not needed and x_grad doesn't reduce
+  if (dx != nullptr && dy == nullptr) {
+    VLOG(4) << "Special case when dy is not needed";
+    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+  } else if (dx == nullptr && dy != nullptr) {
+    VLOG(4) << "Special case when dx is not needed";
+    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+  } else {
+    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    //    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
@@ -205,23 +218,29 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_GRAD_API_NAME(add),
+PD_REGISTER_KERNEL(sparse_elementwise_add_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCsrGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_GRAD_API_NAME(sub),
+PD_REGISTER_KERNEL(sparse_elementwise_sub_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCsrGradKernel,
                    float,
                    double) {}
 
-PD_REGISTER_KERNEL(CSR_ELEMENTWISE_GRAD_API_NAME(mul),
+PD_REGISTER_KERNEL(sparse_elementwise_mul_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCsrGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}

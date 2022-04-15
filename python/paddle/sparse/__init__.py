@@ -14,6 +14,7 @@
 
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
+from .math import add, multiply, subtract, divide
 from .layer.activation import ReLU
 
-__all__ = ['sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU']
+__all__ = ['sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'add', 'subtract', 'multiply','divide']

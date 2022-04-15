@@ -32,15 +32,22 @@
   kernel :
     func : sparse_relu_grad
 
-- api : sparse_elementwise_add_grad
-  forward : sparse_elementwise_add(Tensor x, Tensor y) -> Tensor(out@SparseCooTensor)
+- backward_api : elementwise_add_grad
+  forward : elementwise_add(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad@SparseCsrTensor), Tensor(y_grad@SparseCsrTensor)
   kernel :
     func : sparse_elementwise_add_grad
 
-- api : sparse_elementwise_mul_grad
-  forward : sparse_elementwise_mul(Tensor x, Tensor y) -> Tensor(out@SparseCooTensor)
+- backward_api : elementwise_sub_grad
+  forward : elementwise_sub(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad@SparseCsrTensor), Tensor(y_grad@SparseCsrTensor)
+  kernel :
+    func : sparse_elementwise_sub_grad
+
+- backward_api : elementwise_mul_grad
+  forward : elementwise_mul(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad@SparseCsrTensor), Tensor(y_grad@SparseCsrTensor)
   kernel :
