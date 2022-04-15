@@ -108,7 +108,7 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
                      "Detected NULL grad"
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
-  grad->copy_(src, self->tensor.inner_place(), true);
+  grad->copy_(src, self->tensor.place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -160,14 +160,14 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_place(TensorObject* self, void* closure) {
   EAGER_TRY
-  return ToPyObject(self->tensor.inner_place());
+  return ToPyObject(self->tensor.place());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
   EAGER_TRY
   std::stringstream ostr;
-  ostr << self->tensor.inner_place();
+  ostr << self->tensor.place();
   return ToPyObject(ostr.str());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

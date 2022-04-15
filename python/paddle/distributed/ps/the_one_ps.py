@@ -609,7 +609,6 @@ class SparseTable(Table):
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
 
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -641,7 +640,6 @@ class GeoSparseTable(SparseTable):
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -673,7 +671,6 @@ class DenseTable(Table):
         table_proto.accessor.embedx_dim = 1
 
         self.common.table_name = "MergedDense"
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -922,11 +919,6 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
-
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
         send_ctx = get_the_one_send_context(
@@ -937,6 +929,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
+        proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -1059,6 +1052,10 @@ class TheOnePSRuntime(RuntimeBase):
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
+
+        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        # if debug:
+        #     print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,
