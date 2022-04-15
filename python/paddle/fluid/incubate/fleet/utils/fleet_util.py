@@ -25,11 +25,11 @@ import time
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, AFSClient
 from . import utils
 OpRole = core.op_proto_and_checker_maker.OpRole
 
-__all__ = ["FleetUtil"]
+__all__ = ["FleetUtil", "GPUPSUtil"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s')
@@ -1721,3 +1721,470 @@ class FleetUtil(object):
         else:
             return [start_list[heter_index], end_list[heter_index], send_list[heter_index], \
                     recv_list[heter_index], program_list[heter_index]]
+
+
+class GPUPSUtil(FleetUtil):
+    """
+    GPUPSUtil provides some common functions for users' convenience.
+
+    Examples:
+        .. code-block:: python
+
+          from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+          fleet_util = GPUPSUtil()
+          fleet_util.rank0_print("my log")
+    """
+
+    def __init__(self, fs_client=None):
+        super(GPUPSUtil, self).__init__("pslib")
+        self._afs = fs_client
+        # self._afs = fs_client._fs
+
+    def init(self, fs_name, fs_user, fs_passwd, fs_conf):
+        r"""
+        init for fs config
+
+        Args:
+            fs_name(str): fs name
+            fs_user(str): fs user
+            fs_passwd(str): fs password
+            fs_conf(str): fs and afs conf path
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              fleet_util = GPUPSUtil()
+              fleet_util.init(20190722, 88, 88, "./afs.conf")
+        """
+        self._afs.init(fs_name, fs_user, fs_passwd, fs_conf)
+
+    def set_fsclient(self, fs_client):
+        r"""
+        set fs_client for fs config
+
+        Args:
+            fs_client(AFSClient): fs_client object
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+        """
+        self._afs = fs_client
+
+    def get_last_save_xbox_base(self, output_path):
+        r"""
+        get last saved base xbox info from xbox_base_done.txt
+
+        Args:
+            output_path(str): output path
+
+        Returns:
+            [last_save_day, last_path, xbox_base_key]
+            last_save_day(int): day of saved model
+            last_path(str): model path
+            xbox_base_key(int): xbox key
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              last_save_day, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_xbox_base("hdfs:/my/path")
+
+        """
+        donefile_path = output_path + "/xbox_base_done.txt"
+
+        if not self._afs.is_file(donefile_path):
+            return [-1, -1, int(time.time())]
+        self._afs.download(donefile_path, "./xbox_base_done.txt")
+        # pre_content = self._afs.cat(donefile_path)
+        pre_content = ""
+        with open("xbox_base_done.txt", "r") as f:
+            pre_content = f.read()
+        pre_content = pre_content.strip()
+        last_dict = json.loads(pre_content.split("\n")[-1])
+        last_day = int(last_dict["input"].split("/")[-3])
+        last_path = "/".join(last_dict["input"].split("/")[:-1])
+        xbox_base_key = int(last_dict["key"])
+        return [last_day, last_path, xbox_base_key]
+
+    def get_last_save_xbox(self, output_path):
+        r"""
+        get last saved xbox info from xbox_patch_done.txt
+
+        Args:
+            output_path(str): output path
+
+        Returns:
+            [last_save_day, last_save_pass, last_path, xbox_base_key]
+            last_save_day(int): day of saved model
+            last_save_pass(int): pass id of saved
+            last_path(str): model path
+            xbox_base_key(int): xbox key
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              last_save_day, last_save_pass, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_xbox("hdfs:/my/path")
+
+        """
+        donefile_path = output_path + "/xbox_patch_done.txt"
+
+        if not self._afs.is_file(donefile_path):
+            return [-1, -1, "", int(time.time())]
+        self._afs.download(donefile_path, "xbox_patch_done.txt")
+        pre_content = ""
+        with open("xbox_patch_done.txt", "r") as f:
+            pre_content = f.read()
+        pre_content = pre_content.strip()
+        last_dict = json.loads(pre_content.split("\n")[-1])
+        last_day = int(last_dict["input"].split("/")[-3])
+        last_pass = int(last_dict["input"].split("/")[-2].split("-")[-1])
+        last_path = "/".join(last_dict["input"].split("/")[:-1])
+        xbox_base_key = int(last_dict["key"])
+        os.remove("xbox_patch_done.txt")
+        return [last_day, last_pass, last_path, xbox_base_key]
+
+    def get_last_save_model(self, output_path):
+        r"""
+        get last saved model info from donefile.txt
+
+        Args:
+            output_path(str): output path
+
+        Returns:
+            [last_save_day, last_save_pass, last_path, xbox_base_key]
+            last_save_day(int): day of saved model
+            last_save_pass(int): pass id of saved
+            last_path(str): model path
+            xbox_base_key(int): xbox key
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              last_save_day, last_save_pass, last_path, xbox_base_key = \
+                  fleet_util.get_last_save_model("hdfs:/my/path")
+
+        """
+        last_save_day = -1
+        last_save_pass = -1
+        last_path = ""
+        donefile_path = output_path + "/donefile.txt"
+        if not self._afs.is_file(donefile_path):
+            return [-1, -1, "", int(time.time())]
+        self._afs.download(donefile_path, "./donefile.txt")
+        content = ""
+        with open("donefile.txt", "r") as f:
+            content = f.read()
+        content = content.strip().split("\n")[-1].split("\t")
+        last_save_day = int(content[0])
+        last_save_pass = int(content[3])
+        last_path = content[2]
+        xbox_base_key = int(content[1])
+        os.remove("donefile.txt")
+        return [last_save_day, last_save_pass, last_path, xbox_base_key]
+
+    def write_model_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             xbox_base_key,
+                             donefile_name="donefile.txt"):
+        """
+        write donefile when save model
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day
+            pass_id(str|int): training pass id
+            xbox_base_key(str|int): xbox base key
+            donefile_name(str): donefile name, default is "donefile.txt"
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              fleet_util.write_model_donefile(output_path="hdfs:/my/output",
+                                              model_path="hdfs:/my/model",
+                                              day=20190723,
+                                              pass_id=66,
+                                              xbox_base_key=int(time.time()))
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        xbox_base_key = int(xbox_base_key)
+
+        if pass_id != "-1":
+            suffix_name = "/%s/%s/" % (day, pass_id)
+            model_path = output_path.rstrip("/") + suffix_name
+        else:
+            suffix_name = "/%s/0/" % day
+            model_path = output_path.rstrip("/") + suffix_name
+
+        if fleet.worker_index() == 0:
+            donefile_path = output_path + "/" + donefile_name
+            content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
+                                                model_path, pass_id, 0)
+            if self._afs.is_file(donefile_path):
+                self._afs.download(donefile_path, donefile_name)
+                pre_content = ""
+                with open(donefile_name, "r") as f:
+                    pre_content = f.read()
+                pre_content_list = pre_content.strip().split("\n")
+                day_list = [i.split("\t")[0] for i in pre_content_list]
+                pass_list = [i.split("\t")[3] for i in pre_content_list]
+                os.remove(donefile_name)
+                exist = False
+                for i in range(len(day_list)):
+                    if int(day) == int(day_list[i]) and \
+                            int(pass_id) == int(pass_list[i]):
+                        exist = True
+                        break
+                if not exist:
+                    with open(donefile_name, "w") as f:
+                        f.write(pre_content.strip() + "\n")
+                        f.write(content + "\n")
+                    self._afs.delete(donefile_path)
+                    self._afs.upload(donefile_name, donefile_path)
+                    self.rank0_error("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_error("not write %s because %s/%s already "
+                                     "exists" % (donefile_name, day, pass_id))
+            else:
+                with open(donefile_name, "w") as f:
+                    f.write(content + "\n")
+                self._afs.upload(donefile_name, donefile_path)
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+
+    def write_xbox_donefile(self,
+                            output_path,
+                            day,
+                            pass_id,
+                            xbox_base_key,
+                            data_path,
+                            hadoop_fs_name,
+                            hadoop_fs_ugi,
+                            monitor_data={},
+                            hadoop_home="$HADOOP_HOME",
+                            donefile_name=None):
+        """
+        write delta donefile or xbox base donefile
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day of model
+            pass_id(str|int): training pass id of model
+            xbox_base_key(str|int): xbox base key
+            data_path(str|list): training data path
+            monitor_data(dict): metrics
+            hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
+            donefile_name(str): donefile name, default is None"
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              fleet_util.write_xbox_donefile(
+                  output_path="hdfs:/my/output/",
+                  model_path="hdfs:/my/output/20190722/01",
+                  day=20190722,
+                  pass_id=1,
+                  xbox_base_key=int(time.time()),
+                  data_path="hdfs:/my/data/",
+                  monitor_data={})
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        xbox_base_key = int(xbox_base_key)
+        mode = None
+        if pass_id != "-1":
+            mode = "patch"
+            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            model_path = output_path.rstrip("/") + suffix_name
+            if donefile_name is None:
+                donefile_name = "xbox_patch_done.txt"
+        else:
+            mode = "base"
+            suffix_name = "/%s/base/" % day
+            model_path = output_path.rstrip("/") + suffix_name
+            if donefile_name is None:
+                donefile_name = "xbox_base_done.txt"
+
+        if isinstance(data_path, list):
+            data_path = ",".join(data_path)
+        if fleet.worker_index() == 0:
+            donefile_path = output_path + "/" + donefile_name
+            xbox_str = self._get_xbox_str(output_path, day, model_path, \
+                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
+                    mode=mode)
+
+            if self._afs.is_exist(donefile_path):
+                self.rank0_info("exist %s succeed" % (donefile_path))
+                self._afs.download(donefile_path, donefile_name)
+                pre_content = ""
+                with open(donefile_name, "r") as f:
+                    pre_content = f.read()
+                last_dict = json.loads(pre_content.strip().split("\n")[-1])
+                last_day = last_dict["input"].split("/")[-3]
+                last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
+
+                os.remove(donefile_name)
+                self.rank0_info("remove %s succeed" % (donefile_name))
+                exist = False
+                if int(day) < int(last_day) or \
+                        int(day) == int(last_day) and \
+                        int(pass_id) <= int(last_pass):
+                    exist = True
+                if not exist:
+                    with open(donefile_name, "w") as f:
+                        f.write(pre_content.strip() + "\n")
+                        f.write(xbox_str + "\n")
+                    self._afs.delete(donefile_path)
+                    self._afs.upload(donefile_name, donefile_path)
+                    self.rank0_info("write %s/%s %s succeed" % \
+                                      (day, pass_id, donefile_name))
+                else:
+                    self.rank0_info("not write %s because %s/%s already "
+                                    "exists" % (donefile_name, day, pass_id))
+            else:
+                with open(donefile_name, "w") as f:
+                    f.write(xbox_str + "\n")
+                self._afs.upload(donefile_name, donefile_path)
+                self.rank0_error("write %s/%s %s succeed" % \
+                               (day, pass_id, donefile_name))
+
+    def write_cache_donefile(self,
+                             output_path,
+                             day,
+                             pass_id,
+                             key_num,
+                             donefile_name="sparse_cache.meta",
+                             **kwargs):
+        """
+        write cache donefile
+
+        Args:
+            output_path(str): output path
+            day(str|int): training day of model
+            pass_id(str|int): training pass id of model
+            key_num(str|int): save cache return value
+            donefile_name(str): donefile name, default is "sparse_cache.meta"
+            kwargs(dict): user defined properties
+                          file_num(int): cache file num
+                          table_id(int): cache table id
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.distributed.fleet.utils.fs import AFSClient
+              hdfs_client = AFSClient()
+              fleet_util = GPUPSUtil()
+              fleet_util.set_fsclient(hdfs_client)
+              fleet_util.write_cache_donefile(
+                  output_path="hdfs:/my/output/",
+                  day=20190722,
+                  pass_id=1,
+                  key_num=123456)
+
+        """
+        day = str(day)
+        pass_id = str(pass_id)
+        key_num = int(key_num)
+        file_num = kwargs.get("file_num", 16)
+        table_id = kwargs.get("table_id", 0)
+
+        if pass_id != "-1":
+            suffix_name = "/%s/delta-%s/%03d_cache" % (day, pass_id, table_id)
+            model_path = output_path.rstrip("/") + suffix_name
+        else:
+            suffix_name = "/%s/base/%03d_cache" % (day, table_id)
+            model_path = output_path.rstrip("/") + suffix_name
+
+        if fleet.worker_index() == 0:
+            donefile_path = model_path + "/" + donefile_name
+
+            if self._afs.is_file(donefile_path):
+                self.rank0_error( \
+                    "not write because %s already exists" % donefile_path)
+            else:
+                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" \
+                           % (file_num, key_num)
+                with open(donefile_name, "w") as f:
+                    f.write(meta_str)
+                self._afs.upload(donefile_name, donefile_path)
+                self.rank0_error("write %s succeed" % donefile_path)
+
+    def _get_xbox_str(self,
+                      output_path,
+                      day,
+                      model_path,
+                      xbox_base_key,
+                      data_path,
+                      hadoop_fs_name,
+                      monitor_data={},
+                      mode="patch"):
+        xbox_dict = collections.OrderedDict()
+        if mode == "base":
+            xbox_dict["id"] = str(xbox_base_key)
+        elif mode == "patch":
+            xbox_dict["id"] = str(int(time.time()))
+        else:
+            print("warning: unknown mode %s, set it to patch" % mode)
+            mode = "patch"
+            xbox_dict["id"] = str(int(time.time()))
+        xbox_dict["key"] = str(xbox_base_key)
+        if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
+            model_path = model_path[model_path.find(":") + 1:]
+        xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
+        xbox_dict["record_count"] = "111111"
+        xbox_dict["partition_type"] = "2"
+        xbox_dict["job_name"] = "default_job_name"
+        xbox_dict["ins_tag"] = "feasign"
+        xbox_dict["ins_path"] = data_path
+        xbox_dict["job_id"] = os.environ.get("PADDLE_JOB_ID", "")
+        # currently hard code here, set monitor_data empty string
+        xbox_dict["monitor_data"] = ""
+        xbox_dict["monitor_path"] = output_path.rstrip("/") + "/monitor/" \
+                                    + day + ".txt"
+        xbox_dict["mpi_size"] = str(fleet.worker_num())
+        return json.dumps(xbox_dict)
