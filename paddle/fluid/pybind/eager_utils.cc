@@ -36,6 +36,7 @@ namespace paddle {
 namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_vartype_pytype;
@@ -75,6 +76,8 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX64;
     case phi::DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
+    case phi::DataType::PSTRING:
+      return pybind11::detail::npy_api::NPY_UNICODE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
@@ -198,7 +201,9 @@ bool IsEagerTensor(PyObject* obj) {
 }
 
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
+      PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -508,7 +513,14 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
     Py_INCREF(Py_None);
     return Py_None;
   }
-  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  PyObject* obj = nullptr;
+  if (value.initialized() && value.is_string_tensor()) {
+    // In order to return the core.eager.StringTensor, there is need
+    // to use p_string_tensor_type to create a python obj.
+    obj = p_string_tensor_type->tp_alloc(p_string_tensor_type, 0);
+  } else {
+    obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  }
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::experimental::Tensor();
@@ -752,6 +764,9 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
