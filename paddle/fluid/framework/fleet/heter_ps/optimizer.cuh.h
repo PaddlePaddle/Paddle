@@ -13,16 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <curand_kernel.h>
-#include <vector>
-#include "optimizer_conf.h"
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-
 #ifdef PADDLE_WITH_HETERPS
+
+#if defined(PADDLE_WITH_CUDA)
+#include <curand_kernel.h>
+#endif
+#include <vector>
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename ValType, typename GradType>
 class Optimizer {
  public:
@@ -32,7 +35,8 @@ class Optimizer {
 
   void initialize() {}
 
-  __device__ void update_lr(float& w, float& g2sum, float g, float scale) {
+  __device__ void update_lr(float& w, float& g2sum, float g,  // NOLINT
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::learning_rate *
                    sqrt(optimizer_config::initial_g2sum /
@@ -49,8 +53,8 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
-                            float scale) {
+  __device__ void update_mf(int n, float* w, float& g2sum,  // NOLINT
+                            const float* g, float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::mf_learning_rate *
                    sqrt(optimizer_config::mf_initial_g2sum /
@@ -69,7 +73,8 @@ class Optimizer {
 
     g2sum += add_g2sum / n;
   }
-  __device__ void update_value(ValType& val, const GradType& grad) {
+
+  __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
@@ -132,6 +137,7 @@ class Optimizer {
   }
 };
 
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif
