@@ -101,7 +101,7 @@ ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
                                    int rank, int size,
                                    const platform::Place& place, int gid)
     : ProcessGroup(rank, size, place, gid), store_(store) {
-  SetNPUDeviceId(place_.device);
+  platform::SetNPUDeviceId(place_.device);
 }
 
 void ProcessGroupHCCL::BroadcastUniqueHCCLID(
