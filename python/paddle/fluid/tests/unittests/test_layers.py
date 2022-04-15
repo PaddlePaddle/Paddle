@@ -2819,7 +2819,7 @@ class TestBook(LayerTest):
         })
         self.all_close_compare = set({"make_spectral_norm"})
 
-    def test_all_layers(self):
+    def func_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
         methods = filter(inspect.ismethod, attrs)
         for method in methods:
@@ -2866,6 +2866,11 @@ class TestBook(LayerTest):
                 self.assertTrue(
                     np.array_equal(static_result[0], dy_result_value),
                     "Result of function [{}] not equal".format(method.__name__))
+
+    def test_all_layers(self):
+        with _test_eager_guard():
+            self.func_all_layers()
+        self.func_all_layers()
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
@@ -3656,8 +3661,9 @@ class TestBook(LayerTest):
                 shape=[1],
                 dtype='float32',
                 append_batch_size=False)
-
-            out = layers.scale(input, scale=scale_var)
+            _scale = scale_var.numpy().item(0) if isinstance(
+                scale_var, core.eager.Tensor) else scale_var
+            out = layers.scale(input, scale=_scale)
             return out
 
     def make_softshrink(self):

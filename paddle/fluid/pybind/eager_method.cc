@@ -342,11 +342,11 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
   }
 
@@ -473,7 +473,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
   }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   Py_INCREF(Py_None);
   return Py_None;
@@ -617,7 +617,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   PADDLE_ENFORCE_EQ(
-      self->tensor.is_initialized(), true,
+      self->tensor.initialized(), true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
@@ -921,7 +921,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             "please check the type of tensor."));
       }
 
-      if (value_tensor_tmp.place() == paddle::PlaceType::kUNK) {
+      if (!value_tensor_tmp.initialized()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
@@ -934,7 +934,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value, value_tensor_tmp.inner_place(), false);
+            value, value_tensor_tmp.place(), false);
       }
 
       value_tensor = value_tensor_tmp;
@@ -1009,7 +1009,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       VLOG(4) << "index is not tensor";
       self_numpy[_index] = py::object(py::handle(value_obj), true);
     }
-    if (self->tensor.place() == paddle::PlaceType::kUNK) {
+    if (!self->tensor.initialized()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       SetTensorFromPyArray(self_tensor, self_numpy,
                            platform::Place(platform::CUDAPlace(0)), false);
@@ -1018,7 +1018,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                            platform::Place(platform::CPUPlace()), false);
 #endif
     } else {
-      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.inner_place(),
+      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.place(),
                            false);
     }
   }
@@ -1146,7 +1146,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-  if (self->tensor.is_initialized()) {
+  if (self->tensor.initialized()) {
     PADDLE_ENFORCE_EQ(self->tensor.dtype(), src.dtype(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
@@ -1271,21 +1271,6 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_to_sparse_coo(TensorObject* self, PyObject* args,
-                                             PyObject* kwargs) {
-  EAGER_TRY
-  int64_t sparse_dim = CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  auto coo_tensor = self->tensor.to_sparse_coo(sparse_dim);
-  egr::EagerUtils::autograd_meta(&coo_tensor)
-      ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient());
-  egr::EagerUtils::autograd_meta(&coo_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
-  return ToPyObject(coo_tensor);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
@@ -1297,20 +1282,6 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self, PyObject* args,
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   return ToPyObject(csr_tensor);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* tensor_method_to_dense(TensorObject* self, PyObject* args,
-                                        PyObject* kwargs) {
-  EAGER_TRY
-  auto dense_tensor = self->tensor.to_dense();
-  egr::EagerUtils::autograd_meta(&dense_tensor)
-      ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient());
-  egr::EagerUtils::autograd_meta(&dense_tensor)
-      ->SetPersistable(
-          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
-  return ToPyObject(dense_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1396,7 +1367,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
 #ifndef _WIN32
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Sharing memory only support CPU Tensor currently"));
   // 1. get LoDTensor
@@ -1448,7 +1419,7 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "DenseTensor currently."));
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
@@ -1530,17 +1501,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
-    {"non_zero_indices",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
+    {"indices", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_elements",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_elements,
+    {"values", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_elements,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_crows",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
+    {"crows", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"non_zero_cols",
-     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
+    {"cols", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse", (PyCFunction)(void (*)(void))tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1548,11 +1515,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"to_sparse_coo", (PyCFunction)(void (*)(void))tensor_method_to_sparse_coo,
-     METH_VARARGS | METH_KEYWORDS, NULL},
     {"to_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_to_sparse_csr,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"to_dense", (PyCFunction)(void (*)(void))tensor_method_to_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"element_size", (PyCFunction)(void (*)(void))tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS, NULL},

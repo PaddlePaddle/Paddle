@@ -37,13 +37,13 @@ class IpuStrategy {
   // training flag, true for training
   bool is_training = true;
 
-  // average sharding, debugging used
+  // Average sharding, debugging used
   bool need_avg_shard = false;
 
-  // flag for fp16, true for pure fp16
+  // Flag for fp16, true for pure fp16
   bool enable_fp16 = false;
 
-  // enable transfer cast Op target from fp32 to fp16 in fp16 mode
+  // Enable transfer cast Op target from fp32 to fp16 in fp16 mode
   bool transfer_cast_op = true;
 
   // The mode of Adam/Lamb optimizer
@@ -51,33 +51,35 @@ class IpuStrategy {
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
   bool use_no_bias_optimizer = false;
 
-  // enable distributed computing for POD128 or POD256
+  // Enable distributed computing for POD128 or POD256
   bool enable_distribution = false;
+
+  // Enable Scaled optimizer state only for Adam and Lamb
+  bool scaled_optimizer_state = false;
 
   // Number ipus total needed, local_replica * ipu_per_replica
   int num_ipus = 1;
 
-  // batches per step
+  // Batches per step
   int batches_per_step = 1;
 
-  // micro batch-size
+  // Micro batch-size
   int micro_batch_size = 1;
 
-  // random seed
+  // Random seed
   std::uint64_t random_seed = std::numeric_limits<std::uint64_t>::max();
 
-  // TODO(alleng) remove this param
-  // available memory proportion, 0.0f for disable
+  // Available memory proportion, 0.0f for disable
   float available_memory_proportion = 0.0f;
 
-  // loss scaling, currently we can't get loss scaling from
+  // Loss scaling, currently we can't get loss scaling from
   // optimizer_extract_pass, so we have to set it here
   float loss_scaling = 1.0f;
 
-  // defaultMaxWeightNorm for adam optimizer
+  // DefaultMaxWeightNorm for adam optimizer
   float max_weight_norm = 65504.0f;
 
-  // file path for dumping compiled model in onnx format
+  // File path for dumping compiled model in onnx format
   std::string onnx_dump_path;
 
   // Data type to use for tensor that stores first-order momentum optimizer
@@ -106,7 +108,7 @@ class IpuStrategy {
   // popart pattern manager
   popart::Patterns popart_patterns;
 
-  // custom ops
+  // Custom ops
   std::vector<IpuCustomOpIdentifier> custom_ops;
 
  public:
