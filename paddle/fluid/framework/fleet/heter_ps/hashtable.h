@@ -74,7 +74,7 @@ class XPUCacheArray {
   // ValType* find(const KeyType& key) { return NULL; }
   // bool insert(const KeyType& key, const ValType& val) { return true; }
 
-  int prefetch(const int dev_id, XPUStream stream = NULL) {}
+  int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
 
  private:
