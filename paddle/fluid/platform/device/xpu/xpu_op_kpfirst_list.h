@@ -97,6 +97,12 @@ XPUOpMap& get_kp_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace())})},
       {"equal", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace())})},
       {"not_equal", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace())})},
+      // reduce op
+      {"reduce_mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_min", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu_kp_kernels;
