@@ -46,8 +46,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
-#endif
 #include "paddle/fluid/distributed/store/tcp_store.h"
+#endif
 
 namespace py = pybind11;
 
