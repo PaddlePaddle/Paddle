@@ -103,17 +103,15 @@ def neg(x, out=None):
     return sub(zero, x)
 
 
-def set_value(x, y, axis, starts, ends, strides, out=None):
+def set_value(x, y, axis, starts, ends, strides, out):
+    assert x.name == out.name, 'input and output for set_value must be same tensor'
     attrs = {
         'axes': axis,
         'starts': starts,
         'ends': ends,
         'steps': strides,
-        'dtype': x.dtype
     }
     helper = LayerHelper('set_value', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type=helper.layer_type,
         inputs={'Input': x,

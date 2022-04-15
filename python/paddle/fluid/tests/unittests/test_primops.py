@@ -175,6 +175,23 @@ class TestPyPrimOps(unittest.TestCase):
         for op in topo_path(vs, grads):
             print(op)
 
+    def test_orig2prim(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('x', shape=[2, 20], dtype='float32')
+            w = paddle.static.data('w', shape=[20, 2], dtype='float32')
+            bias = paddle.static.data('bias', shape=[2], dtype='float32')
+            y = paddle.tanh(paddle.matmul(x, w) + bias)
+            print(f'-------test_orig2prim: orig-------')
+            print(x.block)
+
+            ad = Transform(x.block)
+            ad.lower()
+
+            print(f'-------test_orig2prim: prim-------')
+            print(x.block)
+
 
 if __name__ == '__main__':
     unittest.main()

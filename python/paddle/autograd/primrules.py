@@ -322,7 +322,7 @@ def slice_assign_prim2orig(op, x, y):
         axis=op.attr('axis'),
         starts=op.attr('starts'),
         ends=op.attr('ends'),
-        strides=op.attr(strides),
+        strides=op.attr('strides'),
         out=x_copy)
 
 

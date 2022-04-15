@@ -17,7 +17,7 @@ from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from .primops import fill_const, add
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
-from .primreg import op_position_inputs, op_position_output
+from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
 from collections import OrderedDict
 
@@ -157,6 +157,7 @@ class Transform(object):
 
     def lower(self, block=None, reverse=False):
         lower_fn = _prim2orig if reverse else _orig2prim
+        lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
         if block is None:
             program = default_main_program()
             assert program.num_blocks == 1, "The lower transform is designed to process only one block."
@@ -170,21 +171,24 @@ class Transform(object):
         ops_to_remove = []
         vars_to_remove = []
         for op_idx in range(len(block.ops)):
-            op = block.ops(op_idx)
-            if lookup_orig2prim(op.type()) is not None:
+            op = block.ops[op_idx]
+            if lookup_fn(op.type) is not None:
                 ops_to_remove.append(op_idx)
                 input_args = list(get_input_vars(op))
                 for i in range(len(input_args)):
-                    if input_args[i] is not None and input_args[i].name(
-                    ) in to_bind:
-                        input_args[i] = to_bind[input_args[i].name()]
+                    if input_args[i] is not None and input_args[
+                            i].name in to_bind:
+                        input_args[i] = to_bind[input_args[i].name]
+
+                print("op_type: ", op.type)
+                print("input_args: ", input_args)
                 for orig_out, new_out in zip(
-                        get_output_vars(op), lower_fn(op, input_args)):
-                    assert not (orig_out is None ^ new_out is None
-                                ), "orig_out and new_out should match."
-                    vars_to_remove.append(orig_out.name())
-                    vlt[new_out.name()] = new_out
-                    to_bind[orig_out.name()] = new_out.name()
+                        get_output_vars(op), lower_fn(op, *input_args)):
+                    assert not (orig_out is None) ^ (
+                        new_out is None), "orig_out and new_out should match."
+                    vars_to_remove.append(orig_out.name)
+                    vlt[new_out.name] = new_out
+                    to_bind[orig_out.name] = new_out.name
 
         for op_idx in reversed(ops_to_remove):
             block._remove_op(op_idx)
