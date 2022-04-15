@@ -53,7 +53,8 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
       Tensor mu_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
-      MLUCnnl::Fill(ctx, mu, mu_tensor_desc.get(), GetBasePtr(&mu_tensor));
+      MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &mu, mu_tensor_desc.get(),
+                    GetBasePtr(&mu_tensor));
 
       Tensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param);

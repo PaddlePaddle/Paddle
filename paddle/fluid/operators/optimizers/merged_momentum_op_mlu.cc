@@ -69,7 +69,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
                             "the same Tensors."));
     }
 
-    auto mu = ctx.Attr<float>("mu");
+    auto mu = static_cast<T>(ctx.Attr<float>("mu"));
     auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
@@ -114,7 +114,8 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
 
     Tensor mu_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
-    MLUCnnl::Fill(ctx, mu, mu_tensor_desc.get(), GetBasePtr(&mu_tensor));
+    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &mu, mu_tensor_desc.get(),
+                  GetBasePtr(&mu_tensor));
 
     for (size_t idx = 0; idx < n; ++idx) {
       phi::RegularizationType regularization_flag =
