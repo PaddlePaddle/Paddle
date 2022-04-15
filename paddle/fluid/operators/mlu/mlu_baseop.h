@@ -218,6 +218,9 @@ class MLUCnnlActivationDesc {
   MLUCnnlActivationDesc(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc& operator=(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof);
+  MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof,
+                        const float sliced_dim, const float selu_alpha,
+                        const float selu_lambda);
 
   const cnnlActivationDescriptor_t get() const;
   ~MLUCnnlActivationDesc();
@@ -418,7 +421,8 @@ class MLUCnnl {
                   const cnnlTensorDescriptor_t in1_desc, const void* in1,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void Fill(const ExecutionContext& ctx, float value,
+  static void Fill(const ExecutionContext& ctx,
+                   const cnnlPointerMode_t pointer_mode, const void* value_ptr,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void LRN(const ExecutionContext& ctx, const int local_size,

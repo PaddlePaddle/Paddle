@@ -18,6 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
 
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
