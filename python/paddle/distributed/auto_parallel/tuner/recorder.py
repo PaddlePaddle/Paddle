@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Notice that the following codes are modified from KerasTuner for a different purpose. 
+# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/metrics_tracking.py.
+
 import numpy as np
 
 
 class MetricRecord(object):
     """
     One record for a single metric at a given execution step.
+    The code for now is mainly based on https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
     """
 
     def __init__(self, value, step):
