@@ -423,6 +423,17 @@ std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
 
 size_t GraphShard::get_size() { return bucket.size(); }
 
+int32_t GraphTable::add_comm_edge(int64_t src_id, int64_t dst_id) {
+  size_t src_shard_id = src_id % shard_num;
+
+  if (src_shard_id >= shard_end || src_shard_id < shard_start) {
+    return -1;
+  }
+  size_t index = src_shard_id - shard_start;
+  extra_shards[index]->add_graph_node(src_id)->build_edges(false);
+  extra_shards[index]->add_neighbor(src_id, dst_id, 1.0);
+  return 0;
+}
 int32_t GraphTable::add_graph_node(std::vector<int64_t> &id_list,
                                    std::vector<bool> &is_weight_list) {
   size_t node_size = id_list.size();
