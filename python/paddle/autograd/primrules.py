@@ -99,16 +99,14 @@ def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = fill_constant(
-            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = fill_constant(
-            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = add(x, y)
     if op.attr('Scale_out'):
-        tmp = fill_constant(
+        tmp = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
         z = mul(z, tmp)
     return z
@@ -153,7 +151,7 @@ def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op, x):
-    return fill_constant(x, shape=x.shape, value=0.0)
+    return fill_const(x, shape=x.shape, value=0.0)
 
 
 @REGISTER_ORIG2PRIM('sum')
@@ -190,16 +188,14 @@ def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = fill_constant(
-            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = fill_constant(
-            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = sub(x, y)
     if op.attr('Scale_out'):
-        tmp = fill_constant(
+        tmp = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
         z = mul(z, tmp)
     return z
@@ -207,9 +203,8 @@ def elementwise_sub_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op, x):
-    scale_t = fill_constant(
-        shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
-    bias_t = fill_constant(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
+    scale_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+    bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
     else:
@@ -218,7 +213,7 @@ def scale_orig2prim(op, x):
 
 @REGISTER_ORIG2PRIM('assign')
 def assign_orig2prim(op, x):
-    zero_t = fill_constant(shape=x.shape, dtype=x.dtype, value=0.0)
+    zero_t = fill_const(shape=x.shape, dtype=x.dtype, value=0.0)
     return add(x, zero_t)
 
 

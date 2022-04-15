@@ -155,46 +155,6 @@ class Transform(object):
     # def is_dot(self, var):
     #     return self.var2dot.contain_value(var)
 
-    def lower(self, block=None, reverse=False):
-        lower_fn = _prim2orig if reverse else _orig2prim
-        lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
-        if block is None:
-            program = default_main_program()
-            assert program.num_blocks == 1, "The lower transform is designed to process only one block."
-            block = program.current_block()
-
-        vlt = {}
-        to_bind = {}
-        for var in block.desc.all_vars():
-            vlt[var.name()] = block.var(var.name())
-
-        ops_to_remove = []
-        vars_to_remove = []
-        for op_idx in range(len(block.ops)):
-            op = block.ops[op_idx]
-            if lookup_fn(op.type) is not None:
-                ops_to_remove.append(op_idx)
-                input_args = list(get_input_vars(op))
-                for i in range(len(input_args)):
-                    if input_args[i] is not None and input_args[
-                            i].name in to_bind:
-                        input_args[i] = to_bind[input_args[i].name]
-
-                print("op_type: ", op.type)
-                print("input_args: ", input_args)
-                for orig_out, new_out in zip(
-                        get_output_vars(op), lower_fn(op, *input_args)):
-                    assert not (orig_out is None) ^ (
-                        new_out is None), "orig_out and new_out should match."
-                    vars_to_remove.append(orig_out.name)
-                    vlt[new_out.name] = new_out
-                    to_bind[orig_out.name] = new_out.name
-
-        for op_idx in reversed(ops_to_remove):
-            block._remove_op(op_idx)
-        for var_name in vars_to_remove:
-            block._remove_var(var_name)
-
     def var2dot_rec(self, vars, defaults=None):
 
         if isinstance(vars, paddle.fluid.framework.Variable):
@@ -296,3 +256,51 @@ class Transform(object):
             self.erase_dots(dots_to_remove)
 
         return ys_bar, xs_bar
+
+
+def orig2prim(block=None):
+    _lower(block, reverse=False)
+
+
+def prim2orig(block=None):
+    _lower(block, reverse=True)
+
+
+def _lower(block, reverse):
+    lower_fn = _prim2orig if reverse else _orig2prim
+    lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
+    if block is None:
+        program = default_main_program()
+        assert program.num_blocks == 1, "The lower transform is designed to process only one block."
+        block = program.current_block()
+
+    vlt = {}
+    to_bind = {}
+    for var in block.desc.all_vars():
+        vlt[var.name()] = block.var(var.name())
+
+    ops_to_remove = []
+    vars_to_remove = []
+    for op_idx in range(len(block.ops)):
+        op = block.ops[op_idx]
+        if lookup_fn(op.type) is not None:
+            ops_to_remove.append(op_idx)
+            input_args = list(get_input_vars(op))
+            for i in range(len(input_args)):
+                if input_args[i] is not None and input_args[i].name in to_bind:
+                    input_args[i] = vlt[to_bind[input_args[i].name]]
+
+            print("op_type: ", op.type)
+            print("input_args: ", input_args)
+            for orig_out, new_out in zip(
+                    get_output_vars(op), lower_fn(op, *input_args)):
+                assert not (orig_out is None) ^ (
+                    new_out is None), "orig_out and new_out should match."
+                vars_to_remove.append(orig_out.name)
+                vlt[new_out.name] = new_out
+                to_bind[orig_out.name] = new_out.name
+
+    for op_idx in reversed(ops_to_remove):
+        block._remove_op(op_idx)
+    for var_name in vars_to_remove:
+        block._remove_var(var_name)
