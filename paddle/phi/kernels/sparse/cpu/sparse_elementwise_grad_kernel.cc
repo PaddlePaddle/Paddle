@@ -58,7 +58,7 @@ void ElementWiseSubtractCsrGradKernel(const Context& dev_ctx,
 
   if (dy) {
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-    phi::InverseKernel<T, Context>(
+    phi::OppositeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
   }
 }
@@ -97,7 +97,7 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
   if (dy) {
     //    -dout * out / y
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-    phi::InverseKernel<T, Context>(
+    phi::OppositeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
     auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, *dy, out);
     sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, dy);
