@@ -34,7 +34,7 @@ void AutoTuneStatus::DisableAutoTune() {
 
 void AutoTuneStatus::Update() {
   current_steps_id_ += 1;
-  if (!FLAGS_use_autotune) {
+  if (0) {
     return;
   }
 
