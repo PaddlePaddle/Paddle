@@ -291,6 +291,36 @@ class Transform(object):
 
         return ys_bar, xs_bar
 
+def _gradients(ys, xs, ys_bar=None):
+    """ A drop-in replacement of paddle.gradients for computing
+    the gradients of `xs` against `ys` using primitive ops based
+    AD rules.
+    
+    Args:
+        ys: the target tensor or tensors
+        xs: the input tensor or tensors
+        ys_bar: the optional gradient tensors of `ys`
+    
+    Returns:
+        xs_bar: a list gradients of input `xs`
+    """
+
+    ys, xs = to_tensors(ys), to_tensors(xs)
+    block = ys[0].block
+
+    # TODO(Tongxin) without any prior knowledge about whether the program
+    # is completely lowered to primitive ops, it's mandatory to run the lowering
+    # pass once and again. This is obviously inefficient and needs to be 
+    # optimized.
+    orig2prim(block)
+
+    ad = Transform(block)
+    xs_dot, ys_dot = ad.linearize(xs, ys)
+    ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
+
+    prim2orig(block)
+    return xs_bar
+
 
 def orig2prim(block=None):
     _lower(block, reverse=False)
