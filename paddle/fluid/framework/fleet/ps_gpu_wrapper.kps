@@ -52,7 +52,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
     __local__ float local_dest_vals[read_len * hidden];
     __local__ uint64_t local_slot_keys[read_len];
 
-    // copy read_len(length) of slots' val to LM
+    // copy read_len (length) of slots' val to LM
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
       GM2LM(src + dest_len + k, local_slot_vals,
