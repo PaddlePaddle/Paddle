@@ -273,7 +273,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
+      auto& pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_cpu_kernel_key);
       if (pt_cpu_kernel.IsValid()) {
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
@@ -509,7 +509,6 @@ static void PreparedOpRunPtImpl(
 #endif
   }
 
-  // TODO(chenweihang): add debug flags later
   if (framework::IsComplexType(kernel_type.data_type_)) {
     HandleComplexGradToRealGrad<VarType>(outs);
   }
