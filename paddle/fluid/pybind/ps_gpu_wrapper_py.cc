@@ -63,6 +63,27 @@ void BindPSGPUWrapper(py::module* m) {
       .def("finalize", &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
+#ifdef PADDLE_WITH_PSLIB
+void BindAfsWrapper(py::module* m) {
+  py::class_<framework::AfsWrapper, std::shared_ptr<framework::AfsWrapper>>(
+      *m, "AfsWrapper")
+      .def(py::init([]() { return std::make_shared<framework::AfsWrapper>(); }))
+      .def("init", &framework::AfsWrapper::init,
+           py::call_guard<py::gil_scoped_release>())
+      .def("list", &framework::AfsWrapper::list,
+           py::call_guard<py::gil_scoped_release>())
+      .def("mkdir", &framework::AfsWrapper::mkdir,
+           py::call_guard<py::gil_scoped_release>())
+      .def("exist", &framework::AfsWrapper::exist,
+           py::call_guard<py::gil_scoped_release>())
+      .def("download", &framework::AfsWrapper::download,
+           py::call_guard<py::gil_scoped_release>())
+      .def("upload", &framework::AfsWrapper::upload,
+           py::call_guard<py::gil_scoped_release>())
+      .def("remove", &framework::AfsWrapper::remove,
+           py::call_guard<py::gil_scoped_release>());
+}
+#endif
 #endif
 }  // end namespace pybind
 }  // end namespace paddle

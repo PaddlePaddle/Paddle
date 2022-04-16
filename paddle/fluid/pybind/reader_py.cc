@@ -32,10 +32,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "pybind11/stl.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    reader_queue_speed_test_mode, false,
-    "If set true, the queue.pop will only get data from queue but not "
-    "remove the data from queue for speed testing");
+DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
