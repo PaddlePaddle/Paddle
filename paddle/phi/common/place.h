@@ -256,7 +256,7 @@ enum class PlaceType {
   kGPU = static_cast<int>(phi::AllocationType::GPU),
 };
 
-bool operator==(const Place& place, PlaceType place_type);
-bool operator==(PlaceType place_type, const Place& place);
+PADDLE_API bool operator==(const Place& place, PlaceType place_type);
+PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
 }  // namespace paddle
