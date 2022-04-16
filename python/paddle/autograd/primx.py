@@ -24,36 +24,67 @@ from collections import OrderedDict
 
 
 def topo_path(xs, ys, block=None):
-    """ Returns the ops in topological on the paths from input `xs` to 
-    output `ys`. """
+    """ Returns the list of ops on the path from `xs` to `ys` in topological 
+    order.
+    
+    TODO(Tongxin): supporting control flow and nested blocks.
+
+    Args:
+
+        xs: a list|tuple of vars as source
+        ys: a list|tuple of vars as sink
+        block: the program block containing the path, optional
+
+    Returns:
+        path: a list of ops
+    """
 
     if block is None:
         block = default_main_program().current_block()
     path = []
-    def_vars = list(xs)
+    reached_vars = list(xs)
+    sink_vars = list(ys)
     sink_ops = {}
+
+    # block.ops are supposedly in topological order as of now
     for op in block.ops:
         if len(sink_ops) == len(ys):
             break
         ins = set(get_input_vars(op))
-        if any(ins.intersection(def_vars)):
+        if any(ins.intersection(reached_vars)):
             path.append(op)
             outs = set(get_output_vars(op))
             for out in outs:
-                if any(out is y for y in ys):
+                if any(out is y for y in sink_vars):
                     # Found an output op
                     assert not any(out is y for y in sink_ops)
                     sink_ops[id(out)] = op
+                    # TODO(Tongxin): handling cases where sink vars
+                    # have dependencies themselves 
                 else:
-                    def_vars.append(out)
-    if len(sink_ops) != len(ys):
-        not_reachable = (var for var in ys if id(var) not in sink_ops)
-        raise f"Output vars: {' '.join(not_reachable)} are not reachable from inputs."
+                    reached_vars.append(out)
+
+    if len(sink_ops) != len(sink_vars):
+        for var in sink_vars:
+            assert id(var) in sink_ops, (
+                f"{var} is not reachable from input vars.")
+
     return path
 
 
-def vars_on_path(xs, ys, block=None):
+def output_vars_on_path(xs, ys, block=None):
+    """ Returns the output variables of all the ops on the path from `xs`
+    to `ys`.
+    
+    Args:
 
+        xs: a list|tuple of vars as source
+        ys: a list|tuple of vars as sink
+        block: the program block containing the path, optional
+
+    Returns:
+        vars: the output vars
+    """
     if block is None:
         block = default_main_program().current_block()
 
@@ -73,6 +104,11 @@ def vars_on_path(xs, ys, block=None):
 
 
 class VarMap(object):
+    """ A general map data structure for linking variables to variables.
+    
+    An example is linking variables to their gradients.
+    """
+
     __slots__ = ['name', 'varset', 'tab']
 
     def __init__(self, name, varset):
@@ -85,8 +121,10 @@ class VarMap(object):
 
     def add_rec(self, key_vars, value_vars):
         if isinstance(key_vars, paddle.fluid.framework.Variable):
+            assert isinstance(value_vars, paddle.fluid.framework.Variable)
             self.tab[id(key_vars)] = id(value_vars)
         else:
+            assert len(key_vars) == len(value_vars)
             for key_var, value_var in zip(key_vars, value_vars):
                 self.add_rec(key_var, value_var)
 
@@ -153,9 +191,6 @@ class Transform(object):
         for var in vars_to_erase:
             del var.block.vars[var.name]
 
-    # def is_dot(self, var):
-    #     return self.var2dot.contain_value(var)
-
     def var2dot_rec(self, vars, defaults=None):
 
         if isinstance(vars, paddle.fluid.framework.Variable):
@@ -218,7 +253,7 @@ class Transform(object):
             self.dot2bar.add(dot, bar)
 
         # find all the relevant forward gradients
-        dotvars = vars_on_path(xs_dot, ys_dot)
+        dotvars = output_vars_on_path(xs_dot, ys_dot)
 
         is_dot = lambda v: id(v) in dotvars
 
@@ -257,6 +292,36 @@ class Transform(object):
             self.erase_dots(dots_to_remove)
 
         return ys_bar, xs_bar
+
+def _gradients(ys, xs, ys_bar=None):
+    """ A drop-in replacement of paddle.gradients for computing
+    the gradients of `xs` against `ys` using primitive ops based
+    AD rules.
+    
+    Args:
+        ys: the target tensor or tensors
+        xs: the input tensor or tensors
+        ys_bar: the optional gradient tensors of `ys`
+    
+    Returns:
+        xs_bar: a list gradients of input `xs`
+    """
+
+    ys, xs = to_tensors(ys), to_tensors(xs)
+    block = ys[0].block
+
+    # TODO(Tongxin) without any prior knowledge about whether the program
+    # is completely lowered to primitive ops, it's mandatory to run the lowering
+    # pass once and again. This is obviously inefficient and needs to be 
+    # optimized.
+    orig2prim(block)
+
+    ad = Transform(block)
+    xs_dot, ys_dot = ad.linearize(xs, ys)
+    ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
+
+    prim2orig(block)
+    return xs_bar
 
 
 def orig2prim(block=None, update_var_list=None):
@@ -318,7 +383,8 @@ def _lower(block, reverse, update_var_list):
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)
     for var_name in vars_to_remove:
-        block._remove_var(var_name)
+        # block._remove_var(var_name)
+        del block.vars[var_name]
 
     if update_var_list is not None:
         for i in range(len(update_var_list)):
