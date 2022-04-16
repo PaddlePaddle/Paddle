@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+// this file is inspired by:
+// https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_masked_softmax.h
 /* coding=utf-8
  * Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -26,8 +28,6 @@ limitations under the License. */
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// this file is inspired by:
-// https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_masked_softmax.h
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
