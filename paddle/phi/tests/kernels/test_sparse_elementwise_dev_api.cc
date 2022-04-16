@@ -67,19 +67,6 @@ void TestElementWiseDivideCsr(const Context& dev_ctx_cpu,
   const DenseTensor denseOut = sparse::SparseCsrToDense<T>(dev_ctx_cpu, out);
   auto expectResult = Divide<T>(dev_ctx_cpu, denseX, denseY);
 
-/*
-template <typename T, typename Context>
-void TestElementWiseSubtractCsr(const Context& dev_ctx_cpu,
-                                const SparseCsrTensor& x,
-                                const SparseCsrTensor& y,
-                                const DDim& dense_dims) {
-  auto out = sparse::ElementWiseSubtractCsr<T>(dev_ctx_cpu, x, y);
-  const DenseTensor denseX = sparse::SparseCsrToDense<T>(dev_ctx_cpu, x);
-  const DenseTensor denseY = sparse::SparseCsrToDense<T>(dev_ctx_cpu, y);
-  const DenseTensor denseOut = sparse::SparseCsrToDense<T>(dev_ctx_cpu, out);
-
-  auto expectResult = Subtract<T>(dev_ctx_cpu, denseX, denseY);
-
   for (int j = 0; j < denseOut.numel(); ++j) {
     auto actualResultRow = denseOut.template data<T>()[j];
     auto expectResultRow = expectResult.template data<T>()[j];
