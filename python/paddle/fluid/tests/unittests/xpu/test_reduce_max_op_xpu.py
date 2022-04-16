@@ -65,7 +65,7 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
-    class XPUTestReduceSumCase1(XPUTestReduceMaxBase):
+    class XPUTestReduceMaxCase1(XPUTestReduceMaxBase):
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0, )

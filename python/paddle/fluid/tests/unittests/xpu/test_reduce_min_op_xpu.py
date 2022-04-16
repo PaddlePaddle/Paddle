@@ -65,7 +65,7 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
-    class XPUTestReduceSumCase1(XPUTestReduceMinBase):
+    class XPUTestReduceMinCase1(XPUTestReduceMinBase):
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0, )
