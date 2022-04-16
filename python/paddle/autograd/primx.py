@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import framework as framework
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
+from paddle.fluid.framework import Operator
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
@@ -322,12 +324,12 @@ def _gradients(ys, xs, ys_bar=None):
     return xs_bar
 
 
-def orig2prim(block=None):
-    _lower(block, reverse=False)
+def orig2prim(block=None, update_var_list=None):
+    _lower(block, reverse=False, update_var_list=update_var_list)
 
 
-def prim2orig(block=None):
-    _lower(block, reverse=True)
+def prim2orig(block=None, update_var_list=None):
+    _lower(block, reverse=True, update_var_list=update_var_list)
 
 
 def to_tensors(xs):
@@ -337,7 +339,7 @@ def to_tensors(xs):
         return [xs]
 
 
-def _lower(block, reverse):
+def _lower(block, reverse, update_var_list):
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
     if block is None:
@@ -354,15 +356,13 @@ def _lower(block, reverse):
     vars_to_remove = []
     for op_idx in range(len(block.ops)):
         op = block.ops[op_idx]
+        ops_to_remove.append(op_idx)
         if lookup_fn(op.type) is not None:
-            ops_to_remove.append(op_idx)
             input_args = list(get_input_vars(op))
             for i in range(len(input_args)):
                 if input_args[i] is not None and input_args[i].name in to_bind:
                     input_args[i] = vlt[to_bind[input_args[i].name]]
 
-            print("op_type: ", op.type)
-            print("input_args: ", input_args)
             for orig_out, new_out in zip(
                     get_output_vars(op), to_tensors(lower_fn(op, *input_args))):
                 assert not (orig_out is None) ^ (
@@ -370,8 +370,22 @@ def _lower(block, reverse):
                 vars_to_remove.append(orig_out.name)
                 vlt[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
+        else:
+            op_desc = op.desc
+            for name in op_desc.input_arg_names():
+                if name in to_bind:
+                    op_desc._rename_input(name, to_bind[name])
+            new_op_desc = block.desc.append_op()
+            new_op_desc.copy_from(op_desc)
+            new_op = Operator(block=block, desc=new_op_desc)
+            block.ops.append(op)
 
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)
     for var_name in vars_to_remove:
         block._remove_var(var_name)
+
+    if update_var_list is not None:
+        for i in range(len(update_var_list)):
+            if update_var_list[i].name in to_bind:
+                update_var_list[i] = vlt[to_bind[update_var_list[i].name]]

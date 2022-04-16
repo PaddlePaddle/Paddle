@@ -28,8 +28,7 @@ class Registry(object):
         self.tab[name] = value
 
     def lookup(self, name):
-        assert name in self.tab, f'No registry entry is found with name: {name}'
-        return self.tab[name]
+        return self.tab[name] if name in self.tab else None
 
 
 _primop_fn = Registry('primop_fn')

@@ -217,6 +217,30 @@ class TestPyPrimOps(unittest.TestCase):
             print(f'-------test_orig2prim: orig-------')
             print(x.block)
 
+    # def test_minimize(self):
+    #     place = paddle.CUDAPlace(0)
+    #     exe = paddle.static.Executor(place)
+    #     main = paddle.static.Program()
+    #     startup = paddle.static.Program()
+    #     with paddle.static.program_guard(main, startup):
+    #         x = paddle.static.data('x', shape=[2, 20], dtype='float32')
+    #         x.stop_gradient = False
+    #         w = paddle.static.create_parameter(
+    #             shape=[20, 2], dtype='float32', is_bias=False)
+    #         bias = paddle.static.create_parameter(
+    #             shape=[2], dtype='float32', is_bias=True)
+    #         y = paddle.tanh(paddle.matmul(x, w) + bias)
+    #         loss = paddle.sum(y)
+    #         opt = AdamOptimizer(0.01)
+    #         opt.minimize(loss)
+    #         # prim2orig(x.block, update_var_list=[loss])
+
+    #         # print(f'-------test_minimize: orig-------')
+    #         # print(x.block)
+    #     # exe.run(startup)
+    #     # for i in range(10):
+    #     #     y_d = exe.run(main, feed = {'x': np.rand((2, 20))}, fetch_list=[y.name])
+
 
 if __name__ == '__main__':
     unittest.main()
