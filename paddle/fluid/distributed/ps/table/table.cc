@@ -31,10 +31,6 @@ namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
-#ifdef PADDLE_WITH_HETERPS
-REGISTER_PSCORE_CLASS(GraphSampler, CompleteGraphSampler);
-REGISTER_PSCORE_CLASS(GraphSampler, BasicBfsGraphSampler);
-#endif
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
 REGISTER_PSCORE_CLASS(Table, TensorTable);
 REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
