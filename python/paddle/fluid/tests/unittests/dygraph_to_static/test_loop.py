@@ -121,6 +121,13 @@ def for_loop_dyfunc_not_support(max_len):
     return ret
 
 
+def for_break_single_return(max_len):
+    for i in range(3):
+        if i == 2:
+            break
+    return i
+
+
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
 
@@ -297,7 +304,10 @@ class TestTransformWhileLoop(unittest.TestCase):
                 ret = declarative(self.dyfunc)(tensor_x)
             else:
                 ret = self.dyfunc(tensor_x)
-            return ret.numpy()
+            if hasattr(ret, "numpy"):
+                return ret.numpy()
+            else:
+                return ret
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
@@ -318,6 +328,11 @@ class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
 class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_dyfunc_with_none
+
+
+class TestForBreakSingleReturn(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_break_single_return
 
 
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
@@ -406,4 +421,5 @@ class TestErrorInForLoop(TestTransformForLoop):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

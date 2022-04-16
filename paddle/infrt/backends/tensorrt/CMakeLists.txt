@@ -1,3 +1,7 @@
-cc_library(infrt_trt SRCS trt_engine.cc DEPS glog phi_dynload_cuda phi)
+add_subdirectory(plugin)
 
-cc_test_tiny(test_infrt_trt SRCS test_trt_engine.cc DEPS infrt_trt phi_dynload_cuda tensorrt_converter)
+core_gather_headers()
+
+gather_srcs(infrt_src SRCS trt_engine.cc)
+
+cc_test_tiny(test_infrt_trt SRCS test_trt_engine.cc DEPS infrt phi_dynload_cuda tensorrt_converter)

@@ -24,6 +24,7 @@ namespace paddle {
 namespace distributed {
 
 struct PullSparseValue {
+  PullSparseValue() {}
   explicit PullSparseValue(int numel, int dim)
       : numel_(numel),
         dim_(dim),

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/strided_slice_op.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/fluid/operators/slice_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -112,16 +112,16 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
 
     // out dims calculation
     std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
-    StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                        decrease_axis, out_dims_vector.data(), axes.size(),
-                        false);
+    phi::funcs::StridedSliceOutDims(starts, ends, strides, axes, infer_flags,
+                                    in_dims, decrease_axis,
+                                    out_dims_vector.data(), axes.size(), false);
     framework::DDim out_dims(phi::make_ddim(out_dims_vector));
 
     // check whether need to reverse (false: stride > 0; true: stride < 0)
     std::vector<int> reverse_vector(starts.size(), 0);
-    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), in_dims, infer_flags,
-                        decrease_axis, starts.size());
+    phi::funcs::StridedSliceFunctor(starts.data(), ends.data(), strides.data(),
+                                    axes.data(), reverse_vector.data(), in_dims,
+                                    infer_flags, decrease_axis, starts.size());
 
     // construct the starts_indices, ends_indices and strides_indices tensor for
     // calling StridedSlice op
@@ -317,14 +317,15 @@ class StridedSliceGradNPUKernel : public framework::OpKernel<T> {
     }
 
     std::vector<int64_t> out_dims_vector(input_dims.size(), -1);
-    StridedSliceOutDims(starts, ends, strides, axes, infer_flags, input_dims,
-                        decrease_axis, out_dims_vector.data(), axes.size(),
-                        false);
+    phi::funcs::StridedSliceOutDims(starts, ends, strides, axes, infer_flags,
+                                    input_dims, decrease_axis,
+                                    out_dims_vector.data(), axes.size(), false);
 
     std::vector<int> reverse_vector(starts.size(), 0);
-    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), input_dims, infer_flags,
-                        decrease_axis, starts.size());
+    phi::funcs::StridedSliceFunctor(starts.data(), ends.data(), strides.data(),
+                                    axes.data(), reverse_vector.data(),
+                                    input_dims, infer_flags, decrease_axis,
+                                    starts.size());
 
     std::vector<int64_t> starts_indices_vector(D, 0);
     std::vector<int64_t> ends_indices_vector(out_dims_vector.begin(),

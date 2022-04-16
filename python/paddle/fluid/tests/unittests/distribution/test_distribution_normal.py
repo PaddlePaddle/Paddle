@@ -454,3 +454,7 @@ class NormalTest10(NormalTest):
         with fluid.program_guard(self.test_program):
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
+
+
+if __name__ == '__main__':
+    unittest.main()

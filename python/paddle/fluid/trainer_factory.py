@@ -23,7 +23,7 @@ local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, PSGPUTrainer, HeterPipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT, HeterSection
+from .device_worker import Hogwild, DownpourSGD, DownpourLite, Section, DownpourSGDOPT, HeterSection
 from .framework import Variable
 from multiprocessing import Process, Manager
 

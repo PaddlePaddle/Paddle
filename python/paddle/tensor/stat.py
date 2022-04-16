@@ -16,8 +16,9 @@
 
 import numpy as np
 from ..static import Variable
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -87,7 +88,11 @@ def mean(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_mean(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                   'reduce_all', reduce_all)
 
@@ -337,13 +342,14 @@ def median(x, axis=None, keepdim=False, name=None):
     return out_tensor
 
 
-def quantile(x, q, axis=None, keepdim=False):
+def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     """
     Compute the quantile of the input along the specified axis.
 
     Args:
+    Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64.
-        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list, 
+        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
             each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -355,46 +361,37 @@ def quantile(x, q, axis=None, keepdim=False):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        ignore_nan: (bool, optional): Whether to ignore NaN of input Tensor.
+            If ``ignore_nan`` is True, it will calculate nanquantile.
+            Otherwise it will calculate quantile. Default is False.
 
     Returns:
-        Tensor, results of quantile along ``axis`` of ``x``. If data type of ``x`` is float64, data type of results will be float64, otherwise data type will be float32.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.randn((2,3))
-            #[[-1.28740597,  0.49533170, -1.00698614],
-            # [-1.11656201, -1.01010525, -2.23457789]])
-
-            y1 = paddle.quantile(x, q=0.5, axis=[0, 1])
-            # y1 = -1.06333363
-
-            y2 = paddle.quantile(x, q=0.5, axis=1)
-            # y2 = [-1.00698614, -1.11656201]
-
-            y3 = paddle.quantile(x, q=[0.3, 0.5], axis=1)
-            # y3 =[[-1.11915410, -1.56376839],
-            #      [-1.00698614, -1.11656201]]
-
-            y4 = paddle.quantile(x, q=0.8, axis=1, keepdim=True)
-            # y4 = [[-0.10559537],
-            #       [-1.05268800]])
+        Tensor, results of quantile along ``axis`` of ``x``.
+        In order to obtain higher precision, data type of results will be float64.
     """
+    # Validate x
     if not isinstance(x, Variable):
         raise TypeError("input x should be a Tensor.")
+
+    # Validate q
+    if isinstance(q, (int, float)):
+        q = [q]
+    elif isinstance(q, (list, tuple)):
+        if len(q) <= 0:
+            raise ValueError("q should not be empty")
+    else:
+        raise TypeError("Type of q should be int, float, list or tuple.")
+
+    # Validate axis
     dims = len(x.shape)
-    out_shape = x.shape
+    out_shape = list(x.shape)
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
         out_shape = [1] * dims
     else:
         if isinstance(axis, list):
-            if (len(axis) <= 0):
+            if len(axis) <= 0:
                 raise ValueError("axis should not be empty")
             axis_src, axis_dst = [], []
             for axis_single in axis:
@@ -419,55 +416,177 @@ def quantile(x, q, axis=None, keepdim=False):
             if axis < 0:
                 axis += dims
             out_shape[axis] = 1
+
+    mask = x.isnan()
+    valid_counts = mask.logical_not().sum(axis=axis,
+                                          keepdim=True,
+                                          dtype='float64')
+
     indices = []
-    if isinstance(q, (int, float)):
-        if q < 0 or q > 1:
+
+    for q_num in q:
+        if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        indices.append(q * (x.shape[axis] - 1))
-    elif isinstance(q, (list, tuple)):
-        if len(q) <= 0:
-            raise ValueError("q should not be empty")
-        for q_num in q:
-            if q_num < 0 or q_num > 1:
-                raise ValueError("q should be in range [0, 1]")
-            indices.append(q_num * (x.shape[axis] - 1))
-    else:
-        raise TypeError("Type of q should be int, float, list or tuple.")
-    indices = paddle.to_tensor(indices).astype(paddle.float32)
+        if paddle.in_dynamic_mode():
+            q_num = paddle.to_tensor(q_num, dtype='float64')
+        if ignore_nan:
+            indices.append(q_num * (valid_counts - 1))
+        else:
+            # TODO(Asthestarsfalll): Use paddle.index_fill instead of where
+            index = q_num * (valid_counts - 1)
+            last_index = x.shape[axis] - 1
+            nums = paddle.full_like(index, fill_value=last_index)
+            index = paddle.where(mask.any(axis=axis, keepdim=True), nums, index)
+            indices.append(index)
+
     sorted_tensor = paddle.sort(x, axis)
-    indices_below = paddle.floor(indices).astype(paddle.int32)
-    indices_upper = paddle.ceil(indices).astype(paddle.int32)
+
     outputs = []
 
-    def expand_dim(indices, sorted_tensor_shape, axis):
-        assert axis < len(list(sorted_tensor_shape))
-        expanded_shape = [1] * len(list(sorted_tensor_shape))
-        expanded_shape[axis] = len(indices)
-        expanded_shape = tuple(expanded_shape)
-        indices = indices.reshape(expanded_shape)
-        return indices
-
     # TODO(chenjianye): replace the for-loop to directly take elements.
-    for i in range(len(indices)):
-        if (indices_upper[i] != indices_below[i]):
-            tensor_below = paddle.take_along_axis(
-                sorted_tensor,
-                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
-            tensor_upper = paddle.take_along_axis(
-                sorted_tensor,
-                expand_dim(indices_upper[i], sorted_tensor.shape, axis), axis)
-            weights = (indices[i] - indices_below[i]).astype(x.dtype)
-            out = paddle.lerp(tensor_below, tensor_upper, weights)
-        else:
-            out = paddle.take_along_axis(
-                sorted_tensor,
-                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
+    for index in indices:
+        indices_below = paddle.floor(index).astype(paddle.int32)
+        indices_upper = paddle.ceil(index).astype(paddle.int32)
+        tensor_upper = paddle.take_along_axis(
+            sorted_tensor, indices_upper, axis=axis)
+        tensor_below = paddle.take_along_axis(
+            sorted_tensor, indices_below, axis=axis)
+        weights = (index - indices_below.astype('float64'))
+        out = paddle.lerp(
+            tensor_below.astype('float64'),
+            tensor_upper.astype('float64'), weights)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:
             out = out.reshape(out_shape)
         outputs.append(out)
-    if isinstance(q, (list, tuple)):
-        return paddle.stack(outputs, 0)
+
+    if len(q) > 1:
+        outputs = paddle.stack(outputs, 0)
     else:
-        return outputs[0]
+        outputs = outputs[0]
+
+    return outputs
+
+
+def quantile(x, q, axis=None, keepdim=False):
+    """
+    Compute the quantile of the input along the specified axis.
+    If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
+            each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of quantile along ``axis`` of ``x``.
+        In order to obtain higher precision, data type of results will be float64.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = np.arange(0, 8, dtype=np.float32).reshape(4, 2)
+            # [[0 1]
+            #  [2 3]
+            #  [4 5]
+            #  [6 7]]
+            y = paddle.to_tensor(x)
+            y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
+            # 3.5
+
+            y2 = paddle.quantile(y, q=0.5, axis=1)
+            # [0.5 2.5 4.5 6.5]
+
+            y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
+            # [[1.8 2.8]
+            #  [3.  4. ]]
+
+            x[0][0] = np.nan
+            y = paddle.to_tensor(x)
+            y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
+            # [[nan]
+            #  [2.8]
+            #  [4.8]
+            #  [6.8]]
+
+    """
+    return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
+
+
+def nanquantile(x, q, axis=None, keepdim=False):
+    """
+    Compute the quantile of the input as if NaN values in input did not exist.
+    If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be float32, float64.
+        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
+            each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of quantile along ``axis`` of ``x``.
+        In order to obtain higher precision, data type of results will be float64.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = np.array(
+                [[0, 1, 2, 3, 4],
+                 [5, 6, 7, 8, 9]],
+                dtype=np.float32
+            )
+            x[0][0] = np.nan
+
+            x = paddle.to_tensor(x)
+            y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
+            # 5.0
+
+            y2 = paddle.nanquantile(x, q=0.5, axis=1)
+            # [2.5 7. ]
+
+            y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
+            # [[5.  2.5 3.5 4.5 5.5]
+            #  [5.  3.5 4.5 5.5 6.5]
+
+            y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
+            # [[3.4]
+            #  [8.2]]
+
+            nan = paddle.full(shape=[2, 3], fill_value=np.nan)
+            y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
+            # [[nan]
+            #  [nan]]
+
+    """
+    return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)

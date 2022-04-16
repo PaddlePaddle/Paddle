@@ -349,6 +349,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_nearest_interp_v2_op',
     'test_network_with_dtype',
     'test_nll_loss',
+    'test_nms_op',
     'test_nn_functional_embedding_static',
     'test_nn_functional_hot_op',
     'test_nonzero_api',

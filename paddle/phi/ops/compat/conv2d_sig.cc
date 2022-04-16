@@ -46,7 +46,7 @@ KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
+                         {"Input", "Filter", GradVarName("Output")},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
@@ -62,7 +62,7 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature Conv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_grad_grad",
-                         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+                         {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
@@ -72,7 +72,7 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                           "use_addto",
                           "workspace_size_MB",
                           "exhaustive_search"},
-                         {"DDOutput", "DInput", "DFilter"});
+                         {"DInput", "DFilter", "DDOutput"});
 }
 
 }  // namespace phi

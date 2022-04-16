@@ -223,9 +223,12 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const Target& target, std::int64_t compiled_num, void* stream) const {
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
-  ProgramPass::Apply(&frontend_program, target, {"Decomposer"});
   auto fetch_ids = symbol.GetFetchIds();
+  ProgramPass::Apply(&frontend_program, fetch_ids, target, {"Decomposer"});
   ::cinn::frontend::ApplyPass(&frontend_program, fetch_ids, "RemoveIdentity");
+  ::cinn::frontend::ApplyPass(&frontend_program, fetch_ids, "TransposeFolding");
+  ProgramPass::Apply(&frontend_program, fetch_ids, target, {"GemmRewriter"});
+
   auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
       frontend_program, target);
   VLOG(1) << "-- The " << compiled_num << "-th compilation ("

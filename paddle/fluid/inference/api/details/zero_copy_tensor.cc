@@ -23,7 +23,8 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/allocator.h"
 #ifdef PADDLE_WITH_ONNXRUNTIME
-#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
 
 namespace paddle_infer {
@@ -578,7 +579,8 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
-    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+    if (out_layout == paddle::framework::DataLayout::kNHWC ||
+        out_layout == paddle::framework::DataLayout::kNDHWC) {
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;

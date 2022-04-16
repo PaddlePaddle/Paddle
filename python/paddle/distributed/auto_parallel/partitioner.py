@@ -329,13 +329,7 @@ def _partition_parameter(dist_context, src_var, dst_block, dst_varname,
         belong_to_optimizer=src_var.belong_to_optimizer,
         **copied_kwargs)
 
-    # set dist attr uid
-    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
-    # param.desc.set_distributed_attr_uid(distributed_attr_uid)
-    dist_attr = copy.deepcopy(
-        dist_context.get_tensor_dist_attr_for_program(src_var))
-    assert dist_attr is not None
-    dist_context.set_tensor_dist_attr_for_program(param, dist_attr)
+    return param
 
 
 def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
@@ -352,13 +346,7 @@ def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer)
 
-    # set dist attr uid
-    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
-    # var.desc.set_distributed_attr_uid(distributed_attr_uid)
-    dist_attr = copy.deepcopy(
-        dist_context.get_tensor_dist_attr_for_program(src_var))
-    assert dist_attr is not None
-    dist_context.set_tensor_dist_attr_for_program(var, dist_attr)
+    return var
 
 
 def _partition_var(dist_context, src_block, dst_block, src_varname,
@@ -369,10 +357,11 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
     src_var = src_block.var(src_varname)
 
     if src_var.type in __not_shape_var_type__:
-        dst_block.create_var(
+        persist = getattr(src_var, 'persistable', False)
+        new_var = dst_block.create_var(
             type=src_var.type,
             name=dst_varname,
-            persistable=True,
+            persistable=persist,
             stop_gradient=True)
         target_shape = None
     else:
@@ -380,11 +369,17 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
         target_shape = _get_dist_shape(src_var, dist_attr)
 
         if isinstance(src_var, Parameter):
-            _partition_parameter(dist_context, src_var, dst_block, dst_varname,
-                                 target_shape)
+            new_var = _partition_parameter(dist_context, src_var, dst_block,
+                                           dst_varname, target_shape)
         else:
-            _partition_intermediate_var(dist_context, src_var, dst_block,
-                                        dst_varname, target_shape)
+            new_var = _partition_intermediate_var(
+                dist_context, src_var, dst_block, dst_varname, target_shape)
+
+    dist_attr = copy.deepcopy(
+        dist_context.get_tensor_dist_attr_for_program(src_var))
+    assert dist_attr is not None
+    dist_context.set_tensor_dist_attr_for_program(new_var, dist_attr)
+
     return target_shape
 
 

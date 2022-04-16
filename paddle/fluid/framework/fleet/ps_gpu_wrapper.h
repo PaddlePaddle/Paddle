@@ -43,7 +43,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#endif
+#ifdef PADDLE_WITH_PSLIB
+#include "afs_api.h"
 #endif
 
 namespace paddle {
@@ -52,6 +55,31 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
+#ifdef PADDLE_WITH_PSLIB
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  virtual ~AfsWrapper() {}
+  void init(const std::string& fs_name, const std::string& fs_user,
+            const std::string& pass_wd, const std::string& conf);
+  int remove(const std::string& path);
+  int mkdir(const std::string& path);
+  std::vector<std::string> list(const std::string& path);
+
+  int exist(const std::string& path);
+  int upload(const std::string& local_file, const std::string& afs_file);
+
+  int download(const std::string& local_file, const std::string& afs_file);
+
+  int touchz(const std::string& path);
+  std::string cat(const std::string& path);
+  int mv(const std::string& old_path, const std::string& dest_path);
+
+ private:
+  paddle::ps::AfsApiWrapper afs_handler_;
+};
+#endif
+
 class PSGPUWrapper {
  public:
   virtual ~PSGPUWrapper() { delete HeterPs_; }
@@ -59,6 +87,10 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -118,7 +150,7 @@ class PSGPUWrapper {
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
-      keys_tensor.resize(resource_->total_gpu());
+      keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -174,10 +206,8 @@ class PSGPUWrapper {
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
 
-      table_id_ = 1;
-#ifdef PADDLE_WITH_PSLIB
       table_id_ = 0;
-#endif
+
       // start build cpu&gpu ps thread
       start_build_thread();
     }
@@ -286,8 +316,8 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map[index_dim_vec_[i]] = i;
     }
-    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
-    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
@@ -303,9 +333,24 @@ class PSGPUWrapper {
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
+  int UseAfsApi() { return use_afs_api_; }
+
+#ifdef PADDLE_WITH_PSLIB
+  std::shared_ptr<paddle::ps::AfsReader> OpenReader(
+      const std::string& filename) {
+    return afs_handler_.open_reader(filename);
+  }
+
+  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
+                  const std::string& pass_wd, const std::string& conf);
+#endif
+
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+#ifdef PADDLE_WITH_PSLIB
+  paddle::ps::AfsApiWrapper afs_handler_;
+#endif
   std::unordered_map<
       uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
@@ -341,6 +386,7 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  int use_afs_api_ = 0;
 
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
@@ -361,6 +407,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:
   static bool is_initialized_;

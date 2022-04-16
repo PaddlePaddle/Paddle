@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -478,7 +478,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         # after changed by hook: 8.0
 
         # TODO(wuweilong): enable this case when DoubleGrad in eager mode is ready
-        if core._in_eager_mode():
+        if fluid.in_dygraph_mode():
             pass
         else:
             z.backward()

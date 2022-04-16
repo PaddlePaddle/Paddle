@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
 from paddle import _C_ops
 import paddle
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -252,7 +253,7 @@ class Momentum(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         '''
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             return
         '''
         assert isinstance(block, framework.Block)
@@ -313,7 +314,7 @@ class Momentum(Optimizer):
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
 
-        if framework.in_dygraph_mode():
+        if _in_legacy_dygraph():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             _, _, _ = _C_ops.momentum(
@@ -323,8 +324,15 @@ class Momentum(Optimizer):
                 'regularization_method', regularization_method,
                 'regularization_coeff', regularization_coeff, 'multi_precision',
                 find_master)
-
             return None
+        if in_dygraph_mode():
+            if isinstance(param_and_grad, dict):
+                self._update_regularization(param_and_grad['weight_decay'])
+            return _C_ops.final_state_momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, self._momentum, self._use_nesterov,
+                regularization_method, regularization_coeff, find_master,
+                self._rescale_grad)
 
         attrs = {
             "mu": self._momentum,
@@ -466,7 +474,7 @@ class Momentum(Optimizer):
             if len(self._param_dict[key]) > 0:
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
 
-                if framework.in_dygraph_mode():
+                if framework._non_static_mode():
                     _, _, _ = _C_ops.merged_momentum(
                         self._param_dict[key], grad_dict[key],
                         self._velocity_dict[key], lr_dict[key],

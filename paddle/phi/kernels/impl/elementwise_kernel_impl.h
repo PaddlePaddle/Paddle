@@ -17,28 +17,28 @@
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 
 namespace phi {
 template <typename T, typename Context>
-void ElementwiseFMaxKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out) {
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::FMaxFunctor<T>, T, T>(
       dev_ctx, x, y, axis, funcs::FMaxFunctor<T>(), out);
 }
 
 template <typename T, typename Context>
-void ElementwiseFMinKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out) {
+void FMinKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::FMinFunctor<T>, T, T>(
       dev_ctx, x, y, axis, funcs::FMinFunctor<T>(), out);

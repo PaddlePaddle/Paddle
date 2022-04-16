@@ -16,12 +16,14 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL) || \
@@ -351,6 +353,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
     ncclDataType_t dtype =
@@ -360,7 +363,43 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*in);
+      out_tensor.push_back(*out);
+
+      distributed::AllreduceOptions opts;
+      switch (red_type) {
+        case kRedSum:
+          opts.reduce_op = distributed::ReduceOp::SUM;
+          break;
+
+        case kRedMax:
+          opts.reduce_op = distributed::ReduceOp::MAX;
+          break;
+
+        case kRedMin:
+          opts.reduce_op = distributed::ReduceOp::MIN;
+          break;
+
+        case kRedProd:
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          break;
+
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
+      }
+
+      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+      task->Wait();
+      return;
+    }
+
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;

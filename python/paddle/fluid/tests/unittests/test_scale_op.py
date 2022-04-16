@@ -27,6 +27,7 @@ from paddle.static import Program, program_guard
 class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
+        self.python_api = paddle.scale
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
@@ -39,15 +40,16 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestScaleOpScaleVariable(OpTest):
     def setUp(self):
         self.op_type = "scale"
+        self.python_api = paddle.scale
         self.dtype = np.float64
         self.init_dtype_type()
         self.scale = -2.3
@@ -62,10 +64,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -144,18 +146,19 @@ class TestScaleFp16Op(TestScaleOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=0.002)
+            self.check_output_with_place(place, atol=0.002, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.05)
+                place, ["X"], "Out", max_relative_error=0.05, check_eager=True)
 
 
 class TestScaleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "scale"
+        self.python_api = paddle.scale
         self.dtype = np.uint16
         self.attrs = {'scale': -2.3}
         x = np.random.random((10, 10)).astype(np.float32)
@@ -164,10 +167,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

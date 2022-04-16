@@ -22,10 +22,11 @@ import paddle
 import paddle.vision.transforms as transforms
 import paddle.fluid as fluid
 from paddle.io import *
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestDatasetAbstract(unittest.TestCase):
-    def test_main(self):
+    def func_test_main(self):
         dataset = Dataset()
         try:
             d = dataset[0]
@@ -38,6 +39,11 @@ class TestDatasetAbstract(unittest.TestCase):
             self.assertTrue(False)
         except NotImplementedError:
             pass
+
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_test_main()
+        self.func_test_main()
 
 
 class TestDatasetWithDiffOutputPlace(unittest.TestCase):
@@ -60,7 +66,7 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
             self.assertTrue(label.place.is_cpu_place())
             break
 
-    def test_single_process(self):
+    def func_test_single_process(self):
         self.run_check_on_cpu()
         if paddle.is_compiled_with_cuda():
             # Get (image, label) tuple from MNIST dataset
@@ -72,7 +78,12 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                 self.assertTrue(label.place.is_cuda_pinned_place())
                 break
 
-    def test_multi_process(self):
+    def test_single_process(self):
+        with _test_eager_guard():
+            self.func_test_single_process()
+        self.func_test_single_process()
+
+    def func_test_multi_process(self):
         # DataLoader with multi-process mode is not supported on MacOs and Windows currently
         if sys.platform != 'darwin' and sys.platform != 'win32':
             self.run_check_on_cpu()
@@ -85,6 +96,11 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                     self.assertTrue(image.place.is_cuda_pinned_place())
                     self.assertTrue(label.place.is_cuda_pinned_place())
                     break
+
+    def test_multi_process(self):
+        with _test_eager_guard():
+            self.func_test_multi_process()
+        self.func_test_multi_process()
 
 
 if __name__ == '__main__':
