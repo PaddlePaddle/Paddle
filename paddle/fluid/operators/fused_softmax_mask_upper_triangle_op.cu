@@ -12,8 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // this file is inspired by:
 // https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_upper_triang_masked_softmax.h
-/* coding=utf-8
- * Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+/* Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
