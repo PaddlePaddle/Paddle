@@ -103,8 +103,8 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
                                       ToCnnlDataType(input_grad->dtype()));
 
     auto value = static_cast<T>(1.0 / static_cast<float>(reduce_numel));
-    MLUCnnl::Fill(context, value, input_grad_desc.get(),
-                  GetBasePtr(input_grad));
+    MLUCnnl::Fill(context, CNNL_POINTER_MODE_HOST, &value,
+                  input_grad_desc.get(), GetBasePtr(input_grad));
 
     MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
                                        CNNL_NOT_PROPAGATE_NAN);

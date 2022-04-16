@@ -104,13 +104,8 @@ def neg(x, out=None):
 
 
 def set_value(x, y, axis, starts, ends, strides, out):
-    assert x.name == out.name, 'input and output for set_value must be same tensor'
-    attrs = {
-        'axes': axis,
-        'starts': starts,
-        'ends': ends,
-        'steps': strides,
-    }
+    assert x is out, "x and out should be the same Tensor in set_value"
+    attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'steps': strides}
     helper = LayerHelper('set_value', **locals())
     helper.append_op(
         type=helper.layer_type,

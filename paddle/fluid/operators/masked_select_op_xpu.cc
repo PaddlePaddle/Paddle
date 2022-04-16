@@ -19,13 +19,15 @@ namespace operators {
 
 template <typename T>
 class MaskedSelectXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto input = context.Input<framework::Tensor>("X");
     auto mask = context.Input<framework::Tensor>("Mask");
     auto out = context.Output<framework::Tensor>("Y");
     auto* mask_data = mask->data<bool>();
-    auto* input_data = input->data<T>();
+    auto* input_data = reinterpret_cast<const XPUType*>(input->data<T>());
     auto input_dim = input->dims();
     auto mask_dim = mask->dims();
     PADDLE_ENFORCE_EQ(
@@ -51,7 +53,8 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
 
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);
-    auto out_data = out->mutable_data<T>(context.GetPlace());
+    auto out_data =
+        reinterpret_cast<XPUType*>(out->mutable_data<T>(context.GetPlace()));
 
     auto input_shape = phi::vectorize<int>(input_dim);
     auto mask_shape = phi::vectorize<int>(mask_dim);
@@ -69,6 +72,7 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_XPU_KERNEL(masked_select, ops::MaskedSelectXPUKernel<float>,
+                       ops::MaskedSelectXPUKernel<paddle::platform::float16>,
                        ops::MaskedSelectXPUKernel<int>,
                        ops::MaskedSelectXPUKernel<int64_t>);
 #endif
