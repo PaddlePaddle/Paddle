@@ -23,6 +23,10 @@
 #include "paddle/infrt/host_context/mlir_function_executable.h"
 #include "paddle/infrt/host_context/symbol_table.h"
 
+#include <nvToolsExt.h> 
+#include <sys/syscall.h>
+#include <unistd.h>
+
 namespace infrt {
 namespace host_context {
 
@@ -79,7 +83,8 @@ OpExecutableBuilder::OpExecutableBuilder(const std::string& op_name,
       "trt.create_engine",
       "phi_dt.create_host_inited_dense_tensor.f32",
       "phi_dt.create_context.cpu",
-      "phi_dt.create_context.gpu"};
+      "phi_dt.create_context.gpu",
+      "phi_dt.tensor_map_get_tensor"};
   if (run_once_set.count(op_name)) {
     impl_->run_once = true;
   }
@@ -153,8 +158,14 @@ void OpExecutable::Execute() {
 #endif
 
   if (impl_->to_execute()) {
+    nvtxRangePush(impl_->name.c_str());
+//    nvtxRangePush(__FUNCTION__);
+//    nvtxMark("test");
+//    nvtxMark(impl_->name.c_str());
     impl_->kernel_impl(&impl_->frame);
+    nvtxRangePop();
     impl_->MarkRun();
+
   }
 }
 

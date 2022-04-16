@@ -118,7 +118,10 @@ if (INFRT_WITH_PHI)
         )
 endif()
 
+link_directories("/usr/local/cuda-11.2/targets/x86_64-linux/lib/")
 cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive)
+target_link_libraries(infrt -lnvToolsExt)
+
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 

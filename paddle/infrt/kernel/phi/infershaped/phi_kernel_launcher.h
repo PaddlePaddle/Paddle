@@ -15,6 +15,9 @@
 
 #include <llvm/ADT/SmallVector.h>
 #include <iostream>
+#include <nvToolsExt.h> 
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
@@ -41,31 +44,37 @@ template <typename KernelFunc,
   InferShapedKernelLauncher launcher(FuncArgStatics<InferShapedFunc>::arg_size);
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
-
   return [=](host_context::KernelFrame* frame) mutable {
 #ifndef NDEBUG
     LOG(INFO) << "Kernel.frame: " << frame->DumpArgTypes();
 #endif
     // Build the infershape KernelFrame if needed.
     // TODO(Superjomn) add unlikely here.
+  nvtxMark("KernelLauncherFunc 04");
     if (launcher.infershape_kernel_frame_builder.IsEmpty()) {
       launcher.CreateKernelFrameForInferShape(frame);
+  nvtxMark("KernelLauncherFunc 05");
 #ifndef NDEBUG
       LOG(INFO) << "infershape.frame: "
                 << launcher.infershape_kernel_frame_builder.DumpArgTypes();
 #endif
     }
+  nvtxMark("KernelLauncherFunc 06");
     if (turn_on_infer_shape_cache) {
       if (launcher.IsShapeChanged(num_input_tensors)) {
         ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
             &launcher.infershape_kernel_frame_builder);
         launcher.BuildInferShapeCache(num_input_tensors);
       }
+  nvtxMark("KernelLauncherFunc 07");
     } else {
+  nvtxMark("KernelLauncherFunc 08");
       ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
           &launcher.infershape_kernel_frame_builder);
+  nvtxMark("KernelLauncherFunc 09");
     }
     ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
+  nvtxMark("KernelLauncherFunc 10");
   };
 }
 

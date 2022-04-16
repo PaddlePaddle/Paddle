@@ -1284,6 +1284,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       dev_ctx = pool.Get(kernel_type_->place_);
 
       pt_kernel_name = pt_kernel_signature_->name;
+
+//      if(pt_kernel_name == "conv2d") pt_kernel_name = "conv2d_infer";
+
       pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
       pt_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
