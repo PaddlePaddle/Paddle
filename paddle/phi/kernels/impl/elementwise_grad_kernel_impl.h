@@ -668,6 +668,33 @@ struct MinGradDy {
 };
 
 template <typename T>
+struct HeavisideGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(0);
+  }
+};
+
+template <typename T>
+struct HeavisideGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x == static_cast<T>(0));
+  }
+};
+
+template <typename T, typename Context>
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& dout,
+                                    int axis,
+                                    DenseTensor* dx,
+                                    DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, HeavisideGradDx<T>(), HeavisideGradDy<T>());
+}
+
+template <typename T>
 struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
