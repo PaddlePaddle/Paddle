@@ -189,31 +189,10 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
-  paddle::experimental::DataLayout DataLayout() const {
-    const framework::Tensor* tensor = nullptr;
-    if (var_.IsInitialized()) {
-      if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
-      }
-    }
-
-    if (tensor && tensor->IsInitialized()) {
-      return tensor->layout();
-    } else {
-      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
-      return paddle::experimental::DataLayout::UNDEFINED;
-    }
-  }
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
 
   void SetDataLayout(const paddle::experimental::DataLayout layout) {
-    // not work for matmul_v2
-    if (type_ == framework::proto::VarType::LOD_TENSOR) {
-      auto* tensor = var_.GetMutable<framework::LoDTensor>();
-      tensor->set_layout(layout);
-    } else {
-      PADDLE_THROW(
-          platform::errors::PermissionDenied("Only support LoDTensor."));
-    }
+    layout_ = layout;
   }
 
   const platform::Place Place() const {
@@ -387,6 +366,10 @@ class VariableWrapper {
   // training
   // NOTE: Now no need to support remove void hook
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative
