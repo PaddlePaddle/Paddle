@@ -142,6 +142,19 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
       dev_ctx, x, y, axis, funcs::ElementwisePowFunctor<T>(), out);
 }
+
+template <typename T, typename Context>
+void ElementwiseHeavisideRawKernel(const Context& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& y,
+                                   int axis,
+                                   DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
+      dev_ctx, x, y, axis, funcs::ElementwiseHeavisideFunctor<T>(), out);
+}
+
 // Create the definition of Add
 DEFINE_CPU_ELEMENTWISE_OP(Add)
 
@@ -246,6 +259,14 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideRawKernel,
                    float,
                    double,
                    int,
