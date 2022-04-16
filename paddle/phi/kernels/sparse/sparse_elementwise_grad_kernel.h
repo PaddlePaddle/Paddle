@@ -49,6 +49,7 @@ template <typename T, typename Context>
 void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
                                     const SparseCsrTensor& x,
                                     const SparseCsrTensor& y,
+                                    const SparseCsrTensor& out,
                                     const SparseCsrTensor& dout,
                                     SparseCsrTensor* dx,
                                     SparseCsrTensor* dy);
@@ -70,7 +71,20 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
 DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Add)
 DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Subtract)
 DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Multiply)
-DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Divide)
+
+template <typename T, typename Context>
+std::vector<SparseCsrTensor> ElementWiseDivideCsrGrad(
+    const Context& dev_ctx,
+    const SparseCsrTensor& x,
+    const SparseCsrTensor& y,
+    const SparseCsrTensor& out,
+    const SparseCsrTensor& dout) {
+  SparseCsrTensor dx;
+  SparseCsrTensor dy;
+  ElementWiseDivideCsrGradKernel<T, Context>(
+      dev_ctx, x, y, out, dout, &dx, &dy);
+  return std::vector<SparseCsrTensor>{dx, dy};
+}
 
 }  // namespace sparse
 }  // namespace phi

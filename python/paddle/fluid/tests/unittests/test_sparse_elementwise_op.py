@@ -14,57 +14,85 @@
 
 from __future__ import print_function
 import unittest
+from operator import __add__, __sub__, __mul__, __truediv__
+
 import numpy as np
 import paddle
-import time
 from paddle.fluid.framework import _test_eager_guard
-from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.op import get_all_op_protos
-from paddle import _C_ops
-from paddle.fluid.framework import core, dygraph_only
 
 
-class TestSparseActivation(unittest.TestCase):
-    def test_sparse_elwise_add(self):
+class TestSparseElementWiseAPI(unittest.TestCase):
+    """
+    test paddle.sparse.add, subtract, multiply, divide
+    """
+
+    def setUp(self):
+        """
+        support dtypes
+        """
+        np.random.seed(2022)
+        self.op_list = [__add__, __sub__, __mul__, __truediv__]
+        self.shape = [128, 256]
+        self.support_dtypes = ['float32', 'float64']
+
+    def get_actual_res(self, x, y, op):
+        if op == __add__:
+            res = paddle.sparse.add(x, y)
+        elif op == __sub__:
+            res = paddle.sparse.subtract(x, y)
+        elif op == __mul__:
+            res = paddle.sparse.multiply(x, y)
+        elif op == __truediv__:
+            res = paddle.sparse.divide(x, y)
+        else:
+            raise ValueError("unsupported op")
+        return res
+
+    def func_support_dtypes_csr(self):
+        """
+        test support types csr for paddle.sparse.add, subtract, multiply, divide
+        """
+
+        for op in self.op_list:
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                dense_x = paddle.to_tensor(x).astype(dtype)
+                dense_y = paddle.to_tensor(y).astype(dtype)
+                csr_x = dense_x.to_sparse_csr()
+                csr_y = dense_y.to_sparse_csr()
+
+                actual_res = self.get_actual_res(csr_x, csr_y, op)
+                expect_res = op(dense_x, dense_y)
+
+                self.assertTrue(np.allclose(expect_res.numpy(), actual_res.to_dense().numpy()))
+
+    def func_support_dtypes_coo(self):
+        """
+        test support types coo for paddle.sparse.add, subtract, multiply, divide
+        """
+
+        for op in self.op_list:
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                dense_x = paddle.to_tensor(x).astype(dtype)
+                dense_y = paddle.to_tensor(y).astype(dtype)
+                coo_x = dense_x.to_sparse_coo(2)
+                coo_y = dense_y.to_sparse_coo(2)
+
+                actual_res = self.get_actual_res(coo_x, coo_y, op)
+                expect_res = op(dense_x, dense_y)
+
+                self.assertTrue(np.allclose(expect_res.numpy(), actual_res.to_dense().numpy()))
+
+    def test_support_dtypes_csr(self):
         with _test_eager_guard():
-            x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
-            y = [[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]]
+            self.func_support_dtypes_csr()
 
-            # def dense_relu(x):
-            #     dense_x = paddle.to_tensor(
-            #         x, dtype='float32', stop_gradient=False)
-            #     dense_relu = paddle.nn.ReLU()
-            #     dense_out = dense_relu(dense_x)
-            #     dense_out.backward(dense_out)
-            #     return dense_out, dense_x.grad
-
-            # ops = get_all_op_protos()
-
-            # for op in ops:
-            #     if 'sparse' not in op.type:
-            #         ops.remove(op)
-
-            dense_x = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
-            dense_y = paddle.to_tensor(y, dtype='float32', stop_gradient=False)
-            sparse_x = dense_x.to_sparse_csr()
-            sparse_y = dense_y.to_sparse_csr()
-            # time.sleep(30)
-            sparse_out = paddle.sparse.add(sparse_x, sparse_y)
-
-            # sparse_out = _C_ops.final_state_sparse_elementwise_add(sparse_x, sparse_y)
-            dense_out = dense_x + dense_y
-
-            assert np.array_equal(dense_out.numpy(), sparse_out.to_dense().numpy())
-
-            # sparse_relu = paddle.sparse.ReLU()
-            # sparse_out = sparse_relu(sparse_x)
-            # sparse_out.backward(sparse_out)
-            #
-            # dense_out, dense_x_grad = dense_relu(x)
-            # assert np.array_equal(dense_out.numpy(),
-            #                       sparse_out.to_dense().numpy())
-            # assert np.array_equal(dense_x_grad.numpy(),
-            #                       sparse_x.grad.to_dense().numpy())
+    def test_support_dtypes_coo(self):
+        with _test_eager_guard():
+            self.func_support_dtypes_coo()
 
 
 if __name__ == "__main__":
