@@ -19,6 +19,14 @@ from .layer.activation import ReLU
 from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
 
-__all__ = [
-    'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'add', 'subtract', 'multiply', 'divide', 'Conv3D', 'SubmConv3D'
+__all__ = [ #noqa
+    'sparse_coo_tensor',
+    'sparse_csr_tensor',
+    'ReLU',
+    'add',
+    'subtract',
+    'multiply',
+    'divide',
+    'Conv3D',
+    'SubmConv3D'
 ]
