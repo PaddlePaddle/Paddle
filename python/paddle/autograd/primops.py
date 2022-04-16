@@ -19,23 +19,27 @@ from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
 
-def make_var(dtype, varset=None, shape=None, block=None, namekey='',
+def make_var(dtype,
+             varset=None,
+             shape=None,
+             block=None,
+             namekey='',
              stop_gradient=False):
     """ Create a type inferred variable. """
 
     if block is None:
         block = default_main_program().current_block()
-        
+
     name = unique_name.generate_with_ignorable_key(namekey + '%')
 
     var = block.create_var(
-            name=name,
-            dtype=dtype,
-            shape=shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=stop_gradient)
-    
+        name=name,
+        dtype=dtype,
+        shape=shape,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=stop_gradient)
+
     if varset is not None:
         varset.add(var)
 
@@ -99,6 +103,24 @@ def neg(x, out=None):
     return sub(zero, x)
 
 
+def set_value(x, y, axis, starts, ends, strides, out):
+    assert x.name == out.name, 'input and output for set_value must be same tensor'
+    attrs = {
+        'axes': axis,
+        'starts': starts,
+        'ends': ends,
+        'steps': strides,
+    }
+    helper = LayerHelper('set_value', **locals())
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'Input': x,
+                'ValueTensor': y},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
 @REGISTER_FN('add_p', 'X', 'Y', 'Z')
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))
@@ -151,7 +173,7 @@ def split(x, num_or_sections, axis=0, outs=None):
     else:
         assert isinstance(num_or_sections, int)
         n = num_or_sections
-    
+
     attrs = {'num_or_sections': num_or_sections, 'axis': axis}
 
     helper = LayerHelper('split_p', **locals())
@@ -231,7 +253,7 @@ def slice_select(x, axis, starts, ends, strides, out=None):
 @REGISTER_FN('slice_assign_p', 'X', 'Y', 'Z')
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
     assert len(starts) == len(ends) == len(strides) == len(axis)
-    assert len(y.shape) <= len(x.shape)
+    assert len(y.shape) == len(x.shape)
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_assign_p', **locals())
@@ -261,7 +283,7 @@ def gather(x, indextensor, axis, out=None):
     return out
 
 
-@REGISTER_FN('scatter_add_p', 'X', 'Y', 'IndexTensor' ,'Z')
+@REGISTER_FN('scatter_add_p', 'X', 'Y', 'IndexTensor', 'Z')
 def scatter_add(x, y, indextensor, axis, out=None):
     assert len(x.shape) == len(y.shape)
     assert len(indextensor.shape) == 1

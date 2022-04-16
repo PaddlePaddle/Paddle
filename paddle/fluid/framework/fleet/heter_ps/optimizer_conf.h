@@ -14,7 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_XPU_KP)
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
+#endif
+
 namespace optimizer_config {
+
+#if defined(PADDLE_WITH_CUDA)
 
 __constant__ float nonclk_coeff = 0.1;
 __constant__ float clk_coeff = 1;
@@ -31,4 +39,24 @@ __constant__ float mf_initial_g2sum = 3.0;
 __constant__ float mf_initial_range = 1e-4;
 __constant__ float mf_min_bound = -10;
 __constant__ float mf_max_bound = 10;
-}
+
+#elif defined(PADDLE_WITH_XPU_KP)
+
+_global_ptr_ float* nonclk_coeff;
+_global_ptr_ float* clk_coeff;
+
+_global_ptr_ float* min_bound;
+_global_ptr_ float* max_bound;
+_global_ptr_ float* learning_rate;
+_global_ptr_ float* initial_g2sum;
+_global_ptr_ float* initial_range;
+
+_global_ptr_ float* mf_create_thresholds;
+_global_ptr_ float* mf_learning_rate;
+_global_ptr_ float* mf_initial_g2sum;
+_global_ptr_ float* mf_initial_range;
+_global_ptr_ float* mf_min_bound;
+_global_ptr_ float* mf_max_bound;
+
+#endif
+}  // namespace optimizer_config

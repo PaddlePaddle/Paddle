@@ -20,7 +20,7 @@ from paddle.autograd.primops import (
     neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast, transpose, split,
     concat, reduce, matmul, slice_select, slice_assign, gather, scatter_add,
     fill_const)
-from paddle.autograd.primx import Transform, topo_path
+from paddle.autograd.primx import Transform, topo_path, orig2prim, prim2orig
 
 
 class TestPyPrimOps(unittest.TestCase):
@@ -36,11 +36,11 @@ class TestPyPrimOps(unittest.TestCase):
         D = np.random.rand(2, 3)
         E = np.random.rand(3, 2)
 
-        a = paddle.static.data(name='A', shape=A.shape, dtype='float')
-        b = paddle.static.data(name='B', shape=B.shape, dtype='float')
-        c = paddle.static.data(name='C', shape=C.shape, dtype='float')
-        d = paddle.static.data(name='D', shape=D.shape, dtype='float')
-        e = paddle.static.data(name='E', shape=E.shape, dtype='float')
+        a = paddle.static.data(name='A', shape=A.shape, dtype='float32')
+        b = paddle.static.data(name='B', shape=B.shape, dtype='float32')
+        c = paddle.static.data(name='C', shape=C.shape, dtype='float32')
+        d = paddle.static.data(name='D', shape=D.shape, dtype='float32')
+        e = paddle.static.data(name='E', shape=E.shape, dtype='float32')
 
         add_1 = add(a, a)
         self.assertEqual(add_1.dtype, a.dtype)
@@ -125,7 +125,7 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(gather_1.dtype, e.dtype)
         self.assertEqual(gather_1.shape, (5, 2))
 
-        y = paddle.rand([5, 2], dtype='float')
+        y = paddle.rand([5, 2], dtype='float32')
         scatter_add_1 = scatter_add(e, y, index, axis=0)
         self.assertEqual(scatter_add_1.dtype, e.dtype)
         self.assertEqual(scatter_add_1.shape, e.shape)
@@ -174,6 +174,27 @@ class TestPyPrimOps(unittest.TestCase):
         print(f'-------test_vjp_set2-------')
         for op in topo_path(vs, grads):
             print(op)
+
+    def test_lower(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('x', shape=[2, 20], dtype='float32')
+            w = paddle.static.data('w', shape=[20, 2], dtype='float32')
+            bias = paddle.static.data('bias', shape=[2], dtype='float32')
+            y = paddle.tanh(paddle.matmul(x, w) + bias)
+            print(f'-------test_orig2prim: orig-------')
+            print(x.block)
+
+            orig2prim(x.block)
+
+            print(f'-------test_orig2prim: prim-------')
+            print(x.block)
+
+            prim2orig(x.block)
+
+            print(f'-------test_orig2prim: orig-------')
+            print(x.block)
 
 
 if __name__ == '__main__':
