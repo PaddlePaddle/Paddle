@@ -383,7 +383,8 @@ def _lower(block, reverse, update_var_list):
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)
     for var_name in vars_to_remove:
-        block._remove_var(var_name)
+        # block._remove_var(var_name)
+        del block.vars[var_name]
 
     if update_var_list is not None:
         for i in range(len(update_var_list)):
