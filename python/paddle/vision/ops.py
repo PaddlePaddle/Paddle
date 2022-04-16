@@ -918,7 +918,7 @@ def image_decode(x,
             cv2.imwrite('fake.jpg', fake_img)
             
             # only support GPU version
-            if paddle.is_compiled_with_cuda():
+            if not paddle.get_device() == 'cpu':
                 img_bytes = paddle.vision.ops.read_file('fake.jpg')
                 imgs = paddle.vision.ops.image_decode([img_bytes])
                 
@@ -1027,7 +1027,7 @@ def image_decode_random_crop(x,
             cv2.imwrite('fake.jpg', fake_img)
             
             # only support GPU version
-            if paddle.is_compiled_with_cuda():
+            if not paddle.get_device() == 'cpu':
                 img_bytes = paddle.vision.ops.read_file('fake.jpg')
                 imgs = paddle.vision.ops.image_decode_random_crop([img_bytes])
                 
@@ -1152,7 +1152,7 @@ def mirror_normalize(x,
             import paddle
             
             # only support GPU version
-            if paddle.is_compiled_with_cuda():
+            if not paddle.get_device() == 'cpu':
                 x = paddle.rand(shape=[8, 3, 32, 32])
                 mirror = paddle.vision.ops.random_flip(x)
                 out = paddle.vision.ops.mirror_normalize(x, mirror)
@@ -1712,7 +1712,7 @@ def random_crop_and_resize(x,
             import paddle
 
             # only support GPU version
-            if paddle.is_compiled_with_cuda():
+            if not paddle.get_device() == 'cpu':
                 data = paddle.randn(shape=[3, 256, 256])
                 data = paddle.cast(data, dtype='uint8')
                 out = paddle.vision.ops.random_crop_and_resize([data], size=224)
@@ -1810,7 +1810,7 @@ def image_resize(x,
             import paddle
 
             # only support GPU version
-            if paddle.is_compiled_with_cuda():
+            if not paddle.get_device() == 'cpu':
                 data = paddle.randn(shape=[3, 256, 256])
                 data = paddle.cast(data, dtype='uint8')
                 out = paddle.vision.ops.image_resize([data], size=224)
