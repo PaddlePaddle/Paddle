@@ -169,6 +169,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_elementwise_div_op',
     'test_elementwise_floordiv_op',
     'test_elementwise_gradient_op',
+    'test_elementwise_heaviside_op',
     'test_elementwise_max_op',
     'test_elementwise_min_op',
     'test_elementwise_mod_op',
