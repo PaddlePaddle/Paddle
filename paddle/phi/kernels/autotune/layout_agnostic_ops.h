@@ -27,7 +27,17 @@ class LayoutAutotuneOperators {
     return layout_autoTune_ops;
   }
 
-  std::unordered_set<std::string> GetAgnosticOps() { return agnostic_ops_; }
+  std::unordered_set<std::string> GetLayoutAgnosticOps() {
+    return layout_agnostic_ops_;
+  }
+
+  std::unordered_set<std::string> GetHeavilyLayoutSensitiveOps() {
+    return heavily_layout_sensitive_ops_;
+  }
+
+  std::unordered_set<std::string> GetLightlyLayoutSensitiveOps() {
+    return lightly_layout_sensitive_ops_;
+  }
 
  private:
   LayoutAutotuneOperators() {
@@ -41,46 +51,56 @@ class LayoutAutotuneOperators {
       // some normalization operators such as instance_norm and layer_norm
       // do not have data_format attr, but are layout sensitive.
       if (it->first.find("norm") != std::string::npos) {
+        layout_agnostic_ops_.emplace(it->first);
         continue;
       }
 
-      // The elementwise ops is agnostic ops, but has axis attr
-      if (it->first.find("elementwise") != std::string::npos ||
-          it->first.find("less_") != std::string::npos ||
-          it->first.find("greater_") != std::string::npos ||
-          it->first.find("equal") != std::string::npos) {
-        agnostic_ops_.emplace(it->first);
-      }
-
-      bool layout_sensitive = false;
       auto* attr_checker = it->second.Checker();
       if (attr_checker) {
         auto attrs = attr_checker->GetDefaultAttrMap();
-        // Attribute name is fuzzy matched
+        if (attrs.find("data_format") != attrs.end() ||
+            attrs.find("data_layout") != attrs.end()) {
+          VLOG(4) << "Heavily layout sensitive OP: " << it->first;
+          heavily_layout_sensitive_ops_.emplace(it->first);
+          continue;
+        }
+
+        // Attribute name is fuzzy matched, such as start and start_axis.
+        bool layout_agnostic = true;
         for (auto& attr : attrs) {
           auto attr_name = attr.first;
           VLOG(6) << "OP: " << it->first << " Attr Name: " << attr_name;
-          if (attr_name.find("data_format") != std::string::npos ||
-              attr_name.find("data_layout") != std::string::npos ||
-              attr_name.find("axis") != std::string::npos ||
+          if (attr_name.find("axis") != std::string::npos ||
               attr_name.find("axes") != std::string::npos ||
               attr_name.find("dim") != std::string::npos ||
               attr_name.find("start") != std::string::npos ||
               attr_name.find("end") != std::string::npos) {
-            layout_sensitive = true;
+            VLOG(4) << "Lightly layout sensitive OP: " << it->first;
+            layout_agnostic = false;
+            lightly_layout_sensitive_ops_.emplace(it->first);
             break;
           }
         }
-      }
 
-      if (!layout_sensitive) {
-        VLOG(4) << "agnostic_ops: " << it->first;
-        agnostic_ops_.emplace(it->first);
+        if (layout_agnostic) {
+          VLOG(4) << "Layout agnostic_ops: " << it->first;
+          layout_agnostic_ops_.emplace(it->first);
+        }
       }
     }
+
+    VLOG(3) << "The number of layout agnostic OPs: "
+            << layout_agnostic_ops_.size() << ", heavily layout sensitive OPs: "
+            << heavily_layout_sensitive_ops_.size()
+            << ", lightly layout sensitive OPs: "
+            << lightly_layout_sensitive_ops_.size();
   }
 
-  std::unordered_set<std::string> agnostic_ops_;
+  std::unordered_set<std::string> layout_agnostic_ops_{};
+
+  std::unordered_set<std::string> heavily_layout_sensitive_ops_{};
+
+  std::unordered_set<std::string> lightly_layout_sensitive_ops_{};
 };
 
 }  // namespace imperative
