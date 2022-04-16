@@ -18,9 +18,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid import core
 
 
 class TestLogspaceOpCommonCase(OpTest):
@@ -33,7 +30,7 @@ class TestLogspaceOpCommonCase(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': int(paddle.float32)}
 
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(dtype)}
 
@@ -51,7 +48,7 @@ class TestLogspaceOpReverseCase(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([2]).astype(dtype)
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': int(paddle.float32)}
 
         self.outputs = {'Out': np.power(2, np.arange(10, -1, -1)).astype(dtype)}
 
@@ -69,7 +66,7 @@ class TestLogspaceOpNumOneCase(OpTest):
             'Num': np.array([1]).astype('int32'),
             'Base': np.array([2]).astype(dtype)
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': int(paddle.float32)}
 
         self.outputs = {'Out': np.power(2, np.array(10)).astype(dtype)}
 
@@ -87,7 +84,7 @@ class TestLogspaceOpMinusBaseCase(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([-2]).astype(dtype),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': int(paddle.float32)}
 
         self.outputs = {'Out': np.power(-2, np.arange(0, 11)).astype(dtype)}
 
@@ -105,7 +102,7 @@ class TestLogspaceOpZeroBaseCase(OpTest):
             'Num': np.array([11]).astype('int32'),
             'Base': np.array([0]).astype(dtype),
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.attrs = {'dtype': int(paddle.float32)}
 
         self.outputs = {'Out': np.power(0, np.arange(0, 11)).astype(dtype)}
 
@@ -115,15 +112,20 @@ class TestLogspaceOpZeroBaseCase(OpTest):
 
 class TestLogspaceAPI(unittest.TestCase):
     def test_variable_input1(self):
-        start = paddle.full(shape=[1], fill_value=0, dtype='float32')
-        stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
-        num = paddle.full(shape=[1], fill_value=5, dtype='int32')
-        base = paddle.full(shape=[1], fill_value=2, dtype='float32')
-        out = paddle.logspace(start, stop, num, base, dtype='float32')
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res = exe.run(fluid.default_main_program(), fetch_list=[out])
+        paddle.enable_static()
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            start = paddle.full(shape=[1], fill_value=0, dtype='float32')
+            stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
+            num = paddle.full(shape=[1], fill_value=5, dtype='int32')
+            base = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            out = paddle.logspace(start, stop, num, base, dtype='float32')
+
+        exe = paddle.static.Executor()
+        res = exe.run(prog, fetch_list=[out])
         np_res = np.logspace(0, 10, 5, base=2, dtype='float32')
         self.assertEqual((res == np_res).all(), True)
+        paddle.disable_static()
 
     def test_variable_input2(self):
         paddle.disable_static()
@@ -138,12 +140,13 @@ class TestLogspaceAPI(unittest.TestCase):
 
     def test_dtype(self):
         paddle.enable_static()
-        out_1 = paddle.logspace(0, 10, 5, 2, dtype='float32')
-        out_2 = paddle.logspace(0, 10, 5, 2, dtype=np.float32)
-        out_3 = paddle.logspace(0, 10, 5, 2, dtype=core.VarDesc.VarType.FP32)
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                      fetch_list=[out_1, out_2, out_3])
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            out_1 = paddle.logspace(0, 10, 5, 2, dtype='float32')
+            out_2 = paddle.logspace(0, 10, 5, 2, dtype=np.float32)
+
+        exe = paddle.static.Executor()
+        res_1, res_2 = exe.run(prog, fetch_list=[out_1, out_2])
         assert np.array_equal(res_1, res_2)
         paddle.disable_static()
 
@@ -169,54 +172,54 @@ class TestLogspaceAPI(unittest.TestCase):
 
 class TestLogspaceOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_dtype():
-                fluid.layers.logspace(0, 10, 1, 2, dtype="int8")
+                paddle.logspace(0, 10, 1, 2, dtype="int8")
 
             self.assertRaises(TypeError, test_dtype)
 
             def test_dtype1():
-                fluid.layers.logspace(0, 10, 1.33, 2, dtype="int32")
+                paddle.logspace(0, 10, 1.33, 2, dtype="int32")
 
             self.assertRaises(TypeError, test_dtype1)
 
             def test_start_type():
-                fluid.layers.logspace([0], 10, 1, 2, dtype="float32")
+                paddle.logspace([0], 10, 1, 2, dtype="float32")
 
             self.assertRaises(TypeError, test_start_type)
 
             def test_end_type():
-                fluid.layers.logspace(0, [10], 1, 2, dtype="float32")
+                paddle.logspace(0, [10], 1, 2, dtype="float32")
 
             self.assertRaises(TypeError, test_end_type)
 
             def test_num_type():
-                fluid.layers.logspace(0, 10, [0], 2, dtype="float32")
+                paddle.logspace(0, 10, [0], 2, dtype="float32")
 
             self.assertRaises(TypeError, test_num_type)
 
             def test_start_dtype():
-                start = fluid.data(shape=[1], dtype="float64", name="start")
-                fluid.layers.logspace(start, 10, 1, 2, dtype="float32")
+                start = paddle.static.data(shape=[1], dtype="float64", name="start")
+                paddle.logspace(start, 10, 1, 2, dtype="float32")
 
             self.assertRaises(ValueError, test_start_dtype)
 
             def test_end_dtype():
-                end = fluid.data(shape=[1], dtype="float64", name="end")
-                fluid.layers.logspace(0, end, 1, 2, dtype="float32")
+                end = paddle.static.data(shape=[1], dtype="float64", name="end")
+                paddle.logspace(0, end, 1, 2, dtype="float32")
 
             self.assertRaises(ValueError, test_end_dtype)
 
             def test_num_dtype():
-                num = fluid.data(shape=[1], dtype="float32", name="step")
-                fluid.layers.logspace(0, 10, num, 2, dtype="float32")
+                num = paddle.static.data(shape=[1], dtype="float32", name="step")
+                paddle.logspace(0, 10, num, 2, dtype="float32")
 
             self.assertRaises(TypeError, test_num_dtype)
 
             def test_base_dtype():
-                base = fluid.data(shape=[1], dtype="float64", name="end")
-                fluid.layers.logspace(0, 10, 1, base, dtype="float32")
+                base = paddle.static.data(shape=[1], dtype="float64", name="end")
+                paddle.logspace(0, 10, 1, base, dtype="float32")
 
             self.assertRaises(ValueError, test_base_dtype)
 
