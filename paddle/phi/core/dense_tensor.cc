@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -125,6 +126,30 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
+}
+
+float DenseTensor::checksum() const {
+  if (!this->initialized()) {
+    return 0;
+  }
+  float result = 0;
+  if (this->dtype() == paddle::experimental::CppTypeToDataType<float>::Type()) {
+    float* val = const_cast<float*>(data<float>());
+    if (paddle::platform::is_xpu_place(this->place())) {
+      val = new float[this->numel()];
+      xpu_wait();
+      xpu_memcpy(
+          val, data(), this->numel() * sizeof(float), XPU_DEVICE_TO_HOST);
+    }
+    for (int i = 0; i < this->numel(); i++) {
+      result += val[i];
+    }
+    if (paddle::platform::is_xpu_place(this->place())) {
+      delete[] val;
+    }
+  }
+  // ToDo: only support float now
+  return result;
 }
 
 template <typename T>

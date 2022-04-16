@@ -31,6 +31,15 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
+  if (std::getenv("XPU_PADDLE_DEBUG") != nullptr) {
+    seed = 1024;
+    fix_seed = true;
+    static int flag = true;
+    if (flag) {
+      flag = false;
+      std::cout << "XPU_DROPOUT here\n";
+    }
+  }
   auto* y = out;
   const auto* x_data = x.data<T>();
   auto* y_data = y->mutable_data<T>(dev_ctx.GetPlace());

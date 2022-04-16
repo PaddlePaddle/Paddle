@@ -164,6 +164,8 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  float checksum() const;
+
  private:
   friend class DenseTensorUtils;
 

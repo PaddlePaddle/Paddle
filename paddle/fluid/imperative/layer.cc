@@ -481,6 +481,12 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
 
   VLOG(5) << LayerDebugString(op.Type(), ins, outs);
 
+  struct timeval t1;
+  struct timeval t2;
+  // static int op_step_id = 0;
+  if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+    gettimeofday(&t1, NULL);
+  }
   /**
    * [ Why need temporary inputs here? ]
    *
@@ -507,6 +513,82 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
+  }
+
+  if (std::getenv("XPU_PADDLE_SYNC") != nullptr) {
+    if (platform::is_xpu_place(place)) {
+      int r = xpu_wait();
+      PADDLE_ENFORCE_EQ(r, 0, platform::errors::InvalidArgument(
+                                  "not initialized.[", op.Type()));
+    }
+  }
+  if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+    // 耗时统计逻辑
+    if (platform::is_xpu_place(place)) {
+      int r = xpu_wait();
+      PADDLE_ENFORCE_EQ(r, 0, platform::errors::InvalidArgument(
+                                  "not initialized.[", op.Type()));
+    }
+    gettimeofday(&t2, NULL);
+    uint32_t diff = 1000000 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec;
+    std::cout << "op_name3 " << op.Type() << " " << diff << " "
+              << prepared_op.kernel_type().place_ << " "
+              << prepared_op.kernel_type().data_type_ << std::endl;
+  }
+
+  if (std::getenv("XPU_PADDLE_DEBUG") != nullptr) {
+    // 辅助定位模型不收敛逻辑
+    static int64_t op_step_id = 0;
+    op_step_id++;
+    if (platform::is_xpu_place(place)) {
+      int r = xpu_wait();
+      PADDLE_ENFORCE_EQ(r, 0, platform::errors::InvalidArgument(
+                                  "not initialized.[", op.Type()));
+    }
+    std::cout << "op_name_debug " << op.Type() << " " << op_step_id << " "
+              << prepared_op.kernel_type().place_ << " "
+              << prepared_op.kernel_type().data_type_ << " in: ";
+    // ToDO: ins输入checksum可以在计算之前获取，防止inplace操作得到的ins不对
+    for (auto& pair : ins) {
+      for (size_t i = 0; i < pair.second.size(); i++) {
+        if (pair.second[i] == nullptr) continue;
+        std::cout << GetNameFromVar(pair.second[i]) << " ";
+        const framework::Variable& var = pair.second[i]->Var();
+        if (!var.IsInitialized()) {
+          std::cout << "NOT_INITED_VAR ";
+        } else if (var.IsType<framework::LoDTensor>()) {
+          auto& tensor = var.Get<framework::LoDTensor>();
+          if (tensor.IsInitialized()) {
+            std::cout << tensor.checksum() << " ";
+          } else {
+            std::cout << "NOT_INITED ";
+          }
+        } else {
+          std::cout << "NonTensor ";
+        }
+      }
+    }
+    std::cout << " out: ";
+    for (auto& pair : outs) {
+      for (size_t i = 0; i < pair.second.size(); i++) {
+        if (pair.second[i] == nullptr) continue;
+        std::cout << GetNameFromVar(pair.second[i]) << " ";
+        const framework::Variable& var = pair.second[i]->Var();
+        if (!var.IsInitialized()) {
+          std::cout << "NOT_INITED_VAR ";
+        } else if (var.IsType<framework::LoDTensor>()) {
+          auto& tensor = var.Get<framework::LoDTensor>();
+          if (tensor.IsInitialized()) {
+            std::cout << tensor.checksum() << " ";
+          } else {
+            std::cout << "NOT_INITED ";
+          }
+        } else {
+          std::cout << "NonTensor ";
+        }
+      }
+    }
+    std::cout << std::endl;
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);

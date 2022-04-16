@@ -1440,6 +1440,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
+    struct timeval t1;
+    struct timeval t2;
+    static int op_step_id = 0;
+    if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+      gettimeofday(&t1, NULL);
+    }
     if (run_phi_kernel_) {
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
@@ -1451,6 +1457,64 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    }
+    if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+      if (platform::is_xpu_place(place)) {
+        int r = xpu_wait();
+        PADDLE_ENFORCE_EQ(r, 0, platform::errors::InvalidArgument(
+                                    "not initialized.[", type_));
+      }
+      gettimeofday(&t2, NULL);
+      uint32_t diff =
+          1000000 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec;
+      std::cout << "op_name " << type_ << " " << diff << " "
+                << kernel_type_->place_ << " " << kernel_type_->data_type_
+                << std::endl;
+    }
+    if (std::getenv("XPU_PADDLE_DEBUG") != nullptr) {
+      op_step_id++;
+      std::cout << "op_name " << type_ << " [" << op_step_id << "] "
+                << kernel_type_->place_ << " " << kernel_type_->data_type_
+                << " ";
+      for (auto& var_name_item : Outputs()) {
+        std::vector<Variable*>& output_vars =
+            runtime_ctx->outputs[var_name_item.first];
+        for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+          auto& var_name = var_name_item.second[i];
+          auto* var = output_vars[i];
+
+          // Only tensor can be tranfer to another device.
+          if (var == nullptr) {
+            continue;
+          } else if (!VarIsTensor(*var)) {
+            std::cout << "output_var_type is : var_name [" << var_name
+                      << "] type [" << var->Type() << "] ";
+            continue;
+          }
+          auto* tensor_out = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+          if (!tensor_out->initialized()) {
+            continue;
+          }
+          if (tensor_out->dtype() == phi::DataType::FLOAT32) {
+            float* cpu_ptr = const_cast<float*>(tensor_out->data<float>());
+            if (platform::is_xpu_place(tensor_out->place())) {
+              cpu_ptr = new float[tensor_out->numel()];
+              xpu_memcpy(cpu_ptr, tensor_out->data<float>(),
+                         sizeof(float) * tensor_out->numel(),
+                         XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+            }
+            float result = 0;
+            for (int i = 0; i < tensor_out->numel(); i++) {
+              result += cpu_ptr[i];
+            }
+            if (platform::is_xpu_place(tensor_out->place())) {
+              delete[] cpu_ptr;
+            }
+            std::cout << var_name << " " << result << " ";
+          }
+        }
+      }
+      std::cout << std::endl;
     }
   }
 
