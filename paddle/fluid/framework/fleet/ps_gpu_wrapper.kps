@@ -163,7 +163,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
 }
 
 PSGPUWrapper::~PSGPUWrapper() {
-  // delete HeterPs_;
+  delete HeterPs_;
   xpu_free((void*)optimizer_config::nonclk_coeff);
   xpu_free((void*)optimizer_config::clk_coeff);
   xpu_free((void*)optimizer_config::min_bound);

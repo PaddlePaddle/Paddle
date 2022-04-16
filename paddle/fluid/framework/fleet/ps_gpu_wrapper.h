@@ -90,7 +90,7 @@ class AfsWrapper {
 
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() { delete HeterPs_; }
+  virtual ~PSGPUWrapper();
 
   PSGPUWrapper() {
     HeterPs_ = NULL;
