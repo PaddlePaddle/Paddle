@@ -618,7 +618,8 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
     helper.append_op(
         type="rrelu",
         inputs={"X": x},
-        outputs={"Out": out, "Noise": noise},
+        outputs={"Out": out,
+                 "Noise": noise},
         attrs={"lower": lower,
                "upper": upper})
     return out

@@ -78,5 +78,10 @@ void RReluGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    rrelu_grad, GPU, ALL_LAYOUT, phi::RReluGradKernel, float, phi::dtype::float16, double) {}
+PD_REGISTER_KERNEL(rrelu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RReluGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double) {}

@@ -40,4 +40,10 @@ void RReluKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rrelu, GPU, ALL_LAYOUT, phi::RReluKernel, float, phi::dtype::float16, double) {}
+PD_REGISTER_KERNEL(rrelu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RReluKernel,
+                   float,
+                   phi::dtype::float16,
+                   double) {}

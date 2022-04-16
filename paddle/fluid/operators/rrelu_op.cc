@@ -120,7 +120,7 @@ class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("Noise", this->Output("Noise"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-//    op->SetAttrMap(this->Attrs());
+    //    op->SetAttrMap(this->Attrs());
   }
 };
 

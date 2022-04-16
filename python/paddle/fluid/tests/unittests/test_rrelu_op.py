@@ -25,30 +25,37 @@ import paddle
 import paddle.nn.functional as F
 
 import time
-def debug_log(msg,is_clear=False):
+
+
+def debug_log(msg, is_clear=False):
     fp = open('/tmp/data.txt', 'w' if is_clear else "a")
     fp.write(str(time.time()) + " => " + msg + "\n")
     fp.close()
 
+
 debug_log("=======> 111", True)
 
-xx= paddle.rand((2, 3))
+xx = paddle.rand((2, 3))
 rrelu1 = paddle.nn.RReLU()
 print(rrelu1(xx))
-print(F.rrelu(xx, 0.1, 0.4, training = True))
+print(F.rrelu(xx, 0.1, 0.4, training=True))
+
 
 def ref_rrelu(x, lower, upper):
     x_t = x.copy()
     alpha = (lower + upper) / 2.0
     return np.where(x_t <= 0, alpha * x_t, x_t)
 
+
 def ref_rrelu_nn(x, lower, upper):
     return ref_rrelu(x, lower, upper)
+
 
 def check_output(input, output, lower, upper):
     lower_res = np.where(input <= 0, lower * input, input)
     upper_res = np.where(input <= 0, upper * input, input)
     return (output >= lower_res).all() and (output <= upper_res).all()
+
 
 class TestFunctionalRReluAPI(unittest.TestCase):
     def setUp(self):
@@ -67,8 +74,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             x = paddle.fluid.data('X', self.x_np.shape, 'float32')
             out = F.rrelu(x, lower, upper)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np},
-                          fetch_list=[out])
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_rrelu(self.x_np, lower, upper)
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
@@ -91,24 +97,38 @@ class TestFunctionalRReluAPI(unittest.TestCase):
     def test_error_functional(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.rrelu, x=1, lower=self.lower_0, upper=self.upper_0)
+            self.assertRaises(
+                TypeError, F.rrelu, x=1, lower=self.lower_0, upper=self.upper_0)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[2, 3], dtype='int32')
-            self.assertRaises(TypeError, F.rrelu, x=x_int32, lower=self.lower_0, upper=self.upper_0)
+            self.assertRaises(
+                TypeError,
+                F.rrelu,
+                x=x_int32,
+                lower=self.lower_0,
+                upper=self.upper_0)
             x_bool = paddle.fluid.data(
                 name='x_bool', shape=[2, 3], dtype='int32')
-            self.assertRaises(TypeError, F.rrelu, x=x_bool, lower=self.lower_0, upper=self.upper_0)
+            self.assertRaises(
+                TypeError,
+                F.rrelu,
+                x=x_bool,
+                lower=self.lower_0,
+                upper=self.upper_0)
             # lower and upper must be float
             x_fp32 = paddle.fluid.data(
                 name='x_fp32', shape=[2, 3], dtype='float32')
             self.assertRaises(TypeError, F.rrelu, x=x_fp32, lower=0, upper=0.5)
             self.assertRaises(TypeError, F.rrelu, x=x_fp32, lower=0.5, upper=1)
             # lower and upper must be in (0, 1)
-            self.assertRaises(ValueError, F.rrelu, x=x_fp32, lower=-1., upper=0.5)
-            self.assertRaises(ValueError, F.rrelu, x=x_fp32, lower=0.5, upper=2.)
+            self.assertRaises(
+                ValueError, F.rrelu, x=x_fp32, lower=-1., upper=0.5)
+            self.assertRaises(
+                ValueError, F.rrelu, x=x_fp32, lower=0.5, upper=2.)
             # upper should not be less than lower
-            self.assertRaises(ValueError, F.rrelu, x=x_fp32, lower=0.5, upper=0.2)
+            self.assertRaises(
+                ValueError, F.rrelu, x=x_fp32, lower=0.5, upper=0.2)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[2, 3], dtype='float16')
@@ -166,97 +186,96 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         # self.assertRaises(ValueError, error_upper_range)
         # self.assertRaises(ValueError, error_lower_upper)
 
+    # class TestRReluAPI(unittest.TestCase):
+    #     def setUp(self):
+    #         self.shape = [2, 3]
+    #         self.x_1_np = np.random.random(self.shape).astype("float64")
+    #         self.lower = 0.1
+    #         self.upper = 0.25
+    #         debug_log("=======> 333")
+    #
+    #     def test_static_graph_functional(self):
+    #         for use_cuda in ([False, True]
+    #                          if core.is_compiled_with_cuda() else [False]):
+    #             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+    #             paddle.enable_static()
+    #             x_1 = paddle.fluid.data(
+    #                 name="X", shape=self.shape, dtype="float64")
+    #             out_1 = F.rrelu(x_1, self.lower, self.upper)
+    #             exe = paddle.static.Executor(place=place)
+    #             res_1 = exe.run(fluid.default_main_program(),
+    #                             feed={"X": self.x_1_np},
+    #                             fetch_list=out_1,
+    #                             use_prune=True)
+    #             self.assertTrue(check_output(self.x_1_np, res_1, self.lower, self.upper))
+    #
+    #     # same test between layer and functional in this op.
+    #     def test_static_graph_layer(self):
+    #         for use_cuda in ([False, True]
+    #                          if core.is_compiled_with_cuda() else [False]):
+    #             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+    #
+    #             paddle.enable_static()
+    #             x_1 = paddle.fluid.data(
+    #                 name="X", shape=self.shape, dtype="float64")
+    #
+    #             # init instance
+    #             ps_1 = paddle.nn.RReLU(self.lower, self.upper)
+    #             out_1 = ps_1(x_1)
+    #             exe = paddle.static.Executor(place=place)
+    #             res_1 = exe.run(fluid.default_main_program(),
+    #                             feed={"X": self.x_1_np},
+    #                             fetch_list=out_1,
+    #                             use_prune=True)
+    #             self.assertTrue(check_output(self.x_1_np, res_1, self.lower, self.upper))
+    #
+    #     def test_dygraph(self):
+    #         for use_cuda in ([False, True]
+    #                          if core.is_compiled_with_cuda() else [False]):
+    #             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+    #
+    #             paddle.disable_static(place=place)
+    #
+    #             rrelu = paddle.nn.RReLU(self.lower, self.upper)
+    #             result = rrelu(paddle.to_tensor(self.x_1_np))
+    #             self.assertTrue(check_output(self.x_1_np, result.numpy(), self.lower, self.upper))
+    #             result_functional = F.rrelu(
+    #                 paddle.to_tensor(self.x_1_np), self.lower, self.upper)
+    #             self.assertTrue(check_output(self.x_1_np, result_functional.numpy(), self.lower, self.upper))
 
-# class TestRReluAPI(unittest.TestCase):
-#     def setUp(self):
-#         self.shape = [2, 3]
-#         self.x_1_np = np.random.random(self.shape).astype("float64")
-#         self.lower = 0.1
-#         self.upper = 0.25
-#         debug_log("=======> 333")
-#
-#     def test_static_graph_functional(self):
-#         for use_cuda in ([False, True]
-#                          if core.is_compiled_with_cuda() else [False]):
-#             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-#             paddle.enable_static()
-#             x_1 = paddle.fluid.data(
-#                 name="X", shape=self.shape, dtype="float64")
-#             out_1 = F.rrelu(x_1, self.lower, self.upper)
-#             exe = paddle.static.Executor(place=place)
-#             res_1 = exe.run(fluid.default_main_program(),
-#                             feed={"X": self.x_1_np},
-#                             fetch_list=out_1,
-#                             use_prune=True)
-#             self.assertTrue(check_output(self.x_1_np, res_1, self.lower, self.upper))
-#
-#     # same test between layer and functional in this op.
-#     def test_static_graph_layer(self):
-#         for use_cuda in ([False, True]
-#                          if core.is_compiled_with_cuda() else [False]):
-#             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-#
-#             paddle.enable_static()
-#             x_1 = paddle.fluid.data(
-#                 name="X", shape=self.shape, dtype="float64")
-#
-#             # init instance
-#             ps_1 = paddle.nn.RReLU(self.lower, self.upper)
-#             out_1 = ps_1(x_1)
-#             exe = paddle.static.Executor(place=place)
-#             res_1 = exe.run(fluid.default_main_program(),
-#                             feed={"X": self.x_1_np},
-#                             fetch_list=out_1,
-#                             use_prune=True)
-#             self.assertTrue(check_output(self.x_1_np, res_1, self.lower, self.upper))
-#
-#     def test_dygraph(self):
-#         for use_cuda in ([False, True]
-#                          if core.is_compiled_with_cuda() else [False]):
-#             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-#
-#             paddle.disable_static(place=place)
-#
-#             rrelu = paddle.nn.RReLU(self.lower, self.upper)
-#             result = rrelu(paddle.to_tensor(self.x_1_np))
-#             self.assertTrue(check_output(self.x_1_np, result.numpy(), self.lower, self.upper))
-#             result_functional = F.rrelu(
-#                 paddle.to_tensor(self.x_1_np), self.lower, self.upper)
-#             self.assertTrue(check_output(self.x_1_np, result_functional.numpy(), self.lower, self.upper))
+    # class RReluTest(OpTest):
+    #     def setUp(self):
+    #         self.init_alpha()
+    #         self.init_dtype()
+    #         self.init_input_shape()
+    #         self.init_attr()
+    #         self.op_type = "rrelu"
+    #
+    #         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+    #         x_np[np.abs(x_np) < 0.005] = 0.02
+    #         out_np = ref_rrelu(x_np, self.alpha, self.alpha)
+    #         self.inputs = {'X': x_np}
+    #         self.outputs = {'Out': out_np}
+    #         debug_log("=======> 444")
+    #
+    #     def init_alpha(self):
+    #         self.alpha = 0.5
+    #
+    #     def init_dtype(self):
+    #         self.dtype = np.float64
+    #
+    #     def init_input_shape(self):
+    #         self.x_shape = [2, 3]
+    #
+    #     def init_attr(self):
+    #         self.attrs = {'lower': self.alpha, "upper": self.alpha}
+    #
+    #     def test_check_output(self):
+    #         self.check_output()
+    #
+    #     def test_check_grad(self):
+    #         self.check_grad(['X'], 'Out')
 
-
-# class RReluTest(OpTest):
-#     def setUp(self):
-#         self.init_alpha()
-#         self.init_dtype()
-#         self.init_input_shape()
-#         self.init_attr()
-#         self.op_type = "rrelu"
-#
-#         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
-#         x_np[np.abs(x_np) < 0.005] = 0.02
-#         out_np = ref_rrelu(x_np, self.alpha, self.alpha)
-#         self.inputs = {'X': x_np}
-#         self.outputs = {'Out': out_np}
-#         debug_log("=======> 444")
-#
-#     def init_alpha(self):
-#         self.alpha = 0.5
-#
-#     def init_dtype(self):
-#         self.dtype = np.float64
-#
-#     def init_input_shape(self):
-#         self.x_shape = [2, 3]
-#
-#     def init_attr(self):
-#         self.attrs = {'lower': self.alpha, "upper": self.alpha}
-#
-#     def test_check_output(self):
-#         self.check_output()
-#
-#     def test_check_grad(self):
-#         self.check_grad(['X'], 'Out')
 
 if __name__ == "__main__":
     unittest.main()

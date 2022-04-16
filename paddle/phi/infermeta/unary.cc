@@ -2032,10 +2032,10 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 }
 
 void RReluInferMeta(const MetaTensor& x,
-                   float lower,
-                   float upper,
-                   MetaTensor* out,
-                   MetaTensor* noise) {
+                    float lower,
+                    float upper,
+                    MetaTensor* out,
+                    MetaTensor* noise) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(lower,
                     0,
@@ -2049,13 +2049,14 @@ void RReluInferMeta(const MetaTensor& x,
                         "The upper value should be less than or equal to 1. "
                         "But received upper value = %f.",
                         upper));
-  PADDLE_ENFORCE_GE(upper,
-                    lower,
-                    phi::errors::InvalidArgument(
-                        "The upper value should be greater than or equal to lower value "
-                        "But received upper value = %f, lower value = %f.",
-                        upper,
-                        lower));
+  PADDLE_ENFORCE_GE(
+      upper,
+      lower,
+      phi::errors::InvalidArgument(
+          "The upper value should be greater than or equal to lower value "
+          "But received upper value = %f, lower value = %f.",
+          upper,
+          lower));
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   noise->set_dims(x_dims);
