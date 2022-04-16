@@ -47,22 +47,22 @@ __global__ void insert_kernel(Table* table,
   }
 }
 
-// template <typename Table>
-// __global__ void insert_kernel(Table* table,
-//                              const typename Table::key_type* const keys,
-//                              size_t len, char* pool, int start_index) {
-//  ReplaceOp<typename Table::mapped_type> op;
-//  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
-//
-//  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-//
-//  if (i < len) {
-//    kv.first = keys[i];
-//    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
-//    auto it = table->insert(kv, op);
-//    assert(it != table->end() && "error: insert fails: table is full");
-//  }
-// }
+template <typename Table>
+__global__ void insert_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              size_t len, char* pool, int start_index) {
+  ReplaceOp<typename Table::mapped_type> op;
+  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (i < len) {
+    kv.first = keys[i];
+    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
+    auto it = table->insert(kv, op);
+    assert(it != table->end() && "error: insert fails: table is full");
+  }
+}
 
 template <typename Table>
 __global__ void search_kernel(Table* table,
@@ -107,24 +107,22 @@ __global__ void update_kernel(Table* table,
   }
 }
 
-// template <typename Table, typename Sgd>
-// __global__ void dy_mf_update_kernel(Table* table,
-//                                    const typename Table::key_type* const
-//                                    keys,
-//                                    const char* const grads, size_t len,
-//                                    Sgd sgd, size_t grad_value_size) {
-//  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-//  if (i < len) {
-//    auto it = table->find(keys[i]);
-//    if (it != table->end()) {
-//      FeaturePushValue* cur = (FeaturePushValue*)(grads + i *
-//      grad_value_size);
-//      sgd.dy_mf_update_value((it.getter())->second, *cur);
-//    } else {
-//      printf("yxf::push miss key: %d", keys[i]);
-//    }
-//  }
-// }
+template <typename Table, typename Sgd>
+__global__ void dy_mf_update_kernel(Table* table,
+                                    const typename Table::key_type* const keys,
+                                    const char* const grads, size_t len,
+                                    Sgd sgd, size_t grad_value_size) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
+      sgd.dy_mf_update_value((it.getter())->second, *cur);
+    } else {
+      printf("yxf::push miss key: %d", keys[i]);
+    }
+  }
+}
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
