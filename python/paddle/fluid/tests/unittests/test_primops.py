@@ -183,17 +183,17 @@ class TestPyPrimOps(unittest.TestCase):
 
     def test_first_order_gradients(self):
         x = np.random.rand(100, 1, 2)
-        w = np.random.rand(100, 2, 5)
+        y = np.random.rand(100, 2, 5)
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            X = paddle.static.data('Input', shape=[100, 1, 2], dtype='float32')
-            W = paddle.static.data('Weight', shape=[100, 2, 5], dtype='float32')
-            Z = prog1(X, W)
-            X_grad, W_grad = _gradients([Z], [X, W])
+            X = paddle.static.data('X', shape=[100, 1, 2], dtype='float32')
+            Y = paddle.static.data('Y', shape=[100, 2, 5], dtype='float32')
+            Z = prog1(X, Y)
+            X_grad, W_grad = _gradients([Z], [X, Y])
         exe = paddle.static.Executor()
         exe.run(startup)
-        z = exe.run(main, feed={'X': x, 'W': w}, fetch_list=[Z])
+        z = exe.run(main, feed={'X': x, 'Y': y}, fetch_list=[Z])
         print(z)
 
     def test_lower(self):
