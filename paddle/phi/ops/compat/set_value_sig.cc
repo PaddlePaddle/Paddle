@@ -737,96 +737,89 @@ KernelSignature SetValueGradOpArgumentMapping(
   if (ctx.InputSize("StartsTensorList") > 0) {
     if (ctx.InputSize("EndsTensorList") > 0) {
       if (ctx.InputSize("StepsTensorList") > 0) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
       if (ctx.InputSize("StepsTensorList") > 0) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   } else {
     if (ctx.InputSize("EndsTensorList") > 0) {
       if (ctx.InputSize("StepsTensorList") > 0) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
       if (ctx.InputSize("StepsTensorList") > 0) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
         return KernelSignature(
             "set_value_grad",
-            {GradVarName("Out")},
+            {"Out@GRAD"},
             {"starts", "ends", "steps", "axes", "decrease_axes", "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+            {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   }
