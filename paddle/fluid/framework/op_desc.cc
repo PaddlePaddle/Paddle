@@ -39,7 +39,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasInputs(const std::string &name) const override;
 
-  bool HasOutputs(const std::string &name) const override;
+  bool HasOutputs(const std::string &name,
+                  bool allow_null = false) const override;
 
   AttrReader Attrs() const override;
 
@@ -882,7 +883,8 @@ bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   return true;
 }
 
-bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
+                                              bool allow_null) const {
   if (op_.Outputs().find(name) == op_.Outputs().end()) {
     return false;
   }
@@ -890,10 +892,17 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
   if (output_names.empty()) {
     return false;
   }
-  for (auto &output : output_names) {
-    if (!block_.HasVarRecursive(output)) return false;
+  if (allow_null) {
+    for (auto &output : output_names) {
+      if (block_.HasVarRecursive(output)) return true;
+    }
+    return false;
+  } else {
+    for (auto &output : output_names) {
+      if (!block_.HasVarRecursive(output)) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {

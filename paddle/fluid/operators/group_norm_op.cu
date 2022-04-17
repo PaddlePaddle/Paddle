@@ -605,8 +605,16 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     if (data_layout == DataLayout::kNCHW) {
+      const int max_num_threads = 1024;
+      int max_block_size = std::min(imsize, max_num_threads);
+      int block_size_nchw = 1;
+      while (block_size_nchw < max_block_size) {
+        block_size_nchw *= 2;
+      }
+      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
+      dim3 blocks(block_size_nchw);
       ScalarGetDsDbCUDAKernel<
-          T><<<x_dims[0] * C, block_size, 0, dev_ctx.stream()>>>(
+          T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
           imsize, x_data, dy_data, ds_data, db_data);
 
       if (d_scale || d_bias) {

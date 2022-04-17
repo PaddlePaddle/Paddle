@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/api/ext/dispatch.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
