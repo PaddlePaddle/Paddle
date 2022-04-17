@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
-// #include "paddle/fluid/imperative/layout_agnostic_ops.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -27,7 +26,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/autotune/layout_autotune.h"
+#include "paddle/phi/kernels/autotune/layout_optimizer.h"
 
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
