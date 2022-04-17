@@ -47,7 +47,6 @@ namespace sparse {
     const auto* y_crows_data = y.non_zero_crows().data<int64_t>();             \
     const auto* y_cols_data = y.non_zero_cols().data<int64_t>();               \
     const auto* y_values_data = y.non_zero_elements().data<T>();               \
-    const auto place = dev_ctx.GetPlace();                                     \
     const auto func = funcs::name##Functor<T>();                               \
                                                                                \
     std::vector<int64_t> next(n_col, -1);                                      \
@@ -123,13 +122,13 @@ namespace sparse {
     phi::DenseTensor out_cols = phi::Empty(dev_ctx, std::move(cols_meta));     \
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta)); \
                                                                                \
-    std::memcpy(out_crows.mutable_data<int64_t>(place),                        \
+    std::memcpy(out_crows.template data<int64_t>(),                            \
                 out_crows_vec.data(),                                          \
                 sizeof(int64_t) * out_crows_vec.size());                       \
-    std::memcpy(out_cols.mutable_data<int64_t>(place),                         \
+    std::memcpy(out_cols.template data<int64_t>(),                             \
                 out_cols_vec.data(),                                           \
                 sizeof(int64_t) * out_cols_vec.size());                        \
-    std::memcpy(out_values.mutable_data<T>(place),                             \
+    std::memcpy(out_values.template data<T>(),                                 \
                 out_values_vec.data(),                                         \
                 sizeof(T) * out_values_vec.size());                            \
                                                                                \
@@ -154,12 +153,11 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
   const auto* y_cols_data = y.non_zero_cols().data<int64_t>();
   const auto* y_values_data = y.non_zero_elements().data<T>();
   const auto& y_nnz = y.non_zero_elements().numel();
-  const auto place = dev_ctx.GetPlace();
   const auto func = funcs::DivideFunctor<T>();
 
   std::vector<int64_t> x_full_crows;
-  x_full_crows.reserve(n_col);
-  for (int64_t i = 0; i < n_col; ++i) {
+  x_full_crows.reserve(n_row + 1);
+  for (int64_t i = 0; i < n_row + 1; ++i) {
     x_full_crows.push_back(n_col * i);
   }
 
@@ -216,10 +214,6 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
       }
     }
 
-    //    for (int64_t jj = 0; jj < n_col; jj++) {
-    //      B_row[jj] = y_values_data[i*n_col+jj];
-    //    }
-
     std::vector<float> x_dense_data = {
         0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0, 3.2, 0.0, 0.0};
     std::vector<float> y_dense_data = {
@@ -260,29 +254,17 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
   phi::DenseTensor out_cols = phi::Empty(dev_ctx, std::move(cols_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-  std::memcpy(out_crows.mutable_data<int64_t>(place),
+  std::memcpy(out_crows.template data<int64_t>(),
               out_crows_vec.data(),
               sizeof(int64_t) * out_crows_vec.size());
-  std::memcpy(out_cols.mutable_data<int64_t>(place),
+  std::memcpy(out_cols.template data<int64_t>(),
               out_cols_vec.data(),
               sizeof(int64_t) * out_cols_vec.size());
-  std::memcpy(out_values.mutable_data<T>(place),
+  std::memcpy(out_values.template data<T>(),
               out_values_vec.data(),
               sizeof(T) * out_values_vec.size());
 
   out->SetMember(out_crows, out_cols, out_values, x.dims());
-}
-
-template <typename T, typename Context>
-void ElementWiseDivideCsrKernelnew(const Context& dev_ctx,
-                                   const SparseCsrTensor& x,
-                                   const SparseCsrTensor& y,
-                                   SparseCsrTensor* out) {
-  auto denseX = SparseCsrToDense<T>(dev_ctx, x);
-  auto denseY = SparseCsrToDense<T>(dev_ctx, y);
-  auto denseOut = phi::Divide<T>(dev_ctx, denseX, denseY);
-
-  *out = DenseToSparseCsr<T>(dev_ctx, denseOut);
 }
 
 }  // namespace sparse

@@ -32,13 +32,6 @@
   output : Tensor(x_grad@DenseTensor)
   invoke : to_dense_impl(out_grad)
 
-- backward_api : sparse_relu_grad
-  forward : sparse_relu(Tensor x) -> Tensor(out@SparseCooTensor)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad@SparseCooTensor)
-  kernel :
-    func : sparse_relu_grad
-
 - backward_api : elementwise_add_grad
   forward : elementwise_add(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
   args : (Tensor x, Tensor y, Tensor out_grad)
@@ -46,12 +39,12 @@
   kernel :
     func : sparse_elementwise_add_grad
 
-- backward_api : elementwise_sub_grad
-  forward : elementwise_sub(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
-  args : (Tensor x, Tensor y, Tensor out_grad)
+- backward_api : elementwise_div_grad
+  forward : elementwise_div(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
   output : Tensor(x_grad@SparseCsrTensor), Tensor(y_grad@SparseCsrTensor)
   kernel :
-    func : sparse_elementwise_sub_grad
+    func : sparse_elementwise_div_grad
 
 - backward_api : elementwise_mul_grad
   forward : elementwise_mul(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
@@ -60,9 +53,16 @@
   kernel :
     func : sparse_elementwise_mul_grad
 
-- backward_api : elementwise_div_grad
-  forward : elementwise_div(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
-  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
+- backward_api : elementwise_sub_grad
+  forward : elementwise_sub(Tensor x, Tensor y) -> Tensor(out@SparseCsrTensor)
+  args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad@SparseCsrTensor), Tensor(y_grad@SparseCsrTensor)
   kernel :
     func : sparse_elementwise_div_grad
+
+- backward_api : sparse_relu_grad
+  forward : sparse_relu(Tensor x) -> Tensor(out@SparseCooTensor)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel :
+    func : sparse_relu_grad

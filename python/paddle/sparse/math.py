@@ -38,7 +38,10 @@ def add(x, y, name=None):
 
     ..  code-block:: python
 
+        import paddle
         from paddle.fluid.framework import _test_eager_guard
+
+        paddle.device.set_device("cpu")
 
         with _test_eager_guard():
             x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
@@ -66,7 +69,8 @@ def add(x, y, name=None):
             _y = y.to_sparse_csr()
         else:
             _y = y
-        return _C_ops.final_state_sparse_elementwise_add(_x, _y).to_sparse_coo(x.dim())
+        return _C_ops.final_state_sparse_elementwise_add(
+            _x, _y).to_sparse_coo(x.dim())
 
     return _C_ops.final_state_sparse_elementwise_add(x, y)
 
@@ -90,7 +94,10 @@ def subtract(x, y, name=None):
 
     ..  code-block:: python
 
+        import paddle
         from paddle.fluid.framework import _test_eager_guard
+
+        paddle.device.set_device("cpu")
 
         with _test_eager_guard():
             x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
@@ -116,7 +123,8 @@ def subtract(x, y, name=None):
             _y = y.to_sparse_csr()
         else:
             _y = y
-        return _C_ops.final_state_sparse_elementwise_sub(_x, _y).to_sparse_coo(x.dim())
+        return _C_ops.final_state_sparse_elementwise_sub(
+            _x, _y).to_sparse_coo(x.dim())
 
     return _C_ops.final_state_sparse_elementwise_sub(x, y)
 
@@ -140,7 +148,10 @@ def multiply(x, y, name=None):
 
     ..  code-block:: python
 
+        import paddle
         from paddle.fluid.framework import _test_eager_guard
+
+        paddle.device.set_device("cpu")
 
         with _test_eager_guard():
             x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
@@ -166,7 +177,8 @@ def multiply(x, y, name=None):
             _y = y.to_sparse_csr()
         else:
             _y = y
-        return _C_ops.final_state_sparse_elementwise_mul(_x, _y).to_sparse_coo(x.dim())
+        return _C_ops.final_state_sparse_elementwise_mul(
+            _x, _y).to_sparse_coo(x.dim())
 
     return _C_ops.final_state_sparse_elementwise_mul(x, y)
 
@@ -190,7 +202,10 @@ def divide(x, y, name=None):
 
     ..  code-block:: python
 
+        import paddle
         from paddle.fluid.framework import _test_eager_guard
+
+        paddle.device.set_device("cpu")
 
         with _test_eager_guard():
             x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
@@ -216,6 +231,7 @@ def divide(x, y, name=None):
             _y = y.to_sparse_csr()
         else:
             _y = y
-        return _C_ops.final_state_sparse_elementwise_div(_x, _y).to_sparse_coo(x.dim())
+        return _C_ops.final_state_sparse_elementwise_div(
+            _x, _y).to_sparse_coo(x.dim())
 
     return _C_ops.final_state_sparse_elementwise_div(x, y)

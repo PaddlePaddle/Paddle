@@ -21,38 +21,32 @@ import paddle
 from paddle.fluid.framework import _test_eager_guard
 
 
+def get_actual_res(x, y, op):
+    if op == __add__:
+        res = paddle.sparse.add(x, y)
+    elif op == __sub__:
+        res = paddle.sparse.subtract(x, y)
+    elif op == __mul__:
+        res = paddle.sparse.multiply(x, y)
+    elif op == __truediv__:
+        res = paddle.sparse.divide(x, y)
+    else:
+        raise ValueError("unsupported op")
+    return res
+
+
 class TestSparseElementWiseAPI(unittest.TestCase):
     """
     test paddle.sparse.add, subtract, multiply, divide
     """
 
     def setUp(self):
-        """
-        support dtypes
-        """
         np.random.seed(2022)
         self.op_list = [__add__, __sub__, __mul__, __truediv__]
         self.shape = [128, 256]
         self.support_dtypes = ['float32', 'float64']
 
-    def get_actual_res(self, x, y, op):
-        if op == __add__:
-            res = paddle.sparse.add(x, y)
-        elif op == __sub__:
-            res = paddle.sparse.subtract(x, y)
-        elif op == __mul__:
-            res = paddle.sparse.multiply(x, y)
-        elif op == __truediv__:
-            res = paddle.sparse.divide(x, y)
-        else:
-            raise ValueError("unsupported op")
-        return res
-
     def func_support_dtypes_csr(self):
-        """
-        test support types csr for paddle.sparse.add, subtract, multiply, divide
-        """
-
         for op in self.op_list:
             for dtype in self.support_dtypes:
                 x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
@@ -62,16 +56,14 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 csr_x = dense_x.to_sparse_csr()
                 csr_y = dense_y.to_sparse_csr()
 
-                actual_res = self.get_actual_res(csr_x, csr_y, op)
+                actual_res = get_actual_res(csr_x, csr_y, op)
                 expect_res = op(dense_x, dense_y)
 
-                self.assertTrue(np.allclose(expect_res.numpy(), actual_res.to_dense().numpy()))
+                self.assertTrue(
+                    np.allclose(expect_res.numpy(),
+                                actual_res.to_dense().numpy()))
 
     def func_support_dtypes_coo(self):
-        """
-        test support types coo for paddle.sparse.add, subtract, multiply, divide
-        """
-
         for op in self.op_list:
             for dtype in self.support_dtypes:
                 x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
@@ -81,18 +73,22 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 coo_x = dense_x.to_sparse_coo(2)
                 coo_y = dense_y.to_sparse_coo(2)
 
-                actual_res = self.get_actual_res(coo_x, coo_y, op)
+                actual_res = get_actual_res(coo_x, coo_y, op)
                 expect_res = op(dense_x, dense_y)
 
-                self.assertTrue(np.allclose(expect_res.numpy(), actual_res.to_dense().numpy()))
+                self.assertTrue(
+                    np.allclose(expect_res.numpy(),
+                                actual_res.to_dense().numpy()))
 
     def test_support_dtypes_csr(self):
-        with _test_eager_guard():
-            self.func_support_dtypes_csr()
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_support_dtypes_csr()
 
     def test_support_dtypes_coo(self):
-        with _test_eager_guard():
-            self.func_support_dtypes_coo()
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_support_dtypes_coo()
 
 
 if __name__ == "__main__":

@@ -182,6 +182,6 @@ PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
-PD_REGISTER_ACTIVATION_KERNEL(inverse, OppositeKernel)
+PD_REGISTER_ACTIVATION_KERNEL(opposite, OppositeKernel)
 PD_REGISTER_KERNEL(
     pow, CPU, ALL_LAYOUT, phi::PowKernel, float, double, int, int64_t) {}

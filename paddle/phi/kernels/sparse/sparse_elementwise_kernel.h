@@ -30,18 +30,18 @@ namespace sparse {
                                     const SparseCsrTensor& y, \
                                     SparseCsrTensor* out);
 
-#define DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(name)                            \
-  template <typename T, typename Context>                                   \
-  SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,            \
-                                         const SparseCsrTensor& x,          \
-                                         const SparseCsrTensor& y) {        \
-    DenseTensor non_zero_crows;                                             \
-    DenseTensor non_zero_cols;                                              \
-    DenseTensor non_zero_elements;                                          \
-    SparseCsrTensor out(                                                    \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());        \
+#define DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(name)                        \
+  template <typename T, typename Context>                               \
+  SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,        \
+                                         const SparseCsrTensor& x,      \
+                                         const SparseCsrTensor& y) {    \
+    DenseTensor non_zero_crows;                                         \
+    DenseTensor non_zero_cols;                                          \
+    DenseTensor non_zero_elements;                                      \
+    SparseCsrTensor out(                                                \
+        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());    \
     CSR_ELEMENTWISE_KERNEL_NAME(name)<T, Context>(dev_ctx, x, y, &out); \
-    return out;                                                             \
+    return out;                                                         \
   }
 
 DEFINE_CSR_ELEMENTWISE_KERNEL_HEAD(Add)
