@@ -88,9 +88,9 @@ def matmul_v2_orig2prim(op, x, y):
     assert len(x.shape) < 4 and len(
         y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
 
-    if len(x.shape == 1):
+    if len(x.shape) == 1:
         x = broadcast(x, shape=[1, x.shape[0]])
-    if len(y.shape == 1):
+    if len(y.shape) == 1:
         y = broadcast(y, shape=[y.shape[0], 1])
     if op.attr('trans_x'):
         x = transpose(x, shape=trans(x.shape))
@@ -182,7 +182,7 @@ def p_norm_orig2prim(op, x):
         'asvector'), 'Only support lower pnorm when asvector=True currently'
     if len(x.shape) > 1:
         x = reshape(x, shape=[num_el(x.shape)])
-    return sqrt(reduce(mul(x, x), axis=0))
+    return sqrt(reduce(mul(x, x), axis=[0]))
 
 
 @REGISTER_ORIG2PRIM('index_select')

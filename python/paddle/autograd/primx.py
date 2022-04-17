@@ -64,10 +64,10 @@ def topo_path(xs, ys, block=None):
                 else:
                     reached_vars.append(out)
 
-    if len(sink_ops) != len(sink_vars):
-        for var in sink_vars:
-            assert id(var) in sink_ops, (
-                f"{var} is not reachable from input vars.")
+    # if len(sink_ops) != len(sink_vars):
+    #     for var in sink_vars:
+    #         assert id(var) in sink_ops, (
+    #             f"{var} is not reachable from input vars.")
 
     return path
 
