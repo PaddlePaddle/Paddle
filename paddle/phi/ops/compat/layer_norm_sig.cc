@@ -27,7 +27,7 @@ KernelSignature LayerNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "layer_norm_grad",
-      {"X", "Mean", "Variance", "Scale", "Bias", GradVarName("Y")},
+      {"X", "Scale", "Bias", "Mean", "Variance", GradVarName("Y")},
       {"epsilon", "begin_norm_axis", "is_test"},
       {GradVarName("X"), GradVarName("Scale"), GradVarName("Bias")});
 }

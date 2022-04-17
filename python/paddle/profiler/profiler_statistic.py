@@ -743,6 +743,16 @@ def _build_table(statistic_data,
             TracerEventType.
             Communication] = statistic_data.distributed_summary.cpu_calls
 
+    for event_type in [
+            TracerEventType.Dataloader, TracerEventType.Forward,
+            TracerEventType.Backward, TracerEventType.Optimization
+    ]:
+        event_type_name = str(event_type).split('.')[1]
+        if event_type in cpu_call_times and event_type_name in statistic_data.event_summary.model_perspective_items:
+            cpu_call_times[
+                event_type] = statistic_data.event_summary.model_perspective_items[
+                    event_type_name].call
+
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
     ):
@@ -859,7 +869,7 @@ def _build_table(statistic_data,
             '{} / - / - / - / {}'.format(
                 format_time(
                     other_gpu_time, unit=time_unit),
-                format_ratio(float(other_gpu_time) / gpu_total_time))
+                format_ratio(float(other_gpu_time) / total_time))
         ]
         all_row_values.append(row_values)
         # Calculate the column width

@@ -54,7 +54,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
 
         for dims in [2, 3, 4]:
             for num_input in [0, 1]:
-                for batch in [1, 2, 4]:
+                for batch in [1, 4]:
                     for epsilon in [1e-6, 1e-5, 1e-4]:
                         for data_layout in ["NCHW"]:
                             for momentum in [0.9, 0.8]:
@@ -134,33 +134,33 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
                     self.dynamic_shape.min_input_shape = {
-                        "batch_norm_input": [1, 3, 24, 24]
+                        "batch_norm_input": [1, 3, 12, 12]
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "batch_norm_input": [4, 3, 48, 48]
+                        "batch_norm_input": [4, 3, 24, 24]
                     }
                     self.dynamic_shape.opt_input_shape = {
-                        "batch_norm_input": [1, 3, 24, 48]
+                        "batch_norm_input": [1, 3, 24, 24]
                     }
                 elif attrs[0]['data_layout'] == "NHWC":
                     self.dynamic_shape.min_input_shape = {
-                        "batch_norm_input": [1, 24, 24, 3]
+                        "batch_norm_input": [1, 12, 12, 3]
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "batch_norm_input": [4, 48, 48, 3]
+                        "batch_norm_input": [4, 24, 24, 3]
                     }
                     self.dynamic_shape.opt_input_shape = {
-                        "batch_norm_input": [1, 24, 48, 3]
+                        "batch_norm_input": [1, 24, 24, 3]
                     }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
-                    "batch_norm_input": [1, 3, 24]
+                    "batch_norm_input": [1, 3, 12]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "batch_norm_input": [4, 3, 48]
+                    "batch_norm_input": [4, 3, 24]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "batch_norm_input": [1, 3, 48]
+                    "batch_norm_input": [1, 3, 24]
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
