@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph import Linear
+from paddle.fluid.framework import _test_eager_guard
 
 # Can use Amusic dataset as the DeepCF describes.
 DATA_PATH = os.environ.get('DATA_PATH', '')
@@ -294,9 +295,42 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('dynamic loss: %s %s\n' %
                                      (slice, dy_loss2))
 
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                paddle.seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+                fluid.default_startup_program().random_seed = seed
+                fluid.default_main_program().random_seed = seed
+
+                deepcf = DeepCF(num_users, num_items, matrix)
+                adam = fluid.optimizer.AdamOptimizer(
+                    0.01, parameter_list=deepcf.parameters())
+
+                for e in range(NUM_EPOCHES):
+                    sys.stderr.write('epoch %d\n' % e)
+                    for slice in range(0, BATCH_SIZE * NUM_BATCHES, BATCH_SIZE):
+                        if slice + BATCH_SIZE >= users_np.shape[0]:
+                            break
+                        prediction = deepcf(
+                            to_variable(users_np[slice:slice + BATCH_SIZE]),
+                            to_variable(items_np[slice:slice + BATCH_SIZE]))
+                        loss = fluid.layers.reduce_sum(
+                            fluid.layers.log_loss(prediction,
+                                                  to_variable(
+                                                      labels_np[slice:slice +
+                                                                BATCH_SIZE])))
+                        loss.backward()
+                        adam.minimize(loss)
+                        deepcf.clear_gradients()
+                        eager_loss = loss.numpy()
+                        sys.stderr.write('eager loss: %s %s\n' %
+                                         (slice, eager_loss))
+
         self.assertEqual(static_loss, dy_loss)
         self.assertEqual(static_loss, dy_loss2)
+        self.assertEqual(static_loss, eager_loss)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

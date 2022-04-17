@@ -27,10 +27,12 @@
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
 class MKLDNNDeviceContext;
@@ -54,7 +56,7 @@ class SumMKLDNNHandler
 
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
-    auto dst_tz = framework::vectorize<int64_t>(z->dims());
+    auto dst_tz = phi::vectorize<int64_t>(z->dims());
     auto src_tz = dst_tz;
 
     std::vector<dnnl::memory::desc> srcs_md;
@@ -161,21 +163,20 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
       auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
-      auto output_tz = framework::vectorize<int64_t>(output->dims());
+      auto output_tz = phi::vectorize<int64_t>(output->dims());
       platform::ReorderMKLDNNHandler reorder_handler(
-          output_tz, output->type(), framework::ToMKLDNNDataType(in_out.type()),
+          output_tz, framework::TransToProtoVarType(output->dtype()),
+          framework::ToMKLDNNDataType(
+              framework::TransToProtoVarType(in_out.dtype())),
           dev_ctx.GetEngine());
 
       auto target_mem = reorder_handler.AcquireDstMemory(
           output, in_out.format(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(target_mem, dst_mem);
-      {
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
-        reorder_p->execute(astream, *dst_mem, *target_mem);
-        astream.wait();
-      }
+
+      reorder_p->execute(astream, *dst_mem, *target_mem);
+      astream.wait();
     }
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_mem));

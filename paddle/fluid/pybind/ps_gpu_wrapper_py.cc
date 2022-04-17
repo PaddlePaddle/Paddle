@@ -39,7 +39,10 @@ void BindPSGPUWrapper(py::module* m) {
       .def(py::init([]() { return framework::PSGPUWrapper::GetInstance(); }))
       .def("set_slot_vector", &framework::PSGPUWrapper::SetSlotVector,
            py::call_guard<py::gil_scoped_release>())
-      .def("init_GPU_server", &framework::PSGPUWrapper::InitializeGPUServer,
+      .def("set_slot_dim_vector", &framework::PSGPUWrapper::SetSlotDimVector,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_slot_offset_vector",
+           &framework::PSGPUWrapper::SetSlotOffsetVector,
            py::call_guard<py::gil_scoped_release>())
       .def("set_date", &framework::PSGPUWrapper::SetDate,
            py::call_guard<py::gil_scoped_release>())
@@ -53,9 +56,40 @@ void BindPSGPUWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory", &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_PSLIB
+      .def("init_afs_api", &framework::PSGPUWrapper::InitAfsApi,
+           py::call_guard<py::gil_scoped_release>())
+#endif
       .def("finalize", &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
+#ifdef PADDLE_WITH_PSLIB
+void BindAfsWrapper(py::module* m) {
+  py::class_<framework::AfsWrapper, std::shared_ptr<framework::AfsWrapper>>(
+      *m, "AfsWrapper")
+      .def(py::init([]() { return std::make_shared<framework::AfsWrapper>(); }))
+      .def("init", &framework::AfsWrapper::init,
+           py::call_guard<py::gil_scoped_release>())
+      .def("list", &framework::AfsWrapper::list,
+           py::call_guard<py::gil_scoped_release>())
+      .def("mkdir", &framework::AfsWrapper::mkdir,
+           py::call_guard<py::gil_scoped_release>())
+      .def("exist", &framework::AfsWrapper::exist,
+           py::call_guard<py::gil_scoped_release>())
+      .def("download", &framework::AfsWrapper::download,
+           py::call_guard<py::gil_scoped_release>())
+      .def("upload", &framework::AfsWrapper::upload,
+           py::call_guard<py::gil_scoped_release>())
+      .def("remove", &framework::AfsWrapper::remove,
+           py::call_guard<py::gil_scoped_release>())
+      .def("touchz", &framework::AfsWrapper::touchz,
+           py::call_guard<py::gil_scoped_release>())
+      .def("cat", &framework::AfsWrapper::cat,
+           py::call_guard<py::gil_scoped_release>())
+      .def("mv", &framework::AfsWrapper::mv,
+           py::call_guard<py::gil_scoped_release>());
+}
+#endif
 #endif
 }  // end namespace pybind
 }  // end namespace paddle

@@ -43,19 +43,20 @@ nvinfer1::Weights DeformableConvPlugin::copyToDevice(const void* hostData,
                                                      size_t count) {
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   void* deviceData;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-      deviceData, hostData, count * num_bytes, cudaMemcpyHostToDevice));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(deviceData, hostData, count * num_bytes,
+                                        cudaMemcpyHostToDevice));
   return nvinfer1::Weights{data_type_, deviceData, int64_t(count)};
 }
 
 void DeformableConvPlugin::serializeFromDevice(
     void** hostBuffer, const nvinfer1::Weights& deviceWeights) const {
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemcpy(static_cast<char*>(*hostBuffer), deviceWeights.values,
                  deviceWeights.count * num_bytes, cudaMemcpyDeviceToHost));
-  hostBuffer += deviceWeights.count * num_bytes;
+  *hostBuffer =
+      reinterpret_cast<char*>(*hostBuffer) + deviceWeights.count * num_bytes;
 }
 
 nvinfer1::Weights DeformableConvPlugin::deserializeToDevice(
@@ -63,7 +64,7 @@ nvinfer1::Weights DeformableConvPlugin::deserializeToDevice(
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   nvinfer1::Weights w =
       copyToDevice(static_cast<const char*>(*hostBuffer), count);
-  hostBuffer += count * num_bytes;
+  *hostBuffer = reinterpret_cast<const char*>(*hostBuffer) + count * num_bytes;
   return w;
 }
 
@@ -189,8 +190,7 @@ bool DeformableConvPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-    return (type == nvinfer1::DataType::kFLOAT ||
-            type == nvinfer1::DataType::kHALF) &&
+    return (type == nvinfer1::DataType::kHALF) &&
            (format == nvinfer1::TensorFormat::kLINEAR);
 #else
     return (type == nvinfer1::DataType::kFLOAT) &&
@@ -615,7 +615,7 @@ const char* DeformableConvPlugin::getPluginNamespace() const TRT_NOEXCEPT {
 nvinfer1::DataType DeformableConvPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type,
     int nb_inputs) const TRT_NOEXCEPT {
-  return data_type_;
+  return input_type[0];
 }
 
 bool DeformableConvPlugin::isOutputBroadcastAcrossBatch(

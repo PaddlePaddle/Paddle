@@ -224,6 +224,10 @@ class Gloo(object):
             self._worker_comm = gloo
         # TODO (sandyhouse): initialize gloo for server and all
 
+        # the closing of kv server may cause gloo init failure 
+        # since it depend on the full mesh connection
+        # e.g. 0 connected with 1,2,3 while 2-3 not connected yet
+        # TODO(kuizhiqing)
         if start_http_server:
             http_server_d["running"] = False
             http_server.join()
@@ -1086,7 +1090,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.fluid.framework.in_dygraph_mode():
+            if not paddle.fluid.framework._non_static_mode():
                 self._gloo_init()
 
 

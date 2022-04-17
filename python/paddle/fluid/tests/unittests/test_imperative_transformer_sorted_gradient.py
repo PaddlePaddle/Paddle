@@ -21,6 +21,7 @@ from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
 from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode, _in_legacy_dygraph
 from paddle.fluid import core
 import numpy as np
 import six
@@ -316,7 +317,7 @@ sync = False
 # how many batches we use
 batch_num = 5
 
-np.random.seed = 90
+np.random.seed(90)
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
     [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
@@ -949,8 +950,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
     def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
 
-        with guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+        def run_dygraph():
+            # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
+            fluid.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
@@ -996,7 +998,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if i % 2 == 0:
+                if False:
                     outs, traced_layer = TracedLayer.trace(
                         transformer, [enc_inputs, dec_inputs, label, weights])
 
@@ -1033,6 +1035,15 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             dy_sum_cost_value = dy_sum_cost.numpy()
             dy_predict_value = dy_predict.numpy()
             dy_token_num_value = dy_token_num.numpy()
+
+            return dy_avg_cost_value, dy_sum_cost_value, dy_predict_value, dy_token_num_value, \
+                dy_param_init, dy_param_updated
+
+        with guard():
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            if _in_legacy_dygraph():
+                dy_avg_cost_value, dy_sum_cost_value, dy_predict_value, dy_token_num_value, \
+                    dy_param_init, dy_param_updated = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -1106,20 +1117,43 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     for k in range(4, len(out)):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
+        if _in_legacy_dygraph():
+            self.assertTrue(
+                np.array_equal(static_avg_cost_value, dy_avg_cost_value))
+            self.assertTrue(
+                np.array_equal(static_sum_cost_value, dy_sum_cost_value))
+            self.assertTrue(
+                np.array_equal(static_predict_value, dy_predict_value))
+            self.assertTrue(
+                np.array_equal(static_token_num_value, dy_token_num_value))
 
-        self.assertTrue(
-            np.array_equal(static_avg_cost_value, dy_avg_cost_value))
-        self.assertTrue(
-            np.array_equal(static_sum_cost_value, dy_sum_cost_value))
-        self.assertTrue(np.array_equal(static_predict_value, dy_predict_value))
-        self.assertTrue(
-            np.array_equal(static_token_num_value, dy_token_num_value))
+            for key, value in six.iteritems(static_param_init):
+                self.assertTrue(np.array_equal(value, dy_param_init[key]))
+            for key, value in six.iteritems(static_param_updated):
+                self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+
+        # compare eager result with imperative result
+        with guard():
+            fluid.set_flags({'FLAGS_sort_sum_gradient': False})
+            dy_avg_cost_value, dy_sum_cost_value, dy_predict_value, dy_token_num_value, \
+                dy_param_init, dy_param_updated = run_dygraph()
+
+        with guard():
+            with _test_eager_guard():
+                eager_avg_cost_value, eager_sum_cost_value, eager_predict_value, eager_token_num_value, \
+                    eager_param_init, eager_param_updated = run_dygraph()
+        self.assertTrue(np.allclose(dy_avg_cost_value, eager_avg_cost_value))
+        self.assertTrue(np.allclose(dy_sum_cost_value, eager_sum_cost_value))
+
+        self.assertTrue(np.allclose(dy_predict_value, eager_predict_value))
+        self.assertTrue(np.allclose(dy_token_num_value, eager_token_num_value))
 
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.array_equal(value, dy_param_init[key]))
-        for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+            self.assertTrue(np.array_equal(value, eager_param_init[key]))
+        for key, value in six.iteritems(dy_param_updated):
+            self.assertTrue(np.allclose(value, eager_param_updated[key]))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 /**
  * case 1:
@@ -35,9 +37,9 @@ void ConcatCase1(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({3, 3, 4});
-  auto dim_out = paddle::framework::make_ddim({5, 3, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({3, 3, 4});
+  auto dim_out = phi::make_ddim({5, 3, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -134,9 +136,9 @@ void ConcatCase2(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 4, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 7, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 4, 4});
+  auto dim_out = phi::make_ddim({2, 7, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -237,9 +239,9 @@ void ConcatCase3(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 5});
-  auto dim_out = paddle::framework::make_ddim({2, 3, 9});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 3, 5});
+  auto dim_out = phi::make_ddim({2, 3, 9});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -342,9 +344,9 @@ void ConcatCase4(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 6, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 3, 4});
+  auto dim_out = phi::make_ddim({2, 6, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -440,6 +442,31 @@ void TestConcatMain() {
 
   delete context;
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+void TestConcatMain<paddle::platform::CUDADeviceContext,
+                    paddle::platform::CUDAPlace>() {
+  auto* context =
+      new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+  context->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
+          .get());
+  context->PartialInitWithAllocator();
+
+  ConcatCase1<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase2<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase3<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase4<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+
+  delete context;
+}
+#endif
 
 TEST(math, concat) {
   TestConcatMain<paddle::platform::CPUDeviceContext,

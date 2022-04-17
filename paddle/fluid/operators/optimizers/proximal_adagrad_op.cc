@@ -56,7 +56,7 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(
-        framework::product(lr_dim), 1,
+        phi::product(lr_dim), 1,
         platform::errors::InvalidArgument(
             "Learning Rate should be a scalar. But received dimension[%s]",
             lr_dim));

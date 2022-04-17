@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle
 import unittest
 import numpy as np
@@ -51,7 +52,11 @@ class TestPureFP16(TestMNIST):
 
         if to_static:
             print("Successfully to apply @to_static.")
-            mnist = paddle.jit.to_static(mnist)
+            build_strategy = paddle.static.BuildStrategy()
+            # Why set `build_strategy.enable_inplace = False` here?
+            # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
+            build_strategy.enable_inplace = False
+            mnist = paddle.jit.to_static(mnist, build_strategy=build_strategy)
 
         optimizer = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=mnist.parameters())
@@ -91,16 +96,17 @@ class TestPureFP16(TestMNIST):
                 loss_data.append(avg_loss.numpy()[0])
                 # save checkpoint
                 mnist.clear_gradients()
-                if batch_id % 10 == 0:
+                if batch_id % 2 == 0:
                     print(
                         "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
                         .format(epoch, batch_id,
                                 avg_loss.numpy(), acc.numpy(), time() - start))
                     start = time()
-                if batch_id == 50:
+                if batch_id == 10:
                     break
         return loss_data
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.fluid.framework._test_eager_guard():
+        unittest.main()

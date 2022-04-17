@@ -21,7 +21,8 @@ import paddle
 import numpy as np
 import paddle.distributed as dist
 from paddle.fluid.dygraph.nn import Linear
-from paddle.autograd import PyLayer
+from paddle.autograd import PyLayer, EagerPyLayer
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
 batch = 5
@@ -30,6 +31,20 @@ out_dim = 10
 
 
 class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+
+class cus_tanh_eager(EagerPyLayer):
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -55,7 +70,10 @@ class SimpleNet(paddle.nn.Layer):
 
     def forward(self, inputs):
         if self.model_id == 0:
-            inputs = cus_tanh.apply(inputs)
+            if in_dygraph_mode():
+                inputs = cus_tanh_eager.apply(inputs)
+            elif _in_legacy_dygraph():
+                inputs = cus_tanh.apply(inputs)
         else:
             inputs = self.tanh(inputs)
 

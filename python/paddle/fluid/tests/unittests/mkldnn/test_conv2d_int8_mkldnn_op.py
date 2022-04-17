@@ -43,7 +43,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.init_group()
         self.init_dilation()
         self.init_test_case()
-        self.init_fuse_relu()
+        self.init_fuse_activation()
         self.init_fuse_residual()
         self.init_data_type()
 
@@ -54,7 +54,9 @@ class TestConv2DInt8Op(TestConv2DOp):
         }
         # This implementation of convolution quantization is based on OneDNN documentation
         # https://oneapi-src.github.io/oneDNN/dev_guide_int8_computations.html#doxid-dev-guide-int8-computations-1dg-i8-comp-s11
-        scale_output_shift = (self.scale_out /
+        inner_scale = 1. if self.fuse_activation != "" else self.scale_out
+        activation_scale = self.scale_out if self.fuse_activation != "" else 1.
+        scale_output_shift = (inner_scale /
                               (self.scale_in * self.scale_weights[0]))
         filter = np.random.random(self.filter_size).astype(self.weighttype)
 
@@ -78,7 +80,7 @@ class TestConv2DInt8Op(TestConv2DOp):
                 init_low, init_high,
                 self.input_residual_size).astype(self.srctype)
             return (output_ + input_residual_ *
-                    (self.scale_out / self.scale_in_eltwise)), input_residual_
+                    (inner_scale / self.scale_in_eltwise)), input_residual_
 
         if self.srctype == np.int8:
             init_low, init_high = (-5, 5)
@@ -101,12 +103,24 @@ class TestConv2DInt8Op(TestConv2DOp):
             output, input_residual = residual_helper(init_low, init_high,
                                                      output)
 
-        output = np.round(output)
+        if self.fuse_activation == "":
+            pass
+        elif self.fuse_activation == "relu":
+            output = activation_scale * np.maximum(output, 0)
+        elif self.fuse_activation == "hard_swish":
+            output = activation_scale * output / 6. * np.minimum(
+                np.maximum(0, output + 3.), 6)
+        elif self.fuse_activation == "relu6":
+            output = activation_scale * np.maximum(0, np.minimum(6, output))
+        elif self.fuse_activation == "swish":
+            output = activation_scale * output / (1. + np.exp(-1. * output))
+        elif self.fuse_activation == "leaky_relu":
+            output = activation_scale * np.maximum(output, 0.02 * output)
+        else:
+            raise NotImplementedError("test for " + self.fuse_activation +
+                                      " activation not implemented")
 
-        if self.fuse_activation == "relu":
-            output = np.maximum(output, 0)
-
-        output = output.astype(self.dsttype)
+        output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -131,6 +145,8 @@ class TestConv2DInt8Op(TestConv2DOp):
             'Scale_weights': self.scale_weights,
             'Scale_in_eltwise': self.scale_in_eltwise,
             'fuse_activation': self.fuse_activation,
+            'fuse_alpha': self.fuse_alpha,
+            'fuse_beta': self.fuse_beta,
             'fuse_residual_connection': self.fuse_residual,
             'mkldnn_data_type': self.mkldnn_data_type
         }
@@ -165,8 +181,10 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.srctype = np.uint8
         self.dsttype = np.int8
 
-    def init_fuse_relu(self):
+    def init_fuse_activation(self):
         self.fuse_activation = "relu"
+        self.fuse_alpha = 0
+        self.fuse_beta = 0
 
     def init_fuse_residual(self):
         self.fuse_residual = True
@@ -188,6 +206,34 @@ class TestConv2D(TestConv2DInt8Op):
         self.scale_out = 0.5
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.6
+
+
+class TestWithHardSwish(TestConv2D):
+    def init_fuse_activation(self):
+        self.fuse_activation = "hard_swish"
+        self.fuse_alpha = 0
+        self.fuse_beta = 0
+
+
+class TestWithRelu6(TestConv2D):
+    def init_fuse_activation(self):
+        self.fuse_activation = "relu6"
+        self.fuse_alpha = 6
+        self.fuse_beta = 0
+
+
+class TestWithSwish(TestConv2D):
+    def init_fuse_activation(self):
+        self.fuse_activation = "swish"
+        self.fuse_alpha = 1
+        self.fuse_beta = 0
+
+
+class TestWithLeakyRelu(TestConv2D):
+    def init_fuse_activation(self):
+        self.fuse_activation = "leaky_relu"
+        self.fuse_alpha = 0.02
+        self.fuse_beta = 0
 
 
 class TestWithPad(TestConv2D):

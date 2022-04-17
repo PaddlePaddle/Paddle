@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/where_index_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,16 +23,6 @@ namespace operators {
 class WhereIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "where");
-    PADDLE_ENFORCE_GE(
-        ctx->GetInputDim("Condition").size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Input(Condition) should have number of dimension at least 1"));
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "where");
-    ctx->SetOutputDim("Out", {-1, ctx->GetInputDim("Condition").size()});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -53,10 +46,10 @@ class WhereIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(where_index, ops::WhereIndexOp,
-                             ops::WhereIndexOpMaker);
-REGISTER_OP_CPU_KERNEL(where_index, ops::CPUWhereIndexKernel<int64_t>,
-                       ops::CPUWhereIndexKernel<int>,
-                       ops::CPUWhereIndexKernel<bool>,
-                       ops::CPUWhereIndexKernel<float>,
-                       ops::CPUWhereIndexKernel<double>);
+DECLARE_INFER_SHAPE_FUNCTOR(where_index, WhereIndexInferShapeFunctor,
+                            PD_INFER_META(phi::WhereIndexInferMeta));
+REGISTER_OPERATOR(
+    where_index, ops::WhereIndexOp, ops::WhereIndexOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    WhereIndexInferShapeFunctor);

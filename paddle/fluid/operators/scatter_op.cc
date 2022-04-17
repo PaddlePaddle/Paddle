@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scatter_op.h"
 #include <memory>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,46 +25,6 @@ namespace operators {
 class ScatterOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of ScatterOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Ids) of ScatterOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Updates) of ScatterOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of ScatterOp should not be null."));
-
-    auto updates_dims = ctx->GetInputDim("Updates");
-    auto ref_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputDim("Ids").size(), 1,
-        platform::errors::InvalidArgument(
-            "The size of Input(Ids)'s shape should be equal to 1, but "
-            "received the rank of Input(Ids) is %d.",
-            ctx->GetInputDim("Ids").size()));
-    PADDLE_ENFORCE_EQ(
-        ref_dims.size(), updates_dims.size(),
-        platform::errors::InvalidArgument(
-            "Input(X) and Input(Updates) should have the same shape size, "
-            "but received the size of Input(x)'s shape is %d, the size of "
-            "Input(Updates)'s shape is %d.",
-            ref_dims.size(), updates_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0],
-        platform::errors::InvalidArgument(
-            "Input(Updates) and Input(Ids) should have same batch-size, but"
-            " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-            "batch-size is %d.",
-            ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0]));
-    ctx->SetOutputDim("Out", ref_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -75,17 +38,6 @@ class ScatterOp : public framework::OperatorWithKernel {
 class ScatterGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasOutput(framework::GradVarName("Updates"))) {
-      ctx->SetOutputDim(framework::GradVarName("Updates"),
-                        ctx->GetInputDim("Updates"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"),
-                        ctx->GetInputDim(framework::GradVarName("Out")));
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -151,17 +103,17 @@ DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(scatter, ScatterInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_grad, ScatterGradInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterGradInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
                   ops::ScatterGradMaker<paddle::framework::OpDesc>,
                   ops::ScatterGradMaker<paddle::imperative::OpBase>,
-                  ops::ScatterInplaceInferer);
+                  ops::ScatterInplaceInferer, ScatterInferShapeFunctor);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
-                       ops::ScatterOpKernel<double>, ops::ScatterOpKernel<int>,
-                       ops::ScatterOpKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>,
-                       ops::ScatterGradientOpKernel<double>,
-                       ops::ScatterGradientOpKernel<int>,
-                       ops::ScatterGradientOpKernel<int64_t>);
+                  ops::ScatterGradNoNeedBufferVarsInferer,
+                  ScatterGradInferShapeFunctor);

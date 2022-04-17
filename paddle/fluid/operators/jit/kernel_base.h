@@ -24,8 +24,9 @@ namespace jit {
 typedef enum {
   kNone = 0,
   // sort by alphabet
-  kCRFDecoding = 1,
-  kEmbSeqPool = 2,
+  kAdam = 1,
+  kCRFDecoding,
+  kEmbSeqPool,
   kGRUH1,
   kGRUHtPart1,
   kGRUHtPart2,
@@ -267,6 +268,21 @@ struct SgdTuple {
   typedef sgd_attr_t attr_type;
   typedef void (*func_type)(const T*, const T*, const T*, const int64_t*, T*,
                             const sgd_attr_t*);
+};
+
+typedef struct adam_attr_s {
+  float beta1, beta2;
+  adam_attr_s() = default;
+  explicit adam_attr_s(float beta1, float beta2) : beta1(beta1), beta2(beta2) {}
+} adam_attr_t;
+
+template <typename T>
+struct AdamTuple {
+  static constexpr KernelType kernel_type = kAdam;
+  typedef T data_type;
+  typedef adam_attr_t attr_type;
+  typedef void (*func_type)(T, T, T, T, int64_t, const T*, const T*, const T*,
+                            const T*, T*, T*, T*);
 };
 
 typedef struct matmul_attr_s {

@@ -25,6 +25,14 @@ class ComputeInterceptor : public Interceptor {
  public:
   ComputeInterceptor(int64_t interceptor_id, TaskNode* node);
 
+ protected:
+  virtual void RunOps();
+  virtual void SendDataReadyToDownStream();
+  virtual void ReplyCompletedToUpStream();
+
+  int64_t step_{0};
+
+ private:
   void PrepareDeps();
 
   void IncreaseReady(int64_t up_id);
@@ -32,19 +40,15 @@ class ComputeInterceptor : public Interceptor {
   bool IsInputReady();
   bool CanWriteOutput();
 
-  void SendDataReadyToDownStream();
-  void ReplyCompletedToUpStream();
-
   void Run();
   void Compute(const InterceptorMessage& msg);
 
-  void HandleStop(const InterceptorMessage& msg) override;
   void ReceivedStop(int64_t up_id);
   void TryStop();
 
- private:
-  // FIXME(wangxi): if use step_ and max_steps_, how to restart step_ from 0
-  int64_t step_{0};
+  bool is_source_{false};
+  bool is_last_{false};
+
   // upstream_id-->(max_ready_size, ready_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)

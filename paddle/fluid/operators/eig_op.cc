@@ -48,7 +48,7 @@ class EigOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Eigenvectors", x_dims);
-    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(batch_dims_vec));
+    ctx->SetOutputDim("Eigenvalues", phi::make_ddim(batch_dims_vec));
   }
 
  protected:

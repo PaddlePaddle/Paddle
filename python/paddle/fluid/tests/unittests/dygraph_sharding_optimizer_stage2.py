@@ -23,10 +23,10 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
+from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import GpuInfo
 from paddle.distributed.fleet.utils.internal_storage import GradStorage
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import ShardingOptimizerStage2
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 
 base_lr = 0.1
 momentum_rate = 0.9
@@ -69,7 +69,6 @@ def optimizer_setting(parameter_list=None):
     return optimizer
 
 
-@GpuInfo
 def train_mlp():
     fleet.init(is_collective=True)
     group = paddle.distributed.new_group([0, 1])
@@ -126,9 +125,20 @@ def train_mlp():
             avg_loss.backward()
             oss_optimizer.step()
 
-    # oss_optimizer clear cache
-    oss_optimizer.clear_cache()
+            # oss_optimizer clear cache
+            oss_optimizer._clear_cache()
+
+            # check optimizer.minimize() error
+            try:
+                oss_optimizer.minimize()
+            except:
+                print(
+                    "====== Find sharding_stage2_optimizer.minimize() error ======"
+                )
+            return
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
     train_mlp()

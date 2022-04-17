@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -397,7 +397,7 @@ class BoxWrapper {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
       std::vector<gpuStream_t*> stream_list;
-      for (int i = 0; i < platform::GetCUDADeviceCount(); ++i) {
+      for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         platform::CUDADeviceContext* context =
             dynamic_cast<platform::CUDADeviceContext*>(
@@ -416,7 +416,7 @@ class BoxWrapper {
         slot_name_omited_in_feedpass_.insert(slot_name);
       }
       slot_vector_ = slot_vector;
-      keys_tensor.resize(platform::GetCUDADeviceCount());
+      keys_tensor.resize(platform::GetGPUDeviceCount());
     }
   }
 

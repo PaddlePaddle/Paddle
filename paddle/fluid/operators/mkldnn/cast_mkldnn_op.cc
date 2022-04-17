@@ -36,12 +36,11 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     auto x_paddle_type = framework::proto::VarType::Type(in_dtype);
     auto out_paddle_type = framework::proto::VarType::Type(out_dtype);
 
-    mkldnn::memory::data_type x_type =
-        framework::ToMKLDNNDataType(x_paddle_type);
-    mkldnn::memory::data_type out_type =
+    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x_paddle_type);
+    dnnl::memory::data_type out_type =
         framework::ToMKLDNNDataType(out_paddle_type);
 
-    auto x_tz = framework::vectorize(x->dims());
+    auto x_tz = phi::vectorize(x->dims());
 
     platform::ReorderMKLDNNHandler reorder_handler(x_tz, x_paddle_type, x_type,
                                                    out_paddle_type, out_type,

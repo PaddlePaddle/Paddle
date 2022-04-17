@@ -34,10 +34,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 #define SCOPE_VARS_READER_LOCK
 #define SCOPE_VARS_WRITER_LOCK
 #else
-#define SCOPE_KIDS_READER_LOCK AutoRDLock auto_lock(&kids_lock_);
-#define SCOPE_KIDS_WRITER_LOCK AutoWRLock auto_lock(&kids_lock_);
-#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+#define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 #endif
 
 namespace paddle {
@@ -141,6 +141,18 @@ std::vector<std::string> Scope::LocalVarNames() const {
     known_vars.reserve(this->vars_.size());
     for (auto& p : vars_) {
       known_vars.emplace_back(p.first);
+    }
+  }
+  return known_vars;
+}
+
+std::vector<Variable*> Scope::LocalVars() {
+  std::vector<Variable*> known_vars;
+  {
+    SCOPE_VARS_READER_LOCK
+    known_vars.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      known_vars.emplace_back(p.second.get());
     }
   }
   return known_vars;

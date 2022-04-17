@@ -21,41 +21,40 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-// TODO(jiabin): remove nolint here!!!
-using namespace egr;  // NOLINT
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
-namespace eager_test {
+namespace egr {
 
 TEST(TensorUtils, Test) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  std::vector<paddle::experimental::Tensor> target_tensors;
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
+  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
 
-  egr::EagerTensor t_grad = CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t_grad = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
 
-  CHECK_EQ(IsLeafTensor(t), true);
+  CHECK_EQ(egr_utils_api::IsLeafTensor(t), true);
 
   // Test Utils
-  CompareTensorWithValue<float>(t, 5.0);
+  eager_test::CompareTensorWithValue<float>(t, 5.0);
 
   egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(&t);
   *meta->MutableGrad() = t_grad;
 
-  CompareGradTensorWithValue<float>(t, 1.0);
+  eager_test::CompareGradTensorWithValue<float>(t, 1.0);
 }
 
-}  // namespace eager_test
+}  // namespace egr

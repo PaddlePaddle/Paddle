@@ -77,7 +77,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     output_dims.push_back(h);
     output_dims.push_back(w);
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
   }
 
  protected:

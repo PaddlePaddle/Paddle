@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -33,6 +34,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   if (scope) {
     auto name_list = scope->LocalVarNames();
     for (auto name : name_list) {
+      VLOG(4) << "Sync Variable from variable scope: " << name;
       auto v = scope->Var(name);
       if (!global_scope_.HasVar(name)) {
         global_scope_.AddVar(name, *v);
@@ -58,6 +60,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run",
+                                     platform::TracerEventType::UserDefined, 1);
+
   auto core = GetInterpreterCore(feed_names, fetch_names, true);
 
   return core->Run(feed_names, feed_tensors);
@@ -66,6 +71,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run",
+                                     platform::TracerEventType::UserDefined, 1);
+
   auto core = GetInterpreterCore(feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
@@ -87,8 +95,9 @@ void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-
     if (!var_scope->HasVar(var->Name())) {
+      VLOG(4) << "Create variable from startup_prog: "
+              << var->Proto()->SerializeAsString();
       var_scope->AddVar(var->Name(), var);
     }
   }
@@ -110,7 +119,8 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
-    VLOG(3) << "create interpreter_core for " << oss.str();
+    VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
+            << place_;
     VLOG(3) << "add fetch op: " << add_fetch_op;
     std::shared_ptr<InterpreterCore> core = nullptr;
     if (add_fetch_op) {

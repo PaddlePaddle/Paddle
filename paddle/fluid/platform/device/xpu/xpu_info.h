@@ -12,12 +12,27 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <vector>
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {
 
+/***** Version Management *****/
+
+//! Get the version of XPU Driver
+int GetDriverVersion();
+
+//! Get the version of XPU Runtime
+int GetRuntimeVersion();
+
+/***** Device Management *****/
+
 //! Get the total number of XPU devices in system.
 int GetXPUDeviceCount();
+
+//! Set the XPU device id for next execution.
+void SetXPUDeviceId(int device_id);
 
 //! Get the current XPU device id in system.
 int GetXPUCurrentDeviceId();
@@ -25,34 +40,20 @@ int GetXPUCurrentDeviceId();
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices();
 
-//! Set the XPU device id for next execution.
-void SetXPUDeviceId(int device_id);
+/***** Memory Management *****/
 
-class XPUDeviceGuard {
- public:
-  explicit inline XPUDeviceGuard(int dev_id) {
-    int prev_id = platform::GetXPUCurrentDeviceId();
-    if (prev_id != dev_id) {
-      prev_id_ = prev_id;
-      platform::SetXPUDeviceId(dev_id);
-    }
-  }
+//! Copy memory from address src to dst synchronously.
+void MemcpySyncH2D(void *dst, const void *src, size_t count,
+                   const platform::XPUPlace &dst_place);
+void MemcpySyncD2H(void *dst, const void *src, size_t count,
+                   const platform::XPUPlace &src_place);
+void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
+                   const void *src, const platform::XPUPlace &src_place,
+                   size_t count);
 
-  inline ~XPUDeviceGuard() {
-    if (prev_id_ != -1) {
-      platform::SetXPUDeviceId(prev_id_);
-    }
-  }
+using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 
-  XPUDeviceGuard(const XPUDeviceGuard& o) = delete;
-  XPUDeviceGuard& operator=(const XPUDeviceGuard& o) = delete;
-
- private:
-  int prev_id_{-1};
-};
-
-enum XPUVersion { XPU1, XPU2 };
-XPUVersion get_xpu_version(int dev_id);
+phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

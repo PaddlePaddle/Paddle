@@ -22,7 +22,7 @@ import numpy as np
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -44,8 +44,10 @@ class TestDygraphClearGradient(TestCase):
         linear = paddle.nn.Linear(2, 3)
         out = linear(input)
         out.backward()
-        linear.weight.clear_gradient()
-
+        if not fluid.framework.in_dygraph_mode():
+            linear.weight.clear_gradient()
+        else:
+            linear.weight._zero_grads()
         # actual result
         gradient_actual = linear.weight.grad
         # expected result
@@ -61,19 +63,23 @@ class TestDygraphClearGradient(TestCase):
         # default arg set_to_zero is true
         # so, False means real clear gradient
         linear.weight.clear_gradient(False)
-
         # before ._gradient_set_empty(False), 
         # the return of ._is_gradient_set_empty() should be True
-        self.assertTrue(linear.weight._is_gradient_set_empty())
+        if not fluid.framework.in_dygraph_mode():
+            self.assertTrue(linear.weight._is_gradient_set_empty())
+        else:
+            self.assertIsNone(linear.weight.grad)
 
         # reset, because ClearGradient will call SetIsEmpty(True), but this is not our expectation.
-        linear.weight._gradient_set_empty(False)
-        # after ._gradient_set_empty(False), 
-        # the return of ._is_gradient_set_empty() should be False
-        self.assertFalse(linear.weight._is_gradient_set_empty())
+        if not fluid.framework.in_dygraph_mode():
+            linear.weight._gradient_set_empty(False)
+            # after ._gradient_set_empty(False), 
+            # the return of ._is_gradient_set_empty() should be False
+            self.assertFalse(linear.weight._is_gradient_set_empty())
 
         # actual result
         gradient_actual = linear.weight.grad
+        print(gradient_actual)
         # expected result
         self.assertTrue(np.empty(gradient_actual))
 

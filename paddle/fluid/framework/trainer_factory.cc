@@ -73,7 +73,7 @@ REGISTER_TRAINER_CLASS(HeterPipelineTrainer);
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
 #endif
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \

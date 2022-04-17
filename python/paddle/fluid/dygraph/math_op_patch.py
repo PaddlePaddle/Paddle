@@ -15,9 +15,10 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
+from .. import framework
 
 import numpy as np
 import warnings
@@ -59,6 +60,16 @@ _complex_dtypes = [
 ]
 
 _already_patch_varbase = False
+_already_patch_eager_tensor = False
+
+# Dispatch to final state Python-C functions
+_final_state_op_type_mapping = {
+    "elementwise_add": "final_state_add",
+    "elementwise_sub": "final_state_subtract",
+    "elementwise_div": "final_state_divide",
+    "elementwise_mul": "final_state_multiply",
+    "matmul_v2": "final_state_matmul",
+}
 
 
 def monkey_patch_math_varbase():
@@ -103,10 +114,15 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+
+        if _in_legacy_dygraph():
+            return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
-        return _C_ops.scale(var, 'scale', scale, 'bias', bias)
+        if _in_legacy_dygraph():
+            return _C_ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.final_state_scale(var, float(scale), bias, True)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -162,7 +178,10 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
-        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(var, 'axis', perm)
+        else:
+            out = _C_ops.final_state_transpose(var, perm)
         return out
 
     def _scalar_add_(var, value):
@@ -219,7 +238,11 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if not isinstance(other_var, core.VarBase):
+            if framework._in_eager_mode_:
+                other_var_should_be = core.eager.Tensor
+            else:
+                other_var_should_be = core.VarBase
+            if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
@@ -258,10 +281,19 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
+            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # 4. calculation
             axis = -1
-            math_op = getattr(_C_ops, op_type)
-            return math_op(self, other_var, 'axis', axis)
+            if in_dygraph_mode(
+            ) and op_type in _final_state_op_type_mapping.keys():
+                math_op = getattr(_C_ops, _final_state_op_type_mapping[op_type])
+                return math_op(self, other_var)
+            else:
+                math_op = getattr(_C_ops, op_type)
+                return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
@@ -332,21 +364,30 @@ def monkey_patch_math_varbase():
     ]
 
     global _already_patch_varbase
-    if not _already_patch_varbase:
+    global _already_patch_eager_tensor
+
+    if framework._in_eager_mode_:
+        local_already_patch = _already_patch_eager_tensor
+        _already_patch_eager_tensor = True
+        local_tensor = core.eager.Tensor
+    else:
+        local_already_patch = _already_patch_varbase
+        _already_patch_varbase = True
+        local_tensor = core.VarBase
+
+    if not local_already_patch:
         for method in varbase_methods:
             method_name = method[0]
             method_impl = method[1]
-            setattr(core.VarBase, method_name, method_impl)
+            setattr(local_tensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
         for method_name in paddle.tensor.tensor_method_func:
-            if hasattr(core.VarBase, method_name): continue
+            if hasattr(local_tensor, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
-            if method_impl: setattr(core.VarBase, method_name, method_impl)
+            if method_impl: setattr(local_tensor, method_name, method_impl)
 
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
-            if impl: setattr(core.VarBase, magic_method, impl)
-
-    _already_patch_varbase = True
+            if impl: setattr(local_tensor, magic_method, impl)

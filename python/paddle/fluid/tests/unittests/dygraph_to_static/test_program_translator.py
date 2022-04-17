@@ -26,6 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -231,7 +232,9 @@ class TestEnableDeclarative(unittest.TestCase):
             dygraph_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
             dygraph_output = dygraph_func(self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_get_program(self):
 
@@ -253,7 +256,9 @@ class TestEnableDeclarative(unittest.TestCase):
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_program(
                 simple_func, self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_declarative(self):
 
@@ -344,5 +349,19 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
             net.foo.train()
 
 
+class TestRemoveCommentInDy2St(unittest.TestCase):
+    def func_with_comment(self):
+        # Comment1
+        x = paddle.to_tensor([1, 2, 3])
+        # Comment2
+        # Comment3
+        y = paddle.to_tensor([4, 5, 6])
+
+    def test_remove_comment(self):
+        code_string = func_to_source_code(self.func_with_comment)
+        self.assertEqual('#' not in code_string, True)
+
+
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

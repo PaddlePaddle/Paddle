@@ -26,10 +26,11 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 import numpy as np
 import six
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
-    def test_ptb_rnn_sort_gradient(self):
+    def func_ptb_rnn_sort_gradient(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
 
@@ -170,6 +171,11 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):
             self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+
+    def test_ptb_rnn_sort_gradient(self):
+        with _test_eager_guard():
+            self.func_ptb_rnn_sort_gradient()
+        self.func_ptb_rnn_sort_gradient()
 
 
 if __name__ == '__main__':

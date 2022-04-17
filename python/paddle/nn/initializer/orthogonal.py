@@ -14,9 +14,9 @@
 
 from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.core import VarDesc
-from ...fluid import unique_name, framework
+from ...fluid import framework
 from ...tensor import diag, transpose, sign, qr, reshape
+from paddle.utils import unique_name
 
 __all__ = []
 
@@ -24,18 +24,24 @@ __all__ = []
 class Orthogonal(Initializer):
     """The orthogonal initializer. The initialized tensor is (semi) orthogonal.
 
-    Assuming that 'weight' will be initialized, its shape is [M, N].
+    It's only applied to Tensor whose dimension is greater than or equal to 2. 
+    
+    For the Tensor whose dimension is greater than 2, the 0 dimension is seen as ``rows`` , 
+    and the >=1 dimension are flattened as ``cols`` .
+
+    Which can be describe as:
 
     .. code-block:: text
 
-        if M < N:
+        rows = shape[0]
+        cols = shape[1]·shape[2]···shape[N]
+        
+        if rows < cols:
             The rows are orthogonal vectors
-        elif M > N:
+        elif rows > cols:
             The columns are orthogonal vectors
-        else M = N:
+        else rows = cols:
             Both rows and columns are orthogonal vectors
-    
-    Only Tensor with 2 or more dimensions can initialized by Orthogonal.
 
     Args:
         gain(float, optional): The multiplication coefficient for initialized tensor. Default: 1.0.

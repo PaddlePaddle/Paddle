@@ -65,6 +65,31 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                           platform::errors::PreconditionNotMet(
                               "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
+
+// ipu related
+#ifdef PADDLE_WITH_IPU
+  if (argument->Has("use_ipu")) {
+    if (argument->use_ipu()) {
+      argument->main_graph().SetNotOwned("num_ipus",
+                                         &argument->ipu_device_num());
+      argument->main_graph().SetNotOwned("micro_batch_size",
+                                         &argument->ipu_micro_batch_size());
+      argument->main_graph().SetNotOwned("enable_pipelining",
+                                         &argument->ipu_enable_pipelining());
+      argument->main_graph().SetNotOwned("batches_per_step",
+                                         &argument->ipu_batches_per_step());
+      argument->main_graph().SetNotOwned("enable_fp16",
+                                         &argument->ipu_enable_fp16());
+      argument->main_graph().SetNotOwned("replica_num",
+                                         &argument->ipu_replica_num());
+      argument->main_graph().SetNotOwned(
+          "available_memory_proportion",
+          &argument->ipu_available_memory_proportion());
+      argument->main_graph().SetNotOwned("enable_half_partial",
+                                         &argument->ipu_enable_half_partial());
+    }
+  }
+#endif
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/platform/type_defs.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 
 namespace paddle {

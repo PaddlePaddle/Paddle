@@ -19,8 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/compound_functors.h"
-#include "paddle/fluid/operators/math/functors.h"
+#include "paddle/phi/kernels/funcs/compound_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -53,22 +54,22 @@ static void RunBinaryCompoundFunctor(
   // intermediate_out = Unary(Y)
   // out = Binary(X, Unary(Y))
   // In this case, the shape of intermediate_out and out are different.
-  paddle::operators::math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
+  phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
       compound_func(binary_functor, unary_functor);
   int axis = ctx.Attr<int>("axis");
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::BinaryCompoundFunctor<
-                                     T, BinaryFunctor, UnaryFunctor>,
-                                 true /*KeepIntermediateValue*/,
-                                 false /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::BinaryCompoundFunctor<
-                                     T, BinaryFunctor, UnaryFunctor>,
-                                 false /*KeepIntermediateValue*/,
-                                 false /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
@@ -85,22 +86,22 @@ static void RunUnaryCompoundFunctors(
   // In this case, the shape of intermediate_out and out are the same.
   int axis = ctx.Attr<int>("axis");
 
-  paddle::operators::math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
+  phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
       compound_func(unary_functor, binary_functor);
 
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::UnaryCompoundFunctor<
-                                     T, UnaryFunctor, BinaryFunctor>,
-                                 true /*KeepIntermediateValue*/,
-                                 true /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::UnaryCompoundFunctor<
-                                     T, UnaryFunctor, BinaryFunctor>,
-                                 false /*KeepIntermediateValue*/,
-                                 true /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
@@ -120,13 +121,12 @@ static void RunBinaryCompoundGradFunctors(
   int axis = ctx.Attr<int>("axis");
 
   using BinaryCompoundDxFunctor =
-      paddle::operators::math::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor,
-                                                           UnaryFunctor>;
-  using BinaryCompoundDyFunctor =
-      paddle::operators::math::BinaryCompoundGradDyFunctor<
-          T, BinaryGradFunctor, UnaryFunctor, UnaryGradFunctor, InPlace>;
+      phi::funcs::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor,
+                                              UnaryFunctor>;
+  using BinaryCompoundDyFunctor = phi::funcs::BinaryCompoundGradDyFunctor<
+      T, BinaryGradFunctor, UnaryFunctor, UnaryGradFunctor, InPlace>;
   using BinaryCompoundDIntermedaiteOutFunctor =
-      paddle::operators::math::BinaryCompoundGradDIntermedaiteOutFunctor<
+      phi::funcs::BinaryCompoundGradDIntermedaiteOutFunctor<
           T, BinaryGradFunctor, UnaryFunctor>;
 
   if (in_intermediate_out) {
@@ -171,14 +171,14 @@ static void RunUnaryCompoundGradFunctors(
   int axis = ctx.Attr<int>("axis");
 
   using UnaryCompoundDxFunctor =
-      paddle::operators::math::UnaryCompoundGradDxFunctor<
-          T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
+      phi::funcs::UnaryCompoundGradDxFunctor<T, UnaryGradFunctor, BinaryFunctor,
+                                             BinaryGradFunctor, InPlace>;
   using UnaryCompoundDyFunctor =
-      paddle::operators::math::UnaryCompoundGradDyFunctor<
-          T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
+      phi::funcs::UnaryCompoundGradDyFunctor<T, UnaryGradFunctor, BinaryFunctor,
+                                             BinaryGradFunctor, InPlace>;
   using UnaryCompoundDIntermediateFunctor =
-      paddle::operators::math::UnaryCompoundGradDIntermediateFunctor<
-          T, UnaryGradFunctor, BinaryFunctor, InPlace>;
+      phi::funcs::UnaryCompoundGradDIntermediateFunctor<T, UnaryGradFunctor,
+                                                        BinaryFunctor, InPlace>;
 
   if (in_intermediate_out) {
     FusedElemwiseAndActGradComputeEx<
@@ -219,69 +219,60 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
   if (funcs_str == "elementwise_add,scale") {
     // Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
-    RunBinaryCompoundFunctor<DeviceContext, T,
-                             paddle::operators::math::AddFunctor<T>,
-                             paddle::operators::math::ScaleFunctor<T>>(
-        ctx, paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::ScaleFunctor<T>(scale), in_x, in_y, outputs);
+    RunBinaryCompoundFunctor<DeviceContext, T, phi::funcs::AddFunctor<T>,
+                             phi::funcs::ScaleFunctor<T>>(
+        ctx, phi::funcs::AddFunctor<T>(), phi::funcs::ScaleFunctor<T>(scale),
+        in_x, in_y, outputs);
   } else if (funcs_str == "scale,elementwise_add") {
     // Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
-    RunUnaryCompoundFunctors<DeviceContext, T,
-                             paddle::operators::math::ScaleFunctor<T>,
-                             paddle::operators::math::AddFunctor<T>>(
-        ctx, paddle::operators::math::ScaleFunctor<T>(scale),
-        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+    RunUnaryCompoundFunctors<DeviceContext, T, phi::funcs::ScaleFunctor<T>,
+                             phi::funcs::AddFunctor<T>>(
+        ctx, phi::funcs::ScaleFunctor<T>(scale), phi::funcs::AddFunctor<T>(),
+        in_x, in_y, outputs);
   } else if (funcs_str == "elementwise_add,relu") {
     // Z = Binary(X, Unary(Y))
-    RunBinaryCompoundFunctor<DeviceContext, T,
-                             paddle::operators::math::AddFunctor<T>,
-                             paddle::operators::math::ReluFunctor<T>>(
-        ctx, paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::ReluFunctor<T>(), in_x, in_y, outputs);
+    RunBinaryCompoundFunctor<DeviceContext, T, phi::funcs::AddFunctor<T>,
+                             phi::funcs::ReluFunctor<T>>(
+        ctx, phi::funcs::AddFunctor<T>(), phi::funcs::ReluFunctor<T>(), in_x,
+        in_y, outputs);
   } else if (funcs_str == "relu,elementwise_add") {
     // Z = Unary(Binary(X, Y))
-    RunUnaryCompoundFunctors<DeviceContext, T,
-                             paddle::operators::math::ReluFunctor<T>,
-                             paddle::operators::math::AddFunctor<T>>(
-        ctx, paddle::operators::math::ReluFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+    RunUnaryCompoundFunctors<DeviceContext, T, phi::funcs::ReluFunctor<T>,
+                             phi::funcs::AddFunctor<T>>(
+        ctx, phi::funcs::ReluFunctor<T>(), phi::funcs::AddFunctor<T>(), in_x,
+        in_y, outputs);
   } else if (funcs_str == "elementwise_mul,scale") {
     // Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
-    RunBinaryCompoundFunctor<DeviceContext, T,
-                             paddle::operators::math::MulFunctor<T>,
-                             paddle::operators::math::ScaleFunctor<T>>(
-        ctx, paddle::operators::math::MulFunctor<T>(),
-        paddle::operators::math::ScaleFunctor<T>(scale), in_x, in_y, outputs);
+    RunBinaryCompoundFunctor<DeviceContext, T, phi::funcs::MultiplyFunctor<T>,
+                             phi::funcs::ScaleFunctor<T>>(
+        ctx, phi::funcs::MultiplyFunctor<T>(),
+        phi::funcs::ScaleFunctor<T>(scale), in_x, in_y, outputs);
   } else if (funcs_str == "tanh,elementwise_add") {
     // Z = Unary(Binary(X, Y))
-    RunUnaryCompoundFunctors<DeviceContext, T,
-                             paddle::operators::math::TanhFunctor<T>,
-                             paddle::operators::math::AddFunctor<T>>(
-        ctx, paddle::operators::math::TanhFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+    RunUnaryCompoundFunctors<DeviceContext, T, phi::funcs::TanhFunctor<T>,
+                             phi::funcs::AddFunctor<T>>(
+        ctx, phi::funcs::TanhFunctor<T>(), phi::funcs::AddFunctor<T>(), in_x,
+        in_y, outputs);
   } else if (funcs_str == "elementwise_mul,tanh") {
     // Z = Binary(X, Unary(Y))
-    RunBinaryCompoundFunctor<DeviceContext, T,
-                             paddle::operators::math::MulFunctor<T>,
-                             paddle::operators::math::TanhFunctor<T>>(
-        ctx, paddle::operators::math::MulFunctor<T>(),
-        paddle::operators::math::TanhFunctor<T>(), in_x, in_y, outputs);
+    RunBinaryCompoundFunctor<DeviceContext, T, phi::funcs::MultiplyFunctor<T>,
+                             phi::funcs::TanhFunctor<T>>(
+        ctx, phi::funcs::MultiplyFunctor<T>(), phi::funcs::TanhFunctor<T>(),
+        in_x, in_y, outputs);
   } else if (funcs_str == "elementwise_mul,sigmoid") {
     // Z = Binary(X, Unary(Y))
-    RunBinaryCompoundFunctor<DeviceContext, T,
-                             paddle::operators::math::MulFunctor<T>,
-                             paddle::operators::math::SigmoidFunctor<T>>(
-        ctx, paddle::operators::math::MulFunctor<T>(),
-        paddle::operators::math::SigmoidFunctor<T>(), in_x, in_y, outputs);
+    RunBinaryCompoundFunctor<DeviceContext, T, phi::funcs::MultiplyFunctor<T>,
+                             phi::funcs::SigmoidFunctor<T>>(
+        ctx, phi::funcs::MultiplyFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
+        in_x, in_y, outputs);
   } else if (funcs_str == "gelu,elementwise_add") {
     // Z = Unary(Binary(X, Y))
-    RunUnaryCompoundFunctors<DeviceContext, T,
-                             paddle::operators::math::GeluFunctor<T>,
-                             paddle::operators::math::AddFunctor<T>>(
-        ctx, paddle::operators::math::GeluFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+    RunUnaryCompoundFunctors<DeviceContext, T, phi::funcs::GeluFunctor<T>,
+                             phi::funcs::AddFunctor<T>>(
+        ctx, phi::funcs::GeluFunctor<T>(), phi::funcs::AddFunctor<T>(), in_x,
+        in_y, outputs);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s has not been implemented.", funcs_str));
@@ -302,94 +293,80 @@ static void RunGradFunctors(
     // The backward of Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::AddGradFunctor<T>,
-        paddle::operators::math::ScaleFunctor<T>,
-        paddle::operators::math::ScaleGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::AddGradFunctor<T>(),
-        paddle::operators::math::ScaleFunctor<T>(scale),
-        paddle::operators::math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::AddGradFunctor<T>,
+        phi::funcs::ScaleFunctor<T>, phi::funcs::ScaleGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::AddGradFunctor<T>(),
+        phi::funcs::ScaleFunctor<T>(scale),
+        phi::funcs::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "scale_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunUnaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::ScaleGradFunctor<T>,
-        paddle::operators::math::AddFunctor<T>,
-        paddle::operators::math::AddGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::ScaleGradFunctor<T>(scale),
-        paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
-        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+        DeviceContext, T, phi::funcs::ScaleGradFunctor<T>,
+        phi::funcs::AddFunctor<T>, phi::funcs::AddGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::ScaleGradFunctor<T>(scale),
+        phi::funcs::AddFunctor<T>(), phi::funcs::AddGradFunctor<T>(), in_x,
+        in_y, in_out, in_intermediate_out, in_out_grad, x_grad, y_grad,
+        d_intermediate_out);
   } else if (funcs_str == "elementwise_add_grad,relu_grad") {
     // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::AddGradFunctor<T>,
-        paddle::operators::math::ReluFunctor<T>,
-        paddle::operators::math::ReluGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::AddGradFunctor<T>(),
-        paddle::operators::math::ReluFunctor<T>(),
-        paddle::operators::math::ReluGradFunctor<T>(), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::AddGradFunctor<T>,
+        phi::funcs::ReluFunctor<T>, phi::funcs::ReluGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::AddGradFunctor<T>(), phi::funcs::ReluFunctor<T>(),
+        phi::funcs::ReluGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "relu_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::ReluGradFunctor<T>,
-        paddle::operators::math::AddFunctor<T>,
-        paddle::operators::math::AddGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::ReluGradFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::ReluGradFunctor<T>,
+        phi::funcs::AddFunctor<T>, phi::funcs::AddGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::ReluGradFunctor<T>(), phi::funcs::AddFunctor<T>(),
+        phi::funcs::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "elementwise_mul_grad,scale_grad") {
     // The backward of Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
-        paddle::operators::math::ScaleFunctor<T>,
-        paddle::operators::math::ScaleGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::MulGradFunctor<T>(),
-        paddle::operators::math::ScaleFunctor<T>(scale),
-        paddle::operators::math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::MulGradFunctor<T>,
+        phi::funcs::ScaleFunctor<T>, phi::funcs::ScaleGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::MulGradFunctor<T>(),
+        phi::funcs::ScaleFunctor<T>(scale),
+        phi::funcs::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "tanh_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::TanhGradFunctor<T>,
-        paddle::operators::math::AddFunctor<T>,
-        paddle::operators::math::AddGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::TanhGradFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::TanhGradFunctor<T>,
+        phi::funcs::AddFunctor<T>, phi::funcs::AddGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::TanhGradFunctor<T>(), phi::funcs::AddFunctor<T>(),
+        phi::funcs::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "elementwise_mul_grad,tanh_grad") {
     // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
-        paddle::operators::math::TanhFunctor<T>,
-        paddle::operators::math::TanhGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::MulGradFunctor<T>(),
-        paddle::operators::math::TanhFunctor<T>(),
-        paddle::operators::math::TanhGradFunctor<T>(), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::MulGradFunctor<T>,
+        phi::funcs::TanhFunctor<T>, phi::funcs::TanhGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::MulGradFunctor<T>(), phi::funcs::TanhFunctor<T>(),
+        phi::funcs::TanhGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "elementwise_mul_grad,sigmoid_grad") {
     // The backward of Z = Binary(X, Unary(Y))
-    RunBinaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
-        paddle::operators::math::SigmoidFunctor<T>,
-        paddle::operators::math::SigmoidGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::MulGradFunctor<T>(),
-        paddle::operators::math::SigmoidFunctor<T>(),
-        paddle::operators::math::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
+    RunBinaryCompoundGradFunctors<DeviceContext, T,
+                                  phi::funcs::MulGradFunctor<T>,
+                                  phi::funcs::SigmoidFunctor<T>,
+                                  phi::funcs::SigmoidGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::MulGradFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
+        phi::funcs::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "gelu_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<
-        DeviceContext, T, paddle::operators::math::GeluGradFunctor<T>,
-        paddle::operators::math::AddFunctor<T>,
-        paddle::operators::math::AddGradFunctor<T>, InPlace>(
-        ctx, paddle::operators::math::GeluGradFunctor<T>(),
-        paddle::operators::math::AddFunctor<T>(),
-        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
+        DeviceContext, T, phi::funcs::GeluGradFunctor<T>,
+        phi::funcs::AddFunctor<T>, phi::funcs::AddGradFunctor<T>, InPlace>(
+        ctx, phi::funcs::GeluGradFunctor<T>(), phi::funcs::AddFunctor<T>(),
+        phi::funcs::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

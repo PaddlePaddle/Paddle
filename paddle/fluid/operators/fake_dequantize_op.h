@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

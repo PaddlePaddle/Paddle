@@ -18,8 +18,8 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -33,7 +33,7 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_cuda_devices = paddle::platform::GetCUDADeviceCount();
+    num_cuda_devices = paddle::platform::GetGPUDeviceCount();
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
@@ -138,13 +138,13 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   }
 }
 
-GeneratorState Generator::GetState() {
+phi::Generator::GeneratorState Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mu_);
   state_.cpu_engine = *engine_;
   return this->state_;
 }
 
-void Generator::SetState(const GeneratorState& state) {
+void Generator::SetState(const phi::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_ = state;
   this->engine_ = std::make_shared<std::mt19937_64>(state.cpu_engine);

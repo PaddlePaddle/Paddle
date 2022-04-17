@@ -151,6 +151,13 @@ set(COMMON_FLAGS
     ${fsanitize}
 )
 
+if(WITH_IPU)
+    set(COMMON_FLAGS ${COMMON_FLAGS} 
+        -Wno-sign-compare # Warnings in Popart
+        -Wno-non-virtual-dtor # Warnings in Popart
+    )
+endif()
+
 if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
         set(COMMON_FLAGS
@@ -195,6 +202,16 @@ if (APPLE)
     set (COMMON_FLAGS -Wno-deprecated-register)
 endif(APPLE)
 
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${COMMON_FLAGS})
+
+    set(GPU_COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${GPU_COMMON_FLAGS})
+endif()
+
 if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
@@ -227,3 +244,7 @@ if(WITH_ROCM)
     string (REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
+if(WITH_PSCORE OR WITH_PSLIB)
+    string (REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string (REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+endif()

@@ -63,7 +63,7 @@ class StandaloneExecutor : public ExecutorBase {
       const std::vector<std::string>& feed_names,
       const std::vector<std::string>& fetch_names, bool add_fetch_op);
 
-  const platform::Place& place_;
+  platform::Place place_;
   const ProgramDesc& startup_prog_;
   const ProgramDesc& main_prog_;
   VariableScope global_scope_;

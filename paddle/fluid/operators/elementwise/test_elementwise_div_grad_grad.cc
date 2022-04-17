@@ -27,8 +27,14 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_div);
+USE_OP_ITSELF(elementwise_div);
+
+PD_DECLARE_KERNEL(divide_double_grad, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(divide_double_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -47,7 +53,7 @@ class TestElementwiseDivGradGradWithoutDout
   using TestElementwiseOpGradGrad<T>::expected_outs_;
   using TestElementwiseOpGradGrad<T>::dims_;
   void ComputeExpectedOuts() override {
-    size_t numel = static_cast<size_t>(framework::product(dims_));
+    size_t numel = static_cast<size_t>(phi::product(dims_));
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
     for (size_t i = 0; i < numel; ++i) {

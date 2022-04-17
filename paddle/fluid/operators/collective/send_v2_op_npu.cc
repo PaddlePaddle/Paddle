@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -30,7 +30,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();

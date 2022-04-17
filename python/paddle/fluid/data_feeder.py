@@ -22,7 +22,7 @@ from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode
+from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
@@ -67,6 +67,9 @@ def convert_dtype(dtype):
             # however, jointly supporting python2 and python3, (as well as python4 maybe)
             # may still be a long-lasting problem.
             return str(dtype)
+        # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
+        if dtype in ['bfloat16']:
+            return 'uint16'
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
@@ -90,24 +93,31 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # in dynamic graph mode.
     # 2. Performance considerations. Because these checks are executed at
     # each step in dynamic graph mode, it will bring a heavy performance burden.
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
 
-    from .dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
     # @declarative in transformation from dygrah to static layer. We add VarBase in
     # expected_type to skip checking because varBase may be created and used in unusual way.
+    from .dygraph.base import in_declarative_mode
     # Need a better design to be fix this.
     if in_declarative_mode():
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
+        if _in_eager_without_dygraph_check():
+            expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name))
-
+    elif hasattr(core, "eager"):
+        if isinstance(input, core.eager.Tensor):
+            raise TypeError(
+                "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+                "Because received '{}' in {} is a imperative Variable.".format(
+                    input_name, op_name))
     if not isinstance(input, expected_type):
         raise TypeError(
             "The type of '%s' in %s must be %s, but received %s. %s" %
@@ -120,7 +130,7 @@ def check_dtype(input_dtype,
                 op_name,
                 extra_message=''):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
@@ -145,7 +155,7 @@ def check_shape(shape,
                 expected_element_type=(int, Variable),
                 expected_tensor_dtype=('int32', 'int64')):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode():
+    if _non_static_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
     if expected_element_type is not None and not isinstance(shape, Variable):

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32
 
@@ -25,7 +25,7 @@ namespace platform {
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
   // 2nd value represents the result of input number modulo by recorded divisor
-  using DivModT = AlignedVector<uint32_t, 2>;
+  using DivModT = phi::AlignedVector<uint32_t, 2>;
 
   FastDivMod() {}
   HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {

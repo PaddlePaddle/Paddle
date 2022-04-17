@@ -14,7 +14,7 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -33,8 +33,8 @@ class WhereXPUKernel : public framework::OpKernel<T> {
     const T* y_data = Y->data<T>();
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
-    auto cond_dims = framework::vectorize<int>(condition->dims());
-    auto input_dims = framework::vectorize<int>(X->dims());
+    auto cond_dims = phi::vectorize<int>(condition->dims());
+    auto input_dims = phi::vectorize<int>(X->dims());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int ret = xpu::select(dev_ctx.x_context(), cond_data, x_data, y_data,

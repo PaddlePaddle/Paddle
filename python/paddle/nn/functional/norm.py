@@ -17,13 +17,14 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
 from ..initializer import Constant
 from ...framework import ParamAttr
-from ...fluid import core, dygraph_utils
+from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
+from paddle import in_dynamic_mode
+from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -80,6 +81,11 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
+        return x / _C_ops.elementwise_max(out, eps)
+
+    if _in_legacy_dygraph():
+        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, 'axis', axis, 'porder',
                             float(p), 'keepdim', True, 'epsilon', epsilon)
         return x / _C_ops.elementwise_max(out, eps)
@@ -104,7 +110,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     helper.append_op(
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
-    paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
+    eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
     return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
@@ -181,14 +187,25 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dygraph_mode():
+        batch_norm_out, _, _, _, _, _ = _C_ops.final_state_batch_norm(
+            x, weight, bias, running_mean, running_var, momentum, epsilon,
+            data_format, not training, use_global_stats, trainable_statistics,
+            False)
+
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=None)
+
+    elif _in_legacy_dygraph():
         # for dygraph need tuple
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
+
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, mean_out, variance_out,
-            *attrs)
+            x, weight, bias, running_mean, running_var, None, mean_out,
+            variance_out, *attrs)
+
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -217,7 +234,7 @@ def batch_norm(x,
 
     helper = LayerHelper('batch_norm', **locals())
 
-    param_dtype = x.dtype if x.dtype is not 'float16' else 'float32'
+    param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
         dtype=param_dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
@@ -302,6 +319,12 @@ def layer_norm(x,
                              1:] + ', but got input shape ' + str(input_shape))
 
     if in_dygraph_mode():
+        pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
+                                                       begin_norm_axis, False)
+
+        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+
+    if _in_legacy_dygraph():
         pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
                                           'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
@@ -385,7 +408,7 @@ def instance_norm(x,
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
                                          "momentum", momentum, "data_format",
                                          data_format)
@@ -474,7 +497,7 @@ def local_response_norm(x,
             y = paddle.nn.functional.local_response_norm(x, size=5)
             print(y.shape)  # [3, 3, 112, 112]
         """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
@@ -489,7 +512,7 @@ def local_response_norm(x,
             format(dim))
 
     for i, sz in enumerate(sizes):
-        if not sz > 0:
+        if not sz > 0 and i > 0:
             raise ValueError("Expected every dim's size to be larger than 0, "
                              "but the size of the {}-th dim is {}".format(i,
                                                                           sz))

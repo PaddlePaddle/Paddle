@@ -236,12 +236,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
 
     int* pos_count_data = output_pos_count->mutable_data<int>(
-        framework::make_ddim({class_num, 1}), ctx.GetPlace());
+        phi::make_ddim({class_num, 1}), ctx.GetPlace());
 
     T* true_pos_data = output_true_pos->mutable_data<T>(
-        framework::make_ddim({true_pos_count, 2}), ctx.GetPlace());
+        phi::make_ddim({true_pos_count, 2}), ctx.GetPlace());
     T* false_pos_data = output_false_pos->mutable_data<T>(
-        framework::make_ddim({false_pos_count, 2}), ctx.GetPlace());
+        phi::make_ddim({false_pos_count, 2}), ctx.GetPlace());
     true_pos_count = 0;
     false_pos_count = 0;
     std::vector<size_t> true_pos_starts = {0};

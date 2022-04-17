@@ -28,8 +28,9 @@ class TestFleetExecutorTaskNode(unittest.TestCase):
         self.assertEqual(task_node_0.task_id(), 0)
         self.assertEqual(task_node_1.task_id(), 1)
         self.assertEqual(task_node_2.task_id(), 2)
-        self.assertTrue(task_node_0.add_downstream_task(task_node_1.task_id()))
-        self.assertTrue(task_node_1.add_upstream_task(task_node_0.task_id()))
+        self.assertTrue(
+            task_node_0.add_downstream_task(task_node_1.task_id(), 1))
+        self.assertTrue(task_node_1.add_upstream_task(task_node_0.task_id(), 1))
 
 
 if __name__ == "__main__":

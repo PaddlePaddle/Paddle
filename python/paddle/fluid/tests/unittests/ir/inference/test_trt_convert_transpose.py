@@ -146,19 +146,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['axis'] == [0, 1]:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "INPUT AXIS [0, 1] NOT SUPPORT: we need to add support in the future"
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

@@ -16,38 +16,71 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/core/kernel_factory.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_sequential_run, false,
+    "Enable sequential execution for standalone executor, used for debug");
+
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
-using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count) {
-  if (atomic_deps_.size() != dependecy_count.size()) {
-    atomic_deps_.clear();
-    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
+constexpr size_t kPrepareWorkQueueIdx = 2;
 
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    atomic_deps_[i]->store(dependecy_count[i]);
+void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
+                             std::function<void()> fn) {
+  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
+  // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
+  if (FLAGS_new_executor_sequential_run) {
+    VLOG(4) << "FLAGS_new_executor_sequential_run:"
+            << FLAGS_new_executor_sequential_run;
+    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
+                          std::move(fn));
+  } else {
+    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
-  return atomic_deps_;
 }
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  if (atomic_var_ref_.size() != vec_meta_info.size()) {
-    atomic_var_ref_.clear();
-    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
+using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
-  }
-  return atomic_var_ref_;
+void AsyncWorkQueue::PrepareAtomicDeps(
+    const std::vector<size_t>& dependecy_count) {
+  VLOG(4) << "PrepareAtomicDeps";
+  atomic_deps_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&dependecy_count] {
+        auto op_deps = std::make_unique<std::vector<std::atomic<size_t>>>(
+            dependecy_count.size());
+        for (size_t i = 0; i < dependecy_count.size(); ++i) {
+          (*op_deps)[i] = dependecy_count[i];
+        }
+        VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
+        return op_deps;
+      });
+}
+
+void AsyncWorkQueue::PrepareAtomicVarRef(
+    const std::vector<VariableMetaInfo>& vec_meta_info) {
+  VLOG(4) << "PrepareAtomicVarRef";
+  atomic_var_ref_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&vec_meta_info] {
+        auto var_ref = std::make_unique<std::vector<std::atomic<size_t>>>(
+            vec_meta_info.size());
+        for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+          (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+        }
+        VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
+        return var_ref;
+      });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -111,7 +144,9 @@ get_unused_vars(const BlockDesc& block,
     size_t op_idx = name_op_idx_pair.second;
 
     result[ops[op_idx].get()].emplace_back(name);
+    VLOG(4) << ops[op_idx].get()->Type() << " " << name;
   }
+  VLOG(4) << "gc map size:" << result.size();
   return result;
 }
 
@@ -127,6 +162,9 @@ void build_variable_scope(const framework::BlockDesc& block,
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
+    // TODO(xiongkun): user may create a variable with name that exists before.
+    // under such circumstances, we should raise a error. Currently we can't
+    // get the var_desc of startup_program, so leave it later.
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
@@ -149,7 +187,7 @@ void build_variable_scope(const framework::BlockDesc& block,
 }
 
 void create_all_ops(const framework::BlockDesc& block,
-                    std::vector<std::shared_ptr<OperatorBase>>* ops) {
+                    std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     VLOG(3) << "CreateOp from : " << op->Type();
 
@@ -157,6 +195,7 @@ void create_all_ops(const framework::BlockDesc& block,
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
+
     AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
@@ -164,7 +203,17 @@ void create_all_ops(const framework::BlockDesc& block,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
-    ops->emplace_back(std::shared_ptr<OperatorBase>(op_base));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      if (op->HasAttr("use_mkldnn")) {
+        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
+        op_base->SetAttr("use_mkldnn", true);
+      }
+    }
+#endif
+
+    ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }
 
@@ -238,7 +287,15 @@ void deal_operator_base(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
+  if (platform::is_gpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueAsync;
+  } else if (platform::is_cpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueSync;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported current place %s", place));
+  }
+
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
 
@@ -260,10 +317,28 @@ void build_op_func_list(const platform::Place& place,
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-  std::vector<std::shared_ptr<OperatorBase>>
-      ops;  // its elements will be moved to vec_func_list
+  std::vector<std::unique_ptr<OperatorBase>>
+      ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
-  create_all_ops(block, &ops);
+  create_all_ops(block, &ops_unique);
+  // If gc is enabled and block size > 1
+  const ProgramDesc& main_program = *block.Program();
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      main_program, block.ID(), ops_unique);
+  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+      main_program, block.ID(), ops_unique);
+  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+      main_program, block.ID(), ops_unique);
+
+#ifdef PADDLE_WITH_MKLDNN
+  platform::RegisterModelLayout(ops_unique, place);
+#endif
+
+  // its elements will be moved to vec_func_list
+  std::vector<std::shared_ptr<OperatorBase>> ops;
+  for (auto& op_unique : ops_unique) {
+    ops.emplace_back(std::move(op_unique));
+  }
   auto unused_var_map = get_unused_vars(block, ops);
 
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -296,44 +371,28 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+    VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-    if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
+    if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "End run " << place << " "
+              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
+      auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(op));
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
 
-      // see OperatorWithKernel::RunImpl in operator.cc for why
-      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-        // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
-        static_cast<const framework::OperatorWithKernel*>(op)->InferShape(
-            &infer_shape_ctx);
-      }
-
-      auto kernels_iter = all_op_kernels.find(op->Type());
-      PADDLE_ENFORCE_NE(
-          kernels_iter, all_op_kernels.end(),
-          platform::errors::Unavailable(
-              "There are no kernels which are registered in the %s operator.",
-              op->Type()));
-
-      OpKernelMap& kernels = kernels_iter->second;
-
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
       Scope scope;
-      auto expected_kernel_key =
-          dynamic_cast<const framework::OperatorWithKernel*>(op)
-              ->GetExpectedKernelType(
-                  ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+      auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
+          ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+      op_with_kernel->ResetKernelType(new OpKernelType(expected_kernel_key));
 
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
@@ -341,10 +400,19 @@ void build_op_func_list(const platform::Place& place,
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
-      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, vec_func_list, use_local_scope);
+      VariableValueMap& outs_map_temp = runtime_context.outputs;
+
+      // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
+      // ApplyDataTransform
+      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp,
+                         &outs_map_temp, var_scope, &op_func_node,
+                         vec_func_list, use_local_scope);
+      op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(
+              op_func_node.operator_base_.get()));
+
       // step 4. Run op kernel
-      VLOG(3) << op->Type()
+      VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
 
       if (platform::is_gpu_place(expected_kernel_key.place_)) {
@@ -359,18 +427,76 @@ void build_op_func_list(const platform::Place& place,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
       op_func_node.dev_ctx_ = dev_ctx;
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
 
-      auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted from OperatorWithKernel.
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+      }
 
-      auto kernel_iter = kernels.find(expected_kernel_key);
-      PADDLE_ENFORCE_NE(
-          kernel_iter, kernels.end(),
-          platform::errors::NotFound(
-              "Operator (%s) does not have kernel for %s.", op->Type(),
-              KernelTypeToString(expected_kernel_key)));
+      auto exec_ctx =
+          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-      op_func_node.kernel_func_(exec_ctx);
+      auto run_phi_kernel = false;
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+              op_with_kernel->Type())) {
+        auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+        auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          run_phi_kernel = true;
+        } else {
+          auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
+          if (kernels_iter == all_op_kernels.end() ||
+              kernels_iter->second.find(expected_kernel_key) ==
+                  kernels_iter->second.end()) {
+            auto pt_cpu_kernel_key = FallBackToCpu(
+                expected_kernel_key, pt_kernel_key, *op_with_kernel);
+            op_with_kernel->ResetPhiKernel(
+                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                    pt_kernel_name, pt_cpu_kernel_key)));
+            if (op_with_kernel->PhiKernel()->IsValid()) {
+              VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                      << pt_kernel_name
+                      << " | kernel key: " << pt_cpu_kernel_key
+                      << " | kernel: " << *(op_with_kernel->PhiKernel());
+              run_phi_kernel = true;
+            }
+          }
+        }
+      }
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
+      if (run_phi_kernel) {
+        phi::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
+                                              &pt_kernel_context);
+        op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
+        (*op_func_node.pt_kernel_)(&pt_kernel_context);
+      } else {
+        auto kernels_iter = all_op_kernels.find(op->Type());
+        PADDLE_ENFORCE_NE(
+            kernels_iter, all_op_kernels.end(),
+            platform::errors::Unavailable(
+                "There are no kernels which are registered in the %s operator.",
+                op->Type()));
+        OpKernelMap& kernels = kernels_iter->second;
+
+        auto kernel_iter = kernels.find(expected_kernel_key);
+        PADDLE_ENFORCE_NE(
+            kernel_iter, kernels.end(),
+            platform::errors::NotFound(
+                "Operator (%s) does not have kernel for %s.", op->Type(),
+                KernelTypeToString(expected_kernel_key)));
+        // TODO(zhiqiu): add fallback logic
+        op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
+        op_func_node.kernel_func_(exec_ctx);
+      }
 
       // post-process grad_op.outputs if need cast complex grad into real grad.
       // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
@@ -379,9 +505,28 @@ void build_op_func_list(const platform::Place& place,
             op_func_node, place, outputs_names, &runtime_context.outputs,
             var_scope, vec_func_list, local_scope);
       }
+      if (!op_func_node.inplace_back_map.empty()) {
+        auto& m = op_func_node.inplace_back_map;
+        // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+        for (auto& p : m) {
+          auto* transformed_tensor =
+              GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                  var_scope->Var(p.first));
+          auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+              var_scope->Var(p.second));
+          original_tensor->ShareDataWith(*transformed_tensor);
+          VLOG(4) << "Transfer inplace variable back form "
+                  << var_scope->GetNameById(p.first) << " to "
+                  << var_scope->GetNameById(p.second);
+        }
+      }
     }
 
+    VLOG(4) << "End run " << place << " "
+            << op_func_node.operator_base_->DebugStringEx(local_scope);
+
     vec_func_list->emplace_back(op_func_node);
+
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
@@ -402,8 +547,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<SelectedRows>()
+      } else if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {
@@ -411,17 +556,13 @@ void build_op_func_list(const platform::Place& place,
         for (auto& t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
-        lod_tensor_arr->clear();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",
             framework::ToTypeName(var->Type()), var_name));
       }
     }
-
     delete garbages;  // free mem
-
-    VLOG(3) << "run " << op->Type() << " done.";
   }
 }
 
@@ -546,6 +687,197 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+
+    // NOTE(zhiqiu): The inplace op with `transfer` also changes
+    // original output after that so add original output as well
+    // original: a->op->a
+    // after: a->data_transfer->a'->op->a'->transfer_back->a
+    // which means op writes a and a'
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto var = p.second;
+        var2recent_write_op[var] = op_idx;
+        // var in input list and in output list, so remove it.
+        if (remove_duplicate.count(var) == 0) {
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+        }
+      }
+    }
+  }
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli", "poisson", "multinomial", "gaussian_random",
+      "truncated_gaussian_random", "uniform_random", "randint", "randperm",
+      "exponential",
+      "sampling_id"
+      "dropout",
+      "class_center_sample",
+  };
+
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // add dependency for communication op
+  auto is_comm_op = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send", "recv", "send_v2", "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // TODO(zhiqiu): there still some cases not handled
+  // add dependency for c_sync_comm_stream
+
+  // in program, we can add only one c_sync_comm_stream to sync all
+  // communication ops.
+  // c_allreduce_sum(a)
+  // c_allreduce_sum(b)
+  // c_allreduce_sum(c)
+  // c_sync_comm_stream(a)
+  const std::string kSyncComm = "c_sync_comm_stream";
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
+      dependence_op_idx = op_idx;
+    } else {
+      if (dependence_op_idx != -1) {
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+    }
+  }
+
+  // add dependency for coalesce_tensor
+  const std::string kCoalesceTensor = "coalesce_tensor";
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
+      VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
+      auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
+      auto outputs = vec_instruction[op_idx].Outputs().at("Output");
+
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Inputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Outputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      // find first op that reads fused_out
+      auto first_read_fused_out_op = -1;
+      for (auto j = op_idx + 1; j < vec_instruction.size(); ++j) {
+        if (is_read(vec_instruction[j], fused_out)) {
+          first_read_fused_out_op = j;
+          break;
+        }
+      }
+
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
+        VLOG(4) << "No op read FusedOutput";
+        continue;
+      }
+
+      // find ops that write 'outputs' between (op_index,
+      // first_read_fused_out_op)
+      // add depend: them->first_read_fused_out_op
+      for (auto j = op_idx + 1;
+           j < static_cast<size_t>(first_read_fused_out_op); ++j) {
+        for (auto var_id : outputs) {
+          if (is_write(vec_instruction[j], var_id)) {
+            op2dependences[first_read_fused_out_op].insert(j);
+            VLOG(4) << j << " -> " << first_read_fused_out_op;
+            VLOG(4)
+                << "Add depend from " << vec_instruction[j].OpBase()->Type()
+                << " to "
+                << vec_instruction[first_read_fused_out_op].OpBase()->Type();
+          }
+        }
+      }
+
+      // find first op read 'outputs' between (first_read_fused_out_op, end)
+      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+
+      // special case for consecutive communication ops, for example,
+      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput= c_allreduce_sum(FusedOutput)
+      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // we should take the last one to add depned instead of
+      // 'first_read_fused_out_op'
+      size_t target = first_read_fused_out_op;
+      for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
+           ++j) {
+        if (j == target + 1 &&
+            is_comm_op(vec_instruction[target].OpBase()->Type()) &&
+            is_comm_op(vec_instruction[j].OpBase()->Type())) {
+          VLOG(4) << "Found consecutive communication ops, "
+                  << vec_instruction[target].OpBase()->Type() << " -> "
+                  << vec_instruction[j].OpBase()->Type();
+          target = j;
+          continue;
+        }
+
+        for (auto var_id : outputs) {
+          if (is_read(vec_instruction[j], var_id)) {
+            op2dependences[j].insert(target);
+            VLOG(4) << target << " -> " << j;
+            VLOG(4) << "Add depend from "
+                    << vec_instruction[target].OpBase()->Type() << " to "
+                    << vec_instruction[j].OpBase()->Type();
+          }
+        }
+      }
+    }
+  }
+  for (auto pair : op2dependences) {
+    VLOG(10) << pair.first << " Depends on " << pair.second.size();
+    std::ostringstream oss;
+    std::copy(pair.second.begin(), pair.second.end(),
+              std::ostream_iterator<int>(oss, " "));
+    VLOG(10) << oss.str();
   }
   return std::move(get_downstream_map(op2dependences));
 }
