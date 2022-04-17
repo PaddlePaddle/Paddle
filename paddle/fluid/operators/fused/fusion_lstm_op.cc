@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -346,7 +346,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D4, M, x_data, wx_data, xx_data, bias->data<T>());
 
     int xx_offset = D4;
@@ -424,7 +424,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     if (M > D4) {
       fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());
       to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
