@@ -35,8 +35,6 @@ class InplaceVariableWrapperHook;
 class VarBase;
 class GradOpNode;
 
-// using DataLayout = paddle::experimental::DataLayout;
-
 class VariableWrapper {
  public:
   friend class VarBase;

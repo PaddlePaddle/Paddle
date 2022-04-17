@@ -66,11 +66,12 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(predict.shape, [1, 2])
 
     def test_disable_autotune(self):
+        paddle.fluid.core.disable_layout_autotune()
         conv_out, predict = self.train(data_format="NCHW")
         self.assertEqual(conv_out.shape, [1, 8, 14, 14])
         self.assertEqual(predict.shape, [1, 2])
 
-    def test_transposer(self):
+    def test_transpose_op_transposer(self):
         paddle.fluid.core.enable_layout_autotune()
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
@@ -92,7 +93,7 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(conv_out.shape, [1, 14, 12, 8])
         self.assertEqual(out.shape, [1, 12, 8, 14])
 
-    def test_transposer(self):
+    def test_flatten_op_transposer(self):
         paddle.fluid.core.enable_layout_autotune()
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
@@ -100,7 +101,7 @@ class LayoutAutoTune(unittest.TestCase):
         with paddle.amp.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
-            # layout tuner will transpose conv_out to 
+            # layout tuner will transpose conv_out to
             # [1, 8, 14, 12] with NCHW before the following flatten op
             # because it flatten the C and H dimensions.
             out = flatten(conv_out)
