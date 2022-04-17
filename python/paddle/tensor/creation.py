@@ -145,6 +145,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         out.desc.set_shape((num, ))
     return out
 
+
 def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     r"""
     Return fixed number of logarithmical-evenly spaced values within the interval \
