@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # The file has been adapted from the file:
-#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/gshard_gate.py
+#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/naive_gate.py
 #     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
 # We retain the following license from the original files:
 #     Copyright 2021, Jiaao He. All rights reserved.
