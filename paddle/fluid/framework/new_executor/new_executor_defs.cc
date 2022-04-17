@@ -328,20 +328,21 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
 }
 
 // TODO(paddle-dev): Can this be template?
-std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
+paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+InterpretercoreInferShapeContext::GetInputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
 }
 
-std::vector<InferShapeVarPtr>
+paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
 InterpretercoreInferShapeContext::GetOutputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
