@@ -152,17 +152,17 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   return out;
 }
 
-phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
+phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag) {
-  phi::DenseTensor out = tensor;
+  phi::DenseTensor out = *tensor;
   if (NeedTransformLayout(
-          tensor.layout(), target_args_def.layout, transform_flag)) {
+          tensor->layout(), target_args_def.layout, transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
   }
 
   if (NeedTransformDataType(
-          tensor.dtype(), target_args_def.dtype, transform_flag)) {
+          tensor->dtype(), target_args_def.dtype, transform_flag)) {
     out = TransDataType(out, target_args_def.dtype);
   }
 
@@ -172,6 +172,15 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
     framework::TransDataDevice(
         out, phi::TransToPhiPlace(target_args_def.backend), &result);
     out = result;
+    if (tensor->place().GetType() == phi::AllocationType::GPUPINNED) {
+      // Note: this is trick to improve performance.
+      // Here the holder of input tensor will be changed when tensor is on
+      // gpu_pinned, because we allways transfer GPUPinned Tensor to GPU,
+      // so it can decrease the times of data transform in some scenarios.
+      // This behavior means that the input tensor is non-const,
+      // and it's a bad design, maybe it will be removed in the future.
+      tensor->ShareBufferWith(out);
+    }
   }
   return out;
 }
@@ -194,7 +203,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out =
-        TransformData(dense_tensor, target_args_def, transform_flag);
+        TransformData(&dense_tensor, target_args_def, transform_flag);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
@@ -241,7 +250,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
       pt_tensors->emplace_back(
-          TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
+          TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
                         target_args_def,
                         transform_flag));
     }
