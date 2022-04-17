@@ -222,9 +222,9 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("elementwise_heaviside_grad",
-                         {"X", "Y", GradVarName("Out")},
+                         {"X", "Y", "Out@GRAD"},
                          {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
