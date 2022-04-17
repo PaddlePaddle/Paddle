@@ -16,7 +16,6 @@
 # TODO: define loss functions of neural network
 import numpy as np
 from collections import namedtuple
-from typing import List, Sequence
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
@@ -25,7 +24,6 @@ from paddle.nn.layer import Linear
 from paddle.fluid.framework import _varbase_creator
 from .. import Layer
 from paddle import in_dynamic_mode
-from paddle import Tensor
 
 __all__ = []
 _ASMoutput = namedtuple('_ASMoutput', ['output', 'loss'])
@@ -109,11 +107,11 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
     def __init__(
             self,
-            in_features: int,
-            n_classes: int,
-            cutoffs: Sequence[int],
-            div_value: float=4.,
-            head_bias: bool=False, ) -> None:
+            in_features,
+            n_classes,
+            cutoffs,
+            div_value=4.,
+            head_bias=False, ) -> None:
         super(AdaptiveLogSoftmaxWithLoss, self).__init__()
 
         cutoffs = list(cutoffs)
@@ -155,7 +153,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
             self.tail.append(projection)
 
-    def forward(self, input: Tensor, target: Tensor) -> _ASMoutput:
+    def forward(self, input, target):
         if input.shape[0] != target.shape[0]:
             raise RuntimeError('Input and target should have the same size '
                                'in the batch dimension.')
@@ -244,7 +242,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         return out
 
-    def log_prob(self, input: Tensor) -> Tensor:
+    def log_prob(self, input):
         r""" Computes log probabilities for all :math:`\texttt{n\_classes}`
         Args:
             input (Tensor): a minibatch of examples
@@ -260,7 +258,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         head_output = self.head(input)
         return self._get_full_log_prob(input, head_output)
 
-    def predict(self, input: Tensor) -> Tensor:
+    def predict(self, input):
         r""" This is equivalent to `self.log_pob(input).argmax(axis=1)`,
         but is more efficient in some cases.
         Args:
