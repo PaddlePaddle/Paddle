@@ -147,9 +147,6 @@ void QuantDequantMkldnnV2FusePass::GatherInputWeightsScalesFromFake(
       }
     }
   }
-
-//   SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales",
-//                        var_quant_scales);
 }
 
 void QuantDequantMkldnnV2FusePass::RemoveQuantDequantLinearOps(
@@ -181,7 +178,7 @@ void QuantDequantMkldnnV2FusePass::RemoveQuantDequantLinearOps(
 
     prev_op->Op()->RenameOutput(quantize_linear_in_x->Name(), dequantize_linear_out->Name());
     
-    VLOG(0) << "pre op output is reset to dequantize_linear output";
+    // VLOG(0) << "pre op output is reset to dequantize_linear output";
     IR_NODE_LINK_TO(prev_op, dequantize_linear_out);
     GraphSafeRemoveNodes(graph,
                          {quantize_linear_in_x, quantize_linear_in_scale,
@@ -218,188 +215,48 @@ void QuantDequantMkldnnV2FusePass::RemoveDequantLinearOps(
                               dq_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op,
                               dq_pattern);
-    next_op->Op()->RenameInput(dequantize_linear_out->Name(), dequantize_linear_in_x->Name());
+
+    auto* dequant_in_x_var = scope->FindVar(dequantize_linear_in_x->Name());
+    PADDLE_ENFORCE_NOT_NULL(
+            dequant_in_x_var, "The scale_var is not found.");	
+    auto* dequant_in_x_tensor = dequant_in_x_var->GetMutable<LoDTensor>();
+    LOG(0) << "dequant_in_x_tensor weights are: "<<(*dequant_in_x_tensor);
     
-    IR_NODE_LINK_TO(dequantize_linear_in_x, next_op);
+    auto dequant_in_x_data =
+            dequant_in_x_tensor->mutable_data<float>(platform::CPUPlace());
+
+    for (int i = 0; i < dequant_in_x_tensor->numel(); i++){
+      LOG(0)<<"dequant_in_x_data[i]: "<<dequant_in_x_data[i];
+    }
+
+    auto* dequantize_linear_out_var = dequantize_linear_out->Var();
+    dequantize_linear_out_var->SetShape(phi::vectorize(dequant_in_x_tensor->dims()));
+    dequantize_linear_out_var->SetDataType(proto::VarType::FP32);
+    dequantize_linear_out_var->SetLoDLevel(dequant_in_x_tensor->lod().size());
+    dequantize_linear_out_var->SetPersistable(true);
+
+    auto* dequantize_weights_node = graph->CreateVarNode(dequantize_linear_out_var);
+    auto* dequantize_weights_tensor = scope->Var(dequantize_weights_node->Name())->GetMutable<LoDTensor>();
+    dequantize_weights_tensor->Resize(dequant_in_x_tensor->dims());
+
+    // Use dequant_in_x to calculate dequant_weights_out tensors
+    std::fill_n(dequantize_weights_tensor->mutable_data<float>(platform::CPUPlace()),
+                dequant_in_x_tensor->numel(), 0.0f);
+
+    next_op->Op()->RenameInput(dequantize_linear_out->Name(), dequantize_weights_node->Name());
+
+    IR_NODE_LINK_TO(dequantize_weights_node, next_op);
 
     GraphSafeRemoveNodes(graph,
-                         {dequantize_linear_in_scale,
+                         {dequantize_linear_in_x, dequantize_linear_in_scale,
                           dequantize_linear_in_zeropoint, dequantize_linear_op, dequantize_linear_out});
  
     found_dequantize_linear_count++;
-
-    //     // Create eltwise_y (conv bias) variable
-    // VarDesc eltwise_y_in_desc(
-    //     patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
-    // eltwise_y_in_desc.SetShape(phi::vectorize(bn_bias_tensor->dims()));
-    // eltwise_y_in_desc.SetDataType(
-    //     framework::TransToProtoVarType(bn_bias_tensor->dtype()));
-    // eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
-    // eltwise_y_in_desc.SetPersistable(true);
-    // auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
-    // auto* eltwise_y_in_tensor =
-    //     scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
-
-    // // Initialize eltwise_y
-    // eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
-    // std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-    //             eltwise_y_in_tensor->numel(), 0.0f);
   };
 
   gpd(graph, handler);
   AddStatis(found_dequantize_linear_count);
 }
-
-// I just found I could not literally reuse achun's dequantization, cause I don't have weight threshold
-//void QuantDequantMkldnnV2FusePass::DequantizeOpWeights(
-//    Node* op_node, Scope* scope, const std::string& weight_name,
-//    const std::string& output_name,
-//    const std::unordered_map<std::string, std::vector<float>>&
-//        weight_thresholds) const {
-//  auto* op_desc = op_node->Op();
-//  std::string weight_var_name = op_desc->Input(weight_name)[0];
-//  std::string output_var_name = op_desc->Output(output_name)[0];
-//
-//  std::vector<float> scales;
-//  auto iter = weight_thresholds.find(output_var_name);
-//  if (iter != weight_thresholds.end()) {
-//    scales = iter->second;
-//  } else {
-//    PADDLE_THROW(paddle::platform::errors::Fatal(
-//        "Could not find threshold information for [%s] var, please check if "
-//        "the model is correct.",
-//        output_var_name));
-//  }
-//
-//  auto* var = scope->FindVar(weight_var_name);
-//  PADDLE_ENFORCE_NOT_NULL(
-//      var, "The input persistable var of %s op is not found.", op_desc->Type());
-//  auto* weight_tensor = var->GetMutable<LoDTensor>();
-//  const auto weight_dims = weight_tensor->dims();
-//
-//  const int size = scales.size();
-//  if (size == 1 || size == weight_dims[0]) {
-//    auto* weight_data =
-//        weight_tensor->mutable_data<float>(platform::CPUPlace());
-//    for (int i = 0; i < weight_tensor->numel(); i++) {
-//      weight_data[i] /= 127;
-//    }
-//
-//    TransposeWeight(weight_tensor);
-//
-//    if (size == 1) {
-//      for (int i = 0; i < weight_tensor->numel(); i++) {
-//        weight_data[i] *= scales[0];
-//      }
-//    } else {
-//      for (int i = 0; i < weight_tensor->numel(); i++) {
-//        weight_data[i] *= scales[i % size];
-//      }
-//    }
-//
-//    TransposeWeight(weight_tensor);
-//  } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
-//    auto* weight_data =
-//        weight_tensor->mutable_data<float>(platform::CPUPlace());
-//    for (int i = 0; i < weight_tensor->numel(); i++) {
-//      weight_data[i] /= 127;
-//    }
-//
-//    int step_n = 1;
-//    for (int i = 1; i < weight_dims.size(); i++) {
-//      step_n *= weight_dims[i];
-//    }
-//    int step_c = step_n / size;
-//    for (int i = 0; i < weight_dims[0]; i++) {
-//      int begin_n = i * step_n;
-//      for (int j = begin_n; j < begin_n + step_n; j++) {
-//        for (int k = 0; k < size; k++) {
-//          int begin_c = k * step_c;
-//          for (int m = begin_c; m < begin_c + step_c; m++) {
-//            weight_data[m] *= scales[k];
-//          }
-//        }
-//      }
-//    }
-//  } else {
-//    PADDLE_THROW(platform::errors::InvalidArgument(
-//        "The size of weight scales vector (%d) does not "
-//        "match the dimensions (%d) of the weights tensor %s.",
-//        size, weight_tensor->dims().size(), weight_var_name));
-//  }
-//
-//  weight_tensor->Resize(weight_dims);
-//}
-//
-//void QuantDequantMkldnnV2FusePass::DequantizeWeights(
-//    ir::Graph* graph, Scope* scope,
-//    const std::unordered_map<std::string, std::vector<float>>&
-//        weight_thresholds) const {
-//  VLOG(0) << "dequantize weight for ops which has weight";
-//
-//  if (weight_thresholds.empty()) {
-//    VLOG(0)
-//        << "No need to dequantize weights because weight_thresholds is empty.";
-//    return;
-//  }
-//
-//  for (auto* op_node :
-//       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-//    if (!op_node->IsOp()) continue;
-//    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
-//      if (IsInt8Weight(op_node, scope, "Filter")) {
-//        DequantizeOpWeights(op_node, scope, "Filter", "Output",
-//                            weight_thresholds);
-//      }
-//    } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
-//               op_node->Name() == "matmul_v2") {
-//      if (IsInt8Weight(op_node, scope, "Y")) {
-//        DequantizeOpWeights(op_node, scope, "Y", "Out", weight_thresholds);
-//      }
-//    }
-//  }
-//}
-//
-//
-//void QuantDequantMkldnnV2FusePass::UpdateActivations(ir::Graph* graph) const {
-//  VLOG(0) << "update conv2d or depthwise_conv2d fused activation";
-//  for (auto* op_node :
-//       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-//    if (!op_node->IsOp()) continue;
-//
-//    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
-//      auto* op_desc = op_node->Op();
-//      if (!op_desc->HasAttr("fuse_activation")) {
-//        std::string activation;
-//        if (op_desc->GetAttrIfExists<bool>("fuse_relu")) {
-//          activation = "relu";
-//        } else if (op_desc->GetAttrIfExists<bool>("fuse_bcprelu")) {
-//          activation = "relu6";
-//          float alpha = 6.0;
-//          if (op_desc->HasAttr("fuse_brelu_threshold")) {
-//            alpha = BOOST_GET_CONST(float,
-//                                    op_desc->GetAttr("fuse_brelu_threshold"));
-//          }
-//          op_node->Op()->SetAttr("fuse_alpha", alpha);
-//        }
-//        op_node->Op()->SetAttr("fuse_activation", "no_relu_relu6");
-//      }
-//    }
-//  }
-//}
-//
-//void QuantDequantMkldnnV2FusePass::RemoveCtrlVars(ir::Graph* graph) const {
-//  VLOG(3) << "remove control flow variable";
-//  std::unordered_set<const Node*> nodes2rm = {};
-//  for (auto* op_node :
-//       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-//    if (op_node->IsCtrlVar()) {
-//      nodes2rm.insert(op_node);
-//    }
-//  }
-//
-//  GraphSafeRemoveNodes(graph, nodes2rm);
-//}
 
 }  // namespace ir
 }  // namespace framework
