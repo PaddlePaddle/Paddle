@@ -153,7 +153,7 @@ class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
     // is necessary. Otherwise, it will fall back to the LayoutTransposer::Run.
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     if (attrs->find("axis") != attrs->end() &&
-        boost::get<int>((*attrs)["axis"]) != -1) {
+        BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
       VLOG(3) << "Optimze layout agnostic op " << this->Type();
       if (desired_layout == DataLayout::NHWC) {
         (*attrs)["axis"] = 3;
@@ -196,17 +196,17 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
     std::string desired_layout_str = paddle::framework::DataLayoutToString(
         LayoutAutoTune::Instance().GetDesiredLayout());
     if (attrs->find("data_format") != attrs->end() &&
-        boost::get<std::string>((*attrs)["data_format"]) !=
+        BOOST_GET_CONST(std::string, (*attrs)["data_format"]) !=
             desired_layout_str) {
       VLOG(4) << "Origin layout attr: "
-              << boost::get<std::string>((*attrs)["data_format"])
+              << BOOST_GET_CONST(std::string, (*attrs)["data_format"])
               << ", Desired layout attr: " << desired_layout_str;
       (*attrs)["data_format"] = desired_layout_str;
     } else if (attrs->find("data_layout") != attrs->end() &&
-               boost::get<std::string>((*attrs)["data_layout"]) !=
+               BOOST_GET_CONST(std::string, (*attrs)["data_layout"]) !=
                    desired_layout_str) {
       VLOG(4) << "Origin layout attr: "
-              << boost::get<std::string>((*attrs)["data_layout"])
+              << BOOST_GET_CONST(std::string, (*attrs)["data_layout"])
               << ", Desired layout attr: " << desired_layout_str;
       (*attrs)["data_layout"] = desired_layout_str;
     }
@@ -288,7 +288,7 @@ class TransposeOpTransposer
     auto& in_var = ins.at("X")[0];
     auto var_layout = paddle::imperative::GetDataLayout(in_var);
     if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
-      auto axis = boost::get<std::vector<int>>((*attrs)["axis"]);
+      auto axis = BOOST_GET_CONST(std::vector<int>, (*attrs)["axis"]);
       // NHWC->NCHW, permutaion will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
       // fuse the transpose Ops by transforming axis.
@@ -315,8 +315,8 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
     // Flatten the C, H, W dimensions will not affect functionality.
     // So transformation is unnecessary. But in other cases, it needs to
     // fall back to the LightlyLayoutSensitiveOpTransposer.
-    auto start_axis = boost::get<int>((*attrs)["start_axis"]);
-    auto stop_axis = boost::get<int>((*attrs)["stop_axis"]);
+    auto start_axis = BOOST_GET_CONST(int, (*attrs)["start_axis"]);
+    auto stop_axis = BOOST_GET_CONST(int, (*attrs)["stop_axis"]);
     if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
             LayoutAutoTune::Instance().GetDesiredLayout() &&
         start_axis == 1 && stop_axis == 3) {
