@@ -30,13 +30,7 @@ namespace sparse {
                                     const SparseCsrTensor& x,                  \
                                     const SparseCsrTensor& y,                  \
                                     SparseCsrTensor* out) {                    \
-    PADDLE_ENFORCE_EQ(                                                         \
-        x.dims(),                                                              \
-        y.dims(),                                                              \
-        "ValueError: Mismatched shape. Expected x.dims = y.dims, "             \
-        "but got x.dims = %s, y.dims = %s",                                    \
-        x.dims().to_str(),                                                     \
-        y.dims().to_str());                                                    \
+    PADDLE_ENFORCE_EQ(x.dims(), y.dims());                                     \
     const auto& n_row = x.dims()[0];                                           \
     const auto& n_col = x.dims()[1];                                           \
     const auto& x_nnz = x.non_zero_elements().numel();                         \
@@ -146,6 +140,7 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
                                 const SparseCsrTensor& x,
                                 const SparseCsrTensor& y,
                                 SparseCsrTensor* out) {
+  PADDLE_ENFORCE_EQ(x.dims(), y.dims());
   const auto& n_row = x.dims()[0];
   const auto& n_col = x.dims()[1];
   const auto& x_nnz = x.non_zero_elements().numel();
