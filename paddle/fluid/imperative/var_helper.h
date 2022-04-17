@@ -34,8 +34,6 @@ namespace imperative {
 class VarBase;
 class VariableWrapper;
 
-// using DataLayout = paddle::experimental::DataLayout;
-
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
 template <typename VarType>

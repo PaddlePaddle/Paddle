@@ -30,8 +30,10 @@ std::shared_ptr<VarType> TraceTransposeOp(
   std::vector<int> axis;
   if (layout == DataLayout::NHWC) {
     axis = {0, 2, 3, 1};
-  } else {
+  } else if (layout == DataLayout::NCHW) {
     axis = {0, 3, 1, 2};
+  } else {
+    axis = {0, 1, 2, 3};
   }
   paddle::imperative::NameVarMap<VarType> ins = {{"X", {var}}};
   auto out =
@@ -255,7 +257,9 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
       for (auto& var : pair.second) {
         auto var_layout = paddle::imperative::GetDataLayout(var);
         if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
-          var = TraceTransposeOp(var, DataLayout::NCHW, tracer);
+          // Set layout to UNDEFINED so that TransposeOpTransposer do
+          // NHWC->NCHW transformation.
+          var = TraceTransposeOp(var, DataLayout::UNDEFINED, tracer);
         }
       }
     }
@@ -287,12 +291,10 @@ class TransposeOpTransposer
       auto axis = boost::get<std::vector<int>>((*attrs)["axis"]);
       // NHWC->NCHW, permutaion will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
-      // fuse the transpose Op by transforming axis.
-      if (axis != perm) {
-        std::vector<int> fusion_axis = {
-            perm[axis[0]], perm[axis[1]], perm[axis[2]], perm[axis[3]]};
-        (*attrs)["axis"] = fusion_axis;
-      }
+      // fuse the transpose Ops by transforming axis.
+      std::vector<int> fusion_axis = {
+          perm[axis[0]], perm[axis[1]], perm[axis[2]], perm[axis[3]]};
+      (*attrs)["axis"] = fusion_axis;
     }
     return ins;
   }
