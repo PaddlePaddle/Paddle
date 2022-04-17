@@ -2228,9 +2228,14 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def triplet_margin_loss(input,positive,negative,
-                        swap=False, p=2, eps=1e-6,
-                        margin=1.0, reduction='mean',
+def triplet_margin_loss(input,
+                        positive,
+                        negative,
+                        swap=False,
+                        p=2,
+                        eps=1e-6,
+                        margin=1.0,
+                        reduction='mean',
                         name=None):
     """
     Creates a criterion that measures the triplet loss given an input

@@ -27,23 +27,33 @@ def call_TripletMarginLoss_layer(input,
                     swap=False,
                     eps = 1e-6,
                     reduction='mean',):
-    triplet_margin_loss = paddle.nn.TripletMarginLoss(p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
-    res = triplet_margin_loss(input=input,positive=positive,negative=negative,)
+    triplet_margin_loss = paddle.nn.loss.TripletMarginLoss(p=p,
+                                                      eps=eps,
+                                                      margin=margin,
+                                                      swap=swap,
+                                                      reduction=reduction)
+    res = triplet_margin_loss(input=input,
+                              positive=positive,
+                              negative=negative,)
     return res
 
 
 def call_TripletMarginLoss_functional(input,
                         positive,
                         negative,
-                        p = 2,
+                        p=2,
                         margin=0.3,
                         swap=False,
-                        eps = 1e-6,
+                        eps=1e-6,
                         reduction='mean',):
-    res = paddle.nn.functional.triplet_margin_loss(
-        input=input,positive=positive,negative=negative,p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
+    res = paddle.nn.functional.triplet_margin_loss(input=input,
+                                                   positive=positive,
+                                                   negative=negative,
+                                                   p=p,
+                                                   eps=eps,
+                                                   margin=margin,
+                                                   swap=swap,
+                                                   reduction=reduction)
     return res
 
 
@@ -57,7 +67,7 @@ def test_static(place,
                 eps=1e-6,
                 reduction='mean',
                 functional=False):
-    paddle.enable_static()
+
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
@@ -67,15 +77,26 @@ def test_static(place,
             name='positive', shape=positive_np.shape, dtype='float64')
         negative = paddle.fluid.data(
             name='negative', shape=negative_np.shape, dtype='float64')
-        feed_dict = {"input": input_np, "positive": positive_np, "negative":negative_np}
-
+        feed_dict = {"input": input_np, "positive": positive_np, "negative": negative_np}
 
         if functional:
-            res = call_TripletMarginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
+            res = call_TripletMarginLoss_functional(input=input,
+                                                    positive=positive,
+                                                    negative=negative,
+                                                    p=p,
+                                                    eps=eps,
+                                                    margin=margin,
+                                                    swap=swap,
+                                                    reduction=reduction)
         else:
-            res = call_TripletMarginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
+            res = call_TripletMarginLoss_layer(input=input,
+                                               positive=positive,
+                                               negative=negative,
+                                               p=p,
+                                               eps=eps,
+                                               margin=margin,
+                                               swap=swap,
+                                               reduction=reduction)
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
@@ -97,11 +118,23 @@ def test_dygraph(place,
     negative = paddle.to_tensor(negative)
 
     if functional:
-        dy_res = call_TripletMarginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
+        dy_res = call_TripletMarginLoss_functional(input=input,
+                                                   positive=positive,
+                                                   negative=negative,
+                                                   p=p,
+                                                   eps=eps,
+                                                   margin=margin,
+                                                   swap=swap,
+                                                   reduction=reduction)
     else:
-        dy_res = call_TripletMarginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
-        margin=margin,swap=swap,reduction=reduction)
+        dy_res = call_TripletMarginLoss_layer(input=input,
+                                              positive=positive,
+                                              negative=negative,
+                                              p=p,
+                                              eps=eps,
+                                              margin=margin,
+                                              swap=swap,
+                                              reduction=reduction)
     dy_result = dy_res.numpy()
     paddle.enable_static()
     return dy_result
@@ -174,7 +207,7 @@ class TestTripletMarginLoss(unittest.TestCase):
         paddle.disable_static()
         self.assertRaises(
             ValueError,
-            paddle.nn.TripletMarginLoss,
+            paddle.nn.loss.TripletMarginLoss,
             reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
@@ -200,7 +233,7 @@ class TestTripletMarginLoss(unittest.TestCase):
             input=input,
             positive=positive,
             negative=negative,)
-        TMLoss = paddle.nn.TripletMarginLoss()
+        TMLoss = paddle.nn.loss.TripletMarginLoss()
         self.assertRaises(
             ValueError,
             TMLoss,

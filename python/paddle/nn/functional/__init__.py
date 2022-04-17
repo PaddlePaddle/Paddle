@@ -227,5 +227,5 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'fold',
-            'triplet_margin_loss'
+           'triplet_margin_loss',
 ]

@@ -1351,33 +1351,42 @@ class TripletMarginLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import paddle.nn.functional as F
+            import paddle.nn.TripletMarginLoss
 
             input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
             positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
             negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='none')
+            triplet_margin_loss = TripletMarginLoss()
+            loss = triplet_margin_loss(input, positive, negative, reduction='none')
             print(loss)
             # Tensor([0.        , 0.57496738, 0.        ])
 
 
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
+            loss = triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
             print(loss)
             # Tensor([0.19165580])
 
     """
-    def __init__(self, margin: float = 1.0, p: float = 2., eps: float = 1e-6, swap: bool = False,reduction: str = 'mean'):
+    def __init__(self, margin=1.0, p=2., eps= 1e-6, swap=False, reduction='mean', name=None):
         super(TripletMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
+                "The value of 'reduction' in TripletMarginLoss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction)
         self.margin = margin
         self.p = p
         self.eps = eps
         self.swap = swap
         self.reduction = reduction
+        self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_loss(input, positive, negative, margin=self.margin, p=self.p,
-                                     eps=self.eps, swap=self.swap, reduction=self.reduction)
+        return F.triplet_margin_loss(input,
+                                     positive,
+                                     negative,
+                                     margin=self.margin,
+                                     p=self.p,
+                                     eps=self.eps,
+                                     swap=self.swap,
+                                     reduction=self.reduction,
+                                     name=self.name)
