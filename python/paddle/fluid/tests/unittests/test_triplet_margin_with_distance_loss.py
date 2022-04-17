@@ -76,6 +76,7 @@ def test_static(place,
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+    paddle.disable_static()
     return static_result
 
 def test_dygraph(place,
@@ -129,7 +130,7 @@ def calc_triplet_margin_distance_loss(input,
     return expected
 
 
-class TestTripletMarginLoss(unittest.TestCase):
+class TestTripletMarginWithDistanceLoss(unittest.TestCase):
     def test_TripletMarginDistanceLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         positive = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
