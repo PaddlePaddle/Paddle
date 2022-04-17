@@ -2291,6 +2291,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
                                             dtype='{}'.format(label.dtype).replace("paddle.", ""), value=1)
     label_zeros = fluid.layers.fill_constant(shape=[label.shape[0]],
                                              dtype='{}'.format(label.dtype).replace("paddle.", ""), value=0)
+    check_zero = fluid.layers.fill_constant(shape=[1], dtype='{}'.format(input1.dtype).replace("paddle.", ""), value=0)
     conds_ones = fluid.layers.equal(x=label, y=label_ones)
     conds_zeros = fluid.layers.equal(x=label, y=label_zeros)
 
@@ -2304,7 +2305,13 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             with switch.case(conds_ones[i] == True and conds_zeros[i] == False):
                 scores[i] = 1 - score
             with switch.case(conds_ones[i] == False and conds_zeros[i] == True):
-                scores[i] = max(0, score - margin)
+                with fluid.layers.Switch() as max_switch:
+                    with max_switch.case(fluid.layers.less_than(x=score - margin, y=check_zero) == True):
+                        scores[i] = 0
+                    with max_switch.case(fluid.layers.less_than(x=score - margin, y=check_zero) == False):
+                        scores[i] = score - margin
+                    with max_switch.default():
+                        pass
             with switch.default():
                 pass
 
