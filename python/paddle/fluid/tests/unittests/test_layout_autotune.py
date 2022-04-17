@@ -39,6 +39,14 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class LayoutAutoTune(unittest.TestCase):
+    def use_autoune(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.fluid.core.enable_layout_autotune()
+            return True
+        else:
+            paddle.fluid.core.disable_layout_autotune()
+            return False
+
     def train(self, data_format):
         model = SimpleNet(data_format="NCHW", class_num=2)
         data = paddle.rand([1, 3, 16, 16])
@@ -60,19 +68,18 @@ class LayoutAutoTune(unittest.TestCase):
         return conv_out, predict
 
     def test_enable_autotune(self):
-        paddle.fluid.core.enable_layout_autotune()
-        conv_out, predict = self.train(data_format="NCHW")
-        self.assertEqual(conv_out.shape, [1, 14, 14, 8])
-        self.assertEqual(predict.shape, [1, 2])
-
-    def test_disable_autotune(self):
-        paddle.fluid.core.disable_layout_autotune()
-        conv_out, predict = self.train(data_format="NCHW")
-        self.assertEqual(conv_out.shape, [1, 8, 14, 14])
-        self.assertEqual(predict.shape, [1, 2])
+        if self.use_autoune():
+            conv_out, predict = self.train(data_format="NCHW")
+            self.assertEqual(conv_out.shape, [1, 14, 14, 8])
+            self.assertEqual(predict.shape, [1, 2])
+        else:
+            conv_out, predict = self.train(data_format="NCHW")
+            self.assertEqual(conv_out.shape, [1, 8, 14, 14])
+            self.assertEqual(predict.shape, [1, 2])
 
     def test_transpose_op_transposer(self):
-        paddle.fluid.core.enable_layout_autotune()
+        if not self.use_autoune():
+            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
@@ -94,6 +101,8 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(out.shape, [1, 12, 8, 14])
 
     def test_flatten_op_transposer(self):
+        if not self.use_autoune():
+            return
         paddle.fluid.core.enable_layout_autotune()
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
