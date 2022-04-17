@@ -79,7 +79,6 @@ def test_static(place,
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
-    paddle.disable_static()
     return static_result
 
 def test_dygraph(place,
