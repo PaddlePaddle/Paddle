@@ -690,8 +690,18 @@ void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
                                     DenseTensor* dx,
                                     DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
-  phi::funcs::ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
-      dev_ctx, x, y, dout, dout, axis, dx, dy, HeavisideGradDx<T>(), HeavisideGradDy<T>());
+  phi::funcs::
+      ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
+          dev_ctx,
+          x,
+          y,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          HeavisideGradDx<T>(),
+          HeavisideGradDy<T>());
 }
 
 template <typename T>

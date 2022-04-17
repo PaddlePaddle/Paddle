@@ -101,7 +101,8 @@ KernelSignature ElementwiseHeavisideOpArgumentMapping(
   if (axis == -1) {
     return KernelSignature("elementwise_heaviside", {"X", "Y"}, {}, {"Out"});
   }
-  return KernelSignature("elementwise_heaviside_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature(
+      "elementwise_heaviside_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwisePowOpArgumentMapping(
@@ -235,9 +236,9 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("elementwise_heaviside_grad",
-                        {"X", "Y", GradVarName("Out")},
-                        {"axis"},
-                        {GradVarName("X"), GradVarName("Y")});
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
 }
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
