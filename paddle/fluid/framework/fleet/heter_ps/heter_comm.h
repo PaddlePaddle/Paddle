@@ -92,6 +92,7 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
+#endif
 
   bool need_transfer(int send_id, int receive_id) {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
@@ -100,8 +101,6 @@ class HeterComm {
   // void dump_to_cpu(int index);
 
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
-
-#endif
 
   void end_pass();
 
@@ -211,11 +210,11 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
+  int topo_aware_{0};
 
  private:
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
   std::vector<LocalStorage> storage_;
-  int topo_aware_{0};
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;

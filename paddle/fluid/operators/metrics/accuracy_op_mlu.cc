@@ -136,15 +136,17 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     // [total]
     total->mutable_data<int>(ctx.GetPlace());
     MLUCnnlTensorDesc total_desc(*total);
-    MLUCnnl::Fill(ctx, num_samples, total_desc.get(), GetBasePtr(total));
+    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &num_samples, total_desc.get(),
+                  GetBasePtr(total));
 
     // use `total` of type `float32` for calculating accuracy
     Tensor total_fp32(framework::TransToPhiDataType(VT::FP32));
     total_fp32.Resize(total->dims());
     total_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc total_fp32_desc(total_fp32);
-    MLUCnnl::Fill(ctx, static_cast<float>(num_samples), total_fp32_desc.get(),
-                  GetBasePtr(&total_fp32));
+    float num_samples_fp32 = static_cast<float>(num_samples);
+    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &num_samples_fp32,
+                  total_fp32_desc.get(), GetBasePtr(&total_fp32));
 
     // [accuracy]
     accuracy->mutable_data<float>(ctx.GetPlace());
