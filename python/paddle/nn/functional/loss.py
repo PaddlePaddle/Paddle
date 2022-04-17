@@ -2243,7 +2243,7 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-    :return:Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+    :return:Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
      Examples:
         .. code-block:: python
@@ -2254,19 +2254,20 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
             input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
             positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
             negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='none')
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='none')
             print(loss)
             # Tensor([0.        , 0.57496738, 0.        ])
 
 
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='mean')
             print(loss)
             # Tensor([0.19165580])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
-            "'reduction' in 'triplet_margin_loss' should be 'sum', 'mean' or 'none', "
+            "'reduction' in 'triplet_margin_with_distance_loss' "
+            "should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
     if margin<0:
         raise ValueError(

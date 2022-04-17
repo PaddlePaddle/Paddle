@@ -1339,38 +1339,46 @@ class TripletMarginWithDistanceLoss(Layer):
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-    :return:Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+    :return:Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.nn.functional as F
+            from paddle.nn import TripletMarginWithDistanceLoss
 
             input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
             positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
             negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='none')
+            triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='none')
+            loss = triplet_margin_with_distance_loss(input, positive, negative,)
             print(loss)
             # Tensor([0.        , 0.57496738, 0.        ])
 
-
-            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
+            triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='mean')
+            loss = triplet_margin_with_distance_loss(input, positive, negative,)
             print(loss)
             # Tensor([0.19165580])
 
     """
-    def __init__(self, distance_function=None,margin: float = 1.0, swap: bool = False,reduction: str = 'mean'):
+    def __init__(self, distance_function=None, margin=1.0, swap=False, reduction: str = 'mean', name=None):
         super(TripletMarginWithDistanceLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
+                "The value of 'reduction' in TripletMarginWithDistanceLoss "
+                "should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction)
         self.margin = margin
         self.swap = swap
         self.reduction = reduction
         self.distance_function = distance_function
+        self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_with_distance_loss(input, positive, negative, margin=self.margin,
-                                                   swap=self.swap, reduction=self.reduction)
+        return F.triplet_margin_with_distance_loss(input,
+                                                   positive,
+                                                   negative,
+                                                   margin=self.margin,
+                                                   swap=self.swap,
+                                                   reduction=self.reduction,
+                                                   name=self.name)
