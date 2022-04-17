@@ -2240,9 +2240,9 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
 
             import paddle
 
-            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
-            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
-            label = paddle.to_tensor([1], 'int32')
+            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float64')
+            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float64')
+            label = paddle.to_tensor([1], 'int64')
 
             output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
             print(output) # output: [0.42310387]
@@ -2250,19 +2250,30 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
     """
     label_size = len(label.shape)
     if label_size != 0 and label_size != 1:
-        raise ValueError("1D target tensor expected, multi-target not supported")
+        raise ValueError(
+            "1D target tensor expected, multi-target not supported")
 
     if len(input1.shape) != len(input2.shape):
-        raise ValueError("the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
-                         "different sizes")
+        raise ValueError(
+            "the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
+            "different sizes")
 
     if len(input1.shape) != 2 and len(input2.shape) != 2:
-        raise ValueError("1D target tensor expects 2D input tensors, but found inputs with different sizes")
+        raise ValueError(
+            "1D target tensor expects 2D input tensors, but found inputs with different sizes"
+        )
 
     batch_size, hidden_size = input1.shape
-    scores = paddle.zeros([batch_size])
+    scores = paddle.zeros(
+        [batch_size],
+        dtype='{}'.format(input1.dtype).replace("paddle.", ""))
 
     if in_dynamic_mode():
+        if "{}".format(input1.dtype) not in ["paddle.float32", "paddle.float64"]:
+            raise ValueError("The data type of input Variable must be 'float32' or 'float64'")
+        if "{}".format(label.dtype) not in ["paddle.int32", "paddle.int64", "paddle.float32", "paddle.float64"]:
+            raise ValueError("The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'")
+
         for i in range(batch_size):
             z = paddle.matmul(input1[i], input2[i])
             denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
@@ -2273,7 +2284,8 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
                 scores[i] = max(0, score - margin)
             else:
                 raise ValueError(
-                    "value of label should be number between 0 and 1, but received {}".format(label[i].item()))
+                    "value of label should be number between 0 and 1, but received {}".
+                    format(label[i].item()))
 
         if reduction == 'none':
             return scores
@@ -2282,16 +2294,26 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         elif reduction == 'sum':
             return paddle.sum(scores)
 
-    fluid.data_feeder.check_variable_and_dtype(input1, 'input1', ['float32', 'float64'], 'cosine_embedding_loss')
-    fluid.data_feeder.check_variable_and_dtype(input2, 'input2', ['float32', 'float64'], 'cosine_embedding_loss')
-    fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int32', 'int64', 'float32', 'float64'],
-                                               'cosine_embedding_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        input1, 'input1', ['float32', 'float64'], 'cosine_embedding_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        input2, 'input2', ['float32', 'float64'], 'cosine_embedding_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['int32', 'int64', 'float32', 'float64'],
+        'cosine_embedding_loss')
 
-    label_ones = fluid.layers.fill_constant(shape=[label.shape[0]],
-                                            dtype='{}'.format(label.dtype).replace("paddle.", ""), value=1)
-    label_zeros = fluid.layers.fill_constant(shape=[label.shape[0]],
-                                             dtype='{}'.format(label.dtype).replace("paddle.", ""), value=0)
-    check_zero = fluid.layers.fill_constant(shape=[1], dtype='{}'.format(input1.dtype).replace("paddle.", ""), value=0)
+    label_ones = fluid.layers.fill_constant(
+        shape=[label.shape[0]],
+        dtype='{}'.format(label.dtype).replace("paddle.", ""),
+        value=1)
+    label_zeros = fluid.layers.fill_constant(
+        shape=[label.shape[0]],
+        dtype='{}'.format(label.dtype).replace("paddle.", ""),
+        value=0)
+    check_zero = fluid.layers.fill_constant(
+        shape=[1],
+        dtype='{}'.format(input1.dtype).replace("paddle.", ""),
+        value=0)
     conds_ones = fluid.layers.equal(x=label, y=label_ones)
     conds_zeros = fluid.layers.equal(x=label, y=label_zeros)
 
@@ -2306,9 +2328,13 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
                 scores[i] = 1 - score
             with switch.case(conds_ones[i] == False and conds_zeros[i] == True):
                 with fluid.layers.Switch() as max_switch:
-                    with max_switch.case(fluid.layers.less_than(x=score - margin, y=check_zero) == True):
+                    with max_switch.case(
+                            fluid.layers.less_than(
+                                x=score - margin, y=check_zero) == True):
                         scores[i] = 0
-                    with max_switch.case(fluid.layers.less_than(x=score - margin, y=check_zero) == False):
+                    with max_switch.case(
+                            fluid.layers.less_than(
+                                x=score - margin, y=check_zero) == False):
                         scores[i] = score - margin
                     with max_switch.default():
                         pass
@@ -2321,4 +2347,3 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         return paddle.mean(scores)
     elif reduction == 'sum':
         return paddle.sum(scores)
-

@@ -1368,13 +1368,16 @@ class CosineEmbeddingLoss(Layer):
     def __init__(self, margin=0, reduction='mean'):
         if margin > 1 or margin < -1:
             raise ValueError(
-                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed." % margin)
+                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
+                % margin)
         if reduction not in ['sum', 'mean', 'none']:
-            raise ValueError("The value of 'reduction' should be 'sum', 'mean' or "
-                             "'none', but received %s, which is not allowed." % reduction)
+            raise ValueError(
+                "The value of 'reduction' should be 'sum', 'mean' or "
+                "'none', but received %s, which is not allowed." % reduction)
         super(CosineEmbeddingLoss, self).__init__()
         self.margin = margin
         self.reduction = reduction
 
     def forward(self, input1, input2, label):
-        return F.cosine_embedding_loss(input1, input2, label, margin=self.margin, reduction=self.reduction)
+        return F.cosine_embedding_loss(
+            input1, input2, label, margin=self.margin, reduction=self.reduction)
