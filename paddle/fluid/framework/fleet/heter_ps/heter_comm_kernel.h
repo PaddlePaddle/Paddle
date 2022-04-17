@@ -41,6 +41,7 @@ class HeterCommKernel {
 
   template <typename KeyType, typename T, typename StreamType>
   void calc_shard_index(KeyType* d_keys, long long len, T* shard_index,
+
                         int total_devs, const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
@@ -62,6 +63,7 @@ class HeterCommKernel {
                   const KeyT* d_keys_in, KeyT* d_keys_out,
                   const ValueT* d_values_in, ValueT* d_values_out,
                   int num_items, int begin_bit = 0,
+
                   int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
                   bool debug_synchronous = false);
 
@@ -75,6 +77,7 @@ class HeterCommKernel {
                      ValuesInputIteratorT d_values_in,
                      AggregatesOutputIteratorT d_aggregates_out,
                      NumRunsOutputIteratorT d_num_runs_out, int num_items,
+
                      StreamType stream = NULL, bool debug_synchronous = false);
 
  private:
