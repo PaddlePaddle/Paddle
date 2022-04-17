@@ -36,9 +36,11 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
         for (auto* node_input : op_node->inputs) {
           for (auto* node_input_input : node_input->inputs) {
             if (!node_input_input->IsOp()) continue;
-            if (node_input_input->Name().find("quantize_dequantize") ==
+            if (node_input_input->Name().find("quantize_") ==
+                std::string::npos && node_input_input->Name().find("dequantize_linear") ==
                 std::string::npos) {
               is_quantized_op = false;
+              VLOG(0)<<"node_input_input->Name() is: "<<node_input_input->Name();
               break;
             }
           }
