@@ -21,7 +21,7 @@ std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
   std::vector<Place> places;
   places.reserve(tensors.size());
   for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
+    places.push_back(tensor.place());
   }
   return places;
 }
