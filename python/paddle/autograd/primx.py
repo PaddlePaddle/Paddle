@@ -309,18 +309,23 @@ def _gradients(ys, xs, ys_bar=None):
 
     ys, xs = to_tensors(ys), to_tensors(xs)
     block = ys[0].block
-
     # TODO(Tongxin) without any prior knowledge about whether the program
     # is completely lowered to primitive ops, it's mandatory to run the lowering
     # pass once and again. This is obviously inefficient and needs to be 
     # optimized.
-    orig2prim(block)
+    new_vars = []
+    for var in xs + ys:
+        new_vars.append(var)
+
+    orig2prim(block, new_vars)
 
     ad = Transform(block)
-    xs_dot, ys_dot = ad.linearize(xs, ys)
+    new_xs = new_vars[:len(xs)]
+    new_ys = new_vars[len(xs):]
+    xs_dot, ys_dot = ad.linearize(new_xs, new_ys)
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
 
-    prim2orig(block)
+    # prim2orig(block, xs_bar)
     return xs_bar
 
 
@@ -350,6 +355,7 @@ def _lower(block, reverse, update_var_list):
     vlt = {}
     to_bind = {}
     for var in block.desc.all_vars():
+        print(f'Varname: {var.name()}')
         vlt[var.name()] = block.var(var.name())
 
     ops_to_remove = []
@@ -380,13 +386,15 @@ def _lower(block, reverse, update_var_list):
             new_op = Operator(block=block, desc=new_op_desc)
             block.ops.append(op)
 
-    for op_idx in reversed(ops_to_remove):
-        block._remove_op(op_idx)
-    for var_name in vars_to_remove:
-        # block._remove_var(var_name)
-        del block.vars[var_name]
-
     if update_var_list is not None:
         for i in range(len(update_var_list)):
             if update_var_list[i].name in to_bind:
                 update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
+
+    for op_idx in reversed(ops_to_remove):
+        block._remove_op(op_idx)
+    for var_name in vars_to_remove:
+        block._remove_var(var_name)
+#        del block.vars[var_name]
+
+
