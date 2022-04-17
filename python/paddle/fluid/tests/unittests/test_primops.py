@@ -23,10 +23,12 @@ from paddle.autograd.primops import (
 from paddle.autograd.primx import Transform, topo_path, orig2prim, prim2orig
 from paddle.autograd.primx import _gradients
 
+
 def prog1(x, y):
     t = paddle.matmul(x, y)
     # z = paddle.sum(paddle.sqrt(x))
     return t
+
 
 class TestPyPrimOps(unittest.TestCase):
     """ Test Python wrappers of primitive ops. """
@@ -193,7 +195,6 @@ class TestPyPrimOps(unittest.TestCase):
         for op in topo_path(vs, grads):
             print(op)
 
-
     def test_first_order_gradients(self):
         x = np.random.rand(100, 1, 2)
         y = np.random.rand(100, 2, 5)
@@ -204,10 +205,10 @@ class TestPyPrimOps(unittest.TestCase):
             Y = paddle.static.data('Y', shape=[100, 2, 5], dtype='float32')
             Z = prog1(X, Y)
             X_grad, W_grad = _gradients([Z], [X, Y])
-        exe = paddle.static.Executor()
-        exe.run(startup)
-        z = exe.run(main, feed={'X': x, 'Y': y}, fetch_list=[Z])
-        print(z)
+        # exe = paddle.static.Executor()
+        # exe.run(startup)
+        # z = exe.run(main, feed={'X': x, 'Y': y}, fetch_list=[Z])
+        # print(z)
 
     def test_lower(self):
         main = paddle.static.Program()
