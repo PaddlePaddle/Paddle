@@ -27,7 +27,7 @@
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/phi/kernels/autotune/layout_optimizer.h"
+#include "paddle/fluid/imperative/layout_optimizer.h"
 #endif
 
 DECLARE_bool(use_mkldnn);
