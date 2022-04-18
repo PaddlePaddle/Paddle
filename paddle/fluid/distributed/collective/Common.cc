@@ -21,7 +21,7 @@ std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
   std::vector<Place> places;
   places.reserve(tensors.size());
   for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
+    places.push_back(tensor.place());
   }
   return places;
 }
@@ -41,13 +41,14 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places) {
 }
 
 static bool CheckTensorsInPlace(const std::vector<Tensor>& tensors,
-                                const PlaceType type) {
-  return std::all_of(tensors.cbegin(), tensors.cend(),
-                     [&](const Tensor& t) { return t.place() == type; });
+                                phi::AllocationType type) {
+  return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
+    return t.place().GetType() == type;
+  });
 }
 
 bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors) {
-  return CheckTensorsInPlace(tensors, PlaceType::kGPU);
+  return CheckTensorsInPlace(tensors, phi::AllocationType::GPU);
 }
 
 }  //  namespace distributed
