@@ -44,7 +44,8 @@ class AddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor), The input tensor of add_p op.");
     AddOutput("Z", "(Tensor), The output tensor of add_p op.");
     AddComment(R"DOC(
-Autograd primitive add_p operator.
+Autograd primitive add_p Operator.
+
 )DOC");
   }
 };

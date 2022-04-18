@@ -54,7 +54,8 @@ class SliceSelectPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "strides",
         "(std::vector<int64_t>) The slice strides of slice_select_p op");
     AddComment(R"DOC(
-Autograd primitive slice_select_p operator.
+Autograd primitive slice_select_p Operator.
+
 )DOC");
   }
 };

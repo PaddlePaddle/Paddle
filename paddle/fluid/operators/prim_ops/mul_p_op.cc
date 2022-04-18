@@ -44,7 +44,8 @@ class MulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor), The input tensor of mul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of mul_p op.");
     AddComment(R"DOC(
-Autograd primitive mul_p operator.
+Autograd primitive mul_p Operator.
+
 )DOC");
   }
 };

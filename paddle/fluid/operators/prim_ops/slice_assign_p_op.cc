@@ -55,7 +55,8 @@ class SliceAssignPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "strides",
         "(std::vector<int64_t>) The slice strides of slice_assign_p op");
     AddComment(R"DOC(
-Autograd primitive slice_assign_p operator.
+Autograd primitive slice_assign_p Operator.
+
 )DOC");
   }
 };

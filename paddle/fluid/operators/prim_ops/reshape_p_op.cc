@@ -46,7 +46,8 @@ class ReshapePrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "shape", "(std::vector<int64_t>) Target shape of reshape_p operator.");
     AddComment(R"DOC(
-Autograd primitive reshape_p operator.
+Autograd primitive reshape_p Operator.
+
 )DOC");
   }
 };

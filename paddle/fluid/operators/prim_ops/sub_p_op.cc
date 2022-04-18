@@ -44,7 +44,8 @@ class SubPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor), The input tensor of sub_p op.");
     AddOutput("Z", "(Tensor), The output tensor of sub_p op.");
     AddComment(R"DOC(
-Autograd primitive sub_p operator.
+Autograd primitive sub_p Operator.
+
 )DOC");
   }
 };

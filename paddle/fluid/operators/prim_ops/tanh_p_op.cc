@@ -43,7 +43,8 @@ class TanhPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of tanh_p op.");
     AddOutput("Y", "(Tensor), The output tensor of tanh_p op.");
     AddComment(R"DOC(
-Autograd primitive tanh_p operator.
+Autograd primitive tanh_p Operator.
+
 )DOC");
   }
 };

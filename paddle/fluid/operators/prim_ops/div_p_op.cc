@@ -44,7 +44,8 @@ class DivPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor), The input tensor of div_p op.");
     AddOutput("Z", "(Tensor), The output tensor of div_p op.");
     AddComment(R"DOC(
-Autograd primitive div_p operator.
+Autograd primitive div_p Operator.
+
 )DOC");
   }
 };

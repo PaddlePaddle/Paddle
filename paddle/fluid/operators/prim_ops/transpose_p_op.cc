@@ -46,7 +46,8 @@ class TransposePrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("axis",
                                   "(std::vector<int64_t>) Tanspose axis.");
     AddComment(R"DOC(
-Autograd primitive transpose_p operator.
+Autograd primitive transpose_p Operator.
+
 )DOC");
   }
 };

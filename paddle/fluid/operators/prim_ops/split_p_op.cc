@@ -54,7 +54,8 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "The length of the vector must not be larger than the input's size of "
         "specified axis.");
     AddComment(R"DOC(
-Autograd primitive split_p operator.
+Autograd primitive split_p Operator.
+
 )DOC");
   }
 };

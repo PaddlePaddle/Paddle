@@ -54,7 +54,8 @@ class ScatterAddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "index", "(std::vector<int64_t>) The index of scatter_add_p op")
         .SetDefault({0});
     AddComment(R"DOC(
-Autograd primitive scatter_add_p operator.
+Autograd primitive scatter_add_p Operator.
+
 )DOC");
   }
 };

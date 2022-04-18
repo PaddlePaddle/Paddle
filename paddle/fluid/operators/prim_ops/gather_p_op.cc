@@ -51,7 +51,8 @@ class GatherPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "index", "(std::vector<int64_t>) The index of gather_p op")
         .SetDefault({0});
     AddComment(R"DOC(
-Autograd primitive gather_p operator.
+Autograd primitive gather_p Operator.
+
 )DOC");
   }
 };

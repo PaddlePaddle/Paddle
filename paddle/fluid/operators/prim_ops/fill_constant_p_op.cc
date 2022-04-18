@@ -47,7 +47,8 @@ class FillConstantPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "shape", "(std::vector<int64_t>) The shape of output tensor.");
     AddAttr<int>("dtype", "(int) The dtype of output tensor.");
     AddComment(R"DOC(
-Autograd primitive fill_constant_p operator.
+Autograd primitive fill_constant_p Operator.
+
 )DOC");
   }
 };

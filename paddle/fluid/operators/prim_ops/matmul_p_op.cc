@@ -45,7 +45,8 @@ class MatmulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor), The input tensor of matmul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of matmul_p op.");
     AddComment(R"DOC(
-Autograd primitive matmul_p operator.
+Autograd primitive matmul_p Operator.
+
 )DOC");
   }
 };

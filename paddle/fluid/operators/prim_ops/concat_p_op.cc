@@ -46,7 +46,8 @@ class ConcatPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y", "(Tensor), The output tensor of concat_p op.");
     AddAttr<int64_t>("axis", "(int64_t), The axis along which to concat.");
     AddComment(R"DOC(
-Autograd primitive concat_p operator.
+Autograd primitive concat_p Operator.
+
 )DOC");
   }
 };

@@ -47,7 +47,8 @@ class BroadcastPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "shape",
         "(std::vector<int64_t>) Target shape of broadcast_p operator.");
     AddComment(R"DOC(
-Autograd primitive broadcast_p operator.
+Autograd primitive broadcast_p Operator.
+
 )DOC");
   }
 };

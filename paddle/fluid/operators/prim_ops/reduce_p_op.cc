@@ -53,7 +53,8 @@ class ReducePrimOpMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, retain the reduced axis with length 1.")
         .SetDefault(false);
     AddComment(R"DOC(
-Autograd primitive reduce_p operator.
+Autograd primitive reduce_p Operator.
+
 )DOC");
   }
 };

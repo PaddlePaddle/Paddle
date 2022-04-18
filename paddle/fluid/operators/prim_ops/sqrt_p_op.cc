@@ -43,7 +43,8 @@ class SqrtPrimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of sqrt_p op.");
     AddOutput("Y", "(Tensor), The output tensor of sqrt_p op.");
     AddComment(R"DOC(
-Autograd primitive sqrt_p operator.
+Autograd primitive sqrt_p Operator.
+
 )DOC");
   }
 };
