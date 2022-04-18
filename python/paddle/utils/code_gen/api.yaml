@@ -1553,6 +1553,17 @@
     use_gpudnn : true
   backward : pool2d_grad
 
+# Used in adaptive_avg_pool2d API
+- api : pool2d_gpudnn_unused
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d
+    use_gpudnn : false
+  backward : pool2d_grad_gpudnn_unused
+
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
