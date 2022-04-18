@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/reduce_min_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -20,37 +20,22 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SumRawKernel(const Context& dev_ctx,
+void MinRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& dims,
                   bool keep_dim,
                   bool reduce_all,
-                  DataType out_dtype,
                   DenseTensor* out) {
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
-PD_REGISTER_KERNEL(sum_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SumRawKernel,
-                   bool,
-                   float,
-                   double,
-                   float16,
-                   bfloat16,
-                   int16_t,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float) {}
+#else
+PD_REGISTER_KERNEL(
+    min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
+#endif
