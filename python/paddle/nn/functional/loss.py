@@ -2273,8 +2273,8 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             raise ValueError(
                 "The data type of input Variable must be 'float32' or 'float64'")
         if "{}".format(label.dtype) not in [
-            "paddle.int32", "paddle.int64", "paddle.float32",
-            "paddle.float64"
+                "paddle.int32", "paddle.int64", "paddle.float32",
+                "paddle.float64"
         ]:
             raise ValueError(
                 "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
@@ -2291,7 +2291,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             else:
                 raise ValueError(
                     "value of label should be number between 0 and 1, but received {}".
-                    format(label[i].item()))
+                        format(label[i].item()))
 
         if reduction == 'none':
             return scores
@@ -2300,16 +2300,17 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         elif reduction == 'sum':
             return paddle.sum(scores)
 
-    check_variable_and_dtype(
-        input1, 'input1', ['float32', 'float64'], 'cosine_embedding_loss')
-    check_variable_and_dtype(
-        input2, 'input2', ['float32', 'float64'], 'cosine_embedding_loss')
-    check_variable_and_dtype(
-        label, 'label', ['int32', 'int64', 'float32', 'float64'],
-        'cosine_embedding_loss')
+    check_variable_and_dtype(input1, 'input1', ['float32', 'float64'],
+                             'cosine_embedding_loss')
+    check_variable_and_dtype(input2, 'input2', ['float32', 'float64'],
+                             'cosine_embedding_loss')
+    check_variable_and_dtype(label, 'label',
+                             ['int32', 'int64', 'float32', 'float64'],
+                             'cosine_embedding_loss')
 
     label_ones = paddle.ones(
-        shape=[label.shape[0]], dtype='{}'.format(label.dtype).replace("paddle.", ""))
+        shape=[label.shape[0]],
+        dtype='{}'.format(label.dtype).replace("paddle.", ""))
     check_zero = paddle.zeros(
         shape=[1], dtype='{}'.format(input1.dtype).replace("paddle.", ""))
     conds_ones = paddle.equal(x=label, y=label_ones)
@@ -2319,7 +2320,8 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
         score = z / denom
         temp = paddle.static.nn.case(
-            pred_fn_pairs=[(paddle.less_than(x=score - margin, y=check_zero), lambda: 0)],
+            pred_fn_pairs=[(paddle.less_than(
+                x=score - margin, y=check_zero), lambda: check_zero)],
             default=lambda: score - margin)
         scores[i] = paddle.static.nn.case(
             pred_fn_pairs=[(conds_ones[i] == True, lambda: 1 - score),
