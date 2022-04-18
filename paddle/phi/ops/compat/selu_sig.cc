@@ -19,10 +19,8 @@ namespace phi {
 
 KernelSignature SeluGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("selu_grad",
-                         {"Out", GradVarName("Out")},
-                         {"scale", "alpha"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "selu_grad", {"Out", "Out@GRAD"}, {"scale", "alpha"}, {"X@GRAD"});
 }
 }  // namespace phi
 PD_REGISTER_ARG_MAPPING_FN(selu_grad, phi::SeluGradGradOpArgumentMapping);

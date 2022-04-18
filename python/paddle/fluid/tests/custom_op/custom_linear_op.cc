@@ -20,8 +20,7 @@ limitations under the License. */
 std::vector<paddle::Tensor> PhiLinearForward(const paddle::Tensor& x,
                                              const paddle::Tensor& weight,
                                              const paddle::Tensor& bias) {
-  return {
-      paddle::experimental::add(paddle::experimental::matmul(x, weight), bias)};
+  return {paddle::add(paddle::matmul(x, weight), bias)};
 }
 
 std::vector<std::vector<int64_t>> LinearInferShape(

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/distributed/collective/Common.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
@@ -103,8 +104,11 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
-                                   int rank, int size, int gid)
-    : ProcessGroup(rank, size, gid), store_(store) {}
+                                   int rank, int size,
+                                   const platform::Place& place, int gid)
+    : ProcessGroup(rank, size, place, gid), store_(store) {
+  platform::SetDeviceId(place_.device);
+}
 
 void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     std::vector<ncclUniqueId>& nccl_ids) {  // NOLINT

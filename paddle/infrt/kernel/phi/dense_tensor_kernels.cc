@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include <memory>
 #include "llvm/Support/ErrorHandling.h"
+#include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/infrt/kernel/phi/context_kernels.h"
@@ -22,23 +24,12 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef INFRT_WITH_GPU
 #include <cuda_runtime.h>
 #endif
-
-namespace paddle {
-namespace platform {
-using DeviceContext = ::phi::DeviceContext;
-}  // namespace platform
-namespace framework {
-using LoDTensor = ::phi::DenseTensor;
-void DeserializeFromStream(std::istream& is,
-                           LoDTensor* tensor,
-                           const platform::DeviceContext& dev_ctx);
-}
-}  // namespace paddle
 
 namespace infrt {
 namespace kernel {
@@ -198,6 +189,12 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
 
+  ::phi::CPUContext ctx;
+  auto allocator = std::make_unique<backends::CpuPhiAllocator>();
+  const auto* allocator_ptr = allocator.get();
+  ctx.SetAllocator(allocator_ptr);
+  ctx.SetHostAllocator(allocator_ptr);
+  ctx.SetZeroAllocator(allocator_ptr);
   for (auto& var : main_block.vars()) {
     if (var.name() == "feed" || var.name() == "fetch" || !var.persistable())
       continue;
@@ -207,9 +204,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
       case ::paddle::framework::proto::VarType_Type_LOD_TENSOR: {
         std::unique_ptr<::phi::DenseTensor> tensor{
             std::make_unique<::phi::DenseTensor>()};
-        ::phi::CPUContext ctx;
-        ::paddle::framework::DeserializeFromStream(
-            param_file, tensor.get(), ctx);
+        ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
         map.SetDenseTensor(var.name(), std::move(tensor));
       } break;
       default: {
@@ -249,11 +244,16 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     }
   }
 
+  ::phi::CPUContext ctx;
+  auto allocator = std::make_unique<backends::CpuPhiAllocator>();
+  const auto* allocator_ptr = allocator.get();
+  ctx.SetAllocator(allocator_ptr);
+  ctx.SetHostAllocator(allocator_ptr);
+  ctx.SetZeroAllocator(allocator_ptr);
   for (auto& var : tmp) {
     std::unique_ptr<::phi::DenseTensor> tensor{
         std::make_unique<::phi::DenseTensor>()};
-    ::phi::CPUContext ctx;
-    ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
+    ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
 

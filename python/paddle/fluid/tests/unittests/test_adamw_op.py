@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from op_test import OpTest
 from functools import partial
 from paddle.framework import core
+from paddle.fluid.framework import _test_eager_guard
 
 
 def adamw_step(inputs, attributes):
@@ -238,6 +239,11 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters())
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_adamw_op_dygraph()
+            self.test_adamw_op_invalid_input()
+
 
 class TestAdamWOpGroup(TestAdamWOp):
     def test_adamw_op_dygraph(self):
@@ -318,6 +324,12 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         a = paddle.to_tensor(value)
         linear1 = paddle.nn.Linear(13, 8)
         linear2 = paddle.nn.Linear(8, 5)
+
+        # fix the linear name, simple_lr_setting function will use the name
+        linear1.weight.name = "linear_1.w_0"
+        linear1.bias.name = "linear_1.b_0"
+        linear2.weight.name = "linear_2.w_0"
+        linear2.bias.name = "linear_2.b_0"
 
         simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
 
