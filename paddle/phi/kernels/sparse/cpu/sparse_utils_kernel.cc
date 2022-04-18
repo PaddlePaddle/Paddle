@@ -364,3 +364,33 @@ PD_REGISTER_KERNEL(sparse_csr_to_dense,
                    int16_t,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(coo_values,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CooValuesKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(csr_values,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CsrValuesKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

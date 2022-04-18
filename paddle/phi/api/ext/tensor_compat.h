@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 
 // Note(chenweihang): In order to be compatible with the original custom
@@ -21,5 +22,8 @@ limitations under the License. */
 // cannot be includeed in paddle
 
 namespace paddle {
-using Tensor = paddle::experimental::Tensor;
+using Tensor = experimental::Tensor;
+// using several Tensor initialize functions in paddle namespace
+using experimental::empty;
+using experimental::full;
 }  // namespace paddle

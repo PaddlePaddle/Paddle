@@ -257,7 +257,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         if in_dygraph_mode():
             if dim is None:
-                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+                return _C_ops.final_state_frobenius_norm(input, [], keepdim,
+                                                         True)
             return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
@@ -1287,8 +1288,26 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             #      [1, 1, 1, 1]]
 
     """
+    if in_dygraph_mode():
+        if isinstance(tol, Variable):
+            if tol.dtype != x.dtype:
+                tol_tensor = cast(tol, x.dtype)
+            else:
+                tol_tensor = tol
+            use_default_tol = False
+            return _C_ops.final_state_matrix_rank_tol(
+                x, tol_tensor, use_default_tol, hermitian)
 
-    if paddle.in_dynamic_mode():
+        if tol is None:
+            tol_attr = 0.0
+            use_default_tol = True
+        else:
+            tol_attr = float(tol)
+            use_default_tol = False
+        return _C_ops.final_state_matrix_rank(x, tol_attr, use_default_tol,
+                                              hermitian)
+
+    if _in_legacy_dygraph():
         if tol is None:
             tol_tensor = None
             tol_attr = 0.0
@@ -1580,7 +1599,10 @@ def det(x, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_det(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
@@ -2252,8 +2274,10 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):

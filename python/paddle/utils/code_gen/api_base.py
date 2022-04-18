@@ -600,7 +600,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     if self.inputs['input_info'][param] == "const Tensor&":
                         kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
                     elif self.inputs['input_info'][
-                            input_name] == "const std::vector<Tensor>&":
+                            param] == "const std::vector<Tensor>&":
                         kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
                     else:
                         # do nothing
@@ -734,7 +734,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::Operator, 1);
+{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
@@ -761,7 +761,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::Operator, 1);
+{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
