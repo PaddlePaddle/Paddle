@@ -141,7 +141,7 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
             api_item)
         header_file.write(declare_code)
         source_file.write(defind_code)
-        if infermeta_register_code.find(register_code) != -1:
+        if infermeta_register_code.find(register_code) == -1:
             infermeta_register_code = infermeta_register_code + register_code
 
     header_file.write(namespace[1])
