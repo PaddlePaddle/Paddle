@@ -423,10 +423,10 @@ class EventSummary:
 
             for runtimenode in node.runtime_node:
                 for devicenode in runtimenode.device_node:
-                    if devicenode.name not in self.devices:
-                        self.devices[devicenode.name] = EventSummary.DeviceItem(
-                            devicenode.name)
-                    self.devices[devicenode.name].add_item(devicenode)
+                    name = devicenode.name
+                    if name not in self.devices:
+                        self.devices[name] = EventSummary.DeviceItem(name)
+                    self.devices[name].add_item(devicenode)
 
     class GeneralItem:
         def __init__(self, name):
@@ -493,6 +493,7 @@ class EventSummary:
             dict)  # for userdefined summary
         self.model_perspective_items = {}  # for model summary
         self.memory_manipulation_items = {}  # for memory manipulation summary
+        self.kernel_items = {}  # for kernel summary
 
     def parse(self, nodetrees):
         r"""
@@ -512,6 +513,7 @@ class EventSummary:
                         self.add_memory_manipulation_item(host_statistic_node)
                     else:
                         self.add_userdefined_item(host_statistic_node)
+            self.add_kernel_item(host_statistic_nodes[0])
 
         for threadid, root_statistic_node in node_statistic_trees.items():
             deque = collections.deque()
@@ -584,6 +586,15 @@ class EventSummary:
         if name not in self.model_perspective_items:
             self.model_perspective_items[name] = EventSummary.GeneralItem(name)
         self.model_perspective_items[name].add_item(model_perspective_node)
+
+    def add_kernel_item(self, root_node):
+        device_nodes = get_device_nodes(root_node)
+        for device_node in device_nodes:
+            if device_node.type == TracerEventType.Kernel:
+                name = device_node.name
+                if name not in self.kernel_items:
+                    self.kernel_items[name] = EventSummary.DeviceItem(name)
+                self.kernel_items[name].add_item(device_node)
 
 
 class StatisticData:
@@ -803,7 +814,6 @@ def _build_table(statistic_data,
     append(
         "Note:\nIn this table, We sum up all collected events in terms of event type.\n"
         "The time of events collected on host are presented as CPU Time, and as GPU Time if on device.\n"
-        "The time with ratio 100% is the base time for calculating ratio. \n"
         "Events with different types may overlap or inclusion, e.g. Operator includes OperatorInner, so the sum of ratios is not 100%.\n"
         "The time of events in the same type with overlap will not calculate twice, and all time is summed after merged.\n"
         "Example:\n"
@@ -923,7 +933,6 @@ def _build_table(statistic_data,
         append(
             "Note:\nIn this table, GPU time is the sum of all device(GPU) events called in the phase.\n"
             "Unlike overview summary, if two device(GPU) events execute on different streams with overlap time, we sum them directly here.\n"
-            "The time with ratio 100% is the base time for calculating ratio. \n"
         )
         append('-' * line_length)
         append('')
@@ -991,7 +1000,6 @@ def _build_table(statistic_data,
             "Note:\nCommunication time: Communication Event time, Communication Op time and its kernel time on gpu.\n"
             "Computation time: Kernel time, except kernels belong to communication(nccl kernels).\n"
             "Overlap time: Communication time intersects with computation time.\n"
-            "The time with ratio 100% is the base time for calculating ratio. \n"
             "Example:\n"
             "Communication:\n"
             "  CPU:              |_________________|\n"
@@ -1231,6 +1239,95 @@ def _build_table(statistic_data,
                 append(add_title(line_length, row_values))
             else:
                 append(row_format.format(*row_values))
+        append(header_sep)
+        append('')
+        append('')
+
+    ###### Print Kernel Summary Report ######
+    if statistic_data.event_summary.kernel_items:
+        all_row_values = []
+        kernel_items = statistic_data.event_summary.kernel_items
+        if sorted_by == SortedKeys.GPUAvg:
+            sorted_items = sorted(
+                kernel_items.items(),
+                key=lambda x: x[1].avg_gpu_time,
+                reverse=True)
+        elif sorted_by == SortedKeys.GPUMax:
+            sorted_items = sorted(
+                kernel_items.items(),
+                key=lambda x: x[1].max_gpu_time,
+                reverse=True)
+        elif sorted_by == SortedKeys.GPUMin:
+            sorted_items = sorted(
+                kernel_items.items(), key=lambda x: x[1].min_gpu_time)
+        else:
+            sorted_items = sorted(
+                kernel_items.items(), key=lambda x: x[1].gpu_time, reverse=True)
+
+        total_kernel_gpu_time = 0
+        for name, item in sorted_items:
+            total_kernel_gpu_time += item.gpu_time
+        for name, item in sorted_items:
+            if total_kernel_gpu_time == 0:
+                gpu_ratio = 0
+            else:
+                gpu_ratio = float(item.gpu_time) / total_kernel_gpu_time
+            row_values = [
+                name,
+                item.call,
+                '{} / {} / {} / {} / {}'.format(
+                    format_time(
+                        item.gpu_time, unit=time_unit),
+                    format_time(
+                        item.avg_gpu_time, unit=time_unit),
+                    format_time(
+                        item.max_gpu_time, unit=time_unit),
+                    format_time(
+                        item.min_gpu_time, unit=time_unit),
+                    format_ratio(gpu_ratio)),
+            ]
+            all_row_values.append(row_values)
+
+        headers = ['Name', 'Calls', 'GPU Total / Avg / Max / Min / Ratio(%)']
+        # Calculate the column width
+        name_column_width = 90
+        calltime_width = 6
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[2])
+
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "Kernel Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            indx = row_values[0].find('(')
+            if indx != -1:
+                name = row_values[0][:indx]
+            else:
+                name = row_values[0]
+            if len(name) > name_column_width:
+                row_values[0] = name[:name_column_width - 3] + '...'
+            else:
+                row_values[0] = name
+            append(row_format.format(*row_values))
         append(header_sep)
         append('')
         append('')
