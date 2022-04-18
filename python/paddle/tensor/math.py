@@ -31,7 +31,6 @@ import paddle
 from ..static import Variable
 from ..framework import core, in_dygraph_mode, _non_static_mode, LayerHelper
 from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.layers import utils
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
