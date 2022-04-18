@@ -249,8 +249,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     result.algo = perf_results[best_algo_idx].algo;
     result.workspace_size = perf_results[best_algo_idx].memory;
 
-    // if (result.workspace_size > workspace_size_limit) {
-    if (false) {
+    if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -433,8 +432,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     }
 #endif
     result.workspace_size = GetWorkspaceSize(args, result.algo);
-    // if (result.workspace_size > workspace_size_limit) {
-    if (false) {
+    if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
