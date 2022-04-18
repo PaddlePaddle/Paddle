@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <map>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/conv_kernel.h"
 
@@ -36,6 +39,54 @@
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+
+namespace {
+
+static std::unordered_map<
+    size_t,
+    paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t>>
+    algo_cache;
+// static std::unordered_map<int64_t, size_t> workspace_cache;
+
+int64_t get_hash(const std::vector<int64_t>& dims1,
+                 const std::vector<int64_t>& dims2,
+                 const std::vector<int>& strides,
+                 const std::vector<int>& paddings,
+                 const std::vector<int>& dilations) {
+  int64_t seed = 0;
+  // Hash all of the inputs, use to try and look up a previously
+  // discovered algorithm, or fall back to generating a new one.
+  std::hash<int64_t> hashFn;
+
+  // do hash like boost
+  // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+  for (const auto num : dims1) {
+    seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+
+  for (const auto num : dims2) {
+    seed ^= hashFn(num) + 0x9e3779b9 + (seed << 6) + (seed >> 2) + 1;
+  }
+
+  for (const auto num : strides) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 2;
+  }
+
+  for (const auto num : paddings) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 3;
+  }
+
+  for (const auto num : dilations) {
+    seed ^= hashFn(static_cast<int64_t>(num)) + 0x9e3779b9 + (seed << 6) +
+            (seed >> 2) + 4;
+  }
+
+  return seed;
+}
+
+}  // namespace
 
 namespace phi {
 
@@ -316,8 +367,34 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  // auto hash_val = get_hash(phi::vectorize(args.x->dims()),
+  //                          phi::vectorize(args.w->dims()),
+  //                          args.s,
+  //                          args.p,
+  //                          args.d);
   fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  workspace_size = fwd_result.workspace_size;
+// auto hash_val = args.GetCacheKey<T>();
+// auto algo_it = algo_cache.find(hash_val);
+// if (algo_it != algo_cache.end()) {
+//   fwd_result = algo_it->second;
+//   workspace_size = algo_it->second.workspace_size;
+
+//   // workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+//   // if( workspace_size != workspace_size1 ){
+//   // LOG(ERROR) << workspace_size1 << "\t" << workspace_size;
+//   // }
+// } else {
+//   fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+//   //workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+//   workspace_size = fwd_result.workspace_size;
+//   algo_cache[hash_val] = fwd_result;
+//   // if( workspace_size != workspace_size1 ){
+//   // LOG(ERROR) << "11  " << workspace_size1 << "\t" << workspace_size;
+//   // }
+
+//   // workspace_cache[hash_val] = workspace_size;
+// }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)

@@ -195,22 +195,23 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       size_t key = args.GetCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        result = cache.Get(key);
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
+          cache.Set(key, result);
         } else {
           result = FindAlgoHeuristic(args, ctx);
+          cache.Set(key, result);
         }
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+    //         << ", deterministic=" << deterministic
+    //         << ", choose algo=" << result.algo << ", workspace="
+    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
@@ -248,7 +249,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     result.algo = perf_results[best_algo_idx].algo;
     result.workspace_size = perf_results[best_algo_idx].memory;
 
-    if (result.workspace_size > workspace_size_limit) {
+    // if (result.workspace_size > workspace_size_limit) {
+    if (false) {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -274,6 +276,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, workspace_size_limit,
             &(result.algo)));
 #endif
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -366,22 +369,23 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        result = cache.Get(key);
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
+          cache.Set(key, result);
         } else {
           result = FindAlgoHeuristic(args, ctx);
+          cache.Set(key, result);
         }
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+    //         << ", deterministic=" << deterministic
+    //         << ", choose algo=" << result.algo << ", workspace="
+    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
@@ -429,7 +433,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     }
 #endif
     result.workspace_size = GetWorkspaceSize(args, result.algo);
-    if (result.workspace_size > workspace_size_limit) {
+    // if (result.workspace_size > workspace_size_limit) {
+    if (false) {
 #if CUDNN_VERSION >= 8000
       // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
@@ -548,22 +553,23 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        result = cache.Get(key);
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
+          cache.Set(key, result);
         } else {
           result = FindAlgoHeuristic(args, ctx);
+          cache.Set(key, result);
         }
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+    //         << ", deterministic=" << deterministic
+    //         << ", choose algo=" << result.algo << ", workspace="
+    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
