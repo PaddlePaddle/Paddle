@@ -89,7 +89,9 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(top_k_v2, ops::TopkV2NPUKernel<float>,
+                       ops::TopkV2NPUKernel<plat::float16>,
                        ops::TopkV2NPUKernel<double>,
                        ops::TopkV2NPUKernel<int32_t>,
                        ops::TopkV2NPUKernel<int64_t>);
