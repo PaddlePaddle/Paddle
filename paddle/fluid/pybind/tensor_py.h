@@ -36,6 +36,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/string_tensor.h"
+#include "paddle/phi/kernels/strings/unicode.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -525,6 +527,60 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
         "tensor.set() supports array with bool, float16, float32, "
         "float64, int8, int16, int32, int64, uint8 or uint16, "
         "please check your input or input array data type."));
+  }
+}
+
+template <typename P>
+void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
+                                const P &place) {
+  bool is_string_pyarray =
+      array.dtype().kind() == 'S' || array.dtype().kind() == 'U';
+  PADDLE_ENFORCE_EQ(is_string_pyarray, true,
+                    platform::errors::InvalidArgument(
+                        "Expect the dtype of numpy array is string or "
+                        "unicode, but recevie dtype %s",
+                        array.dtype()));
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  dims.reserve(array.ndim());
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+  self->Resize(phi::make_ddim(dims));
+  auto itemsize = array.itemsize();
+  if (paddle::platform::is_cpu_place(place)) {
+    auto dst = self->mutable_data(place);
+    if (array.dtype().kind() == 'S') {
+      for (int i = 0; i < self->numel(); ++i) {
+        dst[i] =
+            pstring(reinterpret_cast<const char *>(array.data()) + itemsize * i,
+                    itemsize);
+      }
+    } else {
+      // array.dtype().kind() == 'U'
+      VLOG(6) << "numpy array itemsize: " << itemsize;
+      for (int i = 0; i < self->numel(); ++i) {
+        // Note(zhoushunjie): The itemsize of unicode numpy array is the
+        // the size of each unicode string. Each unicode string is aligned
+        // to max length of the array of unicode strings, so the size of
+        // each unicode string is same. The size of each unicode character is
+        // 4, so the size of unicode string is 4 times of the length of
+        // unicode string.
+        auto unicode_len = itemsize / 4;
+        auto utf8_len = phi::strings::GetUTF8StrLen(
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
+            unicode_len);
+        pstring pstr(utf8_len - 1, 0);
+        phi::strings::GetUTF8Str(
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
+            pstr.mdata(), unicode_len);
+        dst[i] = pstr;
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "StringTensor only support CPUPlace now, but receive %s",
+        place.DebugString()));
   }
 }
 
