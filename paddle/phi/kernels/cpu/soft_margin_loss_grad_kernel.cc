@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/soft_margin_loss_kernel.h"
+#include "paddle/phi/kernels/soft_margin_loss_grad_kernel.h"
 
 #include <algorithm>  // for max
 #include "paddle/fluid/operators/math.h"

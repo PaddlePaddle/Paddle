@@ -2225,3 +2225,111 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def soft_margin_loss(input, label,reduction='mean',
+                         name=None):
+    """
+    This op measures the soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
+
+    .. math::
+        Out = log(1 + exp((-label * input)))/C
+
+
+    If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
+
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
+    .. math::
+        Out = MEAN(Out)
+
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
+    .. math::
+        Out = SUM(Out)
+
+    Note that the input predictions ``input`` always be the output of sigmoid, and the target labels ``label``
+    should be numbers between 0 and 1.
+
+    Parameters:
+        input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``input``
+            should always be the output of sigmod.  Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``input``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+
+    Returns:
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
+            label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
+            output = paddle.nn.functional.binary_cross_entropy(input, label)
+            print(output)  # [0.65537095]
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in binary_cross_entropy should be 'sum', "
+            "'mean' or 'none', but received %s, which is not allowed." %
+            reduction)
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_soft_margin_loss(input, label)
+
+        if reduction == 'sum':
+            return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
+                                     "reduce_all", True)
+        elif reduction == 'mean':
+            return _C_ops.final_state_mean_all(out)
+        else:
+            return out
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.soft_margin_loss(input, label)
+            if reduction == 'sum':
+                return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
+                                         "reduce_all", True)
+            elif reduction == 'mean':
+                return _C_ops.mean(out)
+            else:
+                return out
+        else:
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
+
+            sub_name = name if reduction == 'none' else None
+            helper = LayerHelper("soft_margin_loss", name=sub_name)
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
+            helper.append_op(
+                type='soft_margin_loss',
+                inputs={
+                    'X': [input],
+                    'Label': [label],
+                },
+                outputs={'Out': [out]})
+
+            if reduction == 'sum':
+                return paddle.sum(out, name=name)
+            elif reduction == 'mean':
+                return paddle.mean(out, name=name)
+            else:
+                return out
