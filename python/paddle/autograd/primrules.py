@@ -617,8 +617,14 @@ def gather_transpose(op, check_dot, y_bar):
 
 
 @REGISTER_TRANSPOSE('scatter_add_p')
-def scatter_add_transpose(op, check_dot, y_bar):
-    x, indextensor = get_input_vars(op)
-    assert check_dot(x)
+def scatter_add_transpose(op, check_dot, z_bar):
+    x, y, indextensor = get_input_vars(op)
+    assert check_dot(x) and check_dot(y)
     axis = op.attr('axis')
-    return gather(y_bar, indextensor, axis=axis)
+    return scatter_add(
+        z_bar,
+        fill_const(
+            value=0.0, shape=y.shape, dtype=y.dtype),
+        index_tensor,
+        axis=axis), gather(
+            y_bar, indextensor, axis=axis), None
