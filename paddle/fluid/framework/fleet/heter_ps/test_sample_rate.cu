@@ -53,7 +53,7 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 std::string input_file;
-int exe_count = 1;
+int exe_count = 100;
 int use_nv = 1;
 int fixed_key_size = 50000, sample_size = 32,
     bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
@@ -175,7 +175,6 @@ void testSampleRate() {
     }
     VLOG(0) << "sum = " << tot;
   }
-
   gpu_num = 0;
   int st = 0, u = 0;
   std::vector<int> device_id_mapping;

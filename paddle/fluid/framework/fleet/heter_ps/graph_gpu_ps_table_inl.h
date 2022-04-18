@@ -28,7 +28,6 @@ sample_result is to save the neighbor sampling result, its size is len *
 sample_size;
 
 */
-// template <typename KeyType, typename T>
 __global__ void neighbor_sample_example(GpuPsCommGraph graph, int* node_index,
                                         int* actual_size, int64_t* res,
                                         int sample_len, int* sample_status,
@@ -523,7 +522,6 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
   // auto tt = std::chrono::duration_cast<std::chrono::microseconds>(end1 -
   // start1);
   // VLOG(0)<< "create storage time  " << tt.count() << " us";
-
   walk_to_dest(gpu_id, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
   for (int i = 0; i < total_gpu; ++i) {
@@ -601,6 +599,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     if (h_left[i] == -1) {
       continue;
     }
+    // auto& node = path_[gpu_id][i].nodes_.back();
+    // cudaStreamSynchronize(node.in_stream);
     cudaStreamSynchronize(resource_->remote_stream(i, gpu_id));
   }
   move_neighbor_sample_result_to_source_gpu(gpu_id, total_gpu, sample_size,

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
@@ -171,16 +172,16 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     T* tmp_out_grad_ptr = out_grad_features_ptr + offsets[i] * out_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
-    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * out_channels;
+    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
 
     // call gemm: d_kernel = transpose(x) * out_grad
     // (in_channels, n) * (n, out_channels)
     blas.GEMM(CblasTrans,
               CblasNoTrans,
-              M,
-              N,
               K,
+              N,
+              M,
               static_cast<T>(1),
               tmp_in_ptr,
               tmp_out_grad_ptr,
@@ -222,17 +223,18 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
 
-  ScatterKernel<T><<<config.block_per_grid.x,
-                     config.thread_per_block.x,
-                     0,
-                     dev_ctx.stream()>>>(d_x_features_ptr,
-                                         unique_value.data<int>(),
-                                         out_index.data<int>(),
-                                         x.nnz(),
-                                         rulebook_len,
-                                         in_channels,
-                                         x_grad_values_ptr,
-                                         subm);
+  phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid.x,
+                                         config.thread_per_block.x,
+                                         0,
+                                         dev_ctx.stream()>>>(
+      d_x_features_ptr,
+      unique_value.data<int>(),
+      out_index.data<int>(),
+      x.nnz(),
+      rulebook_len,
+      in_channels,
+      x_grad_values_ptr,
+      subm);
 }
 
 template <typename T, typename Context>
