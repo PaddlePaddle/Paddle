@@ -12,35 +12,40 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <memory>
+#include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_mlu.h"
 
 namespace paddle {
 namespace operators {
+
 using Tensor = framework::Tensor;
 
 template <typename T>
-class ElementwiseAddMLUKernel : public framework::OpKernel<T> {
+class ElementwiseSubMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    MLUOpTensorKernel<T>(ctx, CNNL_OP_TENSOR_ADD);
+    MLUOpTensorKernel<T>(ctx, CNNL_OP_TENSOR_SUB);
   }
 };
 
 template <typename T>
-class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
+class ElementwiseSubGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
 
     MLUCnnlTensorDesc dout_desc(*dout);
+
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       if (dx->dims() != dout->dims()) {
@@ -63,6 +68,7 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
+      Tensor* tmp_dout = const_cast<Tensor*>(dout);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec;
         std::vector<int> reduce_axes;
@@ -77,9 +83,15 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
         MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduction_desc.get(),
                         nullptr, dout_desc.get(), GetBasePtr(dout), 0, nullptr,
                         nullptr, dy_desc.get(), GetBasePtr(dy));
-      } else {
-        framework::TensorCopy(*dout, ctx.GetPlace(), dev_ctx, dy);
+        tmp_dout = dy;
       }
+
+      // call neg op, dy = -dout
+      MLUCnnlTensorDesc tmp_dout_desc(*tmp_dout);
+      MLUCnnlTensorDesc dy_desc(*dy);
+
+      MLUUnary<NEG>(ctx, CNNL_COMPUTATION_HIGH_PRECISION, tmp_dout_desc.get(),
+                    GetBasePtr(tmp_dout), dy_desc.get(), GetBasePtr(dy));
     }
   }
 };
@@ -90,8 +102,11 @@ class ElementwiseAddGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(elementwise_add, ops::ElementwiseAddMLUKernel<float>,
-                       ops::ElementwiseAddMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(elementwise_add_grad,
-                       ops::ElementwiseAddGradMLUKernel<float>,
-                       ops::ElementwiseAddGradMLUKernel<plat::float16>);
+REGISTER_OP_MLU_KERNEL(elementwise_sub, ops::ElementwiseSubMLUKernel<int>,
+                       ops::ElementwiseSubMLUKernel<float>,
+                       ops::ElementwiseSubMLUKernel<plat::float16>);
+
+REGISTER_OP_MLU_KERNEL(elementwise_sub_grad,
+                       ops::ElementwiseSubGradMLUKernel<int>,
+                       ops::ElementwiseSubGradMLUKernel<float>,
+                       ops::ElementwiseSubGradMLUKernel<plat::float16>);

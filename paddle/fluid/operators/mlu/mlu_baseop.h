@@ -45,6 +45,22 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
+const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
+    {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
+    {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
+    {"reduce_min", CNNL_REDUCE_MIN},  {"reduce_sum", CNNL_REDUCE_ADD},
+    {"reduce_prod", CNNL_REDUCE_MUL},
+};
+
+inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
+  auto iter = MLUReduceOpMap.find(reduce_name);
+  if (iter != MLUReduceOpMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
