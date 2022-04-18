@@ -140,9 +140,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_mlu_place(place)) {
 #if defined(PADDLE_WITH_MLU)
-      // TODO(fwg): Enable MLUDefaultStreamGarbageCollector when upgrade
-      // cntoolkit to 2.8.x
-      gc.reset(new framework::MLUUnsafeFastGarbageCollector(place, 0));
+      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
