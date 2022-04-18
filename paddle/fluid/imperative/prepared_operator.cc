@@ -36,6 +36,8 @@ DECLARE_bool(run_kp_kernel);
 namespace paddle {
 namespace imperative {
 
+static const phi::Kernel empty_kernel;
+
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
     const std::shared_ptr<paddle::imperative::VarBase>& var) {
   return var->SharedVar();
@@ -108,12 +110,13 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       ctx_(ctx),
       kernel_type_(kernel_type),
       func_(func),
-      dev_ctx_(dev_ctx) {}
+      dev_ctx_(dev_ctx),
+      pt_kernel_(empty_kernel) {}
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
-                       const framework::KernelSignature& kernel_signature,
+                       framework::KernelSignature&& kernel_signature,
                        const phi::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
@@ -122,7 +125,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       func_(nullptr),
       dev_ctx_(dev_ctx),
       run_phi_kernel_(true),
-      pt_kernel_signature_(kernel_signature),
+      pt_kernel_signature_(std::move(kernel_signature)),
       pt_kernel_(pt_kernel) {}
 
 template <typename VarType>
@@ -170,7 +173,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #endif
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
-    pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
+    pt_kernel_signature =
+        std::move(op.GetExpectedPhiKernelArgs(dygraph_exe_ctx));
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
@@ -200,8 +204,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << ", using_kernel_key:" << expected_kernel_key;
         phi::KernelKey try_pt_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-        if (!phi::KernelFactory::Instance().IsSelectKernelValid(
-                pt_kernel_name, try_pt_kernel_key)) {
+        if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                      try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
           VLOG(3) << "modify XPU KP kernel: " << op.Type() << " is failed "
                   << expected_kernel_key;
@@ -211,8 +215,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
     pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-    auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
-                                                                 pt_kernel_key);
+    auto& pt_kernel = phi::KernelFactory::Instance().SelectKernel(
+        pt_kernel_name, pt_kernel_key);
 
     if (pt_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
@@ -227,9 +231,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
-      // TODO(chenweihang): using CPUKernel when miss device kernel case
-      return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                        pt_kernel, dev_ctx);
+      return PreparedOp(op, ctx, expected_kernel_key,
+                        std::move(pt_kernel_signature), pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
@@ -270,15 +273,16 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
+      auto& pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_cpu_kernel_key);
       if (pt_cpu_kernel.IsValid()) {
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_cpu_kernel, cpu_ctx);
+        return PreparedOp(op, ctx, expected_kernel_key,
+                          std::move(pt_kernel_signature), pt_cpu_kernel,
+                          cpu_ctx);
       }
     }
   }
@@ -505,7 +509,6 @@ static void PreparedOpRunPtImpl(
 #endif
   }
 
-  // TODO(chenweihang): add debug flags later
   if (framework::IsComplexType(kernel_type.data_type_)) {
     HandleComplexGradToRealGrad<VarType>(outs);
   }
