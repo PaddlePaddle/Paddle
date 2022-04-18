@@ -19,6 +19,7 @@
 #include <numeric>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -51,6 +52,16 @@ struct hash<std::vector<T>> {
 
 namespace phi {
 namespace autotune {
+
+template <typename AlgoT>
+struct SearchResult {
+  SearchResult() {}
+  explicit SearchResult(AlgoT a) : algo(a) {}
+
+  AlgoT algo = static_cast<AlgoT>(0);
+  float time = -1.f;
+  size_t workspace_size = 0;
+};
 
 template <typename... Args>
 size_t GetKey(Args&&... args) {
@@ -138,6 +149,13 @@ enum class AlgorithmType {
 
 // AlgorithmsConfigKey -> AlgorithmsID
 using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
+
+using AlgorithmsFwdCacheMap =
+    AlgorithmsCache<SearchResult<cudnnConvolutionFwdAlgo_t>>;
+using AlgorithmsBwdDataCacheMap =
+    AlgorithmsCache<SearchResult<cudnnConvolutionBwdDataAlgo_t>>;
+using AlgorithmsBwdFilterCacheMap =
+    AlgorithmsCache<SearchResult<cudnnConvolutionBwdFilterAlgo_t>>;
 // AlgorithmType -> AlgorithmsCache
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
 
@@ -152,16 +170,14 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  AlgorithmsCacheMap& GetConvForward() {
-    return Get(AlgorithmType::kConvForward);
+  AlgorithmsFwdCacheMap& GetConvForward() { return auto_tune_fwd_cache_; }
+
+  AlgorithmsBwdDataCacheMap& GetConvBackwardData() {
+    return auto_tune_bwd_data_cache_;
   }
 
-  AlgorithmsCacheMap& GetConvBackwardData() {
-    return Get(AlgorithmType::kConvBackwardData);
-  }
-
-  AlgorithmsCacheMap& GetConvBackwardFilter() {
-    return Get(AlgorithmType::kConvBackwardFilter);
+  AlgorithmsBwdFilterCacheMap& GetConvBackwardFilter() {
+    return auto_tune_bwd_filter_cache_;
   }
 
   void Clean() {
@@ -206,6 +222,9 @@ class AutoTuneCache {
   }
 
   AlgorithmsTypeMap auto_tune_map_;
+  AlgorithmsFwdCacheMap auto_tune_fwd_cache_;
+  AlgorithmsBwdDataCacheMap auto_tune_bwd_data_cache_;
+  AlgorithmsBwdFilterCacheMap auto_tune_bwd_filter_cache_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};
