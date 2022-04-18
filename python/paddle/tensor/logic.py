@@ -16,9 +16,13 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..static import Variable
-from ..framework import VarBase as Tensor
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-# TODO: define logic functions of a tensor  
+# TODO: define logic functions of a tensor
+import paddle.fluid as fluid
+if fluid.framework._in_eager_mode_:
+    Tensor = fluid.framework.core.eager.Tensor
+else:
+    from ..framework import VarBase as Tensor
 from ..fluid.layers import is_empty  # noqa: F401
 from ..fluid.layers import logical_and  # noqa: F401
 from ..fluid.layers import logical_not  # noqa: F401

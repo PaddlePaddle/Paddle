@@ -3349,6 +3349,9 @@ def conj(x, name=None):
           #        [(4-4j), (5-5j), (6-6j)]])
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_conj(x)
+
     if paddle.in_dynamic_mode():
         return _C_ops.conj(x)
 

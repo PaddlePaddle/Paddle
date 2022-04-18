@@ -58,6 +58,8 @@ class DenseTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -718,18 +720,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const override {
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override {
     const auto& outs = ctx_.outputs;
     auto it = outs.find(name);
     if (it == outs.end() || it->second.empty()) {
       return false;
     }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) return true;
       }
+      return false;
+    } else {
+      for (auto& output : it->second) {
+        if (output == nullptr) return false;
+      }
+      return true;
     }
-    return true;
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
