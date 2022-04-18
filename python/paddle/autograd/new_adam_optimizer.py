@@ -62,15 +62,13 @@ def append_backward_new(loss,
     ad = Transform(block)
     if parameter_list is None:
         parameter_list = program.global_block().all_parameters()
-    # print("parameter_list: ", parameter_list)
-    # print("block: ", block)
     param_dot, loss_dot = ad.linearize(parameter_list, [loss])
-    param_bar, loss_bar = ad.transpose(ys_dot, xs_dot)
+    param_bar, loss_bar = ad.transpose(param_dot, loss_dot)
 
     if len(parameter_list) == 1:
         params_and_grads = [(paramteter_list, param_bar)]
     else:
-        params_and_grads = zip(paramteter_list, param_bar)
+        params_and_grads = zip(parameter_list, param_bar)
     return params_and_grads
 
 

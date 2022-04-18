@@ -89,6 +89,11 @@ def matmul_v2_orig2prim(op, x, y):
 
     assert len(x.shape) < 4 and len(
         y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
+
+    if len(x.shape) == 1:
+        x = broadcast(x, shape=[1, x.shape[0]])
+    if len(y.shape) == 1:
+        y = broadcast(y, shape=[y.shape[0], 1])
     if op.attr('trans_x'):
         x = transpose(x, shape=trans(x.shape))
     if op.attr('trans_y'):
@@ -119,13 +124,15 @@ def tanh_orig2prim(op, x):
     return tanh(x)
 
 
-## NOTE(lml): The second output of reshape2 Xshape, can't be described by prim ops, use paddle.shape() interface instead.
+## NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
 @REGISTER_ORIG2PRIM('reshape2')
 def reshape2_orig2prim(op, shape_t, shape_tl, x):
     assert shape_t is None, 'Can not lower reshape2 into prim ops with shapetensor.'
     assert shape_tl is None, 'Can not lower reshape2 into prim ops with shapetensorlist.'
-    y, _ = get_output_vars(op)
-    return reshape(x, shape=y.shape), paddle.shape(x)
+    y, xshape = get_output_vars(op)
+    return reshape(
+        x, shape=y.shape), fill_const(
+            shape=xshape.shape, dtype=xshape.dtype, value=0.0)
 
 
 @REGISTER_ORIG2PRIM('concat')
@@ -177,7 +184,7 @@ def p_norm_orig2prim(op, x):
         'asvector'), 'Only support lower pnorm when asvector=True currently'
     if len(x.shape) > 1:
         x = reshape(x, shape=[num_el(x.shape)])
-    return sqrt(reduce(mul(x, x), axis=0))
+    return sqrt(reduce(mul(x, x), axis=[0]))
 
 
 @REGISTER_ORIG2PRIM('index_select')
@@ -229,17 +236,17 @@ def add_prim2orig(op, x, y):
 
 @REGISTER_PRIM2ORIG('sub_p')
 def sub_prim2orig(op, x, y):
-    return paddle.sub(x, y)
+    return paddle.subtract(x, y)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
 def mul_prim2orig(op, x, y):
-    return paddle.mul(x, y)
+    return paddle.multiply(x, y)
 
 
 @REGISTER_PRIM2ORIG('div_p')
 def div_prim2orig(op, x, y):
-    return paddle.div(x, y)
+    return paddle.divide(x, y)
 
 
 @REGISTER_PRIM2ORIG('sqrt_p')
@@ -254,7 +261,7 @@ def tanh_prim2orig(op, x):
 
 @REGISTER_PRIM2ORIG('reshape_p')
 def reshape_prim2orig(op, x):
-    y, _ = paddle.reshape(x, shape=op.attr('shape'))
+    y = paddle.reshape(x, shape=op.attr('shape'))
     return y
 
 
@@ -283,7 +290,7 @@ def concat_prim2orig(op, *xs):
 
 
 @REGISTER_PRIM2ORIG('reduce_p')
-def reduce_prim2orig(op, *xs):
+def reduce_prim2orig(op, xs):
     return paddle.sum(xs, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
 
 
@@ -332,6 +339,12 @@ def gather_prim2orig(op, index_t, x):
 def scatter_add_prim2orig(op, index_t, x, y):
     return paddle.put_along_axis(
         x, index_t, y, axis=op.attr('axis'), reduce='add')
+
+
+@REGISTER_PRIM2ORIG('fill_constant_p')
+def fill_constant_prim2orig(op):
+    return paddle.full(
+        shape=op.attr('shape'), fill_value=op.attr('value'), dtype='float32')
 
 
 ## Register linearize rules
