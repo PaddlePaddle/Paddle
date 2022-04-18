@@ -44,14 +44,14 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     if (op_type != "conv2d") {
       return ins;
     } else {
-      if (boost::get<std::string>((*attrs)["data_format"]) == "NCHW" &&
+      if (BOOST_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW" &&
           paddle::platform::is_gpu_place(place) &&
           phi::backends::gpu::TensorCoreAvailable()) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
         VLOG(3) << "Tune the layout from "
-                << boost::get<std::string>((*attrs)["data_format"]) << " to "
-                << paddle::framework::DataLayoutToString(
-                       LayoutAutoTune::Instance().GetDesiredLayout());
+                << BOOST_GET_CONST(std::string, (*attrs)["data_format"])
+                << " to " << paddle::framework::DataLayoutToString(
+                                 LayoutAutoTune::Instance().GetDesiredLayout());
       } else {
         LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return ins;
