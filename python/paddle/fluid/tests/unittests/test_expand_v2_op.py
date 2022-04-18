@@ -233,7 +233,7 @@ class TestExpandV2API(unittest.TestCase):
 
 class TestExpandInferShape(unittest.TestCase):
     def test_shape_with_var(self):
-        x = paddle.static.data(shape=[-1, 1, 3], name='x')
+        x = paddle.static.data(shape=[-1, 1, 3], name='x_tmp')
         fake_var = paddle.randn([2, 3])
         target_shape = [
             -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
