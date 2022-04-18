@@ -216,7 +216,9 @@ void ConvCudnnKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   compute_format};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();

@@ -256,27 +256,33 @@ void ConvCudnnGradKernel(const Context& ctx,
   T* input_grad_data = nullptr;
   T* transformed_input_grad_data = nullptr;
 
+  paddle::platform::DataLayout layout =
+      compute_format == paddle::platform::DataLayout::kNHWC
+          ? paddle::platform::DataLayout::kNHWC
+          : paddle::platform::DataLayout::kNCHW;
+
   paddle::operators::ConvArgs args1{&transformed_input_grad,
                                     &transformed_filter_channel,
                                     &transformed_output_grad_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
   paddle::operators::ConvArgs args2{&transformed_input,
                                     &transformed_filter_grad_channel,
                                     &transformed_output_grad_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
 
   auto handle = ctx.cudnn_handle();
   // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
-  paddle::platform::DataLayout layout =
-      compute_format == paddle::platform::DataLayout::kNHWC
-          ? paddle::platform::DataLayout::kNHWC
-          : paddle::platform::DataLayout::kNCHW;
+
   if (transformed_input.dims().size() == 5) {
     layout = compute_format == paddle::platform::DataLayout::kNHWC
                  ? paddle::platform::DataLayout::kNDHWC

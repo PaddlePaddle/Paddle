@@ -75,7 +75,9 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                const std::vector<int>& strides,
                const std::vector<int>& paddings,
                const std::vector<int>& dilations,
-               phi::DataType dtype);
+               phi::DataType dtype,
+               int groups,
+               int64_t data_layout);
 
 template <typename AlgorithmT>
 class AlgorithmsCache {

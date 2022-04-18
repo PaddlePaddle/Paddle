@@ -25,13 +25,17 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                const std::vector<int>& strides,
                const std::vector<int>& paddings,
                const std::vector<int>& dilations,
-               phi::DataType dtype) {
+               phi::DataType dtype,
+               int group,
+               int64_t data_layout) {
   return GetKey(x_dims,
                 w_dims,
                 strides,
                 paddings,
                 dilations,
-                static_cast<int64_t>(dtype));
+                static_cast<int64_t>(dtype),
+                group,
+                data_layout);
 }
 
 std::string AlgorithmTypeString(int64_t algo_type) {
