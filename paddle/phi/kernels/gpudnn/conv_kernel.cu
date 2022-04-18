@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <map>
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/conv_kernel.h"
 
