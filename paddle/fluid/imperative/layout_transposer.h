@@ -13,19 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-#include "paddle/phi/kernels/autotune/layout_autotune.h"
 
 namespace phi {
 namespace autotune {
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
-    const std::shared_ptr<VarType>& var,
-    const DataLayout layout,
+    const std::shared_ptr<VarType>& var, const DataLayout layout,
     const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
   std::vector<int> axis;
   if (layout == DataLayout::NHWC) {
@@ -161,8 +160,7 @@ class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
         (*attrs)["axis"] = 1;
       } else {
         PADDLE_ENFORCE_EQ(
-            desired_layout,
-            DataLayout::UNDEFINED,
+            desired_layout, DataLayout::UNDEFINED,
             phi::errors::PreconditionNotMet("DataLayout is unsupport."));
       }
       this->SetVarsLayout(outs, desired_layout);
@@ -292,8 +290,8 @@ class TransposeOpTransposer
       // NHWC->NCHW, permutaion will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
       // fuse the transpose Ops by transforming axis.
-      std::vector<int> fusion_axis = {
-          perm[axis[0]], perm[axis[1]], perm[axis[2]], perm[axis[3]]};
+      std::vector<int> fusion_axis = {perm[axis[0]], perm[axis[1]],
+                                      perm[axis[2]], perm[axis[3]]};
       (*attrs)["axis"] = fusion_axis;
     }
     return ins;
@@ -322,8 +320,8 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
         start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
-      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(
-          ins, outs, attrs, tracer);
+      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(ins, outs, attrs,
+                                                              tracer);
     }
   }
 };

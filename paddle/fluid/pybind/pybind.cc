@@ -166,10 +166,10 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/kernels/autotune/cache.h"
-#include "paddle/phi/kernels/autotune/layout_autotune.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 

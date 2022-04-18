@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/imperative/layout_transposer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/kernels/autotune/layout_autotune.h"
-#include "paddle/phi/kernels/autotune/layout_transposer.h"
 
 namespace phi {
 namespace autotune {
@@ -25,8 +25,7 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     const std::string& op_type,
     const paddle::imperative::NameVarMap<VarType>& ins,
     const paddle::imperative::NameVarMap<VarType>& outs,
-    paddle::framework::AttributeMap* attrs,
-    const phi::Place& place,
+    paddle::framework::AttributeMap* attrs, const phi::Place& place,
     const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
   if (!LayoutAutoTune::Instance().UseLayoutAutoTune()) {
     return ins;
@@ -86,9 +85,8 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
         std::make_shared<LightlyLayoutSensitiveOpTransposer<VarType>>(op_type);
   } else {
     PADDLE_ENFORCE_NOT_NULL(
-        transposer,
-        phi::errors::Unimplemented("%s 's LayoutTransposer is unimplemented.",
-                                   op_type));
+        transposer, phi::errors::Unimplemented(
+                        "%s 's LayoutTransposer is unimplemented.", op_type));
   }
 
   return transposer->Run(ins, outs, attrs, tracer);
