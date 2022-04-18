@@ -223,28 +223,31 @@ void Tracer::TraceOpImpl(const std::string& type,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarMap<VarType> new_ins = ins;
-  if (amp_level_ == AmpLevel::O1 || amp_level_ == AmpLevel::O2) {
+  if (amp_level_ == AmpLevel::O1) {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
 #if defined(PADDLE_WITH_CUDA)
-    const auto& tracer = imperative::GetCurrentTracer();
-    new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
-                                                      place, tracer);
+      const auto& tracer = imperative::GetCurrentTracer();
+      new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
+                                                        place, tracer);
 #endif
-    if (amp_level_ == AmpLevel::O1) {
-      if (amp_dtype_ == phi::DataType::FLOAT16) {
-        VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
-        new_ins = AutoCastInputs<VarType>(type, new_ins);
-      } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
-        VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
-        new_ins = AutoCastBF16Inputs<VarType>(type, new_ins);
-      }
-    } else if (amp_level_ == AmpLevel::O2) {
-      if (amp_dtype_ == phi::DataType::FLOAT16) {
-        VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
-        new_ins = CastPureFp16Inputs<VarType>(type, new_ins);
-      } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
-        VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
-        new_ins = CastPureBf16Inputs<VarType>(type, new_ins);
-      }
+      VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
+      new_ins = AutoCastInputs<VarType>(type, new_ins);
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
+      new_ins = AutoCastBF16Inputs<VarType>(type, ins);
+    }
+  } else if (amp_level_ == AmpLevel::O2) {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
+#if defined(PADDLE_WITH_CUDA)
+      const auto& tracer = imperative::GetCurrentTracer();
+      new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
+                                                        place, tracer);
+#endif
+      VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
+      new_ins = CastPureFp16Inputs<VarType>(type, new_ins);
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
+      new_ins = CastPureBf16Inputs<VarType>(type, ins);
     }
   }
 
