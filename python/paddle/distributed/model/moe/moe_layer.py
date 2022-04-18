@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.distributed.utils import expert_count, assign_pos, global_scatter, global_gather
+from paddle.distributed.utils import expert_count, assign_pos, global_scatter, global_gather, parallel_linear
 from paddle.distributed import alltoall, all_gather
 
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
@@ -29,6 +29,8 @@ from .gate import NaiveGate, GShardGate, SwitchGate
 from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = ["MoeLayer"]
 
@@ -117,6 +119,25 @@ class MOEScatter(PyLayer):
         return grad_in, None, None, None
 
 
+def moe_scatter_fw(inp,
+                   pos,
+                   local_expert_count,
+                   global_expert_count,
+                   fwd_batch_size,
+                   world_size,
+                   group=None):
+    local_input_buf = _local_scatter(inp, pos)
+    if world_size > 1:
+        global_input_buf = global_scatter(
+            local_input_buf,
+            local_expert_count,
+            global_expert_count,
+            group=group)
+    else:
+        global_input_buf = local_input_buf
+    return global_input_buf
+
+
 class MOEGather(PyLayer):
     r"""
     Gather output samples from contiguous alone experts back to [batch x
@@ -162,6 +183,26 @@ class MOEGather(PyLayer):
         else:
             global_grad_out_buf = grad_out_buf
         return global_grad_out_buf, None, None, None
+
+
+def moe_gather_fw(global_output_buf,
+                  pos,
+                  local_expert_count,
+                  global_expert_count,
+                  local_batch_size,
+                  world_size,
+                  group=None):
+    if world_size > 1:
+        local_output_buf = global_gather(
+            global_output_buf,
+            local_expert_count,
+            global_expert_count,
+            group=group)
+    else:
+        local_output_buf = global_output_buf
+    output = _local_gather(
+        local_output_buf, pos, local_batch_size, maybe_overlap=False)
+    return output
 
 
 class AllGather(PyLayer):
@@ -216,7 +257,12 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
     with paddle.no_grad():
         fwd_expert_count = global_expert_count.reshape_(
             [world_size, num_expert]).sum(axis=0)
-        fwd_batch_size = int(fwd_expert_count.sum().item())
+
+        if in_dygraph_mode():
+            fwd_batch_size = int(fwd_expert_count.sum().item())
+        else:
+            fwd_batch_size = fwd_expert_count.sum()
+
     return (
         pos,
         local_expert_count,
@@ -372,39 +418,66 @@ class MoeLayer(nn.Layer):
             temp_pos = pos
         assert topk == self.top_k
 
-        x = MOEScatter.apply(inp, temp_pos, local_expert_count,
-                             global_expert_count, fwd_batch_size,
-                             self.world_size, self.group)
+        if self.training:
+            x = MOEScatter.apply(inp, temp_pos, local_expert_count,
+                                 global_expert_count, fwd_batch_size,
+                                 self.world_size, self.group)
+        else:
+            x = moe_scatter_fw(inp, temp_pos, local_expert_count,
+                               global_expert_count, fwd_batch_size,
+                               self.world_size, self.group)
 
         d_model = self.d_model
 
         def experts_fwd(x, fwd_expert_count, experts):
             y = []
             last_index = 0
-            assert isinstance(fwd_expert_count, np.ndarray)
-            assert len(experts) == len(fwd_expert_count)
-            for idx, expert_count in enumerate(fwd_expert_count):
-                if expert_count <= 0:
-                    continue
-                y.append(experts[idx](x[last_index:expert_count + last_index]))
-                last_index = expert_count + last_index
-            if len(y) == 0:
-                return x
+            if self.training or not hasattr(self, "htoh4_weight_buffer"):
+                fwd_expert_count = fwd_expert_count.numpy()
+                assert isinstance(fwd_expert_count, np.ndarray)
+                assert len(experts) == len(fwd_expert_count)
+                for idx, expert_count in enumerate(fwd_expert_count):
+                    if expert_count <= 0:
+                        continue
+                    y.append(experts[idx](x[last_index:expert_count +
+                                            last_index]))
+                    last_index = expert_count + last_index
+                if len(y) == 0:
+                    return x
+                else:
+                    return paddle.concat(y, axis=0)
             else:
-                return paddle.concat(y, axis=0)
+                if len(experts) == 0:
+                    return x
+
+                assert len(experts) == np.prod(fwd_expert_count.shape)
+                assert hasattr(self, "htoh4_weight_buffer") and hasattr(
+                    self, "htoh4_bias_buffer")
+                assert hasattr(self, "h4toh_weight_buffer") and hasattr(
+                    self, "h4toh_bias_buffer")
+
+                x = parallel_linear(x, self.htoh4_weight_buffer,
+                                    self.htoh4_bias_buffer, fwd_expert_count)
+                x = F.gelu(x, approximate=True)
+                x = parallel_linear(x, self.h4toh_weight_buffer,
+                                    self.h4toh_bias_buffer, fwd_expert_count)
+                return x
 
         if self.recompute_interval <= 0 or x.shape[0] == 0:
-            x = experts_fwd(x, fwd_expert_count.numpy(), self.experts)
+            x = experts_fwd(x, fwd_expert_count, self.experts)
         else:
-            x = _hp_recompute(experts_fwd, x,
-                              fwd_expert_count.numpy(), self.experts)
+            x = _hp_recompute(experts_fwd, x, fwd_expert_count, self.experts)
 
         out_batch_size = inp.shape[0]
         if len(gate.shape) == 2:
             out_batch_size *= gate.shape[1]
 
-        x = MOEGather.apply(x, pos, local_expert_count, global_expert_count,
-                            out_batch_size, self.world_size, self.group)
+        if self.training:
+            x = MOEGather.apply(x, pos, local_expert_count, global_expert_count,
+                                out_batch_size, self.world_size, self.group)
+        else:
+            x = moe_gather_fw(x, pos, local_expert_count, global_expert_count,
+                              out_batch_size, self.world_size, self.group)
 
         x = x.reshape([-1, self.top_k, d_model])
         value = value.reshape([x.shape[0], 1, self.top_k])

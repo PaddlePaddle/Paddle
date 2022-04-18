@@ -56,6 +56,7 @@ __all__ = [     #noqa
            'limit_by_capacity',
            'assign_pos',
            'prune_gate_by_capacity',
+           'parallel_linear',
 ]
 
 
@@ -102,7 +103,9 @@ def assign_pos(x, cum_count):
         #                          'global_scatter')
 
         helper = LayerHelper(op_type, **locals())
-        out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
+        import numpy as np
+        out = helper.create_variable_for_type_inference(
+            dtype=cum_count.dtype, shape=[np.prod(x.shape)])
 
         helper.append_op(
             type=op_type,
@@ -900,7 +903,8 @@ def expert_count(gate_idx, n_expert):
         op_type = 'expert_count'
 
         helper = LayerHelper(op_type, **locals())
-        out = helper.create_variable_for_type_inference(dtype=gate_idx.dtype)
+        out = helper.create_variable_for_type_inference(
+            dtype=gate_idx.dtype, shape=[n_expert])
 
         helper.append_op(
             type=op_type,
@@ -959,7 +963,7 @@ def parallel_linear(x, w, bias, expert_count):
             should be float16, float32, float64. Its shape is [batch_size, in_feat].
         w (Tensor): Parameter matrix. Its shape is [expert_num, in_feat, out_feat].
         bias (Tensor): Parameter matrix. Its shape is [expert_num, out_feat]
-        expert_count (numpy)): Its shape is [expert_num,].
+        expert_count (Tensor): Its shape is [expert_num,].
     
     Returns:
         out (Tensor): The linear calculation result. 
@@ -975,9 +979,8 @@ def parallel_linear(x, w, bias, expert_count):
 
             np_expert_count = np.array([2, 0, 1, 2, 3, 0, 0, 0, 2]).astype(np.int64) 
             batch_size = np.sum(np_expert_count)
-            expert_num = len(np_expert_count)
+            np_w = np.random.random((batch_size, in_dim, out_dim)).astype("float32")
 
-            np_w = np.random.random((expert_num, in_dim, out_dim)).astype("float32")
             np_b = np.random.random((batch_size, out_dim)).astype("float32")
             np_x = np.random.random((batch_size, in_dim)).astype("float32")
 
@@ -992,7 +995,7 @@ def parallel_linear(x, w, bias, expert_count):
 
     """
     if in_dygraph_mode():
-        return _C_ops.parallel_linear(x, w, bias, 'expert_count', expert_count)
+        return _C_ops.parallel_linear(x, w, bias, expert_count)
     else:
         op_type = 'parallel_linear'
 
@@ -1065,3 +1068,16 @@ def random_routing(topk_idx, topk_value, prob):
     """
     if in_dygraph_mode():
         return _C_ops.random_routing(prob, topk_value, topk_idx)
+
+    helper = LayerHelper('random_routing', **locals())
+    new_topk_idx = helper.create_variable_for_type_inference(
+        dtype=topk_idx.dtype)
+
+    helper.append_op(
+        type='random_routing',
+        inputs={'Prob': prob,
+                "TopK_Value": topk_value,
+                "TopK_Idx": topk_idx},
+        outputs={'Out': new_topk_idx})
+
+    return new_topk_idx
