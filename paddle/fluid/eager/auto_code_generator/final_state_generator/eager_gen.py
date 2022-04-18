@@ -205,6 +205,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 #endif
     }}
     // Forward API Call
+    VLOG(3) << \"Final State Running: \" << \"{}\"; 
 {}
     // Get Outputs
 {}
@@ -505,15 +506,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         for i in range(len(forward_attrs_list)):
             orig_attr_type = orig_forward_attrs_list[i][1]
-            orig_attr_default = orig_forward_attrs_list[i][2]
             orig_attr_pos = orig_forward_attrs_list[i][3]
             forward_attr_type = forward_attrs_list[i][1]
-            forward_attr_default = forward_attrs_list[i][2]
             forward_attr_pos = forward_attrs_list[i][3]
             assert orig_attr_type == forward_attr_type, AssertMessage(
                 orig_attr_type, forward_attr_type)
-            assert orig_attr_default == forward_attr_default, AssertMessage(
-                orig_attr_default, forward_attr_default)
             assert orig_attr_pos == forward_attr_pos, AssertMessage(
                 orig_attr_pos, forward_attr_pos)
 
@@ -753,6 +750,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_grad_out_meta_list = []
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
+            # Has corresponding grad output
+            has_corresponding_grad_output = False
+            for _, (_, corresponding_pos,
+                    _) in backward_grad_outputs_map.items():
+                if pos == corresponding_pos:
+                    has_corresponding_grad_output = True
+            if not has_corresponding_grad_output:
+                continue
+
             input_autograd_meta_name = GetAutoGradMetaName(name)
             is_optional = (name in self.optional_inputs)
             if is_optional:
@@ -1063,9 +1069,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
             returns_type_str, forward_function_name, inputs_args_definition_str,
             dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
-            forward_call_str, get_outputs_str, outputs_autograd_meta_str,
-            compute_require_grad_args_str, check_inplace_str,
-            bump_inplace_version_str, node_creation_str, returns_str)
+            forward_function_name, forward_call_str, get_outputs_str,
+            outputs_autograd_meta_str, compute_require_grad_args_str,
+            check_inplace_str, bump_inplace_version_str, node_creation_str,
+            returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
         logging.info(
@@ -1439,28 +1446,18 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});"
 
         # Construct grad_api returns
-        num_bwd_outputs = len(backward_grad_outputs_map.keys())
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         returns_str = f"{indent}std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
 
-            # Infer Grad API Return Type
-            if num_bwd_outputs == 1:
-                # Single tensor output, return as is
-                if IsPlainTensorType(ttype):
-                    returns_str += f"{indent}returns[0] = {{ {transformed_tensor_name} }};\n"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    returns_str += f"{indent}returns[0] = {transformed_tensor_name};\n"
+            # Rearrange output order accordingly
+            if IsPlainTensorType(ttype):
+                returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
             else:
-                # Rearrange output order accordingly
-                if IsPlainTensorType(ttype):
-                    returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
+                assert IsVectorTensorType(ttype)
+                returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
 
         returns_str += f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
