@@ -102,6 +102,7 @@ struct NodesTSIterator
 struct GraphTraits {
   static iterator_range<NodesDFSIterator> DFS(const Graph &g) {
     auto start_points = ExtractStartPoints(g);
+    VLOG(5) << "DFS starts count: " << start_points.size();
     NodesDFSIterator x(start_points);
     return iterator_range<NodesDFSIterator>(NodesDFSIterator(start_points),
                                             NodesDFSIterator());
@@ -123,7 +124,7 @@ struct GraphTraits {
   static std::vector<Node *> ExtractStartPoints(const Graph &g) {
     std::vector<Node *> result;
     for (auto *node : g.Nodes()) {
-      if (node->inputs.empty()) {
+      if (node->inputs.empty() || ((!g.IsMainGraph())&&(node->Name()=="write_to_array" || node->Name()=="increment"))) {
         result.push_back(node);
       }
     }

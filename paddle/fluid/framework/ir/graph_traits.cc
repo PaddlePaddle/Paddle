@@ -78,14 +78,14 @@ NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
       platform::errors::InvalidArgument(
           "Start points of topological sorting should not be empty!"));
   // CHECK all the inputs' in-degree is 0
-  for (auto *node : source) {
-    PADDLE_ENFORCE_EQ(
-        CheckNodeIndegreeEquals(*node, 0), true,
-        platform::errors::InvalidArgument(
-            "In start points of topological sorting, the indegree of each "
-            "point should be 0. Node(%s)'s indegree is not 0.",
-            node->Name()));
-  }
+//  for (auto *node : source) {
+//    PADDLE_ENFORCE_EQ(
+//        CheckNodeIndegreeEquals(*node, 0), true,
+//        platform::errors::InvalidArgument(
+//            "In start points of topological sorting, the indegree of each "
+//            "point should be 0. Node(%s)'s indegree is not 0.",
+//            node->Name()));
+//  }
 
   std::set<Node *> to_visit{source.begin(), source.end()};
   std::vector<Node *> inlink_sorted;
