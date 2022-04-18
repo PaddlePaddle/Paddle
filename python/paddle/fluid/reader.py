@@ -212,14 +212,14 @@ def AutoTune(Loader):
             kw['num_workers'] = new_num
             reader = Loader(*arg, **kw)
             time, cpu_percent = avgTime(reader)
+            print("for back num_workers: ", new_num, " avg_cost: ", time,
+                  "cpu_percent: ", cpu_percent)
             step += 1
             if (time < best_time * 0.70 * boundary):
                 return new_num
             else:
                 new_num += 1
             boundary *= 0.80
-            print("for back num_workers: ", new_num, " avg_cost: ", time,
-                  "cpu_percent: ", cpu_percent)
         return best_workers
 
     def wrapper(*args, **kw):
@@ -255,7 +255,8 @@ def AutoTune(Loader):
         updateWithSampler(kw_tune)
         # update according to args
         # evaluate cost with subset of origin dataset
-        new_batch_size = kw_tune['batch_size'] * 100
+        new_batch_size = min(kw_tune['batch_size'] * 500,
+                             len(kw_tune['dataset']))
         sub_dataset = Subset(
             kw_tune['dataset'], indices=list(range(new_batch_size)))
         #update acccording to batch_sampler_tune
