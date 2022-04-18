@@ -138,12 +138,14 @@ class TestFullLikeOp3(TestFullLikeOp1):
                  "core is not compiled with CUDA")
 class TestFullLikeOp4(unittest.TestCase):
     def test_skip_data_transform(self):
+        paddle.disable_static()
         with _test_eager_guard():
             x = paddle.to_tensor(
                 [1., 2., 3., 4.], place=paddle.CUDAPinnedPlace())
             out = paddle.full_like(x, 1.)
             self.assertTrue(
                 (out.numpy() == np.ones([4]).astype(np.float32)).all(), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
