@@ -889,7 +889,6 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        print("in new class backward")
         act_no_grad_set = None
         if framework._non_static_mode():
             pass
@@ -913,7 +912,6 @@ class Optimizer(object):
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
-            print("in new backward else branch")
             if callbacks is None:
                 callbacks = [error_clip_callback]
             else:
@@ -1241,7 +1239,6 @@ class Optimizer(object):
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
 
-        print("in base minimize")
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
 
