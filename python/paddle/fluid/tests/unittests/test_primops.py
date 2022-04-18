@@ -248,7 +248,7 @@ class TestPyPrimOps(unittest.TestCase):
             loss = paddle.norm(y, p=2)
             opt = AdamOptimizer(0.01)
             opt.minimize(loss)
-            # prim2orig(x.block, update_var_list=[loss])
+            prim2orig(x.block, update_var_list=[loss])
 
             print(f'-------test_minimize: orig-------')
             print(x.block)

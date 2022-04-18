@@ -234,17 +234,17 @@ def add_prim2orig(op, x, y):
 
 @REGISTER_PRIM2ORIG('sub_p')
 def sub_prim2orig(op, x, y):
-    return paddle.sub(x, y)
+    return paddle.subtract(x, y)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
 def mul_prim2orig(op, x, y):
-    return paddle.mul(x, y)
+    return paddle.multiply(x, y)
 
 
 @REGISTER_PRIM2ORIG('div_p')
 def div_prim2orig(op, x, y):
-    return paddle.div(x, y)
+    return paddle.divide(x, y)
 
 
 @REGISTER_PRIM2ORIG('sqrt_p')
@@ -259,7 +259,7 @@ def tanh_prim2orig(op, x):
 
 @REGISTER_PRIM2ORIG('reshape_p')
 def reshape_prim2orig(op, x):
-    y, _ = paddle.reshape(x, shape=op.attr('shape'))
+    y = paddle.reshape(x, shape=op.attr('shape'))
     return y
 
 
@@ -288,7 +288,7 @@ def concat_prim2orig(op, *xs):
 
 
 @REGISTER_PRIM2ORIG('reduce_p')
-def reduce_prim2orig(op, *xs):
+def reduce_prim2orig(op, xs):
     return paddle.sum(xs, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
 
 
@@ -337,6 +337,12 @@ def gather_prim2orig(op, index_t, x):
 def scatter_add_prim2orig(op, index_t, x, y):
     return paddle.put_along_axis(
         x, index_t, y, axis=op.attr('axis'), reduce='add')
+
+
+@REGISTER_PRIM2ORIG('fill_constant_p')
+def fill_constant_prim2orig(op):
+    return paddle.full(
+        shape=op.attr('shape'), fill_value=op.attr('value'), dtype='float32')
 
 
 ## Register linearize rules
