@@ -450,7 +450,7 @@ module  {
   func @main() {
     %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
     %1 = "phi_dt.create_inited_dense_tensor.cpu.f32" (%ctx) {value = 12.0 : f32, layout=#infrt.layout<NCHW>, lod=[1:i64], dims=[1, 3, 256, 256]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
-    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build/models/resnet50/model.pdmodel",params_path="/shixiaowei02/Paddle-InfRT/Paddle/build/models/resnet50/model.pdiparams"}
+    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/models/resnet50/model.pdmodel",params_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/models/resnet50/model.pdiparams"}
     %2 = infrt.call@main_graph(%map, %1) : (!phi.dense_tensor_map, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
     phi_dt.print_tensor (%2 : !infrt.dense_tensor<CPU, FP32, NCHW>)
     infrt.return

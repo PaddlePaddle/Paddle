@@ -16,8 +16,8 @@ module  {
   }
 
   func @main() {
-    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build/linear/linear.pdmodel",
-      params_path="/shixiaowei02/Paddle-InfRT/Paddle/build/linear/linear.pdiparams"}
+    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/linear/linear.pdmodel",
+      params_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/linear/linear.pdiparams"}
 
     %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
     %input_tensor = "phi_dt.create_dense_tensor.cpu" (%ctx) {

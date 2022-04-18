@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/core/allocator.h"
 
 #ifdef INFRT_WITH_GPU
@@ -22,15 +23,10 @@ namespace backends {
 
 class CpuPhiAllocator : public phi::Allocator {
  public:
-  static void deleter(phi::Allocation* ptr) { ::operator delete(ptr); }
-
   AllocationPtr Allocate(size_t bytes_size) {
-    return AllocationPtr(
-        new phi::Allocation(::operator new(bytes_size),
-                            bytes_size,
-                            phi::Place(phi::AllocationType::CPU)),
-        deleter);
+    return ::paddle::memory::Alloc(place__, bytes_size);
   }
+  ::paddle::platform::CPUPlace place__;
 };
 
 #ifdef INFRT_WITH_GPU

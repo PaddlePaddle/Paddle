@@ -24,6 +24,8 @@
 #include "paddle/infrt/common/dtype.h"
 #include "paddle/infrt/tests/timer.h"
 
+#include "paddle/fluid/platform/cpu_helper.h"
+
 using infrt::InfRtConfig;
 using infrt::InfRtPredictor;
 using infrt::CreateInfRtPredictor;
@@ -49,6 +51,8 @@ void benchmark(size_t layers, size_t num) {
 
   std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
+  ::paddle::platform::SetNumThreads(1);
+
   ::infrt::backends::CpuPhiAllocator cpu_allocator;
   ::phi::DenseTensor* input = predictor->GetInput(0);
   input->Resize({static_cast<int>(num), static_cast<int>(num)});
@@ -60,7 +64,7 @@ void benchmark(size_t layers, size_t num) {
 
   ::phi::DenseTensor* output = predictor->GetOutput(0);
   float* output_data = reinterpret_cast<float*>(output->data());
-  float sum;
+  float sum{};
   for (int64_t i = 0; i < output->numel(); ++i) {
     sum += output_data[i];
   }

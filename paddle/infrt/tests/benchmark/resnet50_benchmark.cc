@@ -16,20 +16,26 @@
 #include <iostream>
 #include "gflags/gflags.h"
 
+// #include <gperftools/profiler.h>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/infrt/tests/timer.h"
-//#include "paddle/fluid/inference/api/paddle_api.h"  // NOLINT
+// #include "paddle/fluid/inference/api/paddle_api.h"  // NOLINT
+
+#include "paddle/fluid/platform/cpu_helper.h"
 
 DEFINE_int32(layers, 0, "");
 DEFINE_int32(num, 0, "");
 
 void benchmark(size_t layers, size_t num) {
   const std::string tag = "resnet50";
+  // const std::string tag = "conv_bn_pruned";
   const std::string model_name = tag + ".pdmodel";
   const std::string param_name = tag + ".pdiparams";
   const std::string prefix =
       "/shixiaowei02/Paddle-InfRT/Paddle/paddle/infrt/tests/models/";
+  // const std::string prefix = "/shixiaowei02/models/conv_bn_pruned/";
 
   const std::string model{prefix + model_name};
   const std::string params{prefix + param_name};
@@ -45,6 +51,9 @@ void benchmark(size_t layers, size_t num) {
   auto input_t = predictor->GetInputHandle(input_names[0]);
   input_t->Reshape(input_shape);
   float* in_p = input_t->mutable_data<float>(paddle_infer::PlaceType::kCPU);
+
+  ::paddle::platform::SetNumThreads(1);
+
   for (size_t i = 0; i < num * 3 * 224 * 224; i++) in_p[i] = 1.0;
 
   predictor->Run();
@@ -73,11 +82,14 @@ void benchmark(size_t layers, size_t num) {
     predictor->Run();
   }
 
+  //  ProfilerStart("profiler.prof");
   for (size_t j = 0; j < 100; ++j) {
     timer.Start();
     predictor->Run();
     timer.Stop();
   }
+  // ProfilerStop();
+
   std::cout << "\nlayers " << layers << ", num " << num << '\n';
   std::cout << "framework " << timer.Summerize({0.5});
 }

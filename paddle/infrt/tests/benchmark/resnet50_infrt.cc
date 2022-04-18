@@ -18,11 +18,14 @@
 #include <vector>
 
 #include "llvm/Support/raw_ostream.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/infrt/api/infrt_api.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/buffer.h"
 #include "paddle/infrt/common/dtype.h"
 #include "paddle/infrt/tests/timer.h"
+
+// #include <gperftools/profiler.h>
 
 using infrt::InfRtConfig;
 using infrt::InfRtPredictor;
@@ -34,11 +37,15 @@ DEFINE_int32(num, 0, "");
 namespace infrt {
 
 void benchmark(size_t layers, size_t num) {
+  ::paddle::platform::SetNumThreads(1);
+
   const std::string tag = "resnet50";
+  // const std::string tag = "conv_bn_pruned";
   const std::string model_name = tag + ".pdmodel";
   const std::string param_name = tag + ".pdiparams";
   const std::string prefix =
       "/shixiaowei02/Paddle-InfRT/Paddle/paddle/infrt/tests/models/";
+  // const std::string prefix = "/shixiaowei02/models/conv_bn_pruned/";
 
   InfRtConfig config;
   config.set_model_dir(prefix + model_name);
@@ -59,7 +66,7 @@ void benchmark(size_t layers, size_t num) {
 
   ::phi::DenseTensor* output = predictor->GetOutput(0);
   float* output_data = reinterpret_cast<float*>(output->data());
-  float sum;
+  float sum{};
   for (int64_t i = 0; i < output->numel(); ++i) {
     sum += output_data[i];
   }
@@ -71,11 +78,13 @@ void benchmark(size_t layers, size_t num) {
     predictor->Run();
   }
 
+  // ProfilerStart("profiler_infrt.prof");
   for (size_t j = 0; j < 100; ++j) {
     timer.Start();
     predictor->Run();
     timer.Stop();
   }
+  // ProfilerStop();
   std::cout << "\nlayers " << layers << ", num " << num << '\n';
   std::cout << "framework " << timer.Summerize({0.5});
   // auto* output = predictor->GetOutput(0);

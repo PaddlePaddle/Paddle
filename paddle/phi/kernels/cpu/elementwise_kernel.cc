@@ -26,9 +26,9 @@ DECLARE_int32(num);
 
 namespace phi {
 
-// static ::infrt::tests::BenchmarkStats timer1;
-// static int i = 0;
-/*
+static ::infrt::tests::BenchmarkStats timer1;
+static int i = 0;
+
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
   void name##RawKernel(const Context& dev_ctx,                              \
@@ -61,9 +61,12 @@ namespace phi {
     if (i == 110 * FLAGS_layers) {                                          \
       std::cout << "kernel: " << timer1.Summerize({0.5});                   \
     }                                                                       \
+    if (i > 110 * FLAGS_layers) {                                           \
+      std::cout << "ERROR!! " << i << '\n';                                 \
+    }                                                                       \
   }
-*/
 
+/*
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
   void name##RawKernel(const Context& dev_ctx,                              \
@@ -87,7 +90,7 @@ namespace phi {
       }                                                                     \
     }                                                                       \
   }
-
+*/
 template <typename T, typename Context>
 void DivideRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,

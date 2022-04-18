@@ -11,7 +11,7 @@ module  {
   func @main() {
     %ctx = "phi_dt.create_context.cpu" (): () -> !phi.context<CPU>
     %1 = "phi_dt.create_dense_tensor.cpu" (%ctx) {precision=#infrt.precision<FP32>, layout=#infrt.layout<NCHW>, lod=[1:i64], dims=[16:i64, 784:i64]}: (!phi.context<CPU>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>)
-    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build/linear/linear.pdmodel",params_path="/shixiaowei02/Paddle-InfRT/Paddle/build/linear/linear.pdiparams"}
+    %map = phi_dt.load_combined_params(){model_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/linear/linear.pdmodel",params_path="/shixiaowei02/Paddle-InfRT/Paddle/build_rel_debug_info/linear/linear.pdiparams"}
     %2 = infrt.call@main_graph(%map, %1) : (!phi.dense_tensor_map, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
     phi_dt.print_tensor (%2 : !infrt.dense_tensor<CPU, FP32, NCHW>)
     infrt.return
