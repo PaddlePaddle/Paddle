@@ -55,7 +55,7 @@ def topo_path(xs, ys, block=None):
 
     # Initialized reached vars
     for x in xs:
-        assert x.block == block
+        assert x is None or x.block == block
         reached_vars[id(x)] = x
 
     # block.ops are supposedly in the order that preservers correct data dependence.
