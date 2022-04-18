@@ -32,6 +32,7 @@ def flatten(inp):
         flattened += flatten(part)
     return flattened
 
+
 def topo_path(xs, ys, block=None):
     """ Returns the list of ops on the path from `xs` to `ys` in topological 
     order.
@@ -313,7 +314,7 @@ class Transform(object):
         dotvars.update((id(var), var) for var in xs_dot)
 
         is_dot = lambda v: id(v) in dotvars
- 
+
         for op in reversed(path):
             out = op_position_output(op)
             out_bar_rec = self.dot2bar_rec(out, defaults=out)
@@ -323,7 +324,7 @@ class Transform(object):
             # returns multiple entities
             if isinstance(ins_bar_rec, tuple):
                 ins_bar_rec = list(ins_bar_rec)
-            else: 
+            else:
                 ins_bar_rec = [ins_bar_rec]
             self.add_vars_rec(ins_bar_rec)
 
@@ -352,7 +353,7 @@ class Transform(object):
                         vars_to_remove.add(var)
 
             op_indexes = []
-            
+
             block = self.block
             for i, op in enumerate(block.ops):
                 if op in path:
@@ -362,7 +363,7 @@ class Transform(object):
                         break
 
             # remove ops
-            for op_index in reversed(op_indexes):                
+            for op_index in reversed(op_indexes):
                 block.desc._remove_op(op_index, op_index + 1)
 
             self.erase_dots(vars_to_remove)
@@ -429,7 +430,6 @@ def _lower(block, reverse, update_var_list):
     vlt = {}
     to_bind = {}
     for var in block.desc.all_vars():
-        print(f'Varname: {var.name()}')
         vlt[var.name()] = block.var(var.name())
 
     ops_to_remove = []
