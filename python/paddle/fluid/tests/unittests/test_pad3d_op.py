@@ -681,6 +681,30 @@ class TestPad3dAPI(unittest.TestCase):
                 input_data, pad, "circular", data_format="NCDHW")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
+    def test_pad_tensor(self):
+        paddle.disable_static()
+        for place in self.places:
+            input_shape = (3, 4, 5, 6, 7)
+            pad = [1, 2, 2, 1, 1, 0]
+            pad_tensor = paddle.to_tensor(pad)
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+
+            pad_reflection_ncdhw = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NCDHW")
+            pad_reflection_ndhwc = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NDHWC")
+            data = paddle.to_tensor(input_data)
+
+            output = pad_reflection_ncdhw(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCDHW")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
+            output = pad_reflection_ndhwc(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NDHWC")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
 
 class TestPad3dOpError(unittest.TestCase):
     def setUp(self):
