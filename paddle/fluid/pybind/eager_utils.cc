@@ -1194,15 +1194,13 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
   return result;
 }
 
-paddle::experimental::Place CastPyArg2Place(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos) {
+paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+                              ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
 
-paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos) {
+paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+                                    ssize_t arg_pos) {
   if (obj == Py_None) {
     return paddle::experimental::DataType::UNDEFINED;
   }
