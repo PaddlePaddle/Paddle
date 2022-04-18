@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <glog/logging.h>
 #include <memory>
 #include <set>
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/type_defs.h"
@@ -34,7 +36,18 @@ class LayoutAutoTune {
     return layout_autoTune;
   }
 
-  bool UseLayoutAutoTune() { return use_layout_autotune_; }
+  bool UseLayoutAutoTune() {
+#if defined(PADDLE_WITH_CUDA)
+    if (!phi::backends::gpu::TensorCoreAvailable()) {
+      LOG(INFO) << "Layout AutoTuning is not available.";
+      return false;
+    } else {
+      return use_layout_autotune_;
+    }
+#else
+    return false;
+#endif
+  }
 
   void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
 

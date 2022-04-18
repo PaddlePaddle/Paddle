@@ -42,10 +42,10 @@ class LayoutAutoTune(unittest.TestCase):
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
             paddle.fluid.core.enable_layout_autotune()
-            return True
+            return paddle.fluid.core.use_layout_autotune()
         else:
             paddle.fluid.core.disable_layout_autotune()
-            return False
+            return paddle.fluid.core.use_layout_autotune()
 
     def train(self, data_format):
         model = SimpleNet(data_format="NCHW", class_num=2)
