@@ -79,7 +79,7 @@ void KernelContext::EmplaceBackAttr(paddle::any attr) {
 
 void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
   if (idx < input_range_.size()) {
-    input_range_[idx] = range;
+    input_range_[idx] = std::move(range);
   } else if (idx == input_range_.size()) {
     input_range_.emplace_back(range);
   } else {
@@ -93,7 +93,7 @@ void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
 
 void KernelContext::AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
   if (idx < output_range_.size()) {
-    output_range_[idx] = range;
+    output_range_[idx] = std::move(range);
   } else if (idx == output_range_.size()) {
     output_range_.emplace_back(range);
   } else {
