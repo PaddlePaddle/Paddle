@@ -228,7 +228,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 #if defined(PADDLE_WITH_CUDA)
       const auto& tracer = imperative::GetCurrentTracer();
       new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
-                                                        place, tracer);
+                                                        tracer);
 #endif
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       new_ins = AutoCastInputs<VarType>(type, new_ins);
@@ -241,7 +241,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 #if defined(PADDLE_WITH_CUDA)
       const auto& tracer = imperative::GetCurrentTracer();
       new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
-                                                        place, tracer);
+                                                        tracer);
 #endif
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       new_ins = CastPureFp16Inputs<VarType>(type, new_ins);

@@ -4499,6 +4499,10 @@ All parameter, weight, gradient are variables in Paddle.
     return phi::autotune::LayoutAutoTune::Instance().DisableLayoutAutoTune();
   });
 
+  m.def("use_layout_autotune", [] {
+    return phi::autotune::LayoutAutoTune::Instance().UseLayoutAutoTune();
+  });
+
   BindFleetWrapper(&m);
   BindIO(&m);
 

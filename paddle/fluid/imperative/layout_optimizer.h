@@ -15,7 +15,6 @@
 #pragma once
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/layout_transposer.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {
 namespace autotune {
@@ -25,7 +24,7 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     const std::string& op_type,
     const paddle::imperative::NameVarMap<VarType>& ins,
     const paddle::imperative::NameVarMap<VarType>& outs,
-    paddle::framework::AttributeMap* attrs, const phi::Place& place,
+    paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
   if (!LayoutAutoTune::Instance().UseLayoutAutoTune()) {
     return ins;
@@ -44,9 +43,7 @@ paddle::imperative::NameVarMap<VarType> LayoutOptimizer(
     if (op_type != "conv2d") {
       return ins;
     } else {
-      if (BOOST_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW" &&
-          paddle::platform::is_gpu_place(place) &&
-          phi::backends::gpu::TensorCoreAvailable()) {
+      if (BOOST_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
         VLOG(3) << "Tune the layout from "
                 << BOOST_GET_CONST(std::string, (*attrs)["data_format"])
