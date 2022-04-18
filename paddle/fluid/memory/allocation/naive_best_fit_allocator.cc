@@ -150,7 +150,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   platform::XPUDeviceGuard gurad(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
-    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
     xpu_wait();
     ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   }

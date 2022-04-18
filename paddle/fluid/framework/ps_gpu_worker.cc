@@ -20,7 +20,9 @@ limitations under the License. */
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -119,6 +121,7 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 }
 
 void PSGPUWorker::TrainFiles() {
+  VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
@@ -129,6 +132,8 @@ void PSGPUWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+
+  platform::SetDeviceId(thread_id_);
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -190,14 +195,14 @@ void PSGPUWorker::TrainFiles() {
     writer_.Flush();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost "
           << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
-  VLOG(1) << "Begin to train files with profiler";
+  VLOG(0) << "Begin to train files with profiler";
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
@@ -225,6 +230,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
+  platform::SetDeviceId(thread_id_);
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     timeline.Pause();
@@ -260,13 +266,15 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     timeline.Start();
   }
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
           << " seconds, ins_num: " << total_ins_num;
   for (size_t i = 0; i < op_name.size(); ++i) {
-    VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+    VLOG(0) << "card:" << thread_id_ << ", op: " << op_name[i]
             << ", mean time: " << op_total_time[i] / total_ins_num
             << "s, totol time:" << op_total_time[i] << "sec";
   }
+  VLOG(0) << "card: " << thread_id_ << " read time: " << read_time
+          << ", percent: " << read_time / total_time * 100;
   return;
 }
 

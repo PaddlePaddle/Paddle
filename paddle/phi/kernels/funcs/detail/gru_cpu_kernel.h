@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/activation_op.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/gru_compute.h"
 
@@ -283,11 +283,10 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 #endif
 }
 
-template <typename T>
-inline void forward_reset_outputV2(
-    const paddle::platform::CPUDeviceContext &context,
-    phi::funcs::GRUMetaValue<T> value,
-    int frame_size) {
+template <typename T, typename Context>
+inline void forward_reset_outputV2(const Context &context,
+                                   phi::funcs::GRUMetaValue<T> value,
+                                   int frame_size) {
   auto &place = *context.eigen_device();
   auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
@@ -297,23 +296,20 @@ inline void forward_reset_outputV2(
       value.reset_output_value, Array1(frame_size));
   auto value_reset_bias =
       typename EigenVector<T>::ConstType(value.reset_bias, Array1(frame_size));
-  paddle::operators::SigmoidFunctor<T>()(
-      place, value_reset_gate, value_reset_gate);
-  paddle::operators::SigmoidFunctor<T>()(
-      place, value_update_gate, value_update_gate);
+  SigmoidFunctor<T>()(place, value_reset_gate, value_reset_gate);
+  SigmoidFunctor<T>()(place, value_update_gate, value_update_gate);
   value_reset_output.device(place) =
       (value_reset_output + value_reset_bias) * value_reset_gate;
 }
 
-template <class OpResetOutput, typename T>
-inline void forward_reset_output(
-    OpResetOutput op_reset_output,
-    phi::funcs::GRUMetaValue<T> value,
-    int frame_size,
-    int batch_size,
-    ActivationType active_gate,
-    bool old_version = true,
-    const paddle::platform::CPUDeviceContext *context = nullptr) {
+template <typename Context, class OpResetOutput, typename T>
+inline void forward_reset_output(OpResetOutput op_reset_output,
+                                 phi::funcs::GRUMetaValue<T> value,
+                                 int frame_size,
+                                 int batch_size,
+                                 ActivationType active_gate,
+                                 bool old_version = true,
+                                 const Context *context = nullptr) {
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
       // use eigen
@@ -348,11 +344,10 @@ inline void forward_reset_output(
   }
 }
 
-template <typename T>
-inline void forward_final_outputV2(
-    const paddle::platform::CPUDeviceContext &context,
-    phi::funcs::GRUMetaValue<T> value,
-    int frame_size) {
+template <typename T, typename Context>
+inline void forward_final_outputV2(const Context &context,
+                                   phi::funcs::GRUMetaValue<T> value,
+                                   int frame_size) {
   auto &place = *context.eigen_device();
   auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
@@ -360,8 +355,7 @@ inline void forward_final_outputV2(
       value.gate_value + 2 * frame_size, Array1(frame_size));
   auto value_output =
       typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
-  paddle::operators::TanhFunctor<T>()(
-      place, value_frame_state, value_frame_state);
+  TanhFunctor<T>()(place, value_frame_state, value_frame_state);
   value_output.device(place) =
       (static_cast<T>(1.0) - value_update_gate) * value_frame_state;
   if (value.prev_out_value) {
@@ -372,16 +366,15 @@ inline void forward_final_outputV2(
   }
 }
 
-template <class OpFinalOutput, typename T>
-inline void forward_final_output(
-    OpFinalOutput op_final_output,
-    phi::funcs::GRUMetaValue<T> value,
-    int frame_size,
-    int batch_size,
-    ActivationType active_node,
-    bool origin_mode,
-    bool old_version = true,
-    const paddle::platform::CPUDeviceContext *context = nullptr) {
+template <typename Context, class OpFinalOutput, typename T>
+inline void forward_final_output(OpFinalOutput op_final_output,
+                                 phi::funcs::GRUMetaValue<T> value,
+                                 int frame_size,
+                                 int batch_size,
+                                 ActivationType active_node,
+                                 bool origin_mode,
+                                 bool old_version = true,
+                                 const Context *context = nullptr) {
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
       // eigen
@@ -871,8 +864,8 @@ inline void backward_reset_grad(OpResetGrad op_reset_grad,
   }
 }
 
-template <typename T>
-inline void gru_backward(const paddle::platform::CPUDeviceContext &context,
+template <typename T, typename Context>
+inline void gru_backward(const Context &context,
                          phi::funcs::GRUMetaValue<T> value,
                          phi::funcs::GRUMetaGrad<T> grad,
                          int frame_size) {
@@ -901,14 +894,13 @@ inline void gru_backward(const paddle::platform::CPUDeviceContext &context,
   if (value.prev_out_value) {
     auto value_prev_out = typename EigenVector<T>::ConstType(
         value.prev_out_value, Array1(frame_size));
-    paddle::operators::SigmoidGradFunctor<T>()(
-        place,
-        1 /*useless*/,
-        value_update_gate,
-        (value_prev_out - value_frame_state) * grad_output,
-        grad_update_gate);
+    SigmoidGradFunctor<T>()(place,
+                            1 /*useless*/,
+                            value_update_gate,
+                            (value_prev_out - value_frame_state) * grad_output,
+                            grad_update_gate);
   } else {
-    paddle::operators::SigmoidGradFunctor<T>()(
+    SigmoidGradFunctor<T>()(
         place,
         1 /*useless*/,
         value_update_gate,
@@ -921,13 +913,12 @@ inline void gru_backward(const paddle::platform::CPUDeviceContext &context,
     grad_prev_out.device(place) =
         grad_prev_out + grad_output * value_update_gate;
   }
-  paddle::operators::TanhGradFunctor<T>()(
-      place,
-      1 /*useless*/,
-      value_frame_state,
-      grad_output * (static_cast<T>(1.0) - value_update_gate),
-      grad_frame_state);
-  paddle::operators::SigmoidGradFunctor<T>()(
+  TanhGradFunctor<T>()(place,
+                       1 /*useless*/,
+                       value_frame_state,
+                       grad_output * (static_cast<T>(1.0) - value_update_gate),
+                       grad_frame_state);
+  SigmoidGradFunctor<T>()(
       place,
       1 /*useless*/,
       value_reset_gate,
@@ -938,8 +929,8 @@ inline void gru_backward(const paddle::platform::CPUDeviceContext &context,
   }
 }
 
-template <class OpGruGrad, typename T>
-inline void cpu_gru_backward(const paddle::platform::CPUDeviceContext &context,
+template <class OpGruGrad, typename T, typename Context>
+inline void cpu_gru_backward(const Context &context,
                              OpGruGrad op_gru_grad,
                              phi::funcs::GRUMetaValue<T> value,
                              phi::funcs::GRUMetaGrad<T> grad,

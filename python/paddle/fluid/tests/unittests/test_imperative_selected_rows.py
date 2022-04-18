@@ -22,6 +22,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 import numpy as np
 import paddle.fluid.core as core
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -39,7 +40,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestSimpleNet(unittest.TestCase):
-    def test_selectedrows_gradient1(self):
+    def func_selectedrows_gradient1(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -77,7 +78,12 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(input_emb.gradient() is not None)
                     paddle.enable_static()
 
-    def test_selectedrows_gradient2(self):
+    def test_selectedrows_gradient1(self):
+        with _test_eager_guard():
+            self.func_selectedrows_gradient1()
+        self.func_selectedrows_gradient1()
+
+    def func_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -112,6 +118,11 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.clear_gradient()
                     self.assertTrue(input_emb.gradient() is not None)
+
+    def test_selectedrows_gradient2(self):
+        with _test_eager_guard():
+            self.func_selectedrows_gradient2()
+        self.func_selectedrows_gradient2()
 
 
 if __name__ == '__main__':

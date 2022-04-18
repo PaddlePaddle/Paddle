@@ -130,7 +130,7 @@ boost::optional<int32_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(32)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -142,7 +142,7 @@ boost::optional<int64_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(64)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -233,7 +233,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
                                                                                \
     std::vector<type__> res;                                                   \
     for (auto& v : array) {                                                    \
-      res.push_back(v.cast<mlir::IntegerAttr>().getInt());                     \
+      res.push_back(v.cast<mlir::IntegerAttr>().getValue().getSExtValue());    \
     }                                                                          \
     return res;                                                                \
   }
@@ -309,7 +309,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
           arg_value = GetOpResult(upstream_op);
         }
       }
-      if (arg_value->is_type<phi::DenseTensor>()) {
+      if (arg_value->is_type<::phi::DenseTensor>()) {
         impl_->runtime->FeedInArgs(
             std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }
@@ -351,18 +351,25 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   auto attrs = op->getAttrs();
 
   // MLIR's underlying attr storage type is `Builtin_Dictionary`, and its
-  // elements
-  // are sorted by name. The following code adapts the order of function
-  // signatures
-  // of the phi operator library.
+  // elements are sorted by name. The following code adapts the order of
+  // function signatures of the phi operator library.
   llvm::SmallVector<Value*, 4> tmp;
   tmp.resize(attrs.size());
   const std::string& kernel_name = op->getName().getStringRef().str();
   const auto& attr_names = kernel_registry.GetAttrNameList(kernel_name);
-  if (attrs.size() && attr_names.empty()) {
-    LOG(WARNING) << "The kernel `" << kernel_name
-                 << "` has no specified attr order.";
+  if (attrs.size()) {
+    if (attr_names.empty()) {
+      LOG(WARNING) << "The kernel `" << kernel_name
+                   << "` has not been registered with attributes order ";
+    } else {
+      CHECK_EQ(attr_names.size(), attrs.size())
+          << "The number of kernel `" << kernel_name
+          << "` attributes specified by mlir (" << attrs.size()
+          << ") is inconsistent with the registration (" << attr_names.size()
+          << ").";
+    }
   }
+
   auto get_offset = [](const char* attr,
                        const std::vector<const char*>& names,
                        const std::string& kernel_name) -> int {
@@ -372,8 +379,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
       }
     }
     LOG(WARNING) << "The attribute `" << attr << "` of kernel `" << kernel_name
-                 << "` is not properly registered with "
-                    "`KernelRegistry::AddKernelWithAttrs()`.";
+                 << "` is not properly register";
     return -1;
   };
 
@@ -385,7 +391,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     } else {
       offset = i;
     }
-    CHECK_NE(offset, -1);
+    CHECK_GT(offset, -1);
     if (auto v = EmitAttribute<int32_t>(attr.getValue())) {
       tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<int64_t>(attr.getValue())) {

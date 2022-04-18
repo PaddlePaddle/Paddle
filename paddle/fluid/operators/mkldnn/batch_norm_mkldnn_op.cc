@@ -203,14 +203,12 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto *y = ctx.Output<Tensor>("Y");
     auto *batch_mean = ctx.Output<Tensor>("SavedMean");
     auto *batch_variance = ctx.Output<Tensor>("SavedVariance");
-
     BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, global_stats,
                                       test_mode);
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto scaleshift_memory = handler.AcquireScaleShiftMemory(scale, shift);
     auto dst_memory = handler.AcquireDstMemory(y);
-
     auto batch_norm_p = handler.AcquireForwardPrimitive();
 
     std::shared_ptr<memory> mean_memory;
@@ -300,7 +298,6 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto diff_src_memory = handler.AcquireDiffSrcMemory(diff_x);
     auto diff_scaleshift_memory =
         handler.AcquireDiffScaleShiftMemory(diff_scaleshift_data.data());
-
     // finally create batch_norm backward primitive
     auto batch_norm_bwd_p = handler.AcquireBackwardPrimitive();
 

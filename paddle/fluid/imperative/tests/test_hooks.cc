@@ -28,6 +28,8 @@
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 
 namespace platform = paddle::platform;
 namespace framework = paddle::framework;
@@ -267,7 +269,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
-USE_OP(mul_grad);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(mul_grad);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(elementwise_add_grad);

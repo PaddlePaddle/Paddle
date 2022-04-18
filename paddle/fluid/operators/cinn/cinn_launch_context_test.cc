@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 #include <utility>
 #include "cinn/common/target.h"
+#include "cinn/common/type.h"
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "cinn/hlir/framework/scope.h"
@@ -93,15 +94,19 @@ CinnCompiledObject* InitDefaultCompiledObject() {
   std::call_once(initialized, [result = compiled_obj.get()]() {
     auto& scope = result->scope;
     scope = std::make_shared<CinnScope>();
-    scope->Var<CinnTensor>("cinn_var1");
+    std::vector<std::string> cinn_vars(
+        {"cinn_var1", "cinn_var2", "cinn_var3", "cinn_var4", "cinn_var5"});
+
+    // initialize variable and set data type
+    for (const auto& var_name : cinn_vars) {
+      scope->Var<CinnTensor>(var_name);
+      scope->GetTensor(var_name)->set_type(::cinn::common::F32());
+    }
+
     scope->GetTensor("cinn_var1")->Resize(CinnShape({3, 4}));
-    scope->Var<CinnTensor>("cinn_var2");
     scope->GetTensor("cinn_var2")->Resize(CinnShape({6, 7, 8}));
-    scope->Var<CinnTensor>("cinn_var3");
     scope->GetTensor("cinn_var3")->Resize(CinnShape({10, 16}));
-    scope->Var<CinnTensor>("cinn_var4");
     scope->GetTensor("cinn_var4")->Resize(CinnShape({10, 16}));
-    scope->Var<CinnTensor>("cinn_var5");
     scope->GetTensor("cinn_var5")->Resize(CinnShape({10, 16}));
 
     // input variables: var1, var2; output: var5
@@ -182,12 +187,16 @@ TEST_F(CinnLaunchContextTest, TestConstructResult) {
 TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   platform::CPUPlace place;
   framework::Scope scope;
-  launch_context->UpdateCapturedEnv(scope, place);
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
 
-  // CheckTensorEquivalent: tensor dimension not equivalent
+  // dimension not equivalent
   tensor1->mutable_data<float>(phi::make_ddim({3, 5}), place);
   ASSERT_THROW(launch_context->CheckTensorEquivalent("var1", *tensor1),
+               paddle::platform::EnforceNotMet);
+  // data type not equivalent
+  tensor2->mutable_data<int>(phi::make_ddim({6, 7, 8}), place);
+  ASSERT_THROW(launch_context->CheckTensorEquivalent("var2", *tensor2),
                paddle::platform::EnforceNotMet);
 }
 

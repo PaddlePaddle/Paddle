@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void GaussianRandomKernel(const Context& dev_ctx,
-                          const ScalarArray& shape,
+                          const IntArray& shape,
                           float mean,
                           float std,
                           int seed,

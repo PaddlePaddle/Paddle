@@ -14,6 +14,11 @@
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+#include <iostream>
+#include <memory>
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 namespace paddle {
 namespace framework {
 struct GpuPsGraphNode {
@@ -93,14 +98,25 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
-  NeighborSampleResult(int _sample_size, int _key_size)
+  int *offset;
+  std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
+
+  NeighborSampleResult(int _sample_size, int _key_size, int dev_id)
       : sample_size(_sample_size), key_size(_key_size) {
-    actual_sample_size = NULL;
-    val = NULL;
+    platform::CUDADeviceGuard guard(dev_id);
+    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    val_mem =
+        memory::AllocShared(place, _sample_size * _key_size * sizeof(int64_t));
+    val = (int64_t *)val_mem->ptr();
+    actual_sample_size_mem =
+        memory::AllocShared(place, _key_size * sizeof(int));
+    actual_sample_size = (int *)actual_sample_size_mem->ptr();
+    offset = NULL;
   };
   ~NeighborSampleResult() {
-    if (val != NULL) cudaFree(val);
-    if (actual_sample_size != NULL) cudaFree(actual_sample_size);
+    // if (val != NULL) cudaFree(val);
+    // if (actual_sample_size != NULL) cudaFree(actual_sample_size);
+    // if (offset != NULL) cudaFree(offset);
   }
 };
 

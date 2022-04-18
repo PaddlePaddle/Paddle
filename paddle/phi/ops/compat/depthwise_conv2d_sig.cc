@@ -36,7 +36,7 @@ KernelSignature DepthwiseConv2dOpArgumentMapping(
 KernelSignature DepthwiseConv2dGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("depthwise_conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
@@ -47,7 +47,7 @@ KernelSignature DepthwiseConv2dGradOpArgumentMapping(
                           "workspace_size_MB",
                           "exhaustive_search",
                           "fuse_relu_before_depthwise_conv"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(

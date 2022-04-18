@@ -33,28 +33,30 @@ struct Dims4D {
 };
 
 // Judge whether the current position x is in (lower, upper)
-inline HOSTDEVICE bool Check(const int& x,
+template <typename IntT = int>
+inline HOSTDEVICE bool Check(const IntT& x,
                              const int& kx,
                              const int& pad,
                              const int& stride,
                              const int dilation,
                              const int kdim,
                              const int xdim) {
-  const int lower = x - dilation * kx + pad;
-  const int uper = x + (kdim - kx - 1) * dilation - pad;
+  const IntT lower = x - dilation * kx + pad;
+  const IntT uper = x + (kdim - kx - 1) * dilation - pad;
   return (lower >= 0 && lower % stride == 0 && uper < xdim);
 }
 
 // Check whether the current position(x, y, z) is legal:
 // Judge the minimum and maximum values at each latitude
+template <typename IntT = int>
 inline HOSTDEVICE bool Check(const Dims4D& dims,
                              const Dims4D& kernel_dims,
                              const Dims4D& paddings,
                              const Dims4D& dilations,
                              const Dims4D& strides,
-                             const int x,
-                             const int y,
-                             const int z,
+                             const IntT x,
+                             const IntT y,
+                             const IntT z,
                              const int kx,
                              const int ky,
                              const int kz) {
@@ -67,22 +69,22 @@ inline HOSTDEVICE bool Check(const Dims4D& dims,
   return (x_valid && y_valid && z_valid);
 }
 
-template <typename Dim>
-inline HOSTDEVICE int PointToIndex(const int& batch,
-                                   const int& x,
-                                   const int& y,
-                                   const int& z,
-                                   const Dim& dims) {
+template <typename Dim, typename IntT = int>
+inline HOSTDEVICE IntT PointToIndex(const IntT& batch,
+                                    const IntT& x,
+                                    const IntT& y,
+                                    const IntT& z,
+                                    const Dim& dims) {
   return batch * dims[1] * dims[2] * dims[3] + z * dims[2] * dims[3] +
          y * dims[3] + x;
 }
 
 // TODO(zhangkaihuo): use division and multiply to optimize
 // modulo operation
-template <typename Dim>
+template <typename Dim, typename IntT = int>
 inline HOSTDEVICE void IndexToPoint(
-    const int index, const Dim& dims, int* batch, int* x, int* y, int* z) {
-  int n = index;
+    const IntT index, const Dim& dims, IntT* batch, IntT* x, IntT* y, IntT* z) {
+  IntT n = index;
   *x = n % dims[3];
   n /= dims[3];
   *y = n % dims[2];
@@ -176,8 +178,9 @@ inline const std::vector<int> PoolResetKernel(
   return res;
 }
 
-inline void PrefixSum(const int* counter, int* offsets, const int n) {
-  int offset = 0;
+template <typename T>
+inline void PrefixSum(const T* counter, T* offsets, const int n) {
+  T offset = 0;
   for (int i = 0; i < n; i++) {
     offsets[i] = offset;
     offset += counter[i];

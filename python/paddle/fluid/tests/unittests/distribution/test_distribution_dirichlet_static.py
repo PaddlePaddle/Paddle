@@ -18,15 +18,15 @@ import numpy as np
 import paddle
 import scipy.stats
 
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+from config import ATOL, DEVICES, RTOL
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 paddle.enable_static()
 
 
 @place(DEVICES)
-@parameterize((TEST_CASE_NAME, 'concentration'),
-              [('test-one-dim', np.random.rand(89) + 5.0)])
+@parameterize_cls((TEST_CASE_NAME, 'concentration'),
+                  [('test-one-dim', np.random.rand(89) + 5.0)])
 class TestDirichlet(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()

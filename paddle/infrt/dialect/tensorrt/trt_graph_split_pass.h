@@ -17,6 +17,9 @@
 
 namespace infrt {
 namespace trt {
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphSplitPass(size_t min_subgraph_size);
+
 /*
  * trtGraphSplitPass.
  *
@@ -26,7 +29,7 @@ namespace trt {
  * source func:
  *
  * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
- *  %d, %f = "pd.graph"(%a) {
+ *  %d, %f = "infrt.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...

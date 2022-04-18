@@ -8,14 +8,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/conv_transpose_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 // target_len == 2 || target_len == 4
 inline std::vector<int> vector_extend(const std::vector<int>& src,
@@ -61,8 +68,8 @@ class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                                  in_data_dims, strides, ksize);
 
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_yc = static_cast<int>(input->dims()[1]);
@@ -135,8 +142,8 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter.dims(), 2, filter.dims().size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                                  in_data_dims, strides, ksize);
 
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_yc = static_cast<int>(input->dims()[1]);
