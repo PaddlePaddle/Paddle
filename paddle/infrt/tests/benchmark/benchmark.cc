@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include <gperftools/profiler.h>
 #include <iostream>
 #include <vector>
 
@@ -58,6 +59,7 @@ void benchmark(size_t layers, size_t num) {
   input->Resize({static_cast<int>(num), static_cast<int>(num)});
   input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
   auto* input_data = reinterpret_cast<float*>(input->data());
+  ::paddle::platform::SetNumThreads(1);
   for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
 
   predictor->Run();
@@ -70,17 +72,22 @@ void benchmark(size_t layers, size_t num) {
   }
   std::cout << "sum = " << sum << '\n';
 
+  ::paddle::platform::SetNumThreads(1);
   tests::BenchmarkStats timer;
 
   for (size_t i = 0; i < 9; ++i) {
     predictor->Run();
   }
 
-  for (size_t j = 0; j < 100; ++j) {
+  ProfilerStart("profiler_eltwise_infrt.prof");
+  // for (size_t j = 0; j < 100; ++j) {
+  for (size_t j = 0; j < 10000; ++j) {
     timer.Start();
     predictor->Run();
     timer.Stop();
   }
+  ProfilerStop();
+
   std::cout << "\nlayers " << layers << ", num " << num << '\n';
   std::cout << "framework " << timer.Summerize({0.5});
   // auto* output = predictor->GetOutput(0);
