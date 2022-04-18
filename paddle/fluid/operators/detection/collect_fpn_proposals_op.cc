@@ -63,10 +63,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       context->ShareLoD("MultiLevelRois", "FpnRois");
     }
     if (context->IsRuntime() && !context->HasInputs("MultiLevelRoIsNum")) {
-      std::vector<framework::InferShapeVarPtr> roi_inputs =
-          context->GetInputVarPtrs("MultiLevelRois");
-      std::vector<framework::InferShapeVarPtr> score_inputs =
-          context->GetInputVarPtrs("MultiLevelScores");
+      auto roi_inputs = context->GetInputVarPtrs("MultiLevelRois");
+      auto score_inputs = context->GetInputVarPtrs("MultiLevelScores");
       for (size_t i = 0; i < roi_inputs.size(); ++i) {
         framework::Variable *roi_var =
             BOOST_GET(framework::Variable *, roi_inputs[i]);

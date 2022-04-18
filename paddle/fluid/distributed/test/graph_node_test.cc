@@ -679,7 +679,7 @@ void testCache() {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
     char* p = (char*)r[0].second.buffer.get();
-    for (size_t j = 0; j < r[0].second.actual_size; j++)
+    for (int j = 0; j < (int)r[0].second.actual_size; j++)
       ASSERT_EQ(p[j], str[j]);
     r.clear();
   }

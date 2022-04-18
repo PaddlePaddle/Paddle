@@ -22,8 +22,7 @@ KernelSignature MeshgridOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature MeshgridGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "meshgrid_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("meshgrid_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
