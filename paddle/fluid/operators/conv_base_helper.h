@@ -32,9 +32,6 @@ using DataLayout = platform::DataLayout;
 using framework::AlgorithmsCache;
 using framework::ConvSearchCache;
 
-template <typename AlgoT>
-using SearchResult = phi::autotune::SearchResult<AlgoT>;
-
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
@@ -43,6 +40,19 @@ template <typename PerfT>
 struct SearchAlgorithm {};
 
 // As the container of searchAlgorithm::Find() result.
+template <typename AlgoT>
+struct SearchResult {
+  SearchResult() {}
+  explicit SearchResult(const phi::autotune::DnnNode& node)
+      : algo(static_cast<AlgoT>(node.algo)),
+        workspace_size(node.workspace_size) {}
+
+  explicit SearchResult(AlgoT a) : algo(a) {}
+
+  AlgoT algo = static_cast<AlgoT>(0);
+  float time = -1.f;
+  size_t workspace_size = 0;
+};
 
 template <typename T>
 static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {

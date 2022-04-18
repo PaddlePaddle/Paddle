@@ -6,10 +6,7 @@ elseif (WITH_ROCM)
   hip_test(auto_tune_test SRCS auto_tune_test.cu DEPS gtest)
 endif()
 
+
+cc_library(cache SRCS cache.cc DEPS boost)
 cc_library(switch_autotune SRCS switch_autotune.cc DEPS cache flags)
-
-
-if (WITH_GPU)
-  cc_library(cache SRCS cache.cc DEPS boost)
-  cc_test(cache_test SRCS cache_test.cc DEPS gtest cache)
-endif()
+cc_test(cache_test SRCS cache_test.cc DEPS gtest cache)

@@ -19,7 +19,6 @@
 #include <numeric>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -53,13 +52,11 @@ struct hash<std::vector<T>> {
 namespace phi {
 namespace autotune {
 
-template <typename AlgoT>
-struct SearchResult {
-  SearchResult() {}
-  explicit SearchResult(AlgoT a) : algo(a) {}
+struct DnnNode {
+  DnnNode() {}
+  explicit DnnNode(int64_t a, size_t size) : algo(a), workspace_size(size) {}
 
-  AlgoT algo = static_cast<AlgoT>(0);
-  float time = -1.f;
+  int64_t algo;
   size_t workspace_size = 0;
 };
 
@@ -150,12 +147,10 @@ enum class AlgorithmType {
 // AlgorithmsConfigKey -> AlgorithmsID
 using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
 
-using AlgorithmsFwdCacheMap =
-    AlgorithmsCache<SearchResult<cudnnConvolutionFwdAlgo_t>>;
-using AlgorithmsBwdDataCacheMap =
-    AlgorithmsCache<SearchResult<cudnnConvolutionBwdDataAlgo_t>>;
-using AlgorithmsBwdFilterCacheMap =
-    AlgorithmsCache<SearchResult<cudnnConvolutionBwdFilterAlgo_t>>;
+// (todo. hongyu) use cudnnConvolutionFwdAlgo_t
+using AlgorithmsFwdCacheMap = AlgorithmsCache<DnnNode>;
+using AlgorithmsBwdDataCacheMap = AlgorithmsCache<DnnNode>;
+using AlgorithmsBwdFilterCacheMap = AlgorithmsCache<DnnNode>;
 // AlgorithmType -> AlgorithmsCache
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
 

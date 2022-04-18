@@ -195,16 +195,22 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       size_t key = args.GetCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
       if (cache.Find(key)) {
-        result = cache.Get(key);
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         }
       }
     }
@@ -368,16 +374,22 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
       if (cache.Find(key)) {
-        result = cache.Get(key);
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         }
       }
     }
@@ -551,16 +563,22 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
       if (cache.Find(key)) {
-        result = cache.Get(key);
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          cache.Set(key, result);
+          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                      result.workspace_size);
+          cache.Set(key, node);
         }
       }
     }
