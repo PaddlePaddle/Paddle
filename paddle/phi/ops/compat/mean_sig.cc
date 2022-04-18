@@ -22,8 +22,7 @@ KernelSignature MeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature MeanGradOpGradArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "mean_all_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("mean_all_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

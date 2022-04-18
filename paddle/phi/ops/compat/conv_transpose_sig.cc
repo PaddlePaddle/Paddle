@@ -34,7 +34,7 @@ KernelSignature Conv2dTransposeOpArgumentMapping(
 KernelSignature Conv2dTransposeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_transpose_grad",
-                         {"Input", "Filter", GradVarName("Output")},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "output_padding",
@@ -43,7 +43,7 @@ KernelSignature Conv2dTransposeGradOpArgumentMapping(
                           "groups",
                           "dilations",
                           "data_format"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature Conv2dTransposeDoubleGradOpArgumentMapping(
@@ -79,7 +79,7 @@ KernelSignature Conv3dTransposeOpArgumentMapping(
 KernelSignature Conv3dTransposeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("conv3d_transpose_grad",
-                         {"Input", "Filter", GradVarName("Output")},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "output_padding",
@@ -88,7 +88,7 @@ KernelSignature Conv3dTransposeGradOpArgumentMapping(
                           "groups",
                           "dilations",
                           "data_format"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature DepthwiseConv2dTransposeOpArgumentMapping(
@@ -109,7 +109,7 @@ KernelSignature DepthwiseConv2dTransposeOpArgumentMapping(
 KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("depthwise_conv2d_transpose_grad",
-                         {"Input", "Filter", GradVarName("Output")},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "output_padding",
@@ -118,7 +118,7 @@ KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
                           "groups",
                           "dilations",
                           "data_format"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 }  // namespace phi
