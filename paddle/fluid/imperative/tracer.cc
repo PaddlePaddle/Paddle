@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -26,9 +27,6 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/common/place.h"
-#if defined(PADDLE_WITH_CUDA)
-#include "paddle/fluid/imperative/layout_optimizer.h"
-#endif
 
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
@@ -225,11 +223,9 @@ void Tracer::TraceOpImpl(const std::string& type,
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
-#if defined(PADDLE_WITH_CUDA)
       const auto& tracer = imperative::GetCurrentTracer();
-      new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
-                                                        tracer);
-#endif
+      new_ins =
+          imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs, tracer);
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       new_ins = AutoCastInputs<VarType>(type, new_ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
@@ -238,11 +234,9 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   } else if (amp_level_ == AmpLevel::O2) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
-#if defined(PADDLE_WITH_CUDA)
       const auto& tracer = imperative::GetCurrentTracer();
-      new_ins = phi::autotune::LayoutOptimizer<VarType>(type, ins, outs, &attrs,
-                                                        tracer);
-#endif
+      new_ins =
+          imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs, tracer);
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       new_ins = CastPureFp16Inputs<VarType>(type, new_ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
