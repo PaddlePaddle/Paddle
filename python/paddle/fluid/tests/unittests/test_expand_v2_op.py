@@ -233,13 +233,14 @@ class TestExpandV2API(unittest.TestCase):
 
 class TestExpandInferShape(unittest.TestCase):
     def test_shape_with_var(self):
-        x = paddle.static.data(shape=[-1, 1, 3], name='x_tmp')
-        fake_var = paddle.randn([2, 3])
-        target_shape = [
-            -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
-        ]
-        out = paddle.expand(x, shape=target_shape)
-        self.assertListEqual(list(out.shape), [-1, -1, -1])
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(shape=[-1, 1, 3], name='x')
+            fake_var = paddle.randn([2, 3])
+            target_shape = [
+                -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
+            ]
+            out = paddle.expand(x, shape=target_shape)
+            self.assertListEqual(list(out.shape), [-1, -1, -1])
 
 
 if __name__ == "__main__":
