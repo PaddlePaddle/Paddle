@@ -22,10 +22,8 @@ KernelSignature SoftmaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SoftmaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("softmax_grad",
-                         {"Out", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "softmax_grad", {"Out", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

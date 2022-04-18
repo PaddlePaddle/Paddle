@@ -95,6 +95,12 @@ class CPUQuantizePass : public FusePassBase {
   bool IsOpQuantized(const Node* node) const;
 
   const std::string name_scope_{"quantize"};
+
+ private:
+  VarQuantScale string_pair_map = {};
+  VarQuantScale* const var_quant_scales_ = &string_pair_map;
+
+  void GetQuantInfo(Graph* graph) const;
 };
 
 }  // namespace ir
