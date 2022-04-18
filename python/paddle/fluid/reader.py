@@ -35,6 +35,7 @@ import warnings
 ### Dygraph DataLoader configs ###
 import os
 import multiprocessing
+import psutil
 import signal
 
 # NOTE: queue has a different name in python2 and python3
@@ -157,7 +158,7 @@ def AutoTune(Loader):
         for key in kw_tune:
             if idx < len(args):
                 kw_tune[key] = args[idx]
-            ++idx
+            idx += 1
 
     def updateWithSampler(kw_tune):
         if kw_tune['batch_sampler'] is not None:
@@ -184,6 +185,42 @@ def AutoTune(Loader):
             kw_tune.pop('drop_last')
         else:
             kw_tune.pop('dataset')
+
+    def avgTime(reader):
+        costs = []
+        avg_cost = 0
+        start = time.time()
+        cpu_percent = []
+        cpu_percent_avg = 0
+        for i, data in enumerate(reader):
+            costs.append(time.time() - start)
+            cpu_percent.append(psutil.cpu_percent())
+            start = time.time()
+        if len(costs) > 2:
+            avg_cost = sum(costs[2:]) / len(costs[2:])
+            cpu_percent_avg = sum(cpu_percent[2:]) / len(costs[2:])
+        else:
+            cpu_percent_avg = sum(cpu_percent[0:]) / len(costs[0:])
+        return avg_cost, cpu_percent_avg
+
+    def isBest(best_workers, best_time, num_work_boundary, arg, kw):
+        step = 0
+        new_num = best_workers + 1
+        cpu_percent = psutil.cpu_percent()
+        boundary = 1
+        while new_num < num_work_boundary and step < 5 and cpu_percent < 100.0:
+            kw['num_workers'] = new_num
+            reader = Loader(*arg, **kw)
+            time, cpu_percent = avgTime(reader)
+            print("for back num_workers: ", new_num, " avg_cost: ", time,
+                  "cpu_percent: ", cpu_percent)
+            step += 1
+            if (time < best_time * 0.70 * boundary):
+                return new_num
+            else:
+                new_num += 1
+            boundary *= 0.80
+        return best_workers
 
     def wrapper(*args, **kw):
         auto_tune_start = time.time()
@@ -218,7 +255,7 @@ def AutoTune(Loader):
         updateWithSampler(kw_tune)
         # update according to args
         # evaluate cost with subset of origin dataset
-        new_batch_size = kw_tune['batch_size'] * 1000
+        new_batch_size = kw_tune['batch_size'] * 100
         sub_dataset = Subset(
             kw_tune['dataset'], indices=list(range(new_batch_size)))
         #update acccording to batch_sampler_tune
@@ -226,26 +263,27 @@ def AutoTune(Loader):
         args_tune = (sub_dataset, )
         #update kw_tune with new_batch_size and dataset
         updateSampler(kw_tune, kw_bak)
-
+        num_workers = 0
         print("Tuning Range for num_workers: ", 0, "~",
               multiprocessing.cpu_count())
-        for num_workers in range(0, multiprocessing.cpu_count(), 2):
+        while num_workers < multiprocessing.cpu_count() / 2:
             kw_tune['num_workers'] = num_workers
             reader = Loader(*args_tune, **kw_tune)
-            costs = []
-            avg_cost = 0
-            start = time.time()
-            for i, data in enumerate(reader):
-                costs.append(time.time() - start)
-                start = time.time()
-            if len(costs) > 2:
-                avg_cost = sum(costs[2:]) / len(costs[2:])
-            else:
-                avg_cost = sum(costs[0:]) / len(costs[0:])
-            if min_cost * 0.9 > avg_cost:
+            avg_cost, cpu_percent = avgTime(reader)
+            if min_cost * 0.75 > avg_cost:
                 min_cost = avg_cost
                 best_num_workers = num_workers
-            print("num_workers: ", num_workers, " avg_cost: ", avg_cost)
+            else:
+                update_num = isBest(best_num_workers, min_cost,
+                                    multiprocessing.cpu_count() / 2, args_tune,
+                                    kw_tune)
+                if update_num == best_num_workers:
+                    break
+                else:
+                    best_num_workers = update_num
+            print("num_workers: ", num_workers, " avg_cost: ", avg_cost,
+                  " cpu_percent: ", cpu_percent)
+            num_workers += 2
         print("best_num_workers: ", best_num_workers)
         kw['num_workers'] = best_num_workers
         reader = Loader(*args, **kw)
@@ -256,7 +294,7 @@ def AutoTune(Loader):
     return wrapper
 
 
-#@AutoTune
+@AutoTune
 class DataLoader(object):
     """
     DataLoader prodives an iterator which iterates given dataset
