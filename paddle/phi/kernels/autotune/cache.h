@@ -23,6 +23,8 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
+DECLARE_bool(search_cache_max_number);
+
 inline void HashCombine(std::size_t* seed) {}
 
 // combine hash value
@@ -110,6 +112,11 @@ class AlgorithmsCache {
 
   void Set(size_t key, AlgorithmT algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
+    if (hash_.size() > FLAGS_search_cache_max_number) {
+      VLOG(8) << "hash size over serach cache_max_numebr "
+              << FLAGS_search_cache_max_number;
+      hash_.clear();
+    }
     hash_[key] = algo;
   }
 

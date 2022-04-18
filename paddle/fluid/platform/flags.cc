@@ -809,3 +809,13 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Example:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+/**
+ * Conv Search cache max number related FLAG
+ * Name: FLAGS_search_cache_max_number
+ * Since Version: 2.3.0
+ * Value Range: int32, default=1000000
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(search_cache_max_number, 1000000,
+                             "search_cache_max_number.");
