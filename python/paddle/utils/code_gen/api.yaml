@@ -1756,6 +1756,8 @@
     func : ShapeInferMeta
   kernel :
     func : shape, shape_sr
+  data_transform:
+    skip_transform : input
 
 # shard_index
 - api : shard_index
@@ -1832,6 +1834,8 @@
     func : SizeInferMeta
   kernel :
     func : size
+  data_transform:
+    skip_transform : x
 
 - api : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
