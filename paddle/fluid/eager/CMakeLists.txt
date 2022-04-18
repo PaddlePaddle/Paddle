@@ -15,7 +15,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_subdirectory(pylayer)
     cc_library(grad_tensor_holder SRCS grad_tensor_holder.cc DEPS grad_node_info gradient_accumulator)
     add_dependencies(grad_tensor_holder eager_final_state_codegen)
-    cc_library(backward SRCS backward.cc DEPS grad_tensor_holder utils autograd_meta grad_node_info)
+    cc_library(backward SRCS backward.cc DEPS grad_tensor_holder utils autograd_meta grad_node_info switch_autotune)
 endif()
 
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS phi_api phi_tensor)

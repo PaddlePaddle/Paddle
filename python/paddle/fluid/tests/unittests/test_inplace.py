@@ -111,9 +111,8 @@ class TestInplace(unittest.TestCase):
             loss.backward()
 
     def test_backward_success_2(self):
-        # TODO: need to process no_need_buffer in eager mode
-        # with _test_eager_guard():
-        #     self.func_test_backward_success_2()
+        with _test_eager_guard():
+            self.func_test_backward_success_2()
         self.func_test_backward_success_2()
 
 
@@ -509,6 +508,20 @@ class TestContinuouslyInplace(unittest.TestCase):
         with _test_eager_guard():
             self.func_test_continuously_inplace()
         self.func_test_continuously_inplace()
+
+
+class TestGetitemBeforeInplace(unittest.TestCase):
+    def test_getitem_before_inplace(self):
+        with _test_eager_guard():
+            a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            a.stop_gradient = False
+            b = a**2
+            b[0] = 3
+            # getitem has no_need_buffer input
+            c = b[0:2]
+            loss = c.sum()
+            b[1] = 2
+            loss.backward()
 
 
 if __name__ == '__main__':

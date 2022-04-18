@@ -121,7 +121,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multihead_matmul",
       "skip_layernorm",
       "slice",
+      "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "roll",
       "preln_skip_layernorm"};
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -182,8 +184,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multihead_matmul",
       "skip_layernorm",
       "slice",
+      "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "roll",
       "multiclass_nms3"};
 };
 
@@ -930,14 +934,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "roll") {
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3) << "roll converter does not support trt versions below 7.0";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "strided_slice") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
+        VLOG(3)
+            << "The necessary attributes of the strided_slice operator miss ";
+        return false;
+      }
+    }
+
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (decrease_axis.size() > 0) {
-          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                     "is not supported in TensorRT";
-          return false;
+        if (with_dynamic_shape) {
+          if (decrease_axis.size() > 1) {
+            return false;
+          }
+        } else {
+          if (decrease_axis.size() > 0) {
+            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+                       "is not supported in TensorRT";
+            return false;
+          }
         }
       }
 
@@ -1011,6 +1043,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
+      if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
+        if (y_shape.size() != 1) {
+          return false;
+        }
+        if (y_shape[0] != x_shape[1]) {
+          return false;
+        }
+      }
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
@@ -1050,17 +1090,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
-        VLOG(3) << "The id and emb size of fused EmbEltwiseLayerNormOp "
-                   "should be same ";
         return false;
       }
     }
 
     if (op_type == "fused_preln_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
-        VLOG(3)
-            << "fused_preln_embedding_eltwise_layernorm should run on dynamic "
-               "shape mode.";
+        VLOG(3) << "fused_preln_embedding_eltwise_layernorm should run on "
+                   "dynamic "
+                   "shape mode.";
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
@@ -1450,7 +1488,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
         VLOG(3)
-            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = "
+            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes =
+      "
             << y_shape.size();
         return false;
       }
@@ -1594,8 +1633,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 #else
       if (dtype != framework::proto::VarType::FP32) {
-        VLOG(3)
-            << "reduce op input data type must be float32 using TensorRT < 7.0";
+        VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+                   "< 7.0";
         return false;
       }
 #endif

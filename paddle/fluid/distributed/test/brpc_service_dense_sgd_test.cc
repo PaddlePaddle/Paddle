@@ -63,7 +63,7 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
 void GetDownpourDenseTableProto(
     ::paddle::distributed::TableParameter* dense_table_proto) {
   dense_table_proto->set_table_id(0);
-  dense_table_proto->set_table_class("CommonDenseTable");
+  dense_table_proto->set_table_class("MemoryDenseTable");
   dense_table_proto->set_shard_num(256);
   dense_table_proto->set_type(::paddle::distributed::PS_DENSE_TABLE);
   ::paddle::distributed::TableAccessorParameter* accessor_proto =

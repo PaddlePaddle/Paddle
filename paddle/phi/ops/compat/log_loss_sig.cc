@@ -19,9 +19,9 @@ namespace phi {
 KernelSignature LogLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("log_loss_grad",
-                         {"Predicted", "Labels", GradVarName("Loss")},
+                         {"Predicted", "Labels", "Loss@GRAD"},
                          {"epsilon"},
-                         {GradVarName("Predicted")});
+                         {"Predicted@GRAD"});
 }
 
 }  // namespace phi

@@ -232,14 +232,15 @@ int32_t CtrCommonAccessor::Update(float** update_values,
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
     update_value[common_feature_value.UnseenDaysIndex()] = 0;
+    // TODO(zhaocaibei123): add configure show_scale
     _embed_sgd_rule->UpdateValue(
         update_value + common_feature_value.EmbedWIndex(),
         update_value + common_feature_value.EmbedG2SumIndex(),
-        push_value + CtrCommonPushValue::EmbedGIndex());
+        push_value + CtrCommonPushValue::EmbedGIndex(), push_show);
     _embedx_sgd_rule->UpdateValue(
         update_value + common_feature_value.EmbedxWIndex(),
         update_value + common_feature_value.EmbedxG2SumIndex(),
-        push_value + CtrCommonPushValue::EmbedxGIndex());
+        push_value + CtrCommonPushValue::EmbedxGIndex(), push_show);
   }
   return 0;
 }

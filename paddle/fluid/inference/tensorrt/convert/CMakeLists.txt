@@ -7,7 +7,7 @@ emb_eltwise_layernorm.cc skip_layernorm.cc scale_op.cc slice_op.cc hard_sigmoid_
 gather_op.cc anchor_generator_op.cc yolo_box_op.cc roi_align_op.cc affine_channel_op.cc multiclass_nms_op.cc
 multiclass_nms3_op.cc nearest_interp_op.cc reshape_op.cc reduce_op.cc gather_nd_op.cc tile_op.cc
 conv3d_op.cc mish_op.cc nearest_interp_v2_op.cc pool3d_op.cc deformable_conv_op.cc preln_emb_eltwise_layernorm.cc
-preln_skip_layernorm.cc)
+preln_skip_layernorm.cc	strided_slice_op.cc roll_op.cc)
 
 if (CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc)

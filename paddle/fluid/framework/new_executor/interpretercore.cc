@@ -300,8 +300,16 @@ void InterpreterCore::Convert(
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
+  bool inplaced = false;
+  for (auto inst : vec_instruction_) {
+    if (inst.OpBase()->Type() == "share_buffer" ||
+        inst.OpBase()->Type() == "share_data") {
+      VLOG(4) << "Already inplaced, skip inplace now.";
+      inplaced = true;
+    }
+  }
 
-  if (FLAGS_new_executor_use_inplace) {
+  if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
 
@@ -481,6 +489,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   if (!instr_node.InplaceBackMap().empty()) {
+    platform::RecordEvent inplaceback_event(
+        "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
@@ -522,6 +532,8 @@ void InterpreterCore::ExecuteInstructionList(
     return;
   }
 
+  platform::RecordEvent record_prepare(
+      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -529,6 +541,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  record_prepare.End();
 
   exception_holder_.Clear();
 
@@ -565,12 +578,14 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("RunNextInstructions",
+                               platform::TracerEventType::UserDefined, 10);
   VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " " << &(*atomic_deps)[next_id]
-            << " " << next_id;
+    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
+            << ", remain deps: " << (*atomic_deps)[next_id];
     return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
   };
 
@@ -701,6 +716,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kQueueAsync) {
     return;
   }
+  platform::RecordEvent record("RecordStreamForGC",
+                               platform::TracerEventType::UserDefined, 10);
 
   gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                            instr.DeviceContext())
@@ -792,6 +809,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 void InterpreterCore::CheckGC(
     const Instruction& instr,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("CheckGC",
+                               platform::TracerEventType::UserDefined, 10);
   size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
 

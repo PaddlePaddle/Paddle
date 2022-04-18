@@ -65,7 +65,7 @@ def create_test_class(op_type, typename, callback):
     globals()[cls_name] = Cls
 
 
-for _type_name in {'float32', 'int32', 'int64'}:
+for _type_name in {'int32'}:
     if _type_name == 'float64' and core.is_compiled_with_rocm():
         _type_name = 'float32'
 

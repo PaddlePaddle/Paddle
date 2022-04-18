@@ -20,11 +20,13 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestClipOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
+        self.python_api = paddle.clip
 
         self.inputs = {}
         self.initTestCase()
@@ -51,12 +53,12 @@ class TestClipOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
         paddle.disable_static()
 
     def initTestCase(self):
@@ -227,6 +229,10 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
         self.assertTrue(
             np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_clip_dygraph()
 
     def test_errors(self):
         paddle.enable_static()
