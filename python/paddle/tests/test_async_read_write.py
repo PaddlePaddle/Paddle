@@ -96,7 +96,9 @@ class TestAsyncRead(unittest.TestCase):
         with _test_eager_guard():
             self.func_setUp()
             self.func_test_async_read_empty_offset_and_count()
+            self.func_setUp()
             self.func_test_async_read_success()
+            self.func_setUp()
             self.func_test_async_read_only_1dim()
         self.func_setUp()
         self.func_test_async_read_empty_offset_and_count()
