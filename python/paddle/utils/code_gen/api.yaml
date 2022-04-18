@@ -167,6 +167,16 @@
     func : asinh
   backward : asinh_grad
 
+# assign
+- api : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  backward : assign_grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -345,6 +355,7 @@
     func : UnchangedInferMeta
   kernel :
     func : conj
+  backward : conj_grad
 
 - api : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
@@ -434,6 +445,16 @@
     func : cumsum
   backward : cumsum_grad
 
+- api : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(out)
+  infer_meta : 
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+  optional : mask
+  backward : deformable_conv_grad
+
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -442,6 +463,15 @@
   kernel :
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
+
+- api : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
 
 - api : diag
   args : (Tensor x, int offset, float padding_value)
@@ -587,6 +617,16 @@
     func : erfinv
   backward : erfinv_grad
 
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
+
 # expand_as
 - api : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
@@ -608,6 +648,18 @@
     func : expm1
   backward : expm1_grad
 
+- api : eye
+  args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
+  kernel :
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
+    backend : place
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)
@@ -628,6 +680,7 @@
     func : FlipInferMeta
   kernel :
     func : flip
+  backward : flip_grad
 
 - api : floor
   args : (Tensor x)
@@ -738,6 +791,18 @@
     func : GatherTreeMeta
   kernel :
     func : gather_tree
+
+- api : gaussian_random
+  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
+  output: Tensor
+  infer_meta :
+    func : GaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+    backend : place
 
 - api : gelu
   args : (Tensor x,  bool approximate)
@@ -1165,6 +1230,23 @@
     func : matrix_power
   backward : matrix_power_grad
 
+- api : matrix_rank
+  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankInferMeta
+    param : [x, use_default_tol, hermitian]
+  kernel :
+    func : matrix_rank
+
+- api : matrix_rank_tol
+  args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankTolInferMeta
+  kernel :
+    func : matrix_rank_tol
+
 - api : max
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -1200,6 +1282,15 @@
   kernel :
     func : maximum
   backward : maximum_grad
+
+- api : maxout
+  args : (Tensor x, int groups, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : MaxOutInferMeta
+  kernel :
+    func : maxout
+  backward : maxout_grad
 
 - api : mean
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
@@ -1277,6 +1368,15 @@
   invoke : momentum_impl(param, grad, velocity, learning_rate, master_param, mu, use_nesterov, regularization_method, regularization_coeff, multi_precision, rescale_grad)
   optional : master_param
 
+- api : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 # multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
@@ -1285,6 +1385,16 @@
     func : MultinomialInferMeta
   kernel :
     func : multinomial
+
+- api : multiplex
+  args : (Tensor[] ins, Tensor ids)
+  output : Tensor
+  infer_meta :
+    func : MultiplexInferMeta
+  kernel :
+    func : multiplex
+    data_type : ins
+  backward : multiplex_grad
 
 - api : multiply
   args : (Tensor x, Tensor y)
@@ -1382,7 +1492,7 @@
     func : PixelShuffleInferMeta
   kernel :
     func : pixel_shuffle
-  # backward : pixel_shuffle_grad
+  backward : pixel_shuffle_grad
 
 # poisson  // no need grad
 - api : poisson
@@ -1612,6 +1722,7 @@
     func : SearchsortedInferMeta
   kernel :
     func : searchsorted
+    data_type : sorted_sequence
 
 # segment_pool
 - api : segment_pool

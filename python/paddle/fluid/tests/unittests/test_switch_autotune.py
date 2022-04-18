@@ -87,11 +87,21 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
                 }
                 self.check_status(expected_res)
 
-    def test_enable_autotune(self):
+    def func_enable_autotune(self):
         self.run_program(enable_autotune=True)
 
-    def test_disable_autotune(self):
+    def test_enable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_enable_autotune()
+        self.func_enable_autotune()
+
+    def func_disable_autotune(self):
         self.run_program(enable_autotune=False)
+
+    def test_disable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_disable_autotune()
+        self.func_disable_autotune()
 
 
 class TestStaticAutoTuneStatus(TestAutoTune):
@@ -136,11 +146,21 @@ class TestStaticAutoTuneStatus(TestAutoTune):
                 self.check_status(expected_res)
         paddle.disable_static()
 
-    def test_enable_autotune(self):
+    def func_enable_autotune(self):
         self.run_program(enable_autotune=True)
 
-    def test_disable_autotune(self):
+    def test_enable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_enable_autotune()
+        self.func_enable_autotune()
+
+    def func_disable_autotune(self):
         self.run_program(enable_autotune=False)
+
+    def test_disable_autotune(self):
+        with paddle.fluid.framework._test_eager_guard():
+            self.func_disable_autotune()
+        self.func_disable_autotune()
 
 
 if __name__ == '__main__':

@@ -447,7 +447,7 @@ void EagerUtils::FillZeroForEmptyGradInputs(
   for (size_t i = 0; i < in_grads->size(); i++) {
     for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
       paddle::experimental::Tensor& grad = (*in_grads)[i][j];
-      if (!grad.is_initialized()) {
+      if (!grad.initialized()) {
         const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
         PADDLE_ENFORCE(
             grad_in_meta.HasTensorMeta(),

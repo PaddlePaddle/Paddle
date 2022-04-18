@@ -404,7 +404,7 @@ void CheckTensorsInDifferentDevices(const std::vector<Tensor>& tensors,
                       platform::errors::InvalidArgument(
                           "Tensors must be CUDA and dense tensor."));
 
-    const auto inserted = used_devices.insert(t.inner_place()).second;
+    const auto inserted = used_devices.insert(t.place()).second;
     PADDLE_ENFORCE_EQ(inserted, true,
                       platform::errors::InvalidArgument(
                           "Tensors must be on distinct GPU devices."));
