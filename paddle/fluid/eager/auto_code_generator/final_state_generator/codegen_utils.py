@@ -32,6 +32,7 @@ ops_to_fill_zero_for_empty_grads = set([
     "add_triple_grad",
     "multiply_double_grad",
     "multiply_triple_grad",
+    "conv2d_grad_grad",
 ])
 
 # For API dispatch used at python-level
