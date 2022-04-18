@@ -12,26 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/reduce_any_kernel.h"
 
-#include "paddle/phi/kernels/reduce_prod_grad_kernel.h"
-
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceProdGradKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& out,
-                          const DenseTensor& out_grad,
-                          const std::vector<int64_t>& dims,
-                          bool keep_dim,
-                          bool reduce_all,
-                          DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::ProdGradFunctor>(
-      dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
+void AnyKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int64_t>& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = false;
+  AnyRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(any, CPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(any, GPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
+#endif

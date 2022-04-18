@@ -14,24 +14,17 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/reduce_prod_grad_kernel.h"
-
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/impl/reduce_grad.h"
-
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceProdGradKernel(const Context& dev_ctx,
+void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const DenseTensor& out,
                           const DenseTensor& out_grad,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::ProdGradFunctor>(
-      dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
-}
+                          DenseTensor* x_grad);
 
 }  // namespace phi

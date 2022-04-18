@@ -12,26 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_prod_kernel.h"
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+void ProdRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+  phi::Reduce<CPUContext, T, phi::funcs::ProdFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    max_raw, GPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ProdRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
