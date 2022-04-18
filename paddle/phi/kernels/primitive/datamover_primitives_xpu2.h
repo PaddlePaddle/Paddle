@@ -21,6 +21,39 @@ namespace phi {
 namespace kps {
 namespace details {
 
+enum class OptType { //Optimize type of calc after input shape compressed
+    CanNotOptimize=-1,        // can not optimize, broadcast first
+    N_1,             // just like {1} op {100} or {100} op {1}
+    MN_N,            // just like {100} op {3, 100} or {3, 100} op {100}
+    MN_M,            // just like {3} op {3, 100} or {3, 100} op {3}
+    MNK_1N1,         // just like {3} op {2, 3, 100} or {2, 3, 100} op {3}
+    MNK_M1K,         // just like {2, 1, 100} op {2, 3, 100} or {2, 3, 100} op {2, 1, 100}
+};
+
+
+// Rules to determine whether dimensions can be merged
+// rule 0 - xshape[idx] == yshape[idx]
+// rule 1 - xshape[idx] == 1 && yshape[idx] != 1
+// rule 2 - xshape[idx] != 1 && yshape[idx] == 1
+static int judge_case(int a, int b) {
+  if (a == b) {
+    return 0;
+  } else if (a == 1 && b != 1) {
+    return 1;
+  } else if (a != 1 && b == 1) {
+    return 2;
+  }
+  return -1;
+}
+
+static bool case_is_same(int case_front, int case_back) {
+  if (case_front == case_back) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 template <typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) VectorType {
   T val[VecSize];
@@ -37,11 +70,21 @@ struct BroadcastConfig {
   int strides_in[phi::DDim::kMaxRank];
   int strides_out[phi::DDim::kMaxRank];
   int in_dim[phi::DDim::kMaxRank];
+  int dim_after_cmp[phi::DDim::kMaxRank];
+  int dim_size_after_cmp = 0;
+  int cmp_res = 0;
+  OptType cmp_type = OptType::CanNotOptimize;
+  int m = 1;
+  int n = 1;
+  int k = 1;
+  int buf_len = 0;
+  int next_read_pos = 0;
 
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,
+                             const std::vector<int64_t>& another_in_dims,
                              int dim_size) {
     std::vector<int> strides_in_tmp;
     std::vector<int> strides_out_tmp;
@@ -61,17 +104,177 @@ struct BroadcastConfig {
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
     memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
     memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
+
+    cmp_res = get_mnk_for_broadcast_ops(in_dims, another_in_dims);
+
+    get_opt_type(another_in_dims);
+    printf("shixingbo m = %d, n = %d, k = %d,dim_size_after_cmp = %d,cmp_res = %d,\n", m , n, k, dim_size_after_cmp, cmp_res);
+
+    buf_len = get_buf_len();
+  }
+ 
+  int get_buf_len() {
+    int max_buf_len = 512;
+    int buf_len = m / 16 * 16;
+    if (buf_len == 0) {
+      buf_len = m;
+    }
+    return std::min(max_buf_len, buf_len);
   }
 
   __device__ inline int operator()(int index_output) const {
     int index_src = 0;
-#pragma unroll
-    for (int i = kDims - 1; i >= 0; --i) {
-      int tmp_index = (index_output / strides_out[i]);
-      index_output = index_output - tmp_index * strides_out[i];
-      index_src += (tmp_index % in_dim[i]) * strides_in[i];
+
+    switch (cmp_type) {
+      int div, mod, tmp_index;
+      case OptType::MNK_M1K:
+        div = index_output / (m * n);
+        mod = index_output % (m * n) % m;
+        index_src = div * m + mod;
+	break;
+      case OptType::MNK_1N1:
+	index_src = index_output / m % n;
+	break;
+      case OptType::N_1:
+	index_src = 0;
+	break;
+      case OptType::MN_N:
+	index_src = index_output / m;
+	break;
+      case OptType::MN_M:
+	index_src = index_output % m;
+	break;
+      case OptType::CanNotOptimize:
+        for (int i = kDims - 1; i >= 0; --i) {
+          tmp_index = (index_output / strides_out[i]);
+          index_output = index_output - tmp_index * strides_out[i];
+          index_src += (tmp_index % in_dim[i]) * strides_in[i];
+        }
+	break;
     }
     return index_src;
+  }
+
+  void get_opt_type(const std::vector<int64_t>& y_dim_after_cmp) {
+    if (dim_size_after_cmp == 1) {
+      if (dim_after_cmp[0] == 1 && y_dim_after_cmp[0] != 1) {             // {1} op {n}
+        n = y_dim_after_cmp[0];
+        cmp_type = OptType::N_1;
+      } else if (dim_after_cmp[0] != 1 && y_dim_after_cmp[0] == 1) {      // {n} op {1}
+        n = dim_after_cmp[0];
+        cmp_type = OptType::N_1;
+      } else {
+        cmp_type = OptType::CanNotOptimize;                              // xshape == yshape
+      }
+    }
+    if (dim_size_after_cmp == 2) {
+      if (dim_after_cmp[0] == 1 && dim_after_cmp[1] != 1
+        &&  y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] != 1) {        // {n} op {m, n}
+        m = y_dim_after_cmp[0];
+        n = y_dim_after_cmp[1];
+        cmp_type = OptType::MN_N;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] == 1
+            && y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] != 1) {     // {m} op {m, n}
+        m = y_dim_after_cmp[0];
+        n = y_dim_after_cmp[1];
+        cmp_type = OptType::MN_M;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] != 1
+            && y_dim_after_cmp[0] == 1 && y_dim_after_cmp[1] != 1) {     // {m, n} op {n}
+        m = dim_after_cmp[0];
+        n = dim_after_cmp[1];
+        cmp_type = OptType::MN_N;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] != 1
+            && y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] == 1) {     // {m, n} op {m}
+        m = dim_after_cmp[0];
+        n = dim_after_cmp[1];
+        cmp_type = OptType::MN_M;
+      } 
+      else {
+        cmp_type = OptType::CanNotOptimize;
+      }
+    }
+    if (dim_size_after_cmp == 3) {
+      if (dim_after_cmp[0] == 1 && dim_after_cmp[1] != 1 && dim_after_cmp[2] == 1
+        && y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] != 1 && y_dim_after_cmp[2] != 1) {   // {1, n, 1} op {m, n, k}
+        m = y_dim_after_cmp[0];
+        n = y_dim_after_cmp[1];
+        k = y_dim_after_cmp[2];
+        cmp_type = OptType::MNK_1N1;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] != 1 && dim_after_cmp[2] != 1
+        && y_dim_after_cmp[0] == 1 && y_dim_after_cmp[1] != 1 && y_dim_after_cmp[2] == 1) {  // {m, n, k} op {1, n, 1}
+        m = dim_after_cmp[0];
+        n = dim_after_cmp[1];
+        k = dim_after_cmp[2];
+        cmp_type = OptType::MNK_1N1;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] == 1 && dim_after_cmp[2] != 1
+        && y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] != 1 && y_dim_after_cmp[2] != 1) {  // {m, 1, k} op {m, n, k}
+        m = y_dim_after_cmp[0];
+        n = y_dim_after_cmp[1];
+        k = y_dim_after_cmp[2];
+        cmp_type = OptType::MNK_M1K;
+      }
+      else if (dim_after_cmp[0] != 1 && dim_after_cmp[1] != 1 && dim_after_cmp[2] != 1
+        && y_dim_after_cmp[0] != 1 && y_dim_after_cmp[1] == 1 && y_dim_after_cmp[2] != 1) {  // {m, n, k} op {m, 1, k}
+        m = dim_after_cmp[0];
+        n = dim_after_cmp[1];
+        k = dim_after_cmp[2];
+        cmp_type = OptType::MNK_M1K;
+      }
+      else {
+        cmp_type = OptType::CanNotOptimize;
+      }
+    }
+  }
+
+  int get_mnk_for_broadcast_ops(const std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape) {
+    int idx = 0;
+    int cmp_x = 0;
+    int cmp_y = 0;
+    bool is_same = false;
+    std::vector<int64_t> xshape_after_remove_ones = xshape;
+    std::vector<int64_t> yshape_after_remove_ones = yshape;
+    // first step: remove excess ones
+    std::vector<int64_t>::iterator x_iter = xshape_after_remove_ones.begin();
+    std::vector<int64_t>::iterator y_iter = yshape_after_remove_ones.begin();
+    for ( ; x_iter != xshape_after_remove_ones.end(); ) {
+      if (*x_iter == 1 && *y_iter == 1) {
+        x_iter = xshape_after_remove_ones.erase(x_iter);
+        y_iter = yshape_after_remove_ones.erase(y_iter);
+      } else {
+        x_iter++;
+        y_iter++;
+      }
+    }
+    // second step: compress dims
+    int after_cmp_idx = 0;
+    for (int i = 0; i < 3; i++) {
+      cmp_x = xshape_after_remove_ones[idx];
+      cmp_y = yshape_after_remove_ones[idx];
+      while ((idx + 1) < xshape_after_remove_ones.size()) {
+        is_same = case_is_same(judge_case(xshape_after_remove_ones[idx], yshape_after_remove_ones[idx]),
+                        judge_case(xshape_after_remove_ones[idx + 1], yshape_after_remove_ones[idx + 1]));
+        if (is_same) {
+          cmp_x = cmp_x * xshape_after_remove_ones[idx + 1];
+          cmp_y = cmp_y * yshape_after_remove_ones[idx + 1];
+          idx++;
+        } else {
+          break;
+        }
+      }
+      idx = idx + 1;
+      dim_after_cmp[after_cmp_idx] = cmp_x;
+      after_cmp_idx++;
+      if (idx == xshape_after_remove_ones.size()) {
+	dim_size_after_cmp = after_cmp_idx;
+        return 0;
+      }
+    }
+    return -1; // can not compress dims  
   }
 };
 #pragma pack()
@@ -199,6 +402,14 @@ __device__ __inline__ void Init(T* dst, T init_data) {
   }
 }
 
+template <typename T, int NX>
+__device__ __inline__ void Init(T* dst, T init_data, int read_lens) {
+#pragma unroll
+  for (int i = 0; i < read_lens; i++) {
+    dst[i] = init_data;
+  }
+}
+
 /**
  * The difference from the above function is that
  * it supports different data types of inputs.
@@ -248,6 +459,26 @@ __device__ __inline__ void ReadData(T* dst,
     }
   } else {  // core_num() * NX < num
     GM2LM(src + thread_offset, dst, NX * sizeof(T));
+  }
+}
+
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+__device__ __inline__ void ReadData(T* dst,
+                                    const T _global_ptr_* src,
+                                    int num,
+				    int read_lens) {
+  int thread_offset = core_id() * read_lens; 
+  __local__ T in_temp[1];
+  if (IsBoundary) {  // core_num() * read_lens > num
+#pragma unroll
+    for (int idx = 0; idx < read_lens; ++idx) {
+      if (idx + thread_offset < num) {
+        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
+        dst[idx] = in_temp[0];
+      }
+    }
+  } else {  // core_num() * read_lens < num
+    GM2LM(src + thread_offset, dst, read_lens * sizeof(T));
   }
 }
 
@@ -479,9 +710,29 @@ __device__ __forceinline__ void ReadDataReduce(Ty* dst,
  */
 
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+__device__ void WriteData(T _global_ptr_* dst, const T* src, int num,
+			  int read_lens) {
+  int thread_offset = core_id() * read_lens;
+  __local__ T in_temp[1];
+
+  if (IsBoundary) {  // core_num() * read_lens > num
+#pragma unroll
+    for (int idx = 0; idx < read_lens; ++idx) {
+      if (idx + thread_offset < num) {
+        in_temp[0] = src[idx];
+        LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
+      }
+    }
+  } else {  // core_num() * read_lens < num
+    LM2GM(src, dst + thread_offset, read_lens * sizeof(T));
+  }
+}
+
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
   int thread_offset = core_id() * NX;
   __local__ T in_temp[1];
+
   if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
@@ -671,6 +922,94 @@ __device__ __inline__ void ReadDataBc(
     index_src = config(index_output);
     GM2LM(src + index_src, &in_temp, sizeof(T));
     dst[nx] = in_temp;
+  }
+}
+
+template <typename T,
+	  int NX,
+	  int NY,
+          int BlockSize,
+          int Rank,
+          bool IsBoundary = false>
+__device__ __inline__ void ReadDataBc(
+    T* dst,
+    const T _global_ptr_* src,
+    uint32_t block_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int total_num_output,
+    int read_lens) {
+  int thread_offset = block_offset + core_id() * read_lens;
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  int m = config.m;
+  int n = config.n;
+  T in_temp;
+
+  if (config.cmp_type == details::OptType::MNK_M1K) {
+    if ((m - index_base % m)  < read_lens) {
+      int last_col = m - index_base % m;
+      GM2LM(src + index_base, dst, last_col * sizeof(T));
+      int n_pos = index_output % (m * n) / m;
+      int next_part_index = 0;
+      if (n_pos != config.n - 1) {
+        next_part_index = index_base / m * m;
+      } else {
+        next_part_index = (index_base / m + 1) * m;
+      }
+      GM2LM(src + next_part_index, dst + last_col, (read_lens - last_col) * sizeof(T));
+    } else {
+      GM2LM(src + index_base, dst, read_lens * sizeof(T));
+    }
+  } else if (config.cmp_type == details::OptType::N_1) {
+    //TODO: it can use svadd
+    GM2LM(src + index_base, &in_temp, sizeof(T));
+    for (int i = 0; i < read_lens; i++) {
+      dst[i] = in_temp;
+    }
+  } else if (config.cmp_type == details::OptType::MN_M) {
+    if ((m - index_base % m)  < read_lens) {
+      int last_col = m - index_base % m;
+      GM2LM(src + index_base, dst, last_col * sizeof(T));
+      GM2LM(src, dst + last_col, (read_lens - last_col) * sizeof(T));
+    } else {
+      GM2LM(src + index_base, dst, read_lens * sizeof(T));
+    }
+  } else if (config.cmp_type == details::OptType::MN_N) {
+    int m_pos = index_output % m;
+    if ((m - m_pos) < read_lens) {
+      int last_col = m - m_pos;
+      GM2LM(src + index_base, &in_temp, sizeof(T));
+      for (int i = 0; i < last_col; i++) {
+        dst[i] = in_temp;
+      }
+      GM2LM(src + index_base + 1, &in_temp, sizeof(T));
+      for (int i = 0; i < read_lens - last_col; i++) {
+        dst[last_col + i] = in_temp;
+      }
+    } else {
+      GM2LM(src + index_base, &in_temp, sizeof(T));
+      for (int i = 0; i < read_lens; i++) {
+        dst[i] = in_temp;
+      }
+    }
+  } else {
+    int cache_size = 512;
+    __local__ T src_temp[cache_size];
+    GM2LM(src + index_base, src_temp, cache_size * sizeof(T));
+
+    for (int nx = 0; nx < read_lens; ++nx) {
+      index_output = thread_offset + nx;
+      int index_src = config(index_output);
+      if (index_src >= index_base && index_src < index_base + cache_size)
+      {
+        in_temp = src_temp[index_src - index_base];
+      }
+      else
+      {
+        GM2LM(src + index_src, &in_temp, sizeof(T));
+      }
+      dst[nx] = in_temp;
+    }
   }
 }
 

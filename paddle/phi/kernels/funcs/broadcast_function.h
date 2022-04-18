@@ -204,6 +204,26 @@ __device__ __forceinline__ void LoadData(
   }
 }
 
+template <typename T, int VecSize, int Rank, bool IsBoundary = false>
+__device__ __forceinline__ void LoadData(
+    T *dst,
+    const _ptr_ T *src,
+    uint32_t block_offset,
+    const kps::details::BroadcastConfig<Rank> &config,
+    int numel,
+    int num,
+    int need_broadcast,
+    int read_lens) {
+  // numel : whole num of output
+  // num: how many data will be deal with in this time
+  if (need_broadcast) {
+    kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(
+        dst, src, block_offset, config, numel, read_lens);
+  } else {
+    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num, read_lens);
+  }
+}
+
 template <typename InT,
           typename OutT,
           typename Functor,
@@ -220,33 +240,36 @@ __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num,
     int block_offset,
+    int read_lens,
     Functor func) {
-  InT args[Arity][VecSize];
-  ConditionalT<OutT, NumOuts> result[VecSize];
+  __simd__ InT args[Arity][VecSize];
+  __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
     LoadData<InT, VecSize, Rank, IsBoundary>(args[i],
                                              ins[i],
                                              block_offset,
                                              configs[i],
                                              numel,
                                              num,
-                                             use_broadcast[i]);
+                                             use_broadcast[i],
+                                             read_lens);
   }
+
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  phi::funcs::ElementwisePrimitiveCaller<InT,
+  phi::funcs::ElementwisePrimitiveCallerBc<InT,
                                          ConditionalT<OutT, NumOuts>,
                                          VecSize,
                                          Functor,
                                          Arity,
                                          kCallElementwiseAny>()(
-      func, args, result);
+      func, args, result, read_lens);
 
-  phi::funcs::ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
-      outs, result, block_offset, num);
+  phi::funcs::ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+        outs, result, block_offset, num, read_lens);
 }
 
 template <typename InT,
@@ -264,12 +287,13 @@ __global__ void VectorizedBroadcastKernel(
     phi::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_offset,
     int tail_tid,
+    int read_lens,
     Functor func) {
-  int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
 
 #ifdef PADDLE_WITH_XPU_KP
-  for (; block_offset < main_offset; block_offset += stride) {
+  for (; block_offset < numel; block_offset += stride) {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
                                   Functor,
@@ -282,21 +306,10 @@ __global__ void VectorizedBroadcastKernel(
                                          use_broadcast,
                                          numel,
                                          configs,
-                                         BLOCK_NUM_X * VecSize,
+                                         BLOCK_NUM_X * read_lens,
                                          block_offset,
+                                         read_lens,
                                          func);
-  }
-  int num = numel - block_offset;
-  if (num > 0) {
-    VectorizedBroadcastKernelImpl<InT,
-                                  OutT,
-                                  Functor,
-                                  Arity,
-                                  NumOuts,
-                                  VecSize,
-                                  Rank,
-                                  true>(
-        ins, outs, use_broadcast, numel, configs, num, block_offset, func);
   }
 #else
   if (block_offset < main_offset) {
@@ -314,6 +327,7 @@ __global__ void VectorizedBroadcastKernel(
                                          configs,
                                          BLOCK_NUM_X * VecSize,
                                          block_offset,
+                                         read_lens,
                                          func);
   } else {
     VectorizedBroadcastKernelImpl<InT,
@@ -324,7 +338,7 @@ __global__ void VectorizedBroadcastKernel(
                                   VecSize,
                                   Rank,
                                   true>(
-        ins, outs, use_broadcast, numel, configs, tail_tid, block_offset, func);
+        ins, outs, use_broadcast, numel, configs, tail_tid, block_offset, read_lens, func);
   }
 #endif
 }
@@ -354,6 +368,15 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
   for (int i = 0; i < Arity; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
+#ifdef PADDLE_WITH_XPU_KP
+    if (i == 0) {
+      configs[i] = kps::details::BroadcastConfig<Rank>(
+          merge_dims.out_dims, merge_dims.in_dims[0], merge_dims.in_dims[1], merge_dims.dim_size);
+    } else if ( i == 1) {
+      configs[i] = kps::details::BroadcastConfig<Rank>(
+          merge_dims.out_dims, merge_dims.in_dims[1], merge_dims.in_dims[0], merge_dims.dim_size);
+    }
+#else
     if (use_broadcast[i]) {
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
@@ -361,20 +384,22 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
       configs[i] = kps::details::BroadcastConfig<Rank>(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
+#endif
   }
 
 #ifdef PADDLE_WITH_XPU_KP
   const int threads = 64;
   const int blocks = 8;
-  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  int tail_tid = numel % (VecSize * threads);
+  int read_lens = configs[0].buf_len;
+  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+  int tail_tid = numel % (read_lens * threads);
   auto stream = ctx.x_context()->xpu_stream;
   VectorizedBroadcastKernel<InT,
                             OutT,
                             Functor,
                             Arity,
                             NumOuts,
-                            VecSize,
+                            512,
                             Rank><<<blocks, threads, stream>>>(ins_data,
                                                                outs_data,
                                                                use_broadcast,
@@ -382,6 +407,7 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
                                                                configs,
                                                                main_offset,
                                                                tail_tid,
+                                                               read_lens,
                                                                func);
 #else
   const int threads = 256;
@@ -402,6 +428,7 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
                                                                   configs,
                                                                   main_offset,
                                                                   tail_tid,
+                                                                  VecSize,
                                                                   func);
 #endif
 }
