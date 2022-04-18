@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
@@ -57,46 +58,6 @@ __global__ void GatherKernel(const T* params,
     IndexT gather_i = indices[indices_i];
     int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
-  }
-}
-
-/**
- * brief: scatter add
- * input: the inputs
- * unique_value: refer to UpdateIndexKernel notes
- * out_index: the output feature index
- * non_zero_num: the number of output features
- * rulebook_len: the length of rulebook
- * channels: the output channel size
- * out: the outputs
-**/
-template <typename T>
-__global__ void ScatterKernel(const T* input,
-                              const int* unique_value,
-                              const int* out_index,
-                              const int non_zero_num,
-                              const int rulebook_len,
-                              const int channels,
-                              T* out,
-                              const bool subm = false) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
-    int indices_i = i / channels;
-    int channels_i = i - indices_i * channels;
-
-    int start = unique_value[indices_i];
-    int end = indices_i == non_zero_num - 1 ? rulebook_len
-                                            : unique_value[indices_i + 1];
-    // max(end-start) = kernel_size
-    T sum = static_cast<T>(0);
-    if (subm) {
-      sum = out[indices_i * channels + channels_i];
-    }
-    for (int j = start; j < end; j++) {
-      const int out_feature_i = out_index[j];
-      sum += input[out_feature_i * channels + channels_i];
-    }
-    out[indices_i * channels + channels_i] = sum;
   }
 }
 
@@ -183,14 +144,6 @@ __global__ void UpdateIndexKernel(const T* unique_keys,
     for (T j = start; j < end; j++) {
       rulebook_out_indexs[out_indexs[j]] = i;
     }
-  }
-}
-
-// brief: calculation the distance between start and end
-template <typename T>
-__global__ void DistanceKernel(const T* start, const T* end, T* distance) {
-  if (threadIdx.x == 0) {
-    *distance = end - start;
   }
 }
 
@@ -402,7 +355,7 @@ int ProductRuleBook(const Context& dev_ctx,
                               rulebook_ptr + rulebook_rows * rulebook_cols,
                               -1);
 
-  DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+  phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
       rulebook_ptr, last, rulebook_ptr + 3 * kernel_size * non_zero_num - 1);
   IntT rulebook_len = 0;
   phi::backends::gpu::GpuMemcpyAsync(
@@ -468,7 +421,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr,
                                 rulebook_ptr + 3 * rulebook_len,
                                 -1);
-    DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
         rulebook_ptr, last, bound_ptr);
     phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
                                        bound_ptr,
@@ -536,7 +489,7 @@ int ProductRuleBook(const Context& dev_ctx,
     // thrust::distance doesn't support stream parameters
     // const int out_non_zero_num = thrust::distance(unique_key_ptr,
     // new_end.first);
-    DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
         unique_key_ptr,
         new_end,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1);
