@@ -212,14 +212,14 @@ def AutoTune(Loader):
             kw['num_workers'] = new_num
             reader = Loader(*arg, **kw)
             time, cpu_percent = avgTime(reader)
-            print("for back num_workers: ", new_num, " avg_cost: ", time,
-                  "cpu_percent: ", cpu_percent)
             step += 1
             if (time < best_time * 0.70 * boundary):
                 return new_num
             else:
                 new_num += 1
             boundary *= 0.80
+            print("for back num_workers: ", new_num, " avg_cost: ", time,
+                  "cpu_percent: ", cpu_percent)
         return best_workers
 
     def wrapper(*args, **kw):
