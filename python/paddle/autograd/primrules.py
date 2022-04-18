@@ -196,12 +196,10 @@ def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = fill_const(
-            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = fill_const(
-            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = sub(x, y)
     if op.attr('Scale_out'):
@@ -213,8 +211,7 @@ def elementwise_sub_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op, x):
-    scale_t = fill_const(
-        shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+    scale_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
@@ -330,13 +327,37 @@ def gather_prim2orig(op, index_t, x):
 
 @REGISTER_PRIM2ORIG('scatter_add_p')
 def scatter_add_prim2orig(op, index_t, x, y):
+    # assert op.attr('axis') == 0
+    # using scatter_nd_add
     return paddle.put_along_axis(
         x, index_t, y, axis=op.attr('axis'), reduce='add')
 
 
+INT_DTYPE_2_STRING = {
+    int(paddle.bool): 'bool',
+    int(paddle.float16): 'float16',
+    int(paddle.bfloat16): 'uint16',
+    int(paddle.float32): 'float32',
+    int(paddle.float64): 'float64',
+    int(paddle.int8): 'int8',
+    int(paddle.int16): 'int16',
+    int(paddle.int32): 'int32',
+    int(paddle.int64): 'int64',
+    int(paddle.uint8): 'uint8',
+    int(paddle.complex64): 'complex64',
+    int(paddle.complex128): 'complex128',
+}
+
+
+@REGISTER_PRIM2ORIG('fill_constant_p')
+def fill_constant_prim2orig(op):
+    return paddle.full(
+        shape=op.attr('shape'),
+        fill_value=op.attr('value'),
+        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
 ## Register linearize rules
-
-
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
     return linear_jvp(op, x_dot, y_dot)
@@ -449,14 +470,15 @@ def slice_assign_jvp(op, x_dot, y_dot):
 
 @REGISTER_JVP('gather_p')
 def gather_jvp(op, x_dot):
-    _, indextensor = get_input_vars(op)
+    # For gather_p OP get_input_vars function returns `[IndexTensor, X]`
+    indextensor, _ = get_input_vars(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, indextensor, axis=axis)
 
 
 @REGISTER_JVP('scatter_add_p')
 def scatter_add_jvp(op, x_dot, y_dot):
-    _, _, indextensor = get_input_vars(op)
+    indextensor, _, _ = get_input_vars(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
 
@@ -516,7 +538,8 @@ def broadcast_transpose(op, check_dot, y_bar):
     keepdim = [(bat + i) for i, s in enumerate(x.shape) if s == 1]
     axis += keepdim
     # TODO: Change it. keepdim boolean
-    return reduce(y_bar, axis=axis, keepdim=False)
+    out = reduce(y_bar, axis=axis, keepdim=False)
+    return reshape(out, x.shape)
 
 
 @REGISTER_TRANSPOSE('transpose_p')
@@ -599,15 +622,20 @@ def slice_assign_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('gather_p')
 def gather_transpose(op, check_dot, y_bar):
-    x, indextensor = get_input_vars(op)
+    # For gather_p OP get_input_vars function returns `[IndexTensor, X]`
+    indextensor, x = get_input_vars(op)
     assert check_dot(x)
     axis = op.attr('axis')
-    return scatter_add(y_bar, indextensor, axis=axis)
+    zeros = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
+    return scatter_add(zeros, y_bar, indextensor, axis=axis)
 
 
 @REGISTER_TRANSPOSE('scatter_add_p')
-def scatter_add_transpose(op, check_dot, y_bar):
-    x, indextensor = get_input_vars(op)
-    assert check_dot(x)
+def scatter_add_transpose(op, check_dot, z_bar):
+    indextensor, x, y = get_input_vars(op)
+    assert check_dot(x) and check_dot(y)
     axis = op.attr('axis')
-    return gather(y_bar, indextensor, axis=axis)
+    zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    return scatter_add(
+        z_bar, zeros, indextensor, axis=axis), gather(
+            y_bar, indextensor, axis=axis), None
