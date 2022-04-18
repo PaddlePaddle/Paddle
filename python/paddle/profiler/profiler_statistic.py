@@ -78,15 +78,19 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
+        self.is_terminal_operator_node = True
 
     def cal_statistic(self):
         for child in self.children_node:
             child.cal_statistic()
+            if child.is_terminal_operator_node == False:
+                self.is_terminal_operator_node = False
         for rt in self.runtime_node:
             rt.cal_statistic()
-
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         for child in self.children_node:
+            if child.type == TracerEventType.Operator:
+                self.is_terminal_operator_node = False
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= (child.end_ns - child.start_ns)
@@ -525,11 +529,7 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
-        have_inner = False
-        for child in operator_node.children_node:
-            if child.type == TracerEventType.OperatorInner:
-                have_inner = True
-        if have_inner == False:
+        if operator_node.is_terminal_operator_node == False:
             return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
@@ -752,6 +752,9 @@ def _build_table(statistic_data,
             cpu_call_times[
                 event_type] = statistic_data.event_summary.model_perspective_items[
                     event_type_name].call
+            cpu_type_time[
+                event_type] = statistic_data.event_summary.model_perspective_items[
+                    event_type_name].cpu_time
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
@@ -820,13 +823,18 @@ def _build_table(statistic_data,
         all_row_values = []
         accmulation_time = 0
         gpu_accmulation_time = 0
-        gpu_total_time = 0
+        gpu_total_time = statistic_data.event_summary.model_perspective_items[
+            'ProfileStep'].general_gpu_time
         for name in [
                 'ProfileStep', 'Dataloader', 'Forward', 'Backward',
                 'Optimization'
         ]:
             if name in model_perspective_items:
                 item = model_perspective_items[name]
+                if gpu_total_time == 0:
+                    gpu_ratio = 0
+                else:
+                    gpu_ratio = float(item.general_gpu_time) / gpu_total_time
                 name = '{}'.format(
                     name) if 'ProfileStep' in name else '  {}'.format(name)
                 row_values = [
@@ -850,17 +858,19 @@ def _build_table(statistic_data,
                             item.max_gpu_time, unit=time_unit),
                         format_time(
                             item.min_gpu_time, unit=time_unit),
-                        format_ratio(float(item.gpu_time) / total_time))
+                        format_ratio(gpu_ratio))
                 ]
                 all_row_values.append(row_values)
                 if 'ProfileStep' not in name:
                     accmulation_time += item.cpu_time
-                    gpu_accmulation_time += item.gpu_time
-                else:
-                    gpu_total_time = item.gpu_time
+                    gpu_accmulation_time += item.general_gpu_time
 
         other_time = total_time - accmulation_time
         other_gpu_time = gpu_total_time - gpu_accmulation_time
+        if gpu_total_time == 0:
+            gpu_ratio = 0
+        else:
+            gpu_ratio = float(other_gpu_time) / gpu_total_time
         row_values = [
             '  Others', '-', '{} / - / - / - / {}'.format(
                 format_time(
@@ -869,7 +879,7 @@ def _build_table(statistic_data,
             '{} / - / - / - / {}'.format(
                 format_time(
                     other_gpu_time, unit=time_unit),
-                format_ratio(float(other_gpu_time) / total_time))
+                format_ratio(gpu_ratio))
         ]
         all_row_values.append(row_values)
         # Calculate the column width
@@ -1040,8 +1050,22 @@ def _build_table(statistic_data,
             elif sorted_by == SortedKeys.GPUMin:
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].min_general_gpu_time)
+            total_op_cpu_time = 0
+            total_op_gpu_time = 0
 
             for name, item in sorted_items:
+                total_op_cpu_time += item.cpu_time
+                total_op_gpu_time += item.general_gpu_time
+
+            for name, item in sorted_items:
+                if total_op_cpu_time == 0:
+                    cpu_ratio = 0
+                else:
+                    cpu_ratio = float(item.cpu_time) / total_op_cpu_time
+                if total_op_gpu_time == 0:
+                    gpu_ratio = 0
+                else:
+                    gpu_ratio = float(item.general_gpu_time) / total_op_gpu_time
                 row_values = [
                     name, item.call, '{} / {} / {} / {} / {}'.format(
                         format_time(
@@ -1052,7 +1076,7 @@ def _build_table(statistic_data,
                             item.max_cpu_time, unit=time_unit),
                         format_time(
                             item.min_cpu_time, unit=time_unit),
-                        format_ratio(float(item.cpu_time) / total_time)),
+                        format_ratio(cpu_ratio)),
                     '{} / {} / {} / {} / {}'.format(
                         format_time(
                             item.general_gpu_time, unit=time_unit),
@@ -1062,13 +1086,22 @@ def _build_table(statistic_data,
                             item.max_general_gpu_time, unit=time_unit),
                         format_time(
                             item.min_general_gpu_time, unit=time_unit),
-                        format_ratio(
-                            float(item.general_gpu_time) / total_time))
+                        format_ratio(gpu_ratio))
                 ]
                 all_row_values.append(row_values)
                 if op_detail:
                     for innerop_name, innerop_node in item.operator_inners.items(
                     ):
+                        if item.cpu_time == 0:
+                            cpu_ratio = 0
+                        else:
+                            cpu_ratio = float(
+                                innerop_node.cpu_time) / item.cpu_time
+                        if item.general_gpu_time == 0:
+                            gpu_ratio = 0
+                        else:
+                            gpu_ratio = float(innerop_node.general_gpu_time
+                                              ) / item.general_gpu_time
                         if len(innerop_name) + 2 > name_column_width:
                             innerop_name = innerop_name[:name_column_width - 5]
                             innerop_name += "..."
@@ -1083,8 +1116,7 @@ def _build_table(statistic_data,
                                     innerop_node.max_cpu_time, unit=time_unit),
                                 format_time(
                                     innerop_node.min_cpu_time, unit=time_unit),
-                                format_ratio(
-                                    float(innerop_node.cpu_time) / total_time)),
+                                format_ratio(cpu_ratio)),
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
                                     innerop_node.general_gpu_time,
@@ -1098,13 +1130,17 @@ def _build_table(statistic_data,
                                 format_time(
                                     innerop_node.min_general_gpu_time,
                                     unit=time_unit),
-                                format_ratio(
-                                    float(innerop_node.general_gpu_time) /
-                                    total_time))
+                                format_ratio(gpu_ratio))
                         ]
                         all_row_values.append(row_values)
                         for device_node_name, device_node in innerop_node.devices.items(
                         ):
+                            if innerop_node.general_gpu_time == 0:
+                                gpu_ratio = 0
+                            else:
+                                gpu_ratio = float(
+                                    device_node.
+                                    gpu_time) / innerop_node.general_gpu_time
                             if len(device_node_name) + 4 > name_column_width:
                                 device_node_name = device_node_name[:
                                                                     name_column_width
@@ -1125,12 +1161,15 @@ def _build_table(statistic_data,
                                     format_time(
                                         device_node.min_gpu_time,
                                         unit=time_unit),
-                                    format_ratio(
-                                        float(device_node.gpu_time) /
-                                        total_time))
+                                    format_ratio(gpu_ratio))
                             ]
                             all_row_values.append(row_values)
                     for device_node_name, device_node in item.devices.items():
+                        if item.general_gpu_time == 0:
+                            gpu_ratio = 0
+                        else:
+                            gpu_ratio = float(
+                                device_node.gpu_time) / item.general_gpu_time
                         if len(device_node_name) + 2 > name_column_width:
                             device_node_name = device_node_name[:
                                                                 name_column_width
@@ -1148,8 +1187,7 @@ def _build_table(statistic_data,
                                     device_node.max_gpu_time, unit=time_unit),
                                 format_time(
                                     device_node.min_gpu_time, unit=time_unit),
-                                format_ratio(
-                                    float(device_node.gpu_time) / total_time))
+                                format_ratio(gpu_ratio))
                         ]
                         all_row_values.append(row_values)
         # Calculate the column width
@@ -1201,7 +1239,13 @@ def _build_table(statistic_data,
     if statistic_data.event_summary.memory_manipulation_items:
         all_row_values = []
         memory_manipulation_items = statistic_data.event_summary.memory_manipulation_items
+        gpu_total_time = statistic_data.event_summary.model_perspective_items[
+            'ProfileStep'].general_gpu_time
         for name, item in memory_manipulation_items.items():
+            if gpu_total_time == 0:
+                gpu_ratio = 0
+            else:
+                gpu_ratio = float(item.general_gpu_time) / gpu_total_time
             row_values = [
                 name,
                 item.call,
@@ -1224,7 +1268,7 @@ def _build_table(statistic_data,
                         item.max_general_gpu_time, unit=time_unit),
                     format_time(
                         item.min_general_gpu_time, unit=time_unit),
-                    format_ratio(float(item.general_gpu_time) / total_time)),
+                    format_ratio(gpu_ratio)),
             ]
             all_row_values.append(row_values)
 
@@ -1274,6 +1318,8 @@ def _build_table(statistic_data,
     ###### Print UserDefined Summary Report ######
     if statistic_data.event_summary.userdefined_items:
         all_row_values = []
+        gpu_total_time = statistic_data.event_summary.model_perspective_items[
+            'ProfileStep'].general_gpu_time
         if thread_sep == True:
             userdefined_thread_items = statistic_data.event_summary.userdefined_thread_items
         else:
@@ -1319,6 +1365,10 @@ def _build_table(statistic_data,
                     items.items(), key=lambda x: x[1].min_general_gpu_time)
 
             for name, item in sorted_items:
+                if gpu_total_time == 0:
+                    gpu_ratio = 0
+                else:
+                    gpu_ratio = float(item.general_gpu_time) / gpu_total_time
                 row_values = [
                     name,
                     item.call,
@@ -1341,8 +1391,7 @@ def _build_table(statistic_data,
                             item.max_general_gpu_time, unit=time_unit),
                         format_time(
                             item.min_general_gpu_time, unit=time_unit),
-                        format_ratio(
-                            float(item.general_gpu_time) / total_time)),
+                        format_ratio(gpu_ratio)),
                 ]
                 all_row_values.append(row_values)
 
