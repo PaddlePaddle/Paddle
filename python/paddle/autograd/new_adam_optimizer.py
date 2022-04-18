@@ -58,11 +58,12 @@ def append_backward_new(loss,
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
 
-    orig2prim(block, update_var_list=[loss])
+    update_var_list = [loss]
+    orig2prim(block, update_var_list=update_var_list)
     ad = Transform(block)
     if parameter_list is None:
         parameter_list = program.global_block().all_parameters()
-    param_dot, loss_dot = ad.linearize(parameter_list, [loss])
+    param_dot, loss_dot = ad.linearize(parameter_list, update_var_list)
     param_bar, loss_bar = ad.transpose(param_dot, loss_dot)
 
     if len(parameter_list) == 1:
@@ -888,7 +889,6 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        print("in new class backward")
         act_no_grad_set = None
         if framework._non_static_mode():
             pass
@@ -912,7 +912,6 @@ class Optimizer(object):
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
-            print("in new backward else branch")
             if callbacks is None:
                 callbacks = [error_clip_callback]
             else:
@@ -1240,7 +1239,6 @@ class Optimizer(object):
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
 
-        print("in base minimize")
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
 
