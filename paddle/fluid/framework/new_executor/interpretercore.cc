@@ -128,6 +128,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     ClearLoDTensorArrayInLocalScope();
   }
 
+  // clear the listener after run
+  if (global_scope_->GetMutableScope()->HasListener(
+          global_scope_->Listener())) {
+    global_scope_->GetMutableScope()->DelListener(global_scope_->Listener());
+  }
+
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -167,6 +173,12 @@ paddle::framework::FetchList InterpreterCore::Run(
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
+  }
+
+  // clear the listener after run
+  if (global_scope_->GetMutableScope()->HasListener(
+          global_scope_->Listener())) {
+    global_scope_->GetMutableScope()->DelListener(global_scope_->Listener());
   }
 
   // return Fetch Tensors
