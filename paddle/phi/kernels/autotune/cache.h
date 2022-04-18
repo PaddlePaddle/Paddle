@@ -112,7 +112,7 @@ class AlgorithmsCache {
 
   void Set(size_t key, AlgorithmT algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.size() > FLAGS_search_cache_max_number) {
+    if (hash_.size() > static_cast<size_t>(FLAGS_search_cache_max_number)) {
       VLOG(8) << "hash size over serach cache_max_numebr "
               << FLAGS_search_cache_max_number;
       hash_.clear();
@@ -152,12 +152,9 @@ enum class AlgorithmType {
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
+// (todo. hong) use cudnnConvolutionFwdAlgo_t
+using AlgorithmsCacheMap = AlgorithmsCache<DnnNode>;
 
-// (todo. hongyu) use cudnnConvolutionFwdAlgo_t
-using AlgorithmsFwdCacheMap = AlgorithmsCache<DnnNode>;
-using AlgorithmsBwdDataCacheMap = AlgorithmsCache<DnnNode>;
-using AlgorithmsBwdFilterCacheMap = AlgorithmsCache<DnnNode>;
 // AlgorithmType -> AlgorithmsCache
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
 
@@ -172,14 +169,16 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  AlgorithmsFwdCacheMap& GetConvForward() { return auto_tune_fwd_cache_; }
-
-  AlgorithmsBwdDataCacheMap& GetConvBackwardData() {
-    return auto_tune_bwd_data_cache_;
+  AlgorithmsCacheMap& GetConvForward() {
+    return Get(AlgorithmType::kConvForward);
   }
 
-  AlgorithmsBwdFilterCacheMap& GetConvBackwardFilter() {
-    return auto_tune_bwd_filter_cache_;
+  AlgorithmsCacheMap& GetConvBackwardData() {
+    return Get(AlgorithmType::kConvBackwardData);
+  }
+
+  AlgorithmsCacheMap& GetConvBackwardFilter() {
+    return Get(AlgorithmType::kConvBackwardFilter);
   }
 
   void Clean() {
@@ -224,9 +223,6 @@ class AutoTuneCache {
   }
 
   AlgorithmsTypeMap auto_tune_map_;
-  AlgorithmsFwdCacheMap auto_tune_fwd_cache_;
-  AlgorithmsBwdDataCacheMap auto_tune_bwd_data_cache_;
-  AlgorithmsBwdFilterCacheMap auto_tune_bwd_filter_cache_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};
