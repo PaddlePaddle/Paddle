@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include <memory>
 #include "llvm/Support/ErrorHandling.h"
+#include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/infrt/kernel/phi/context_kernels.h"
@@ -22,22 +24,12 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef INFRT_WITH_GPU
 #include <cuda_runtime.h>
 #endif
-
-namespace paddle {
-namespace platform {
-using DeviceContext = ::phi::DeviceContext;
-}  // namespace platform
-namespace framework {
-using LoDTensor = ::phi::DenseTensor;
-void DeserializeFromStream(std::istream& is,
-                           LoDTensor* tensor,
-                           const platform::DeviceContext& dev_ctx);
-}
-}  // namespace paddle
 
 namespace infrt {
 namespace kernel {
@@ -197,6 +189,12 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
 
+  ::phi::CPUContext ctx;
+  auto allocator = std::make_unique<backends::CpuPhiAllocator>();
+  const auto* allocator_ptr = allocator.get();
+  ctx.SetAllocator(allocator_ptr);
+  ctx.SetHostAllocator(allocator_ptr);
+  ctx.SetZeroAllocator(allocator_ptr);
   for (auto& var : main_block.vars()) {
     if (var.name() == "feed" || var.name() == "fetch" || !var.persistable())
       continue;
@@ -206,9 +204,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
       case ::paddle::framework::proto::VarType_Type_LOD_TENSOR: {
         std::unique_ptr<::phi::DenseTensor> tensor{
             std::make_unique<::phi::DenseTensor>()};
-        ::phi::CPUContext ctx;
-        ::paddle::framework::DeserializeFromStream(
-            param_file, tensor.get(), ctx);
+        ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
         map.SetDenseTensor(var.name(), std::move(tensor));
       } break;
       default: {
@@ -248,11 +244,16 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     }
   }
 
+  ::phi::CPUContext ctx;
+  auto allocator = std::make_unique<backends::CpuPhiAllocator>();
+  const auto* allocator_ptr = allocator.get();
+  ctx.SetAllocator(allocator_ptr);
+  ctx.SetHostAllocator(allocator_ptr);
+  ctx.SetZeroAllocator(allocator_ptr);
   for (auto& var : tmp) {
     std::unique_ptr<::phi::DenseTensor> tensor{
         std::make_unique<::phi::DenseTensor>()};
-    ::phi::CPUContext ctx;
-    ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
+    ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
 
@@ -308,34 +309,50 @@ inline size_t SizeOfDataType(::phi::DataType data_type) {
   }
   return 0;
 }
-::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
-                             const ::phi::GPUContext& context,
-                             bool d2h) {
+void GpuMemCpy(const ::phi::DenseTensor& input,
+               const ::phi::GPUContext& context,
+               bool d2h,
+               ::phi::DenseTensor* output) {
   if (d2h) {
-    ::phi::DenseTensor ret(
-        const_cast<::phi::Allocator*>(&context.GetHostAllocator()),
-        input.meta());
     CHECK(input.place().GetType() == ::phi::AllocationType::GPU);
-    // TODO(wilber): Add sync op and stream.
-    cudaMemcpyAsync(ret.data(),
+
+    // TODO(wilber): Just a trick to avoid malloc.
+    if (input.numel() > output->numel()) {
+      // TODO(wilber): Use pinned memory.
+      output->Resize(input.dims());
+      context.HostAlloc(
+          output, input.dtype(), input.numel() * SizeOfDataType(input.dtype()));
+    }
+
+    cudaMemcpyAsync(output->data(),
                     input.data(),
                     SizeOfDataType(input.dtype()) * input.numel(),
                     cudaMemcpyDeviceToHost,
-                    nullptr);
-    return ret;
+                    context.stream());
+    // TODO(wilber): Ir add sync op.
+    cudaStreamSynchronize(context.stream());
   } else {
     // h2d
-    ::phi::DenseTensor ret(
-        const_cast<::phi::Allocator*>(&context.GetAllocator()), input.meta());
     CHECK(input.place().GetType() == ::phi::AllocationType::CPU ||
           input.place().GetType() == ::phi::AllocationType::GPUPINNED);
+
+    if (input.numel() > output->numel()) {
+      output->Resize(input.dims());
+      context.Alloc(output,
+                    input.dtype(),
+                    input.numel() * SizeOfDataType(input.dtype()),
+                    false);
+
+    } else {
+      output->Resize(input.dims());
+    }
+
     // TODO(wilber): Add sync op and stream.
-    cudaMemcpyAsync(ret.data(),
+    cudaMemcpyAsync(output->data(),
                     input.data(),
                     SizeOfDataType(input.dtype()) * input.numel(),
                     cudaMemcpyHostToDevice,
-                    nullptr);
-    return ret;
+                    context.stream());
   }
 }
 #endif

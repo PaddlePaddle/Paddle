@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -548,6 +549,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
   BindEager(&m);
+  BindEagerStringTensor(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -2921,9 +2923,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
-             platform::RecordEvent record_event(
-                 "StandaloneExecutor::run",
-                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
@@ -2960,6 +2959,8 @@ All parameter, weight, gradient are variables in Paddle.
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
   m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_default_kernel_signatures",
+        []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -3389,6 +3390,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
+      .def("is_cnpapi_supported",
+           &paddle::platform::Profiler::IsCnpapiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -3398,7 +3401,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("stop",
            [](paddle::platform::Profiler *profiler) {
              platform::DisableHostEventRecorder();
-             return profiler->Stop();
+             auto result = profiler->Stop();
+             framework::StaticGraphExecutorPerfStatistics(
+                 result->GetNodeTrees());
+             return result;
            },
            py::return_value_policy::automatic_reference);
 
@@ -4484,7 +4490,7 @@ All parameter, weight, gradient are variables in Paddle.
     return phi::autotune::AutoTuneStatus::Instance().DisableAutoTune();
   });
 
-  m.def("autotune_range", [](int64_t start, int64_t stop) {
+  m.def("set_autotune_range", [](int64_t start, int64_t stop) {
     return phi::autotune::AutoTuneStatus::Instance().SetAutoTuneRange(start,
                                                                       stop);
   });
@@ -4493,10 +4499,8 @@ All parameter, weight, gradient are variables in Paddle.
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
   m.def("autotune_status", [] {
-    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     py::dict res;
-    res["use_autotune"] =
-        phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
     res["step_id"] = phi::autotune::AutoTuneStatus::Instance().StepID();
     res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
     res["cache_hit_rate"] =
@@ -4562,7 +4566,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
-  BindSparseShardingTools(&m);
 #endif
 }
 }  // namespace pybind

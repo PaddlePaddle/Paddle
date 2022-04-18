@@ -280,3 +280,11 @@ std::set<std::string> special_inplace_op_set = {
     "sum",     // `sum` op has duplicate input
     "assign",  // output of `assign` op is in `op_passing_outs_map`
 };
+
+// NOTE(pangyoki): Special no_need_buffer ops that are not supported in
+// temporary.
+// sequence_conv op will raise error to get no_need_buffer info during
+// compiling.
+std::set<std::string> special_no_need_buffer_op_set = {
+    "sequence_conv",
+};
