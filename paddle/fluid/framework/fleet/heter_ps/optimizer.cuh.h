@@ -135,7 +135,6 @@ class Optimizer {
                 grad.show);  // for local test
     }
   }
-
 };
 
 #endif

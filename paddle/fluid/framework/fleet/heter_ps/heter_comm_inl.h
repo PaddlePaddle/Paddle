@@ -1041,22 +1041,12 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
   int total_device = resource_->total_device();
   std::vector<std::thread> threads;
 
-#ifdef PADDLE_WITH_CUDA
   auto dump_to_cpu_func = [this](int index) {
     auto stream = resource_->local_stream(index, 0);
     int dev_id = resource_->dev_id(index);
     AnyDeviceGuard guard(dev_id);
     tables_[index]->dump_to_cpu(dev_id, stream);
   };
-#endif
-#ifdef PADDLE_WITH_XPU_KP
-  auto dump_to_cpu_func = [this](int index) {
-    auto stream = resource_->local_stream(index, 0);
-    int dev_id = resource_->dev_id(index);
-    AnyDeviceGuard guard(dev_id);
-    tables_[index]->dump_to_cpu(dev_id, stream);
-  };
-#endif
 
   for (int i = 0; i < total_device; ++i) {
     threads.push_back(std::thread(dump_to_cpu_func, i));

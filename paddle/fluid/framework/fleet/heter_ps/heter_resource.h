@@ -28,10 +28,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/enforce.h"
-#ifdef PADDLE_WITH_XPU_KP
-#include <xpu/runtime.h>  // NOLINT
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#endif
 
 #ifdef PADDLE_WITH_HETERPS
 

@@ -30,7 +30,6 @@ namespace framework {
 class HeterCommKernel {
  public:
   HeterCommKernel() {}
-
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>

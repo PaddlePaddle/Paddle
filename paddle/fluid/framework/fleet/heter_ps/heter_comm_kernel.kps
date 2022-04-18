@@ -252,7 +252,7 @@ void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
                                        T* shard_index, int total_devs,
                                        const StreamType& stream) {
   calc_shard_index_kernel<KeyType, T><<<4, 64, stream>>>(
-      d_keys, len, shard_index, total_xpu);
+      d_keys, len, shard_index, total_devs);
 }
 
 template <typename KeyType, typename T, typename StreamType>

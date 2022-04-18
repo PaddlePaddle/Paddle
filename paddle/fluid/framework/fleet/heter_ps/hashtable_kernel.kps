@@ -52,13 +52,13 @@ __device__ void update_lr(float& w, float& g2sum, float g,  // NOLINT
 
   double add_g2sum = 0;
   double ratio = local_learning_rate *
-                 sqrt(local_initial_g2sum / (local_initial_g2sum + *g2sum));
+                 sqrt(local_initial_g2sum / (local_initial_g2sum + g2sum));
   double scaled_grad = g / scale;
 
   w += scaled_grad * ratio;
 
-  if (*w < local_min_bound) *w = local_min_bound;
-  if (*w > local_max_bound) *w = local_max_bound;
+  if (w < local_min_bound) w = local_min_bound;
+  if (w > local_max_bound) w = local_max_bound;
 
   add_g2sum += scaled_grad * scaled_grad;
 
@@ -82,7 +82,7 @@ __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
   double add_g2sum = 0;
   double ratio =
       local_mf_learning_rate *
-      sqrt(local_mf_initial_g2sum / (local_mf_initial_g2sum + *g2sum));
+      sqrt(local_mf_initial_g2sum / (local_mf_initial_g2sum + g2sum));
   for (int i = 0; i < n; ++i) {
     double scaled_grad = g[i] / scale;
     w[i] += scaled_grad * ratio;
@@ -95,7 +95,7 @@ __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
   g2sum += add_g2sum / n;
 }
 
-__device__ void xpu_rand_uniform(float* ret_val) { *ret_val = 0.1; }
+__device__ float xpu_rand_uniform() { return 0.1; }
 
 template <typename ValType, typename GradType>
 __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
@@ -119,7 +119,7 @@ __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
 
   update_lr(val.lr, val.lr_g2sum, grad.lr_g, grad.show);
 
-  if ((*val).mf_size == 0) {
+  if (val.mf_size == 0) {
     if (local_mf_create_thresholds <=
         local_nonclk_coeff * (val.show - val.clk) + local_clk_coeff * val.clk) {
       val.mf_size = MF_DIM + 1;
@@ -135,7 +135,6 @@ __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
 }
 
 template <typename KeyType, typename ValType, typename Table>
-
 __global__ void insert_kernel(Table* table, const KeyType* const keys,
                               const ValType* const vals, long long len) {
   int cid = core_id();
@@ -302,16 +301,16 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                              c_len);
 }
 
-// template <typename KeyType, typename ValType>
-// template <typename StreamType>
-// void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
-//                                         const char* d_grads, size_t len,
-//                                         StreamType stream) {
-//  if (len == 0) {
-//    return;
-//  }
-//  // TODO(zhangminxu): to be implemented
-// }
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const char* d_grads, size_t len,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
 
 template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 
