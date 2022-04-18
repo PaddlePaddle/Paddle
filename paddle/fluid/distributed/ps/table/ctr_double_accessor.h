@@ -170,7 +170,7 @@ class CtrDoubleAccessor : public ValueAccessor {
   // update delta_score and unseen_days after save
   virtual void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
-  virtual bool save_ssd(float* value);
+  virtual bool SaveSSD(float* value);
   // virtual bool save_cache(float* value, int param, double
   // global_cache_threshold) override;
   // keys不存在时，为values生成随机值

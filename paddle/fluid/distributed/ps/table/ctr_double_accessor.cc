@@ -74,7 +74,7 @@ bool CtrDoubleAccessor::Shrink(float* value) {
   }
   return false;
 }
-bool CtrDoubleAccessor::save_ssd(float* value) {
+bool CtrDoubleAccessor::SaveSSD(float* value) {
   if (CtrDoubleFeatureValue::UnseenDays(value) > _ssd_unseenday_threshold) {
     return true;
   }
