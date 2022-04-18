@@ -99,13 +99,16 @@ void GraphPatternDetector::operator()(Graph *graph,
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   VLOG(3) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
-
+  VLOG(3) << "for loop";
   for (auto &node : GraphTraits::DFS(graph)) {
+    VLOG(5) << "dfs node: " << node.Name();
     for (const auto &pdnode : pattern_.nodes()) {
+      VLOG(5) << "pattern_.node: " << pdnode->name();
       if (pdnode->Tell(&node)) {
         VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
+      VLOG(5) << "pattern_.node: " << pdnode->name();
     }
   }
   // Check to early stop if some PDNode can't find matched Node.
@@ -433,7 +436,10 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back([=](Node *x) { 
+                                        if (x->Var()==nullptr) return false;
+                                        return x->Var()->Persistable(); 
+                                     });
   return this;
 }
 
