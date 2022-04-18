@@ -32,7 +32,7 @@ set(MANUAL_BUILD_KERNELS cross_entropy_kernel deformable_conv_kernel deformable_
     matrix_power_kernel matrix_power_grad_kernel maxout_kernel maxout_grad_kernel pool_kernel
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
-    triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
+    triangular_solve_grad_kernel determinant_grad_kernel reduce_sum_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
 
 kernel_library(cross_entropy_kernel DEPS ${COMMON_KERNEL_DEPS} softmax cross_entropy)
 kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
@@ -43,7 +43,7 @@ kernel_library(hierarchical_sigmoid_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit
 kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit_code)
 kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(reduce_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+kernel_library(reduce_sum_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
 kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
