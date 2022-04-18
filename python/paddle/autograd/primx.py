@@ -17,6 +17,7 @@ from paddle.fluid import framework as framework
 from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name, core
 from paddle.fluid.framework import Operator
+from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
@@ -188,8 +189,10 @@ class Transform(object):
                 del self.vars[id(var)]
         self.dot2bar.delete_keyvars(vars_to_erase)
         self.var2dot.delete_valuevars(vars_to_erase)
+        block = self.block
         for var in vars_to_erase:
-            del var.block.vars[var.name]
+            block.desc._remove_var(cpt.to_bytes(var.name))
+        block._sync_with_cpp()
 
     def var2dot_rec(self, vars, defaults=None):
 
@@ -341,17 +344,28 @@ class Transform(object):
 
         xs_bar = [self.dot2bar.lookup(x) for x in xs_dot]
 
-        if not retain_fwd:
-            dots_to_remove = set()
+        if not retain_fwd and len(path) > 0:
+            vars_to_remove = set()
             for op in path:
                 for var in get_input_vars(op):
                     if is_dot(var):
-                        dots_to_remove.add(var)
-                block = op.block
-                op_idx = block.ops.index(op)
-                block._remove_op(op_idx)
+                        vars_to_remove.add(var)
 
-            self.erase_dots(dots_to_remove)
+            op_indexes = []
+            
+            block = self.block
+            for i, op in enumerate(block.ops):
+                if op in path:
+                    op_indexes.append(i)
+                    path.pop(0)
+                    if len(path) == 0:
+                        break
+
+            # remove ops
+            for op_index in reversed(op_indexes):                
+                block.desc._remove_op(op_index, op_index + 1)
+
+            self.erase_dots(vars_to_remove)
 
         return ys_bar, xs_bar
 
