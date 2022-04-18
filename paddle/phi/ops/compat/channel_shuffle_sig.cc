@@ -25,9 +25,9 @@ KernelSignature ChannelShuffleOpArgumentMapping(
 KernelSignature ChannelShuffleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("channel_shuffle_grad",
-                         {GradVarName("Out")},
+                         {"Out@GRAD"},
                          {"groups", "data_format"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi
