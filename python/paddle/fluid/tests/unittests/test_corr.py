@@ -104,7 +104,6 @@ class Corr_Comeplex_Test(unittest.TestCase):
 
 
 class Corr_Test5(Corr_Comeplex_Test):
-
     def setUp(self):
         self.dtype = 'complex64'
 
