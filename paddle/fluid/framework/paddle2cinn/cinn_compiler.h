@@ -103,6 +103,13 @@ class CinnCompiler {
       const ::cinn::common::Target& target, std::int64_t compiled_num,
       void* stream = nullptr) const;
 
+  // check whether a compiled result is valid by comparing
+  // the consistency of external variables of the subgraph
+  void CheckCompiledValid(
+      const ir::Graph& graph,
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const CinnCompiledObject& compiled_obj) const;
+
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKeyByAddress, std::int64_t, CinnCacheKey::Hash>
       cache_by_address_;

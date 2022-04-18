@@ -21,10 +21,8 @@ KernelSignature GeluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature GeluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("gelu_grad",
-                         {"X", GradVarName("Out")},
-                         {"approximate"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "gelu_grad", {"X", "Out@GRAD"}, {"approximate"}, {"X@GRAD"});
 }
 
 }  // namespace phi

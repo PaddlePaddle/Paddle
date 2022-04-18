@@ -73,6 +73,18 @@ int AfsWrapper::download(const std::string& local_file,
                          const std::string& afs_file) {
   return afs_handler_.download_file(local_file, afs_file);
 }
+
+int AfsWrapper::touchz(const std::string& path) {
+  return afs_handler_.touchz(path);
+}
+
+std::string AfsWrapper::cat(const std::string& path) {
+  return afs_handler_.cat(path);
+}
+
+int AfsWrapper::mv(const std::string& old_path, const std::string& dest_path) {
+  return afs_handler_.mv(old_path, dest_path);
+}
 #endif
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
@@ -85,7 +97,7 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
   int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(),
                               conf.c_str());
   if (ret != 0) {
-    LOG(ERROR) << "AFS Init Error";
+    VLOG(0) << "AFS Init Error";
   }
   use_afs_api_ = 1;
 }
@@ -679,7 +691,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     }
 #endif
     VLOG(3) << "GpuPs build hbmps done";
-
   };
 
   if (multi_mf_dim_) {
@@ -995,6 +1006,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
                       total_length);
+#endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "GpuPs/XpuPs: PullSparse Only Support CUDAPlace or XPUPlace Now."));
@@ -1004,7 +1016,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PullSparse";
-#endif
 }
 
 void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
