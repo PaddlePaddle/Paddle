@@ -239,7 +239,7 @@ class TestExpandInferShape(unittest.TestCase):
             -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
         ]
         out = paddle.expand(x, shape=target_shape)
-        self.assertListEqual(list(out.shape), [-1, 2, 3])
+        self.assertListEqual(list(out.shape), [-1, -1, -1])
 
 
 if __name__ == "__main__":
