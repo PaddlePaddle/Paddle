@@ -32,6 +32,13 @@
   output : Tensor(x_grad@DenseTensor)
   invoke : to_dense_impl(out_grad)
 
+- backward_api : max_pool3d_grad
+  forward : max_pool3d (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
+  args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel :
+    func : sparse_maxpool_grad
+
 - backward_api : sparse_relu_grad
   forward : sparse_relu(Tensor x) -> Tensor(out@SparseCooTensor)
   args : (Tensor x, Tensor out_grad)

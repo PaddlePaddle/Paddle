@@ -65,3 +65,12 @@
   args : (Tensor x)
   output : Tensor(out@SparseCsrTensor)
   invoke : to_sparse_csr_impl(x)
+
+- api: max_pool3d
+  args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
+  output : Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
+  kernel :
+    func : sparse_maxpool 
+    layout : x
+  intermediate : rulebook
+  backward : max_pool3d_grad 

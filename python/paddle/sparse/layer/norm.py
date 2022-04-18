@@ -25,46 +25,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+import warnings
 
-class BatchNorm(paddle.fluid.dygraph.BatchNorm):
+
+class BatchNorm1D(paddle.nn.BatchNorm1D):
     def __init__(self,
-                 num_channels,
-                 act=None,
-                 is_test=False,
+                 num_features,
                  momentum=0.9,
                  epsilon=1e-05,
-                 param_attr=None,
+                 weight_attr=None,
                  bias_attr=None,
-                 dtype='float32',
-                 data_layout='NCHW',
-                 in_place=False,
-                 moving_mean_name=None,
-                 moving_variance_name=None,
-                 do_model_average_for_mean_and_var=True,
-                 use_global_stats=False,
-                 trainable_statistics=False):
-        super(BatchNorm, self).__init__(
-            num_channels,
-            act=act,
-            is_test=is_test,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D, self).__init__(
+            num_features,
             momentum=momentum,
             epsilon=epsilon,
-            param_attr=param_attr,
+            weight_attr=weight_attr,
             bias_attr=bias_attr,
-            dtype=dtype,
-            data_layout,
-            in_place=in_place,
-            moving_mean_name=moving_mean_name,
-            moving_variance_name=moving_variance_name,
-            do_model_average_for_mean_and_var=do_model_average_for_mean_and_var,
+            data_format=data_format,
             use_global_stats=use_global_stats,
-            trainable_statistics=tranable_statistics)
+            name=name)
 
-        def forward(self, input):
-            values = input.values()
-            out = super(BatchNorm, self).forward(values)
-            return paddle.sparse.sparse_coo_tensor(
-                input.indices(),
-                out,
-                shape=input.shape,
-                stop_gradient=input.stop_gradient)
+    def forward(self, input):
+        values = input.values()
+        #out = super(BatchNorm1D, self).forward(values)
+        self._check_data_format(self._data_format)
+
+        self._check_input_dim(values)
+
+        if self.training:
+            warnings.warn(
+                "When training, we now always track global mean and variance.")
+
+        out = paddle.nn.functional.batch_norm(
+            values,
+            self._mean,
+            self._variance,
+            weight=self.weight,
+            bias=self.bias,
+            training=self.training,
+            momentum=self._momentum,
+            epsilon=self._epsilon,
+            data_format=self._data_format,
+            use_global_stats=self._use_global_stats)
+
+        return paddle.sparse.sparse_coo_tensor(
+            input.indices(),
+            out,
+            shape=input.shape,
+            stop_gradient=input.stop_gradient)

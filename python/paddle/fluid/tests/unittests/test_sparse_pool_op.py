@@ -16,24 +16,21 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+import paddle.fluid.core as core
+from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
-class TestSparseBatchNorm(unittest.TestCase):
-    def test_sparse_batch_norm(self):
+class TestSparseMaxPool3D(unittest.TestCase):
+    def test1(self):
         with _test_eager_guard():
-            channels = 1
-            shape = [1, 1, 6, 6, channels]
-            dense_x = paddle.randn(shape)
-            batch_norm = paddle.nn.BatchNorm3D(channels, data_format="NDHWC")
-            dense_y = batch_norm(dense_x)
-
-            sparse_dim = 4
-            sparse_x = dense_x.to_sparse_coo(sparse_dim)
-            sparse_batch_norm = paddle.sparse.BatchNorm1D(channels)
-            sparse_y = sparse_batch_norm(sparse_x)
-            assert np.allclose(
-                dense_y.flatten().numpy(),
-                sparse_y.values().flatten().numpy(),
-                atol=1e-5,
-                rtol=1e-5)
+            dense_x = paddle.randn((1, 1, 4, 4, 1))
+            print(dense_x)
+            sparse_x = dense_x.to_sparse_coo(4)
+            kernel_sizes = [1, 3, 3]
+            paddings = [0, 0, 0]
+            strides = [1, 1, 1]
+            dilations = [1, 1, 1]
+            out = _C_ops.final_state_sparse_max_pool3d(
+                sparse_x, kernel_sizes, paddings, dilations, strides)
+            print(out)

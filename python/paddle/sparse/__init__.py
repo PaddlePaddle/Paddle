@@ -15,12 +15,12 @@
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
 from .layer.activation import ReLU
-from .layer.norm import BatchNorm
+from .layer.norm import BatchNorm1D
 
 from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
 
 __all__ = [
     'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D', 'SubmConv3D',
-    'BatchNorm'
+    'BatchNorm1D'
 ]
