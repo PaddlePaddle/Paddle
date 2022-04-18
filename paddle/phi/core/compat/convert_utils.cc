@@ -102,7 +102,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPhiKernelName(const std::string& fluid_op_name) {
+const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
