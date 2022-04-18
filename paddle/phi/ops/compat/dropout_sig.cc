@@ -27,9 +27,9 @@ KernelSignature DropoutOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature DropoutGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("dropout_grad",
-                         {"Mask", GradVarName("Out")},
+                         {"Mask", "Out@GRAD"},
                          {"dropout_prob", "is_test", "dropout_implementation"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

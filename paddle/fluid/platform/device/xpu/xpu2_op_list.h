@@ -243,6 +243,7 @@ XPUOpMap& get_kl2_ops() {
       {"masked_select",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"matmul_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"matmul_v2_grad",
