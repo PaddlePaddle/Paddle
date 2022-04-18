@@ -21,7 +21,7 @@ import warnings
 
 
 def numpy_corr(np_arr, rowvar=True, dtype='float64'):
-    return np.corrcoef(np_arr, rowvar=rowvar,dtype=dtype)
+    return np.corrcoef(np_arr, rowvar=rowvar, dtype=dtype)
 
 
 class Corr_Test(unittest.TestCase):
