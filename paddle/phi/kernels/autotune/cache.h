@@ -23,7 +23,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-DECLARE_bool(search_cache_max_number);
+DECLARE_int32(search_cache_max_number);
 
 inline void HashCombine(std::size_t* seed) {}
 

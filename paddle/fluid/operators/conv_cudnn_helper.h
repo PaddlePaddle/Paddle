@@ -214,10 +214,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
         }
       }
     }
-    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-    //         << ", deterministic=" << deterministic
-    //         << ", choose algo=" << result.algo << ", workspace="
-    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
@@ -393,10 +393,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         }
       }
     }
-    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-    //         << ", deterministic=" << deterministic
-    //         << ", choose algo=" << result.algo << ", workspace="
-    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
@@ -582,10 +582,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         }
       }
     }
-    // VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-    //         << ", deterministic=" << deterministic
-    //         << ", choose algo=" << result.algo << ", workspace="
-    //         << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
