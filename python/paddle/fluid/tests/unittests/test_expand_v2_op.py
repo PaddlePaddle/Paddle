@@ -231,6 +231,17 @@ class TestExpandV2API(unittest.TestCase):
         assert np.array_equal(res_3, np.tile(input, (1, 1)))
 
 
+class TestExpandInferShape(unittest.TestCase):
+    def test_shape_with_var(self):
+        x = paddle.static.data(shape=[-1, 1, 3], name='x')
+        fake_var = paddle.randn([2, 3])
+        target_shape = [
+            -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
+        ]
+        out = paddle.expand(x, shape=target_shape)
+        self.assertListEqual(list(out.shape), [-1, 2, 3])
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
