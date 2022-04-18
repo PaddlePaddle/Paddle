@@ -54,7 +54,7 @@ class Sampler {
     if (drop_last) {
       int total_batch_size = world_size * batch_size;
       trunc_num_samples =
-          floor(num_samples / total_batch_size) * total_batch_size;
+          std::floor(num_samples / total_batch_size) * total_batch_size;
       sample_ids_.reserve(trunc_num_samples);
     } else {
       sample_ids_.reserve(num_samples);
