@@ -185,7 +185,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
@@ -232,8 +232,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(static_cast<AlgoT>(1));
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size = GetWorkspaceSize(args, static_cast<AlgoT>(1));
+    return SearchResult<AlgoT>(static_cast<AlgoT>(1), -1.0, workspace_size);
   }
 
   // Heuristic search mode, calling the cudnnGetXxxAlgorithm.
@@ -363,7 +364,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
@@ -411,8 +412,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_DATA_ALGO_1);
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size =
+        GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_DATA_ALGO_1);
+    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_DATA_ALGO_1, -1.0,
+                               workspace_size);
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
@@ -552,7 +556,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
@@ -601,8 +605,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1);
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size =
+        GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1);
+    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1, -1.0,
+                               workspace_size);
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,

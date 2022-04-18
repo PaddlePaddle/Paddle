@@ -48,6 +48,8 @@ struct SearchResult {
         workspace_size(node.workspace_size) {}
 
   explicit SearchResult(AlgoT a) : algo(a) {}
+  explicit SearchResult(AlgoT a, float t, size_t size)
+      : algo(a), time(t), workspace_size(size) {}
 
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
