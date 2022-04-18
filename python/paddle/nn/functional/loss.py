@@ -2265,14 +2265,20 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
 
     batch_size, hidden_size = input1.shape
     scores = paddle.zeros(
-        [batch_size],
-        dtype='{}'.format(input1.dtype).replace("paddle.", ""))
+        [batch_size], dtype='{}'.format(input1.dtype).replace("paddle.", ""))
 
     if in_dynamic_mode():
-        if "{}".format(input1.dtype) not in ["paddle.float32", "paddle.float64"]:
-            raise ValueError("The data type of input Variable must be 'float32' or 'float64'")
-        if "{}".format(label.dtype) not in ["paddle.int32", "paddle.int64", "paddle.float32", "paddle.float64"]:
-            raise ValueError("The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'")
+        if "{}".format(
+                input1.dtype) not in ["paddle.float32", "paddle.float64"]:
+            raise ValueError(
+                "The data type of input Variable must be 'float32' or 'float64'")
+        if "{}".format(label.dtype) not in [
+            "paddle.int32", "paddle.int64", "paddle.float32",
+            "paddle.float64"
+        ]:
+            raise ValueError(
+                "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
+            )
 
         for i in range(batch_size):
             z = paddle.matmul(input1[i], input2[i])
@@ -2294,52 +2300,30 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         elif reduction == 'sum':
             return paddle.sum(scores)
 
-    fluid.data_feeder.check_variable_and_dtype(
+    check_variable_and_dtype(
         input1, 'input1', ['float32', 'float64'], 'cosine_embedding_loss')
-    fluid.data_feeder.check_variable_and_dtype(
+    check_variable_and_dtype(
         input2, 'input2', ['float32', 'float64'], 'cosine_embedding_loss')
-    fluid.data_feeder.check_variable_and_dtype(
+    check_variable_and_dtype(
         label, 'label', ['int32', 'int64', 'float32', 'float64'],
         'cosine_embedding_loss')
 
-    label_ones = fluid.layers.fill_constant(
-        shape=[label.shape[0]],
-        dtype='{}'.format(label.dtype).replace("paddle.", ""),
-        value=1)
-    label_zeros = fluid.layers.fill_constant(
-        shape=[label.shape[0]],
-        dtype='{}'.format(label.dtype).replace("paddle.", ""),
-        value=0)
-    check_zero = fluid.layers.fill_constant(
-        shape=[1],
-        dtype='{}'.format(input1.dtype).replace("paddle.", ""),
-        value=0)
-    conds_ones = fluid.layers.equal(x=label, y=label_ones)
-    conds_zeros = fluid.layers.equal(x=label, y=label_zeros)
+    label_ones = paddle.ones(
+        shape=[label.shape[0]], dtype='{}'.format(label.dtype).replace("paddle.", ""))
+    check_zero = paddle.zeros(
+        shape=[1], dtype='{}'.format(input1.dtype).replace("paddle.", ""))
+    conds_ones = paddle.equal(x=label, y=label_ones)
 
     for i in range(batch_size):
-        z = fluid.layers.matmul(input1[i], input2[i])
-        elem1 = fluid.layers.reduce_sum(fluid.layers.pow(input1[i], factor=2.0))
-        elem2 = fluid.layers.reduce_sum(fluid.layers.pow(input2[i], factor=2.0))
-        denom = fluid.layers.sqrt(elem1) * fluid.layers.sqrt(elem2)
+        z = paddle.matmul(input1[i], input2[i])
+        denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
         score = z / denom
-        with fluid.layers.Switch() as switch:
-            with switch.case(conds_ones[i] == True and conds_zeros[i] == False):
-                scores[i] = 1 - score
-            with switch.case(conds_ones[i] == False and conds_zeros[i] == True):
-                with fluid.layers.Switch() as max_switch:
-                    with max_switch.case(
-                            fluid.layers.less_than(
-                                x=score - margin, y=check_zero) == True):
-                        scores[i] = 0
-                    with max_switch.case(
-                            fluid.layers.less_than(
-                                x=score - margin, y=check_zero) == False):
-                        scores[i] = score - margin
-                    with max_switch.default():
-                        pass
-            with switch.default():
-                pass
+        temp = paddle.static.nn.case(
+            pred_fn_pairs=[(paddle.less_than(x=score - margin, y=check_zero), lambda: 0)],
+            default=lambda: score - margin)
+        scores[i] = paddle.static.nn.case(
+            pred_fn_pairs=[(conds_ones[i] == True, lambda: 1 - score),
+                           (conds_ones[i] == False, lambda: temp)])
 
     if reduction == 'none':
         return scores
