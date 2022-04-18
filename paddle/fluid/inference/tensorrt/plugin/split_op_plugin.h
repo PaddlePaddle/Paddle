@@ -28,8 +28,12 @@ namespace plugin {
 class SplitPlugin : public PluginTensorRTV2Ext {
  public:
   SplitPlugin() {}
-  SplitPlugin(int axis, std::vector<int> const& output_lengths, bool with_fp16)
-      : axis_(axis), same_shape_(true), output_length_(output_lengths) {
+  SplitPlugin(int axis, std::vector<int> const& output_lengths, bool with_fp16,
+              bool squeeze)
+      : axis_(axis),
+        same_shape_(true),
+        output_length_(output_lengths),
+        squeeze_(squeeze) {
     with_fp16_ = with_fp16;
   }
 
@@ -37,10 +41,12 @@ class SplitPlugin : public PluginTensorRTV2Ext {
     deserializeBase(serial_data, serial_length);
     DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &output_length_);
+    DeserializeValue(&serial_data, &serial_length, &squeeze_);
   }
 
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override {
-    SplitPlugin* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
+    SplitPlugin* ptr =
+        new SplitPlugin(axis_, output_length_, with_fp16_, squeeze_);
     ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->shareData(this);
     return ptr;
@@ -76,13 +82,14 @@ class SplitPlugin : public PluginTensorRTV2Ext {
  protected:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(axis_) + SerializedSize(output_length_) +
-           getBaseSerializationSize();
+           getBaseSerializationSize() + SerializedSize(squeeze_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, output_length_);
+    SerializeValue(&buffer, squeeze_);
   }
 
   int axis_;
@@ -91,6 +98,7 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   int axis_shape_;
   bool same_shape_;
   std::vector<int> output_length_;
+  bool squeeze_;
   std::vector<int> segment_offsets_;
   thrust::device_vector<int> d_segment_offsets_;
   thrust::device_vector<float*> d_output_ptrs_;
@@ -147,8 +155,8 @@ REGISTER_TRT_PLUGIN_V2(SplitPluginCreator);
 class SplitPluginDynamic : public DynamicPluginTensorRT {
  public:
   SplitPluginDynamic(int axis, std::vector<int> const& output_lengths,
-                     bool with_fp16)
-      : axis_(axis), output_length_(output_lengths) {
+                     bool with_fp16, bool squeeze)
+      : axis_(axis), output_length_(output_lengths), squeeze_(squeeze) {
     with_fp16_ = with_fp16;
   }
 
@@ -156,10 +164,11 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &output_length_);
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+    DeserializeValue(&serial_data, &serial_length, &squeeze_);
   }
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new SplitPluginDynamic(axis_, output_length_, with_fp16_);
+    return new SplitPluginDynamic(axis_, output_length_, with_fp16_, squeeze_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -207,6 +216,7 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
  private:
   int axis_;
   std::vector<int> output_length_;
+  bool squeeze_;
 };
 
 class SplitPluginDynamicCreator : public nvinfer1::IPluginCreator {

@@ -82,10 +82,15 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
+  VLOG(3) << "count of subgraphs: " << subgraphs.size();
   UniquePatterns(&subgraphs);
+  VLOG(3) << "count of subgraphs: " << subgraphs.size();
   SortSubgraphs(&subgraphs);
+  VLOG(3) << "count of subgraphs: " << subgraphs.size();
   RemoveOverlappedMatch(&subgraphs);
+  VLOG(3) << "count of subgraphs: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
+  VLOG(3) << "count of subgraphs: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
 

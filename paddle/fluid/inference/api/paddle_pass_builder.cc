@@ -90,6 +90,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "graph_viz_pass",                               //
       "trt_map_matmul_v2_to_mul_pass",                //
       //      "trt_map_matmul_v2_to_matmul_pass",             //
+      "transformer_qkv_projection_fuse_pass",         //
+      "graph_viz_pass",                               //
+      "self_attention_fuse_pass",                     //
       "graph_viz_pass",                  //
       "multihead_matmul_fuse_pass_v2",   //
       "delete_c_identity_op_pass",       //
