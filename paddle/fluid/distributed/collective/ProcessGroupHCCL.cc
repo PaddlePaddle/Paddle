@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/collective/HCCLTools.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
@@ -97,8 +98,11 @@ bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
-                                   int rank, int size, int gid)
-    : ProcessGroup(rank, size, gid), store_(store) {}
+                                   int rank, int size,
+                                   const platform::Place& place, int gid)
+    : ProcessGroup(rank, size, place, gid), store_(store) {
+  platform::SetNPUDeviceId(place_.device);
+}
 
 void ProcessGroupHCCL::BroadcastUniqueHCCLID(
     std::vector<HcclRootInfo>& hccl_ids) {  // NOLINT
