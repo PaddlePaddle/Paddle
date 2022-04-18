@@ -30,10 +30,25 @@ class TestSparseBatchNorm(unittest.TestCase):
 
             sparse_dim = 4
             sparse_x = dense_x.to_sparse_coo(sparse_dim)
-            sparse_batch_norm = paddle.sparse.BatchNorm1D(channels)
+            sparse_batch_norm = paddle.sparse.BatchNorm(channels)
             sparse_y = sparse_batch_norm(sparse_x)
             assert np.allclose(
                 dense_y.flatten().numpy(),
                 sparse_y.values().flatten().numpy(),
                 atol=1e-5,
                 rtol=1e-5)
+
+    def test(self):
+        with _test_eager_guard():
+            np.random.seed(123)
+            channels = 3
+            x_data = np.random.random(size=(1, 6, 6, 6,
+                                            channels)).astype('float32')
+            dense_x = paddle.to_tensor(x_data)
+            sparse_x = dense_x.to_sparse_coo(4)
+            batch_norm = paddle.sparse.BatchNorm(channels)
+            batch_norm_out = batch_norm(sparse_x)
+            print(batch_norm_out)
+
+
+#TODO(zkh2016): add more test
