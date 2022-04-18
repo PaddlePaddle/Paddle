@@ -95,7 +95,8 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc mean_var_desc(mean_var, CNNL_LAYOUT_ARRAY,
                                     ToCnnlDataType(mean_var.dtype()));
     auto value = static_cast<T>(1.0 / static_cast<float>(input_grad->numel()));
-    MLUCnnl::Fill(context, value, mean_var_desc.get(), GetBasePtr(&mean_var));
+    MLUCnnl::Fill(context, CNNL_POINTER_MODE_HOST, &value, mean_var_desc.get(),
+                  GetBasePtr(&mean_var));
 
     // means mul output_grad
     MLUCnnlTensorDesc in_desc(*output_grad, CNNL_LAYOUT_ARRAY,
