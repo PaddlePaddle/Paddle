@@ -26,7 +26,7 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
-set(CINN_GIT_TAG 093217619c821e73cec15511fa54cb0026ed0476)
+set(CINN_GIT_TAG 08d7680dd91dfaa65787969050eb8f1143654f10)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}

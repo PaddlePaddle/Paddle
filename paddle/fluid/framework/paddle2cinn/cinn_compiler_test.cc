@@ -272,11 +272,6 @@ TEST(CinnCompilerTest, Compile) {
     const auto& compiled_obj =
         cinn_compiler->Compile(compiling_graph, input_tensors, target);
     ASSERT_NE(compiled_obj.compiler, nullptr);
-    if (FLAGS_enable_cinn_auto_tune) {
-      ASSERT_NE(compiled_obj.auto_tuner, nullptr);
-    } else {
-      ASSERT_EQ(compiled_obj.auto_tuner, nullptr);
-    }
     ASSERT_NE(compiled_obj.runtime_program, nullptr);
     ASSERT_NE(compiled_obj.scope, nullptr);
     ASSERT_FALSE(compiled_obj.paddle2cinn_varmap.empty());
@@ -298,11 +293,6 @@ TEST(CinnCompilerTest, Compile) {
   // CPU Compilation
   compile_fn(::cinn::common::DefaultHostTarget());
   ASSERT_EQ(cinn_compiler->real_compiled_num(), 2);
-  // enable auto-tune, currently only check on cpu, will add a
-  // test for gpu after CINN ready
-  FLAGS_enable_cinn_auto_tune = true;
-  compile_fn(::cinn::common::DefaultHostTarget());
-  ASSERT_EQ(cinn_compiler->real_compiled_num(), 3);
 }
 
 }  // namespace paddle2cinn

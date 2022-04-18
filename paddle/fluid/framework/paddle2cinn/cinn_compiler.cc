@@ -22,7 +22,7 @@
 #include <unordered_map>
 
 #include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/auto_schedule/tunning.h"
+#include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/frontend/decomposer/use_decomposer.h"
@@ -283,8 +283,8 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   }
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {
-    VLOG(4) << "Compile with auto-tune" auto_tuner =
-        std::make_unique<AutoTuner>(target, graph);
+    VLOG(4) << "Compile with auto-tune";
+    auto_tuner = std::make_unique<AutoTuner>(target, cinn_graph.get());
     auto_tuner->Initialize(AutoTuner::Config(), graph_compiler.get());
     ::cinn::auto_schedule::TuningOptions tuning_options;
     tuning_options.num_measure_trials = 0;
