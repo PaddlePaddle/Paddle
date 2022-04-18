@@ -336,7 +336,6 @@ def full_like(x, fill_value, dtype=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        fill_value = utils._numpy_as_scalar(fill_value)
         return _C_ops.final_state_full_like(x, fill_value, dtype, x.place)
 
     if _in_legacy_dygraph():
