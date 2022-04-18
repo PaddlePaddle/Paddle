@@ -1,7 +1,7 @@
 if (NOT APPLE AND NOT WIN32)
     set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 else()
-    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io ir_pass_manager analysis_predictor benchmark)
+    set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
