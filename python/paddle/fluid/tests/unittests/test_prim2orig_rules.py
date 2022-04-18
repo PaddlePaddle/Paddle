@@ -45,10 +45,10 @@ class TestAddPPrim2Orig(unittest.TestCase):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = ['add_p', 'elementwise_add']
-        # { prim_op_output_name: orign_op_out_index }
-        self.out_map = {'Z': 0}
+        # { prim_op_output_var: orign_op_out_index }
+        self.out_map = {self.output['Z']: 0}
 
     def test_op(self):
         with paddle.static.program_guard(self.main_program,
@@ -59,18 +59,12 @@ class TestAddPPrim2Orig(unittest.TestCase):
                 outputs=self.output,
                 attrs=self.attrs)
 
-            orig_out = _prim2orig(op, *self._prim2orig_args)
+            orig_out = _prim2orig(op, *self.prim2orig_args)
             all_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
             orig_out = flatten(orig_out)
             for k, v in self.out_map.items():
-                # Handle multi output like `YS`
-                if isinstance(v, (list, tuple)):
-                    for i in v:
-                        self.assertEqual(self.output[k][i].shape,
-                                         orig_out[i].shape)
-                else:
-                    self.assertEqual(self.output[k].shape, orig_out[v].shape)
+                self.assertEqual(k.shape, orig_out[v].shape)
 
 
 class TestSubPPrim2Orig(TestAddPPrim2Orig):
@@ -86,9 +80,9 @@ class TestSubPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = ['sub_p', 'elementwise_sub']
-        self.out_map = {'Z': 0}
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestMulPPrim2Orig(TestAddPPrim2Orig):
@@ -104,9 +98,9 @@ class TestMulPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = ['mul_p', 'elementwise_mul']
-        self.out_map = {'Z': 0}
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestDivPPrim2Orig(TestAddPPrim2Orig):
@@ -122,9 +116,9 @@ class TestDivPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = ['div_p', 'elementwise_div']
-        self.out_map = {'Z': 0}
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestSqrtPPrim2Orig(TestAddPPrim2Orig):
@@ -139,9 +133,9 @@ class TestSqrtPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['sqrt_p', 'sqrt']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestTanhPPrim2Orig(TestAddPPrim2Orig):
@@ -156,9 +150,9 @@ class TestTanhPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['tanh_p', 'tanh']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestReshapePPrim2Orig(TestAddPPrim2Orig):
@@ -173,9 +167,9 @@ class TestReshapePPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'shape': [4, 4]}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['reshape_p', 'reshape2']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestBroadcastPPrim2Orig(TestAddPPrim2Orig):
@@ -190,9 +184,9 @@ class TestBroadcastPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'shape': [10, 2, 8]}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['broadcast_p', 'expand_v2']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestTransposePPrim2Orig(TestAddPPrim2Orig):
@@ -207,9 +201,9 @@ class TestTransposePPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': [1, 2, 0, 3]}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['transpose_p', 'transpose2']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestSplitPPrim2Orig(TestAddPPrim2Orig):
@@ -226,9 +220,13 @@ class TestSplitPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'num_or_sections': [2, 3, 4], 'axis': 1}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['split_p', 'split']
-        self.out_map = {'YS': (0, 1, 2)}
+        self.out_map = {
+            self.output['YS'][0]: 0,
+            self.output['YS'][1]: 1,
+            self.output['YS'][2]: 2,
+        }
 
 
 class TestConcatPPrim2Orig(TestAddPPrim2Orig):
@@ -245,9 +243,9 @@ class TestConcatPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': 0}
 
-        self._prim2orig_args = (X, Y, Z)
+        self.prim2orig_args = (X, Y, Z)
         self.all_ops = ['concat_p', 'concat']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestReducePPrim2Orig(TestAddPPrim2Orig):
@@ -262,9 +260,9 @@ class TestReducePPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': [1], 'keepdim': True}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['reduce_p', 'reduce_sum']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestMatmulPPrim2Orig(TestAddPPrim2Orig):
@@ -280,9 +278,9 @@ class TestMatmulPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = ['matmul_p', 'matmul_v2']
-        self.out_map = {'Z': 0}
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestSliceSelectPPrim2Orig(TestAddPPrim2Orig):
@@ -297,9 +295,9 @@ class TestSliceSelectPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': [0], 'starts': [1], 'ends': [8], 'strides': [2]}
 
-        self._prim2orig_args = (X, )
+        self.prim2orig_args = (X, )
         self.all_ops = ['slice_select_p', 'strided_slice']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 class TestSliceAssignPPrim2Orig(TestAddPPrim2Orig):
@@ -315,11 +313,11 @@ class TestSliceAssignPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': [1], 'starts': [0], 'ends': [3], 'strides': [1]}
 
-        self._prim2orig_args = (X, Y)
+        self.prim2orig_args = (X, Y)
         self.all_ops = [
             'slice_assign_p', 'add_p', 'fill_constant_p', 'set_value'
         ]
-        self.out_map = {'Z': 0}
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestGatherPPrim2Orig(TestAddPPrim2Orig):
@@ -336,11 +334,11 @@ class TestGatherPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': 0, }
 
-        self._prim2orig_args = (
+        self.prim2orig_args = (
             IndexTensor,
             X, )
         self.all_ops = ['gather_p', 'gather']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 # class TestScatterAddPPrim2Orig(TestAddPPrim2Orig):
@@ -362,10 +360,10 @@ class TestGatherPPrim2Orig(TestAddPPrim2Orig):
 #             'axis': 0, 
 #         }
 
-#         self._prim2orig_args = (IndexTensor, X, Y)
+#         self.prim2orig_args = (IndexTensor, X, Y)
 #         self.all_ops = ['scatter_add_p', 'expand_v2', 'expand_v2', 'put_along_axis', ]
 #         self.out_map = {
-#             'Z': 0
+#             self.output['Z']: 0
 #         }
 
 
@@ -380,9 +378,9 @@ class TestFillConstantPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'value': 10, 'shape': [5, 5], 'dtype': paddle.int32}
 
-        self._prim2orig_args = ()
+        self.prim2orig_args = ()
         self.all_ops = ['fill_constant_p', 'fill_constant']
-        self.out_map = {'Y': 0}
+        self.out_map = {self.output['Y']: 0}
 
 
 if __name__ == '__main__':

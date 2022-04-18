@@ -638,4 +638,4 @@ def scatter_add_transpose(op, check_dot, z_bar):
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
     return scatter_add(
         z_bar, zeros, indextensor, axis=axis), gather(
-            y_bar, indextensor, axis=axis), None
+            z_bar, indextensor, axis=axis), None

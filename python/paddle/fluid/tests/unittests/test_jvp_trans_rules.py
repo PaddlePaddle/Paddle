@@ -48,14 +48,14 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[2, 2], dtype='float')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[2, 2], dtype='float')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: True
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[2, 2], dtype='float')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, 1: Y}
 
         self.all_ops = [
             # prim op:
@@ -74,16 +74,16 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
                 outputs=self.prim_output,
                 attrs=self.prim_attrs)
 
-            jvp_out = _jvp(op, *self._jvp_args)
+            jvp_out = _jvp(op, *self.jvp_args)
             jvp_out = flatten(jvp_out)
-            for k, v in self._jvp_out_shape_map.items():
+            for k, v in self.jvp_out_shape_map.items():
                 self.assertEqual(jvp_out[k].shape, v.shape)
 
             # Some prim ops dont have transpose rule
-            if hasattr(self, '_transpose_args'):
-                transpose_out = _transpose(op, *self._transpose_args)
+            if hasattr(self, 'transpose_args'):
+                transpose_out = _transpose(op, *self.transpose_args)
                 transpose_out = flatten(transpose_out)
-                for k, v in self._transpose_out_shape_map.items():
+                for k, v in self.transpose_out_shape_map.items():
                     self.assertEqual(transpose_out[k].shape, v.shape)
 
             all_ops = [op.type for op in self.main_program.block(0).ops]
@@ -106,14 +106,14 @@ class TestSubPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[5, 6], dtype='int64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: True
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[5, 6], dtype='int64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, 1: Y}
 
         self.all_ops = [
             # prim op:
@@ -142,14 +142,14 @@ class TestMulPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[5, 6], dtype='int64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[5, 6], dtype='int64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -179,14 +179,14 @@ class TestDivPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[5, 6], dtype='int64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[5, 6], dtype='int64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -216,8 +216,8 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
             # prim op:
@@ -245,8 +245,8 @@ class TestTanhPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         self.all_ops = [
             # prim op:
@@ -274,14 +274,14 @@ class TestReshapePJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[8, 8], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(name='Y_BAR', shape=[2, 32], dtype='int64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -307,15 +307,15 @@ class TestBroadcastPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[10, 7], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 10, 7], dtype='int64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -343,15 +343,15 @@ class TestTransposePJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(
             name='X_DOT', shape=[2, 3, 4, 5], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 4, 5, 3], dtype='int64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -380,8 +380,8 @@ class TestSplitPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(
             name='X_DOT', shape=[2, 7, 10], dtype='int64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {
             0: self.prim_output['YS'][0],
             1: self.prim_output['YS'][1],
             2: self.prim_output['YS'][2],
@@ -400,8 +400,8 @@ class TestSplitPJVPAndTranspose(TestAddPJVPAndTranspose):
             paddle.static.data(
                 name='Y_BAR4', shape=[2, 7, 1], dtype='int64'),
         ]
-        self._transpose_args = (check_dot, YS_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, YS_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -436,15 +436,15 @@ class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
             paddle.static.data(
                 name='X_DOT3', shape=[3, 3, 5], dtype='float64'),
         ]
-        self._jvp_args = (XS_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (XS_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X or v is Y or v is Z
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[3, 14, 5], dtype='float64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {
             0: X,
             1: Y,
             2: Z,
@@ -475,15 +475,15 @@ class TestReducePJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(
             name='X_DOT1', shape=[2, 3, 4, 5], dtype='float64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(
             name='Y_BAR', shape=[2, 3, 5], dtype='float64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -512,14 +512,14 @@ class TestMatmulPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[2, 3], dtype='float64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[3, 4], dtype='float64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[2, 4], dtype='float64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -553,14 +553,14 @@ class TestSliceSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[3, 20], dtype='float64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(name='Y_BAR', shape=[3, 10], dtype='float64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -594,14 +594,14 @@ class TestSliceAssignPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[3, 20], dtype='float64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[3, 5], dtype='float64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: v is X or v is Y
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, 1: Y}
 
         self.all_ops = [
             # prim op:
@@ -631,14 +631,14 @@ class TestGatherPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[9, 5], dtype='float64')
-        self._jvp_args = (X_DOT, )
-        self._jvp_out_shape_map = {0: self.prim_output['Y']}
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
         check_dot = lambda v: v is X
         Y_BAR = paddle.static.data(name='Y_BAR', shape=[9, 3], dtype='float64')
-        self._transpose_args = (check_dot, Y_BAR)
-        self._transpose_out_shape_map = {0: X, }
+        self.transpose_args = (check_dot, Y_BAR)
+        self.transpose_out_shape_map = {0: X, }
 
         self.all_ops = [
             # prim op:
@@ -669,14 +669,14 @@ class TestScatterAddPJVPAndTranspose(TestAddPJVPAndTranspose):
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[9, 5], dtype='float64')
         Y_DOT = paddle.static.data(name='Y_DOT', shape=[9, 3], dtype='float64')
-        self._jvp_args = (X_DOT, Y_DOT)
-        self._jvp_out_shape_map = {0: self.prim_output['Z']}
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
         check_dot = lambda v: v is X or v is Y
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[9, 5], dtype='float64')
-        self._transpose_args = (check_dot, Z_BAR)
-        self._transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X, 1: Y}
 
         self.all_ops = [
             # prim op:

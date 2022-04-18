@@ -45,10 +45,10 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
         }
         self.attrs = {}
 
-        self._orig2prim_args = (X, Y)
+        self.orig2prim_args = (X, Y)
         self.all_ops = ['elementwise_add', 'add_p']
-        # { prim_op_output_index: orig_op_out_name }
-        self.out_map = {0: 'Out'}
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
 
     def test_op(self):
         with paddle.static.program_guard(self.main_program,
@@ -59,13 +59,13 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
                 outputs=self.output,
                 attrs=self.attrs)
 
-            prim_out = _orig2prim(op, *self._orig2prim_args)
+            prim_out = _orig2prim(op, *self.orig2prim_args)
             all_ops = [op.type for op in self.main_program.block(0).ops]
 
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
             prim_out = flatten(prim_out)
             for k, v in self.out_map.items():
-                self.assertEqual(prim_out[k].shape, self.output[v].shape)
+                self.assertEqual(prim_out[k].shape, v.shape)
 
 
 class TestMatmulV2Orig2Prim(TestElementWiseAddOrig2Prim):
@@ -81,9 +81,9 @@ class TestMatmulV2Orig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'trans_x': True, 'trans_y': True}
 
-        self._orig2prim_args = (X, Y)
+        self.orig2prim_args = (X, Y)
         self.all_ops = ['matmul_v2', 'transpose_p', 'transpose_p', 'matmul_p']
-        self.out_map = {0: 'Out'}
+        self.out_map = {0: self.output['Out']}
 
 
 class TestTanhOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -98,9 +98,9 @@ class TestTanhOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {}
 
-        self._orig2prim_args = (X, )
+        self.orig2prim_args = (X, )
         self.all_ops = ['tanh', 'tanh_p']
-        self.out_map = {0: 'Out'}
+        self.out_map = {0: self.output['Out']}
 
 
 class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
@@ -116,13 +116,13 @@ class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'shape': [6, 5]}
 
-        self._orig2prim_args = (
+        self.orig2prim_args = (
             None,
             None,
             X, )
         self.all_ops = ['reshape2', 'reshape_p', 'fill_constant_p']
         # Do not checke XShape
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestConcatOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -138,9 +138,9 @@ class TestConcatOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'axis': 0}
 
-        self._orig2prim_args = (None, X, Y)
+        self.orig2prim_args = (None, X, Y)
         self.all_ops = ['concat', 'concat_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestSliceOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -159,9 +159,9 @@ class TestSliceOrig2Prim(TestElementWiseAddOrig2Prim):
             'ends': [4],
         }
 
-        self._orig2prim_args = (None, None, X, None, None)
+        self.orig2prim_args = (None, None, X, None, None)
         self.all_ops = ['slice', 'slice_select_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestFillZerosLikeOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -176,9 +176,9 @@ class TestFillZerosLikeOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {}
 
-        self._orig2prim_args = (X, )
+        self.orig2prim_args = (X, )
         self.all_ops = ['fill_zeros_like', 'fill_constant_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -194,9 +194,9 @@ class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {}
 
-        self._orig2prim_args = (X, Y)
+        self.orig2prim_args = (X, Y)
         self.all_ops = ['sum', 'add_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestPNormOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -214,9 +214,9 @@ class TestPNormOrig2Prim(TestElementWiseAddOrig2Prim):
             'asvector': True,
         }
 
-        self._orig2prim_args = (X, )
+        self.orig2prim_args = (X, )
         self.all_ops = ['p_norm', 'reshape_p', 'sqrt_p', 'reduce_p', 'mul_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestIndexSelectOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -232,11 +232,11 @@ class TestIndexSelectOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'dim': 0, }
 
-        self._orig2prim_args = (
+        self.orig2prim_args = (
             Index,
             X, )
         self.all_ops = ['index_select', 'gather_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -252,14 +252,14 @@ class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'dim': 0, }
 
-        self._orig2prim_args = (
+        self.orig2prim_args = (
             X,
             Y, )
         self.all_ops = [
             'elementwise_sub', 'broadcast_p', 'fill_constant_p', 'mul_p',
             'fill_constant_p', 'mul_p', 'sub_p', 'fill_constant_p', 'mul_p'
         ]
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestScaleOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -274,11 +274,11 @@ class TestScaleOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'scale': 2.0, 'bias': 1.0, 'bias_after_scale': True}
 
-        self._orig2prim_args = (X, )
+        self.orig2prim_args = (X, )
         self.all_ops = [
             'scale', 'fill_constant_p', 'fill_constant_p', 'mul_p', 'add_p'
         ]
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 class TestAssignOrig2Prim(TestElementWiseAddOrig2Prim):
@@ -293,9 +293,9 @@ class TestAssignOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {}
 
-        self._orig2prim_args = (X, )
+        self.orig2prim_args = (X, )
         self.all_ops = ['assign', 'fill_constant_p', 'add_p']
-        self.out_map = {0: 'Out', }
+        self.out_map = {0: self.output['Out']}
 
 
 if __name__ == '__main__':
