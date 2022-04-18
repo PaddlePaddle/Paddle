@@ -603,7 +603,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     for (size_t i = 0; i < threads.size(); i++) {
       threads[i] = std::thread(build_func, i);
     }
-  } else {
+  }
+  else {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
       for (int j = 0; j < multi_mf_dim_; j++) {
         threads[i * multi_mf_dim_ + j] =
