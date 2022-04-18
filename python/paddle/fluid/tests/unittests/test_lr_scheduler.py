@@ -207,8 +207,8 @@ def lambda_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
 
 def multiplicative_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
     latest_lr = learning_rate
-    for epoch in range(1, epoch_num + 1):
-        latest_lr = latest_lr * lr_lambda(epoch)
+    for i in range(epoch_num):
+        latest_lr = latest_lr * lr_lambda(i + 1)
     return latest_lr
 
 
