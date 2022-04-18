@@ -205,13 +205,13 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
+
         } else {
           result = FindAlgoHeuristic(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
         }
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
@@ -385,13 +385,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
+
         } else {
           result = FindAlgoHeuristic(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
         }
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
@@ -577,13 +577,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
+
         } else {
           result = FindAlgoHeuristic(args, ctx);
           phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
                                       result.workspace_size);
-          cache.Set(key, node);
         }
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
