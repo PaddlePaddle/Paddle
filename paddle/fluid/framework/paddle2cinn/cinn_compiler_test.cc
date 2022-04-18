@@ -40,7 +40,6 @@
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);
-DECLARE_bool(enable_cinn_auto_tune);
 
 namespace paddle {
 namespace framework {
