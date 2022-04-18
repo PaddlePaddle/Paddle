@@ -800,3 +800,12 @@ DEFINE_bool(enable_ins_parser_file, false,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
+
+/**
+ * Autotune related FLAG
+ * Name: FLAGS_use_autotune
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");

@@ -161,8 +161,8 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                           nodes[i].key_storage);
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
                           nodes[i].val_storage);
-#endif
   }
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -411,7 +411,6 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
   auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
@@ -804,9 +803,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place, h_left, src_place, d_left_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
   memory_copy(dst_place, h_right, src_place, d_right_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
@@ -1035,7 +1034,6 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(
   merge_grad(gpu_num, storage.local_keys, storage.local_grads, merge_num, ret);
   return ret;
 }
-
 #endif
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -1065,7 +1063,6 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
 //  platform::CUDADeviceGuard guard(dev_id);
 //  tables_[index]->dump_to_cpu(dev_id, stream);
 //}
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif

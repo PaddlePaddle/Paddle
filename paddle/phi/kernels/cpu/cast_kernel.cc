@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/cpu/cast_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 
 namespace phi {
 
