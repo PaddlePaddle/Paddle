@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/ext/place.h"
-#include "paddle/phi/common/backend.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
-namespace paddle {
-namespace experimental {
+namespace phi {
+namespace sparse {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p);
+template <typename T, typename Context>
+void SparseMaskKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out);
 
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
-
-Backend ConvertExtPlaceToBackend(PlaceType p);
-
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace sparse
+}  // namespace phi

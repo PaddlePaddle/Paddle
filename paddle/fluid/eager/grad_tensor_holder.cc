@@ -53,7 +53,7 @@ void GradTensorHolder::CopyValueFromTensor(
     paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
-      buffer_tensor.copy_(t, t.inner_place(), false);
+      buffer_tensor.copy_(t, t.place(), false);
       buffer_tensor.set_autograd_meta(t.mutable_autograd_meta());
 
     } else {
@@ -66,7 +66,7 @@ void GradTensorHolder::CopyValueFromTensor(
     if (t.defined()) {
       // Fill 1.0, use full to support complex, one_like don't support it.
       buffer_[slot_id][rank] =
-          paddle::experimental::full(t.shape(), 1, t.dtype(), t.inner_place());
+          paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
     }
   }
 }
