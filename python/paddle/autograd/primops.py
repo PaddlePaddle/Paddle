@@ -263,7 +263,7 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
     return out
 
 
-@REGISTER_FN('gather_p', 'X', 'Y')
+@REGISTER_FN('gather_p', 'X', 'IndexTensor', 'Y')
 def gather(x, indextensor, axis, out=None):
     attrs = {'axis': axis}
     helper = LayerHelper('gather_p', **locals())

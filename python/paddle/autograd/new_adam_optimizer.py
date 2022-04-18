@@ -58,11 +58,12 @@ def append_backward_new(loss,
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
 
-    orig2prim(block, update_var_list=[loss])
+    update_var_list = [loss]
+    orig2prim(block, update_var_list=update_var_list)
     ad = Transform(block)
     if parameter_list is None:
         parameter_list = program.global_block().all_parameters()
-    param_dot, loss_dot = ad.linearize(parameter_list, [loss])
+    param_dot, loss_dot = ad.linearize(parameter_list, update_var_list)
     param_bar, loss_bar = ad.transpose(param_dot, loss_dot)
 
     if len(parameter_list) == 1:
