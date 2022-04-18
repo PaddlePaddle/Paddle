@@ -118,7 +118,6 @@ class TensorWrapper {
         p_ab_autograd_meta->SetGradNode(new_grad_node);
       }
       recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
-
       return recovered_tensor;
     }
   }
