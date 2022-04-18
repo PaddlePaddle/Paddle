@@ -19,8 +19,8 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-namespace phi {
-namespace autotune {
+namespace paddle {
+namespace imperative {
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
@@ -56,16 +56,16 @@ std::shared_ptr<VarType> TraceTransposeOp(
 }
 
 template <typename VarType>
-class LayoutTransposer {
+class LayoutTransformer {
  public:
-  explicit LayoutTransposer(const std::string& type) : type_(type) {}
+  explicit LayoutTransformer(const std::string& type) : type_(type) {}
 
-  virtual ~LayoutTransposer() {}
+  virtual ~LayoutTransformer() {}
 
-  LayoutTransposer(const LayoutTransposer&) = delete;
-  LayoutTransposer& operator=(const LayoutTransposer&) = delete;
+  LayoutTransformer(const LayoutTransformer&) = delete;
+  LayoutTransformer& operator=(const LayoutTransformer&) = delete;
 
-  virtual paddle::imperative::NameVarMap<VarType> Run(
+  virtual paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -133,12 +133,12 @@ class LayoutTransposer {
 };
 
 template <typename VarType>
-class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
+class ElementwiseOpTransformer : public LayoutTransformer<VarType> {
  public:
-  explicit ElementwiseOpTransposer(const std::string& type)
-      : LayoutTransposer<VarType>(type) {}
+  explicit ElementwiseOpTransformer(const std::string& type)
+      : LayoutTransformer<VarType>(type) {}
 
-  paddle::imperative::NameVarMap<VarType> Run(
+  paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -149,7 +149,8 @@ class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
     // appended, and the axis will be set to the channel dimension.
 
     // If the axis is set to the channel dimension, the attr transformation
-    // is necessary. Otherwise, it will fall back to the LayoutTransposer::Run.
+    // is necessary. Otherwise, it will fall back to the
+    // LayoutTransformer::Apply.
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     if (attrs->find("axis") != attrs->end() &&
         BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
@@ -166,7 +167,7 @@ class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
       this->SetVarsLayout(outs, desired_layout);
       return ins;
     } else {
-      return LayoutTransposer<VarType>::Run(ins, outs, attrs, tracer);
+      return LayoutTransformer<VarType>::Apply(ins, outs, attrs, tracer);
     }
   }
 };
@@ -176,12 +177,12 @@ class ElementwiseOpTransposer : public LayoutTransposer<VarType> {
  * Such as operators with data_format attribute.
  */
 template <typename VarType>
-class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
+class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
  public:
-  explicit HeavilyLayoutSensitiveOpTransposer(const std::string& type)
-      : LayoutTransposer<VarType>(type) {}
+  explicit HeavilyLayoutSensitiveOpTransformer(const std::string& type)
+      : LayoutTransformer<VarType>(type) {}
 
-  paddle::imperative::NameVarMap<VarType> Run(
+  paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -233,12 +234,12 @@ class HeavilyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
  * Such as operators with axis attribute.
  */
 template <typename VarType>
-class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
+class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
  public:
-  explicit LightlyLayoutSensitiveOpTransposer(const std::string& type)
-      : LayoutTransposer<VarType>(type) {}
+  explicit LightlyLayoutSensitiveOpTransformer(const std::string& type)
+      : LayoutTransformer<VarType>(type) {}
 
-  paddle::imperative::NameVarMap<VarType> Run(
+  paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -255,7 +256,7 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
       for (auto& var : pair.second) {
         auto var_layout = paddle::imperative::GetDataLayout(var);
         if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
-          // Set layout to UNDEFINED so that TransposeOpTransposer do
+          // Set layout to UNDEFINED so that TransposeOpTransformer do
           // NHWC->NCHW transformation.
           var = TraceTransposeOp(var, DataLayout::UNDEFINED, tracer);
         }
@@ -266,13 +267,13 @@ class LightlyLayoutSensitiveOpTransposer : public LayoutTransposer<VarType> {
 };
 
 template <typename VarType>
-class TransposeOpTransposer
-    : public LightlyLayoutSensitiveOpTransposer<VarType> {
+class TransposeOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
  public:
-  explicit TransposeOpTransposer(const std::string& type)
-      : LightlyLayoutSensitiveOpTransposer<VarType>(type) {}
+  explicit TransposeOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
 
-  paddle::imperative::NameVarMap<VarType> Run(
+  paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -299,12 +300,13 @@ class TransposeOpTransposer
 };
 
 template <typename VarType>
-class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
+class FlattenOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
  public:
-  explicit FlattenOpTransposer(const std::string& type)
-      : LightlyLayoutSensitiveOpTransposer<VarType>(type) {}
+  explicit FlattenOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
 
-  paddle::imperative::NameVarMap<VarType> Run(
+  paddle::imperative::NameVarMap<VarType> Apply(
       const paddle::imperative::NameVarMap<VarType>& ins,
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
@@ -312,7 +314,7 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
     VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     // Flatten the C, H, W dimensions will not affect functionality.
     // So transformation is unnecessary. But in other cases, it needs to
-    // fall back to the LightlyLayoutSensitiveOpTransposer.
+    // fall back to the LightlyLayoutSensitiveOpTransformer.
     auto start_axis = BOOST_GET_CONST(int, (*attrs)["start_axis"]);
     auto stop_axis = BOOST_GET_CONST(int, (*attrs)["stop_axis"]);
     if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
@@ -320,11 +322,11 @@ class FlattenOpTransposer : public LightlyLayoutSensitiveOpTransposer<VarType> {
         start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
-      return LightlyLayoutSensitiveOpTransposer<VarType>::Run(ins, outs, attrs,
-                                                              tracer);
+      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
+                                                                 attrs, tracer);
     }
   }
 };
 
-}  // namespace autotune
-}  // namespace phi
+}  // namespace imperative
+}  // namespace paddle
