@@ -219,7 +219,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     grad_op->SetType("{{name}}");
 
   {% for input in api["inputs"] %}
-    gard_op->SetInput("{{input["name"] | to_pascal_case}}", this->{{extract_input_from_forward(
+    grad_op->SetInput("{{input["name"] | to_pascal_case}}", this->{{extract_input_from_forward(
       input["name"], 
       forward_input_names, 
       forward_output_names,
@@ -228,7 +228,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   {% endfor %}
 
   {% for output in api["outputs"] %}
-    gard_op->SetOutput("{{output["name"] | to_pascal_case}}", this->{{extract_output_from_forward(
+    grad_op->SetOutput("{{output["name"] | to_pascal_case}}", this->{{extract_output_from_forward(
       output["name"], 
       forward_input_names, 
       forward_output_names,
