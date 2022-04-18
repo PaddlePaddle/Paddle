@@ -20,7 +20,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
+#include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
+
+#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -56,10 +58,10 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);
 
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
-      dims, sparse_dim, &sparse_offsets);
+      dims, sparse_dim, sparse_offsets.data());
 
   for (int64_t i = 0; i < non_zero_num; i++) {
-    int64_t index = phi::funcs::sparse::IndicesToIndex<IntT>(
+    int64_t index = phi::funcs::sparse::CoordinateToIndex<IntT>(
         indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
     memcpy(out_values_ptr + i * cols, x_ptr + index * cols, cols * sizeof(T));
   }
@@ -98,7 +100,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz()),
       mask_indexs(mask_indices.dims()[1]);
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
-      x.dims(), sparse_dim, &sparse_offsets);
+      x.dims(), sparse_dim, sparse_offsets.data());
 
   phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
                                      sparse_offsets.data(),

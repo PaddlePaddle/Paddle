@@ -17,10 +17,8 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature DistGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("dist_grad",
-                         {"X", "Y", "Out", GradVarName("Out")},
-                         {"p"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "dist_grad", {"X", "Y", "Out", "Out@GRAD"}, {"p"}, {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
