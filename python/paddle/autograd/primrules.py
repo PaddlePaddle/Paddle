@@ -80,10 +80,9 @@ p_norm
 @REGISTER_ORIG2PRIM('matmul_v2')
 def matmul_v2_orig2prim(op, x, y):
     def trans(shape):
-        last_shape = shape[-1]
-        shape[-1] = shape[-2]
-        shape[-2] = last_shape
-        return shape
+        ret = [i for i in range(len(shape))]
+        ret[-1], ret[-2] = ret[-2], ret[-1]
+        return ret
 
     assert len(x.shape) < 4 and len(
         y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
@@ -93,9 +92,9 @@ def matmul_v2_orig2prim(op, x, y):
     if len(y.shape) == 1:
         y = broadcast(y, shape=[y.shape[0], 1])
     if op.attr('trans_x'):
-        x = transpose(x, shape=trans(x.shape))
+        x = transpose(x, axis=trans(x.shape))
     if op.attr('trans_y'):
-        y = transpose(y, shape=trans(y.shape))
+        y = transpose(y, axis=trans(y.shape))
     return matmul(x, y)
 
 
@@ -151,14 +150,16 @@ def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
     strides = [1 for _ in starts]
     axis = op.attr('axes')
     y = slice_select(x, starts=starts, ends=ends, strides=strides, axis=axis)
-    if op.attr('decrease_axis') is not None:
-        y = reshape(y, shape=get_output_vars(op).shape)
+    # op.attr('decrease_axis') is p[]
+    if op.attr('decrease_axis'):
+        # get_output_vars return tuple
+        y = reshape(y, shape=get_output_vars(op)[0].shape)
     return y
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op, x):
-    return fill_const(x, shape=x.shape, value=0.0)
+    return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
 
 
 @REGISTER_ORIG2PRIM('sum')
@@ -195,10 +196,12 @@ def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x'):
-        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        tmp = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
     if op.attr('Scale_y'):
-        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        tmp = fill_const(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = sub(x, y)
     if op.attr('Scale_out'):
@@ -210,7 +213,8 @@ def elementwise_sub_orig2prim(op, x, y):
 
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op, x):
-    scale_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+    scale_t = fill_const(
+        shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
@@ -224,7 +228,7 @@ def assign_orig2prim(op, x):
     return add(x, zero_t)
 
 
-## Register orig2prim lower rules
+## Register prim2orig lower rules
 
 
 @REGISTER_PRIM2ORIG('add_p')
@@ -234,17 +238,17 @@ def add_prim2orig(op, x, y):
 
 @REGISTER_PRIM2ORIG('sub_p')
 def sub_prim2orig(op, x, y):
-    return paddle.sub(x, y)
+    return paddle.subtract(x, y)
 
 
 @REGISTER_PRIM2ORIG('mul_p')
 def mul_prim2orig(op, x, y):
-    return paddle.mul(x, y)
+    return paddle.multiply(x, y)
 
 
 @REGISTER_PRIM2ORIG('div_p')
 def div_prim2orig(op, x, y):
-    return paddle.div(x, y)
+    return paddle.divide(x, y)
 
 
 @REGISTER_PRIM2ORIG('sqrt_p')
@@ -259,8 +263,7 @@ def tanh_prim2orig(op, x):
 
 @REGISTER_PRIM2ORIG('reshape_p')
 def reshape_prim2orig(op, x):
-    y, _ = paddle.reshape(x, shape=op.attr('shape'))
-    return y
+    return paddle.reshape(x, shape=op.attr('shape'))
 
 
 @REGISTER_PRIM2ORIG('broadcast_p')
@@ -288,8 +291,8 @@ def concat_prim2orig(op, *xs):
 
 
 @REGISTER_PRIM2ORIG('reduce_p')
-def reduce_prim2orig(op, *xs):
-    return paddle.sum(xs, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
+def reduce_prim2orig(op, x):
+    return paddle.sum(x, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
 
 
 @REGISTER_PRIM2ORIG('matmul_p')
@@ -305,14 +308,6 @@ def slice_select_prim2orig(op, x):
         starts=op.attr('starts'),
         ends=op.attr('ends'),
         strides=op.attr('strides'))
-
-
-def strided_slice_grad(y_grad, x, axis, starts, ends, strides, x_grad=None):
-    attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'strides': strides}
-    helper = LayerHelper('strided_slice_grad', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    return x_grad
 
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
