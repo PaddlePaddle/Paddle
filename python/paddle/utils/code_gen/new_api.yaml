@@ -1,0 +1,9 @@
+- api : linear
+  args : (Tensor x, Tensor y, Tensor b, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor(out), Tensor(mm)
+  infer_meta :
+    func : LinearInferMeta
+  kernel :
+    func : linear
+  intermediate: mm
+  backward : linear_grad

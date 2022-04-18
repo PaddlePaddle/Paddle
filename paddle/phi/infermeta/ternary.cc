@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -802,4 +803,14 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   scores->set_dtype(length.dtype());
 }
 
+void LinearInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     const MetaTensor& b,
+                     bool trans_x,
+                     bool trans_y,
+                     MetaTensor* out,
+                     MetaTensor* mm) {
+  MatmulInferMeta(x, y, trans_x, trans_y, mm);
+  ElementwiseInferMeta(*mm, b, out);
+}
 }  // namespace phi
