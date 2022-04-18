@@ -23,82 +23,80 @@ from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, 
 from collections import OrderedDict
 
 
+def flatten(inp):
+    if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
+        return [inp]
+    flattened = []
+    for part in inp:
+        flattened += flatten(part)
+    return flattened
+
 def topo_path(xs, ys, block=None):
     """ Returns the list of ops on the path from `xs` to `ys` in topological 
     order.
     
     TODO(Tongxin): supporting control flow and nested blocks.
-
     Args:
-
         xs: a list|tuple of vars as source
         ys: a list|tuple of vars as sink
         block: the program block containing the path, optional
-
     Returns:
         path: a list of ops
     """
 
     if block is None:
         block = default_main_program().current_block()
+
     path = []
-    reached_vars = list(xs)
-    sink_vars = list(ys)
-    sink_ops = {}
+    backpath = []
+    reached_vars = OrderedDict()
+    used_vars = OrderedDict()
 
-    # block.ops are supposedly in topological order as of now
+    # Initialized reached vars
+    for x in xs:
+        assert x.block == block
+        reached_vars[id(x)] = x
+
+    # block.ops are supposedly in the order that preservers correct data dependence.
+    reaching = lambda op: any(id(v) in reached_vars for v in get_input_vars(op))
+
+    # Forward pass to identify all reached variables and ops
     for op in block.ops:
-        if len(sink_ops) == len(ys):
-            break
-        ins = set(get_input_vars(op))
-        if any(ins.intersection(reached_vars)):
+        if reaching(op):
             path.append(op)
-            outs = set(get_output_vars(op))
-            for out in outs:
-                if any(out is y for y in sink_vars):
-                    # Found an output op
-                    assert not any(out is y for y in sink_ops)
-                    sink_ops[id(out)] = op
-                    # TODO(Tongxin): handling cases where sink vars
-                    # have dependencies themselves 
-                else:
-                    reached_vars.append(out)
+            for var in get_output_vars(op):
+                reached_vars[id(var)] = var
 
-    if len(sink_ops) != len(sink_vars):
-        for var in sink_vars:
-            assert id(var) in sink_ops, (
-                f"{var} is not reachable from input vars.")
+    # Backward pass to find all used variables
+    used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
+    back_reaching = lambda op: any(id(out) in used_vars for out in get_output_vars(op))
 
-    return path
+    for op in reversed(path):
+        if back_reaching(op):
+            backpath.append(op)
+            for var in get_input_vars(op):
+                used_vars[id(var)] = var
+
+    unused_xs = [x for x in xs if id(x) not in used_vars]
+    unreached_ys = [y for y in ys if id(y) not in reached_vars]
+
+    return list(reversed(backpath)), unused_xs, unreached_ys
 
 
-def output_vars_on_path(xs, ys, block=None):
+def output_vars_on_path(path):
     """ Returns the output variables of all the ops on the path from `xs`
     to `ys`.
     
     Args:
-
-        xs: a list|tuple of vars as source
-        ys: a list|tuple of vars as sink
-        block: the program block containing the path, optional
+        path: a list of ops on which to find the output variables
 
     Returns:
         vars: the output vars
     """
-    if block is None:
-        block = default_main_program().current_block()
-
     vars = OrderedDict()
-
-    for var in xs + ys:
-        vars[id(var)] = var
-
-    sink_ops = set(y.op for y in ys)
-
-    for op in topo_path(xs, ys, block):
-        if op not in sink_ops:
-            for out in get_output_vars(op):
-                vars[id(out)] = out
+    for op in path:
+        for out in get_output_vars(op):
+            vars[id(out)] = out
 
     return vars
 
@@ -175,6 +173,8 @@ class Transform(object):
         self.vars.update({id(v): v for v in new_vars if v is not None})
 
     def add_vars_rec(self, new_vars):
+        if new_vars is None:
+            return
         if isinstance(new_vars, paddle.fluid.framework.Variable):
             self.vars.update({id(new_vars): new_vars})
             return
@@ -206,10 +206,42 @@ class Transform(object):
             self.var2dot_rec(var, default)
             for var, default in zip(vars, defaults)
         ]
-
         return dots
 
+    def dot2bar_rec(self, dots, defaults=None):
+
+        if isinstance(dots, paddle.fluid.framework.Variable):
+            bar = self.dot2bar.lookup(dots)
+            if bar is None and defaults is not None:
+                bar = defaults
+            return bar
+
+        if defaults is None:
+            defaults = [None for _ in range(dots)]
+
+        bars = [
+            self.dot2bar_rec(dot, default)
+            for dot, default in zip(dots, defaults)
+        ]
+        return bars
+
     def linearize(self, xs, ys, xs_dot=None):
+        """ Performs the linearization transform, a.k.a, forward mode AD 
+        transform, on a primitive lowered program.
+        
+        Args:
+            xs: a list of input variables
+            ys: a list of output variables
+            xs_dot: optional, a list of gradient input variables. The list size
+                must be equal to `len(xs)`. The shape and dtype of each element
+                must be the same as in `xs`
+
+        Returns:
+            (xs_dot, ys_dot): a tuple of two lists. `xs_dot` is the list of
+            gradient inputs of the resulting linearized program. `ys_dot` is 
+            the list gradient outputs of the resulting linearized program
+            
+        """
         if xs_dot is None:
             xs_dot = [fill_const(1.0, shape=x.shape, dtype=x.dtype) for x in xs]
             self.add_vars(xs_dot)
@@ -221,7 +253,9 @@ class Transform(object):
             assert x.shape == dot.shape
             self.var2dot.add(x, dot)
 
-        for op in topo_path(xs, ys, self.block):
+        path, _, _ = topo_path(xs, ys, self.block)
+
+        for op in path:
             # An input var may not be on the input-output path, which implies 
             # there may be None's in `ins_dot`. In this case we place
             # the original input in the position of the otherwise forward
@@ -238,6 +272,24 @@ class Transform(object):
         return xs_dot, ys_dot
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
+        """ Performs the transpose transform, a.k.a, reverse mode AD 
+        transform, on a linearized primitive program.
+
+        Note, `transpose` is supposed to be used in couple with `linearize`.
+        
+        Args:
+            ys_dot: a list of outputs of the linearized program.
+            xs_dot: a list of inputs of the linearized program.
+            ys_bar: optional, a list of inputs of the resulting transposed 
+                program. The list size must be equal to `len(ys_dot)`. The shape
+                and dtype of each element must be the same as in `ys_dot`
+
+        Returns:
+            (ys_bar, xs_bar): a tuple of two lists. `ys_bar` is the list of
+            inputs of the resulting transposed program. `xs_bar` is 
+            the list outputs of the resulting transposed program
+            
+        """
         if ys_bar is None:
             ys_bar = []
             for y in ys_dot:
@@ -253,20 +305,30 @@ class Transform(object):
             self.dot2bar.add(dot, bar)
 
         # find all the relevant forward gradients
-        dotvars = output_vars_on_path(xs_dot, ys_dot)
+        path, _, _ = topo_path(xs_dot, ys_dot, self.block)
+        dotvars = output_vars_on_path(path)
+        dotvars.update((id(var), var) for var in xs_dot)
 
         is_dot = lambda v: id(v) in dotvars
+ 
+        for op in reversed(path):
+            out = op_position_output(op)
+            out_bar_rec = self.dot2bar_rec(out, defaults=out)
+            ins_bar_rec = _transpose(op, is_dot, out_bar_rec)
 
-        for op in reversed(topo_path(xs_dot, ys_dot, self.block)):
-            outs_bar = [self.dot2bar.lookup(var) for var in get_output_vars(op)]
-            ins_bar = _transpose(op, is_dot, *outs_bar)
-            if isinstance(ins_bar, (list, tuple)):
-                ins_bar = list(ins_bar)
-            else:
-                ins_bar = [ins_bar]
-            self.add_vars(ins_bar)
-            assert len(get_input_vars(op)) == len(ins_bar)
-            for dot, bar in zip(get_input_vars(op), ins_bar):
+            # TODO(Tongxin): this is hacking. Tuple implies the Transpose rule 
+            # returns multiple entities
+            if isinstance(ins_bar_rec, tuple):
+                ins_bar_rec = list(ins_bar_rec)
+            else: 
+                ins_bar_rec = [ins_bar_rec]
+            self.add_vars_rec(ins_bar_rec)
+
+            ins_bar = flatten(ins_bar_rec)
+            ins = get_input_vars(op)
+            assert len(ins) == len(ins_bar)
+
+            for dot, bar in zip(ins, ins_bar):
                 if bar is not None:
                     # aggregate gradient
                     grad = self.dot2bar.lookup(dot)
@@ -281,7 +343,7 @@ class Transform(object):
 
         if not retain_fwd:
             dots_to_remove = set()
-            for op in topo_path(xs_dot, ys_dot):
+            for op in path:
                 for var in get_input_vars(op):
                     if is_dot(var):
                         dots_to_remove.add(var)
@@ -313,10 +375,7 @@ def _gradients(ys, xs, ys_bar=None):
     # is completely lowered to primitive ops, it's mandatory to run the lowering
     # pass once and again. This is obviously inefficient and needs to be 
     # optimized.
-    new_vars = []
-    for var in xs + ys:
-        new_vars.append(var)
-
+    new_vars = xs + ys
     orig2prim(block, new_vars)
 
     ad = Transform(block)
