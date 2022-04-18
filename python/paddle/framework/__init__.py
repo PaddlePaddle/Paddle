@@ -53,4 +53,7 @@ from ..fluid.framework import dygraph_only  # noqa: F401
 from ..fluid.framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder  # noqa: F401
 from ..fluid.framework import _dygraph_tracer  # noqa: F401
 
+from ..fluid.layer_helper import LayerHelper  # noqa: F401
+from ..fluid.framework import in_dygraph_mode  # noqa: F401
+
 __all__ = []

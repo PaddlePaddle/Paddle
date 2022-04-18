@@ -19,15 +19,15 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 using CUDA = paddle::platform::CUDADeviceContext;
-#define REGISTER_CAST_CUDA_BASE(op_name, ...)                             \
-  REGISTER_OP_CUDA_KERNEL(                                                \
-      op_name, ops::CastOpKernel<CUDA, float>,                            \
-      ops::CastOpKernel<CUDA, double>, ops::CastOpKernel<CUDA, int>,      \
-      ops::CastOpKernel<CUDA, int64_t>, ops::CastOpKernel<CUDA, int16_t>, \
-      ops::CastOpKernel<CUDA, bool>, ops::CastOpKernel<CUDA, uint8_t>,    \
-      ops::CastOpKernel<CUDA, plat::float16>,                             \
-      ops::CastOpKernel<CUDA, plat::complex<float>>,                      \
-      ops::CastOpKernel<CUDA, plat::complex<double>>, ##__VA_ARGS__);
-
 // See [ why register transfer_dtype_op alias with cast_op? ] in cast_op.cc
-REGISTER_CAST_CUDA_BASE(transfer_dtype, ops::CastOpKernel<CUDA, plat::bfloat16>)
+REGISTER_OP_CUDA_KERNEL(transfer_dtype, ops::CastOpKernel<CUDA, float>,
+                        ops::CastOpKernel<CUDA, double>,
+                        ops::CastOpKernel<CUDA, int>,
+                        ops::CastOpKernel<CUDA, int64_t>,
+                        ops::CastOpKernel<CUDA, int16_t>,
+                        ops::CastOpKernel<CUDA, bool>,
+                        ops::CastOpKernel<CUDA, uint8_t>,
+                        ops::CastOpKernel<CUDA, plat::float16>,
+                        ops::CastOpKernel<CUDA, plat::complex<float>>,
+                        ops::CastOpKernel<CUDA, plat::complex<double>>,
+                        ops::CastOpKernel<CUDA, plat::bfloat16>);

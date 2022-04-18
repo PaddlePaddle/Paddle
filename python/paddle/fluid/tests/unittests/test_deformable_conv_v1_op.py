@@ -14,12 +14,13 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
-
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -105,8 +106,24 @@ def dconv_im2col_gemm(input, offset, filter, group, conv_param):
     return out
 
 
+def deform_conv2d_wrapper(x,
+                          offset,
+                          weight,
+                          mask=None,
+                          stride=1,
+                          padding=0,
+                          dilation=1,
+                          deformable_groups=1,
+                          groups=1,
+                          im2col_step=1):
+    return paddle.vision.ops.deform_conv2d(x, offset, weight, None, stride,
+                                           padding, dilation, deformable_groups,
+                                           groups, mask)
+
+
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
+        self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv_v1"
         self.init_type()
         self.init_group()
@@ -142,18 +159,22 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['Input', 'Offset', 'Filter'], 'Output', max_relative_error=0.05)
+            ['Input', 'Offset', 'Filter'],
+            'Output',
+            max_relative_error=0.05,
+            check_eager=True)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input', 'Offset'],
             'Output',
             max_relative_error=0.1,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_eager=True)
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -291,6 +312,10 @@ class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
                 modulated=False)
 
         self.assertRaises(TypeError, test_invalid_offset)
+
+    def test_error_with_eager_guard(self):
+        with _test_eager_guard():
+            self.test_error()
 
 
 if __name__ == '__main__':

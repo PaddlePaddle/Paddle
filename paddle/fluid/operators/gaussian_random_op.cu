@@ -11,20 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 #include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
-
-#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
-
-DECLARE_bool(use_curand);
 
 namespace paddle {
 namespace operators {
