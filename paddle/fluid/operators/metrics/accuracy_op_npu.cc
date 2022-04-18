@@ -13,7 +13,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/metrics/accuracy_op.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {

@@ -53,6 +53,7 @@ option(WITH_IPU         "Compile PaddlePaddle with Graphcore IPU"    OFF)
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"          OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
@@ -245,6 +246,7 @@ option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
+option(WITH_ARM_BRPC "Supprot Brpc in Arm"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")

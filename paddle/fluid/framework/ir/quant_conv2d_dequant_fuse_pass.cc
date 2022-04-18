@@ -341,7 +341,6 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
     Node* output_scale = subgraph.at(pattern.GetPDNode("output_scale_node"));
     Node* output_act = subgraph.at(pattern.GetPDNode("output_act_node"));
     int bit_length = BOOST_GET_CONST(int, quant->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
@@ -356,7 +355,7 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float in_scale = input_scale_data[0];
-    float scale_value = in_scale / range;
+    float scale_value = in_scale;
 
     // Set input scale in attr, and relink nodes
     std::string input_act_name = input_act->Var()->Name();
@@ -369,11 +368,10 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
           quantized_op_type == "conv2d_fusion" ||
           quantized_op_type == "depthwise_conv2d" ||
           quantized_op_type == "fc" ||
-          quantized_op_type == "conv2d_transpose") {
+          quantized_op_type == "conv2d_transpose" ||
+          quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+          quantized_op_type == "matmul_v2") {
         op_desc->SetAttr("Input_scale", scale_value);
-      } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-                 quantized_op_type == "matmul_v2") {
-        op_desc->SetAttr("X_scale", scale_value);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported quantized op type %s.", quantized_op_type));
@@ -619,7 +617,6 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       new_op_desc.SetInput("X", {new_input});
       new_op_desc.SetOutput("Out", {new_output});
     }
-    new_op_desc.SetAttr("weight_scale", weight_scale);
     new_op_desc.Flush();
     auto* new_op = graph->CreateOpNode(&new_op_desc);
     IR_NODE_LINK_TO(quantized_op_input_node, new_op);

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
+
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -109,10 +111,10 @@ class SliceNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims =
-          GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, nullptr);
-      out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+      phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
+                                                 nullptr, nullptr);
+      out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
       out->Resize(out_dims);
     }

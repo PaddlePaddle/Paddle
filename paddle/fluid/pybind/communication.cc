@@ -30,18 +30,42 @@ namespace pybind {
 
 using TCPStore = paddle::distributed::TCPStore;
 
-void BindTCPStore(py::module* m) {
-  py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore")
+void BindTCPStore(py::module *m) {
+  auto Store =
+      py::class_<distributed::Store, std::shared_ptr<distributed::Store>>(
+          *m, "Store")
+          .def(py::init<>())
+          .def("set",
+               [](distributed::Store &self, const std::string &key,
+                  const std::string &value) {
+                 std::vector<uint8_t> data(value.begin(), value.end());
+                 self.set(key, data);
+               },
+               py::arg("key"), py::arg("value"),
+               py::call_guard<py::gil_scoped_release>())
+          .def("get",
+               [](distributed::Store &self,
+                  const std::string &key) -> py::bytes {
+                 auto data = self.get(key);
+                 return py::bytes(reinterpret_cast<char *>(data.data()),
+                                  data.size());
+               },
+               py::arg("key"), py::call_guard<py::gil_scoped_release>())
+          .def("add", &distributed::Store::add,
+               py::call_guard<py::gil_scoped_release>())
+          .def("wait", &distributed::Store::wait,
+               py::call_guard<py::gil_scoped_release>());
+
+  py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
       .def(py::init([](std::string hostname, uint16_t port, bool is_master,
                        size_t world_size, std::chrono::seconds timeout) {
              return std::make_shared<TCPStore>(hostname, port, is_master,
                                                world_size, timeout);
            }),
            py::arg("hostname"), py::arg("port"), py::arg("is_master"),
-           py::arg("world_size"), py::arg("timeout"),
-           py::call_guard<py::gil_scoped_release>())
-      .def("add", &TCPStore::add)
-      .def("get", &TCPStore::get);
+           py::arg("world_size"),
+           py::arg("timeout") = distributed::tcputils::kNoTimeout,
+           py::call_guard<py::gil_scoped_release>());
 }
 
 }  // namespace pybind

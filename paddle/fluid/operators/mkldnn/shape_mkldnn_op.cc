@@ -13,19 +13,32 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/shape_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = phi::SelectedRows;
 
 template <typename T>
-class ShapeMKLDNNKernel : public ShapeKernel<T> {
+class ShapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ShapeKernel<T>::Compute(ctx);
+    auto* in_var = ctx.InputVar("Input");
+    framework::DDim in_dims;
+    if (in_var->IsType<phi::SelectedRows>()) {
+      in_dims = in_var->Get<phi::SelectedRows>().value().dims();
+    } else {
+      in_dims = in_var->Get<LoDTensor>().dims();
+    }
+    auto* out_t = ctx.Output<Tensor>("Out");
+    out_t->Resize({in_dims.size()});
+    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    for (int i = 0; i < in_dims.size(); ++i) {
+      out_data[i] = in_dims[i];
+    }
 
     auto* out = ctx.Output<Tensor>("Out");
     out->set_layout(framework::DataLayout::kMKLDNN);

@@ -167,6 +167,13 @@ if(WIN32 OR APPLE)
         SET(WITH_PSLIB OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
     endif()
 
+    if(WITH_ARM_BRPC)
+        MESSAGE(WARNING
+            "Windows or Mac is not supported with ARM_BRPC in Paddle yet."
+            "Force WITH_ARM_BRPC=OFF")
+        SET(WITH_ARM_BRPC OFF CACHE STRING "Disable ARM_BRPC package in Windows and MacOS" FORCE)
+    endif()
+
     if(WITH_LIBMCT)
         MESSAGE(WARNING
             "Windows or Mac is not supported with LIBMCT in Paddle yet."
@@ -250,6 +257,12 @@ IF(WITH_TESTING OR WITH_DISTRIBUTE)
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
 
+if(WITH_ONNXRUNTIME)
+    include(external/onnxruntime)            # download, build, install onnxruntime、paddle2onnx
+    include(external/paddle2onnx)          
+    list(APPEND third_party_deps extern_onnxruntime extern_paddle2onnx)
+endif()
+
 if(WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         include(external/cub)       # download cub
@@ -332,9 +345,14 @@ if (WITH_PSCORE)
 
     include(external/leveldb)
     list(APPEND third_party_deps extern_leveldb)
-
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
+    
+    if (WITH_ARM_BRPC)
+        include(external/arm_brpc)
+        list(APPEND third_party_deps extern_arm_brpc)
+    else()
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
+    endif()
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)

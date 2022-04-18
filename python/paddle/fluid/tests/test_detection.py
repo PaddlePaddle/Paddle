@@ -886,6 +886,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_level=4,
                 refer_scale=224,
                 rois_num=rois_num_dy)
+            print(type(multi_rois_dy))
             output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
             output_dy_np = []
             for output in output_dy:
@@ -973,4 +974,5 @@ class TestBoxDecoderAndAssign(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

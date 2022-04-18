@@ -39,8 +39,8 @@ cc_library(server SRCS server.cc DEPS downpour_server boost ${RPC_DEPS})
 cc_library(communicator SRCS communicator/communicator.cc DEPS scope client boost table math_function selected_rows_functor ${RPC_DEPS})
 cc_library(ps_service SRCS ps_service/service.cc DEPS communicator client server boost ${RPC_DEPS})
 
-cc_library(heter_server SRCS heter_server.cc DEPS brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
 cc_library(heter_client SRCS heter_client.cc DEPS brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
+cc_library(heter_server SRCS heter_server.cc DEPS heter_client brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
 
 set_source_files_properties(ps_service/graph_py_service.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_library(graph_py_service SRCS ps_service/graph_py_service.cc DEPS ps_service)

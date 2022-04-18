@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,116 +23,120 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
 
 
-@skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
-class TestStackOpBase(XPUOpTest):
-    def initDefaultParameters(self):
-        self.num_inputs = 4
-        self.input_dim = (5, 6, 7)
-        self.axis = 0
-        self.dtype = 'float32'
+class XPUTestStackOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'stack'
+        self.use_dynamic_create_class = False
 
-    def initParameters(self):
-        pass
+    @skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
+    class TestStackOp(XPUOpTest):
+        def initDefaultParameters(self):
+            self.num_inputs = 4
+            self.input_dim = (5, 6, 7)
+            self.axis = 0
+            self.dtype = np.float32
 
-    def get_x_names(self):
-        x_names = []
-        for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
-        return x_names
+        def setUp(self):
+            self.initDefaultParameters()
+            self.initParameters()
+            self.__class__.use_xpu = True
+            self.__class__.op_type = 'stack'
+            self.x = []
+            for i in range(self.num_inputs):
+                self.x.append(
+                    np.random.random(size=self.input_dim).astype(self.dtype))
 
-    def setUp(self):
-        self.initDefaultParameters()
-        self.initParameters()
-        self.op_type = 'stack'
-        self.x = []
-        for i in range(self.num_inputs):
-            self.x.append(
-                np.random.random(size=self.input_dim).astype(self.dtype))
+            tmp = []
+            x_names = self.get_x_names()
+            for i in range(self.num_inputs):
+                tmp.append((x_names[i], self.x[i]))
 
-        tmp = []
-        x_names = self.get_x_names()
-        for i in range(self.num_inputs):
-            tmp.append((x_names[i], self.x[i]))
+            self.inputs = {'X': tmp}
+            self.outputs = {'Y': np.stack(self.x, axis=self.axis)}
+            self.attrs = {'axis': self.axis}
 
-        self.inputs = {'X': tmp}
-        self.outputs = {'Y': np.stack(self.x, axis=self.axis)}
-        self.attrs = {'axis': self.axis}
+        def init_dtype(self):
+            self.dtype = self.in_type
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        if self.dtype == 'int64' or self.dtype == 'int32':
+        def initParameters(self):
             pass
-        else:
-            if paddle.is_compiled_with_xpu():
-                paddle.enable_static()
-                place = paddle.XPUPlace(0)
-                self.check_grad_with_place(place, self.get_x_names(), 'Y')
+
+        def get_x_names(self):
+            x_names = []
+            for i in range(self.num_inputs):
+                x_names.append('x{}'.format(i))
+            return x_names
+
+        def test_check_output(self):
+            self.check_output_with_place(paddle.XPUPlace(0))
+
+        def test_check_grad(self):
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                pass
+            else:
+                self.check_grad_with_place(
+                    paddle.XPUPlace(0), self.get_x_names(), 'Y')
+
+    class TestStackOp1(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 16
+
+    class TestStackOp2(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 30
+
+    class TestStackOp3(TestStackOp):
+        def initParameters(self):
+            self.axis = -1
+
+        def test_check_grad(self):
+            pass
+
+    class TestStackOp4(TestStackOp):
+        def initParameters(self):
+            self.axis = -4
+
+        def test_check_grad(self):
+            pass
+
+    class TestStackOp5(TestStackOp):
+        def initParameters(self):
+            self.axis = 1
+
+    class TestStackOp6(TestStackOp):
+        def initParameters(self):
+            self.axis = 3
+
+    class TestStackOp7(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 4
+            self.input_dim = (5, 6, 7)
+            self.axis = 0
+            self.dtype = np.int64
+
+        def test_check_grad(self):
+            pass
+
+    class TestStackOp8(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 4
+            self.input_dim = (5, 6, 7)
+            self.axis = 0
+            self.dtype = np.int32
+
+        def test_check_grad(self):
+            pass
 
 
-class TestStackOp1(TestStackOpBase):
-    def initParameters(self):
-        self.num_inputs = 16
+support_types = get_xpu_op_support_types('stack')
+for stype in support_types:
+    create_test_class(globals(), XPUTestStackOp, stype)
 
-
-class TestStackOp2(TestStackOpBase):
-    def initParameters(self):
-        self.num_inputs = 30
-
-
-class TestStackOp3(TestStackOpBase):
-    def initParameters(self):
-        self.axis = -1
-
-    def test_check_grad(self):
-        pass
-
-
-class TestStackOp4(TestStackOpBase):
-    def initParameters(self):
-        self.axis = -4
-
-    def test_check_grad(self):
-        pass
-
-
-class TestStackOp5(TestStackOpBase):
-    def initParameters(self):
-        self.axis = 1
-
-
-class TestStackOp6(TestStackOpBase):
-    def initParameters(self):
-        self.axis = 3
-
-
-class TestStackOpint64(TestStackOpBase):
-    def initDefaultParameters(self):
-        self.num_inputs = 4
-        self.input_dim = (5, 6, 7)
-        self.axis = 0
-        self.dtype = 'int64'
-
-    def initParameters(self):
-        self.num_inputs = 16
-
-
-class TestStackOpint(TestStackOpBase):
-    def initDefaultParameters(self):
-        self.num_inputs = 4
-        self.input_dim = (5, 6, 7)
-        self.axis = 0
-        self.dtype = 'int32'
-
-    def initParameters(self):
-        self.num_inputs = 16
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

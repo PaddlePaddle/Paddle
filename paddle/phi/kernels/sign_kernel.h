@@ -25,7 +25,7 @@ void SignKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Sign(const Context& dev_ctx, const DenseTensor& x) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   SignKernel<T, Context>(dev_ctx, x, &dense_out);

@@ -27,6 +27,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.framework import _test_eager_guard
 
 from predictor_utils import PredictorTools
 
@@ -155,6 +156,13 @@ class TestMNISTWithToStatic(TestMNIST):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+        with _test_eager_guard():
+            dygraph_loss = self.train_dygraph()
+            static_loss = self.train_static()
+            self.assertTrue(
+                np.allclose(dygraph_loss, static_loss),
+                msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
+                                                                static_loss))
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()

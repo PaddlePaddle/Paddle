@@ -13,8 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/set_value_op.h"
+
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -34,23 +40,14 @@ class CPUDeviceContext;
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class SetValue : public framework::OperatorWithKernel {
  public:
   SetValue(const std::string &type, const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "SetValue");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SetValue");
-    auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_LT(
-        in_dims.size(), 7,
-        platform::errors::InvalidArgument(
-            "The rank of input should be less than 7, but received %d.",
-            in_dims.size()));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -236,27 +233,15 @@ DECLARE_INPLACE_OP_INFERER(SetValueOpInplaceInferer, {"Input", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(set_value, SetValueInferShapeFunctor,
+                            PD_INFER_META(phi::SetValueInferMeta));
+
 REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
                   ops::SetValueGradMaker<paddle::framework::OpDesc>,
                   ops::SetValueGradMaker<paddle::imperative::OpBase>,
-                  ops::SetValueOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    set_value, ops::SetValueKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SetValueKernel<plat::CPUDeviceContext, float>,
-    ops::SetValueKernel<plat::CPUDeviceContext, double>,
-    ops::SetValueKernel<plat::CPUDeviceContext, bool>);
+                  ops::SetValueOpInplaceInferer, SetValueInferShapeFunctor);
 
 REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    set_value_grad,
-    ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, float>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, double>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(

@@ -31,7 +31,7 @@
 #include <iostream>
 
 #include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/init_dialects.h"
 
 namespace cl = llvm::cl;
 

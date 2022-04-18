@@ -24,6 +24,10 @@ from .mobilenetv1 import MobileNetV1  # noqa: F401
 from .mobilenetv1 import mobilenet_v1  # noqa: F401
 from .mobilenetv2 import MobileNetV2  # noqa: F401
 from .mobilenetv2 import mobilenet_v2  # noqa: F401
+from .mobilenetv3 import MobileNetV3Small  # noqa: F401
+from .mobilenetv3 import MobileNetV3Large  # noqa: F401
+from .mobilenetv3 import mobilenet_v3_small  # noqa: F401
+from .mobilenetv3 import mobilenet_v3_large  # noqa: F401
 from .vgg import VGG  # noqa: F401
 from .vgg import vgg11  # noqa: F401
 from .vgg import vgg13  # noqa: F401
@@ -79,6 +83,10 @@ __all__ = [ #noqa
     'mobilenet_v1',
     'MobileNetV2',
     'mobilenet_v2',
+    'MobileNetV3Small',
+    'MobileNetV3Large',
+    'mobilenet_v3_small',
+    'mobilenet_v3_large',
     'LeNet',
     'DenseNet',
     'densenet121',

@@ -35,6 +35,9 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 namespace paddle {
 namespace platform {
 
@@ -134,6 +137,10 @@ void SynchronizeAllDevice() {
 #endif
 }
 
+static double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
+}
+
 // Print results
 void PrintMemProfiler(
     const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
@@ -143,6 +150,37 @@ void PrintMemProfiler(
   std::cout << "\n------------------------->"
             << "    Memory Profiling Report     "
             << "<-------------------------\n\n";
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  int num_gpus = GetGPUDeviceCount();
+  std::cout.setf(std::ios::left);
+  if (num_gpus > 0) {
+    std::cout << "GPU Memory Usage (MB):\n";
+    for (int dev_id = 0; dev_id < num_gpus; ++dev_id) {
+      int64_t allocated = memory::StatGetCurrentValue("Allocated", dev_id);
+      int64_t reserved = memory::StatGetCurrentValue("Reserved", dev_id);
+      size_t available = 0, total = 0, actual_available = 0, actual_total = 0;
+      RecordedGpuMemGetInfo(&available, &total, &actual_available,
+                            &actual_total, dev_id);
+
+      std::ostringstream system_gpu_memory;
+      system_gpu_memory << "System GPU Memory (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << system_gpu_memory.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(total)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(total - available) << "Free: " << std::setw(12)
+                << ToMegaBytes(available) << "\n";
+      std::ostringstream software_memory_pool;
+      software_memory_pool << "Software Memory Pool (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << software_memory_pool.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(reserved)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(reserved - allocated)
+                << "Free: " << std::setw(12) << ToMegaBytes(allocated) << "\n";
+    }
+    std::cout << "\n";
+  }
+#endif
 
   // Output events table
   std::cout.setf(std::ios::left);

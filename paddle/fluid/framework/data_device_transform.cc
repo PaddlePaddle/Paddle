@@ -34,6 +34,14 @@ void TransDataDevice(const Tensor &in, const platform::Place &dst_place,
     return;
   }
 
+  // NOTE(hqp): Special case for CPU->MLU, avoid stream sync.
+  if (platform::is_cpu_place(in.place()) && platform::is_mlu_place(dst_place)) {
+    paddle::framework::TensorCopy(
+        in, dst_place, *platform::DeviceContextPool::Instance().Get(dst_place),
+        out);
+    return;
+  }
+
   // NOTE(yy): TransDataDevice should wait for computation of input.
   if (!platform::is_cuda_pinned_place(in.place())) {
     platform::DeviceContextPool::Instance().Get(in.place())->Wait();

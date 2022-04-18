@@ -114,11 +114,12 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddOutput("FoundInf", "Whether there is NaN/Inf");
-    AddOutput("Steps", "The training steps.").AsDispensable();
+    AddOutput("AccStep", "The training steps.").AsDispensable();
     AddOutput("StopUpdate",
               "Whether the parameter updating is stopped when the gradient "
               "accumulated steps is less than Attr(acc_steps).")
         .AsDispensable();
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
     AddAttr<int>("acc_steps", "The gradient accumulation steps.").SetDefault(1);
     AddAttr<float>("beta1", "The initial Beta1Pow value.");

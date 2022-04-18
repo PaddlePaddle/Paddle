@@ -76,6 +76,16 @@ struct BroadcastConfig {
 };
 #pragma pack()
 
+template <typename T>
+__device__ __forceinline__ void WriteData(T* _global_ptr_ dst,
+                                          T* src,
+                                          int num) {
+  if (num > 0) {
+    LM2GM(src, dst, num * sizeof(T));
+  }
+}
+#undef INT_BITS
+
 }  // namespace details
 
 /**

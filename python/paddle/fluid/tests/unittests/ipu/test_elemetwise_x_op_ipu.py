@@ -16,14 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
+                                                          IPUOpTest)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,101 +27,136 @@ class TestMul(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.init_op()
+        self.set_test_op()
 
-    def init_op(self):
+    @property
+    def fp16_enabled(self):
+        if IPUOpTest.use_ipumodel():
+            return False
+        else:
+            return True
+
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_mul
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+    def _test_base(self, exec_mode):
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
+                    dtype='float32')
                 y = paddle.static.data(
                     name=self.feed_list[1],
                     shape=self.feed_shape[1],
-                    dtype=self.feed_dtype[1])
+                    dtype='float32')
+
                 out = self.op(x, y, **self.attrs)
 
-                fetch_list = [out.name]
+            fetch_list = [out.name]
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
+            if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
+            else:
+                place = paddle.IPUPlace()
+
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IPUCompiledProgram(
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.set_precision_config(enable_fp16=True)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            feed = self.feed_fp32
+            if exec_mode > ExecutionMode.IPU_FP32:
+                feed = self.feed_fp16
+
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
     def run_test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        output_dict = {}
+        for mode in ExecutionMode:
+            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+                break
+            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        self.check(output_dict)
 
     def test_case0(self):
-        self.feed = {
-            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
-            "y": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
+        data_x = np.random.uniform(size=(2, 3, 4, 5))
+        data_y = np.random.uniform(size=(2, 3, 4, 5))
+
+        self.feed_fp32 = {
+            "x": data_x.astype('float32'),
+            "y": data_y.astype('float32'),
+        }
+        self.feed_fp16 = {
+            "x": data_x.astype('float16'),
+            "y": data_y.astype('float16'),
         }
         self.attrs = {}
         self.set_feed_attr()
         self.run_test_base()
 
     def test_case1(self):
-        self.feed = {
-            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
-            "y": np.random.uniform(size=(3, 4)).astype('float32'),
+        data_x = np.random.uniform(size=(2, 3, 4, 5))
+        data_y = np.random.uniform(size=(3, 4))
+        self.feed_fp32 = {
+            "x": data_x.astype('float32'),
+            "y": data_y.astype('float32'),
+        }
+        self.feed_fp16 = {
+            "x": data_x.astype('float16'),
+            "y": data_y.astype('float16'),
         }
         self.set_feed_attr()
         self.attrs = {"axis": 1}
         self.run_test_base()
 
     def test_case2(self):
-        self.feed = {
-            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
-            "y": np.random.uniform(size=(5)).astype('float32'),
+        data_x = np.random.uniform(size=(2, 3, 4, 5))
+        data_y = np.random.uniform(size=(5))
+        self.feed_fp32 = {
+            "x": data_x.astype('float32'),
+            "y": data_y.astype('float32'),
+        }
+        self.feed_fp16 = {
+            "x": data_x.astype('float16'),
+            "y": data_y.astype('float16'),
         }
         self.set_feed_attr()
         self.attrs = {"axis": -1}
         self.run_test_base()
 
     def test_case3(self):
-        self.feed = {
-            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
-            "y": np.random.uniform(size=(2)).astype('float32'),
+        data_x = np.random.uniform(size=(2, 3, 4, 5))
+        data_y = np.random.uniform(size=(2))
+        self.feed_fp32 = {
+            "x": data_x.astype('float32'),
+            "y": data_y.astype('float32'),
+        }
+        self.feed_fp16 = {
+            "x": data_x.astype('float16'),
+            "y": data_y.astype('float16'),
         }
         self.set_feed_attr()
         self.attrs = {"axis": 0}
@@ -134,37 +164,43 @@ class TestMul(IPUOpTest):
 
 
 class TestAdd(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_add
 
 
 class TestSub(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_sub
 
 
 class TestDiv(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_div
 
 
 class TestMin(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_min
 
 
 class TestMax(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_max
 
 
 class TestPow(TestMul):
-    def init_op(self):
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_pow
 
 
 class TestMod(TestMul):
-    def init_op(self):
+    def set_atol(self):
+        self.atol = 1e-7
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-3
+
+    def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_mod
 
 

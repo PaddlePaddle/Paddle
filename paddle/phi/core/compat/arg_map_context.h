@@ -19,45 +19,33 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
 
-constexpr char kGradVarSuffix[] = "@GRAD";
-
-constexpr size_t kGradVarSuffixSize = 5U;
-
-inline std::string GradVarName(const std::string& var_name) {
-  std::string result;
-  result.reserve(var_name.size() + kGradVarSuffixSize);
-  result += var_name;
-  result += kGradVarSuffix;
-  return result;
-}
-
 // tuple(input_names, attr_names, output_names)
-using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>,
-                                   paddle::SmallVector<std::string>>;
+using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>,
+                                   paddle::SmallVector<const char*>>;
 
 struct KernelSignature {
-  std::string name;
+  const char* name;
   KernelArgsTuple args;
 
   KernelSignature() = default;
 
-  KernelSignature(std::string&& kernel_name,
-                  paddle::SmallVector<std::string>&& inputs,
-                  paddle::SmallVector<std::string>&& attrs,
-                  paddle::SmallVector<std::string>&& outputs)
-      : name(std::move(kernel_name)),
-        args(std::make_tuple(inputs, attrs, outputs)) {}
-  KernelSignature(const std::string& kernel_name,
-                  const paddle::SmallVector<std::string>& inputs,
-                  const paddle::SmallVector<std::string>& attrs,
-                  const paddle::SmallVector<std::string>& outputs)
+  KernelSignature(const char* kernel_name,
+                  paddle::SmallVector<const char*>&& inputs,
+                  paddle::SmallVector<const char*>&& attrs,
+                  paddle::SmallVector<const char*>&& outputs)
+      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+  KernelSignature(const char* kernel_name,
+                  const paddle::SmallVector<const char*>& inputs,
+                  const paddle::SmallVector<const char*>& attrs,
+                  const paddle::SmallVector<const char*>& outputs)
       : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
 
   // TODO(chenweihang): add assign constructor to solve windows compile
@@ -89,6 +77,8 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+  // For compatibility with LoDTensorArray
+  virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
@@ -96,6 +86,13 @@ class ArgumentMappingContext {
   // use this function to mark it comes from InferShapeArgumentMappingContext
   // and will be used in infershape
   virtual bool IsForInferShape() const = 0;
+
+  // NOTE(paddle-dev): [ Why do we export this interface? ]
+  // In old Fluid framework, some operators' Attribute can be a Tensor or
+  // TensorList. In this case, the InferShape logic will be different
+  // under CompileTime and RuntimeTime. So we export this interface to
+  // handle it conveniently. See "gaussian_random_sig.cc" for details.
+  virtual bool IsRuntime() const { return true; }
 };
 
 }  // namespace phi

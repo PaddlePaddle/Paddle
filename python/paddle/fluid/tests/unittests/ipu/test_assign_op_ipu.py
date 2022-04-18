@@ -98,5 +98,117 @@ class TestBase(IPUOpTest):
         self.check(output_dict)
 
 
+class TestAssignFp32Value(TestBase):
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 3, 1])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+
+        data = np.random.uniform(size=[2, 3, 1])
+        self.assign_fp32 = data.astype(np.float32)
+
+    def _test_base(self, exec_mode):
+        scope = paddle.static.Scope()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
+
+        with paddle.static.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype='float32')
+
+                assign = paddle.assign(self.assign_fp32)
+                out = paddle.fluid.layers.elementwise_add(x, assign)
+
+                fetch_list = [out.name]
+
+            if exec_mode == ExecutionMode.CPU_FP32:
+                place = paddle.CPUPlace()
+            else:
+                place = paddle.IPUPlace()
+
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            if exec_mode != ExecutionMode.CPU_FP32:
+                feed_list = self.feed_list
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.set_precision_config(enable_fp16=True)
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
+
+            feed = self.feed_fp32
+            if exec_mode > ExecutionMode.IPU_FP32:
+                feed = self.feed_fp16
+
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            return result[0]
+
+
+class TestAssignBoolValue(TestBase):
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 3, 1])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        data = np.random.choice([True, False], size=(2, 3, 1))
+        self.assign_bool = data.astype(np.bool)
+
+    def _test_base(self, exec_mode):
+        scope = paddle.static.Scope()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
+
+        with paddle.static.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype='float32')
+                x = paddle.less_than(x, x)
+                assign = paddle.assign(self.assign_bool)
+                out = paddle.logical_and(x, assign)
+                out = paddle.cast(out, 'float32')
+
+                fetch_list = [out.name]
+
+            if exec_mode == ExecutionMode.CPU_FP32:
+                place = paddle.CPUPlace()
+            else:
+                place = paddle.IPUPlace()
+
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            if exec_mode != ExecutionMode.CPU_FP32:
+                feed_list = self.feed_list
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.set_precision_config(enable_fp16=True)
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
+
+            feed = self.feed_fp32
+            if exec_mode > ExecutionMode.IPU_FP32:
+                feed = self.feed_fp16
+
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            return result[0]
+
+
 if __name__ == "__main__":
     unittest.main()

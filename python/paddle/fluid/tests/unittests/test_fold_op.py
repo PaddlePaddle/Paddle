@@ -174,6 +174,15 @@ class TestFoldOpError(unittest.TestCase):
                     x, output_sizes=[6, 6], kernel_sizes=[2, 2],
                     strides=[1, 1])
 
+            def test_output_size_2():
+                # out_size must GT 1
+                x = paddle.randn(shape=[2, 6, 6], dtype="float32")
+                out = fold(
+                    x,
+                    output_sizes=[0.1, 0.2],
+                    kernel_sizes=[2, 2],
+                    strides=[1, 1])
+
             def test_block_h_w():
                 # test_block_h_w GT 0
                 x = paddle.randn(shape=[2, 1, 1], dtype="float32")
@@ -196,6 +205,7 @@ class TestFoldOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_dilations_shape)
             self.assertRaises(AssertionError, test_strides_shape)
             self.assertRaises(ValueError, test_output_size)
+            self.assertRaises(ValueError, test_output_size_2)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)
 

@@ -14,20 +14,15 @@
 
 #include "paddle/phi/kernels/gaussian_random_kernel.h"
 
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 #include <thrust/random.h>
-#include <thrust/transform.h>
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 #include "paddle/fluid/framework/generator.h"
-
-DECLARE_bool(use_curand);
 
 namespace phi {
 
@@ -46,8 +41,9 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-    thrust::normal_distribution<MT> dist(mean_, std_);
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
+                                         static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
     MT out = dist(rng);
@@ -57,7 +53,7 @@ struct GaussianGenerator {
 
 template <typename T, typename Context>
 void GaussianRandomKernel(const Context& dev_ctx,
-                          const ScalarArray& shape,
+                          const IntArray& shape,
                           float mean,
                           float std,
                           int seed,
@@ -82,20 +78,11 @@ void GaussianRandomKernel(const Context& dev_ctx,
   auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
 
   if (gen_cuda->GetIsInitPy() && seed_flag) {
-    if (FLAGS_use_curand) {
-      using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-      funcs::normal_distribution<MT> dist;
-      funcs::normal_transform<MT> trans(mean, std);
-      funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
-    } else {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      auto func = GaussianGenerator<T>(static_cast<T>(mean),
-                                       static_cast<T>(std),
-                                       seed_offset.first,
-                                       gen_offset);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, tensor, func);
-    }
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::normal_distribution<MT> dist;
+    funcs::normal_transform<MT> trans(static_cast<MT>(mean),
+                                      static_cast<MT>(std));
+    funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
   } else {
     auto func =
         GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
@@ -110,5 +97,6 @@ PD_REGISTER_KERNEL(gaussian_random,
                    ALL_LAYOUT,
                    phi::GaussianRandomKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {}

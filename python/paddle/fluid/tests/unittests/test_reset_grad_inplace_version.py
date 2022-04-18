@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops
 from paddle.fluid import framework
+from paddle.fluid.framework import _test_eager_guard
 import unittest
 paddle.set_device('cpu')
 
@@ -32,7 +33,7 @@ def clear_grad_test_0(w, a):
 
 
 class TestInplaceAndClearGradient(unittest.TestCase):
-    def test(self):
+    def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
 
@@ -44,6 +45,11 @@ class TestInplaceAndClearGradient(unittest.TestCase):
             out = _C_ops.matmul_v2(out0, w, 'trans_x', False, 'trans_y', False)
             out.backward()
         assert w.grad[0] == 0.15
+
+    def test(self):
+        with _test_eager_guard():
+            self.func_test()
+        self.func_test()
 
 
 # Test 2
@@ -67,7 +73,7 @@ def clear_grad_test_1(w, c):
 
 
 class TestInplaceClearGradAccumulation(unittest.TestCase):
-    def test(self):
+    def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
         c = Counter()
@@ -87,9 +93,14 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
             assert c.num_calls == 1
             c.num_calls = 0
 
+    def test(self):
+        with _test_eager_guard():
+            self.func_test()
+        self.func_test()
+
 
 class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
-    def test(self):
+    def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
         out = _C_ops.scale(w, 'scale', 0.1)
@@ -99,6 +110,11 @@ class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
         w._reset_grad_inplace_version(False)
 
         assert w.grad._inplace_version() == 1
+
+    def test(self):
+        with _test_eager_guard():
+            self.func_test()
+        self.func_test()
 
 
 if __name__ == '__main__':

@@ -41,6 +41,7 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
   for (auto &op : ops_) {

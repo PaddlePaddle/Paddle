@@ -16,8 +16,8 @@
 
 #include <set>
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -237,6 +237,31 @@ void Reduce(const DeviceContext& dev_ctx,
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }
+}
+
+template <typename DeviceContext, typename OutT, typename Functor>
+void BoolReduceKernel(const DeviceContext& dev_ctx,
+                      const phi::DenseTensor& input,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      phi::DenseTensor* output) {
+  dev_ctx.template Alloc<OutT>(output);
+
+  // The dims has full dim, set the reduce_all is True
+  const auto& input_dim_size = input.dims().size();
+  std::set<int> dims_set(dims.begin(), dims.end());
+  bool full_dim = true;
+  for (auto i = 0; i < input_dim_size; i++) {
+    if (dims_set.find(i) == dims_set.end()) {
+      full_dim = false;
+      break;
+    }
+  }
+  reduce_all = (reduce_all || full_dim);
+
+  ReduceKernelImpl<DeviceContext, bool, OutT, Functor>(
+      dev_ctx, input, output, dims, keep_dim, reduce_all);
 }
 
 }  // namespace phi

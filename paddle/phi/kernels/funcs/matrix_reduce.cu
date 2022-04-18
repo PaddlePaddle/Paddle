@@ -45,13 +45,8 @@ class MatrixReduceSumFunctor<T, GPUContext> {
         out_reduce_dims.push_back(idx);
       }
     }
-    TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        dev_ctx,
-        in,
-        out,
-        kps::IdentityFunctor<T>(),
-        out_reduce_dims,
-        dev_ctx.stream());
+    ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        dev_ctx, in, out, kps::IdentityFunctor<T>(), out_reduce_dims);
   }
 };
 
