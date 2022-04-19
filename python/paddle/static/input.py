@@ -193,7 +193,7 @@ class InputSpec(object):
                 print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
 
         """
-        if isinstance(tensor, (Variable, core.VarBase)):
+        if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(

@@ -27,16 +27,16 @@ import paddle.tensor as tensor
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
-from paddle.distributed.auto_parallel.context import DistributedContext
-from paddle.distributed.auto_parallel.context import set_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
 paddle.enable_static()
 _global_parallel_strategy = None
 _global_process_mesh = None
 _global_process_mesh2 = None
-ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 
 
 class MLPLayer(nn.Layer):
@@ -62,20 +62,43 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
         elif _global_parallel_strategy == "pp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh2,
-                dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh2,
+                    "dims_mapping": [1, -1]
+                })
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -99,10 +122,18 @@ def mlp_pretrain_forward(train_program, start_program):
 
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -118,110 +149,99 @@ class TestMLPAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_dp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
-    def test_mlp_misc(self):
-        # import pdb
-        global _global_parallel_strategy
-        _global_parallel_strategy = "pp"
-        global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1], [2, 3]], parent=ROOT_MESH)
-        global _global_process_mesh2
-        _global_process_mesh2 = auto.ProcessMesh(
-            mesh=[[4, 5], [6, 7]], parent=ROOT_MESH)
+    # def test_mlp_misc(self):
+    #     # import pdb
+    #     global _global_parallel_strategy
+    #     _global_parallel_strategy = "pp"
+    #     global _global_process_mesh
+    #     _global_process_mesh = auto.ProcessMesh(
+    #         mesh=[[0, 1], [2, 3]])
+    #     global _global_process_mesh2
+    #     _global_process_mesh2 = auto.ProcessMesh(
+    #         mesh=[[4, 5], [6, 7]])
 
-        train_program = static.Program()
-        start_program = static.Program()
-        dist_context = DistributedContext()
-        train_program, start_program = mlp_pretrain_forward(train_program,
-                                                            start_program)
-        # pdb.set_trace()
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        dist_context.finalize_distributed_attr_for_program(
-            complete_train_program)
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        for block in complete_train_program.blocks:
-            for tensor in block.vars.values():
-                desc = tensor.desc
-                attr_name = append_distributed_attr_suffix("mesh_id")
-                self.assertIsNotNone(desc.has_attr(attr_name))
-                attr_name = append_distributed_attr_suffix("dim_mapping")
-                self.assertIsNotNone(desc.has_attr(attr_name))
-            for op in block.ops:
-                desc = op.desc
-                attr_name = append_distributed_attr_suffix("mesh_id")
-                self.assertIsNotNone(desc.has_attr(attr_name))
-                for tensor_name in desc.input_arg_names():
-                    attr_name = append_distributed_attr_suffix("IN_" +
-                                                               tensor_name)
-                    self.assertIsNotNone(desc.has_attr(attr_name))
-                for tensor_name in desc.output_arg_names():
-                    attr_name = append_distributed_attr_suffix("OUT_" +
-                                                               tensor_name)
-                    self.assertIsNotNone(desc.has_attr(attr_name))
-        set_default_distributed_context(dist_context)
-        self.assertTrue("dist_attr" in str(complete_train_program))
-        with unittest.mock.patch(
-                "sys.stdout", new_callable=StringIO) as mock_stdout:
-            print_program_with_distributed_attr(complete_train_program)
-            self.assertIsNotNone(mock_stdout.getvalue())
+    #     train_program = static.Program()
+    #     start_program = static.Program()
+    #     dist_context = DistributedContext()
+    #     train_program, start_program = mlp_pretrain_forward(train_program,
+    #                                                         start_program)
+    #     # pdb.set_trace()
+    #    completer = Completer(dist_context)
+    #     complete_train_program = auto.completer.complete_forward_annotation(train_program)
+    #     # print_program_with_dist_attr(complete_train_program,
+    #     #                                     dist_context)
+    #     dist_context.finalize_distributed_attr_for_program(
+    #         complete_train_program)
+    #     from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+    #     for block in complete_train_program.blocks:
+    #         for tensor in block.vars.values():
+    #             desc = tensor.desc
+    #             attr_name = append_distributed_attr_suffix("mesh_id")
+    #             self.assertIsNotNone(desc.has_attr(attr_name))
+    #             attr_name = append_distributed_attr_suffix("dims_mapping")
+    #             self.assertIsNotNone(desc.has_attr(attr_name))
+    #         for op in block.ops:
+    #             desc = op.desc
+    #             attr_name = append_distributed_attr_suffix("mesh_id")
+    #             self.assertIsNotNone(desc.has_attr(attr_name))
+    #             for tensor_name in desc.input_arg_names():
+    #                 attr_name = append_distributed_attr_suffix("IN_" +
+    #                                                            tensor_name)
+    #                 self.assertIsNotNone(desc.has_attr(attr_name))
+    #             for tensor_name in desc.output_arg_names():
+    #                 attr_name = append_distributed_attr_suffix("OUT_" +
+    #                                                            tensor_name)
+    #                 self.assertIsNotNone(desc.has_attr(attr_name))
+    #     set_default_distributed_context(dist_context)
+    #     self.assertTrue("dist_attr" in str(complete_train_program))
+    #     with unittest.mock.patch(
+    #             "sys.stdout", new_callable=StringIO) as mock_stdout:
+    #         print_program_with_dist_attr(complete_train_program)
+    #         self.assertIsNotNone(mock_stdout.getvalue())
 
 
 class AttentionLayer(nn.Layer):
@@ -262,10 +282,18 @@ class AttentionLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+                input,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1, -1]
+                })
 
         q = self.q_proj(input)
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -276,18 +304,42 @@ class AttentionLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -320,12 +372,18 @@ class AttentionLayer(nn.Layer):
         out = self.out_proj(out)
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[0, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[1, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         return out
 
@@ -357,60 +415,51 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        # print_program_with_dist_attr(complete_train_program,
         #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_attn_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_attn_dp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 
 class DecoderLayer(nn.Layer):
@@ -486,10 +535,18 @@ class DecoderLayer(nn.Layer):
     def forward(self, input_ids, position_ids):
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+                input_ids,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+                input_ids,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
 
         input_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
@@ -497,13 +554,17 @@ class DecoderLayer(nn.Layer):
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[0, -1])
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[1, -1])
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout1(embeddings)
@@ -521,18 +582,42 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.q_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.k_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.v_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -566,12 +651,18 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[0, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[1, -1])
+                self.out_proj.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         # Add residual
         residual = embeddings + self.dropout2(out)
@@ -586,14 +677,30 @@ class DecoderLayer(nn.Layer):
 
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 0]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [0, -1]
+                })
         elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+                self.linear0.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [-1, 1]
+                })
             auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+                self.linear1.weight,
+                dist_attr={
+                    "process_mesh": _global_process_mesh,
+                    "dims_mapping": [1, -1]
+                })
 
         # Add residual
         final = residual + self.dropout3(out3)
@@ -631,60 +738,49 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_dp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_distributed_attr(complete_train_program,
-        #                                     dist_context)
-        self.assertTrue(
-            check_distributed_attr_for_program(complete_train_program,
-                                               dist_context))
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 
 if __name__ == "__main__":

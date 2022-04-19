@@ -10,11 +10,11 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,8 @@ static inline std::vector<int> GetPaddings(
   std::vector<int> paddings(6);
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
-    TensorToVector(*paddings_t, context.device_context(), &paddings);
+    paddle::framework::TensorToVector(*paddings_t, context.device_context(),
+                                      &paddings);
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
     std::copy(pads.begin(), pads.end(), paddings.data());

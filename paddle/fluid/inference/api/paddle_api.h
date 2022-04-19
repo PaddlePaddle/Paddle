@@ -36,6 +36,7 @@ namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
+using PaddleDataLayout = paddle_infer::DataLayout;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -174,6 +175,14 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
   void copy_from_cpu(const T* data) {
     return CopyFromCpu(data);
   }
+
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with Strings data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void copy_strings_from_cpu(const paddle_infer::Strings* data) {
+    return CopyStringsFromCpu(data);
+  }
+
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
@@ -184,6 +193,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
 
  private:
   friend class AnalysisPredictor;
+  friend class ONNXRuntimePredictor;
   explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
 };
 
@@ -373,6 +383,7 @@ enum class PaddleEngineKind {
   kNative = 0,         ///< Use the native Fluid facility.
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
   kAnalysis,           ///< More optimization.
+  kONNXRuntime,        ///< Use ONNXRuntime
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
@@ -387,6 +398,11 @@ template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
 
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
+    const AnalysisConfig& config);
+
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
@@ -397,3 +413,24 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
     const std::string& config_file);
 
 }  // namespace paddle
+
+// forward declation
+using cudaStream_t = struct CUstream_st*;
+using hipStream_t = struct ihipStream_t*;
+
+namespace paddle_infer {
+class Predictor;
+using Config = paddle::AnalysisConfig;
+namespace experimental {
+class PD_INFER_DECL InternalUtils {
+ public:
+  // Note: Can only be used under thread_local semantics.
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    cudaStream_t stream);
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    hipStream_t stream);
+  static void UpdateConfigInterleaved(paddle_infer::Config* c,
+                                      bool with_interleaved);
+};
+}  // namespace experimental
+}  // namespace paddle_infer

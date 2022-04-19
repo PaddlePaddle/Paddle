@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -101,15 +102,17 @@ class SliceOp : public framework::OperatorWithKernel {
               "The size of ends must be equal to the size of axes."));
     }
 
-    CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends, nullptr,
-                                  &infer_flags);
+    phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
+                                              nullptr, &infer_flags);
 
-    auto slice_dims =
-        GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, &infer_flags);
+    auto slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
+                                                    nullptr, &infer_flags);
     if (ctx->IsRuntime()) {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, &infer_flags);
+      out_dims = phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis,
+                                                   &infer_flags);
     } else {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
+      out_dims =
+          phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
     }
 
     ctx->SetOutputDim("Out", out_dims);
@@ -130,7 +133,9 @@ class SliceOp : public framework::OperatorWithKernel {
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
       if (platform::is_cuda_pinned_place(in_tensor.place())) {
-        return framework::OpKernelType(in_tensor.type(), ctx.device_context());
+        return framework::OpKernelType(
+            framework::TransToProtoVarType(in_tensor.dtype()),
+            ctx.device_context());
       }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -143,7 +148,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
         auto tmp_md = dnnl::memory::desc(
-            framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
+            phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
             dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -152,7 +157,8 @@ class SliceOp : public framework::OperatorWithKernel {
       }
 #endif
 
-      return framework::OpKernelType(in_tensor.type(), in_tensor.place());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(in_tensor.dtype()), in_tensor.place());
     }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
@@ -244,7 +250,7 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
+        .InEnum({"float32", "int8", "bfloat16"})
         .AsExtra();
     AddComment(R"DOC(
 Slice Operator.
@@ -321,7 +327,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       auto tmp_md = dnnl::memory::desc(
-          framework::vectorize(
+          phi::vectorize(
               ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
           dnnl::memory::data_type::f32,
           ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
@@ -442,7 +448,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::SliceKernel<paddle::platform::CPUDeviceContext,
                      paddle::platform::complex<float>>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>);
+                     paddle::platform::complex<double>>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::bfloat16>);
 
 REGISTER_OP_CPU_KERNEL(
     slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
@@ -453,7 +461,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::complex<double>>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, bool>,
@@ -463,6 +473,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::float16>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::bfloat16>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::complex<float>>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
@@ -476,6 +488,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
                          paddle::platform::float16>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::bfloat16>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
                          paddle::platform::complex<float>>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,

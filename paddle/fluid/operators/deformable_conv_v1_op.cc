@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/deformable_conv_v1_op.h"
 #include <memory>
-#include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -113,128 +115,6 @@ $$
 class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
-                   "deformable_conv_v1");
-    OP_INOUT_CHECK(ctx->HasInput("Offset"), "Input", "Offset",
-                   "deformable_conv_v1");
-    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter",
-                   "deformable_conv_v1");
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
-                   "deformable_conv_v1");
-
-    auto in_dims = ctx->GetInputDim("Input");
-    auto filter_dims = ctx->GetInputDim("Filter");
-    auto offset_dims = ctx->GetInputDim("Offset");
-
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> dilations =
-        ctx->Attrs().Get<std::vector<int>>("dilations");
-    int groups = ctx->Attrs().Get<int>("groups");
-    int deformable_groups = ctx->Attrs().Get<int>("deformable_groups");
-    int im2col_step = ctx->Attrs().Get<int>("im2col_step");
-
-    PADDLE_ENFORCE_EQ(
-        in_dims.size(), 4,
-        platform::errors::InvalidArgument(
-            "Conv input should be 4-D tensor, get %u", in_dims.size()));
-    PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Conv input dimension and filter dimension should be "
-                          "the same. the difference is [%d] vs [%d]",
-                          in_dims.size(), filter_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        in_dims.size() - strides.size(), 2U,
-        platform::errors::InvalidArgument(
-            "Conv input dimension and strides "
-            "dimension should be consistent., But received [%d]: [%d]",
-            in_dims.size(), strides.size()));
-    PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
-                      platform::errors::InvalidArgument(
-                          "Conv paddings dimension and Conv strides dimension "
-                          "should be the same. The difference is [%d] vs [%d]",
-                          paddings.size(), strides.size()));
-
-    PADDLE_ENFORCE_EQ(
-        in_dims[1], filter_dims[1] * groups,
-        platform::errors::InvalidArgument(
-            "The number of input channels should be equal to filter "
-            "channels * groups. The difference is [%d]: [%d]",
-            in_dims[1], filter_dims[1] * groups));
-    PADDLE_ENFORCE_EQ(
-        filter_dims[0] % groups, 0,
-        platform::errors::InvalidArgument(
-            "The number of output channels should be divided by groups. But"
-            "received output channels: [%d], groups: [%d]",
-            filter_dims[0], groups));
-    PADDLE_ENFORCE_EQ(
-        filter_dims[0] % deformable_groups, 0,
-        platform::errors::InvalidArgument(
-            "The number of output channels should be "
-            "divided by deformable groups. But received [%d]: [%d]",
-            filter_dims[0], deformable_groups));
-
-    if (in_dims[0] > im2col_step) {
-      PADDLE_ENFORCE_EQ(in_dims[0] % im2col_step, 0U,
-                        platform::errors::InvalidArgument(
-                            "Input batchsize must be smaller than or divide "
-                            "im2col_step, But received [%d]: [%d]",
-                            in_dims[0], im2col_step));
-    }
-
-    for (size_t i = 0; i < strides.size(); ++i) {
-      PADDLE_ENFORCE_GT(strides[i], 0U, platform::errors::InvalidArgument(
-                                            "stride %d size incorrect", i));
-    }
-    for (size_t i = 0; i < dilations.size(); ++i) {
-      PADDLE_ENFORCE_GT(dilations[i], 0U, platform::errors::InvalidArgument(
-                                              "dilation %d size incorrect", i));
-    }
-
-    std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
-    for (size_t i = 0; i < strides.size(); ++i) {
-      if ((!ctx->IsRuntime()) &&
-          (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
-        output_shape.push_back(-1);
-      } else {
-        output_shape.push_back(ConvOutputSize(in_dims[i + 2],
-                                              filter_dims[i + 2], dilations[i],
-                                              paddings[i], strides[i]));
-      }
-    }
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(output_shape[1] % deformable_groups, 0U,
-                        platform::errors::InvalidArgument(
-                            "output num_filter must divide deformable group "
-                            "size. But received [%d]: [%d]",
-                            output_shape[1], deformable_groups));
-      PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
-                        platform::errors::InvalidArgument(
-                            "output height must equal to offset map height. "
-                            "The difference is [%d]: [%d]",
-                            output_shape[2], offset_dims[2]));
-      PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
-                        platform::errors::InvalidArgument(
-                            "output width must equal to offset map width. The "
-                            "difference is [%d]: [%d]",
-                            output_shape[3], offset_dims[3]));
-      PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                        platform::errors::InvalidArgument(
-                            "offset filter must divide deformable group size. "
-                            "But received [%d]: [%d]",
-                            offset_dims[1], filter_dims[2] * filter_dims[3]));
-      PADDLE_ENFORCE_EQ(
-          offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
-          deformable_groups,
-          platform::errors::InvalidArgument(
-              "offset filter must divide deformable group size. But received "
-              "[%d]: [%d]",
-              offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
-              deformable_groups));
-    }
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -300,15 +180,12 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv, DeformableConvV1InferShapeFunctor,
+                            PD_INFER_META(phi::DeformableConvInferMeta));
+
 REGISTER_OPERATOR(deformable_conv_v1, ops::DeformableConvV1Op,
                   ops::DeformableConvV1OpMaker,
                   ops::DeformableConvV1GradOpMaker<paddle::framework::OpDesc>,
-                  ops::DeformableConvV1GradOpMaker<paddle::imperative::OpBase>);
+                  ops::DeformableConvV1GradOpMaker<paddle::imperative::OpBase>,
+                  DeformableConvV1InferShapeFunctor);
 REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
-
-REGISTER_OP_CPU_KERNEL(deformable_conv_v1,
-                       ops::DeformableConvV1CPUKernel<float>,
-                       ops::DeformableConvV1CPUKernel<double>);
-REGISTER_OP_CPU_KERNEL(deformable_conv_v1_grad,
-                       ops::DeformableConvV1GradCPUKernel<float>,
-                       ops::DeformableConvV1GradCPUKernel<double>);

@@ -46,7 +46,7 @@ class FillOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "Fill");
     auto& shape = context->Attrs().Get<std::vector<int>>("shape");
-    context->SetOutputDim("Out", framework::make_ddim(shape));
+    context->SetOutputDim("Out", phi::make_ddim(shape));
   }
 
  protected:

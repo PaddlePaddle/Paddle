@@ -145,6 +145,23 @@ int FindMapByValue(const std::map<int, int>& m, int val) {
   return -1;
 }
 
+// In other two cases，the op that has feed vars as output vars is dependent:
+// 1. op has subblock, like while/for/ifelse/recurrent
+// 2. op is in subblock
+bool IsSubBlockDependent(const proto::OpDesc& op_desc,
+                         const std::set<std::string>& feed_vars,
+                         int parent_block_id) {
+  for (auto& var : op_desc.outputs()) {
+    for (auto& argu : var.arguments()) {
+      if ((HasSubBlock(op_desc) || parent_block_id != -1) &&
+          feed_vars.count(argu) != 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // block_id is the idx of the current block in the input desc
 // parent_block_id is the idx of the parent of the current block
 // in the output desc, -1 means the current block is global block
@@ -210,7 +227,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
     // }
 
     if (IsTarget(op_desc) ||
-        (HasDependentOutputVar(op_desc, *dependent_vars) &&
+        ((HasDependentOutputVar(op_desc, *dependent_vars) ||
+          (IsSubBlockDependent(op_desc, feed_var_names, parent_block_id))) &&
          (GetOpRole(op_desc) & static_cast<int>(OpRole::kOptimize)) == 0)) {
       // NOTE(zhiqiu): since optimize op takes the trainable parameters as
       // inputs and output, it may introduce wrong dependency graph.
@@ -227,30 +245,6 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       should_run.push_back(true);
     } else {
       should_run.push_back(false);
-      // If the output of an op modifies feed vars, the op should not clip.
-      // For example, in the transformer structure, the third parameter returned
-      // by beam_search op is generally assigned to a feed var. Cutting the
-      // assign op will cause an error.
-      if (parent_block_id != -1) {
-        bool flag = false;
-        for (auto& var : op_desc.outputs()) {
-          for (auto& argu : var.arguments()) {
-            if (feed_var_names.count(argu)) {
-              flag = true;
-            }
-          }
-        }
-        if (flag) {
-          should_run.back() = true;
-
-          // If any op should run, then there inputs are dependent_vars
-          for (auto& var : op_desc.inputs()) {
-            for (auto& argu : var.arguments()) {
-              dependent_vars->insert(argu);
-            }
-          }
-        }
-      }
     }
   }
 

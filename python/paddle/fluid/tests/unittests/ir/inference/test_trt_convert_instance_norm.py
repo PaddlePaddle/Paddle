@@ -24,8 +24,6 @@ import unittest
 
 class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        weights = program_config.weights
         attrs = [
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
@@ -38,52 +36,71 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], shape_input):
-            return np.ones(shape_input).astype(np.float32)
+            return np.random.random(shape_input).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], shape_input):
-            return np.ones(len(shape_input) - 1).astype(np.float32)
+            return np.random.random(shape_input[1]).astype(np.float32)
 
-        for epsilon in [0.0005, -1, 1]:
-            dics = [{"epsilon": epsilon}]
+        for batch in [1, 2, 4]:
+            for shape_input in [[batch, 16], [batch, 32, 64],
+                                [batch, 16, 32, 64]]:
+                self.in_dim = len(shape_input)
+                for epsilon in [0.0005, -1, 1]:
+                    dics = [{"epsilon": epsilon}]
+                    ops_config = [{
+                        "op_type": "instance_norm",
+                        "op_inputs": {
+                            "X": ["input_data"],
+                            "Scale": ["scale_data"],
+                            "Bias": ["bias_data"]
+                        },
+                        "op_outputs": {
+                            "Y": ["y_data"],
+                            "SavedMean": ["saved_mean_data"],
+                            "SavedVariance": ["saved_variance_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={
+                            "bias_data": TensorConfig(data_gen=partial(
+                                generate_input2, dics, shape_input)),
+                            "scale_data": TensorConfig(data_gen=partial(
+                                generate_input2, dics, shape_input))
+                        },
+                        inputs={
+                            "input_data": TensorConfig(data_gen=partial(
+                                generate_input1, dics, shape_input))
+                        },
+                        outputs=["y_data"])
 
-            ops_config = [{
-                "op_type": "instance_norm",
-                "op_inputs": {
-                    "X": ["input_data"],
-                    "Scale": ["scale_data"],
-                    "Bias": ["bias_data"]
-                },
-                "op_outputs": {
-                    "Y": ["y_data"],
-                    "SavedMean": ["saved_mean_data"],
-                    "SavedVariance": ["saved_variance_data"]
-                },
-                "op_attrs": dics[0]
-            }]
-            ops = self.generate_op_config(ops_config)
-            shape_input = [1, 3, 64, 64]
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={
-                    "bias_data": TensorConfig(data_gen=partial(
-                        generate_input2, dics, shape_input)),
-                    "scale_data": TensorConfig(data_gen=partial(
-                        generate_input2, dics, shape_input))
-                },
-                inputs={
-                    "input_data": TensorConfig(data_gen=partial(
-                        generate_input1, dics, shape_input))
-                },
-                outputs=["y_data"])
-
-            yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            if self.in_dim == 2:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 4]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
+            elif self.in_dim == 3:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 1, 4]}
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 32, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 3, 32]}
+            elif self.in_dim == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 1, 4, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 32, 128, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [2, 3, 32, 32]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -91,8 +108,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            inputs = program_config.inputs
-            if dynamic_shape:
+            if dynamic_shape or self.in_dim != 4:
                 return 0, 3
             return 1, 2
 
@@ -108,7 +124,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -117,7 +133,7 @@ class TrtConvertInstanceNormTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
+                                                                     True), 1e-5
 
     def test(self):
         self.run_test()

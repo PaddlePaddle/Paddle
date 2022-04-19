@@ -45,6 +45,7 @@ namespace paddle_infer {
 
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
+using DistConfig = paddle::DistConfig;
 
 ///
 /// \class Predictor
@@ -150,6 +151,7 @@ class PD_INFER_DECL Predictor {
 
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 ///
@@ -169,6 +171,8 @@ PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
 PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 
 PD_INFER_DECL std::string GetVersion();
+PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
+PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 
 namespace services {

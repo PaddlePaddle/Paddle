@@ -552,6 +552,19 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
   }
 }
 
+template <typename T>
+void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
+          const T* mom1_ptr, const T* mom2_ptr, const T* param_ptr,
+          T* mom1_out_ptr, T* mom2_out_ptr, T* param_out_ptr) {
+  for (int i = 0; i < numel; ++i) {
+    mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
+    mom2_out_ptr[i] =
+        beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
+    param_out_ptr[i] =
+        param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+  }
+}
+
 #define DECLARE_REFER_KERNEL(name)                          \
   template <typename T>                                     \
   class name##Kernel : public ReferKernel<name##Tuple<T>> { \
@@ -603,6 +616,7 @@ DECLARE_REFER_KERNEL(SeqPool);
 DECLARE_REFER_KERNEL(MatMul);
 DECLARE_REFER_KERNEL(Softmax);
 DECLARE_REFER_KERNEL(EmbSeqPool);
+DECLARE_REFER_KERNEL(Adam);
 DECLARE_REFER_KERNEL(Sgd);
 DECLARE_REFER_KERNEL(VBroadcast);
 

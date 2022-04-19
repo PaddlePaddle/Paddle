@@ -21,8 +21,14 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -30,10 +36,9 @@ namespace operators {
 static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
   if (copy_to_gpu) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
 #elif defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
         platform::errors::InvalidArgument("Check your paddle version, current "
@@ -56,7 +61,7 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   y->Resize(dims);
   z->Resize(dims);
 
-  size_t numel = static_cast<size_t>(framework::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
 
   auto x_ptr = x->mutable_data<T>(place);
   auto y_ptr = y->mutable_data<T>(place);

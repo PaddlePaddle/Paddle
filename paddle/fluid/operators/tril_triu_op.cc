@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/tril_triu_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,21 +25,6 @@ namespace operators {
 class TrilTriuOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of TrilTriuOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of TrilTriuOp is not found."));
-    const auto& x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "Input(X)'s rank must be at least 2 in TrilTriuOp."));
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class TrilTriuOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,23 +89,10 @@ class TrilTriuGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(tril_triu, TrilTriuInferShapeFunctor,
+                            PD_INFER_META(phi::TrilTriuInferMeta));
 REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>,
+                  TrilTriuInferShapeFunctor);
 REGISTER_OPERATOR(tril_triu_grad, ops::TrilTriuGradOp);
-REGISTER_OP_CPU_KERNEL(
-    tril_triu, ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, plat::float16>);
-REGISTER_OP_CPU_KERNEL(
-    tril_triu_grad,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext,
-                              plat::float16>);

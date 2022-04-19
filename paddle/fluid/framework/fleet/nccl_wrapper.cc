@@ -22,7 +22,7 @@ bool NCCLWrapper::is_initialized_ = false;
 
 void NCCLWrapper::InitNCCL() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitRank(
       &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
       nccl_info_.my_global_rank_));
 #endif
@@ -38,7 +38,7 @@ void NCCLWrapper::SetNCCLId(const NCCLInfo& nccl_info) {
 
 NCCLInfo NCCLWrapper::GetNCCLId() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
 #endif
   return nccl_info_;
@@ -52,9 +52,9 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   nccl_info_.global_ranks_ = ranks;
   platform::SetDeviceId(local_rank);
 #ifdef PADDLE_WITH_RCCL
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&(nccl_info_.stream_)));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&(nccl_info_.stream_)));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(nccl_info_.stream_)));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
 #endif
   return;
@@ -67,7 +67,7 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
     auto var = scope.FindVar(name);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int32_t total_size = tensor->numel();
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         reinterpret_cast<void*>(tensor->data<float>()), total_size, ncclFloat,
         root_rank, nccl_info_.comm_, nccl_info_.stream_));
 #ifdef PADDLE_WITH_RCCL

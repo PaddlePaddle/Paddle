@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -36,26 +37,27 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                 return False
         if len(attrs[0]["dim"]) == 0:
             return False
-        ## skip not use 
-        if attrs[0]["out_dtype"] != -1:
-            return False
 
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 3, 64, 64]).astype(np.float32)
+        def generate_input1(dtype, attrs: List[Dict[str, Any]]):
+            if dtype == -1 or dtype == 5:
+                return np.random.random([1, 3, 64, 64]).astype(np.float32)
+            elif dtype == 2:
+                return np.random.random([1, 3, 64, 64]).astype(np.int32)
 
-        for keep_dim in [False, True]:
+        for keep_dim in [True, False]:
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
                         [-4, 1], [3, 4, 5]]:
-                for reduce_all in [False, True]:
-                    for out_dtype in [-1, 0, 1]:
+                for reduce_all in [True, False]:
+                    for out_dtype in [-1, 2, 5]:
                         dics = [{
                             "keep_dim": keep_dim,
                             "dim": dim,
                             "reduce_all": reduce_all,
-                            "out_dtype": out_dtype
+                            "out_dtype": out_dtype,
+                            "in_dtype": out_dtype,
                         }, {}]
 
                         ops_config = [{
@@ -75,7 +77,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                             weights={},
                             inputs={
                                 "input_data": TensorConfig(data_gen=partial(
-                                    generate_input1, dics))
+                                    generate_input1, out_dtype, dics))
                             },
                             outputs=["reduce_output_data"])
 
@@ -84,8 +86,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -117,33 +118,23 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-5)
+            attrs, False), (1e-4, 1e-4)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-4, 1e-4)
 
         pass
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['out_dtype'] != -1:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we will add out_dtype not equal to  -1 in the future"
-        )
-
         pass
 
     def test(self):

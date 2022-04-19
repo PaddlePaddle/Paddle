@@ -36,21 +36,20 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     auto x_paddle_type = framework::proto::VarType::Type(in_dtype);
     auto out_paddle_type = framework::proto::VarType::Type(out_dtype);
 
-    mkldnn::memory::data_type x_type =
-        framework::ToMKLDNNDataType(x_paddle_type);
-    mkldnn::memory::data_type out_type =
+    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x_paddle_type);
+    dnnl::memory::data_type out_type =
         framework::ToMKLDNNDataType(out_paddle_type);
 
-    auto x_tz = framework::vectorize(x->dims());
+    auto x_tz = phi::vectorize(x->dims());
 
     platform::ReorderMKLDNNHandler reorder_handler(x_tz, x_paddle_type, x_type,
                                                    out_paddle_type, out_type,
                                                    dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->format(), platform::to_void_cast(x->data<T>()));
-    auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(out, x->format(), dev_ctx.GetPlace());
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+        out, x->mem_desc(), dev_ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
@@ -59,7 +58,7 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };
 }  // namespace operators

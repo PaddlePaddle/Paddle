@@ -71,6 +71,10 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \param[in] idx the position to delete.
   void DeletePass(size_t idx);
 
+  /// \brief Get the certain position of a pass.
+  /// \param[in] pass_type the type of insert pass.
+  size_t GetPassIndex(const std::string &pass_type);
+
   /// \brief Delete all passes that has a certain type 'pass_type'.
   /// \param[in] pass_type the certain pass type to be deleted.
   void DeletePass(const std::string &pass_type);
@@ -125,6 +129,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of cuDNN kernel.
   virtual void EnableCUDNN() {}
 
+  /// \brief Enable use gpu fp16 kernel.
+  virtual void Exp_EnableUseGpuFp16() {}
+
   /// \brief Enable the use of MKLDNN.
   /// The MKLDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
@@ -136,9 +143,16 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN bfloat16.
   virtual void EnableMkldnnBfloat16() {}
 
+  /// \brief Enable MKLDNN int8.
+  virtual void EnableMkldnnInt8() {}
+
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
+
+  /// \brief Check if we are using gpu fp16 kernel.
+  /// \return A bool variable implying whether we are in gpu fp16 mode.
+  bool use_gpu_fp16() const { return use_gpu_fp16_; }
 
   /// \brief Check if we are using xpu.
   /// \return A bool variable implying whether we are in xpu mode.
@@ -148,6 +162,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in npu mode.
   bool use_npu() const { return use_npu_; }
 
+  /// \brief Check if we are using ipu.
+  /// \return A bool variable implying whether we are in ipu mode.
+  bool use_ipu() const { return use_ipu_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
@@ -156,7 +174,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_xpu_{false};
   bool use_gpu_{false};
   bool use_npu_{false};
+  bool use_ipu_{false};
   bool use_mkldnn_{false};
+  bool use_gpu_fp16_{false};
   /// \endcond
 };
 
@@ -176,6 +196,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
+    use_mkldnn_int8_ = other.use_mkldnn_int8_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -192,10 +213,14 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN bfloat16.
   void EnableMkldnnBfloat16() override;
 
+  /// \brief Enable MKLDNN int8.
+  void EnableMkldnnInt8() override;
+
  protected:
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
+  bool use_mkldnn_int8_{false};
   /// \endcond
 };
 
@@ -218,6 +243,9 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
 
+  /// \brief Enable the use of gpu fp16 kernel.
+  void Exp_EnableUseGpuFp16() override;
+
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
 
@@ -227,12 +255,16 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnBfloat16() override;
 
+  /// \brief Not supported in GPU mode yet.
+  void EnableMkldnnInt8() override;
+
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;
 
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
+  bool use_gpu_fp16_{false};
   /// \endcond
 };
 
@@ -256,6 +288,22 @@ class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
   explicit NpuPassStrategy(const NpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_npu_ = true;
+  }
+};
+
+/// \class IpuPassStrategy
+/// \brief The IPU passes controller, it is used in AnalysisPredictor with IPU
+/// mode.
+class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
+ public:
+  /// \brief Default constructor of IpuPassStrategy.
+  IpuPassStrategy();
+
+  /// \brief Construct by copying another IpuPassStrategy object.
+  /// \param[in] other The IpuPassStrategy object we want to copy.
+  explicit IpuPassStrategy(const IpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_ipu_ = true;
   }
 };
 

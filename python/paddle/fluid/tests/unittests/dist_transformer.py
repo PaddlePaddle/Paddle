@@ -1450,7 +1450,7 @@ def wrap_decoder(trg_vocab_size,
         # This is used to implement independent decoder program in inference.
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias, \
         enc_output = make_all_inputs(
-            decoder_data_input_fields + decoder_util_input_fields)
+            decoder_data_input_fields)
     else:
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias = dec_inputs
 

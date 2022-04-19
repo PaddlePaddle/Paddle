@@ -22,11 +22,19 @@ using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 __global__ void fill_constant_kernel(const int64_t featuresize, T* in_data,
-                                     int64_t strides, int offset, T fillvar) {
+                                     int64_t strides, int offset, T fillvar,
+                                     int dims) {
   for (int64_t idx = blockIdx.x * featuresize + threadIdx.x;
        idx * strides + offset < (blockIdx.x + 1) * featuresize;
        idx += blockDim.x) {
-    in_data[idx * strides + offset] = fillvar;
+    // to check if the new position with offset is still in the same line;
+    // this modify should not affect across lines.
+    // out_dims[1] is also work for tensor with dim>2, for which the dims must
+    // be the same number
+    if ((idx * strides) % dims + offset < dims &&
+        (idx * strides) % dims + offset >= 0) {
+      in_data[idx * strides + offset] = fillvar;
+    }
   }
 }
 
@@ -62,7 +70,7 @@ class FillIDiagonalCUDAKernel : public framework::OpKernel<T> {
 
     int64_t kBlockDim = std::min(int64_t(size / strides), kMaxBlockDim);
     fill_constant_kernel<T><<<1, kBlockDim, 0>>>(size, out_data, strides,
-                                                 offset, temp_var);
+                                                 offset, temp_var, out_dims[1]);
   }
 };
 
@@ -96,7 +104,7 @@ class FillIDiagonalGradCUDAKernel : public framework::OpKernel<T> {
 
     int64_t kBlockDim = std::min(int64_t(size), kMaxBlockDim);
     fill_constant_kernel<T><<<1, kBlockDim, 0>>>(wrapsize, in_data, strides,
-                                                 offset, T(0));
+                                                 offset, T(0), out_dims[1]);
   }
 };
 

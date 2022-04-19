@@ -45,6 +45,14 @@ class TestBatchNormOpInference(unittest.TestCase):
         if len(shape) == 2:
             x_shape = shape
             c = x_shape[1]
+        if len(shape) == 3:
+            n, l, c = shape[0], shape[1], shape[2]
+            if data_layout == "NHWC":  # NLC
+                x_shape = [n, l, c]
+            elif data_layout == "NCHW":  # NCL
+                x_shape = [n, c, l]
+            else:
+                raise ValueError("Unknown data layout.")
         else:
             n, h, w, c = shape[0], shape[1], shape[2], shape[3]
             if data_layout == "NHWC":
@@ -117,6 +125,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         place = core.NPUPlace(0)
         for data_format in self.data_formats:
             self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+            self.check_with_place(place, data_format, self.dtype, [3, 8, 5])
 
     def init_kernel_type(self):
         pass
@@ -135,6 +144,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def setUp(self):
         self.set_npu()
+        self.init_dtype()
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
@@ -143,6 +153,9 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.use_global_stats = False
@@ -185,18 +198,32 @@ class TestBatchNormOpTraining(unittest.TestCase):
             # attr
             epsilon = self.epsilon
             momentum = self.momentum
-            if data_layout == "NCHW":
-                n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+
+            if len(shape) == 3:
+                if data_layout == "NHWC":  # NLC
+                    n, l, c = shape[0], shape[1], shape[2]
+                elif data_layout == "NCHW":  # NCL
+                    n, c, l = shape[0], shape[1], shape[2]
+                else:
+                    raise ValueError("Unknown data layout.")
             else:
-                n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+                if data_layout == "NCHW":
+                    n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+                else:
+                    n, h, w, c = shape[0], shape[1], shape[2], shape[3]
             scale_shape = [c]
 
             np.random.seed(123)
-            x = np.random.random_sample(shape).astype(np.float32)
+            x = np.random.random_sample(shape).astype(self.dtype)
             scale = np.random.random_sample(scale_shape).astype(np.float32)
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_mean_variance(scale_shape, x, data_layout)
-            y_grad = np.random.random_sample(shape).astype(np.float32)
+
+            if self.dtype == np.float16:
+                mean = mean.astype(np.float32)
+                variance = variance.astype(np.float32)
+
+            y_grad = np.random.random_sample(shape).astype(self.dtype)
             momentum_var = np.array([momentum]).astype(np.float32)
 
             y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad = self.ref_forward_backward(
@@ -257,7 +284,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     inputs=inputs,
                     outputs=outputs,
                     attrs=attrs)
-                block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
+                block.create_var(name='y@GRAD', dtype=self.dtype, shape=y.shape)
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
@@ -296,9 +323,15 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
         for data_format in self.data_formats:
             test_with_place(core.NPUPlace(0), data_format, [2, 3, 4, 5])
+            test_with_place(core.NPUPlace(0), data_format, [3, 8, 5])
 
     def init_kernel_type(self):
         pass
+
+
+class TestFP16BatchNormOpTraining(TestBatchNormOpTraining):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
@@ -328,6 +361,17 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
         ]
 
     def reference_grad(self, x, y_grad, scale, mean, var, epsilon, data_format):
+        x_shape = x.shape
+        if len(x_shape) == 3:
+            if data_format == "NCHW":  # NCL -> NCL1
+                x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+                y_grad = np.reshape(y_grad,
+                                    (x_shape[0], x_shape[1], x_shape[2], 1))
+            else:  # NLC -> NL1C
+                x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+                y_grad = np.reshape(y_grad,
+                                    (x_shape[0], x_shape[1], 1, x_shape[2]))
+
         if data_format == "NCHW":
             x = np.transpose(x, (0, 2, 3, 1))
             y_grad = np.transpose(y_grad, (0, 2, 3, 1))
@@ -343,12 +387,26 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
             x = np.transpose(x, (0, 3, 1, 2))
             y_grad = np.transpose(y_grad, (0, 3, 1, 2))
 
+        if len(x_shape) == 3:
+            x_grad = np.reshape(x_grad, x_shape)
+
         return x_grad, grad_scale, grad_offset
 
     def ref_forward_backward(self, x, y_grad, scale, bias, mean, variance,
                              epsilon, momentum, shape, data_layout):
         if data_layout != "NCHW" and data_layout != "NHWC":
             raise ValueError("Unknown data order.")
+
+        x_shape = x.shape
+        if len(x_shape) == 3:
+            if data_layout == "NCHW":  # NCL -> NCL1
+                x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+                y_grad = np.reshape(y_grad,
+                                    (x_shape[0], x_shape[1], x_shape[2], 1))
+            else:  # NLC -> NL1C
+                x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+                y_grad = np.reshape(y_grad,
+                                    (x_shape[0], x_shape[1], 1, x_shape[2]))
 
         if data_layout == "NCHW":
             x = np.transpose(x, (0, 2, 3, 1))
@@ -368,6 +426,10 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
         # run backward
         x_grad, scale_grad, bias_grad = self.reference_grad(
             x, y_grad, scale, mean, variance, epsilon, data_layout)
+
+        if len(x_shape) == 3:
+            y = np.reshape(y, x_shape)
+            x_grad = np.reshape(x_grad, x_shape)
 
         return y, mean_out, variance_out, mean, saved_variance, x_grad, scale_grad, bias_grad
 

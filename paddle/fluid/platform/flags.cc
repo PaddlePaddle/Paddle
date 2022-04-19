@@ -32,6 +32,9 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 }  // namespace platform
 }  // namespace paddle
 
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
+
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
  */
@@ -121,6 +124,13 @@ PADDLE_DEFINE_EXPORTED_string(
     "If proveided, it will be passed to aclInit().");
 PADDLE_DEFINE_EXPORTED_int32(min_loss_scaling, 1,
                              "set minmum loss scaling value!");
+PADDLE_DEFINE_EXPORTED_string(
+    npu_precision_mode, "",
+    "NPU operator precision mode, options are 'force_fp32', 'force_fp16', "
+    "'allow_fp32_to_fp16', 'must_keep_origin_dtype' and "
+    "'allow_mix_precision'. If you want to use the default mode ("
+    "allow_fp32_to_fp16), set this to empty string. For more details, "
+    "please refer to the documents");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -151,10 +161,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -354,11 +363,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -426,8 +431,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -527,6 +533,11 @@ PADDLE_DEFINE_EXPORTED_double(
     "each CUDAPlace. If you don't need to limit the memory, "
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    reader_queue_speed_test_mode, false,
+    "If set true, the queue.pop will only get data from queue but not "
+    "remove the data from queue for speed testing");
 
 /**
  * MKLDNN related FLAG
@@ -645,6 +656,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
                             "Disable cudnn in conv2d");
+
+PADDLE_DEFINE_EXPORTED_bool(use_fast_math, false,
+                            "Whether to use fast math GPU functions.");
 #endif
 
 /**
@@ -655,8 +669,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif
@@ -673,3 +688,124 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
 PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+/**
+ * KP kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in the
+ * Op.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
+                            "It controls whether to run PaddlePaddle using KP");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_allreduce_record_one_event
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
+ *          operations would only wait one event instead of multiple events.
+ * Note: Make the allreduce operations would only wait one event instead of
+ *       multiple events. Currently, only fuse allreduce supports this.
+ *       Otherwise, the precision may be wrong.
+ */
+PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
+                            "It controls whether the allreduce operations "
+                            "would only wait one event instead of multiple "
+                            "events. Currently, only fuse allreduce supports "
+                            "this. Otherwise, the precision may be wrong.");
+
+#ifdef PADDLE_WITH_CINN
+/*
+ * CINN related FLAG
+ * Name: FLAGS_use_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_allow_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
+                              "It controls the cinn op subset to be used, "
+                              "which has the highest priority.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
+                              "It controls the cinn op subset to be not used.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_pe_launch_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
+ * instructions of a paddle graph with ParallelExecutor, otherwise with the
+ * CINN compiled runtime program in sequential order.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn, true,
+                            "It controls whether to execute cinn compiled "
+                            "program with ParallelExecutor");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_cinn_auto_tune
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_enable_cinn_auto_tune=true would use CINN with its
+ * auto-tune feature enabled
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune, false,
+                            "It controls whether to use cinn with "
+                            "its auto-tune feature enabled");
+
+#endif
+
+DEFINE_int32(record_pool_max_size, 2000000,
+             "SlotRecordDataset slot record pool max size");
+DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
+DEFINE_bool(enable_slotpool_wait_release, false,
+            "enable slotrecord obejct wait release, default false");
+DEFINE_bool(enable_slotrecord_reset_shrink, false,
+            "enable slotrecord obejct reset shrink memory, default false");
+DEFINE_bool(enable_ins_parser_file, false,
+            "enable parser ins file , default false");
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: nccl_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif
+
+/**
+ * Autotune related FLAG
+ * Name: FLAGS_use_autotune
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");

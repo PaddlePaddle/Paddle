@@ -65,7 +65,8 @@ class ConditionalOp : public framework::OperatorBase {
         platform::errors::InvalidArgument(
             "condition should have one initialized input as condition"));
 
-    PADDLE_ENFORCE_EQ(ips[0]->type() == framework::proto::VarType::BOOL &&
+    PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(ips[0]->dtype()) ==
+                              framework::proto::VarType::BOOL &&
                           ips[0]->numel() == 1,
                       true, platform::errors::InvalidArgument(
                                 "condition input's data type should be bool, "

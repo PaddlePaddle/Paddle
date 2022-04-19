@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid",
+  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid", "mish",
                                         "hard_swish"};
 
   for (std::string act_type : act_types) FuseFCAct(graph, act_type);
@@ -68,9 +68,9 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
       bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
       std::string type = approximate ? "_tanh" : "_erf";
       fc_op->SetAttr("activation_type", act_type + type);
-    } else
+    } else {
       fc_op->SetAttr("activation_type", act_type);
-
+    }
     fc_op->SetAttr("use_mkldnn", true);
 
     fc_op->SetOutput("Out", {act_out->Name()});
@@ -82,8 +82,9 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
-  PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
-                  act_type);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
+                    act_type);
 }
 
 }  // namespace ir
@@ -98,5 +99,6 @@ REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
             .LE("fc", 0)
             .LE("gelu", 0)
             .LE("sigmoid", 0)
+            .LE("mish", 1)
             .LE("hard_swish", 0)
             .LE("tanh", 0));

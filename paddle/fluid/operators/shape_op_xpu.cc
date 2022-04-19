@@ -10,12 +10,41 @@
  *     limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
+#include <algorithm>
+#include "paddle/fluid/framework/op_registry.h"
 
-#include "paddle/fluid/operators/shape_op.h"
+namespace paddle {
+namespace operators {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = phi::SelectedRows;
+
+template <typename T>
+class ShapeXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_var = ctx.InputVar("Input");
+    framework::DDim in_dims;
+    if (in_var->IsType<phi::SelectedRows>()) {
+      in_dims = in_var->Get<phi::SelectedRows>().value().dims();
+    } else {
+      in_dims = in_var->Get<LoDTensor>().dims();
+    }
+    auto* out_t = ctx.Output<Tensor>("Out");
+    out_t->Resize({in_dims.size()});
+    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    for (int i = 0; i < in_dims.size(); ++i) {
+      out_data[i] = in_dims[i];
+    }
+  }
+};
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
-                       ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
-                       ops::ShapeKernel<double>);
+REGISTER_OP_XPU_KERNEL(shape, ops::ShapeXPUKernel<bool>,
+                       ops::ShapeXPUKernel<int>, ops::ShapeXPUKernel<int64_t>,
+                       ops::ShapeXPUKernel<float>, ops::ShapeXPUKernel<double>);
 
 #endif

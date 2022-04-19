@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/atan2_op.h"
-
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,16 +25,6 @@ namespace operators {
 class Atan2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X1"), "Input", "X1", "atan2");
-    OP_INOUT_CHECK(ctx->HasInput("X2"), "Input", "X2", "atan2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "atan2");
-
-    auto in_dims = ctx->GetInputDim("X1");
-
-    ctx->SetOutputDim("Out", in_dims);
-  }
 };
 
 class Atan2OpMaker : public framework::OpProtoAndCheckerMaker {
@@ -115,24 +105,11 @@ class Atan2OpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
+DECLARE_INFER_SHAPE_FUNCTOR(atan2, Atan2InferShapeFunctor,
+                            PD_INFER_META(phi::Atan2InferMeta));
 REGISTER_OPERATOR(atan2, ops::Atan2Op, ops::Atan2OpMaker,
                   ops::Atan2GradMaker<paddle::framework::OpDesc>,
                   ops::Atan2GradMaker<paddle::imperative::OpBase>,
-                  ops::Atan2OpVarTypeInference);
+                  ops::Atan2OpVarTypeInference, Atan2InferShapeFunctor);
 
 REGISTER_OPERATOR(atan2_grad, ops::Atan2GradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    atan2, ops::Atan2Kernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::Atan2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::Atan2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Atan2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Atan2Kernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::float16>);
-
-REGISTER_OP_CPU_KERNEL(
-    atan2_grad, ops::Atan2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Atan2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Atan2GradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::float16>);

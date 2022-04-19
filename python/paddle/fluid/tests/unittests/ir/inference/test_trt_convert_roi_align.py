@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -141,6 +142,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                     return 1, 3
                 else:
                     return 0, 4
+            return 0, 4
 
         attrs = [
             program_config.ops[i].attrs
@@ -173,16 +175,6 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
                            "INPUT RoisNum NOT SUPPORT")
-
-        def teller2(program_config, predictor_config):
-            if (program_config.ops[0].attrs['sampling_ratio'] == -1 and
-                    program_config.ops[0].attrs['aligned'] == True):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_SUPPORT,
-            "SAMPLING_RATIO EQUAL TO - 1 WHEN ALIGNED IS TRUE IS NOT SUPPORT")
 
     def test(self):
         self.add_skip_trt_case()

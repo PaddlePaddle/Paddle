@@ -14,6 +14,7 @@
 
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
+import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
@@ -111,7 +112,7 @@ class TrtConvertDropoutTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if attrs[0]['dropout_implementation'] == "upscale_in_train":
                 return 0, 2
-            elif self.dims == 1:
+            elif self.dims == 1 and dynamic_shape == False:
                 return 0, 3
             else:
                 return 1, 2
@@ -140,16 +141,10 @@ class TrtConvertDropoutTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dims == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When input dims is 2, pulgin will product a 4 dims output.")
+        pass
 
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 

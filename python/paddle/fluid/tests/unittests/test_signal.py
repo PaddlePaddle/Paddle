@@ -652,7 +652,7 @@ class TestFrame(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis),
-                paddle.tensor.signal.frame(
+                paddle.signal.frame(
                     paddle.to_tensor(self.x),
                     self.frame_length,
                     self.hop_length,
@@ -678,7 +678,7 @@ class TestFrameStatic(unittest.TestCase):
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
             input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
-            output = paddle.tensor.signal.frame(
+            output = paddle.signal.frame(
                      input,
                      self.frame_length,
                      self.hop_length,
@@ -708,7 +708,7 @@ class TestFrameStatic(unittest.TestCase):
 class TestFrameException(unittest.TestCase):
     def test_frame(self):
         with self.assertRaises(self.expect_exception):
-            paddle.tensor.signal.frame(
+            paddle.signal.frame(
                 paddle.to_tensor(self.x),
                 self.frame_length,
                 self.hop_length,
@@ -731,7 +731,7 @@ class TestOverlapAdd(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 overlap_add_for_api_test(self.x, self.hop_length, self.axis),
-                paddle.tensor.signal.overlap_add(
+                paddle.signal.overlap_add(
                     paddle.to_tensor(self.x),
                     self.hop_length,
                     self.axis),
@@ -756,7 +756,7 @@ class TestOverlapAddStatic(unittest.TestCase):
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
             input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
-            output = paddle.tensor.signal.overlap_add(
+            output = paddle.signal.overlap_add(
                      input,
                      self.hop_length,
                      self.axis),
@@ -783,7 +783,7 @@ class TestOverlapAddStatic(unittest.TestCase):
 class TestOverlapAddException(unittest.TestCase):
     def test_overlap_add(self):
         with self.assertRaises(self.expect_exception):
-            paddle.tensor.signal.overlap_add(
+            paddle.signal.overlap_add(
                 paddle.to_tensor(self.x),
                 self.hop_length,
                 self.axis)
@@ -848,7 +848,7 @@ class TestStft(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l, self.center, self.pad_mode),
-                paddle.tensor.signal.stft(
+                paddle.signal.stft(
                     paddle.to_tensor(self.x),
                     self.n_fft,
                     self.hop_length,
@@ -891,7 +891,7 @@ class TestStftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.tensor.signal.stft(
+            paddle.signal.stft(
                 paddle.to_tensor(self.x),
                 self.n_fft,
                 self.hop_length,
@@ -934,7 +934,7 @@ class TestIstft(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 istft(self.x, self.hop_length, self.win_length, win_l, self.center, self.length),
-                paddle.tensor.signal.istft(
+                paddle.signal.istft(
                     paddle.to_tensor(self.x),
                     self.n_fft,
                     self.hop_length,
@@ -986,7 +986,7 @@ class TestIstftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.tensor.signal.istft(
+            paddle.signal.istft(
                 paddle.to_tensor(self.x),
                 self.n_fft,
                 self.hop_length,

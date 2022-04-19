@@ -206,8 +206,26 @@ class TestTileOpInt64_t(OpTest):
         self.op_type = "tile"
         self.inputs = {
             'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int32")
+                10, size=(2, 4, 5)).astype("int64")
         }
+        self.attrs = {'repeat_times': [2, 1, 4]}
+        output = np.tile(self.inputs['X'], (2, 1, 4))
+        self.outputs = {'Out': output}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+# Situation 6: input x is Bool
+class TestTileOpBool(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "tile"
+        self.inputs = {'X': np.random.randint(1, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}

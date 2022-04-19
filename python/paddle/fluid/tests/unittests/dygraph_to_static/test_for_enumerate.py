@@ -20,6 +20,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.static import InputSpec
 
 program_translator = ProgramTranslator()
 
@@ -304,6 +305,42 @@ class ForwardContainsForLayer(paddle.nn.Layer):
         return z
 
 
+# 21. for original list 
+@paddle.jit.to_static
+def for_original_list():
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    for x in [1, 2, 3]:
+        z = z + x
+    return z
+
+
+# 22. for original tuple
+@paddle.jit.to_static
+def for_original_tuple():
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    for x in (1, 2, 3):
+        z = z + x
+    return z
+
+
+# 23. for zip error
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])])
+def for_zip_error(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
+# 24. for zip
+@paddle.jit.to_static(
+    input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])])
+def for_zip(x, y):
+    for i, j in zip(x, y):
+        a = i + j
+    return x + y
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -342,6 +379,13 @@ class TestTransform(TestTransformBase):
 
         for x, y in zip(dy_outs, st_outs):
             self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+
+
+class TestTransformForOriginalList(TestTransform):
+    def _run(self, to_static):
+        program_translator.enable(to_static)
+        with fluid.dygraph.guard():
+            return self.dygraph_func()
 
 
 class TestTransformError(TestTransformBase):
@@ -469,6 +513,31 @@ class TestForTupleAsEnumerateValue(TestForIterVarNumpy):
 class TestForwardContainsForLayer(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = ForwardContainsForLayer()
+
+
+class TestForOriginalList(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = for_original_list
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestForOriginalTuple(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = for_original_tuple
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestForZip(unittest.TestCase):
+    def test_for_zip_error(self):
+        with self.assertRaises(RuntimeError):
+            paddle.jit.save(for_zip_error, './for_zip_error')
+
+    def test_for_zip(self):
+        paddle.jit.save(for_zip, './for_zip')
 
 
 if __name__ == '__main__':

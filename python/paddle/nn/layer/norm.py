@@ -33,12 +33,11 @@ from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...framework import get_default_dtype, set_default_dtype
-from ...fluid.framework import in_dygraph_mode
 
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid import core, dygraph_utils
+from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
 
@@ -49,6 +48,7 @@ from ...framework import no_grad
 from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -75,6 +75,7 @@ class _InstanceNormBase(Layer):
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._num_features = num_features
 
         if weight_attr != False and bias_attr != False:
             self.scale = self.create_parameter(
@@ -101,7 +102,7 @@ class _InstanceNormBase(Layer):
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
+        return 'num_features={}, epsilon={}'.format(self._num_features,
                                                     self._epsilon)
 
 
@@ -564,19 +565,25 @@ class _BatchNormBase(Layer):
         self._use_global_stats = use_global_stats
 
         if get_default_dtype() == 'float16':
-            set_default_dtype('float32')
+            self._dtype = 'float32'
+        else:
+            self._dtype = get_default_dtype()
 
         param_shape = [num_features]
 
         # create parameter
         if weight_attr == False:
             self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0))
             self.weight.stop_gradient = True
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(1.0))
             self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
@@ -584,12 +591,16 @@ class _BatchNormBase(Layer):
             self.bias = self.create_parameter(
                 attr=None,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(0.0),
                 is_bias=True)
             self.bias.stop_gradient = True
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True)
             self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
@@ -600,6 +611,7 @@ class _BatchNormBase(Layer):
             moving_variance_name = name + "_variance"
 
         self._mean = self.create_parameter(
+            dtype=self._dtype,
             attr=ParamAttr(
                 name=moving_mean_name,
                 initializer=Constant(0.0),
@@ -609,6 +621,7 @@ class _BatchNormBase(Layer):
         self._mean.stop_gradient = True
 
         self._variance = self.create_parameter(
+            dtype=self._dtype,
             attr=ParamAttr(
                 name=moving_variance_name,
                 initializer=Constant(1.0),
@@ -655,7 +668,7 @@ class _BatchNormBase(Layer):
     def extra_repr(self):
         main_str = 'num_features={}, momentum={}, epsilon={}'.format(
             self._num_features, self._momentum, self._epsilon)
-        if self._data_format is not 'NCHW':
+        if self._data_format != 'NCHW':
             main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
             main_str += ', name={}'.format(self._name)
@@ -1074,7 +1087,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
@@ -1239,7 +1252,7 @@ class LocalResponseNorm(Layer):
     def extra_repr(self):
         main_str = 'size={}, alpha={}, beta={}, k={}'.format(
             self.size, self.alpha, self.beta, self.k)
-        if self.data_format is not 'NCHW':
+        if self.data_format != 'NCHW':
             main_str += ', data_format={}'.format(self.data_format)
         if self.name is not None:
             main_str += ', name={}'.format(self.name)

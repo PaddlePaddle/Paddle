@@ -1741,4 +1741,4 @@ struct power_of_two_std_hash : std::hash<T> {
   typedef paddle::power_of_two_hash_policy hash_policy;
 };
 
-}  // end namespace paddle
+}  // namespace paddle

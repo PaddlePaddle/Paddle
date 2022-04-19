@@ -20,7 +20,7 @@ import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
@@ -76,14 +76,11 @@ class TestASPHelperPruningBase(unittest.TestCase):
                                check_func_name, with_mask):
         exe.run(self.startup_program)
         sparsity.prune_model(
-            place,
-            self.main_program,
-            func_name=mask_func_name,
-            with_mask=with_mask)
+            self.main_program, mask_algo=mask_func_name, with_mask=with_mask)
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
                 self.assertTrue(
-                    sparsity.check_sparsity(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
                         mat.T, func_name=check_func_name, n=2, m=4))

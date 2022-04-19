@@ -12,8 +12,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/top_k_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(ctx.GetPlace());
 
     // prepare assit
-    auto dim = input->dims().size();
+    auto size = input->dims().size();
+    // dim is the last dimension of input
+    auto dim = input->dims()[size - 1];
     framework::Tensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
@@ -62,7 +64,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
-    Tensor tmp_indices(framework::proto::VarType::INT32);
+    Tensor tmp_indices(experimental::DataType::INT32);
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
@@ -75,7 +77,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     // cast indices from INT32 to INT64
-    auto dst_dtype = ConvertToNpuDtype(indices->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(indices->dtype()));
     const auto& runner_cast_indices =
         NpuOpRunner("Cast", {tmp_indices}, {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

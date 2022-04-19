@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/searchsorted_op.h"
-
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,60 +23,6 @@ namespace operators {
 class SearchSortedOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  static bool SearchsortedDimsMatchedBeforeLastDim(
-      const framework::DDim& sequences_dims,
-      const framework::DDim& values_dims) {
-    if (sequences_dims.size() != values_dims.size()) {
-      return false;
-    }
-    const auto& sequences_dims_size = sequences_dims.size();
-    for (int64_t dim = 0; dim < sequences_dims_size - 1; ++dim) {
-      if (sequences_dims[dim] != values_dims[dim]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("SortedSequence"), "Input", "SortedSequence",
-                   "searchsorted");
-    OP_INOUT_CHECK(ctx->HasInput("Values"), "Input", "Values", "searchsorted");
-
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "searchsorted");
-
-    auto sequences_dims = ctx->GetInputDim("SortedSequence");
-    auto values_dims = ctx->GetInputDim("Values");
-    auto out_int32 = ctx->Attrs().Get<bool>("out_int32");
-
-    if (sequences_dims.size() != 1) {
-      PADDLE_ENFORCE_EQ(
-          SearchsortedDimsMatchedBeforeLastDim(sequences_dims, values_dims),
-          true,
-          platform::errors::Unavailable(
-              "The dimensions of sorted_sequence tensor ( %s ) and values "
-              "tensor ( %s ) can not match. Because the input sorted_sequence "
-              "tensor must be 1 dimension or the first N-1 dimensions of "
-              "sorted_sequence tensor and input values tensor must match. "
-              "Please input appropriate sorted_sequence and values again! ",
-              sequences_dims, values_dims));
-    }
-
-    if (out_int32) {
-      PADDLE_ENFORCE_LT(
-          sequences_dims[sequences_dims.size() - 1],
-          std::numeric_limits<int>::max(),
-          platform::errors::Unavailable(
-              "The size of sorted_sequence %d exceed the maximum limit d%. "
-              "Because the size of sorted_sequence should be less than the "
-              "output maximum value for int32 bit. Please set appropriate "
-              "sorted_sequence to meet this requirement! ",
-              sequences_dims[sequences_dims.size() - 1],
-              std::numeric_limits<int>::max()));
-    }
-
-    ctx->SetOutputDim("Out", values_dims);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -116,11 +63,7 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(searchsorted, ops::SearchSortedOp, ops::SearchSortedOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    searchsorted,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, int64_t>);
+DECLARE_INFER_SHAPE_FUNCTOR(searchsorted, SearchsortedInferShapeFunctor,
+                            PD_INFER_META(phi::SearchsortedInferMeta));
+REGISTER_OPERATOR(searchsorted, ops::SearchSortedOp, ops::SearchSortedOpMaker,
+                  SearchsortedInferShapeFunctor);

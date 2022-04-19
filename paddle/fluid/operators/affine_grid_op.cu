@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/affine_grid_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -170,7 +170,7 @@ class AffineGridGradOpCUDAKernel : public framework::OpKernel<T> {
       w = size_attr[3];
     }
     T* theta_grad_data = theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
-    math::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
         ctx.cuda_device_context(), theta_grad, static_cast<T>(0));
 
     T h_step;
