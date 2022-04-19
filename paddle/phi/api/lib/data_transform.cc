@@ -155,8 +155,6 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
 
 inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
                                        Place dst_place) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
 
@@ -165,6 +163,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
                        {tensor.dtype(), tensor.dims(), tensor.layout()});
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
   // NOTE(yy): TransDataPlace should wait for computation of input.
   if (!platform::is_cuda_pinned_place(tensor.place())) {
     pool.Get(tensor.place())->Wait();
