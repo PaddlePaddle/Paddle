@@ -45,17 +45,21 @@ class TestASPStaticPruningBase(unittest.TestCase):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
 
-    def run_inference_pruning_test(self, get_mask_gen_func,
-                                   get_mask_check_func):
+        self.set_config()
+
+    def set_config(self):
+        self.mask_gen_func = 'mask_1d'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
+
+    def test_inference_pruning(self):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, get_mask_gen_func,
-                                    get_mask_check_func, False)
+        self.__pruning_and_checking(exe, place, False)
 
-    def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
+    def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = fluid.layers.mean(
                 fluid.layers.cross_entropy(
@@ -69,53 +73,39 @@ class TestASPStaticPruningBase(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, get_mask_gen_func,
-                                    get_mask_check_func, True)
+        self.__pruning_and_checking(exe, place, True)
 
-    def __pruning_and_checking(self, exe, place, mask_func_name,
-                               check_func_name, with_mask):
+    def __pruning_and_checking(self, exe, place, with_mask):
         exe.run(self.startup_program)
         sparsity.prune_model(
-            self.main_program, mask_algo=mask_func_name, with_mask=with_mask)
+            self.main_program,
+            mask_algo=self.mask_gen_func,
+            with_mask=with_mask)
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
                 self.assertTrue(
                     paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, func_name=check_func_name, n=2, m=4))
+                        mat.T, func_name=self.mask_check_func, n=2, m=4))
 
 
 class TestASPStaticPruning1D(TestASPStaticPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
-
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_1d'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
 
 
 class TestASPStaticPruning2DBest(TestASPStaticPruningBase):
-    def test_2D_best_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
-
-    def test_2D_best_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_2d_best'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
 
 
 class TestASPStaticPruning2DGreedy(TestASPStaticPruningBase):
-    def test_2D_greedy_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_2d_greedy',
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
-
-    def test_2D_greedy_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_2d_greedy',
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_2d_greedy'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
 
 
 if __name__ == '__main__':
