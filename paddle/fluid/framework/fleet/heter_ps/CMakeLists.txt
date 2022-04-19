@@ -26,6 +26,10 @@ IF(WITH_XPU_KP)
     xpu_library(heter_comm_kernel SRCS heter_comm_kernel.h heter_comm_kernel.kps feature_value.h)
     xpu_library(hashtable_kernel SRCS hashtable.h hashtable_kernel.kps)
     cc_library(heter_comm SRCS heter_comm.h heter_resource.cc DEPS ${HETERPS_DEPS} heter_comm_kernel hashtable_kernel)
+    # Change heter_ps.cu file suffix
+    # NOTE(zhangminxu): If we compile with XPU_KP, we directly copy heter_ps.cu to heter_ps.cc
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/heter_ps.cu DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+    file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/heter_ps.cu ${CMAKE_CURRENT_BINARY_DIR}/heter_ps.cc)
     cc_library(heter_ps SRCS heter_ps.cc DEPS heter_comm)
     # xpu_library(heter_comm SRCS heter_comm.h heter_comm_kernel.kps feature_value.h heter_resource.cc heter_resource.h hashtable.h mem_pool.h DEPS ${HETERPS_DEPS})
 ENDIF()
