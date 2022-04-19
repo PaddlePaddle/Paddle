@@ -57,6 +57,7 @@ __global__ void neighbor_sample_example_v2(GpuPsCommGraph graph,
 
   while (i < last_idx) {
     if (node_index[i] == -1) {
+      actual_size[i] = 0;
       i += BLOCK_WARPS;
       continue;
     }
@@ -698,7 +699,7 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int* actual_sample_size = result->actual_sample_size;
   int64_t* val = result->val;
-  int total_gpu = resource_->total_gpu();
+  int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
 
   int grid_size = (len - 1) / block_size_ + 1;
@@ -727,8 +728,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
 
   split_input_to_shard(key, d_idx_ptr, len, d_left_ptr, d_right_ptr, gpu_id);
 
-  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, key,
-                                                        d_idx_ptr, len);
+  heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, key, d_idx_ptr, len,
+                                     stream);
 
   cudaStreamSynchronize(stream);
 
@@ -749,8 +750,13 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   // For cpu_query_switch, we need global items.
   std::vector<thrust::device_vector<int64_t>> cpu_keys_list;
   std::vector<thrust::device_vector<int>> cpu_index_list;
+  thrust::device_vector<int64_t> tmp1;
+  thrust::device_vector<int> tmp2;
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
+      // Insert empty object
+      cpu_keys_list.emplace_back(tmp1);
+      cpu_index_list.emplace_back(tmp2);
       continue;
     }
     auto& node = path_[gpu_id][i].nodes_.back();
@@ -780,6 +786,7 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
 
     // cpu_graph_table->random_sample_neighbors
     if (cpu_query_switch) {
+      VLOG(0) << "Enter 0th cpu_query_switch";
       thrust::device_vector<int64_t> cpu_keys_ptr(shard_len);
       thrust::device_vector<int> index_ptr(shard_len + 1, 0);
       int64_t* node_id_array = reinterpret_cast<int64_t*>(node.key_storage);
@@ -789,13 +796,15 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
           node_id_array, id_array,
           thrust::raw_pointer_cast(cpu_keys_ptr.data()),
           thrust::raw_pointer_cast(index_ptr.data()),
-          thrust::raw_pointer_cast(index_ptr.data() + 1), shard_len);
+          thrust::raw_pointer_cast(index_ptr.data()) + 1, shard_len);
 
       cpu_keys_list.emplace_back(cpu_keys_ptr);
       cpu_index_list.emplace_back(index_ptr);
+      VLOG(0) << "Exit 0th cpu_query_switch";
     }
   }
 
+  VLOG(0) << cpu_keys_list.size() << " " << cpu_index_list.size();
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
       continue;
@@ -804,35 +813,45 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   }
 
   if (cpu_query_switch) {
+    VLOG(0) << "Enter outsize cpu_query_switch";
     for (int i = 0; i < total_gpu; ++i) {
       if (h_left[i] == -1) {
         continue;
       }
       auto shard_len = h_right[i] - h_left[i] + 1;
       int* cpu_index = new int[shard_len + 1];
-      cudaMemcpy(cpu_index, thrust::raw_pointer_cast(cpu_keys_list[i].data()),
+      VLOG(0) << "Begin to copy cpu_index";
+      cudaMemcpy(cpu_index, thrust::raw_pointer_cast(cpu_index_list[i].data()),
                  (shard_len + 1) * sizeof(int), cudaMemcpyDeviceToHost);
-
+      VLOG(0) << "Finish copy cpu_index";
+      VLOG(0) << "cpu_index[0]: " << cpu_index[0];
       if (cpu_index[0] > 0) {
         int number_on_cpu = cpu_index[0];
-        std::vector<std::shared_ptr<char>> buffers(number_on_cpu);
-        std::vector<int> ac(number_on_cpu);
         int64_t* cpu_keys = new int64_t[number_on_cpu];
+        VLOG(0) << "Begin to copy cpu_keys";
         cudaMemcpy(cpu_keys, thrust::raw_pointer_cast(cpu_keys_list[i].data()),
                    number_on_cpu * sizeof(int64_t), cudaMemcpyDeviceToHost);
+        VLOG(0) << "Finish copy cpu_keys";
 
+        std::vector<std::shared_ptr<char>> buffers(number_on_cpu);
+        std::vector<int> ac(number_on_cpu);
+        VLOG(0) << "Begin cpu random sample neighbors";
+        for (int j = 0; j < number_on_cpu; j++) {
+          VLOG(0) << "cpu_key " << j << " is " << cpu_keys[j];
+        }
         auto status = cpu_graph_table->random_sample_neighbors(
             cpu_keys, sample_size, buffers, ac, false);
-        // VLOG(0) << "Finish cpu random sample neighbors";
+        VLOG(0) << "Finish cpu random sample neighbors";
+
         auto& node = path_[gpu_id][i].nodes_.back();
         int* id_array = reinterpret_cast<int*>(node.val_storage);
         int* actual_size_array = id_array + shard_len;
         int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
-        for (int i = 0; i < number_on_cpu; i++) {
-          int offset = cpu_index[i + 1] * sample_size;
-          cudaMemcpy(sample_array + offset, (int64_t*)(buffers[i].get()),
-                     sizeof(int64_t) * ac[i], cudaMemcpyHostToDevice);
-          cudaMemcpy(actual_size_array + cpu_index[i + 1], ac.data() + i,
+        for (int j = 0; j < number_on_cpu; j++) {
+          int offset = cpu_index[j + 1] * sample_size;
+          cudaMemcpy(sample_array + offset, (int64_t*)(buffers[j].get()),
+                     sizeof(int64_t) * ac[j], cudaMemcpyHostToDevice);
+          cudaMemcpy(actual_size_array + cpu_index[j + 1], ac.data() + j,
                      sizeof(int), cudaMemcpyHostToDevice);
         }
       }

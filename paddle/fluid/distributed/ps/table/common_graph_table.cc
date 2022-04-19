@@ -958,6 +958,8 @@ int32_t GraphTable::random_sample_neighbors(
     int64_t *node_ids, int sample_size,
     std::vector<std::shared_ptr<char>> &buffers, std::vector<int> &actual_sizes,
     bool need_weight) {
+  VLOG(0) << "Enter random_sample_neighbors";
+
   size_t node_num = buffers.size();
   std::function<void(char *)> char_del = [](char *c) { delete[] c; };
   std::vector<std::future<int>> tasks;
@@ -969,6 +971,9 @@ int32_t GraphTable::random_sample_neighbors(
     seq_id[index].emplace_back(idx);
     id_list[index].emplace_back(node_ids[idx], sample_size, need_weight);
   }
+
+  VLOG(0) << "Finish the first for loop";
+
   for (int i = 0; i < (int)seq_id.size(); i++) {
     if (seq_id[i].size() == 0) continue;
     tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {

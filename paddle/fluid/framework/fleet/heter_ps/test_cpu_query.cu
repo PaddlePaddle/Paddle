@@ -60,7 +60,10 @@ TEST(TEST_FLEET, test_cpu_cache) {
   platform::CUDADeviceGuard guard(0);
   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-  auto neighbor_sample_res = g.graph_neighbor_sample(0, (int64_t *)key, 2, 3);
+  // auto neighbor_sample_res = g.graph_neighbor_sample(0, (int64_t *)key, 2,
+  // 3);
+  auto neighbor_sample_res =
+      g.graph_neighbor_sample_v2(0, (int64_t *)key, 2, 3, true);
   int64_t *res = new int64_t[7];
   cudaMemcpy(res, neighbor_sample_res->val, 3 * 2 * sizeof(int64_t),
              cudaMemcpyDeviceToHost);
