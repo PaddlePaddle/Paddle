@@ -343,10 +343,10 @@ def gather_prim2orig(op, index_t, x):
 
 @REGISTER_PRIM2ORIG('scatter_add_p')
 def scatter_add_prim2orig(op, index_t, x, y):
-    # assert op.attr('axis') == 0
-    # using scatter_nd_add
-    return paddle.put_along_axis(
-        x, index_t, y, axis=op.attr('axis'), reduce='add')
+    assert op.attr('axis') == 0, 'Only support axis==0 currently'
+    zeros = paddle.zeros_like(x=x, dtype=x.dtype)
+    tmp = paddle.scatter(x=zeros, index=index_t, updates=y, overwrite=False)
+    return paddle.add(x, tmp)
 
 
 @REGISTER_PRIM2ORIG('fill_constant_p')

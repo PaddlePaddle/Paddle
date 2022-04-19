@@ -341,30 +341,26 @@ class TestGatherPPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Y']: 0}
 
 
-# class TestScatterAddPPrim2Orig(TestAddPPrim2Orig):
-#     def init_data(self):
-#         self.op_type = 'scatter_add_p'
-#         X = paddle.static.data(name='X', shape=[9, 5], dtype='float64')
-#         Y = paddle.static.data(name='Y', shape=[3, 5], dtype='float64')
-#         IndexTensor = paddle.static.data(name='IndexTensor', shape=[3], dtype='int32')
+class TestScatterAddPPrim2Orig(TestAddPPrim2Orig):
+    def init_data(self):
+        self.op_type = 'scatter_add_p'
+        X = paddle.static.data(name='X', shape=[9, 5], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[3, 5], dtype='float64')
+        IndexTensor = paddle.static.data(
+            name='IndexTensor', shape=[3], dtype='int32')
 
-#         self.input = {
-#             'X': X,
-#             'Y': Y,
-#             'IndexTensor': IndexTensor
-#         }
-#         self.output = {
-#             'Z': self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
-#         }
-#         self.attrs = {
-#             'axis': 0, 
-#         }
+        self.input = {'X': X, 'Y': Y, 'IndexTensor': IndexTensor}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'axis': 0, }
 
-#         self.prim2orig_args = (IndexTensor, X, Y)
-#         self.all_ops = ['scatter_add_p', 'expand_v2', 'expand_v2', 'put_along_axis', ]
-#         self.out_map = {
-#             self.output['Z']: 0
-#         }
+        self.prim2orig_args = (IndexTensor, X, Y)
+        self.all_ops = [
+            'scatter_add_p', 'fill_any_like', 'scatter', 'elementwise_add'
+        ]
+        self.out_map = {self.output['Z']: 0}
 
 
 class TestFillConstantPPrim2Orig(TestAddPPrim2Orig):
