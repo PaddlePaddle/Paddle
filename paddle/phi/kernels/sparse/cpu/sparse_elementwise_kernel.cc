@@ -30,9 +30,18 @@ namespace sparse {
                                     const SparseCsrTensor& x,                  \
                                     const SparseCsrTensor& y,                  \
                                     SparseCsrTensor* out) {                    \
-    PADDLE_ENFORCE_EQ(x.dims(), y.dims());                                     \
-    const auto& n_row = x.dims()[0];                                           \
-    const auto& n_col = x.dims()[1];                                           \
+    PADDLE_ENFORCE_EQ(                                                         \
+        x.dims(),                                                              \
+        y.dims(),                                                              \
+        phi::errors::InvalidArgument(                                          \
+            "The input tensor X's shape "                                      \
+            "should be identical with Y's shape. But received X's "            \
+            "shape = [%s], Y's shape = [%s].",                                 \
+            x.dims(),                                                          \
+            y.dims()));                                                        \
+    const auto& n_batch = x.dims().size() == 3 ? x.dims()[0] : 1;              \
+    const auto& n_row = x.dims().size() == 2 ? x.dims()[0] : x.dims()[1];      \
+    const auto& n_col = x.dims().size() == 2 ? x.dims()[1] : x.dims()[2];      \
     const auto& x_nnz = x.non_zero_elements().numel();                         \
     const auto* x_crows_data = x.non_zero_crows().data<int64_t>();             \
     const auto* x_cols_data = x.non_zero_cols().data<int64_t>();               \
@@ -47,58 +56,89 @@ namespace sparse {
     std::vector<T> A_row(n_col, 0);                                            \
     std::vector<T> B_row(n_col, 0);                                            \
     int64_t nnz = 0;                                                           \
-                                                                               \
     std::vector<int64_t> out_crows_vec;                                        \
     std::vector<int64_t> out_cols_vec;                                         \
     std::vector<T> out_values_vec;                                             \
-    out_crows_vec.reserve(x_nnz + y_nnz);                                      \
-    out_cols_vec.reserve(x_nnz + y_nnz);                                       \
-    out_values_vec.reserve(x_nnz + y_nnz);                                     \
-                                                                               \
-    out_crows_vec.push_back(0);                                                \
-    for (int64_t i = 0; i < n_row; i++) {                                      \
-      int64_t head = -2;                                                       \
-      int64_t length = 0;                                                      \
-      int64_t i_start = x_crows_data[i];                                       \
-      int64_t i_end = x_crows_data[i + 1];                                     \
-      for (int64_t jj = i_start; jj < i_end; jj++) {                           \
-        int64_t j = x_cols_data[jj];                                           \
-        A_row[j] += x_values_data[jj];                                         \
-        if (next[j] == -1) {                                                   \
-          next[j] = head;                                                      \
-          head = j;                                                            \
-          length++;                                                            \
+    std::vector<int64_t> out_batch_crows_vec;                                  \
+    std::vector<int64_t> out_batch_cols_vec;                                   \
+    std::vector<T> out_batch_values_vec;                                       \
+    out_batch_crows_vec.reserve(x_nnz + y_nnz);                                \
+    out_batch_cols_vec.reserve(x_nnz + y_nnz);                                 \
+    out_batch_values_vec.reserve(x_nnz + y_nnz);                               \
+    out_batch_crows_vec.push_back(0);                                          \
+    int64_t x_prev_batch_nnz = 0;                                              \
+    int64_t y_prev_batch_nnz = 0;                                              \
+    for (int b = 0; b < n_batch; b++) {                                        \
+      for (int64_t i = 0; i < n_row; i++) {                                    \
+        int64_t head = -2;                                                     \
+        int64_t length = 0;                                                    \
+        if (i == 0) {                                                          \
+          x_prev_batch_nnz +=                                                  \
+              b == 0 ? 0 : x_crows_data[i + b * (n_row + 1) - 1];              \
         }                                                                      \
-      }                                                                        \
-      i_start = y_crows_data[i];                                               \
-      i_end = y_crows_data[i + 1];                                             \
-      for (int64_t jj = i_start; jj < i_end; jj++) {                           \
-        int64_t j = y_cols_data[jj];                                           \
-        B_row[j] += y_values_data[jj];                                         \
-        if (next[j] == -1) {                                                   \
-          next[j] = head;                                                      \
-          head = j;                                                            \
-          length++;                                                            \
+        int64_t i_start = x_crows_data[i + b * (n_row + 1)];                   \
+        int64_t i_end = x_crows_data[i + b * (n_row + 1) + 1];                 \
+        for (int64_t jj = i_start + x_prev_batch_nnz;                          \
+             jj < i_end + x_prev_batch_nnz;                                    \
+             jj++) {                                                           \
+          int64_t j = x_cols_data[jj];                                         \
+          A_row[j] += x_values_data[jj];                                       \
+          if (next[j] == -1) {                                                 \
+            next[j] = head;                                                    \
+            head = j;                                                          \
+            length++;                                                          \
+          }                                                                    \
         }                                                                      \
-      }                                                                        \
-      for (int64_t jj = 0; jj < length; jj++) {                                \
-        auto result = func(A_row[head], B_row[head]);                          \
-        if (result != 0) {                                                     \
-          out_cols_vec.resize(nnz + 1);                                        \
-          out_cols_vec[nnz] = head;                                            \
-          out_values_vec.resize(nnz + 1);                                      \
-          out_values_vec[nnz] = result;                                        \
-          nnz++;                                                               \
+        if (i == 0) {                                                          \
+          y_prev_batch_nnz +=                                                  \
+              b == 0 ? 0 : y_crows_data[i + b * (n_row + 1) - 1];              \
         }                                                                      \
-        int64_t tmp = head;                                                    \
-        head = next[head];                                                     \
-        next[tmp] = -1;                                                        \
-        A_row[tmp] = 0;                                                        \
-        B_row[tmp] = 0;                                                        \
+        i_start = y_crows_data[i + b * (n_row + 1)];                           \
+        i_end = y_crows_data[i + b * (n_row + 1) + 1];                         \
+        for (int64_t jj = i_start + y_prev_batch_nnz;                          \
+             jj < i_end + y_prev_batch_nnz;                                    \
+             jj++) {                                                           \
+          int64_t j = y_cols_data[jj];                                         \
+          B_row[j] += y_values_data[jj];                                       \
+          if (next[j] == -1) {                                                 \
+            next[j] = head;                                                    \
+            head = j;                                                          \
+            length++;                                                          \
+          }                                                                    \
+        }                                                                      \
+        for (int64_t jj = 0; jj < length; jj++) {                              \
+          auto result = func(A_row[head], B_row[head]);                        \
+          if (result != 0) {                                                   \
+            out_batch_cols_vec.resize(nnz + 1);                                \
+            out_batch_cols_vec[nnz] = head;                                    \
+            out_batch_values_vec.resize(nnz + 1);                              \
+            out_batch_values_vec[nnz] = result;                                \
+            nnz++;                                                             \
+          }                                                                    \
+          int64_t tmp = head;                                                  \
+          head = next[head];                                                   \
+          next[tmp] = -1;                                                      \
+          A_row[tmp] = 0;                                                      \
+          B_row[tmp] = 0;                                                      \
+        }                                                                      \
+        out_batch_crows_vec.push_back(nnz);                                    \
       }                                                                        \
-      out_crows_vec.push_back(nnz);                                            \
+      nnz = 0;                                                                 \
+      out_cols_vec.insert(out_cols_vec.end(),                                  \
+                          out_batch_cols_vec.begin(),                          \
+                          out_batch_cols_vec.end());                           \
+      out_crows_vec.insert(out_crows_vec.end(),                                \
+                           out_batch_crows_vec.begin(),                        \
+                           out_batch_crows_vec.end());                         \
+      out_values_vec.insert(out_values_vec.end(),                              \
+                            out_batch_values_vec.begin(),                      \
+                            out_batch_values_vec.end());                       \
+      out_crows_vec.push_back(0);                                              \
+      out_batch_cols_vec.clear();                                              \
+      out_batch_crows_vec.clear();                                             \
+      out_batch_values_vec.clear();                                            \
     }                                                                          \
-                                                                               \
+    out_crows_vec.resize(out_crows_vec.size() - 1);                            \
     DenseTensorMeta crows_meta(                                                \
         DataType::INT64,                                                       \
         phi::make_ddim({static_cast<int64_t>(out_crows_vec.size())}),          \
@@ -111,11 +151,9 @@ namespace sparse {
         paddle::experimental::CppTypeToDataType<T>::Type(),                    \
         phi::make_ddim({static_cast<int64_t>(out_values_vec.size())}),         \
         DataLayout::NCHW);                                                     \
-                                                                               \
     phi::DenseTensor out_crows = phi::Empty(dev_ctx, std::move(crows_meta));   \
     phi::DenseTensor out_cols = phi::Empty(dev_ctx, std::move(cols_meta));     \
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta)); \
-                                                                               \
     std::memcpy(out_crows.template data<int64_t>(),                            \
                 out_crows_vec.data(),                                          \
                 sizeof(int64_t) * out_crows_vec.size());                       \
@@ -125,45 +163,64 @@ namespace sparse {
     std::memcpy(out_values.template data<T>(),                                 \
                 out_values_vec.data(),                                         \
                 sizeof(T) * out_values_vec.size());                            \
-                                                                               \
     out->SetMember(out_crows, out_cols, out_values, x.dims());                 \
   }
 
-DEFINE_CSR_ELEMENTWISE_KERNEL(Add)
-
-DEFINE_CSR_ELEMENTWISE_KERNEL(Subtract)
-
-DEFINE_CSR_ELEMENTWISE_KERNEL(Multiply)
+#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                          \
+  template <typename T, typename Context>                            \
+  void ElementWise##name##CooKernel(const Context& dev_ctx,          \
+                                    const SparseCooTensor& x,        \
+                                    const SparseCooTensor& y,        \
+                                    SparseCooTensor* out) {          \
+    const auto csr_x = SparseCooToCsr<T>(dev_ctx, x);                \
+    const auto csr_y = SparseCooToCsr<T>(dev_ctx, y);                \
+    DenseTensor non_zero_crows;                                      \
+    DenseTensor non_zero_cols;                                       \
+    DenseTensor non_zero_elements;                                   \
+    SparseCsrTensor csr_out(                                         \
+        non_zero_crows, non_zero_cols, non_zero_elements, x.dims()); \
+    ElementWiseAddCsrKernel<T>(dev_ctx, csr_x, csr_y, &csr_out);     \
+    *out = SparseCsrToCoo<T>(dev_ctx, csr_out);                      \
+  }
 
 template <typename T, typename Context>
 void ElementWiseDivideCsrKernel(const Context& dev_ctx,
                                 const SparseCsrTensor& x,
                                 const SparseCsrTensor& y,
                                 SparseCsrTensor* out) {
-  PADDLE_ENFORCE_EQ(x.dims(), y.dims());
-  const auto& n_row = x.dims()[0];
-  const auto& n_col = x.dims()[1];
+  PADDLE_ENFORCE_EQ(x.dims(),
+                    y.dims(),
+                    phi::errors::InvalidArgument(
+                        "The input tensor X's shape "
+                        "should be identical with Y's shape. But received X's "
+                        "shape = [%s], Y's shape = [%s].",
+                        x.dims(),
+                        y.dims()));
+  const auto& n_batch = x.dims().size() == 3 ? x.dims()[0] : 1;
+  const auto& n_row = x.dims().size() == 2 ? x.dims()[0] : x.dims()[1];
+  const auto& n_col = x.dims().size() == 2 ? x.dims()[1] : x.dims()[2];
   const auto& x_nnz = x.non_zero_elements().numel();
+  const auto& y_nnz = y.non_zero_elements().numel();
   const auto* y_crows_data = y.non_zero_crows().data<int64_t>();
   const auto* y_cols_data = y.non_zero_cols().data<int64_t>();
   const auto* y_values_data = y.non_zero_elements().data<T>();
-  const auto& y_nnz = y.non_zero_elements().numel();
   const auto func = funcs::DivideFunctor<T>();
-
   std::vector<int64_t> x_full_crows;
-  x_full_crows.reserve(n_row + 1);
-  for (int64_t i = 0; i < n_row + 1; ++i) {
-    x_full_crows.push_back(n_col * i);
-  }
-
-  std::vector<int64_t> x_full_cols;
-  x_full_cols.reserve(n_col * n_row);
-  for (int64_t i = 0; i < n_row; ++i) {
-    for (int64_t j = 0; j < n_col; ++j) {
-      x_full_cols.push_back(j);
+  x_full_crows.reserve(n_batch * (n_row + 1));
+  for (int b = 0; b < n_batch; ++b) {
+    for (int64_t i = 0; i < n_row + 1; ++i) {
+      x_full_crows.push_back(n_col * i);
     }
   }
-
+  std::vector<int64_t> x_full_cols;
+  x_full_cols.reserve(n_batch * n_col * n_row);
+  for (int b = 0; b < n_batch; ++b) {
+    for (int64_t i = 0; i < n_row; ++i) {
+      for (int64_t j = 0; j < n_col; ++j) {
+        x_full_cols.push_back(j);
+      }
+    }
+  }
   const auto* x_crows_data = x_full_crows.data();
   const auto* x_cols_data = x_full_cols.data();
   const auto* x_values_data =
@@ -173,65 +230,87 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
   std::vector<T> A_row(n_col, 0);
   std::vector<T> B_row(n_col, 0);
   int64_t nnz = 0;
-
   std::vector<int64_t> out_crows_vec;
   std::vector<int64_t> out_cols_vec;
   std::vector<T> out_values_vec;
-  out_crows_vec.reserve(x_nnz + y_nnz);
-  out_cols_vec.reserve(x_nnz + y_nnz);
-  out_values_vec.reserve(x_nnz + y_nnz);
-
-  out_crows_vec.push_back(0);
-
-  for (int64_t i = 0; i < n_row; i++) {
-    int64_t head = -2;
-    int64_t length = 0;
-    int64_t i_start = x_crows_data[i];
-    int64_t i_end = x_crows_data[i + 1];
-    for (int64_t jj = i_start; jj < i_end; jj++) {
-      int64_t j = x_cols_data[jj];
-      A_row[j] += x_values_data[jj];
-      if (next[j] == -1) {
-        next[j] = head;
-        head = j;
-        length++;
+  std::vector<int64_t> out_batch_crows_vec;
+  std::vector<int64_t> out_batch_cols_vec;
+  std::vector<T> out_batch_values_vec;
+  out_batch_crows_vec.reserve(x_nnz + y_nnz);
+  out_batch_cols_vec.reserve(x_nnz + y_nnz);
+  out_batch_values_vec.reserve(x_nnz + y_nnz);
+  out_batch_crows_vec.push_back(0);
+  int64_t x_prev_batch_nnz = 0;
+  int64_t y_prev_batch_nnz = 0;
+  for (int b = 0; b < n_batch; b++) {
+    for (int64_t i = 0; i < n_row; i++) {
+      int64_t head = -2;
+      int64_t length = 0;
+      if (i == 0) {
+        x_prev_batch_nnz += b == 0 ? 0 : x_crows_data[i + b * (n_row + 1) - 1];
       }
-    }
-    i_start = y_crows_data[i];
-    i_end = y_crows_data[i + 1];
-    for (int64_t jj = i_start; jj < i_end; jj++) {
-      int64_t j = y_cols_data[jj];
-      B_row[j] += y_values_data[jj];
-      if (next[j] == -1) {
-        next[j] = head;
-        head = j;
-        length++;
+      int64_t i_start = x_crows_data[i + b * (n_row + 1)];
+      int64_t i_end = x_crows_data[i + b * (n_row + 1) + 1];
+      for (int64_t jj = i_start + x_prev_batch_nnz;
+           jj < i_end + x_prev_batch_nnz;
+           jj++) {
+        int64_t j = x_cols_data[jj];
+        A_row[j] += x_values_data[jj];
+        if (next[j] == -1) {
+          next[j] = head;
+          head = j;
+          length++;
+        }
       }
-    }
-
-    std::vector<float> x_dense_data = {
-        0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0, 3.2, 0.0, 0.0};
-    std::vector<float> y_dense_data = {
-        0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 3.5, 0.7, 0.0, 3.5, 0.7};
-
-    for (int64_t jj = 0; jj < length; jj++) {
-      auto result = func(A_row[head], B_row[head]);
-      if (result != 0) {
-        out_cols_vec.resize(nnz + 1);
-        out_cols_vec[nnz] = head;
-        out_values_vec.resize(nnz + 1);
-        out_values_vec[nnz] = result;
-        nnz++;
+      if (i == 0) {
+        y_prev_batch_nnz += b == 0 ? 0 : y_crows_data[i + b * (n_row + 1) - 1];
       }
-      int64_t tmp = head;
-      head = next[head];
-      next[tmp] = -1;
-      A_row[tmp] = 0;
-      B_row[tmp] = 0;
+      i_start = y_crows_data[i + b * (n_row + 1)];
+      i_end = y_crows_data[i + b * (n_row + 1) + 1];
+      for (int64_t jj = i_start + y_prev_batch_nnz;
+           jj < i_end + y_prev_batch_nnz;
+           jj++) {
+        int64_t j = y_cols_data[jj];
+        B_row[j] += y_values_data[jj];
+        if (next[j] == -1) {
+          next[j] = head;
+          head = j;
+          length++;
+        }
+      }
+      for (int64_t jj = 0; jj < length; jj++) {
+        auto result = func(A_row[head], B_row[head]);
+        if (result != 0) {
+          out_batch_cols_vec.resize(nnz + 1);
+          out_batch_cols_vec[nnz] = head;
+          out_batch_values_vec.resize(nnz + 1);
+          out_batch_values_vec[nnz] = result;
+          nnz++;
+        }
+        int64_t tmp = head;
+        head = next[head];
+        next[tmp] = -1;
+        A_row[tmp] = 0;
+        B_row[tmp] = 0;
+      }
+      out_batch_crows_vec.push_back(nnz);
     }
-    out_crows_vec.push_back(nnz);
+    nnz = 0;
+    out_cols_vec.insert(out_cols_vec.end(),
+                        out_batch_cols_vec.begin(),
+                        out_batch_cols_vec.end());
+    out_crows_vec.insert(out_crows_vec.end(),
+                         out_batch_crows_vec.begin(),
+                         out_batch_crows_vec.end());
+    out_values_vec.insert(out_values_vec.end(),
+                          out_batch_values_vec.begin(),
+                          out_batch_values_vec.end());
+    out_crows_vec.push_back(0);
+    out_batch_cols_vec.clear();
+    out_batch_crows_vec.clear();
+    out_batch_values_vec.clear();
   }
-
+  out_crows_vec.resize(out_crows_vec.size() - 1);
   DenseTensorMeta crows_meta(
       DataType::INT64,
       phi::make_ddim({static_cast<int64_t>(out_crows_vec.size())}),
@@ -244,11 +323,9 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
       paddle::experimental::CppTypeToDataType<T>::Type(),
       phi::make_ddim({static_cast<int64_t>(out_values_vec.size())}),
       DataLayout::NCHW);
-
   phi::DenseTensor out_crows = phi::Empty(dev_ctx, std::move(crows_meta));
   phi::DenseTensor out_cols = phi::Empty(dev_ctx, std::move(cols_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
-
   std::memcpy(out_crows.template data<int64_t>(),
               out_crows_vec.data(),
               sizeof(int64_t) * out_crows_vec.size());
@@ -258,15 +335,23 @@ void ElementWiseDivideCsrKernel(const Context& dev_ctx,
   std::memcpy(out_values.template data<T>(),
               out_values_vec.data(),
               sizeof(T) * out_values_vec.size());
-
   out->SetMember(out_crows, out_cols, out_values, x.dims());
 }
+
+DEFINE_CSR_ELEMENTWISE_KERNEL(Add)
+DEFINE_CSR_ELEMENTWISE_KERNEL(Subtract)
+DEFINE_CSR_ELEMENTWISE_KERNEL(Multiply)
+
+DEFINE_COO_ELEMENTWISE_KERNEL(Add)
+DEFINE_COO_ELEMENTWISE_KERNEL(Subtract)
+DEFINE_COO_ELEMENTWISE_KERNEL(Multiply)
+DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 
 }  // namespace sparse
 }  // namespace phi
 
 // sparse_elementwise_add
-PD_REGISTER_KERNEL(sparse_elementwise_add,
+PD_REGISTER_KERNEL(sparse_elementwise_add_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCsrKernel,
@@ -276,7 +361,17 @@ PD_REGISTER_KERNEL(sparse_elementwise_add,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_sub,
+PD_REGISTER_KERNEL(sparse_elementwise_add_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_elementwise_sub_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCsrKernel,
@@ -286,7 +381,17 @@ PD_REGISTER_KERNEL(sparse_elementwise_sub,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_mul,
+PD_REGISTER_KERNEL(sparse_elementwise_sub_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseSubtractCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_elementwise_mul_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCsrKernel,
@@ -296,7 +401,17 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_div,
+PD_REGISTER_KERNEL(sparse_elementwise_mul_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseMultiplyCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_elementwise_div_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCsrKernel,
@@ -304,4 +419,14 @@ PD_REGISTER_KERNEL(sparse_elementwise_div,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+PD_REGISTER_KERNEL(sparse_elementwise_div_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseDivideCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

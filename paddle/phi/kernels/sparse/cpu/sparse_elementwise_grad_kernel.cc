@@ -107,7 +107,7 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_elementwise_add_grad,
+PD_REGISTER_KERNEL(sparse_elementwise_add_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCsrGradKernel,
@@ -117,14 +117,17 @@ PD_REGISTER_KERNEL(sparse_elementwise_add_grad,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_sub_grad,
+PD_REGISTER_KERNEL(sparse_elementwise_sub_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCsrGradKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-PD_REGISTER_KERNEL(sparse_elementwise_mul_grad,
+PD_REGISTER_KERNEL(sparse_elementwise_mul_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCsrGradKernel,
@@ -134,7 +137,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul_grad,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_div_grad,
+PD_REGISTER_KERNEL(sparse_elementwise_div_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCsrGradKernel,

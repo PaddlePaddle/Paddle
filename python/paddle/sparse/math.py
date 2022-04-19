@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,21 +58,12 @@ def add(x, y, name=None):
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    # assert x.is_sparse_csr(
-    # ), "Currently, sparse.add only support the input of SparseCsrTensor"
-    if x.is_sparse_coo() or y.is_sparse_coo():
-        if x.is_sparse_coo():
-            _x = x.to_sparse_csr()
-        else:
-            _x = x
-        if y.is_sparse_coo():
-            _y = y.to_sparse_csr()
-        else:
-            _y = y
-        return _C_ops.final_state_sparse_elementwise_add(
-            _x, _y).to_sparse_coo(x.dim())
+    assert x.is_sparse_csr() == y.is_sparse_csr(
+    ), f"Expect sparse tensor type to be same"
+    if x.is_sparse_coo() and y.is_sparse_coo():
+        return _C_ops.final_state_sparse_elementwise_add_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_add(x, y)
+    return _C_ops.final_state_sparse_elementwise_add_csr(x, y)
 
 
 def subtract(x, y, name=None):
@@ -114,19 +105,12 @@ def subtract(x, y, name=None):
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    if x.is_sparse_coo() or y.is_sparse_coo():
-        if x.is_sparse_coo():
-            _x = x.to_sparse_csr()
-        else:
-            _x = x
-        if y.is_sparse_coo():
-            _y = y.to_sparse_csr()
-        else:
-            _y = y
-        return _C_ops.final_state_sparse_elementwise_sub(
-            _x, _y).to_sparse_coo(x.dim())
+    assert x.is_sparse_csr() == y.is_sparse_csr(
+    ), f"Expect sparse tensor type to be same"
+    if x.is_sparse_coo() and y.is_sparse_coo():
+        return _C_ops.final_state_sparse_elementwise_sub_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_sub(x, y)
+    return _C_ops.final_state_sparse_elementwise_sub_csr(x, y)
 
 
 def multiply(x, y, name=None):
@@ -168,19 +152,12 @@ def multiply(x, y, name=None):
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    if x.is_sparse_coo() or y.is_sparse_coo():
-        if x.is_sparse_coo():
-            _x = x.to_sparse_csr()
-        else:
-            _x = x
-        if y.is_sparse_coo():
-            _y = y.to_sparse_csr()
-        else:
-            _y = y
-        return _C_ops.final_state_sparse_elementwise_mul(
-            _x, _y).to_sparse_coo(x.dim())
+    assert x.is_sparse_csr() == y.is_sparse_csr(
+    ), f"Expect sparse tensor type to be same"
+    if x.is_sparse_coo() and y.is_sparse_coo():
+        return _C_ops.final_state_sparse_elementwise_mul_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_mul(x, y)
+    return _C_ops.final_state_sparse_elementwise_mul_csr(x, y)
 
 
 def divide(x, y, name=None):
@@ -222,16 +199,9 @@ def divide(x, y, name=None):
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    if x.is_sparse_coo() or y.is_sparse_coo():
-        if x.is_sparse_coo():
-            _x = x.to_sparse_csr()
-        else:
-            _x = x
-        if y.is_sparse_coo():
-            _y = y.to_sparse_csr()
-        else:
-            _y = y
-        return _C_ops.final_state_sparse_elementwise_div(
-            _x, _y).to_sparse_coo(x.dim())
+    assert x.is_sparse_csr() == y.is_sparse_csr(
+    ), f"Expect sparse tensor type to be same"
+    if x.is_sparse_coo() and y.is_sparse_coo():
+        return _C_ops.final_state_sparse_elementwise_div_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_div(x, y)
+    return _C_ops.final_state_sparse_elementwise_div_csr(x, y)
