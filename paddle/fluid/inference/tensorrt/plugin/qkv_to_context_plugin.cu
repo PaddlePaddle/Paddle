@@ -152,9 +152,6 @@ int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  // input[0], (B, S, 3 * N * H, 1, 1)
-  // input[1], (B, head_num, seq_len, seq_len)
-  // output, (B, seq_len, hidden)
   PADDLE_ENFORCE_EQ(output_index, 0,
                     platform::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
@@ -169,9 +166,21 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
           nb_inputs));
   nvinfer1::DimsExprs ret;
   ret.nbDims = 3;
-  ret.d[0] = inputs[0].d[0];
-  ret.d[1] = inputs[0].d[1];
-  ret.d[2] = expr_builder.constant(head_size_ * head_number_);
+
+  // output, (B, seq_len, hidden)
+  if (transpose_) {
+    // input[0], (B, S, 3 * N * H, 1, 1)
+    // input[1], (B, head_num, seq_len, seq_len)
+    ret.d[0] = inputs[0].d[0];
+    ret.d[1] = inputs[0].d[1];
+    ret.d[2] = expr_builder.constant(head_size_ * head_number_);
+  } else {
+    // input[0], (3, B, N, S, H)
+    // input[1], (B, head_num, seq_len, seq_len)
+    ret.d[0] = inputs[0].d[1];
+    ret.d[1] = inputs[0].d[2];
+    ret.d[2] = expr_builder.constant(head_size_ * head_number_);
+  }
 
   VLOG(3) << "QkvToContextPluginDynamic::getOutputDimensions ret.nbDims: "
           << ret.nbDims << "; dims: " << ret.d[0] << ", " << ret.d[1] << ", "
@@ -270,9 +279,17 @@ int QkvToContextPluginDynamic::enqueue(
   }
 
   int input_num = ProductDim(input_dims);
-  // input[0], (B, S, 3 * N * H, 1, 1)
-  int batch = input_dims.d[0];
-  int seq_len = input_dims.d[1];
+  int batch = 0;
+  int seq_len = 0;
+  if (transpose_) {
+    // input[0], (B, S, 3 * N * H, 1, 1)
+    batch = input_dims.d[0];
+    seq_len = input_dims.d[1];
+  } else {
+    // input[0], (3, B, N, S, H)
+    batch = input_dims.d[1];
+    seq_len = input_dims.d[3];
+  }
   framework::Tensor multihead_temp_tensor;
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
 
@@ -304,9 +321,13 @@ int QkvToContextPluginDynamic::enqueue(
       qk_bias = temp_qk_bias;
     }
     const float *input1_data = static_cast<const float *>(qk_bias);
-    // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
+    if (transpose_) { 
+      // BxSx3xNxH => tptr: 3xBxNxSxH.
+      TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
                  stream);
+    } else {
+      tptr = const_cast<float *>(input0_data);
+    }
 
     auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -351,9 +372,13 @@ int QkvToContextPluginDynamic::enqueue(
       qk_bias = temp_qk_bias;
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
-    // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
+    if (transpose_) { 
+      // BxSx3xNxH => tptr: 3xBxNxSxH.
+      TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
                  stream);
+    } else {
+      tptr = const_cast<half *>(input0_data);
+    }
 
     auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(

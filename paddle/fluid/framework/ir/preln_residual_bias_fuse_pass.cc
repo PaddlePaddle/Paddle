@@ -65,19 +65,13 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
       pattern->NewNode(elementwise0_repr())->assert_is_op("elementwise_add");
 
   auto *elementwise_bias_var = pattern->NewNode(elementwise_bias_repr())
+                                  ->assert_is_persistable_var()
                                   ->assert_is_op_input("elementwise_add", "Y");
 
 
   auto *elementwise0_out_var = pattern->NewNode(elementwise0_out_repr())
                                   ->assert_is_op_output("elementwise_add")
-                                  ->assert_is_op_input("elementwise_add")
-                                  ->assert_more([](Node *x) {
-                                    if (x->outputs.size() == 1) {
-                                      return true;
-                                    } else {
-                                      return false;
-                                    }
-                                  });
+                                  ->assert_is_op_input("elementwise_add");
 
 
   auto *elementwise1 =

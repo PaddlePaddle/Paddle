@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "/root/github/Paddle/paddle/phi/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -191,83 +191,114 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
     auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
-    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
-    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
-
     auto* bq_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
-    auto* bk_tensor =
-        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
-    auto* bv_tensor =
-        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+    if (scope->FindVar(mul1_w->Name()) == nullptr) {
+      // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
+      auto* combined_w_desc = mul0_w->Var();
+      combined_w_desc->SetShape({wq_tensor->dims()[0], wq_tensor->dims()[2], wq_tensor->dims()[2]});
+      combined_w_desc->SetPersistable(true);
+  
+      auto* combined_bias_desc = eltadd0_b->Var();
+      combined_bias_desc->SetShape({bq_tensor->dims()[0]});
+      combined_bias_desc->SetPersistable(true);
+      auto* mul0_out_desc = mul0_out->Var();
+      auto input_shape = input0->Var()->GetShape();
+      mul0_out_desc->SetShape(
+          {input_shape[0], input_shape[1], wq_tensor->dims()[1]});  // [batch_size, seq_length, 3, hidden_out]
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
-    auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3 * bq_tensor->dims()[0]});
+    } else {
+      VLOG(5) << " find var in scope: " << mul1_w->Name();
+      auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
+      VLOG(5) << " find var in scope: " << mul2_w->Name();
+      auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
 
-    // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
-    auto* combined_w_desc = mul0_w->Var();
-    combined_w_desc->SetShape({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
-    combined_w_desc->SetPersistable(true);
+//      VLOG(5) << " find var in scope: " << eltadd0_b->Name();
+//      auto* bq_tensor =
+//          scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+      VLOG(5) << " find var in scope: " << eltadd1_b->Name();
+      auto* bk_tensor =
+          scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+      VLOG(5) << " find var in scope: " << eltadd2_b->Name();
+      auto* bv_tensor =
+          scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
 
-    auto* combined_bias_desc = eltadd0_b->Var();
-    combined_bias_desc->SetShape({3 * bq_tensor->dims()[0]});
-    combined_bias_desc->SetPersistable(true);
+      auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
-    framework::LoDTensor tmp_combined_w_tensor;
-    tmp_combined_w_tensor.Resize(combined_w_dims);
-    auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+      auto combined_w_dims =
+          phi::make_ddim({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
+      auto combined_bias_dims = phi::make_ddim({3 * bq_tensor->dims()[0]});
 
-    std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = wq_tensor->dims()[1];
-    // Combine the three fc weights together.
-    for (int i = 0; i < dims_h; i++) {
-      for (int j = 0; j < 3; j++) {
-        for (int k = 0; k < dims_w; k++) {
-          int out_index = i * (3 * dims_w) + j * dims_w + k;
-          int in_index = i * dims_w + k;
-          tmp_combined_w_data[out_index] = w_vec[j][in_index];
+      // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
+      auto* combined_w_desc = mul0_w->Var();
+      combined_w_desc->SetShape({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
+      combined_w_desc->SetPersistable(true);
+
+      auto* combined_bias_desc = eltadd0_b->Var();
+      combined_bias_desc->SetShape({3 * bq_tensor->dims()[0]});
+      combined_bias_desc->SetPersistable(true);
+
+      framework::LoDTensor tmp_combined_w_tensor;
+      tmp_combined_w_tensor.Resize(combined_w_dims);
+      auto* tmp_combined_w_data =
+          tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+
+      std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
+      int dims_h = combined_w_dims[0], dims_w = wq_tensor->dims()[1];
+      // Combine the three fc weights together.
+      for (int i = 0; i < dims_h; i++) {
+        for (int j = 0; j < 3; j++) {
+          for (int k = 0; k < dims_w; k++) {
+            int out_index = i * (3 * dims_w) + j * dims_w + k;
+            int in_index = i * dims_w + k;
+            tmp_combined_w_data[out_index] = w_vec[j][in_index];
+          }
         }
       }
+
+      wq_tensor->Resize(combined_w_dims);
+      auto* new_combined_w_data =
+          wq_tensor->mutable_data<float>(platform::CPUPlace());
+      memcpy(new_combined_w_data, tmp_combined_w_data,
+             sizeof(float) * wq_tensor->numel());
+
+      scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+
+      // Combine the three bias together.
+      framework::LoDTensor tmp_combined_bias_tensor;
+      tmp_combined_bias_tensor.Resize(combined_bias_dims);
+      auto* tmp_combined_bias_data =
+          tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+
+      size_t bias_size = bq_tensor->numel();
+      memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
+      memcpy(tmp_combined_bias_data + bias_size, bk_data,
+             sizeof(float) * bias_size);
+      memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
+             sizeof(float) * bias_size);
+
+      bq_tensor->Resize(combined_bias_dims);
+      auto* new_combined_bias_data =
+          bq_tensor->mutable_data<float>(platform::CPUPlace());
+      memcpy(new_combined_bias_data, tmp_combined_bias_data,
+             sizeof(float) * bq_tensor->numel());
+
+      scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+      auto* mul0_out_desc = mul0_out->Var();
+      auto input_shape = input0->Var()->GetShape();
+      mul0_out_desc->SetShape(
+          {input_shape[0], input_shape[1],
+           3 * combined_w_dims[1]});  // [batch_size, seq_length, 3, hidden_out]
+
+
     }
-
-    wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_w_data, tmp_combined_w_data,
-           sizeof(float) * wq_tensor->numel());
-
-    scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
-
-    // Combine the three bias together.
-    framework::LoDTensor tmp_combined_bias_tensor;
-    tmp_combined_bias_tensor.Resize(combined_bias_dims);
-    auto* tmp_combined_bias_data =
-        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
-
-    size_t bias_size = bq_tensor->numel();
-    memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + bias_size, bk_data,
-           sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
-           sizeof(float) * bias_size);
-
-    bq_tensor->Resize(combined_bias_dims);
-    auto* new_combined_bias_data =
-        bq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_bias_data, tmp_combined_bias_data,
-           sizeof(float) * bq_tensor->numel());
-
-    scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
-
+    auto* mul0_out_desc = mul0_out->Var();
     // Define fused QKV op
     OpDesc fused_qkv_op_desc(mul0->Op()->Block());
     fused_qkv_op_desc.SetType("fc");
@@ -277,11 +308,6 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     fused_qkv_op_desc.SetInput("Bias", {eltadd0_b->Name()});
 
     fused_qkv_op_desc.SetOutput("Out", {mul0_out->Name()});
-    auto* mul0_out_desc = mul0_out->Var();
-    auto input_shape = input0->Var()->GetShape();
-    mul0_out_desc->SetShape(
-        {input_shape[0], input_shape[1],
-         3 * combined_w_dims[2]});  // [batch_size, seq_length, 3, hidden_out]
 
     auto* mul0_op_desc = mul0->Op();
     auto* mul1_op_desc = mul1->Op();
@@ -389,13 +415,13 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     // If weights or biases in qkv's fc are shared by multiple multihead_matmul
     // patterns, we do not support this kind of fusion, this pass will not take
     // effect.
-    bool is_fc_params_shared =
-        mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
-        mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
-        eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
-    if (is_fc_params_shared) {
-      return;
-    }
+//    bool is_fc_params_shared =
+//        mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
+//        mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
+//        eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
+//    if (is_fc_params_shared) {
+//      return;
+//    }
 
     fuse_creater(input0,                        // shared input of three mul ops
                  mul0_w, mul1_w, mul2_w,        // mul weights

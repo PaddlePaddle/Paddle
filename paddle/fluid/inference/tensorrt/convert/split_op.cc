@@ -31,7 +31,7 @@ class SplitOpConverter : public OpConverter {
     auto input_dims = input->getDimensions();
     size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
-    VLOG(3) << "inpiut nbDims: " << input_dims.nbDims
+    VLOG(3) << "input nbDims: " << input_dims.nbDims
             << "; dims: " << input_dims.d[0] << ", " << input_dims.d[1] << ", "
             << input_dims.d[2] << ", " << input_dims.d[3];
     // Get Attrs

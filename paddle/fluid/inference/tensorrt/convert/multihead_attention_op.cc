@@ -52,7 +52,7 @@ class MultiheadAttentionOpConverter : public OpConverter {
 
     VLOG(3) << "step1";
     bool enable_int8 = op_desc.HasAttr("enable_int8");
-    int head_number = BOOST_GET_CONST(int, op_desc.GetAttr("head_number"));
+    int head_number = dims.d[1];
 
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
@@ -62,12 +62,12 @@ class MultiheadAttentionOpConverter : public OpConverter {
       } else {
         // Declare inputs
         std::vector<nvinfer1::ITensor*> itensors(
-            {input_q, input_k, input_v});  // B, S, N, H
+            {input_q, input_k, input_v});  // B, head_num, seq_length, head_size
         VLOG(3) << "step2";
         auto* concat_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
-                                 itensors.size());  // B, S, 3*N, H
-        concat_layer->setAxis(2);
+                                 itensors.size());  // 3*B, head_num, seq_length, head_size
+        concat_layer->setAxis(0);
 
         VLOG(3) << "concat output:";
         dims = concat_layer->getOutput(0)->getDimensions();
@@ -81,12 +81,12 @@ class MultiheadAttentionOpConverter : public OpConverter {
         VLOG(3) << "step4";
         nvinfer1::Dims shape_dim;
         shape_dim.nbDims = 5;
-        shape_dim.d[0] = 0;
-        shape_dim.d[1] = 0;
-        shape_dim.d[2] = 0;
-        shape_dim.d[3] = 1;
-        shape_dim.d[4] = 1;
-        int head_size = input_q->getDimensions().d[2] / head_number;
+        shape_dim.d[0] = 3;
+        shape_dim.d[1] = -1;
+        shape_dim.d[2] = dims.d[1];
+        shape_dim.d[3] = dims.d[2];
+        shape_dim.d[4] = dims.d[3];
+        int head_size = dims.d[3];
         shuffle_layer->setReshapeDimensions(shape_dim);
 
         VLOG(3) << "reshape output:";
@@ -103,7 +103,7 @@ class MultiheadAttentionOpConverter : public OpConverter {
         float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
 
         std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.push_back(shuffle_layer->getOutput(0));
+        plugin_inputs.push_back(shuffle_layer->getOutput(0));  // (3, B, N, S, H)
         plugin_inputs.push_back(input_bias_qk);
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
@@ -113,10 +113,11 @@ class MultiheadAttentionOpConverter : public OpConverter {
         }
         VLOG(3) << "head_number: " << head_number
                 << "; head_size: " << head_size;
+        bool transpose = true;
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(head_number * head_size,
                                                   head_number, head_size, scale,
-                                                  with_fp16);
+                                                  with_fp16, transpose);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
     } else {

@@ -46,20 +46,7 @@ PDNode* SelfAttentionPattern::operator()() {
   // First path with scale
   auto* input_q = pattern->NewNode(input_q_repr())
                       ->AsInput()
-                      ->assert_is_op_input("reshape2");
-
-  auto* reshape2_0 =
-      pattern->NewNode(reshape2_0_repr())->assert_is_op("reshape2");
-
-  auto* reshape2_0_out_var =
-      pattern->NewNode(reshape2_0_out_repr())->assert_is_op_output("reshape2");
-  reshape2_0_out_var->AsIntermediate()->assert_is_op_input("transpose2");
-
-  auto* transpose2_0 =
-      pattern->NewNode(transpose2_0_repr())->assert_is_op("transpose2");
-  auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
-                                   ->assert_is_op_output("transpose2");
-  transpose2_0_out_var->AsIntermediate()->assert_is_op_input("scale");
+                      ->assert_is_op_input("scale");
 
   auto* scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
   auto* scale_out_var =
@@ -108,59 +95,24 @@ PDNode* SelfAttentionPattern::operator()() {
 
   auto* input_k = pattern->NewNode(input_k_repr())
                       ->AsInput()
-                      ->assert_is_op_input("reshape2");
-
-  auto* reshape2_1 =
-      pattern->NewNode(reshape2_1_repr())->assert_is_op("reshape2");
-
-  auto* reshape2_1_out_var =
-      pattern->NewNode(reshape2_1_out_repr())->assert_is_op_output("reshape2");
-  reshape2_1_out_var->AsIntermediate()->assert_is_op_input("transpose2");
-
-  auto* transpose2_1 =
-      pattern->NewNode(transpose2_1_repr())->assert_is_op("transpose2");
-  auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
-                                   ->assert_is_op_output("transpose2");
-  transpose2_1_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul");  // link to matmul qk
+                      ->assert_is_op_input("matmul");
 
   // Third path to matmul
 
   auto* input_v = pattern->NewNode(input_v_repr())
                       ->AsInput()
-                      ->assert_is_op_input("reshape2");
+                      ->assert_is_op_input("matmul");
 
-  auto* reshape2_2 =
-      pattern->NewNode(reshape2_2_repr())->assert_is_op("reshape2");
-
-  auto* reshape2_2_out_var =
-      pattern->NewNode(reshape2_2_out_repr())->assert_is_op_output("reshape2");
-  reshape2_2_out_var->AsIntermediate()->assert_is_op_input("transpose2");
-
-  auto* transpose2_2 =
-      pattern->NewNode(transpose2_2_repr())->assert_is_op("transpose2");
-  auto* transpose2_2_out_var = pattern->NewNode(transpose2_2_out_repr())
-                                   ->assert_is_op_output("transpose2");
-  transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul");  // link to matmul qkv
   // Q path
-  reshape2_0->LinksFrom({input_q}).LinksTo({reshape2_0_out_var});
-  transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
-  scale->LinksFrom({transpose2_0_out_var}).LinksTo({scale_out_var});
-  // K path
-  reshape2_1->LinksFrom({input_k}).LinksTo({reshape2_1_out_var});
-  transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
+  scale->LinksFrom({input_q}).LinksTo({scale_out_var});
   // compute q*k
-  matmul_qk->LinksFrom({scale_out_var, transpose2_1_out_var})
+  matmul_qk->LinksFrom({scale_out_var, input_k})
       .LinksTo({matmul_qk_out_var});
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
-  // V  path
-  reshape2_2->LinksFrom({input_v}).LinksTo({reshape2_2_out_var});
-  transpose2_2->LinksFrom({reshape2_2_out_var}).LinksTo({transpose2_2_out_var});
   // compute q*k*v
-  matmul_qkv->LinksFrom({softmax_qk_out_var, transpose2_2_out_var})
+  matmul_qkv->LinksFrom({softmax_qk_out_var, input_v})
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
@@ -298,15 +250,11 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
   // Create New OpDesc
   auto fuse_creater = [&](
       Node* input_q, Node* input_k, Node* input_v, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
+      Node* reshape2_qkv_out, Node* scale, Node* scale_out,
       Node* softmax_qk, Node* matmul_qk, Node* reshape2_qkv) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
-    auto reshape_desc = reshape2->Op();
-    int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
-
-    OpDesc attention_op_desc(reshape2->Op()->Block());
+    OpDesc attention_op_desc(scale->Op()->Block());
     attention_op_desc.SetType("multihead_attention");
 
     attention_op_desc.SetInput("Q", {input_q->Name()});  // B * S * N * H
@@ -316,7 +264,6 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
 
     attention_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     attention_op_desc.SetAttr("alpha", scale_attr);
-    attention_op_desc.SetAttr("head_number", head_number);
 
     auto* softmax_qk_op_desc = softmax_qk->Op();
     auto* matmul_qk_op_desc = matmul_qk->Op();
@@ -354,28 +301,8 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(input_k, input_k, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input_v, input_v, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale, scale, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, multihead_pattern);
-
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              multihead_pattern);
-
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              multihead_pattern);
 
     // nodes need be removed
 
@@ -402,7 +329,7 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
                               multihead_pattern);
 
-    fuse_creater(input_q, input_k, input_v, eltadd_qk_b, reshape2_0,
+    fuse_creater(input_q, input_k, input_v, eltadd_qk_b,
                  reshape2_qkv_out, scale, scale_out, softmax_qk, matmul_qk,
                  reshape2_qkv);
 
@@ -410,9 +337,7 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
         {// input_q,
          // input_k,
          // input_v,
-         reshape2_0, reshape2_1, reshape2_2, reshape2_0_out, reshape2_1_out,
-         reshape2_2_out, transpose2_0, transpose2_1, transpose2_2,
-         transpose2_0_out, transpose2_1_out, transpose2_2_out, matmul_qk,
+         matmul_qk,
          matmul_qk_out,
          // eltadd_qk_b,
          eltadd_qk, eltadd_qk_out, softmax_qk, softmax_qk_out, transpose2_qkv,

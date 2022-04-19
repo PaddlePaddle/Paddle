@@ -44,11 +44,12 @@ namespace plugin {
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit QkvToContextPluginDynamic(int hidden, int head_number, int head_size,
-                                     float scale, bool with_fp16)
+                                     float scale, bool with_fp16, bool transpose=true)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
-        scale_(scale) {
+        scale_(scale),
+        transpose_(transpose) {
     with_fp16_ = with_fp16;
   }
 
@@ -58,10 +59,11 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &head_size_);
     DeserializeValue(&serial_data, &serial_length, &scale_);
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+    DeserializeValue(&serial_data, &serial_length, &transpose_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new QkvToContextPluginDynamic(hidden_, head_number_, head_size_,
-                                         scale_, with_fp16_);
+                                         scale_, transpose_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -73,7 +75,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(hidden_) + SerializedSize(head_number_) +
            SerializedSize(head_size_) + SerializedSize(scale_) +
-           SerializedSize(with_fp16_);
+           SerializedSize(with_fp16_) + SerializedSize(transpose_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, hidden_);
@@ -81,6 +83,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, head_size_);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, with_fp16_);
+    SerializeValue(&buffer, transpose_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -119,6 +122,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  bool transpose_;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {

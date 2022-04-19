@@ -41,6 +41,24 @@ struct MultiHeadMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(c_identity1_out);
   PATTERN_DECL_NODE(c_identity2_out);
 
+  PATTERN_DECL_NODE(concat1)
+  PATTERN_DECL_NODE(concat2)
+  PATTERN_DECL_NODE(concat1_out)
+  PATTERN_DECL_NODE(concat2_out)
+
+  PATTERN_DECL_NODE(assign1)
+  PATTERN_DECL_NODE(assign2)
+  PATTERN_DECL_NODE(assign1_out)
+  PATTERN_DECL_NODE(assign2_out)
+
+  PATTERN_DECL_NODE(gather1_in)
+  PATTERN_DECL_NODE(gather2_in)
+  PATTERN_DECL_NODE(gather1)
+  PATTERN_DECL_NODE(gather2)
+  PATTERN_DECL_NODE(gather1_out)
+  PATTERN_DECL_NODE(gather2_out)
+
+
   PATTERN_DECL_NODE(mul0);
   PATTERN_DECL_NODE(mul1);
   PATTERN_DECL_NODE(mul2);

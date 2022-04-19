@@ -49,13 +49,13 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
       weight_data =
-          engine_->GetWeightCPUData(weight_name, weight_t, true, weight_scale);
+          engine_->GetWeightCPUData(weight_name, weight_t);
       engine_->SetTensorDynamicRange(input, in_scale);
     } else {
-      weight_data = engine_->GetWeightCPUData(weight_name, weight_t, false);
+      weight_data = engine_->GetWeightCPUData(weight_name, weight_t);
     }
 
-    float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t, false);
+    float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t);
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_t->numel());
     memcpy(weight_data_tmp.data(), weight_data,
@@ -119,6 +119,13 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
            ")")
               .c_str());
 
+      auto dims = reshape_before_fc_layer->getOutput(0)->getDimensions();
+      VLOG(3) << "input after reshape dims:";
+      for (int i=0; i<dims.nbDims; i++) {
+        VLOG(3) <<dims.d[i];
+      }
+
+
       // add layer fc
       nvinfer1::ILayer* fc_layer = nullptr;
       if (enable_int8) {
@@ -130,6 +137,13 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
         fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
                                         *reshape_before_fc_layer->getOutput(0),
                                         n, weight.get(), bias.get());
+      }
+
+
+      dims = fc_layer->getOutput(0)->getDimensions();
+      VLOG(3) << "output dims:";
+      for (int i=0; i<dims.nbDims; i++) {
+        VLOG(3) <<dims.d[i];
       }
 
       if (enable_int8) {
