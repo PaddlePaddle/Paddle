@@ -38,6 +38,10 @@ Backend TransToPhiBackend(const phi::Place& place) {
     return Backend::XPU;
   } else if (allocation_type == phi::AllocationType::NPU) {
     return Backend::NPU;
+  } else if (allocation_type == phi::AllocationType::IPU) {
+    return Backend::IPU;
+  } else if (allocation_type == phi::AllocationType::MLU) {
+    return Backend::MLU;
   } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -100,7 +104,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPhiKernelName(const std::string& fluid_op_name) {
+const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 

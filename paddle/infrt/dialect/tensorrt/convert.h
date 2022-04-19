@@ -16,7 +16,7 @@
 #include <glog/logging.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/Support/ErrorHandling.h>
-#include <llvm/include/mlir/IR/Attributes.h>
+#include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/PatternMatch.h>

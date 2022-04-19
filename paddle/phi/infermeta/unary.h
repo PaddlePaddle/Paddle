@@ -85,6 +85,10 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void ExpandInferMeta(const MetaTensor& x,
+                     const IntArray& shape,
+                     MetaTensor* out);
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -142,6 +146,11 @@ void LogsumexpInferMeta(const MetaTensor& input,
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
+void MatrixRankInferMeta(const MetaTensor& x,
+                         bool use_default_tol,
+                         bool hermitian,
+                         MetaTensor* out);
+
 void MaxOutInferMeta(const MetaTensor& x,
                      int groups,
                      int axis,
@@ -194,6 +203,11 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
                            MetaTensor* out);
+
+void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
+                               int upscale_factor,
+                               const std::string& data_format,
+                               MetaTensor* x_grad);
 
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
@@ -365,7 +379,7 @@ void TrilTriuInferMeta(const MetaTensor& x,
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
-                     std::vector<MetaTensor>* outs);
+                     std::vector<MetaTensor*> outs);
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
