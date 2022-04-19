@@ -2180,12 +2180,13 @@
 
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
   view: (x -> out)
+  intermediate : xshape
   backward : unsqueeze_grad
 
 # viterbi_decode

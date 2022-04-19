@@ -1850,7 +1850,7 @@
   invoke : unsqueeze(grad_x_grad, axis)
 
 - backward_api : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axis) -> Tensor(xshape), Tensor(out)
+  forward : unsqueeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
