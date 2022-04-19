@@ -274,7 +274,6 @@ class AuToTune(object):
         return best_workers
 
 
-@AuToTune
 class DataLoader(object):
     """
     DataLoader prodives an iterator which iterates given dataset
@@ -563,6 +562,7 @@ class DataLoader(object):
         else:
             return _DataLoaderIterMultiProcess(self)
 
+    @AuToTune
     def __call__(self):
         return self.__iter__()
 
