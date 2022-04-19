@@ -79,7 +79,6 @@ class TestAutoTune(unittest.TestCase):
 
         train(loader)
 
-    """
     def test_dataloader_no_autotune(self):
         set_autotune(False)
         dataset = RandomDataset(20 * 4)
@@ -114,7 +113,6 @@ class TestAutoTune(unittest.TestCase):
             self.dataset, batch_size=self.batch_size)
         loader = DataLoader(self.dataset, batch_sampler=bs, num_workers=2)
         train(loader)
-    """
 
 
 if __name__ == '__main__':

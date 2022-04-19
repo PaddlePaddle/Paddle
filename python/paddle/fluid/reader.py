@@ -34,8 +34,6 @@ from paddle.fluid.framework import _set_expected_place, _current_expected_place
 import logging
 import warnings
 
-logging.basicConfig(level=logging.DEBUG)
-
 ### Dygraph DataLoader configs ###
 import os
 import multiprocessing
@@ -158,15 +156,15 @@ class AuToTune(object):
         self.loader = None
 
     def __call__(self, *args, **kwargs):
-        # create a dataloader by default args
-        self.loader = self.func(*args, **kwargs)
+        # use default loader
         if (not USE_AUTOTUNE) or (not self.need_autotune()):
-            return self.loader
+            return self.func(*args, **kwargs)
 
         # get autotune loader
+        self.loader = args[0]
         auto_tune_loader = self.get_autotune_loader()
         if auto_tune_loader is None:
-            return self.loader
+            return self.func(*args, **kwargs)
 
         # pick the best num_workers
         auto_tune_start = time.time()
@@ -198,9 +196,8 @@ class AuToTune(object):
         logging.debug("AutoTuning Cost for DataLoader: " + str(time.time(
         ) - auto_tune_start) + ' seconds')
 
-        if "num_workers" in kwargs.keys():
-            kwargs["num_workers"] = best_num_workers
-
+        # tune the default loader's num_workers
+        args[0].num_workers = best_num_workers
         return self.func(*args, **kwargs)
 
     def __get__(self, instance, cls):
@@ -565,6 +562,7 @@ class DataLoader(object):
         else:
             return _DataLoaderIterMultiProcess(self)
 
+    @AuToTune
     def __call__(self):
         return self.__iter__()
 
