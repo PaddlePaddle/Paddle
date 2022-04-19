@@ -158,7 +158,7 @@ void PSGPUWorker::PrepareCudaGraph() {
             break;
           }
           auto& tensor = var->Get<phi::DenseTensor>();
-          auto& lod = dense_tensor.lod();
+          auto& lod = tensor.lod();
           if (!lod.empty()) {
             need_capture = false;
             break;
