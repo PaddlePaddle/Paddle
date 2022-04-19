@@ -26,7 +26,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
@@ -47,6 +46,8 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 class EagerGroup {
  public:
   Tensor dense_contents_;
+  Tensor sparse_contents_;
+  bool is_sparse_ = false;
 
   // for concat kernel
   std::vector<phi::DenseTensor> dense_tensors_;
@@ -104,6 +105,7 @@ class EagerReducer {
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
   void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
+  void AllReduceSparse(EagerGroup *group, const int curr_group_index);
   void FinalizeBackward();
   void TraverseBackwardGraph(const std::vector<Tensor> &outputs);
   void ProcessUnusedDenseVars();
@@ -118,7 +120,6 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  PlaceType place_;
   platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;

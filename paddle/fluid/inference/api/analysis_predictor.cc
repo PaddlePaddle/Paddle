@@ -74,6 +74,10 @@
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
+#endif
+
 namespace paddle {
 
 using inference::Singleton;
@@ -222,6 +226,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
@@ -945,6 +950,13 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
+
+  if (config_.use_mkldnn_int8_) {
+    LOG(INFO) << "Int8 is enabled";
+    argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
+    argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
+    argument_.SetQuantVarScales({});
+  }
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -1054,15 +1066,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
                            std::to_string(fraction_of_gpu_memory);
         VLOG(3) << "set flag: " << flag;
         gflags.push_back(flag);
-        gflags.push_back("--cudnn_deterministic=True");
       }
-
-// TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
-// under the native_best_fit strategy. Modify the default allocation strategy to
-// auto_growth. todo, find a more appropriate way to solve the problem.
-#ifdef WITH_NV_JETSON
-      gflags.push_back("--allocator_strategy=auto_growth");
-#endif
 
       // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
       // allocator when multi-stream is enabled.
@@ -1071,6 +1075,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = false;
       } else {
         process_level_allocator_enabled = true;
+      }
+
+      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
+      // auto_growth
+      if (config.tensorrt_engine_enabled()) {
+        gflags.push_back("--allocator_strategy=naive_best_fit");
       }
 
       if (framework::InitGflags(gflags)) {
@@ -1759,6 +1769,8 @@ USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(roll)
+USE_TRT_CONVERTER(strided_slice)
 #endif
 
 namespace paddle_infer {

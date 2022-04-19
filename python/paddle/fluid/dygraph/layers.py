@@ -36,7 +36,7 @@ from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, 
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -918,7 +918,12 @@ class Layer(object):
         return outputs
 
     def __call__(self, *inputs, **kwargs):
-        return self._dygraph_call_func(*inputs, **kwargs)
+        if (not in_declarative_mode()) and (not self._forward_pre_hooks) \
+            and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode():
+            self._build_once(*inputs, **kwargs)
+            return self.forward(*inputs, **kwargs)
+        else:
+            return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1169,6 +1174,8 @@ class Layer(object):
                     # add a persistable buffer.
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
+                    if not value.name:
+                        value.name = unique_name.generate('_buffers_' + name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in

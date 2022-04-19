@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
 #include <algorithm>
 #include <mutex>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -64,14 +65,7 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                const std::vector<int>& strides,
                const std::vector<int>& paddings,
                const std::vector<int>& dilations,
-               phi::DataType dtype) {
-  return GetKey(x_dims,
-                w_dims,
-                strides,
-                paddings,
-                dilations,
-                static_cast<int64_t>(dtype));
-}
+               phi::DataType dtype);
 
 template <typename AlgorithmT>
 class AlgorithmsCache {
@@ -99,32 +93,53 @@ class AlgorithmsCache {
     return ret;
   }
 
+  void Clean() {
+    std::lock_guard<std::mutex> lock(*cache_mutex_);
+    hash_.clear();
+    cache_hits_ = 0;
+    cache_misses_ = 0;
+  }
+
   void Set(size_t key, AlgorithmT algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     hash_[key] = algo;
   }
 
+  int64_t CacheMisses() const { return cache_misses_; }
+
+  int64_t CacheHits() const { return cache_hits_; }
+
   float CacheHitRate() const {
     int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate =
-        static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    float cache_hit_rate = 0.;
+    if (num_accesses != 0) {
+      cache_hit_rate =
+          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    }
     return cache_hit_rate;
   }
 
-  int64_t Size() { return hash_.size(); }
+  int64_t Size() const { return hash_.size(); }
 
  private:
   std::unordered_map<size_t, AlgorithmT> hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
-  int64_t cache_hits_ = 0;
-  int64_t cache_misses_ = 0;
+
+  int64_t cache_hits_{0};
+  int64_t cache_misses_{0};
+};
+
+enum class AlgorithmType {
+  kConvForward = 1,
+  kConvBackwardData = 2,
+  kConvBackwardFilter = 3,
+  kAlgorithmCount = 4
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-using AlgorithmsConfigKeyMap = AlgorithmsCache<int64_t>;
-// AlgorithmsType -> AlgorithmsCache
-using AlgorithmsTypeMap =
-    std::unordered_map<std::string, AlgorithmsConfigKeyMap>;
+using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
+// AlgorithmType -> AlgorithmsCache
+using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
 
 class AutoTuneCache {
  public:
@@ -133,29 +148,68 @@ class AutoTuneCache {
     return autotune_cache;
   }
 
-  AlgorithmsConfigKeyMap& RegisterOrGet(const std::string& algo_type) {
-    std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
-    if (auto_tune_map_.find(algo_type) == auto_tune_map_.end()) {
-      AlgorithmsConfigKeyMap cache;
-      auto_tune_map_[algo_type] = cache;
-    }
-    return auto_tune_map_[algo_type];
+  AlgorithmsCacheMap& Get(const AlgorithmType& algo_type) {
+    return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  // The number of total config cached
-  int64_t Size() {
-    int64_t total = 0;
+  AlgorithmsCacheMap& GetConvForward() {
+    return Get(AlgorithmType::kConvForward);
+  }
+
+  AlgorithmsCacheMap& GetConvBackwardData() {
+    return Get(AlgorithmType::kConvBackwardData);
+  }
+
+  AlgorithmsCacheMap& GetConvBackwardFilter() {
+    return Get(AlgorithmType::kConvBackwardFilter);
+  }
+
+  void Clean() {
     for (auto& v : auto_tune_map_) {
-      VLOG(3) << v.first << " " << v.second.Size();
-      total += v.second.Size();
+      v.second.Clean();
     }
-    return total;
+  }
+
+  void UpdateStatus();
+
+  // The number of total config cached
+  int64_t Size() const { return total_size_; }
+
+  int64_t CacheHits() const { return total_cache_hits_; }
+
+  int64_t CacheMisses() const { return total_cache_misses_; }
+
+  float CacheHitRate() const {
+    float total_cache_hit_rate = 0.;
+    int64_t total_num_accesses = total_cache_hits_ + total_cache_misses_;
+    if (total_num_accesses != 0) {
+      total_cache_hit_rate = static_cast<float>(total_cache_hits_) /
+                             static_cast<float>(total_num_accesses);
+    }
+    return total_cache_hit_rate;
   }
 
  private:
-  AutoTuneCache() : autotune_cache_mutex_(new std::mutex()) {}
+  AutoTuneCache() : autotune_cache_mutex_(new std::mutex()) {
+    for (int i = 1; i < static_cast<int>(AlgorithmType::kAlgorithmCount); ++i) {
+      Register(static_cast<AlgorithmType>(i));
+    }
+  }
+
+  void Register(const AlgorithmType& algo_type) {
+    std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
+    int64_t key = static_cast<int64_t>(algo_type);
+    if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
+      AlgorithmsCacheMap cache;
+      auto_tune_map_[key] = cache;
+    }
+  }
+
   AlgorithmsTypeMap auto_tune_map_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
+  int64_t total_cache_hits_{0};
+  int64_t total_cache_misses_{0};
+  int64_t total_size_{0};
 };
 
 }  // namespace autotune

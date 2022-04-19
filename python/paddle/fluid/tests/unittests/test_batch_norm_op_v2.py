@@ -81,6 +81,40 @@ class TestBatchNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error2d_dataformat)
                 self.assertRaises(ValueError, error3d_dataformat)
 
+    def test_eager_api(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            shape = [4, 10, 4, 4]
+
+            def compute_v1(x):
+                with fluid.dygraph.guard(p):
+                    bn = fluid.dygraph.BatchNorm(shape[1])
+                    #bn = paddle.nn.BatchNorm2D(shape[1])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            def compute_v2(x):
+                with fluid.dygraph.guard(p):
+                    with _test_eager_guard():
+                        print("v2")
+                        bn = paddle.nn.BatchNorm2D(shape[1])
+                        x1 = paddle.to_tensor(x)
+                        x1.stop_gradient = False
+                        y = bn(x1)
+                        y.backward()
+                        return y.numpy(), x1.gradient()
+
+        x = np.random.randn(*shape).astype("float32")
+        y1, g1 = compute_v1(x)
+        y2, g2 = compute_v2(x)
+        self.assertTrue(np.allclose(g1, g2))
+        self.assertTrue(np.allclose(y1, y2))
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

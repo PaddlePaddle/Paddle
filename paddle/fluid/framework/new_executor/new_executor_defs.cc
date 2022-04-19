@@ -93,19 +93,24 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return true;
     }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -323,20 +328,21 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
 }
 
 // TODO(paddle-dev): Can this be template?
-std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
+paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+InterpretercoreInferShapeContext::GetInputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
 }
 
-std::vector<InferShapeVarPtr>
+paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
 InterpretercoreInferShapeContext::GetOutputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;

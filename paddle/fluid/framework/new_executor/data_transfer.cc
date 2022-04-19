@@ -319,6 +319,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     }
   }
 
+  bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope);
   for (auto& var_name_item : *ins_map_temp) {
     bool should_skip_input =
@@ -334,6 +335,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
+        if (var->Get<LoDTensorArray>().size() == 0) {
+          continue;
+        }
         tensor_in =
             static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
       } else {
@@ -389,6 +393,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       }
 
       if (is_transferred) {
+        transfered = true;
         // update RuntimeContext.inputs and original op_func_node inputs
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
@@ -426,11 +431,13 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     }
   }
 
-  // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
-  // with instruction. (hot fix, it is not good design here)
-  op_func_node->operator_base_ =
-      std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
-          op_base->Type(), new_ins, new_outs, op_base->Attrs()));
+  if (transfered) {
+    // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+    // with instruction. (hot fix, it is not good design here)
+    op_func_node->operator_base_ =
+        std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
+            op_base->Type(), new_ins, new_outs, op_base->Attrs()));
+  }
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 

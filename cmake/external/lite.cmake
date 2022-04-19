@@ -86,7 +86,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_PREFIX_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
+      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
