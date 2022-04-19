@@ -30,15 +30,13 @@ class MyLayer(paddle.nn.Layer):
         self.conv1 = paddle.nn.Conv2D(
             in_channels=3, out_channels=4, kernel_size=3, padding=2)
         self.linear1 = paddle.nn.Linear(32 * 32 * 4, 32)
-        self.linear2 = paddle.nn.Linear(32, 32)
-        self.linear3 = paddle.nn.Linear(32, 10)
+        self.linear2 = paddle.nn.Linear(32, 10)
 
     def forward(self, img):
         hidden = self.conv1(img)
         hidden = paddle.flatten(hidden, start_axis=1)
         hidden = self.linear1(hidden)
-        hidden = self.linear2(hidden)
-        prediction = self.linear3(hidden)
+        prediction = self.linear2(hidden)
         return prediction
 
 
@@ -57,25 +55,27 @@ class TestASPDynamicPruningBase(unittest.TestCase):
             place=place,
             stop_gradient=False)
 
-    def run_inference_pruning_test(self, get_mask_gen_func,
-                                   get_mask_check_func):
-        self.__pruning_and_checking(get_mask_gen_func, get_mask_check_func,
-                                    False)
+        self.set_config()
 
-    def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
+    def set_config(self):
+        self.mask_gen_func = 'mask_1d'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
+
+    def test_inference_pruning(self):
+        self.__pruning_and_checking(False)
+
+    def test_training_pruning(self):
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.01,
                                          parameters=self.layer.parameters())
         optimizer = sparsity.decorate(optimizer)
 
-        self.__pruning_and_checking(get_mask_gen_func, get_mask_check_func,
-                                    True)
+        self.__pruning_and_checking(True)
 
-    def __pruning_and_checking(self, mask_func_name, check_func_name,
-                               with_mask):
+    def __pruning_and_checking(self, with_mask):
 
         sparsity.prune_model(
-            self.layer, mask_algo=mask_func_name, with_mask=with_mask)
+            self.layer, mask_algo=self.mask_gen_func, with_mask=with_mask)
 
         for param in self.layer.parameters():
             if ASPHelper._is_supported_layer(
@@ -83,39 +83,25 @@ class TestASPDynamicPruningBase(unittest.TestCase):
                 mat = param.numpy()
                 self.assertTrue(
                     paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, func_name=check_func_name, n=2, m=4))
+                        mat.T, func_name=self.mask_check_func, n=2, m=4))
 
 
 class TestASPDynamicPruning1D(TestASPDynamicPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
-
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_1d', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_1d'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
 
 
 class TestASPDynamicPruning2DBest(TestASPDynamicPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
-
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_2d_best', paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_2d_best'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
 
 
 class TestASPDynamicPruning2DGreedy(TestASPDynamicPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(
-            'mask_2d_greedy',
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
-
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(
-            'mask_2d_greedy',
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D)
+    def set_config(self):
+        self.mask_gen_func = 'mask_2d_greedy'
+        self.mask_check_func = paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
 
 
 if __name__ == '__main__':
