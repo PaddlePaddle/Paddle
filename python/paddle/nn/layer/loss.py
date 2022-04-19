@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -597,7 +597,11 @@ class MSELoss(Layer):
             fluid.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss')
 
-        square_out = paddle.square(paddle.subtract(input, label))
+        if in_dygraph_mode():
+            square_out = paddle._C_ops.final_state_square(
+                paddle.subtract(input, label))
+        else:
+            square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 

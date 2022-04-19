@@ -130,41 +130,41 @@ KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature ReduceSumGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sum_grad",
-                         {"X", GradVarName("Out")},
+                         {"X", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 KernelSignature ReduceMeanGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("mean_grad",
-                         {"X", GradVarName("Out")},
+                         {"X", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 KernelSignature ReduceMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("max_grad",
-                         {"X", "Out", GradVarName("Out")},
+                         {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("min_grad",
-                         {"X", "Out", GradVarName("Out")},
+                         {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 KernelSignature ReduceProdGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("prod_grad",
-                         {"X", "Out", GradVarName("Out")},
+                         {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

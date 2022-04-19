@@ -228,14 +228,23 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0):
     pg = None
+    genv = _get_global_env()
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
+        place = core.CPUPlace()
+        pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
+        place = core.CUDAPlace(genv.device_id)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
     elif backend == "hccl":
-        pg = core.ProcessGroupHCCL(store, rank, world_size, group_id)
+        place = core.NPUPlace(genv.device_id)
+        pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
     elif backend == "heter":
+        place = None
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(genv.device_id)
+        elif core.is_compiled_with_npu():
+            place = core.NPUPlace(genv.device_id)
         cluster_id = int(os.getenv("CLUSTER_ID", "-1"))
         assert cluster_id >= 0, "please set the CLUSTER_ID variable."
         cluster_size = os.getenv("CLUSTER_SIZE", None)
@@ -253,6 +262,7 @@ def _new_process_group_impl(backend,
             store,
             rank=global_rank,
             world_size=global_world_size,
+            place=place,
             gid=0,
             local_rank=rank,
             local_size=world_size,
