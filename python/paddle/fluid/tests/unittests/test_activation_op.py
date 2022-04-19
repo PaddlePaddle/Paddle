@@ -1044,6 +1044,8 @@ class TestRsqrt(TestActivation):
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
+        self.python_api = paddle.abs
+        self.init_dtype()
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1061,7 +1063,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestCeil(TestActivation):
