@@ -125,11 +125,11 @@ class BackwardAPI(BaseAPI):
             if not inplace_flag and self.view_map is not None and self.outputs[
                     'names'][0] in self.view_map:
                 output_create = output_create + f"""
-{code_indent}  //if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}.use_count() == 1 && {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}->initialized()) {{
+{code_indent}  if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}->initialized()) {{
 {code_indent}    kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
 {code_indent}    kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
 {code_indent}    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
-{code_indent}  //}}"""
+{code_indent}  }}"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
@@ -166,11 +166,11 @@ class BackwardAPI(BaseAPI):
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:
                     output_create = output_create + f"""
-{code_indent}  //if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}.use_count() == 1 && {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}->initialized()) {{
+{code_indent}  if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}->initialized()) {{
 {code_indent}    kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
 {code_indent}    kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
 {code_indent}    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
-{code_indent}  //}}"""
+{code_indent}  }}"""
 
             kernel_output = kernel_output[:-2]
         else:
