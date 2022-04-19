@@ -56,11 +56,10 @@ class TableContainer
             capacity, ValType()) {}
 };
 #elif defined(PADDLE_WITH_XPU_KP)
-
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
+  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
     xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
     xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
@@ -71,8 +70,13 @@ class XPUCacheArray {
   }
 
   void print() {}
-  // ValType* find(const KeyType& key) { return NULL; }
-  // bool insert(const KeyType& key, const ValType& val) { return true; }
+
+#if defined(__xpu__)
+  __device__ ValType* find(const KeyType& key) { return NULL; }
+  __device__ bool insert(const KeyType& key, const ValType& val) {
+    return true;
+  }
+#endif
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
