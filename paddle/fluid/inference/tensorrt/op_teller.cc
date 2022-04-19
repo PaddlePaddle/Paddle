@@ -117,7 +117,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multihead_matmul",
       "skip_layernorm",
       "slice",
+      "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "roll",
       "preln_skip_layernorm"};
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -178,8 +180,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multihead_matmul",
       "skip_layernorm",
       "slice",
+      "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "roll",
+      "multiclass_nms3"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -646,7 +651,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multiclass_nms") {
+    if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -655,7 +660,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      for (auto& param_name : desc.Inputs()) {
+      auto multiclass_nms_inputs = desc.Inputs();
+      if (multiclass_nms_inputs.find("RoisNum") !=
+          multiclass_nms_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
+      for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
@@ -672,6 +684,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
            desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
       if (has_attrs == false) return false;
+
+      // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+      // plugin are not constient with those of multiclass_nms3
+      if (desc.HasAttr("nms_eta") == false) return false;
+      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      if (nms_eta <= 1.0) return false;
 
       auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
@@ -912,14 +930,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "roll") {
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3) << "roll converter does not support trt versions below 7.0";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "strided_slice") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
+        VLOG(3)
+            << "The necessary attributes of the strided_slice operator miss ";
+        return false;
+      }
+    }
+
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (decrease_axis.size() > 0) {
-          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                     "is not supported in TensorRT";
-          return false;
+        if (with_dynamic_shape) {
+          if (decrease_axis.size() > 1) {
+            return false;
+          }
+        } else {
+          if (decrease_axis.size() > 0) {
+            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+                       "is not supported in TensorRT";
+            return false;
+          }
         }
       }
 
@@ -993,9 +1039,32 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
+      if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
+        if (y_shape.size() != 1) {
+          return false;
+        }
+        if (y_shape[0] != x_shape[1]) {
+          return false;
+        }
+      }
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
+      }
+      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+        if (x_var_desc->Persistable()) {
+          VLOG(3) << "Input X is a parameter which is not supported for "
+                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                     "y will work";
+          return false;
+        }
+      }
+      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
+          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
+                     "for elementwise_sub/elementwise_div in tensorrt";
+          return false;
+        }
       }
     }
 
@@ -1017,17 +1086,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
-        VLOG(3) << "The id and emb size of fused EmbEltwiseLayerNormOp "
-                   "should be same ";
         return false;
       }
     }
 
     if (op_type == "fused_preln_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
-        VLOG(3)
-            << "fused_preln_embedding_eltwise_layernorm should run on dynamic "
-               "shape mode.";
+        VLOG(3) << "fused_preln_embedding_eltwise_layernorm should run on "
+                   "dynamic "
+                   "shape mode.";
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
@@ -1327,20 +1394,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the shuffle_channel op does not support dynamic shape yet";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* input_desc = block->FindVar(desc.Input("X").front());
-      const auto input_shape = input_desc->GetShape();
-      if (input_shape.size() != 4) {
-        VLOG(3) << "input dims is invalid. The input "
-                   "dims size should be 4.";
-        return false;
-      }
     }
 
     if (op_type == "skip_layernorm") {
@@ -1431,7 +1484,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto y_shape = y_var_desc->GetShape();
       if (y_shape.size() != 2) {
         VLOG(3)
-            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes = "
+            << " input_y(fc_op)'shapes must be 2, but input_y(fc_op)'shapes =
+      "
             << y_shape.size();
         return false;
       }
@@ -1479,8 +1533,27 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
+      if (!with_dynamic_shape) {
+        if (shape.size() == 1) {
+          return false;
+        }
+        if (shape[0] == 0) {
+          return true;
+        } else {
+          auto* block = desc.Block();
+          auto x_var_name = desc.Input("X")[0];
+          auto* x_var_desc = block->FindVar(x_var_name);
+          const auto x_shape = x_var_desc->GetShape();
+          int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
+                                          std::multiplies<int>());
+          int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
+                                          std::multiplies<int>());
+          if (input_num == shape_num) {
+            return true;
+          }
+        }
         return false;
+      }
     }
 
     if (op_type == "clip") {
@@ -1556,8 +1629,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 #else
       if (dtype != framework::proto::VarType::FP32) {
-        VLOG(3)
-            << "reduce op input data type must be float32 using TensorRT < 7.0";
+        VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+                   "< 7.0";
         return false;
       }
 #endif

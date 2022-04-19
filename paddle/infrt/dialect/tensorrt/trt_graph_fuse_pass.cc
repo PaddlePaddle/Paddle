@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 
+#include <glog/logging.h>
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
@@ -133,8 +134,7 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
   for (auto it = body.rbegin(); it != body.rend(); ++it) {
     toSort.insert(&*it);
   }
-  llvm::SetVector<mlir::Operation *> result =
-      mlir::topologicalSort(std::move(toSort));
+  llvm::SetVector<mlir::Operation *> result = mlir::topologicalSort(toSort);
   for (auto *op : result) {
     op->moveBefore(body.getTerminator());
   }
@@ -177,7 +177,14 @@ void TRTGraphFusePass::runOnFunction() {
       if (changed) break;
     }
   } while (changed);
-  topoSortBlock(body);
+
+  // TODO(wilber): Implement a toposort for efficiency.
+  // topoSortBlock(body);
 }
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphFusePass() {
+  return std::make_unique<TRTGraphFusePass>();
+}
+
 }  // namespace trt
 }  // namespace infrt

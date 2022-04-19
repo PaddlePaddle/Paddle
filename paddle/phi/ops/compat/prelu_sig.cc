@@ -16,13 +16,19 @@
 
 namespace phi {
 
+KernelSignature PReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "prelu", {"X", "Alpha"}, {"data_format", "mode"}, {"Out"});
+}
+
 KernelSignature PReluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("prelu_grad",
-                         {"X", "Alpha", GradVarName("Out")},
-                         {"mode", "data_format"},
-                         {GradVarName("X"), GradVarName("Alpha")});
+                         {"X", "Alpha", "Out@GRAD"},
+                         {"data_format", "mode"},
+                         {"X@GRAD", "Alpha@GRAD"});
 }
 
 }  // namespace phi
 
+PD_REGISTER_ARG_MAPPING_FN(prelu, phi::PReluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(prelu_grad, phi::PReluGradOpArgumentMapping);

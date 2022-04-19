@@ -166,16 +166,16 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, 2);  // test
+  _ps_env.SetPsServers(&host_sign_list_, 2);  // test
   pserver_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
       (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::create(server_proto));
+          paddle::distributed::PSServerFactory::Create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
-  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
+  pserver_ptr_->Configure(server_proto, _ps_env, 0, empty_vec);
   LOG(INFO) << "first server, run start(ip,port)";
-  pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->Start(ip_, port_);
   pserver_ptr_->build_peer2peer_connection(0);
   LOG(INFO) << "init first server Done";
 }
@@ -185,15 +185,15 @@ void RunServer2() {
   ::paddle::distributed::PSParameter server_proto2 = GetServerProto();
 
   auto _ps_env2 = paddle::distributed::PaddlePSEnvironment();
-  _ps_env2.set_ps_servers(&host_sign_list_, 2);  // test
+  _ps_env2.SetPsServers(&host_sign_list_, 2);  // test
   pserver_ptr2 = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
       (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::create(server_proto2));
+          paddle::distributed::PSServerFactory::Create(server_proto2));
   std::vector<framework::ProgramDesc> empty_vec2;
   framework::ProgramDesc empty_prog2;
   empty_vec2.push_back(empty_prog2);
-  pserver_ptr2->configure(server_proto2, _ps_env2, 1, empty_vec2);
-  pserver_ptr2->start(ip2, port2);
+  pserver_ptr2->Configure(server_proto2, _ps_env2, 1, empty_vec2);
+  pserver_ptr2->Start(ip2, port2);
   pserver_ptr2->build_peer2peer_connection(1);
 }
 
@@ -204,11 +204,11 @@ void RunClient(
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
       (paddle::distributed::GraphBrpcClient*)
-          paddle::distributed::PSClientFactory::create(worker_proto));
-  worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+          paddle::distributed::PSClientFactory::Create(worker_proto));
+  worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
   worker_ptr_->set_shard_num(127);
   worker_ptr_->set_local_channel(index);
   worker_ptr_->set_local_graph_service(
@@ -222,11 +222,11 @@ void RunGraphSplit() {
   prepare_file(node_file_name, nodes);
   prepare_file(graph_split_file_name, graph_split);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // test-start
   auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
-  host_sign_list_.push_back(ph_host2.serialize_to_string());
+  host_sign_list_.push_back(ph_host2.SerializeToString());
   // test-end
   // Srart Server
   std::thread* server_thread = new std::thread(RunServer);
@@ -247,7 +247,7 @@ void RunGraphSplit() {
       0, std::string(graph_split_file_name));
   pull_status.wait();
   pull_status =
-      worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
+      worker_ptr_->Load(0, std::string(edge_file_name), std::string("e>"));
   srand(time(0));
   pull_status.wait();
   std::vector<std::vector<int64_t>> _vs;
@@ -266,9 +266,9 @@ void RunGraphSplit() {
   std::remove(node_file_name);
   std::remove(graph_split_file_name);
   LOG(INFO) << "Run stop_server";
-  worker_ptr_->stop_server();
+  worker_ptr_->StopServer();
   LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
 }
 
 TEST(RunGraphSplit, Run) { RunGraphSplit(); }

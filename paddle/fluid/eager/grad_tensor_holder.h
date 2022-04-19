@@ -46,7 +46,10 @@ class GradTensorHolder {
 
   // Create new tensor and copy tensor->impl
   void add(size_t slot_id, size_t rank, const paddle::experimental::Tensor& t,
-           bool fill_one = false);
+           bool create_graph = false);
+  void CopyValueFromTensor(size_t slot_id, size_t rank,
+                           const paddle::experimental::Tensor& t,
+                           bool fill_one = false);
 
   const std::vector<paddle::experimental::Tensor>& operator[](
       const size_t& pos) {

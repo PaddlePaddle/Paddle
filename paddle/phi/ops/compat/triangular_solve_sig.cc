@@ -19,9 +19,9 @@ namespace phi {
 KernelSignature TriangularSolveGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("triangular_solve_grad",
-                         {"X", "Y", "Out", GradVarName("Out")},
+                         {"X", "Y", "Out", "Out@GRAD"},
                          {"upper", "transpose", "unitriangular"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

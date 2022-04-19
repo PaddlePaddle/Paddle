@@ -331,7 +331,7 @@ Node *shape_handler(Graph *graph, Node *node) {
 Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   Node *starts = nullptr;
-  if (!op->Input("StartsTensor").empty()) {
+  if (!op->HasAttr("starts")) {
     starts = GetInputVarNode("StartsTensor", node);
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
@@ -341,7 +341,7 @@ Node *slice_handler(Graph *graph, Node *node) {
     starts = starts->outputs[0];
   }
   Node *ends = nullptr;
-  if (!op->Input("EndsTensor").empty()) {
+  if (!op->HasAttr("ends")) {
     ends = GetInputVarNode("EndsTensor", node);
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
@@ -570,6 +570,11 @@ Node *split_handler(Graph *graph, Node *node) {
        {"split", std::vector<int64_t>{sections.begin(), sections.end()}}});
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
@@ -593,8 +598,3 @@ REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
 REGISTER_HANDLER(split, split_handler);
 REGISTER_HANDLER(one_hot, one_hot_handler);
 REGISTER_HANDLER(one_hot_v2, one_hot_v2_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

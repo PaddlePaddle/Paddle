@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, _in_eager_without_dygraph_check
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
@@ -135,6 +135,10 @@ class TestBicubicInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
+        # NOTE(dev): some AsDispensible input is not used under imperative mode.
+        # Skip check_eager while found them in Inputs.
+        # TODO(dev): add self.python_api
+        self.check_eager = False
         input_np = np.random.random(self.input_shape).astype("float64")
         scale_h = 0
         scale_w = 0
@@ -166,8 +170,10 @@ class TestBicubicInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
+            self.check_eager = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -186,10 +192,11 @@ class TestBicubicInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager)
 
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -543,4 +550,5 @@ class TestBicubicOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

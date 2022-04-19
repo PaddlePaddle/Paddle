@@ -330,7 +330,7 @@ template <typename T, typename Context>
 void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out_grad,
-                     const ScalarArray& paddings,
+                     const IntArray& paddings,
                      const std::string& mode,
                      float pad_value,
                      const std::string& data_format,

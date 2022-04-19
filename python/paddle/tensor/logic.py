@@ -12,23 +12,265 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers.layer_function_generator import templatedoc
-from ..static import Variable
-from ..framework import VarBase as Tensor
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-# TODO: define logic functions of a tensor  
-from ..fluid.layers import is_empty  # noqa: F401
-from ..fluid.layers import logical_and  # noqa: F401
-from ..fluid.layers import logical_not  # noqa: F401
-from ..fluid.layers import logical_or  # noqa: F401
-from ..fluid.layers import logical_xor  # noqa: F401
 import paddle
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from .layer_function_generator import templatedoc
+from ..static import Variable
+# TODO: define logic functions of a tensor
+from ..fluid.framework import _in_eager_mode_
+if _in_eager_mode_:
+    Tensor = paddle.fluid.framework.core.eager.Tensor
+else:
+    from ..framework import VarBase as Tensor
+
+from ..framework import in_dygraph_mode, _non_static_mode
+from ..framework import LayerHelper
+from ..fluid.framework import _in_legacy_dygraph
+# TODO: define logic functions of a tensor  
 from paddle import _C_ops
 from paddle.tensor.creation import full
 
 __all__ = []
+
+
+def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    if _non_static_mode():
+        op = getattr(_C_ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+    check_variable_and_dtype(x, "x", [
+        "bool", "int8", "int16", "int32", "int64", "float32", "float64"
+    ], op_name)
+    if y is not None:
+        check_variable_and_dtype(y, "y", [
+            "bool", "int8", "int16", "int32", "int64", "float32", "float64"
+        ], op_name)
+    if out is not None:
+        check_type(out, "out", Variable, op_name)
+
+    helper = LayerHelper(op_name, **locals())
+
+    if binary_op and x.dtype != y.dtype:
+        raise ValueError(
+            "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
+            % (op_name, x.dtype, y.dtype))
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if binary_op:
+        helper.append_op(
+            type=op_name, inputs={"X": x,
+                                  "Y": y}, outputs={"Out": out})
+    else:
+        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+
+    return out
+
+
+def logical_and(x, y, out=None, name=None):
+    r"""
+
+    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x \&\& y
+
+    .. note::
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([True])
+            y = paddle.to_tensor([True, False, True, False])
+            res = paddle.logical_and(x, y)
+            print(res) # [True False True False]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_and(x, y)
+
+    return _logical_op(
+        op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+def logical_or(x, y, out=None, name=None):
+    """
+
+    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x || y
+
+    .. note::
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_data = np.array([True, False], dtype=np.bool).reshape(2, 1)
+            y_data = np.array([True, False, True, False], dtype=np.bool).reshape(2, 2)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.logical_or(x, y)
+            print(res) # [[ True  True] [ True False]]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_or(x, y)
+    return _logical_op(
+        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+def logical_xor(x, y, out=None, name=None):
+    r"""
+
+    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = (x || y) \&\& !(x \&\& y)
+
+    .. note::
+        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_data = np.array([True, False], dtype=np.bool).reshape([2, 1])
+            y_data = np.array([True, False, True, False], dtype=np.bool).reshape([2, 2])
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.logical_xor(x, y)
+            print(res) # [[False,  True], [ True, False]]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_xor(x, y)
+
+    return _logical_op(
+        op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def logical_not(x, out=None, name=None):
+    """
+
+    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = !x
+
+    Args:
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([True, False, True, False])
+            res = paddle.logical_not(x)
+            print(res) # [False  True False  True]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_not(x)
+    return _logical_op(
+        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+def is_empty(x, name=None):
+    """
+
+    Test whether a Tensor is empty.
+
+    Args:
+        x (Tensor): The Tensor to be tested.
+        name (str, optional): The default value is ``None`` . Normally users
+                            don't have to set this parameter. For more information,
+                            please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
+            res = paddle.is_empty(x=input)
+            print("res:", res)
+            # ('res:', Tensor: eager_tmp_1
+            #    - place: CPUPlace
+            #    - shape: [1]
+            #    - layout: NCHW
+            #    - dtype: bool
+            #    - data: [0])
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_is_empty(x)
+    if _in_legacy_dygraph():
+        return _C_ops.is_empty(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'is_empty')
+    check_type(name, "name", (str, type(None)), "is_empty")
+
+    helper = LayerHelper("is_empty", **locals())
+    cond = helper.create_variable_for_type_inference(dtype='bool')
+    cond.stop_gradient = True
+    helper.append_op(
+        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
+    return cond
 
 
 def equal_all(x, y, name=None):
@@ -59,6 +301,9 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_equal_all(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.equal_all(x, y)
 
@@ -122,11 +367,17 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_allclose(x, y,
+                                           as_tensor(rtol),
+                                           as_tensor(atol), equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)
-
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -181,7 +432,8 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_equal(x, y)
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.equal(x, y)
@@ -230,7 +482,8 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_equal(x, y)
+        default_axis = -1
+        return _C_ops.final_state_greater_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_equal(x, y)
@@ -279,7 +532,7 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y)
+        return _C_ops.final_state_greater_than(x, y, -1)
     else:
         if _in_legacy_dygraph():
             return _C_ops.greater_than(x, y)
@@ -329,7 +582,8 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_less_equal(x, y)
+        axis = -1
+        return _C_ops.final_state_less_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_equal(x, y)
@@ -379,7 +633,8 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_less_than(x, y)
+        default_axis = -1
+        return _C_ops.final_state_less_than(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_than(x, y)
@@ -429,7 +684,8 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_not_equal(x, y)
+        axis = -1
+        return _C_ops.final_state_not_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.not_equal(x, y)
@@ -536,6 +792,8 @@ def bitwise_and(x, y, out=None, name=None):
             res = paddle.bitwise_and(x, y)
             print(res)  # [0, 2, 1]
     """
+    if in_dygraph_mode() and out is None:
+        return _C_ops.final_state_bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -562,6 +820,9 @@ def bitwise_or(x, y, out=None, name=None):
             res = paddle.bitwise_or(x, y)
             print(res)  # [-1, -1, -3]
     """
+    if in_dygraph_mode() and out is None:
+        return _C_ops.final_state_bitwise_or(x, y)
+
     return _bitwise_op(
         op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -588,6 +849,8 @@ def bitwise_xor(x, y, out=None, name=None):
             res = paddle.bitwise_xor(x, y)
             print(res) # [-1, -3, -4]
     """
+    if in_dygraph_mode() and out is None:
+        return _C_ops.final_state_bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -612,6 +875,8 @@ def bitwise_not(x, out=None, name=None):
             res = paddle.bitwise_not(x)
             print(res) # [4, 0, -2]
     """
+    if in_dygraph_mode() and out is None:
+        return _C_ops.final_state_bitwise_not(x)
 
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
@@ -669,7 +934,14 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True, True]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_isclose(x, y,
+                                          as_tensor(rtol),
+                                          as_tensor(atol), equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',
                               str(atol), 'equal_nan', equal_nan)

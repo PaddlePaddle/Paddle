@@ -120,6 +120,10 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
             .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
     MultiStreamCompute(&data[i], &second_data[i], *dev_ctx[i]);
@@ -171,6 +175,10 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
+            .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));

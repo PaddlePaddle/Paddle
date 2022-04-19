@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
@@ -111,7 +113,11 @@ class GradNodeBase {
 
   virtual void ClearTensorWrappers() = 0;
 
-  virtual bool IsTensorWrappersCleared() = 0;
+  /**
+       * Self-Copy interface designed for use in DoubleGrad
+       * **/
+  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
+
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -189,6 +195,16 @@ class GradNodeBase {
   /**
        * GetEdges is designed to get all edges of current node**/
   const std::vector<std::vector<Edge>>& GetEdges() const;
+  std::vector<std::vector<Edge>>& GetMutableEdges();
+
+  /**
+       * The following interfaces are designed for no_need_buffer
+       * **/
+  bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
+
+  void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
+    is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
+  }
 
  private:
   // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
@@ -216,6 +232,7 @@ class GradNodeBase {
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
   int64_t next_hook_id_{0};
+  bool is_tensor_wrappers_cleared_ = false;
 };
 
 class Edge {
@@ -242,6 +259,11 @@ class Edge {
 
   std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
+  }
+
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
+    VLOG(6) << "Reseting Edge's Grad Node";
+    grad_node_ = node;
   }
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {
@@ -295,11 +317,11 @@ inline void CheckTensor(const paddle::experimental::Tensor& pre,
             paddle::framework::DataType2String(pre.dtype()),
             paddle::framework::DataType2String(post.dtype())));
     PADDLE_ENFORCE_EQ(
-        pre.inner_place(), post.inner_place(),
+        pre.place(), post.place(),
         paddle::platform::errors::PermissionDenied(
             "The place of tensor before(%s) and after(%s) "
             "hook are not consistent",
-            pre.inner_place().DebugString(), post.inner_place().DebugString()));
+            pre.place().DebugString(), post.place().DebugString()));
   }
 }
 

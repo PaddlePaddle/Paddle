@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -27,39 +31,6 @@ class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "Adagrad");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "Adagrad");
-    OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment", "Adagrad");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
-                   "Adagrad");
-    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "Adagrad");
-    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"), "Output", "MomentOut",
-                   "Adagrad");
-
-    auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dims), 0,
-                      platform::errors::InvalidArgument(
-                          "Maybe the Input variable LearningRate has not "
-                          "been initialized. You may need to confirm "
-                          "if you put exe.run(startup_program) "
-                          "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
-                      platform::errors::InvalidArgument(
-                          "LearningRate should have one element"));
-    auto param_dims = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
-        platform::errors::InvalidArgument("Param and Grad input of AdagradOp "
-                                          "should have the same dimension."));
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Moment"),
-        platform::errors::InvalidArgument("Param and Moment input of AdagradOp "
-                                          "should have the same dimension."));
-
-    ctx->SetOutputDim("ParamOut", param_dims);
-    ctx->SetOutputDim("MomentOut", param_dims);
-  }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
@@ -105,4 +76,7 @@ for numerical stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker);
+DECLARE_INFER_SHAPE_FUNCTOR(adagrad, AdagradInferShapeFunctor,
+                            PD_INFER_META(phi::AdagradInferMeta));
+REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker,
+                             AdagradInferShapeFunctor);
