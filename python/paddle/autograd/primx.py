@@ -185,6 +185,17 @@ class Transform(object):
         for var in new_vars:
             self.add_vars_rec(var)
 
+    def erase_ops(self, ordered_indexes):
+        block = self.block
+        for op_index in reversed(ordered_indexes):
+            block.desc._remove_op(op_index, op_index + 1)
+
+        # remove from block.ops
+        for op_index in reversed(ordered_indexes):
+            del block.ops[op_index]
+
+        block._sync_with_cpp()
+
     def erase_dots(self, vars_to_erase):
         for var in vars_to_erase:
             if id(var) in self.vars:
@@ -193,10 +204,10 @@ class Transform(object):
         self.var2dot.delete_valuevars(vars_to_erase)
         block = self.block
         for var in vars_to_erase:
-            block._remove_var(var.name)
-            # block.desc._remove_var(cpt.to_bytes(var.name))
-            # del block.vars[var.name]
-        # block._sync_with_cpp()
+            name = var.name
+            block.desc._remove_var(cpt.to_bytes(name))
+            del block.vars[name]
+        block._sync_with_cpp()
 
     def var2dot_rec(self, vars, defaults=None):
 
@@ -313,6 +324,7 @@ class Transform(object):
 
         # find all the relevant forward gradients
         path, _, _ = topo_path(xs_dot, ys_dot, self.block)
+
         dotvars = output_vars_on_path(path)
         dotvars.update((id(var), var) for var in xs_dot)
 
@@ -351,9 +363,7 @@ class Transform(object):
         if not retain_fwd and len(path) > 0:
             vars_to_remove = set()
             for op in path:
-                for var in get_input_vars(op):
-                    if is_dot(var):
-                        vars_to_remove.add(var)
+                vars_to_remove.update(get_output_vars(op))
 
             op_indexes = []
 
@@ -368,11 +378,7 @@ class Transform(object):
                         get_output_vars(op)[0] in vars_to_remove):
                     op_indexes.append(i)
 
-            # remove ops
-            for op_index in reversed(op_indexes):
-                block._remove_op(op_index)
-                # block.desc._remove_op(op_index, op_index + 1)
-
+            self.erase_ops(op_indexes)
             self.erase_dots(vars_to_remove)
 
         return ys_bar, xs_bar
@@ -406,6 +412,17 @@ def _gradients(ys, xs, ys_bar=None):
     new_ys = new_vars[len(xs):]
     xs_dot, ys_dot = ad.linearize(new_xs, new_ys)
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
+    # remove xs_dot and their constructor ops
+
+    op_indexes = []
+    for var in xs_dot:
+        if var is not None:
+            op_index = block.ops.index(var.op)
+            assert op_index >= 0
+            op_indexes.append(op_index)
+
+    ad.erase_ops(sorted(op_indexes))
+    ad.erase_dots(xs_dot)
 
     # prim2orig(block, xs_bar)
     return xs_bar

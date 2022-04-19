@@ -14,6 +14,8 @@
 
 import unittest
 import numpy as np
+import os
+os.environ['FLAGS_call_stack_level']="2"
 
 import paddle
 from paddle.autograd.primops import (
@@ -30,6 +32,10 @@ def prog1(x, y):
     # z = paddle.sum(paddle.sqrt(x))
     return t
 
+def prog2(x, y):
+    t = paddle.multiply(x, x) + y
+    z = paddle.norm(t, p=2)
+    return z
 
 class TestPyPrimOps(unittest.TestCase):
     """ Test Python wrappers of primitive ops. """
@@ -196,20 +202,32 @@ class TestPyPrimOps(unittest.TestCase):
         for op in topo_path(vs, grads):
             print(op)
 
-    def test_first_order_gradients(self):
-        x = np.random.rand(100, 1, 2)
-        y = np.random.rand(100, 2, 5)
+    def test_gradients_set1(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            X = paddle.static.data('X', shape=[100, 1, 2], dtype='float32')
-            Y = paddle.static.data('Y', shape=[100, 2, 5], dtype='float32')
-            Z = prog1(X, Y)
-            X_grad, W_grad = _gradients([Z], [X, Y])
-        # exe = paddle.static.Executor()
-        # exe.run(startup)
-        # z = exe.run(main, feed={'X': x, 'Y': y}, fetch_list=[Z])
-        # print(z)
+            x = paddle.static.data('X', shape=[100, 1, 2], dtype='float32')
+            y = paddle.static.data('Y', shape=[100, 2, 5], dtype='float32')
+            z = prog1(x, y)
+            x_grad, y_grad = _gradients([z], [x, y])
+            print(f'-------test_gradients_set1-------')
+            print(f'x_grad : {x_grad}')
+            print(f'y_grad : {y_grad}')
+            for op in x.block.ops:
+                print(op)
+
+    def test_gradients_set2(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('X', shape=[2, 3], dtype='float32')
+            y = paddle.static.data('Y', shape=[3], dtype='float32')
+            z = prog2(x, y)
+            x_grad, y_grad = _gradients([z], [x, y])
+            path, _, _ = topo_path([x, y], [x_grad, y_grad])
+            print(f'-------test_gradients_set2-------')
+            for op in path:
+                print(op)
 
     def test_lower(self):
         main = paddle.static.Program()
