@@ -672,6 +672,15 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   return 0;
 }
 
+int32_t GraphTable::build_sampler(std::string sample_type) {
+  for (auto &shard : shards) {
+    auto bucket = shard->get_bucket();
+    for (size_t i = 0; i < bucket.size(); i++) {
+      bucket[i]->build_sampler(sample_type);
+    }
+  }
+  return 0;
+}
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   // #ifdef PADDLE_WITH_HETERPS
   //   if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
