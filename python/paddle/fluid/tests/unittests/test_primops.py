@@ -33,7 +33,7 @@ def prog1(x, y):
     return t
 
 def prog2(x, y):
-    t = paddle.multiply(x, x) + y
+    t = paddle.multiply(x, x)
     z = paddle.norm(t, p=2)
     return z
 
@@ -213,21 +213,48 @@ class TestPyPrimOps(unittest.TestCase):
             print(f'-------test_gradients_set1-------')
             print(f'x_grad : {x_grad}')
             print(f'y_grad : {y_grad}')
-            for op in x.block.ops:
-                print(op)
+            print(x.block)
 
     def test_gradients_set2(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('X', shape=[2, 3], dtype='float32')
-            y = paddle.static.data('Y', shape=[3], dtype='float32')
-            z = prog2(x, y)
+            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
+            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
+            # z = prog2(x, y)
+            t = paddle.multiply(x, x)
+            z = paddle.norm(t, p=2)
+            orig2prim(x.block)
+            # x_grad, y_grad = _gradients([z], [x, y])
+            # path, _, _ = topo_path([x, y], [x_grad, y_grad])
+            # print(f'-------test_gradients_set2-------')
+            # print(x.block)
+
+    def test_gradients_set3(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
+            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
+            t = paddle.matmul(x, y)
+            z = paddle.tanh(t)
             x_grad, y_grad = _gradients([z], [x, y])
-            path, _, _ = topo_path([x, y], [x_grad, y_grad])
-            print(f'-------test_gradients_set2-------')
-            for op in path:
-                print(op)
+            print(f'-------test_gradients_set3-------')
+            print(x.block)
+
+    def test_second_order_gradients_set1(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
+            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
+            z = paddle.matmul(x, x) + x
+            x_grad, = _gradients([z], [x])
+            xx_grad, = _gradients(x_grad, [x])
+            print(f'-------test_second_order_gradients_set1-------')
+            print(f'x_grad: {x_grad.name}')
+            print(f'xx_grad: {xx_grad.name}')
+            print(x.block)
 
     def test_lower(self):
         main = paddle.static.Program()
