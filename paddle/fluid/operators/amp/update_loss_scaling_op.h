@@ -121,6 +121,7 @@ class UpdateLossScalingKernel : public framework::OpKernel<T> {
       if (*found_inf_data) {
         phi::funcs::SetConstant<DeviceContext, T> set_constant;
         for (auto* out : outs) {
+          out->mutable_data<T>(dev_ctx.GetPlace());
           set_constant(dev_ctx, out, static_cast<T>(0));
         }
       }
