@@ -343,6 +343,10 @@ class Instruction {
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
 
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
+
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
