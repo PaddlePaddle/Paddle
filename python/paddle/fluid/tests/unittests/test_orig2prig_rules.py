@@ -138,7 +138,9 @@ class TestConcatOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'axis': 0}
 
-        self.orig2prim_args = (None, X, Y)
+        self.orig2prim_args = (
+            None,
+            (X, Y), )
         self.all_ops = ['concat', 'concat_p']
         self.out_map = {0: self.output['Out']}
 
@@ -194,7 +196,7 @@ class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {}
 
-        self.orig2prim_args = (X, Y)
+        self.orig2prim_args = ((X, Y), )
         self.all_ops = ['sum', 'add_p']
         self.out_map = {0: self.output['Out']}
 
