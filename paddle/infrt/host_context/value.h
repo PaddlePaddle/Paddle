@@ -91,6 +91,7 @@ using ValueVariantType =
             std::vector<::phi::DenseTensor*>,
             paddle::experimental::ScalarBase<::phi::DenseTensor>,
             paddle::experimental::IntArrayBase<::phi::DenseTensor>,
+            std::vector<const ::phi::MetaTensor*>,
             std::vector<::phi::MetaTensor*>,
             ::phi::MetaConfig,
             paddle::experimental::Backend,

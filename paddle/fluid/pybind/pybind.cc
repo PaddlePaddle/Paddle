@@ -545,6 +545,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
   BindEager(&m);
+  BindEagerStringTensor(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -2940,6 +2941,8 @@ All parameter, weight, gradient are variables in Paddle.
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
   m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_default_kernel_signatures",
+        []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);

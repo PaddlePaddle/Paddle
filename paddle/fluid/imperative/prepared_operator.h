@@ -154,7 +154,7 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             const framework::KernelSignature& kernel_signature,
+             framework::KernelSignature&& kernel_signature,
              const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
@@ -206,7 +206,7 @@ class PreparedOp {
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
-  phi::Kernel pt_kernel_;
+  const phi::Kernel& pt_kernel_;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -289,7 +289,7 @@ void BuildDygraphPhiKernelContext(
       }
     }
 
-    auto ins_vector = it->second;
+    auto& ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -587,7 +587,7 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
     auto& ins_vector = ins.at(input_names[i]);
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      auto var = ins_vector[offset];
+      auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
