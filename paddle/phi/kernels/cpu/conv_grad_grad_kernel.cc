@@ -39,11 +39,11 @@ void Conv3DGradGradKernel(const Context& ctx,
                           DenseTensor* input_grad,
                           DenseTensor* filter_grad) {
   ConvGradGradKernel<T>(ctx,
-                        input_grad_grad,
-                        filter_grad_grad,
-                        out_grad,
                         input,
                         filter,
+                        out_grad,
+                        input_grad_grad,
+                        filter_grad_grad,
                         strides,
                         paddings_t,
                         padding_algorithm,
@@ -53,9 +53,9 @@ void Conv3DGradGradKernel(const Context& ctx,
                         use_addto,
                         workspace_size_MB,
                         exhaustive_search_t,
-                        out_grad_grad,
                         input_grad,
-                        filter_grad);
+                        filter_grad,
+                        out_grad_grad);
 }
 
 }  // namespace phi
