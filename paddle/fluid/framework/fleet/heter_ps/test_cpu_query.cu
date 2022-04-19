@@ -82,7 +82,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
              3 * sizeof(int),
              cudaMemcpyDeviceToHost);  // 3, 1, 3
 
-  //{0,9} or {9,0} is expected for key 0
+  //{1,9} or {9,1} is expected for key 0
   //{0,2} or {2,0} is expected for key 1
   //{1,3} or {3,1} is expected for key 2
   for (int i = 0; i < 3; i++) {
