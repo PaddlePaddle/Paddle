@@ -27,8 +27,8 @@ enum MessageType {
 }
 
 message InterceptorMessage {
-  optional int64 src_id = 1 [ default = 0 ];
-  optional int64 dst_id = 2 [ default = 0 ];
+  optional sint64 src_id = 1 [ default = 0 ];
+  optional sint64 dst_id = 2 [ default = 0 ];
   optional MessageType message_type = 3 [ default = RESET ];
   optional bool ctrl_message = 4 [ default = false ];
   optional int64 scope_idx = 5 [ default = 0 ];

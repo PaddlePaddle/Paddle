@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/core/allocator.h"
 
 #ifdef INFRT_WITH_GPU
@@ -40,12 +41,8 @@ class GpuPhiAllocator : public phi::Allocator {
   static void deleter(phi::Allocation* ptr) { cudaFree(ptr->ptr()); }
 
   AllocationPtr Allocate(size_t bytes_size) {
-    void* ptr;
-    cudaMalloc(&ptr, bytes_size);
-    return AllocationPtr(
-        new phi::Allocation(
-            ptr, bytes_size, phi::Place(phi::AllocationType::GPU)),
-        deleter);
+    return paddle::memory::Alloc(phi::Place(phi::AllocationType::GPU),
+                                 bytes_size);
   }
 };
 #endif
