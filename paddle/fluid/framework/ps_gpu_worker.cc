@@ -131,7 +131,7 @@ void PSGPUWorker::TrainFiles() {
   int cur_batch;
   int batch_cnt = 0;
 
-  platform::SetDeviceId(thread_id_);
+  platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -228,7 +228,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
-  platform::SetDeviceId(thread_id_);
+  platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     timeline.Pause();
