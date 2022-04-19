@@ -194,6 +194,17 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
+    if (tensor_dims.size() == 0) {
+      py_dims[0] = 0;
+      py_strides[0] = 0;
+      PyObject* array = api.PyArray_NewFromDescr_(
+          api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,
+          py_dims, py_strides, nullptr,
+          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+          nullptr);
+      return array;
+    }
     return array;
   }
 

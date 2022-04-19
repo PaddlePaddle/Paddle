@@ -102,9 +102,6 @@ phi::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
   auto dims = impl_->dims();
-  if (dims.size() == 1 && dims.at(0) == 0) {
-    return {};
-  }
   return phi::vectorize<int64_t>(dims);
 }
 

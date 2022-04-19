@@ -60,7 +60,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             bool persistable = false, int stop_gradient = -1,
                             framework::proto::VarType::Type dtype =
                                 paddle::framework::proto::VarType::FP32,
-                            const std::vector<int>& dims = {},
+                            const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);
@@ -73,7 +73,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
     std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
-    if (dims.empty()) {
+    if (dims.size() == 1 && dims[0] == 0) {
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
       dense_tensor = std::make_shared<phi::DenseTensor>(
           allocation_ptr,
