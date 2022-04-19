@@ -102,6 +102,8 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
+  ASSERT_EQ(predictor->GetTRTNoSupportOpNames().size(), 0UL);
+  ASSERT_EQ(predictor->GetTRTSubGraphNum(), 0);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
