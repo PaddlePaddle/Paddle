@@ -158,6 +158,7 @@ class HeterComm {
 #endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
+
     KeyType* all_keys;
     GradType* all_grads;
 
@@ -228,5 +229,7 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
+
 #endif

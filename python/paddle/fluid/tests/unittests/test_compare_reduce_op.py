@@ -28,12 +28,13 @@ def create_test_not_equal_class(op_type, typename, callback):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
+            self.python_api = paddle.tensor.equal_all
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {'Out': z}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
@@ -46,12 +47,13 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
             z = callback(x, y)
+            self.python_api = paddle.tensor.equal_all
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {'Out': z}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
@@ -63,12 +65,13 @@ def create_test_equal_class(op_type, typename, callback):
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
+            self.python_api = paddle.tensor.equal_all
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {'Out': z}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
@@ -82,12 +85,13 @@ def create_test_dim1_class(op_type, typename, callback):
             x = np.array([True, False, True]).astype(typename)
             x = np.array([False, False, True]).astype(typename)
             z = callback(x, y)
+            self.python_api = paddle.tensor.equal_all
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {'Out': z}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=True)
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
