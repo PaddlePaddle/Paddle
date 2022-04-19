@@ -411,15 +411,15 @@ def div_jvp(op, x_dot, y_dot):
 
 @REGISTER_JVP('sqrt_p')
 def sqrt_jvp(op, x_dot):
-    x, = op_position_inputs(op)
-    c2 = fill_const(value=2.0, shape=x.shape, dtype=x.dtype)
-    y_dot = div(x_dot, mul(c2, sqrt(x)))
+    y = op_position_output(op)
+    c2 = fill_const(value=2.0, shape=y.shape, dtype=y.dtype)
+    y_dot = div(x_dot, mul(c2, y))
     return y_dot
 
 
 @REGISTER_JVP('tanh_p')
 def tanh_jvp(op, x_dot):
-    y, = op_position_inputs(op)
+    y = op_position_output(op)
     c1 = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, sub(c1, mul(y, y)))
     return y_dot

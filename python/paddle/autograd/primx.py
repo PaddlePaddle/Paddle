@@ -44,7 +44,8 @@ def topo_path(xs, ys, block=None):
         ys: a list|tuple of vars as sink
         block: the program block containing the path, optional
     Returns:
-        path: a list of ops
+        (path, unused_xs, unreached_ys): a tuple comprised of the resulting op
+        path, the unused variables in `xs`, and the unreached variables in `ys`
     """
 
     if block is None:
@@ -55,14 +56,16 @@ def topo_path(xs, ys, block=None):
     reached_vars = OrderedDict()
     used_vars = OrderedDict()
 
-    # Initialized reached vars
+    # Initialize reached vars
     for x in xs:
         assert x is None or x.block == block
         reached_vars[id(x)] = x
 
-    # block.ops are supposedly in the order that preservers correct data dependence.
+    # Reaching test, returning whether an op is reached from the given input
     reaching = lambda op: any(id(v) in reached_vars for v in get_input_vars(op))
 
+    # block.ops are supposedly in the order that preserves correct data
+    # dependence.
     # Forward pass to identify all reached variables and ops
     for op in block.ops:
         if reaching(op):
@@ -70,10 +73,10 @@ def topo_path(xs, ys, block=None):
             for var in get_output_vars(op):
                 reached_vars[id(var)] = var
 
-    # Backward pass to find all used variables
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
     back_reaching = lambda op: any(id(out) in used_vars for out in get_output_vars(op))
 
+    # Backward pass to find all used variables
     for op in reversed(path):
         if back_reaching(op):
             backpath.append(op)
@@ -336,8 +339,9 @@ class Transform(object):
             out_bar_rec = self.dot2bar_rec(out, defaults=out)
             ins_bar_rec = _transpose(op, is_dot, out_bar_rec)
 
-            # TODO(Tongxin): this is hacking. Tuple implies the Transpose rule 
-            # returns multiple entities
+            # TODO(Tongxin): this is hacky. Tuple implies the Transpose rule
+            # returns multiple entities. There should be better ways to handle
+            # outputs.
             if isinstance(ins_bar_rec, tuple):
                 ins_bar_rec = list(ins_bar_rec)
             else:
@@ -383,9 +387,8 @@ class Transform(object):
 
 
 def _gradients(ys, xs, ys_bar=None):
-    """ A drop-in replacement of paddle.gradients for computing
-    the gradients of `xs` against `ys` using primitive ops based
-    AD rules.
+    """ A drop-in replacement of paddle.gradients but instead computing
+    on primitive ops.
     
     Args:
         ys: the target tensor or tensors
