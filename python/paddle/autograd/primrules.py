@@ -493,14 +493,14 @@ def slice_assign_jvp(op, x_dot, y_dot):
 
 
 @REGISTER_JVP('gather_p')
-def gather_jvp(op, x_dot):
+def gather_jvp(op, x_dot, indextensor_dot):
     _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, indextensor, axis=axis)
 
 
 @REGISTER_JVP('scatter_add_p')
-def scatter_add_jvp(op, x_dot, y_dot):
+def scatter_add_jvp(op, x_dot, y_dot, indextensor_dot):
     _, _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
@@ -662,5 +662,5 @@ def scatter_add_transpose(op, check_dot, z_bar):
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
     x_bar = scatter_add(z_bar, zeros, indextensor, axis=axis)
     y_bar = gather(z_bar, indextensor, axis=axis)
-    indextensor_bar = None   
+    indextensor_bar = None
     return x_bar, y_bar, indextensor_bar
