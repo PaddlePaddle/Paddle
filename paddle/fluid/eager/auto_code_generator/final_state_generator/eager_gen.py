@@ -120,7 +120,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
-  std::string name() override {{ return \" {} \"; }}
+  std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
       {}
@@ -730,11 +730,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             is_optional = (name in optional_inputs)
 
             if is_fwd_input:
-                need_input_data = "false" if name in self.no_need_buffers else "true"
                 if is_optional:
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, {need_input_data});"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, true);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
@@ -804,7 +803,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_retain_grad_str = "\n".join(set_retain_grad_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
+        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
@@ -1471,9 +1470,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         returns_str += f"{indent}return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
-
-        if len(grad_node_creation_str) == 0:
-            grad_node_creation_str = f"if(create_graph) VLOG(3) << \"Higher order grad node for {grad_node_name} has not been implemented yet.\";"
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,

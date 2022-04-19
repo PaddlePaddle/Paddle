@@ -315,8 +315,8 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
-void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
-                           const std::vector<MetaTensor*>& outputs_grad,
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad) {
   PADDLE_ENFORCE_GT(outputs_grad.size(),
                     1,
@@ -329,7 +329,7 @@ void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
   }
 }
 
-void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad) {
   PADDLE_ENFORCE_EQ(

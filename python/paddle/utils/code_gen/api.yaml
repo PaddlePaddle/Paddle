@@ -59,6 +59,12 @@
   kernel :
     func : adamax
 
+- api : adamw
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  optional : master_param, skip_update
+  invoke : adamw_impl(param, grad, learning_rate, moment1, moment2, beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon, lr_ratio, coeff, with_decay, lazy_mode, min_row_size_to_use_multithread, multi_precision, use_global_beta_pow)
+
 - api : add
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -456,7 +462,7 @@
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : DeformableConvInferMeta
   kernel :
     func : deformable_conv
@@ -789,6 +795,8 @@
     param : [x, value, dtype]
     data_type : dtype > x
     backend : place > x
+  data_transform :
+    skip_transform : x
 
 - api : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -1822,6 +1830,8 @@
     func : ShapeInferMeta
   kernel :
     func : shape, shape_sr
+  data_transform:
+    skip_transform : input
 
 # shard_index
 - api : shard_index
@@ -1898,6 +1908,8 @@
     func : SizeInferMeta
   kernel :
     func : size
+  data_transform:
+    skip_transform : x
 
 - api : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1933,6 +1945,7 @@
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
+  backward : split_grad
 
 - api : sqrt
   args : (Tensor x)
@@ -2182,7 +2195,7 @@
     data_type : x
 
 - api : unsqueeze
-  args : (Tensor x, IntArray axes)
+  args : (Tensor x, IntArray axis)
   output : Tensor(xshape), Tensor(out)
   infer_meta :
     func : UnsqueezeInferMeta

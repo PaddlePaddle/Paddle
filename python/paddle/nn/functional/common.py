@@ -1534,12 +1534,8 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_matmul(x, weight, False, False)
-
-        if bias is None:
-            return pre_bias
-
-        return _C_ops.final_state_add(pre_bias, bias)
+        #TODO(jiabin): using addmm for fast forward route 
+        return _C_ops.final_state_linear(x, weight, bias)
     else:
         if _in_legacy_dygraph():
             pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',

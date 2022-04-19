@@ -474,7 +474,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                         param] == "const std::vector<Tensor>&":
                     meta_tensor_code = meta_tensor_code + f"""
 {code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
 {code_indent}  }}
@@ -744,7 +744,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::Operator, 1);
+{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
@@ -771,7 +771,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::Operator, 1);
+{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
