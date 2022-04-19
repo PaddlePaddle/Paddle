@@ -362,13 +362,13 @@ SpmmPluginDynamic::SpmmPluginDynamic(
   precision_size_ = getElementSize(precision);
   element_size_ = (precision_ == DataType::kINT8 ? 4 : precision_size_);
   // Each plugin has a copy of compressed weight
-  weight_compressed_ = new char[compressed_size];
-  std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
-              static_cast<char*>(weight_compressed_));
-  CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
-                        compressed_size))
-  CHECK_CUDA(cudaMemcpy(weight_compressed_dev_, weight_compressed_,
-                        compressed_size, cudaMemcpyHostToDevice))
+  // weight_compressed_ = new char[compressed_size];
+  // std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
+  //             static_cast<char*>(weight_compressed_));
+  // CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
+  //                       compressed_size))
+  // CHECK_CUDA(cudaMemcpy(weight_compressed_dev_, weight_compressed_,
+  //                       compressed_size, cudaMemcpyHostToDevice))
 
   if (precision_ == DataType::kINT8) {
     weight_scale_ = new float[out_dim_];
@@ -469,7 +469,7 @@ IPluginV2DynamicExt* SpmmPluginDynamic::clone() const noexcept {
         weight_compressed_, compressed_size_, bias_, is_configured_, m_max_,
         optim_alg_, activation_, gelu_scale_);
     p->setPluginNamespace(namespace_.c_str());
-
+    p->weight_compressed_dev_ = weight_compressed_dev_;
     return p;
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
@@ -749,7 +749,13 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
 
 void SpmmPluginDynamic::destroy() noexcept {
   delete[] reinterpret_cast<char*> weight_compressed_;
-  CHECK_CUDA(cudaFree(weight_compressed_dev_))
+
+  if (weight_compressed_dev_) {
+    cudaFree(weight_compressed_dev_);
+    weight_compressed_dev_ = nullptr;
+  }
+
+  // CHECK_CUDA(cudaFree(weight_compressed_dev_))
   if (has_bias_) {
     CHECK_CUDA(cudaFree(bias_dev_))
   }
