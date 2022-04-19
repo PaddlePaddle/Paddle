@@ -541,6 +541,10 @@ class DataLoader(object):
         self._persistent_workers = persistent_workers
         self._iterator = None
 
+    @AuToTune
+    def tune(self):
+        pass
+
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:
             raise ValueError("length of IterableDataset not supported")
@@ -562,7 +566,6 @@ class DataLoader(object):
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    @AuToTune
     def __call__(self):
         return self.__iter__()
 
