@@ -245,24 +245,22 @@ class PADDLE_API Tensor final {
    */
   bool is_sparse_csr_tensor() const;
 
+  /**
+   * @brief Determine whether tensor is StringTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_string_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
    * @brief Return the place (device) of Tensor.
-   * This is a deprecated method and may be removed in the future!
    *
    * @return Place
    */
   Place place() const;
-
-  /**
-   * @brief Return the place (device) of Tensor.
-   *
-   * This is a deprecated method and may be removed in the future!!!
-   *
-   * @return Place
-   */
-  Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU

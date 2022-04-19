@@ -57,7 +57,7 @@ namespace tensorrt {
   // TODO(wilber): The build option shoule be fiiled from mlir info.
   backends::tensorrt::BuildOptions options;
   options.max_batch = 4;
-  options.workspace = 1024;
+  options.workspace = 128;
 
   // Parse mlir Region which only has one block.
   mlir::Operation& operation = *create_engine_op.operation;

@@ -122,13 +122,22 @@ class XPUTestRNNOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(
                 self.place, atol=0.01,
                 no_check_set=['Reserve', 'DropoutState'])
+
+        def test_grad(self):
+            if not self.is_test:
+                var_name_list = self.get_weight_names()
+                grad_check_list = ['Input', 'init_h', 'init_c']
+                grad_check_list.extend(var_name_list)
+                self.check_grad_with_place(self.place,
+                                           set(grad_check_list),
+                                           ['Out', 'last_hidden', 'last_cell'])
 
         def init_size(self):
             self.seq_length = 12

@@ -19,13 +19,12 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
+#include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
 #include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -118,27 +117,10 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
-}
-
-// TODO(zhangkaihuo): Use an op to realize the function of FlattenIndices
-template <typename IntT>
-__global__ void FlattenIndicesKernel(const IntT* indices,
-                                     const IntT* sparse_offsets,
-                                     const int64_t non_zero_num,
-                                     const int64_t sparse_dim,
-                                     IntT* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  phi::funcs::sparse::FlattenIndices<IntT>(indices,
-                                           sparse_offsets,
-                                           non_zero_num,
-                                           sparse_dim,
-                                           tid,
-                                           gridDim.x * blockDim.x,
-                                           out);
 }
 
 template <typename T, typename IntT>
@@ -193,7 +175,8 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   IntT* bound_out_ptr = bound_out.data<IntT>();
 
   // 1. calc the offsets of per dim
-  phi::funcs::sparse::CalcOffsetsPerDim(x.dims(), sparse_dim, &sparse_offsets);
+  phi::funcs::sparse::CalcOffsetsPerDim(
+      x.dims(), sparse_dim, sparse_offsets.data());
   // 2. copy sparse_offsets to device
   phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
                                      sparse_offsets.data(),
@@ -208,25 +191,27 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   // 3. flatten x indices and mask indices
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_indexs.numel(), 1);
-  FlattenIndicesKernel<<<config.block_per_grid,
-                         config.thread_per_block,
-                         0,
-                         dev_ctx.stream()>>>(x.non_zero_indices().data<IntT>(),
-                                             d_sparse_offsets.data<IntT>(),
-                                             x_indexs.numel(),
-                                             sparse_dim,
-                                             x_indexs_ptr);
+  phi::funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
+                                             config.thread_per_block,
+                                             0,
+                                             dev_ctx.stream()>>>(
+      x.non_zero_indices().data<IntT>(),
+      d_sparse_offsets.data<IntT>(),
+      x_indexs.numel(),
+      sparse_dim,
+      x_indexs_ptr);
 
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
-  FlattenIndicesKernel<<<config.block_per_grid,
-                         config.thread_per_block,
-                         0,
-                         dev_ctx.stream()>>>(mask_indices.data<IntT>(),
-                                             d_sparse_offsets.data<IntT>(),
-                                             mask_indexs.numel(),
-                                             sparse_dim,
-                                             mask_indexs_ptr);
+  phi::funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
+                                             config.thread_per_block,
+                                             0,
+                                             dev_ctx.stream()>>>(
+      mask_indices.data<IntT>(),
+      d_sparse_offsets.data<IntT>(),
+      mask_indexs.numel(),
+      sparse_dim,
+      mask_indexs_ptr);
 // 4. call thrust::lower_bound
 #ifdef PADDLE_WITH_HIP
   thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
@@ -265,7 +250,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));

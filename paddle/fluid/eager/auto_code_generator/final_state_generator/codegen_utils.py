@@ -22,9 +22,17 @@ import os
 ### Global Variables ###
 ########################
 ops_to_fill_zero_for_empty_grads = set([
-    "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
-    "sigmoid_double_grad", "sigmoid_triple_grad", "add_double_grad",
-    "add_triple_grad"
+    "split_grad",
+    "rnn_grad",
+    "matmul_double_grad",
+    "matmul_triple_grad",
+    "sigmoid_double_grad",
+    "sigmoid_triple_grad",
+    "add_double_grad",
+    "add_triple_grad",
+    "multiply_double_grad",
+    "multiply_triple_grad",
+    "conv2d_grad_grad",
 ])
 
 # For API dispatch used at python-level
@@ -37,7 +45,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
-    'Place' : 'paddle::experimental::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
