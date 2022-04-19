@@ -16,6 +16,7 @@
 #ifdef PADDLE_WITH_HETERPS
 #include <iostream>
 #include <memory>
+#include <string>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -41,6 +42,24 @@ struct GpuPsCommGraph {
         node_list(node_list_),
         neighbor_size(neighbor_size_),
         node_size(node_size_) {}
+  void display_on_cpu() {
+    VLOG(0) << "neighbor_size = " << neighbor_size;
+    VLOG(0) << "node_size = " << node_size;
+    for (int i = 0; i < neighbor_size; i++) {
+      VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
+    }
+    for (int i = 0; i < node_size; i++) {
+      VLOG(0) << "node i " << node_list[i].node_id
+              << " neighbor_size = " << node_list[i].neighbor_size;
+      std::string str;
+      int offset = node_list[i].neighbor_offset;
+      for (int j = 0; j < node_list[i].neighbor_size; j++) {
+        if (j > 0) str += ",";
+        str += std::to_string(neighbor_list[j + offset]);
+      }
+      VLOG(0) << str;
+    }
+  }
 };
 
 /*
