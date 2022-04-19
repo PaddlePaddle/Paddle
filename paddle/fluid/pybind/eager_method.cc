@@ -1497,11 +1497,11 @@ static PyObject* tensor__grad_name(TensorObject* self, PyObject* args,
   EAGER_TRY
   paddle::experimental::Tensor* grad =
       egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE(grad != nullptr,
-                 paddle::platform::errors::Fatal(
-                     "Detected NULL grad"
-                     "Please check if you have manually cleared"
-                     "the grad inside autograd_meta"));
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad."
+                        "Please check if you have manually cleared"
+                        "the grad inside autograd_meta"));
   return ToPyObject(grad->name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1511,11 +1511,11 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
   EAGER_TRY
   paddle::experimental::Tensor* grad =
       egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE(grad != nullptr,
-                 paddle::platform::errors::Fatal(
-                     "Detected NULL grad"
-                     "Please check if you have manually cleared"
-                     "the grad inside autograd_meta"));
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad."
+                        "Please check if you have manually cleared"
+                        "the grad inside autograd_meta"));
   return ToPyObject(*grad);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
