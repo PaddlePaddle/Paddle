@@ -121,6 +121,9 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -129,10 +132,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   // clear the listener after run
-  if (global_scope_->GetMutableScope()->HasListener(
-          global_scope_->Listener())) {
-    global_scope_->GetMutableScope()->DelListener(global_scope_->Listener());
-  }
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -168,6 +168,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
 
   } else {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -176,10 +179,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   }
 
   // clear the listener after run
-  if (global_scope_->GetMutableScope()->HasListener(
-          global_scope_->Listener())) {
-    global_scope_->GetMutableScope()->DelListener(global_scope_->Listener());
-  }
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
