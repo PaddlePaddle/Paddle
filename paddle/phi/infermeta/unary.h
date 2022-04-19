@@ -421,8 +421,8 @@ void UniqueRawInferMeta(const MetaTensor& x,
 
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
-                        MetaTensor* xshape,
                         MetaTensor* out,
+                        MetaTensor* xshape,
                         MetaConfig config = MetaConfig());
 
 void UnStackInferMeta(const MetaTensor& x,
