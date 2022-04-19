@@ -153,8 +153,10 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   multi_mf_dim_ = resource->multi_mf();
   for (int i = 0; i < resource_->total_gpu(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    // allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
+    //     2, 1, 20, (size_t)-1, false, false));  // NOLINT
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-        2, 1, 20, (size_t)-1, false, false));  // NOLINT
+        8, 1, (unsigned int)-1, (size_t)-1, false, false));
     if (!multi_mf_dim_) {
       VLOG(0) << "yxf:: using table";
       auto table = new Table(capacity / load_factor_);

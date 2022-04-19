@@ -2079,8 +2079,13 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 #ifdef _LINUX
+  // VLOG(0) << "yxf::all slot info: ";
+  // for (auto& s : all_slots_info_) {
+  //   VLOG(0) << "slot: " << s.slot << " idx: " << s.slot_value_idx << std::endl;
+  // }
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
+  VLOG(0) << "yxf so loaded";
   CHECK(parser != nullptr);
   // get slotrecord object
   auto pull_record_func = [this](std::vector<SlotRecord>& record_vec,
@@ -2117,6 +2122,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+      VLOG(0) << "yxf::start pases";
       is_ok = parser->ParseFileInstance(
           [this](char* buf, int len) {
             return fread(buf, sizeof(char), len, this->fp_.get());
