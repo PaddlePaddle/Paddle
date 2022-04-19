@@ -2321,7 +2321,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             else:
                 raise ValueError(
                     "value of label should be number between 0 and 1, but received {}".
-                        format(label[i].item()))
+                    format(label[i].item()))
 
         if reduction == 'none':
             return scores

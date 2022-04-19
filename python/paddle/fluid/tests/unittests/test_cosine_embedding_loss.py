@@ -155,17 +155,6 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         paddle.disable_static()
         input1 = paddle.to_tensor(self.input1_np.astype(np.float32))
         input2 = paddle.to_tensor(self.input2_np.astype(np.float32))
-        label = paddle.to_tensor(self.label_np.astype(np.int64))
-        result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
-        self.assertTrue(np.allclose(result.numpy(), expected))
-
         label = paddle.to_tensor(self.label_np.astype(np.float32))
         result = paddle.nn.functional.cosine_embedding_loss(
             input1, input2, label, margin=0.5, reduction='mean')
@@ -245,10 +234,10 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
 
 class TestClassCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
-        self.input1_np = np.random.random(size=(10, 3)).astype(np.float64)
-        self.input2_np = np.random.random(size=(10, 3)).astype(np.float64)
+        self.input1_np = np.random.random(size=(5, 3)).astype(np.float64)
+        self.input2_np = np.random.random(size=(5, 3)).astype(np.float64)
         self.label_np = np.random.randint(
-            low=0, high=2, size=10).astype(np.int32)
+            low=0, high=2, size=5).astype(np.int32)
 
     def run_dynamic(self):
         input1 = paddle.to_tensor(self.input1_np)
@@ -267,15 +256,15 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 
-    def run_static(self, use_gpu=False):
-        input1 = static.data(name='input1', shape=[10, 3], dtype='float64')
-        input2 = static.data(name='input2', shape=[10, 3], dtype='float64')
-        label = static.data(name='label', shape=[10], dtype='int32')
+    def run_static(self):
+        input1 = static.data(name='input1', shape=[5, 3], dtype='float64')
+        input2 = static.data(name='input2', shape=[5, 3], dtype='float64')
+        label = static.data(name='label', shape=[5], dtype='int32')
         CosineEmbeddingLoss = paddle.nn.loss.CosineEmbeddingLoss(
             margin=0.5, reduction='mean')
         result = CosineEmbeddingLoss(input1, input2, label)
 
-        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+        place = paddle.CPUPlace()
         exe = static.Executor(place)
         exe.run(static.default_startup_program())
         static_result = exe.run(feed={
@@ -300,17 +289,6 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
 
         with static.program_guard(static.Program()):
             self.run_static()
-
-    def test_gpu(self):
-        if not paddle.is_compiled_with_cuda():
-            return
-
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_dynamic()
-        paddle.enable_static()
-
-        with static.program_guard(static.Program()):
-            self.run_static(use_gpu=True)
 
     def test_errors(self):
         def test_margin_error():
