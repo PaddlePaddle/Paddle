@@ -267,6 +267,20 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void SaveOptimModel(const std::string &dir);
 
+  ///
+  /// \brief Get the trt not support op names
+  ///
+  /// \return op names
+  ///
+  std::vector<std::string> GetTRTNoSupportOpNames();
+
+  ///
+  /// \brief Get the trt subgraph number
+  ///
+  /// \return subgraph number
+  ///
+  int GetTRTSubGraphNum();
+
  protected:
   ///
   /// \brief Prepare predictor's required programs, including loading model

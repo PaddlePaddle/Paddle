@@ -1681,6 +1681,34 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
+std::vector<std::string> AnalysisPredictor::GetTRTNoSupportOpNames() {
+  std::vector<std::string> op_names;
+#if PADDLE_WITH_TENSORRT
+  if (!config_.tensorrt_engine_enabled()) {
+    LOG(ERROR) << "GetTRTNoSupportOpNames needs to enable TRT.";
+    return op_names;
+  }
+  for (auto *op : inference_program_->Block(0).AllOps()) {
+    if (op->Type() == "tensorrt_engine")
+      continue;
+    else if (op->Type() == "feed" || op->Type() == "fetch")
+      continue;
+    else
+      op_names.push_back(op->Type());
+  }
+#else
+  LOG(ERROR) << "GetTRTNoSupportOpNames needs to enable TRT.";
+#endif
+  return op_names;
+}
+
+int AnalysisPredictor::GetTRTSubGraphNum() {
+  int nums = 0;
+  for (auto *op : inference_program_->Block(0).AllOps())
+    if (op->Type() == "tensorrt_engine") nums += 1;
+  return nums;
+}
+
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {
@@ -1817,6 +1845,12 @@ void Predictor::ClearIntermediateTensor() {
 }
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
+
+std::vector<std::string> Predictor::GetTRTNoSupportOpNames() {
+  return predictor_->GetTRTNoSupportOpNames();
+}
+
+int Predictor::GetTRTSubGraphNum() { return predictor_->GetTRTSubGraphNum(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

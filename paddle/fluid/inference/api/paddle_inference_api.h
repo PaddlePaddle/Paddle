@@ -149,6 +149,20 @@ class PD_INFER_DECL Predictor {
   ///
   uint64_t TryShrinkMemory();
 
+  ///
+  /// \brief Get the trt not support op names
+  ///
+  /// \return op names
+  ///
+  std::vector<std::string> GetTRTNoSupportOpNames();
+
+  ///
+  /// \brief Get the trt subgraph number
+  ///
+  /// \return subgraph number
+  ///
+  int GetTRTSubGraphNum();
+
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
   friend class paddle_infer::experimental::InternalUtils;

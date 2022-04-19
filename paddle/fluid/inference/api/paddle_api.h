@@ -295,6 +295,20 @@ class PD_INFER_DECL PaddlePredictor {
     return "NotImplemented";
   }
 
+  ///
+  /// \brief Get the trt not support op names
+  ///
+  /// \return op names
+  ///
+  virtual std::vector<std::string> GetTRTNoSupportOpNames() { return {}; }
+
+  ///
+  /// \brief Get the trt subgraph number
+  ///
+  /// \return subgraph number
+  ///
+  virtual int GetTRTSubGraphNum() { return 0; }
+
   /// \brief Base class for NativeConfig and AnalysisConfig.
   struct Config {
     std::string model_dir; /*!< path to the model directory. */

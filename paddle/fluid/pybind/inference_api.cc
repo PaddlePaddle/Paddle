@@ -822,6 +822,9 @@ void BindPaddleInferPredictor(py::module *m) {
            })
       .def("clone", &paddle_infer::Predictor::Clone)
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
+      .def("get_trt_no_support_op_names",
+           &paddle_infer::Predictor::GetTRTNoSupportOpNames)
+      .def("get_trt_subgraph_num", &paddle_infer::Predictor::GetTRTSubGraphNum)
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor);
 }
