@@ -229,7 +229,7 @@ __global__ void update_kernel(Table& table, const KeyType* const keys,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
-  xpu_malloc((void**)(&container_), sizeof(XPUCacheArray<KeyType, ValType>));
+  xpu_malloc(reinterpret_cast<void**>(&container_), sizeof(XPUCacheArray<KeyType, ValType>));
   xpu_memcpy((void*)container_, &tmp_container,
              sizeof(XPUCacheArray<KeyType, ValType>), XPU_HOST_TO_DEVICE);
   rwlock_.reset(new phi::RWLock);
