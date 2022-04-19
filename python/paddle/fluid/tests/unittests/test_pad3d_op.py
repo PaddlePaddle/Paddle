@@ -175,7 +175,7 @@ class TestCase10(TestPad3dOp):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 4, 5]
         self.mode = "constant"
-        self.data_format = "NCDHW"
+        self.data_format = "NDHWC"
         self.value = 1.0
         self.variable_paddings = True
 
