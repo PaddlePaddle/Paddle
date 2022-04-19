@@ -606,6 +606,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // datatype and dims but filled with 1.0
       node_input_buffers_dict[grad_node]->CopyValueFromTensor(
           input_info.first, input_info.second, tensor, true /*fill_one=true*/);
+      VLOG(7) << "yoki: backward1 node_input_buffers_dict: " << node_input_buffers_dict[grad_node]->Buffers()[input_info.first][input_info.second].impl().use_count();
     }
 
     // Prepare queue, potential startup_nodes
@@ -688,6 +689,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
+    VLOG(7) << "yoki: backward2 node_input_buffer: " << node_input_buffer->Buffers()[0][0].impl().use_count();
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers(), create_graph);
 

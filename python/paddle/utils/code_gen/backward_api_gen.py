@@ -17,7 +17,7 @@ import yaml
 import argparse
 import re
 
-from api_base import BaseAPI
+from api_base import BaseAPI, PREFIX_TENSOR_NAME
 
 
 class BackwardAPI(BaseAPI):
@@ -122,6 +122,16 @@ class BackwardAPI(BaseAPI):
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
+            if not inplace_flag and self.view_map is not None and self.outputs[
+                    'names'][0] in self.view_map:
+                output_create = output_create + f"""
+{code_indent}  VLOG(10) << "{self.view_map[self.outputs['names'][0]]} use_count: " << {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}.use_count();
+{code_indent}  //if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}.use_count() == 1 && {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]}->initialized()) {{
+{code_indent}    kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}    kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
+{code_indent}    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
+{code_indent}  //}}"""
+
         elif len(output_type_list) > 1:
             output_create = f"""
 {code_indent}  {self.outputs['return_type']} api_output({len(output_type_list)});"""
@@ -153,6 +163,16 @@ class BackwardAPI(BaseAPI):
                         f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, &api_output[{i}]);"""
+
+                if not inplace_flag and self.view_map is not None and self.outputs[
+                        'names'][i] in self.view_map:
+                    output_create = output_create + f"""
+{code_indent}  VLOG(10) << "{self.view_map[self.outputs['names'][i]]} use_count: " << {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}.use_count();
+{code_indent}  //if ({PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}.use_count() == 1 && {PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]}->initialized()) {{
+{code_indent}    kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}    kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+{code_indent}    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
+{code_indent}  //}}"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -231,7 +251,135 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
         header_file.write(bw_api.gene_api_declaration())
-        source_file.write(bw_api.gene_api_code())
+        if bw_api.api == 'reshape_grad':
+            source_file.write("""
+PADDLE_API Tensor reshape_grad(const Tensor& xshape, const Tensor& out_grad) {
+
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  kernel_backend = ParseBackend(out_grad);
+
+  kernel_layout = ParseLayout(out_grad);
+
+  kernel_data_type = ParseDataType(out_grad);
+
+  if (kernel_backend == Backend::UNDEFINED
+        || kernel_layout == DataLayout::UNDEFINED
+        || kernel_data_type == DataType::UNDEFINED ) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(xshape, out_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "reshape_grad API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "reshape_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "reshape_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_xshape = TensorToDenseTensor(xshape);
+  VLOG(10) << "out_grad use_count1: " << out_grad.impl().use_count();
+  auto input_out_grad = PrepareData(out_grad, kernel.InputAt(1), {});
+  VLOG(10) << "out_grad use_count2: " << input_out_grad.use_count();
+
+  Tensor api_output;
+  auto kernel_out = SetKernelOutput(kernel_backend, &api_output);
+  VLOG(10) << "out_grad use_count3: " << input_out_grad.use_count();
+  //if (input_out_grad.use_count() == 1 && input_out_grad->initialized()) {
+    kernel_out->ShareBufferWith(*input_out_grad);
+    kernel_out->ShareInplaceVersionCounterWith(*input_out_grad);
+    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
+  //}
+  phi::MetaTensor meta_out(kernel_out);
+
+  phi::KernelWithXShapeInferMeta(MakeMetaTensor(*input_xshape), &meta_out);
+
+
+  using kernel_signature = void(*)(const platform::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  {
+    paddle::platform::RecordEvent kernel_record_event("reshape_grad compute", paddle::platform::TracerEventType::Operator, 1);
+    (*kernel_fn)(*dev_ctx, *input_out_grad, kernel_out);
+  }
+
+  return api_output;
+}
+""")
+        elif bw_api.api == 'cross_entropy_with_softmax_grad':
+            source_file.write("""
+PADDLE_API Tensor cross_entropy_with_softmax_grad(const Tensor& label, const Tensor& softmax, const Tensor& loss_grad, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis) {
+
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  kernel_data_type = ParseDataType(softmax);
+
+  if (kernel_backend == Backend::UNDEFINED
+        || kernel_layout == DataLayout::UNDEFINED
+        || kernel_data_type == DataType::UNDEFINED ) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(label, softmax, loss_grad);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "cross_entropy_with_softmax_grad API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "cross_entropy_with_softmax_grad", {kernel_backend, kernel_layout, kernel_data_type});
+  VLOG(6) << "cross_entropy_with_softmax_grad API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+  auto input_label = PrepareData(label, kernel.InputAt(0), {});
+  VLOG(10) << "yoki: input_softmax use_count1: " << softmax.impl().use_count();
+  auto input_softmax = PrepareData(softmax, kernel.InputAt(1), {});
+  VLOG(10) << "yoki: input_softmax use_count2: " << input_softmax.use_count();
+  auto input_loss_grad = PrepareData(loss_grad, kernel.InputAt(2), {});
+
+  Tensor api_output;
+  auto kernel_out = SetKernelOutput(kernel_backend, &api_output);
+  VLOG(10) << "input_softmax use_count3: " << input_softmax.use_count();
+  //if (input_softmax.use_count() == 1 && input_softmax->initialized()) {
+    kernel_out->ShareBufferWith(*input_softmax);
+    kernel_out->ShareInplaceVersionCounterWith(*input_softmax);
+    VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";
+  //}
+  phi::MetaTensor meta_out(kernel_out);
+
+  phi::CrossEntropyWithSoftmaxGradInferMeta(MakeMetaTensor(*input_label), MakeMetaTensor(*input_softmax), MakeMetaTensor(*input_loss_grad), soft_label, use_softmax, numeric_stable_mode, ignore_index, axis, &meta_out);
+
+
+  using kernel_signature = void(*)(const platform::DeviceContext&, const phi::DenseTensor&, const phi::DenseTensor&, const phi::DenseTensor&, bool, bool, bool, int, int, phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  {
+    paddle::platform::RecordEvent kernel_record_event("cross_entropy_with_softmax_grad compute", paddle::platform::TracerEventType::Operator, 1);
+    (*kernel_fn)(*dev_ctx, *input_label, *input_softmax, *input_loss_grad, soft_label, use_softmax, numeric_stable_mode, ignore_index, axis, kernel_out);
+  }
+
+  return api_output;
+}
+""")
+        else:
+            source_file.write(bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

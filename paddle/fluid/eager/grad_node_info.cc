@@ -373,6 +373,7 @@ GradNodeBase::ApplyGradientHooks(
         outs[i][j] = tensors[i][j];
       }
       CheckTensor(tensors[i][j], outs[i][j]);
+      VLOG(7) << "yoki: grad_node_info: " << outs[i][j].impl().use_count();
     }
   }
 

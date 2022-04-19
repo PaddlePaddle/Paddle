@@ -271,6 +271,7 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
+DECLARE_bool(retain_grad_for_all_tensor);
 
 {}
 """
@@ -1472,6 +1473,103 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_function_call_str, get_outputs_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
+        
+        if forward_api_name == 'reshape':
+            self.node_definition_str = """
+std::vector<std::vector<paddle::experimental::Tensor>> FinalGradNodereshape::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {
+    // Fill Zero For GradIn Tensors
+
+
+    // Apply Gradient Hooks
+    VLOG(10) << "yoki: FLAGS_retain_grad_for_all_tensor: " << FLAGS_retain_grad_for_all_tensor;
+    VLOG(10) << "yoki: reshape_grad_node use_count1: " << grads[0][0].impl().use_count();
+    auto hooked_grads = ApplyGradientHooks(grads);
+    VLOG(10) << "yoki: reshape_grad_node hooked_grads use_count2: " << hooked_grads[0][0].impl().use_count();
+    
+    // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+   auto xshape = egr::EagerUtils::RecoverTensorWrapper(&this->xshape_, this->shared_from_this());
+   auto& out_grad = hooked_grads[0][0];
+   VLOG(10) << "yoki: reshape_grad_node out_grad use_count3: " << out_grad.impl().use_count();
+
+    // Call grad_api function
+    VLOG(3) << "Final State Running: " << "FinalGradNodereshape"; 
+   auto grad_api_result = paddle::experimental::reshape_grad(xshape, out_grad);
+
+    // Get Output
+   auto& x_grad = grad_api_result;
+
+
+    // Get GradIn autograd_meta
+
+
+    // Get GradOut autograd_meta
+
+    
+    // Compute Require Grad
+
+    
+    // Create Grad Node
+if(create_graph) VLOG(3) << "Higher order grad node for FinalGradNodereshape has not been implemented yet.";
+
+    // Return 
+   std::vector<std::vector<paddle::experimental::Tensor>> returns(1);
+   returns[0] = { x_grad };
+   if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+   return returns;
+
+
+}
+"""
+        elif forward_api_name == 'cross_entropy_with_softmax':
+            self.node_definition_str = """
+std::vector<std::vector<paddle::experimental::Tensor>> FinalGradNodecross_entropy_with_softmax::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {
+    // Fill Zero For GradIn Tensors
+
+
+    // Apply Gradient Hooks
+    VLOG(10) << "yoki: FLAGS_retain_grad_for_all_tensor: " << FLAGS_retain_grad_for_all_tensor;
+    auto hooked_grads = ApplyGradientHooks(grads);
+    
+    // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+   auto label = egr::EagerUtils::RecoverTensorWrapper(&this->label_, this->shared_from_this());
+   auto softmax = egr::EagerUtils::RecoverTensorWrapper(&this->softmax_, this->shared_from_this());
+   VLOG(10) << "yoki: cross_entropy_with_softmax use_count1: " << softmax.impl().use_count();
+   auto& loss_grad = hooked_grads[1][0];
+   auto& soft_label = this->soft_label_;
+   auto& use_softmax = this->use_softmax_;
+   auto& numeric_stable_mode = this->numeric_stable_mode_;
+   auto& ignore_index = this->ignore_index_;
+   auto& axis = this->axis_;
+
+    // Call grad_api function
+    VLOG(3) << "Final State Running: " << "FinalGradNodecross_entropy_with_softmax"; 
+   auto grad_api_result = paddle::experimental::cross_entropy_with_softmax_grad(label, softmax, loss_grad, soft_label, use_softmax, numeric_stable_mode, ignore_index, axis);
+
+    // Get Output
+   auto& input_grad = grad_api_result;
+
+
+    // Get GradIn autograd_meta
+
+
+    // Get GradOut autograd_meta
+
+    
+    // Compute Require Grad
+
+    
+    // Create Grad Node
+if(create_graph) VLOG(3) << "Higher order grad node for FinalGradNodecross_entropy_with_softmax has not been implemented yet.";
+
+    // Return 
+   std::vector<std::vector<paddle::experimental::Tensor>> returns(2);
+   returns[0] = { input_grad };
+   if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+   return returns;
+
+
+}
+"""
 
         logging.info(f"Generated Node Definition: {self.node_definition_str}")
 
