@@ -412,7 +412,7 @@ def _gradients(ys, xs, ys_bar=None):
     ad = Transform(block)
     xs = new_vars[:len(xs)]
     ys = new_vars[len(xs):]
-    
+
     xs_dot, ys_dot = ad.linearize(xs, ys)
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
     # remove xs_dot and their constructor ops
@@ -509,12 +509,10 @@ def _lower(block, reverse, update_var_list):
             for i in range(len(op.input_names)):
                 inputs[op.input_names[i]] = bind_name(
                     op.input(op.input_names[i]), to_bind)
-            # print(inputs)
 
             outputs = {}
             for i in range(len(op.output_names)):
                 outputs[op.output_names[i]] = op.output(op.output_names[i])
-            # print(outputs)
 
             attrs = {}
             for name in sorted(op.attr_names):
