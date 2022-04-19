@@ -205,8 +205,9 @@ void SlicePlugin::serialize(void *buffer) const TRT_NOEXCEPT {
 #if IS_TRT_VERSION_GE(6000)
 SlicePluginDynamic::SlicePluginDynamic(std::vector<int> starts,
                                        std::vector<int> ends,
-                                       std::vector<int> axes, bool with_fp16)
-    : starts_(starts), ends_(ends), axes_(axes) {
+                                       std::vector<int> axes, int decrease_axis,
+                                       bool with_fp16)
+    : starts_(starts), ends_(ends), axes_(axes), decrease_axis_(decrease_axis) {
   with_fp16_ = with_fp16;
   cudaEventCreate(&copy_event_);
   cudaStreamCreate(&copy_stream_);
@@ -217,6 +218,7 @@ SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &starts_);
   DeserializeValue(&serialData, &serialLength, &ends_);
   DeserializeValue(&serialData, &serialLength, &axes_);
+  DeserializeValue(&serialData, &serialLength, &decrease_axis_);
   DeserializeValue(&serialData, &serialLength, &with_fp16_);
   cudaEventCreate(&copy_event_);
   cudaStreamCreate(&copy_stream_);
@@ -233,7 +235,8 @@ int SlicePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t SlicePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t size = SerializedSize(starts_) + SerializedSize(ends_) +
-                SerializedSize(axes_) + SerializedSize(with_fp16_);
+                SerializedSize(axes_) + SerializedSize(decrease_axis_) +
+                SerializedSize(with_fp16_);
 
   return size;
 }
@@ -242,6 +245,7 @@ void SlicePluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, starts_);
   SerializeValue(&buffer, ends_);
   SerializeValue(&buffer, axes_);
+  SerializeValue(&buffer, decrease_axis_);
   SerializeValue(&buffer, with_fp16_);
 }
 
@@ -264,6 +268,17 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
 #else
     ret.d[axes_[i]] = expr_builder.constant(end - start);
 #endif
+  }
+  if (decrease_axis_ != -1) {
+    nvinfer1::DimsExprs res;
+    res.nbDims = ret.nbDims - 1;
+    int j = 0;
+    for (size_t i = 0; i < in_dims.nbDims; i++) {
+      if (decrease_axis_ == i) continue;
+      res.d[j++] = expr_builder.operation(nvinfer1::DimensionOperation::kMAX,
+                                          *expr_builder.constant(0), *ret.d[i]);
+    }
+    return res;
   }
   return ret;
 }
@@ -318,6 +333,10 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   auto out_dims = output_desc[0].dims;
+  if (decrease_axis_ != -1) {
+    out_dims = input_dims;
+    out_dims.d[decrease_axis_] = 1;
+  }
   auto num_dims = input_dims.nbDims;
   size_t out_num = ProductDim(out_dims);
 
