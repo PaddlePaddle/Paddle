@@ -43,6 +43,8 @@ XPUOpMap& get_kl2_ops() {
       {"batch_norm_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"batch_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"bmm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"bmm_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"bce_loss_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"bce_loss", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
