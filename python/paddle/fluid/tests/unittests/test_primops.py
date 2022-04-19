@@ -222,13 +222,12 @@ class TestPyPrimOps(unittest.TestCase):
             x = paddle.static.data('X', shape=[3, 3], dtype='float32')
             y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
             # z = prog2(x, y)
-            t = paddle.multiply(x, x)
+            t = paddle.matmul(x, x)
             z = paddle.norm(t, p=2)
-            orig2prim(x.block)
-            # x_grad, y_grad = _gradients([z], [x, y])
+            x_grad, y_grad = _gradients([z], [x, y])
             # path, _, _ = topo_path([x, y], [x_grad, y_grad])
             # print(f'-------test_gradients_set2-------')
-            # print(x.block)
+            print(x.block)
 
     def test_gradients_set3(self):
         main = paddle.static.Program()

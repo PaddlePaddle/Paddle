@@ -144,7 +144,9 @@ class VarMap(object):
 
     def delete_keyvars(self, key_vars):
         for var in key_vars:
-            del self.tab[id(var)]
+            varid = id(var)
+            if varid in self.tab:
+                del self.tab[varid]
 
     def delete_valuevars(self, value_vars):
         ids = [id(v) for v in value_vars]
@@ -408,9 +410,10 @@ def _gradients(ys, xs, ys_bar=None):
     orig2prim(block, new_vars)
 
     ad = Transform(block)
-    new_xs = new_vars[:len(xs)]
-    new_ys = new_vars[len(xs):]
-    xs_dot, ys_dot = ad.linearize(new_xs, new_ys)
+    xs = new_vars[:len(xs)]
+    ys = new_vars[len(xs):]
+    
+    xs_dot, ys_dot = ad.linearize(xs, ys)
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
     # remove xs_dot and their constructor ops
 
