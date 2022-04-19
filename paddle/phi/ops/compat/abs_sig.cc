@@ -21,8 +21,7 @@ KernelSignature AbsOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature AbsGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "abs_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("abs_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature AbsDoubleGradOpArgumentMapping(
@@ -32,7 +31,7 @@ KernelSignature AbsDoubleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(abs_double_grad,
+PD_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(abs_double_grad,
                            phi::AbsDoubleGradOpArgumentMapping);

@@ -1,1 +1,1 @@
-nv_library(pten_cuda_info SRCS cuda_info.cc DEPS gflags glog enforce pten_dynload_cuda)
+nv_library(phi_cuda_info SRCS cuda_info.cc DEPS gflags glog enforce phi_dynload_cuda)

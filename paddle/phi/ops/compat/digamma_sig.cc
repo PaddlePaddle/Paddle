@@ -18,10 +18,9 @@ namespace phi {
 
 KernelSignature DigammaGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "digamma_grad", {GradVarName("Out"), "X"}, {}, {GradVarName("X")});
+  return KernelSignature("digamma_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(digamma_grad, phi::DigammaGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(digamma_grad, phi::DigammaGradOpArgumentMapping);

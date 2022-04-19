@@ -14,7 +14,6 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-
 from ..fluid.dygraph.layers import Layer  # noqa: F401
 from ..fluid.dygraph.container import LayerList  # noqa: F401
 from ..fluid.dygraph.container import ParameterList  # noqa: F401
@@ -307,4 +306,5 @@ __all__ = [     #noqa
            'MaxUnPool2D',
            'MaxUnPool3D',
            'HingeEmbeddingLoss',
+           'Identity',
 ]

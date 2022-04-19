@@ -32,7 +32,7 @@
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 
-// pten
+// phi
 #include "paddle/phi/kernels/declarations.h"
 
 // NOTE(pangyoki): Inplace OP with duplicable input.
@@ -400,9 +400,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    // if the pten lib contains op kernel, we still generate ops method
+    // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
 

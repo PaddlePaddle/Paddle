@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/split_kernel.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/api/include/manual_api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"

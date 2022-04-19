@@ -19,13 +19,13 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
+
 namespace paddle {
 namespace experimental {
 
 template <typename T>
 class ScalarBase {
  public:
-  bool FromTensor() const { return is_from_tensor_; }
   // Constructor support implicit
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
@@ -103,13 +103,60 @@ class ScalarBase {
   }
 
   // The Tensor must have one dim
-  ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
+  ScalarBase(const T& tensor_in);  // NOLINT
+
+  template <typename OtherT>
+  ScalarBase(const ScalarBase<OtherT>& other) {
+    CopyScalar(other, this);
+  }
+
+  // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
+  // interface.
+  bool FromTensor() const { return is_from_tensor_; }
+
+  void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }
+
+  template <typename RT>
+  inline RT to() const {
+    switch (dtype_) {
+      case DataType::FLOAT32:
+        return static_cast<RT>(data_.f32);
+      case DataType::FLOAT64:
+        return static_cast<RT>(data_.f64);
+      case DataType::FLOAT16:
+        return static_cast<RT>(data_.f16);
+      case DataType::BFLOAT16:
+        return static_cast<RT>(data_.bf16);
+      case DataType::INT32:
+        return static_cast<RT>(data_.i32);
+      case DataType::INT64:
+        return static_cast<RT>(data_.i64);
+      case DataType::INT16:
+        return static_cast<RT>(data_.i16);
+      case DataType::INT8:
+        return static_cast<RT>(data_.i8);
+      case DataType::UINT16:
+        return static_cast<RT>(data_.ui16);
+      case DataType::UINT8:
+        return static_cast<RT>(data_.ui8);
+      case DataType::BOOL:
+        return static_cast<RT>(data_.b);
+      case DataType::COMPLEX64:
+        return static_cast<RT>(data_.c64);
+      case DataType::COMPLEX128:
+        return static_cast<RT>(data_.c128);
+      default:
+        PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
+    }
+  }
+
+  DataType dtype() const { return dtype_; }
+
+ private:
+  template <typename T1, typename T2>
+  friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
+  void GetDataFromTensor(const T& tensor) {
     is_from_tensor_ = true;
-    PD_CHECK(
-        tensor.numel() == 1,
-        "The Scalar only supports Tensor with 1 element, but now Tensor has `",
-        tensor.numel(),
-        "` element.");
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -151,49 +198,6 @@ class ScalarBase {
         PD_THROW("Invalid tensor data type `", dtype_, "`.");
     }
   }
-
-  template <typename OtherT>
-  ScalarBase(const ScalarBase<OtherT>& other) {
-    CopyScalar(other, this);
-  }
-
-  template <typename RT>
-  inline RT to() const {
-    switch (dtype_) {
-      case DataType::FLOAT32:
-        return static_cast<RT>(data_.f32);
-      case DataType::FLOAT64:
-        return static_cast<RT>(data_.f64);
-      case DataType::FLOAT16:
-        return static_cast<RT>(data_.f16);
-      case DataType::BFLOAT16:
-        return static_cast<RT>(data_.bf16);
-      case DataType::INT32:
-        return static_cast<RT>(data_.i32);
-      case DataType::INT64:
-        return static_cast<RT>(data_.i64);
-      case DataType::INT16:
-        return static_cast<RT>(data_.i16);
-      case DataType::INT8:
-        return static_cast<RT>(data_.i8);
-      case DataType::UINT16:
-        return static_cast<RT>(data_.ui16);
-      case DataType::UINT8:
-        return static_cast<RT>(data_.ui8);
-      case DataType::BOOL:
-        return static_cast<RT>(data_.b);
-      case DataType::COMPLEX64:
-        return static_cast<RT>(data_.c64);
-      case DataType::COMPLEX128:
-        return static_cast<RT>(data_.c128);
-      default:
-        PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
-    }
-  }
-
- private:
-  template <typename T1, typename T2>
-  friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
 
  private:
   bool is_from_tensor_{false};

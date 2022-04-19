@@ -14,6 +14,8 @@
 
 #pragma once
 
+#ifndef __xpu__
+
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -435,3 +437,5 @@ HOSTDEVICE inline float16 maxi(const float16& a, const float16& b) {
 
 }  // namespace numext
 }  // namespace Eigen
+
+#endif  // __xpu__

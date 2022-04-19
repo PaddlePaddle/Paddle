@@ -17,6 +17,6 @@
 #include "paddle/phi/kernels/huber_loss_grad_kernel.h"
 #include "paddle/phi/kernels/impl/huber_loss_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     huber_loss_grad, GPU, ALL_LAYOUT, phi::HuberLossGradKernel, float, double) {
 }

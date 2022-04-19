@@ -31,7 +31,7 @@ cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tens
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps lod_tensor scope reset_tensor_array
-    analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator custom_kernel)
+    analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator)
 
 if(WITH_CRYPTO)
     list(APPEND paddle_inference_api_deps paddle_crypto)
@@ -49,15 +49,24 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
-          zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
+if (WITH_ONNXRUNTIME)
+    cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+              zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils onnxruntime paddle2onnx)
+    cc_library(onnxruntime_predictor SRCS onnxruntime_predictor.cc DEPS analysis_predictor)
+else (WITH_ONNXRUNTIME)
+    cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+              zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
+endif (WITH_ONNXRUNTIME)
+
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
 if(WITH_TESTING)
   if (NOT APPLE AND NOT WIN32)
-    inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_inference_shared
-      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
+    if (WITH_GPU)
+      inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_inference_shared
+        ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
+    endif()
   elseif(WIN32)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
@@ -71,6 +80,16 @@ if (NOT APPLE AND NOT WIN32)
 elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
+endif()
+
+if (WITH_ONNXRUNTIME)
+  if (NOT APPLE AND NOT WIN32)
+    cc_test(test_onnxruntime_predictor SRCS onnxruntime_predictor_tester.cc DEPS paddle_inference_shared
+            ARGS --dirname=${MOBILENETV2_MODEL_DIR})
+  elseif (WIN32)
+    cc_test(test_onnxruntime_predictor SRCS onnxruntime_predictor_tester.cc DEPS onnxruntime_predictor benchmark ${inference_deps}
+            ARGS --dirname=${MOBILENETV2_MODEL_DIR})
+  endif()
 endif()
 
 if(WITH_TESTING AND WITH_MKLDNN)

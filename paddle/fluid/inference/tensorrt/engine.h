@@ -54,6 +54,8 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
       return TRT_DT::kINT32;
+    case FluidDT::VarType_Type_FP16:
+      return TRT_DT::kHALF;
     default:
       return TRT_DT::kINT32;
   }
@@ -387,8 +389,7 @@ class TensorRTEngine {
   }
 
   float* GetWeightCPUData(const std::string& name,
-                          framework::Tensor* weight_tensor, bool enable_int8,
-                          const std::vector<float>& scale = {});
+                          framework::Tensor* weight_tensor);
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.

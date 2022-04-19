@@ -46,4 +46,4 @@ KernelSignature SplitOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(split, phi::SplitOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(split, phi::SplitOpArgumentMapping);

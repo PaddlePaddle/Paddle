@@ -15,7 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {

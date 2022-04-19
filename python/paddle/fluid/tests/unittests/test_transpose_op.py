@@ -29,6 +29,7 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
+        self.python_api = paddle.transpose
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -44,10 +45,10 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.shape = (3, 40)
@@ -423,6 +424,14 @@ class TestMoveAxis(unittest.TestCase):
         self.assertEqual(np.array_equal(out.numpy(), expected), True)
         paddle.enable_static()
 
+    def test_moveaxis3(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]])
+        out = x.moveaxis(0, 1)
+        self.assertEqual(out.shape, [2, 3])
+        paddle.enable_static()
+
     def test_error(self):
         x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
@@ -455,4 +464,5 @@ class TestMoveAxis(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

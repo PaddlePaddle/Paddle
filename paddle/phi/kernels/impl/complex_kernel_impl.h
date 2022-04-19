@@ -15,8 +15,8 @@
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -28,8 +28,36 @@ void ConjKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
+  for_range(functor);
+}
+
+template <typename T, typename Context>
+void RealKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
+  auto numel = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
+
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
+  for_range(functor);
+}
+
+template <typename T, typename Context>
+void ImagKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
+  auto numel = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
+
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ImagFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 

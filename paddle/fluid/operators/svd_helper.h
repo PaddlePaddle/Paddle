@@ -105,7 +105,7 @@ struct RealMulComplexFunctor {
                                         "The image part of y must to be 0"
                                         "but got [%d]",
                                         y.imag));
-    return platform::complex<phi::funcs::Real<T>>(x.real * y.real,
+    return platform::complex<phi::dtype::Real<T>>(x.real * y.real,
                                                   x.imag * y.real);
   }
 };
@@ -391,11 +391,11 @@ struct DeviceIndependenceTensorOperations {
   // batch_diag for CPU only
   Tensor BatchDiag(const Tensor& x, int batch) {
     Tensor out;
-    auto* x_data = x.data<phi::funcs::Real<T>>();
+    auto* x_data = x.data<phi::dtype::Real<T>>();
     auto numel = x.numel();
-    auto* out_data = out.mutable_data<phi::funcs::Real<T>>(
+    auto* out_data = out.mutable_data<phi::dtype::Real<T>>(
         x.dims(), context.GetPlace(),
-        static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+        static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
 
     auto x_dims = x.dims();
     int num_dims = x_dims.size();
@@ -661,9 +661,9 @@ struct DeviceIndependenceTensorOperations {
   Tensor Real(const Tensor& x) {
     Tensor out;
     auto numel = x.numel();
-    auto* out_data = out.mutable_data<phi::funcs::Real<T>>(
+    auto* out_data = out.mutable_data<phi::dtype::Real<T>>(
         x.dims(), context.GetPlace(),
-        static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+        static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(numel);
     phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);

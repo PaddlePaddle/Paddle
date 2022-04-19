@@ -31,11 +31,3 @@ func @caller.add.f32() -> f32 {
   infrt.return %z : f32
 }
 /// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-// CHECK-LABEL: @string_test
-func @string_test() {
-  %path = infrt.get_string("this is get_string op.")
-  // CHECK-LABEL: string = this is get_string op.
-  infrt.print_string(%path)
-  infrt.return
-}

@@ -58,7 +58,7 @@ bool HasCUDNN() {
 void EnforceCUDNNLoaded(const char* fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       miopen_dso_handle,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Cannot load miopen shared library. Cannot invoke method %s.",
           fn_name));
 }

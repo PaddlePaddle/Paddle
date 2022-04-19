@@ -14,13 +14,15 @@
 
 # TODO: define random functions  
 
-from ..fluid import core
-from ..fluid.framework import in_dygraph_mode, Variable, convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.layer_helper import LayerHelper
+from ..framework import core
+from ..framework import convert_np_dtype_to_dtype_, dygraph_only
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
+from paddle.static import Variable
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
 
 __all__ = []
 
@@ -66,6 +68,9 @@ def bernoulli(x, name=None):
     """
 
     if in_dygraph_mode():
+        return _C_ops.final_state_bernoulli(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
@@ -80,7 +85,7 @@ def bernoulli(x, name=None):
 
 
 def poisson(x, name=None):
-    """
+    r"""
     This OP returns a tensor filled with random number from a Poisson Distribution.
 
     .. math::
@@ -110,7 +115,7 @@ def poisson(x, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.poisson(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
@@ -174,6 +179,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
+        return _C_ops.final_state_multinomial(x, num_samples, replacement)
+
+    if _in_legacy_dygraph():
         return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
                                   replacement)
 
@@ -232,6 +240,14 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',
@@ -422,7 +438,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [1.00780561 3.78457445 5.81058198]  # random
 
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -454,7 +470,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         out.stop_grediant = True
     return out
 
@@ -541,6 +557,13 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype,
+                                                 float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min',
                                      float(min), 'max',
@@ -680,6 +703,10 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                               0, 'dtype', dtype)
@@ -846,7 +873,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             "randint_like's low must less then high, but received low = {0}, "
             "high = {1}".format(low, high))
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                              0, 'dtype', core.VarDesc.VarType.INT64)
@@ -912,6 +939,8 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
+    if _in_legacy_dygraph():
         return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
     if n < 1:
@@ -983,7 +1012,7 @@ def rand(shape, dtype=None, name=None):
 
 
 def exponential_(x, lam=1.0, name=None):
-    """
+    r"""
     This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
 
     ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 
@@ -1014,7 +1043,7 @@ def exponential_(x, lam=1.0, name=None):
             #  [0.72520673, 0.45208144, 0.30234432]]
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.exponential_(x, "lambda", lam)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")

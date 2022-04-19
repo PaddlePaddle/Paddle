@@ -74,7 +74,7 @@ void ColwiseSum<DeviceContext, T>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(out->numel(),
                     size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor column"
                         " dimension. Expected output size=%d, but received %d",
@@ -102,7 +102,7 @@ class ColwiseSum<paddle::platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         out->numel(),
         size,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor column"
             " dimension. Expected output size=%d, but received %d",
@@ -130,15 +130,14 @@ void RowwiseMean<DeviceContext, T>::operator()(
     const paddle::framework::Tensor& input,
     paddle::framework::Tensor* out) {
   auto in_dims = input.dims();
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(),
-      2U,
-      paddle::platform::errors::InvalidArgument("The rank of input tensor "
-                                                "should be 2, but received %d",
-                                                in_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    2U,
+                    phi::errors::InvalidArgument("The rank of input tensor "
+                                                 "should be 2, but received %d",
+                                                 in_dims.size()));
   PADDLE_ENFORCE_EQ(out->numel(),
                     in_dims[0],
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor row"
                         " dimension. Expected output size=%d, but received %d",
@@ -161,18 +160,18 @@ class RowwiseMean<paddle::platform::CPUDeviceContext, T> {
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
-    PADDLE_ENFORCE_EQ(in_dims.size(),
-                      2U,
-                      paddle::platform::errors::InvalidArgument(
-                          "The rank of input tensor "
-                          "should be 2, but received %d",
-                          in_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(),
+        2U,
+        phi::errors::InvalidArgument("The rank of input tensor "
+                                     "should be 2, but received %d",
+                                     in_dims.size()));
     auto height = in_dims[0];
     auto size = in_dims[1];
     PADDLE_ENFORCE_EQ(
         out->numel(),
         height,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor row"
             " dimension. Expected output size=%d, but received %d",
@@ -198,15 +197,14 @@ void RowwiseSum<DeviceContext, T>::operator()(
     const paddle::framework::Tensor& input,
     paddle::framework::Tensor* out) {
   auto in_dims = input.dims();
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(),
-      2U,
-      paddle::platform::errors::InvalidArgument("The rank of input tensor "
-                                                "should be 2, but received %d",
-                                                in_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    2U,
+                    phi::errors::InvalidArgument("The rank of input tensor "
+                                                 "should be 2, but received %d",
+                                                 in_dims.size()));
   PADDLE_ENFORCE_EQ(out->numel(),
                     in_dims[0],
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of output tensor "
                         "should be equal to the size of input tensor row"
                         " dimension. Expected output size=%d, but received %d",
@@ -229,18 +227,18 @@ class RowwiseSum<paddle::platform::CPUDeviceContext, T> {
                   const paddle::framework::Tensor& input,
                   paddle::framework::Tensor* out) {
     auto& in_dims = input.dims();
-    PADDLE_ENFORCE_EQ(in_dims.size(),
-                      2U,
-                      paddle::platform::errors::InvalidArgument(
-                          "The rank of input tensor "
-                          "should be 2, but received %d",
-                          in_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(),
+        2U,
+        phi::errors::InvalidArgument("The rank of input tensor "
+                                     "should be 2, but received %d",
+                                     in_dims.size()));
     auto height = in_dims[0];
     auto size = in_dims[1];
     PADDLE_ENFORCE_EQ(
         out->numel(),
         height,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of output tensor "
             "should be equal to the size of input tensor row"
             " dimension. Expected output size=%d, but received %d",

@@ -121,8 +121,8 @@ DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(scale, ScaleInferShapeFunctor,
-                            PT_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(scale, ScaleInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,

@@ -28,4 +28,4 @@ KernelSignature EmptyOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(empty, phi::EmptyOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(empty, phi::EmptyOpArgumentMapping);

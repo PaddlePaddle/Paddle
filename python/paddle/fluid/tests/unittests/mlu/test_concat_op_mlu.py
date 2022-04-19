@@ -176,7 +176,7 @@ def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):
             self.op_type = "concat"
-            self.dtype = self.init_dtype()
+            self.init_dtype()
             self.init_test_data()
 
             self.inputs = {

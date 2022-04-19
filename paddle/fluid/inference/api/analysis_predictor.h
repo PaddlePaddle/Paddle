@@ -18,6 +18,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#endif
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -391,6 +394,52 @@ class AnalysisPredictor : public PaddlePredictor {
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  // fleet exe related
+
+  ///
+  /// \brief prepare for fleet executor to run
+  ///
+  /// Used in AnalysisPredictor::Init(),
+  ///
+  bool PrepareFleetExecutor();
+
+  ///
+  /// \brief init NCCL env for multi gpus inference
+  ///
+  /// Used in AnalysisPredictor::PrepareFleetExecutor()
+  ///
+  bool CommInit();
+
+  ///
+  /// \brief read the config to init NCCL env
+  ///
+  /// Used in AnalysisPredictor::CommInit()
+  ///
+  /// \param[in] ring_id_to_ranks: a ptr to ring_id_to_ranks
+  /// \param[in] rank_to_ring_ids: a ptr to rank_to_ring_ids
+  ///
+  bool LoadConverterConfig(
+      std::map<int64_t, std::vector<int64_t>> *ring_id_to_ranks,
+      std::map<int64_t, std::vector<int64_t>> *rank_to_ring_ids);
+
+  ///
+  /// \brief add ops and run them with NaiveExecutor to init NCCL env
+  ///
+  /// Used in AnalysisPredictor::CommInit()
+  ///
+  /// \param[in] tmp_var_name: var name to hold NCCL unique id
+  /// \param[in] nranks: number of ranks in one comm group
+  /// \param[in] rank: relative rank of current rank in the comm group
+  /// \param[in] peer_endpoints: group's peers' endpoints
+  /// \param[in] block: the block to insert comm ops
+  /// \param[in] ring_id: the ring id to be used to init NCCL env
+  ///
+  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+                    const std::vector<std::string> &peer_endpoints,
+                    framework::BlockDesc *block, int ring_id);
+#endif
+
  private:
   AnalysisConfig config_;
   Argument argument_;
@@ -435,7 +484,14 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
-  int clone_num_{1};
+  static int clone_num_;
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  // fleet executor related
+  distributed::FleetExecutorDesc executor_desc_;
+  std::shared_ptr<distributed::FleetExecutor> fleet_exe_;
+  std::shared_ptr<distributed::TaskNode> task_node_;
+#endif
 };
 
 }  // namespace paddle

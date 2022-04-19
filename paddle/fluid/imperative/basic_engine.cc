@@ -30,6 +30,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
@@ -154,7 +155,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         // Here, we use the type of the corresponding forward datatype.
 
         tensor->mutable_data(
-            op.place(), framework::TransToPtenDataType(var->ForwardDataType()));
+            op.place(), framework::TransToPhiDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());
@@ -317,6 +318,7 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
         auto tmp_var = var;
         for (const auto& hook_pair : var->GetVariableWrapperHooks()) {
           tmp_var = (*hook_pair.second)(tmp_var);
+          CheckVar(var, tmp_var);
         }
         (*tmp_ins_ptr)[pair.first][i] = tmp_var;
       }
@@ -388,6 +390,9 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
+  platform::RecordEvent backward_record_event(
+      "backward", platform::TracerEventType::Operator, 1);
+
   if (init_nodes_.empty()) {
     return;
   }
@@ -411,7 +416,7 @@ void BasicEngine::Execute() {
 
     for (auto& cur_op : *shared_cur_node) {
       platform::RecordEvent op_type_record_event(
-          cur_op.Type(), platform::TracerEventType::Operator, 1);
+          cur_op.Type() + " grad_node", platform::TracerEventType::Operator, 1);
 
       ++op_num;
 
@@ -641,6 +646,8 @@ void BasicEngine::Execute() {
   Clear();
 
   VLOG(1) << "Backward op number: " << op_num;
+
+  phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
 void BasicEngine::Clear() {

@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/full_kernel.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
@@ -55,11 +55,11 @@ void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
   FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -69,6 +69,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   auto value = val.to<float>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
@@ -116,7 +117,7 @@ void FullLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(full,
+PD_REGISTER_KERNEL(full,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullKernel,
@@ -132,11 +133,13 @@ PT_REGISTER_KERNEL(full,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(full_like,
+PD_REGISTER_KERNEL(full_like,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}

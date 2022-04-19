@@ -18,7 +18,9 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "cinn/common/target.h"
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -26,6 +28,7 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
+DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
 namespace operators {
 
@@ -101,73 +104,23 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
         compilation_key, inputs_name2tensor, target, stream);
     details::DebugCinnCompiledResult(cinn_compiled_object);
-
     auto* launch_context = cinn_compiled_object.launch_context.get();
-    // Step 3. Prepare arguments needed for the compiled executable program.
-    launch_context->UpdateCapturedEnv(scope, place);
-    if (!launch_context->IsArgumentsInitialized()) {
-      VLOG(4) << "CinnLaunchOp prepare arguments";
 
-      // 3.1 Prepare input variables: tensors of input variables have
-      //     been initialized before graph compiled, just check the
-      //     equiality between tensors of paddle and cinn.
-      for (const auto& var_name : input_no_need_buffer_variable_names) {
-        // the input variable declared as 'no need buffer' can not be used
-        PADDLE_ENFORCE_EQ(
-            launch_context->IsVariableUsed(var_name), false,
-            platform::errors::InvalidArgument(
-                "Input variable(%s) should not be used by cinn in execution",
-                var_name));
-      }
-
-      for (const auto& var_name : input_x_variable_names) {
-        // some input variables don't need for cinn because they are
-        // eliminated by optimized passes or some cinn operators use
-        // less variables
-        if (!launch_context->IsVariableUsed(var_name)) {
-          VLOG(4) << "Input variable" << var_name << " not used by cinn";
-          continue;
-        }
-
-        launch_context->AssignExternalVariable(var_name);
-      }
-
-      // 3.2 Prepare output variables: all output variables should
-      //     be initialized and allocated buffer before
-      //     the runtime program start execution, the compilation result
-      //     includes details of their buffer assginment and we use that to
-      //     allocate space in Paddle. For those variables allocated yet,
-      //     like persistable parameters, just check the equiality between
-      //     Paddle allocation and CINN buffer assginment.
-      auto output_variable_names = ctx.OutputNames(kOutputs);
-      for (const auto var_name : output_variable_names) {
-        PADDLE_ENFORCE_EQ(
-            launch_context->IsVariableUsed(var_name), true,
-            platform::errors::InvalidArgument(
-                "Output variable(%s) not used by cinn", var_name));
-
-        launch_context->AssignExternalVariable(var_name);
-      }
-
-      // 3.3 Prepare internal or temporary variables: Create a temporary
-      //     scope to keep internal variables within graph or temporary
-      //     variables needed by the compiled runtime program in addition.
-      //     Here we directly use the names from CinnScope as Paddle variable
-      //     names, because they will not be used outside the graph
-      //     and should be destructed after computation finished.
-      auto internal_variable_names = launch_context->ExtractInternalVarNames(
-          input_x_variable_names, output_variable_names);
-      for (const auto& var_name : internal_variable_names) {
-        launch_context->AssignInternalVariable(var_name);
-      }
-    }
-
-    // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
+    // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
-    // Step 5. Launch CINN to execute the compiled executable program
-    VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
-    details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+    // Step 4. Execute the compiled CINN instructions by a PE or
+    //         by the CINN compiled program in sequential order
+    if (FLAGS_enable_pe_launch_cinn) {
+      VLOG(4) << "Execute the runtime graph by PE";
+      framework::Scope& exec_scope = scope.NewScope();
+      auto* pe = launch_context->InitializePE(place, &exec_scope);
+      pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+    } else {
+      VLOG(4) << "Execute the compiled executable program";
+      launch_context->UpdateCapturedEnv(scope, place);
+      LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+    }
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };

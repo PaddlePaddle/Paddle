@@ -24,7 +24,7 @@ limitations under the License. */
 #include <windows.h>
 #endif
 
-// TODO(wilber): The pten computing library requires a component to manage flags
+// TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -299,8 +299,8 @@ static inline void* GetDsoHandleFromSearchPath(
 #endif  // !_WIN32
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          error_msg, dso_name, errorno));
+      PADDLE_THROW(
+          phi::errors::PreconditionNotMet(error_msg, dso_name, errorno));
     } else {
       LOG(WARNING) << paddle::string::Sprintf(error_msg, dso_name, errorno);
     }
@@ -547,14 +547,11 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 
 void* GetNvtxDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("Nvtx do not support Apple."));
+  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("Nvtx do not support Windows."));
+  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Windows."));
 #elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "Nvtx do not support without CUDA."));
+  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif

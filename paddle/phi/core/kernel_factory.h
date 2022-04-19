@@ -151,30 +151,38 @@ class KernelArgsDef {
     attribute_defs_.emplace_back(AttributeArgDef(type_index));
   }
 
-  const paddle::SmallVector<TensorArgDef>& input_defs() const {
+  const paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs()
+      const {
     return input_defs_;
   }
 
-  const paddle::SmallVector<TensorArgDef>& output_defs() const {
+  const paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs()
+      const {
     return output_defs_;
   }
 
-  const paddle::SmallVector<AttributeArgDef>& attribute_defs() const {
+  const paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>&
+  attribute_defs() const {
     return attribute_defs_;
   }
 
-  paddle::SmallVector<TensorArgDef>& input_defs() { return input_defs_; }
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs() {
+    return input_defs_;
+  }
 
-  paddle::SmallVector<TensorArgDef>& output_defs() { return output_defs_; }
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs() {
+    return output_defs_;
+  }
 
-  paddle::SmallVector<AttributeArgDef>& attribute_defs() {
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>& attribute_defs() {
     return attribute_defs_;
   }
 
  private:
-  paddle::SmallVector<TensorArgDef> input_defs_{{}};
-  paddle::SmallVector<TensorArgDef> output_defs_{{}};
-  paddle::SmallVector<AttributeArgDef> attribute_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize> input_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize> output_defs_{{}};
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize> attribute_defs_{
+      {}};
 };
 
 class Kernel {
@@ -197,11 +205,19 @@ class Kernel {
 
   const KernelArgsDef& args_def() const { return args_def_; }
 
+  const TensorArgDef& InputAt(size_t idx) const {
+    return args_def_.input_defs().at(idx);
+  }
+
   TensorArgDef& InputAt(size_t idx) { return args_def_.input_defs().at(idx); }
+
+  const TensorArgDef& OutputAt(size_t idx) const {
+    return args_def_.output_defs().at(idx);
+  }
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
-  bool IsValid() { return fn_ != nullptr; }
+  bool IsValid() const { return fn_ != nullptr; }
 
  private:
   KernelFn fn_{nullptr};
@@ -225,22 +241,29 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
+  bool HasCompatiblePhiKernel(const std::string& op_type) const {
+    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
   }
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
-                                         const KernelKey& kernel_key) const;
+                                         const KernelKey& kernel_key,
+                                         bool use_cudnn = false) const;
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          Backend backend,
                                          DataLayout layout,
                                          DataType dtype) const;
 
-  Kernel SelectKernel(const std::string& kernel_name,
-                      const KernelKey& kernel_key) const;
+  bool HasKernel(const std::string& kernel_name,
+                 const KernelKey& kernel_key) const;
+
+  const Kernel& SelectKernel(const std::string& kernel_name,
+                             const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
+
+  const KernelArgsDef& GetFirstKernelArgsDef(
+      const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;

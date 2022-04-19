@@ -24,13 +24,13 @@ KernelSignature HuberLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature HuberLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("huber_loss_grad",
-                         {"Residual", GradVarName("Out")},
+                         {"Residual", "Out@GRAD"},
                          {"delta"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(huber_loss, phi::HuberLossOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(huber_loss_grad,
+PD_REGISTER_ARG_MAPPING_FN(huber_loss, phi::HuberLossOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(huber_loss_grad,
                            phi::HuberLossGradOpArgumentMapping);

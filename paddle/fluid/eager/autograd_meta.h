@@ -97,6 +97,7 @@ class AutogradMeta : public AbstractAutogradMeta {
             "Should Not set NULL as GradNode pointer, since "
             "our default Edge and autogradMeta has nullptr for "
             "grad node. Set Nullptr will lead error."));
+
     grad_node_ = grad_node;
   }
 
@@ -105,6 +106,8 @@ class AutogradMeta : public AbstractAutogradMeta {
   }
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
+
+  void ResetGradNode() { grad_node_.reset(); }
 
   void SetSingleOutRankWithSlot(size_t slot_id, size_t rank) {
     out_slot_id_ = slot_id;
@@ -127,6 +130,12 @@ class AutogradMeta : public AbstractAutogradMeta {
     stop_gradient_ = static_cast<int>(stop_gradient);
   }
 
+  void WeakSetStopGradient(bool stop_gradient) {
+    if (stop_gradient_ == -1) {
+      stop_gradient_ = static_cast<int>(stop_gradient);
+    }
+  }
+
   bool Persistable() const { return persistable_; }
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
@@ -138,8 +147,7 @@ class AutogradMeta : public AbstractAutogradMeta {
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
   std::shared_ptr<paddle::experimental::Tensor> grad_{
-      std::make_shared<paddle::experimental::Tensor>(
-          egr::Controller::Instance().GenerateUniqueName("@grad"))};
+      std::make_shared<paddle::experimental::Tensor>()};
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy

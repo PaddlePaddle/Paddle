@@ -15,13 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
 
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst);
 }  // namespace phi

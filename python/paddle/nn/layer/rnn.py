@@ -33,6 +33,11 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import _C_ops
+from paddle import in_dynamic_mode
+from paddle.framework import core
+from paddle.static import default_startup_program
+from paddle.static import program_guard
+
 __all__ = []
 
 
@@ -386,7 +391,7 @@ class SimpleRNNCell(RNNCellBase):
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
-        if self.activation is not "tanh":
+        if self.activation != "tanh":
             s += ', activation={activation}'
         return s.format(**self.__dict__)
 
@@ -970,8 +975,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=fluid.core.VarDesc.VarType.UINT8)
-            if fluid.framework.in_dygraph_mode():
+                dtype=core.VarDesc.VarType.UINT8)
+            if in_dynamic_mode():
                 with paddle.no_grad():
                     _C_ops.coalesce_tensor(self._all_weights, self._all_weights,
                                            self._flat_weight[0], "copy_data",
@@ -979,8 +984,8 @@ class RNNBase(LayerList):
                                            params[0].dtype)
                     return
             # for static-graph, append coalesce_tensor into startup program
-            with fluid.program_guard(fluid.default_startup_program(),
-                                     fluid.default_startup_program()):
+            with program_guard(default_startup_program(),
+                               default_startup_program()):
                 with paddle.no_grad():
                     self._helper.append_op(
                         type="coalesce_tensor",
@@ -999,7 +1004,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if fluid.framework.in_dygraph_mode():
+        if in_dynamic_mode():
             _, _, out, state = _C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
@@ -1014,7 +1019,7 @@ class RNNBase(LayerList):
                 for i in range(self.state_components)
             ]
             reserve = self._helper.create_variable_for_type_inference(
-                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
+                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
             inputs = {
                 'Input': inputs,
@@ -1119,16 +1124,19 @@ class SimpleRNN(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
-        time_major (bool, optional): Whether the first dimension of the input means the
-            time steps. Defaults to False.
-        dropout (float, optional): The droput probability. Dropout is applied to the 
-            input of each layer except for the first layer. Defaults to 0.
+        time_major (bool, optional): Whether the first dimension of the input 
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         activation (str, optional): The activation in each SimpleRNN cell. It can be 
             `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
@@ -1143,13 +1151,13 @@ class SimpleRNN(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`. `time_steps` means the length of the input sequence.
         - **initial_states** (Tensor, optional): the initial state. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
 
     Returns:
 
-        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. `time_steps` means the length of the output sequence.
         
         - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
@@ -1237,16 +1245,19 @@ class LSTM(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
-            means the time steps. Defaults to False.
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
         dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1259,13 +1270,13 @@ class LSTM(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`. `time_steps` means the length of the input sequence.
         - **initial_states** (list|tuple, optional): the initial state, a list/tuple of (h, c), the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
 
-        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. `time_steps` means the length of the output sequence.
         
         - **final_states** (tuple): the final state, a tuple of two tensors, h and c. The shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
@@ -1344,16 +1355,19 @@ class GRU(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
-            means the time steps. Defaults to False.
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
         dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1366,13 +1380,13 @@ class GRU(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`. `time_steps` means the length of the input sequence.
         - **initial_states** (Tensor, optional): the initial state. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used. Defaults to None.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
 
-        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. `time_steps` means the length of the output sequence.
         
         - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 

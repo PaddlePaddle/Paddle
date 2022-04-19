@@ -24,9 +24,9 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -193,7 +193,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         start = end;
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());
-        GPUGather<T>(dev_ctx, *fpn_rois, sub_idx, multi_fpn_rois[i]);
+        phi::funcs::GPUGather<T>(dev_ctx, *fpn_rois, sub_idx,
+                                 multi_fpn_rois[i]);
       } else {
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());

@@ -80,10 +80,10 @@ void StreamCallbackManager<Stream>::AddCallback(
 #endif
 
 #if PADDLE_WITH_MLU
-  VLOG(3) << "MLULaunchCallback at stream: " << stream_;
-  LOG(ERROR) << "failed to call MLULaunchCallback, "
-             << "because mlu not support StreamAddCallback yet. "
-             << "function: " << func;
+  VLOG(3) << "MLULaunchCallback at stream: " << stream_
+          << " Failed to call MLULaunchCallback, "
+          << "because mlu not support StreamAddCallback yet. "
+          << "function: " << func;
 #endif
 }
 

@@ -38,5 +38,7 @@ class PsProgramBuilderFactory(object):
         elif 'is_fl_ps_mode' in attrs and attrs[
                 'is_fl_ps_mode'] == DistributedMode.FL:
             return globals()['FlPsProgramBuilder'](pass_ctx)
-        else:
+        elif attrs['ps_mode'] == DistributedMode.SYNC:
             return globals()['CpuSyncPsProgramBuilder'](pass_ctx)
+        else:
+            return globals()['CpuAsyncPsProgramBuilder'](pass_ctx)

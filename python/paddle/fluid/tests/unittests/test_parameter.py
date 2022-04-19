@@ -18,7 +18,7 @@ import unittest
 import copy
 import paddle
 from paddle.fluid.dygraph import guard
-from paddle.fluid.framework import default_main_program, Variable
+from paddle.fluid.framework import default_main_program, Variable, _test_eager_guard
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.io as io
@@ -50,7 +50,7 @@ class ParameterChecks(unittest.TestCase):
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         self.assertTrue(np.array_equal(p, np.ones(shape) * val))
 
-    def test_parambase(self):
+    def func_parambase(self):
         with guard():
             linear = paddle.nn.Linear(10, 10)
             param = linear.weight
@@ -72,7 +72,12 @@ class ParameterChecks(unittest.TestCase):
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
 
-    def test_exception(self):
+    def test_parambase(self):
+        with _test_eager_guard():
+            self.func_parambase()
+        self.func_parambase()
+
+    def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
             b.create_parameter(
@@ -87,7 +92,7 @@ class ParameterChecks(unittest.TestCase):
             b.create_parameter(
                 name='test', shape=[-1], dtype='float32', initializer=None)
 
-    def test_parambase_to_vector(self):
+    def func_parambase_to_vector(self):
         with guard():
             initializer = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(3.))
@@ -111,6 +116,11 @@ class ParameterChecks(unittest.TestCase):
                 True)
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
+
+    def test_parambase_to_vector(self):
+        with _test_eager_guard():
+            self.func_parambase_to_vector()
+        self.func_parambase_to_vector()
 
 
 if __name__ == '__main__':

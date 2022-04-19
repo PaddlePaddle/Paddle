@@ -112,8 +112,8 @@ class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(huber_loss, HuberLossInferShapeFunctor,
-                            PT_INFER_META(phi::HuberLossInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(huber_loss, HuberLossInferShapeFunctor,
+                            PD_INFER_META(phi::HuberLossInferMeta));
 
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
                   ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,

@@ -30,23 +30,35 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
     {"bincount", {"X", "Weights"}},
     {"fused_attention",
-     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
-      "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
+     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "CacheKV", "SrcMask",
+      "OutLinearW", "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
     {"assign", {"X"}},
+    {"crop", {"X", "Y", "Offsets"}},
+    {"crop_tensor", {"X", "Shape", "Offsets"}},
     {"reshape2", {"X", "Shape"}},
     {"expand", {"X", "ExpandTimes"}},
-    {"slice", {"Input", "StartsTensor", "EndsTensor"}},
+    {"slice",
+     {"Input", "StartsTensor", "EndsTensor", "StartsTensorList",
+      "EndsTensorList"}},
+    {"strided_slice",
+     {"Input", "StartsTensor", "EndsTensor", "StridesTensor",
+      "StartsTensorList", "EndsTensorList", "StridesTensorList"}},
+    {"set_value",
+     {"Input", "ValueTensor", "StartsTensorList", "EndsTensorList",
+      "StepsTensorList"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
+    {"smooth_l1_loss", {"X", "Y", "InsideWeight", "OutsideWeight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
     {"repeat_interleave", {"X", "RepeatsTensor"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"prroi_pool", {"X", "ROIs", "BatchRoINums"}},
     {"psroi_pool", {"X", "ROIs", "RoisNum"}},
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
@@ -60,7 +72,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
     {"merged_momentum",
      {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
-    {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
+    {"sparse_momentum",
+     {"Param", "Grad", "Velocity", "Index", "LearningRate", "MasterParam"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
     {"fused_feedforward",
@@ -87,6 +100,21 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nce",
      {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
       "CustomDistAlias", "CustomDistAliasProbs"}},
+    {"yolov3_loss", {"X", "GTBox", "GTLabel", "GTScore"}},
+    {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
+    {"group_norm", {"X", "Scale", "Bias"}},
+    {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
+    {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
+    {"chunk_eval", {"Inference", "Label", "SeqLength"}},
+    {"sequence_mask", {"X", "MaxLenTensor"}},
+    {"graph_reindex",
+     {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
+    {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
+    {"crop", {"X", "Y", "Offsets"}},
+    {"batch_norm",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
+    {"inplace_abn",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -103,11 +131,19 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
-    {"fused_attention",
-     {"LnMean", "LnVariance", "LnOut", "QKVOut", "QKVBiasOut", "TransposeOut2",
-      "QKOut", "QKTVOut", "SoftmaxOut", "AttnDropoutMaskOut", "AttnDropoutOut",
-      "SrcMaskOut", "FMHAOut", "OutLinearOut", "DropoutMaskOut", "Ln2Mean",
-      "Ln2Variance", "BiasDropoutResidualOut", "Y"}},
+    {"inplace_abn",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
+    {"fused_attention", {"LnMean",         "LnVariance",
+                         "LnOut",          "QKVOut",
+                         "QKVBiasOut",     "TransposeOut2",
+                         "QKOut",          "QKTVOut",
+                         "SoftmaxOut",     "AttnDropoutMaskOut",
+                         "AttnDropoutOut", "SrcMaskOut",
+                         "FMHAOut",        "OutLinearOut",
+                         "DropoutMaskOut", "Ln2Mean",
+                         "Ln2Variance",    "BiasDropoutResidualOut",
+                         "CacheKVOut",     "Y"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
@@ -124,7 +160,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
-    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"run_program", {"DOut"}},
     {"adam",
@@ -181,8 +217,9 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
       "out_old_num_accumulates", "out_num_updates"}},
     {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
-    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"inplace_abn", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
@@ -212,6 +249,10 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"run_program", {"Out", "DOut", "OutScope"}},
     {"clear_float_status", {"FloatStatusOut"}},
     {"get_float_status", {"FloatStatusOut"}},
+    {"assign", {"Out"}},
+    {"assign_value", {"Out"}},
+    {"split", {"Out"}},
+    {"concat", {"Out"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
@@ -225,4 +266,21 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"unsqueeze2", {"X", "Out"}},
     {"reshape2", {"X", "Out"}},
     {"flatten_contiguous_range", {"X", "Out"}},
+};
+
+// NOTE(pangyoki): Special inplace ops that are not supported in temporary.
+// The input and output of some inplace ops are special, such as
+// duplicate input. These inplace ops have no usage scenarios and
+// are not supported in temporary.
+std::set<std::string> special_inplace_op_set = {
+    "sum",     // `sum` op has duplicate input
+    "assign",  // output of `assign` op is in `op_passing_outs_map`
+};
+
+// NOTE(pangyoki): Special no_need_buffer ops that are not supported in
+// temporary.
+// sequence_conv op will raise error to get no_need_buffer info during
+// compiling.
+std::set<std::string> special_no_need_buffer_op_set = {
+    "sequence_conv",
 };

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 
 namespace paddle {
 namespace framework {

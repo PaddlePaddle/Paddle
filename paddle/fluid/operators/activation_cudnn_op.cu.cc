@@ -132,7 +132,9 @@ struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -146,7 +148,9 @@ struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
       : CudnnActivationGradFunctor<T>(ctx, 6.0,
                                       GPUDNN_ACTIVATION_CLIPPED_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -159,7 +163,9 @@ struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_SIGMOID) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -172,7 +178,9 @@ struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_TANH) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename Functor>
@@ -197,7 +205,8 @@ class CudnnActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    static_assert(Functor::FwdDeps() == kDepOut, "Forward deps must be Out.");
+    static_assert(Functor::FwdDeps() == ActBwdOpFwdDeps::kDepOut,
+                  "Forward deps must be Out.");
 
     const framework::Tensor *X, *Out, *dOut;
     X = Out = dOut = nullptr;

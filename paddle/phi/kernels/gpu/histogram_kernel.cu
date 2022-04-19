@@ -111,9 +111,9 @@ void HistogramKernel(const Context& dev_ctx,
 
     DenseTensor input_min_cpu, input_max_cpu;
     paddle::framework::TensorCopySync(
-        input_min_t, paddle::platform::CPUPlace(), &input_min_cpu);
+        input_min_t, phi::CPUPlace(), &input_min_cpu);
     paddle::framework::TensorCopySync(
-        input_max_t, paddle::platform::CPUPlace(), &input_max_cpu);
+        input_max_t, phi::CPUPlace(), &input_max_cpu);
 
     output_min = input_min_cpu.data<T>()[0];
     output_max = input_max_cpu.data<T>()[0];
@@ -149,7 +149,7 @@ void HistogramKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(histogram,
+PD_REGISTER_KERNEL(histogram,
                    GPU,
                    ALL_LAYOUT,
                    phi::HistogramKernel,

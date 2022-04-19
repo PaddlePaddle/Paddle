@@ -54,7 +54,7 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      Tensor tensor_tmp(framework::TransToPtenDataType(dtype_));
+      Tensor tensor_tmp(framework::TransToPhiDataType(dtype_));
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 
@@ -194,7 +194,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     void *fused_tensor_ptr =
         fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
-                          framework::TransToPtenDataType(dtype));
+                          framework::TransToPhiDataType(dtype));
     VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
     // Init the continuous space

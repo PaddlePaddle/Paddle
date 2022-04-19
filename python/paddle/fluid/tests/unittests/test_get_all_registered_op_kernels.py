@@ -19,13 +19,13 @@ from paddle import compat as cpt
 
 
 class TestGetAllRegisteredOpKernels(unittest.TestCase):
-    # reshape kernel is in fluid while not in pten
-    def test_pten_kernels(self):
-        self.assertTrue(core._get_all_register_op_kernels('pten')['sign'])
+    # reshape kernel is in fluid while not in phi
+    def test_phi_kernels(self):
+        self.assertTrue(core._get_all_register_op_kernels('phi')['sign'])
         with self.assertRaises(KeyError):
-            core._get_all_register_op_kernels('pten')['reshape']
+            core._get_all_register_op_kernels('phi')['reshape']
 
-    # sign kernel is removed from fluid and added into pten
+    # sign kernel is removed from fluid and added into phi
     def test_fluid_kernels(self):
         self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape'])
         with self.assertRaises(KeyError):

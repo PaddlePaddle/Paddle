@@ -22,7 +22,7 @@
 
 #include <string>
 
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/init_dialects.h"
 
 namespace infrt {
 namespace dialect {

@@ -394,9 +394,17 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+
+    from ..distributed.fleet import fleet
+    if fleet._role_maker is not None:
+        warnings.warn("do not use standalone executor in fleet by default")
+        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+    else:
+        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
+
     return flag
 
 
@@ -622,7 +630,9 @@ class Executor(object):
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
             If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
-            is the index of the GPUs.
+            is the index of the GPUs. Note: users only pass one Place or None to initialize
+            Executor when using multiple-cards. Other APIs will override the cards. See
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_ 
 
     Returns:
         Executor
@@ -1272,7 +1282,7 @@ class Executor(object):
 
         """
         try:
-            return self._run_impl(
+            res = self._run_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1283,6 +1293,8 @@ class Executor(object):
                 use_program_cache=use_program_cache,
                 use_prune=use_prune,
                 return_merged=return_merged)
+            core.update_autotune_status()
+            return res
         except Exception as e:
             six.reraise(*sys.exc_info())
 
@@ -1373,6 +1385,10 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
+            if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu():
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
@@ -1383,6 +1399,8 @@ class Executor(object):
                 # else:
                 #     return False
             else:
+                if isinstance(program._graph, compiler.CompiledProgram):
+                    return False
                 assert isinstance(program, Program)
                 return True
 
@@ -1581,9 +1599,6 @@ class Executor(object):
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
             lr_var = program.global_block().vars[lr_sheduler._var_name]
-            if core.is_compiled_with_ipu():
-                if hasattr(program.lr_sheduler, 'lr_var'):
-                    lr_var = program.lr_sheduler.lr_var
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
             tensor.set(data, self.place)
@@ -2035,8 +2050,11 @@ class Executor(object):
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
+        # NOTE: the last argument is used to force create some vars in root scope,
+        # won't be used during train.
         self._fleet_executor.init(carrier_id, program.desc, scope, place,
-                                  num_micro_batches, tasks, task_id_to_rank)
+                                  num_micro_batches, tasks, task_id_to_rank,
+                                  [])
 
     def _run_using_fleet_executor(self,
                                   program=None,

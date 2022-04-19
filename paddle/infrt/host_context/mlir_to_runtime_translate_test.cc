@@ -88,18 +88,20 @@ TEST(TestMlir, shadow_copy_tensor_profile) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
 
   auto head = R"ROC(
-func @predict(%a: !infrt.tensor<X86, NCHW, F32>, %b: !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) {
+func @predict(%a: !infrt.dense_tensor<CPU, FP32, NCHW>, %b: !infrt.dense_tensor<CPU, FP32, NCHW>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) {
 )ROC";
 
   auto tpl0 =
-      "%a{0} = dt.shallow_copy_tensor %a : !infrt.tensor<X86, NCHW, F32> -> "
-      "!infrt.tensor<X86, NCHW, F32>";
+      "%a{0} = dt.shallow_copy_tensor %a : !infrt.dense_tensor<CPU, FP32, "
+      "NCHW> -> "
+      "!infrt.dense_tensor<CPU, FP32, NCHW>";
   auto tpl1 =
-      "%b{0} = dt.shallow_copy_tensor %b : !infrt.tensor<X86, NCHW, F32> -> "
-      "!infrt.tensor<X86, NCHW, F32>";
+      "%b{0} = dt.shallow_copy_tensor %b : !infrt.dense_tensor<CPU, FP32, "
+      "NCHW> -> "
+      "!infrt.dense_tensor<CPU, FP32, NCHW>";
 
   auto end = R"ROC(
-infrt.return %a0, %b0: !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>
+infrt.return %a0, %b0: !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>
 }
   )ROC";
 

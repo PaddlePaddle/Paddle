@@ -128,6 +128,9 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
 }
 
 TEST(ManagedMemoryTest, OOMExceptionTest) {
+  if (!platform::IsGPUManagedMemorySupported(0)) {
+    return;
+  }
   EXPECT_THROW(Alloc(platform::CUDAPlace(0), size_t(1) << 60),
                memory::allocation::BadAlloc);
 }

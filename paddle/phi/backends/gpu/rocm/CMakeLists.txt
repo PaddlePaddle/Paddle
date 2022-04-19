@@ -1,1 +1,1 @@
-hip_library(pten_rocm_info SRCS rocm_info.cc DEPS gflags glog enforce pten_dynload_cuda)
+hip_library(phi_rocm_info SRCS rocm_info.cc DEPS gflags glog enforce phi_dynload_cuda)

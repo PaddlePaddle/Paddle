@@ -47,6 +47,8 @@ static std::map<framework::proto::VarType::Type, aclDataType>
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
+    {DataLayout::kNCDHW, ACL_FORMAT_NCDHW},
+    {DataLayout::kNDHWC, ACL_FORMAT_NDHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
 };
 
@@ -467,7 +469,7 @@ void NpuOpRunner::TypeAdapter(
     } else {
       tmp_inputs[i].Resize(inputs[i].dims());
       tmp_inputs[i].mutable_data(dev_ctx.GetPlace(),
-                                 framework::TransToPtenDataType(input_type[i]));
+                                 framework::TransToPhiDataType(input_type[i]));
 
       const auto &cast_runner = NpuOpRunner(
           "Cast", {inputs[i]}, {tmp_inputs[i]},
@@ -484,7 +486,7 @@ void NpuOpRunner::TypeAdapter(
     } else {
       tmp_outputs[i].Resize(outputs[i].dims());
       tmp_outputs[i].mutable_data(
-          dev_ctx.GetPlace(), framework::TransToPtenDataType(output_type[i]));
+          dev_ctx.GetPlace(), framework::TransToPhiDataType(output_type[i]));
     }
   }
 

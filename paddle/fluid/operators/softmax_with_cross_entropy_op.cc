@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -153,7 +154,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(Logits)."));
 
-    axis = CanonicalAxis(axis, logits_rank);
+    axis = phi::funcs::CanonicalAxis(axis, logits_rank);
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
@@ -250,7 +251,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(Logits)."));
 
-    axis = CanonicalAxis(axis, softmax_rank);
+    axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
     for (int i = 0; i < softmax_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
@@ -335,12 +336,6 @@ REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,
                   ops::SoftmaxWithCrossEntropyGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
-                       ops::SoftmaxWithCrossEntropyKernel<float>,
-                       ops::SoftmaxWithCrossEntropyKernel<double>);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
-                       ops::SoftmaxWithCrossEntropyGradKernel<float>,
-                       ops::SoftmaxWithCrossEntropyGradKernel<double>);
 
 REGISTER_OP_VERSION(softmax_with_cross_entropy)
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)

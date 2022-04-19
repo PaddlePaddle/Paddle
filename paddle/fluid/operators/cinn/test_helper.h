@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -31,6 +32,7 @@ using LoDTensor = framework::LoDTensor;
 using Variable = framework::Variable;
 using Graph = framework::ir::Graph;
 using Node = framework::ir::Node;
+using framework::paddle2cinn::Name2VarInfoMap;
 
 std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
     const std::string& x_name, const std::string& y_name,
@@ -71,6 +73,16 @@ std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
   y_node->inputs = {feed_op_node_y};
   y_node->outputs = {elementwise_add_node};
   out_node->inputs = {elementwise_add_node};
+  // set necessary attributes
+  g->Set<std::vector<std::string>>(
+      framework::paddle2cinn::kInputVars,
+      new std::vector<std::string>({x_name, y_name}));
+  g->Set<std::vector<std::string>>(framework::paddle2cinn::kInternalVars,
+                                   new std::vector<std::string>({}));
+  g->Set<std::vector<std::string>>(framework::paddle2cinn::kOutputVars,
+                                   new std::vector<std::string>({out_name}));
+  g->GetOrInit<Name2VarInfoMap>(
+      framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
   return g;
 }
 

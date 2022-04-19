@@ -20,36 +20,42 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasOutput("XShape")) {
     if (ctx.InputSize("ShapeTensor") > 0) {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"Out", "XShape"});
     } else if (ctx.HasInput("Shape")) {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"Shape"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"Shape"}, {"Out", "XShape"});
     } else {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"shape"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"shape"}, {"Out", "XShape"});
+    }
+  } else {
+    if (ctx.InputSize("ShapeTensor") > 0) {
+      return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+    } else {
+      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
     }
   }
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ReshapeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "reshape_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("reshape_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
+  return KernelSignature("reshape_double_grad", {"DOut", "DDX"}, {}, {"DDOut"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
+PD_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
                            phi::ReshapeDoubleGradOpArgumentMapping);

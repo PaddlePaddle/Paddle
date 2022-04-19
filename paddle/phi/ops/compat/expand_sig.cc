@@ -17,6 +17,11 @@
 namespace phi {
 
 KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  const auto& shape = paddle::any_cast<std::vector<int>>(ctx.Attr("shape"));
+  // Infer output shape by Attr("shape") in CompileTime if it is specified.
+  if (!ctx.IsRuntime() && !shape.empty()) {
+    return KernelSignature("expand", {"X"}, {"shape"}, {"Out"});
+  }
   if (ctx.HasInput("Shape")) {
     return KernelSignature("expand", {"X"}, {"Shape"}, {"Out"});
   } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
@@ -27,28 +32,28 @@ KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature ExpandGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  const auto& shape = paddle::any_cast<std::vector<int>>(ctx.Attr("shape"));
+  // Infer output shape by Attr("shape") in CompileTime if it is specified.
+  if (!ctx.IsRuntime() && !shape.empty()) {
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"shape"}, {"X@GRAD"});
+  }
   if (ctx.HasInput("Shape")) {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"Shape"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"Shape"}, {"X@GRAD"});
   } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"expand_shapes_tensor"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"expand_shapes_tensor"}, {"X@GRAD"});
   } else {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"shape"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"shape"}, {"X@GRAD"});
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
-PT_REGISTER_BASE_KERNEL_NAME(expand_v2_grad, expand_grad);
+PD_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
+PD_REGISTER_BASE_KERNEL_NAME(expand_v2_grad, expand_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(expand_v2, phi::ExpandOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(expand_v2_grad, phi::ExpandGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(expand_v2, phi::ExpandOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(expand_v2_grad, phi::ExpandGradOpArgumentMapping);

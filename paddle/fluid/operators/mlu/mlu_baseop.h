@@ -45,6 +45,22 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
+const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
+    {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
+    {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
+    {"reduce_min", CNNL_REDUCE_MIN},  {"reduce_sum", CNNL_REDUCE_ADD},
+    {"reduce_prod", CNNL_REDUCE_MUL},
+};
+
+inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
+  auto iter = MLUReduceOpMap.find(reduce_name);
+  if (iter != MLUReduceOpMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
@@ -85,7 +101,7 @@ inline cnnlDataType_t ToCnnlDataType(
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::framework::proto::VarType::Type& type) {
-  return ToCnnlDataType(framework::TransToPtenDataType(type));
+  return ToCnnlDataType(framework::TransToPhiDataType(type));
 }
 
 template <typename T>
@@ -218,6 +234,9 @@ class MLUCnnlActivationDesc {
   MLUCnnlActivationDesc(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc& operator=(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof);
+  MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof,
+                        const float sliced_dim, const float selu_alpha,
+                        const float selu_lambda);
 
   const cnnlActivationDescriptor_t get() const;
   ~MLUCnnlActivationDesc();
@@ -403,6 +422,11 @@ class MLUCnnl {
                      const void* const inputs[],
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Concat(const MLUDeviceContext& dev_ctx, const int pack_num,
+                     const int axis, const cnnlTensorDescriptor_t inputs_desc[],
+                     const void* const inputs[],
+                     const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void Cast(const ExecutionContext& ctx, cnnlCastDataType_t cast_type,
                    const cnnlTensorDescriptor_t input_desc, const void* input,
                    const cnnlTensorDescriptor_t output_desc, void* output);
@@ -413,7 +437,8 @@ class MLUCnnl {
                   const cnnlTensorDescriptor_t in1_desc, const void* in1,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void Fill(const ExecutionContext& ctx, float value,
+  static void Fill(const ExecutionContext& ctx,
+                   const cnnlPointerMode_t pointer_mode, const void* value_ptr,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void LRN(const ExecutionContext& ctx, const int local_size,
@@ -561,6 +586,12 @@ class MLUCnnl {
                            void* output);
 
   static void Split(const ExecutionContext& ctx, int split_num, int axis,
+                    const cnnlTensorDescriptor_t input_desc,
+                    const void* input_ptr,
+                    const cnnlTensorDescriptor_t output_descs[],
+                    void* output_ptrs[]);
+
+  static void Split(const MLUDeviceContext& dev_ctx, int split_num, int axis,
                     const cnnlTensorDescriptor_t input_desc,
                     const void* input_ptr,
                     const cnnlTensorDescriptor_t output_descs[],
@@ -724,6 +755,13 @@ class MLUCnnl {
                              const void* input, const void* beta,
                              const cnnlTensorDescriptor_t output_desc,
                              void* output);
+
+  static void SoftmaxBackward(
+      const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+      cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc,
+      const void* y, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
 
   static void Softplus(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t features_desc,
@@ -1157,19 +1195,22 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const Tensor* transformed_input,
                                    Tensor* transformed_output,
                                    bool need_reshape_or_alloc) {
-  auto in_dims_vec = phi::vectorize(transformed_input->dims());
+  const int dim_size = perm.size();
   if (need_reshape_or_alloc) {
+    std::vector<int> output_shape;
+    auto input_dims = transformed_input->dims();
+    for (int i = 0; i < dim_size; ++i) {
+      output_shape.push_back(input_dims[perm[i]]);
+    }
     transformed_output->mutable_data<T>(
-        {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],
-         in_dims_vec[perm[3]]},
-        ctx.GetPlace());
+        framework::DDim(output_shape.data(), dim_size), ctx.GetPlace());
   }
   MLUCnnlTensorDesc trans_in_desc(*transformed_input, CNNL_LAYOUT_ARRAY,
                                   ToCnnlDataType<T>());
   MLUCnnlTensorDesc trans_out_desc(*transformed_output, CNNL_LAYOUT_ARRAY,
                                    ToCnnlDataType<T>());
 
-  MLUCnnl::Transpose(ctx, perm, in_dims_vec.size(), trans_in_desc.get(),
+  MLUCnnl::Transpose(ctx, perm, dim_size, trans_in_desc.get(),
                      GetBasePtr(transformed_input), trans_out_desc.get(),
                      GetBasePtr(transformed_output));
 }

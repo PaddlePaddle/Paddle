@@ -21,8 +21,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -30,21 +30,17 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-std::unique_ptr<phi::DenseTensor> MakePtenDenseTensor(
+std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const paddle::framework::Tensor& src);
 
-phi::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src);
+phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src);
 
-phi::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
 
-phi::ScalarArray MakePtenScalarArrayFromVar(
-    const framework::Variable& variable);
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
 
-phi::ScalarArray MakePtenScalarArrayFromVarList(
+phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
-
-void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
-                                       const phi::TensorArgDef& arg_def);
 
 }  // namespace experimental
 }  // namespace paddle

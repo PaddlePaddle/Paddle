@@ -29,13 +29,23 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_y,
                   DenseTensor* out);
 
+// In order to be compatible with `mul` op in fluid,
+// it is no longer used in 2.x API
+template <typename T, typename Context>
+void MatmulWithFlattenKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int x_num_col_dims,
+                             int y_num_col_dims,
+                             DenseTensor* out);
+
 template <typename T, typename Context>
 DenseTensor Matmul(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   bool transpose_x,
-                   bool transpose_y) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+                   bool transpose_x = false,
+                   bool transpose_y = false) {
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   MatmulInferMeta(x, y, transpose_x, transpose_y, &meta_out);
   MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, &dense_out);

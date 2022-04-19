@@ -22,8 +22,8 @@
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 namespace funcs {
@@ -118,7 +118,7 @@ DenseTensor Diagonal(const DeviceContext& context,
 #endif
 
     // auto& dev_ctx = context.template device_context<DeviceContext>();
-    paddle::platform::ForRange<DeviceContext> for_range(context, diag.numel());
+    phi::funcs::ForRange<DeviceContext> for_range(context, diag.numel());
     DiagonalFunctor<T> functor(
         input_data, diag_arr, ret_arr, pos, dim_size, diag_data);
     for_range(functor);

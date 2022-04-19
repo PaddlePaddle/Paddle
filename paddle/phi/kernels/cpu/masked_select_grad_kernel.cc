@@ -21,9 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
                             const DenseTensor& x,
                             const DenseTensor& mask,
+                            const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
   auto* mask_data = mask.data<bool>();
   auto* input_data = out_grad.data<T>();
@@ -43,7 +43,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(masked_select_grad,
+PD_REGISTER_KERNEL(masked_select_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MaskedSelectGradKernel,

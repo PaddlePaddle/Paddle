@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -298,7 +298,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
        bias ? bias->data<T>() : nullptr);
 
@@ -368,9 +368,9 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     hidden_out->mutable_data<T>(place);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     if (M > D3) {
       fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
          bias ? bias->data<T>() : nullptr);
@@ -463,7 +463,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       batched_input_data = cur_batched_data;
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_out, hidden_out);
   }

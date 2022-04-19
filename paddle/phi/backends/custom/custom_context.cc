@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/backends/custom/custom_context.h"
 
-#include "paddle/fluid/platform/device/device_guard.h"
-#include "paddle/fluid/platform/device/stream.h"
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/stream.h"
 
 namespace phi {
 
@@ -25,29 +25,29 @@ struct CustomContext::Impl {
   ~Impl() {}
 
   void Init() {
-    paddle::platform::DeviceGuard guard(place_);
-    stream_.reset(new paddle::platform::stream::Stream());
+    phi::DeviceGuard guard(place_);
+    stream_.reset(new phi::stream::Stream());
     stream_->Init(place_);
   }
 
   const Place& GetPlace() const { return place_; }
 
-  C_Stream stream() const {
-    return reinterpret_cast<C_Stream>(stream_->raw_stream());
+  void* stream() const {
+    return reinterpret_cast<void*>(stream_->raw_stream());
   }
 
   void Wait() const { stream_->Wait(); }
 
   Place place_;
 
-  std::shared_ptr<paddle::platform::stream::Stream> stream_;
+  std::shared_ptr<phi::stream::Stream> stream_;
 };
 
 void CustomContext::Init() { impl_->Init(); }
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-C_Stream CustomContext::stream() const { return impl_->stream(); }
+void* CustomContext::stream() const { return impl_->stream(); }
 
 void CustomContext::Wait() const { return impl_->Wait(); }
 

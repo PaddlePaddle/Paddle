@@ -16,13 +16,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
@@ -353,7 +354,7 @@ class ReshapeKernel {
     auto *shape_tensor = ctx.HasInput("Shape")
                              ? ctx.Input<framework::LoDTensor>("Shape")
                              : nullptr;
-    phi::ScalarArray pt_scalar_shape;
+    phi::IntArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
@@ -368,7 +369,7 @@ class ReshapeKernel {
           pt_vec_shape.push_back(*tensor);
         }
       }
-      pt_scalar_shape = phi::ScalarArray(pt_vec_shape);
+      pt_scalar_shape = phi::IntArray(pt_vec_shape);
     } else if (shape_tensor) {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
@@ -380,10 +381,10 @@ class ReshapeKernel {
       } else {
         pt_shape = *shape_tensor;
       }
-      pt_scalar_shape = phi::ScalarArray(pt_shape);
+      pt_scalar_shape = phi::IntArray(pt_shape);
     } else {
       auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
-      pt_scalar_shape = phi::ScalarArray(shape_attr);
+      pt_scalar_shape = phi::IntArray(shape_attr);
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
@@ -440,26 +441,27 @@ class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *dd_x = ctx.Input<framework::Tensor>("DDX");
+    auto *d_out = ctx.Input<framework::Tensor>("DOut");
     auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
       phi::ReshapeDoubleGradKernel(
-          static_cast<const phi::CPUContext &>(dev_ctx), *dd_x, dd_out);
+          static_cast<const phi::CPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
       phi::ReshapeDoubleGradKernel(
-          static_cast<const phi::GPUContext &>(dev_ctx), *dd_x, dd_out);
+          static_cast<const phi::GPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
       phi::ReshapeDoubleGradKernel(
-          static_cast<const phi::XPUContext &>(dev_ctx), *dd_x, dd_out);
+          static_cast<const phi::XPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #endif
   }
@@ -476,6 +478,21 @@ class Reshape2Op : public ReshapeOp {
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(XShape) of ReshapeOp should not be null."));
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", /*->*/ "XShape");
+
+    ReshapeOp::InferShape(ctx);
+  }
 };
 
 class Reshape2OpMaker : public ReshapeOpMaker {
@@ -543,10 +560,14 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
-    auto xshape_dims = ctx->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("XShape", framework::GradVarName("X"));
+
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor xshape(ctx->GetInputVarPtrs("XShape")[0],
+                            ctx->IsRuntime());
+    CompatMetaTensor dx(ctx->GetOutputVarPtrs(framework::GradVarName("X"))[0],
+                        ctx->IsRuntime());
+    phi::KernelWithXShapeInferMeta(xshape, &dx);
   }
 
  protected:
@@ -576,15 +597,6 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
                        const framework::VariableNameMap &outputs,
                        const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X@GRAD_GRAD) shouldn't be null."));
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -636,20 +648,23 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
 
-DELCARE_INFER_SHAPE_FUNCTOR(reshape2, ReshapeInferShapeFunctor,
-                            PT_INFER_META(phi::ReshapeWithXShapeInferMeta));
-
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
-                  ReshapeInferShapeFunctor, ops::ReshapeOpInplaceInferer);
+                  ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInferer);
+
+DECLARE_INFER_SHAPE_FUNCTOR(reshape2_grad_grad,
+                            Reshape2DoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::ReshapeDoubleGradInferMeta));
+
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInferer,
-                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
+                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer,
+                  Reshape2DoubleGradInferShapeFunctor);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,

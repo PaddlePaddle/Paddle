@@ -16,6 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
+SparseCooTensor::SparseCooTensor() {
+  DenseTensor non_zero_indices, non_zero_elements;
+  this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
+}
+
 SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
                                  const DenseTensor& non_zero_elements,
                                  const DDim& dims)
@@ -69,17 +74,17 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
   PADDLE_ENFORCE_GE(non_zero_num,
                     this->nnz(),
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the non_zero_num must be greater than or equal to the "
                         "origin non_zero_num."));
   PADDLE_ENFORCE_GE(sparse_dim,
                     1,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the sparse_dim must be greater than or equal 1."));
   PADDLE_ENFORCE_LE(
       sparse_dim,
       dense_dims.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "the sparse_dim must be less than or equal dense_dims."));
 
   DDim indices_dims = phi::make_ddim({sparse_dim, non_zero_num});
@@ -106,7 +111,7 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
                                 const bool coalesced) {
   this->non_zero_indices_ = non_zero_indices;
   this->non_zero_elements_ = non_zero_elements;
-  this->dims_ = dims_;
+  this->dims_ = dims;
   this->coalesced_ = coalesced;
 }
 

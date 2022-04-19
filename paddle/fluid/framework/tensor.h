@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/stream.h"
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {

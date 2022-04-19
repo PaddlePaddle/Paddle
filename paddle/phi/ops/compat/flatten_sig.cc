@@ -31,15 +31,15 @@ KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature FlattenGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "flatten_grad", {GradVarName("Out"), "XShape"}, {}, {GradVarName("X")});
+      "flatten_grad", {"XShape", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
-PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
+PD_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
+PD_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
+PD_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
                            phi::FlattenOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
+PD_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
                            phi::FlattenGradOpArgumentMapping);

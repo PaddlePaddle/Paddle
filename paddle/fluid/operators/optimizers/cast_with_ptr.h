@@ -57,8 +57,7 @@ static void LaunchCastKernel(const platform::CUDADeviceContext &ctx,
   PADDLE_ENFORCE_NE(
       static_cast<const void *>(x), static_cast<void *>(y),
       platform::errors::InvalidArgument("Inplace cast is not supported yet."));
-  int vec_size =
-      std::min(platform::GetVectorizedSize(x), platform::GetVectorizedSize(y));
+  int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(y));
   switch (vec_size) {
     case 4:
       return details::VecCastKernel<InT, OutT, 4>(ctx, x, y, n);

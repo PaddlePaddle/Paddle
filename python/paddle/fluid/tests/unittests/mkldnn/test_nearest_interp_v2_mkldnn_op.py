@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
@@ -59,6 +59,7 @@ def nearest_neighbor_interp_mkldnn_np(X,
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestNearestInterpV2MKLDNNOp(OpTest):
     def init_test_case(self):
         pass
@@ -84,7 +85,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.init_test_case()
         self.init_data_type()
 
-        if self.dtype == np.float32:
+        if self.dtype == np.float32 or self.dtype == np.uint16:
             input_np = np.random.random(self.input_shape).astype(self.dtype)
         else:
             init_low, init_high = (-5, 5) if self.dtype == np.int8 else (0, 10)
@@ -125,6 +126,9 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
 
         if isinstance(self.scale, float):
             self.scale = [self.scale]
+
+        if self.dtype == np.uint16:
+            input_np = convert_float_to_uint16(input_np)
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -191,6 +195,10 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.float32
 
+    class TestBf16Case(parent):
+        def init_data_type(self):
+            self.dtype = np.uint16
+
     class TestInt8Case(parent):
         def init_data_type(self):
             self.dtype = np.int8
@@ -199,12 +207,14 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.uint8
 
-    TestFp32Case.__name__ = parent.__name__
-    TestInt8Case.__name__ = parent.__name__
-    TestUint8Case.__name__ = parent.__name__
-    globals()[parent.__name__] = TestFp32Case
-    globals()[parent.__name__] = TestInt8Case
-    globals()[parent.__name__] = TestUint8Case
+    TestFp32Case.__name__ = "{0}_{1}".format(parent.__name__, "FP32")
+    TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
+    TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
+    TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
+    globals()[TestFp32Case.__name__] = TestFp32Case
+    globals()[TestBf16Case.__name__] = TestBf16Case
+    globals()[TestInt8Case.__name__] = TestInt8Case
+    globals()[TestUint8Case.__name__] = TestUint8Case
 
 
 create_test_class(TestNearestInterpV2MKLDNNOp)

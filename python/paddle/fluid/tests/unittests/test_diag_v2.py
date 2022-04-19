@@ -27,6 +27,7 @@ from paddle.fluid.framework import _test_eager_guard
 class TestDiagV2Op(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
+        self.python_api = paddle.diag
         self.x = np.random.rand(10, 10)
         self.offset = 0
         self.padding_value = 0.0
@@ -42,7 +43,11 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out', check_eager=False)
 
     def init_config(self):
         pass
@@ -62,14 +67,14 @@ class TestDiagV2OpCase2(TestDiagV2Op):
 
 class TestDiagV2OpCase3(TestDiagV2Op):
     def init_config(self):
-        self.x = np.random.randint(-10, 10, size=(10, 10))
+        self.x = np.random.randint(-10, 10, size=(10, 10)).astype("float64")
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase4(TestDiagV2Op):
     def init_config(self):
         self.x = np.random.rand(100)
-        self.padding_value = 8
+        self.padding_value = 2
         n = self.x.size
         self.out = self.padding_value * np.ones((n, n)) + np.diag(
             self.x, self.offset) - np.diag(self.padding_value * np.ones(n))
@@ -263,4 +268,5 @@ class TestDiagV2API(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

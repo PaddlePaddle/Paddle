@@ -19,12 +19,13 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -36,23 +37,28 @@ class InferMetaContext {
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
   void SetMetaConfig(MetaConfig config);
-  void EmplaceBackInput(std::shared_ptr<phi::MetaTensor> input);
-  void EmplaceBackOutput(std::shared_ptr<phi::MetaTensor> output);
+  const MetaConfig& GetMetaConfig() const;
+
+  void EmplaceBackInput(MetaTensor input);
+  void EmplaceBackOutput(MetaTensor output);
   void EmplaceBackAttr(paddle::any attr);
 
   void EmplaceBackInputs(
-      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs);
+      paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs);
   void EmplaceBackOutputs(
-      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs);
+      paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const;
-  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+  virtual const MetaTensor& InputAt(size_t idx) const;
+  virtual paddle::optional<const MetaTensor&> OptionalInputAt(size_t idx) const;
 
-  const MetaConfig& GetMetaConfig() const;
-  const MetaTensor& InputAt(size_t idx) const;
-  std::vector<MetaTensor> InputsBetween(size_t start, size_t end) const;
-  MetaTensor* MutableOutputAt(size_t idx);
-  std::vector<MetaTensor> MutableOutputBetween(size_t start, size_t end);
+  virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
+                                                       size_t end) const;
+  virtual paddle::optional<const std::vector<const MetaTensor*>>
+  OptionalInputsBetween(size_t start, size_t end) const;
+
+  virtual MetaTensor* MutableOutputAt(size_t idx);
+  virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
+                                                        size_t end);
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -67,25 +73,30 @@ class InferMetaContext {
     }
   }
 
- private:
+  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+
+  virtual ~InferMetaContext() = default;
+
+ protected:
   MetaConfig config_;
 
-  // NOTE(chenweihang): Because the MetaTensor is a base class, and MetaTensor
-  // objects are all created in each round, so we have to use smart pointer
-  // here, maybe we can implemented a new InferMetaContext and a series utils
-  // specifically for fluid to avoid using shared_ptr
-  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs_;
-  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs_;
-  paddle::SmallVector<paddle::any> attrs_;
+  paddle::SmallVector<paddle::any, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::SmallVector<std::pair<int, int>, phi::kInputSmallVectorSize>
+      input_range_;
+  paddle::SmallVector<std::pair<int, int>, phi::kOutputSmallVectorSize>
+      output_range_;
+
+ private:
+  paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs_;
+  paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs_;
 };
 
-#define PT_INFER_META(...) \
+#define PD_INFER_META(...) \
   ::phi::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
 
-#define PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
+#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                                  \
   struct InferMetaFnCallHelper<attr_type, Tail...> {                           \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
@@ -135,7 +146,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const std::vector<MetaTensor>&, Tail...> {
+  struct InferMetaFnCallHelper<paddle::optional<const MetaTensor&>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
@@ -143,7 +154,25 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      std::vector<MetaTensor> arg =
+      auto arg = ctx->OptionalInputAt(range.first);
+
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const std::vector<const MetaTensor*>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+      std::vector<const MetaTensor*> arg =
           ctx->InputsBetween(range.first, range.second);
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
@@ -152,25 +181,45 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<
+      paddle::optional<const std::vector<const MetaTensor*>>,
+      Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+      paddle::optional<const std::vector<const MetaTensor*>> arg =
+          ctx->OptionalInputsBetween(range.first, range.second);
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
   // TODO(chenweihang): support other attr type later
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
       const std::vector<int64_t>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
       const std::vector<std::string>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const IntArray&);
 
   // TODO(chenweihang): support vector<MetaTensor> input later
 
@@ -188,13 +237,12 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<std::vector<MetaTensor>*, Tail...> {
+  struct InferMetaFnCallHelper<std::vector<MetaTensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
-      std::vector<MetaTensor> tmp =
+      std::vector<MetaTensor*> arg =
           ctx->MutableOutputBetween(range.first, range.second);
-      std::vector<MetaTensor>* arg = &tmp;
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                  pargs...,
@@ -282,12 +330,12 @@ struct InferMetaFnRegistrar {
   }
 };
 
-#define PT_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
-      "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
+#define PD_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PD_REGISTER_infer_meta_fn_ns_check_##kernel_name_prefix,                \
+      "PD_REGISTER_INFER_META_FN must be called in global namespace.");       \
   static const ::phi::InferMetaFnRegistrar                                    \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
-          #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))
+          #kernel_name_prefix, PD_INFER_META(variadic_infer_meta_fn))
 
 }  // namespace phi

@@ -19,7 +19,24 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-// See Note [ Why still include the fluid headers? ]
+/**
+ * [ Why still include the fluid headers? ]
+ *
+ * We hope to organize the basic implementation of Tensor and the logic related
+ * to Tensor computation into an independent library, which we call
+ * [Tensor Operation Library, phi], so we extract or rewrite the original
+ * Kernels.
+ *
+ * In the future, the training library, inference library and custom operators
+ * will link to this Tensor Operation library.
+ *
+ * However, if we directly split the link relation, we need to make too many
+ * changes, which will affect the stability of the framework, so here we still
+ * rely on the implementation of the framework, which is a intermediate state.
+ *
+ * In the future, the necessary components will be moved to the this library,
+ * or the corresponding components will be re-implemented.
+ */
 #include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
@@ -36,6 +53,7 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
+  inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
@@ -45,6 +63,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+  inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
 #endif
@@ -54,6 +73,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
+  std::swap(inplace_version_counter_, other.inplace_version_counter_);
   return *this;
 }
 
@@ -73,7 +93,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 size_t requested_size) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
@@ -81,22 +101,22 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   }
   PADDLE_ENFORCE(
       valid(),
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The meta data must be valid when call the mutable data function."));
   size_t bytes = numel() * SizeOf(this->dtype());
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size,
                       bytes,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The reserved size %d should be enough to meet the "
                           "volume required by metadata %d.",
                           requested_size,
                           bytes));
     bytes = requested_size;
   }
-  // TODO(paddle-dev): In case of the allocator of storage_ is different with
-  // the incoming allocator, we should re-alloc data using the incoming
-  // allocator.
+  // NOTE(paddle-dev): In case of the allocator of storage_ is different with
+  // the incoming allocator, we will re-alloc data using the incoming
+  // allocator. See DeviceContext.Alloc in core/device_context.cc.
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
@@ -110,9 +130,10 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 template <typename T>
 const T* DenseTensor::data() const {
   check_memory_size();
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(
+      dtype(),
+      paddle::experimental::CppTypeToDataType<T>::Type(),
+      phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<const T*>(data());
@@ -123,7 +144,7 @@ T* DenseTensor::data() {
   check_memory_size();
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<T*>(data());
@@ -133,7 +154,7 @@ void* DenseTensor::data() {
   check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
@@ -143,7 +164,7 @@ const void* DenseTensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
   return reinterpret_cast<const void*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
@@ -151,7 +172,7 @@ const void* DenseTensor::data() const {
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   PADDLE_ENFORCE(!meta_.valid(),
-                 paddle::platform::errors::InvalidArgument(
+                 phi::errors::InvalidArgument(
                      "Only when the original attribute of Tensor is "
                      "incomplete, can it be reset."));
   meta_ = std::move(meta);
@@ -160,7 +181,7 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
 void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   PADDLE_ENFORCE(
       meta.valid(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
   meta_.dtype = meta.dtype;

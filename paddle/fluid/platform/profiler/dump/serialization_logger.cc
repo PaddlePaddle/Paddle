@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
@@ -20,6 +21,7 @@ namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
 static const char* version = "1.0.0";
+static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
@@ -39,6 +41,7 @@ void SerializationLogger::OpenFile() {
   }
   node_trees_proto_ = new NodeTreesProto();
   node_trees_proto_->set_version(std::string(version));
+  node_trees_proto_->set_span_indx(span_indx++);
 }
 
 void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
@@ -238,6 +241,15 @@ void SerializationLogger::HandleTypeMemset(
   device_trace_event->set_allocated_memset_info(memset_info);
   current_device_trace_event_node_proto_->set_allocated_device_event(
       device_trace_event);
+}
+
+void SerializationLogger::LogMetaInfo(
+    const std::unordered_map<std::string, std::string> extra_info) {
+  for (const auto& kv : extra_info) {
+    ExtraInfoMap* extra_info_map = node_trees_proto_->add_extra_info();
+    extra_info_map->set_key(kv.first);
+    extra_info_map->set_value(kv.second);
+  }
 }
 
 SerializationLogger::SerializationLogger(const std::string& filename) {

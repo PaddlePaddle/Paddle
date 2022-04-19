@@ -48,7 +48,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
   DDim out_dim{out_size};
   out->Resize(out_dim);
-  auto out_data = out->mutable_data<T>(paddle::platform::CPUPlace());
+  auto out_data = out->mutable_data<T>(phi::CPUPlace());
 
   int index = 0;
   for (int i = 0; i < mask_size; i++) {
@@ -61,7 +61,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(masked_select,
+PD_REGISTER_KERNEL(masked_select,
                    CPU,
                    ALL_LAYOUT,
                    phi::MaskedSelectKernel,

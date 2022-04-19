@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <algorithm>
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
@@ -52,7 +53,8 @@ void FleetExecutor::Init(
     const std::string& carrier_id, const framework::ProgramDesc& program_desc,
     framework::Scope* scope, const platform::Place& place,
     int64_t num_micro_batches, const std::vector<TaskNode*>& task_nodes,
-    const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
+    const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
+    const std::vector<std::string>& inference_root_scope_vars) {
   PADDLE_ENFORCE_GT(task_nodes.size(), 0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
@@ -64,6 +66,37 @@ void FleetExecutor::Init(
     }
   }
   auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+  // NOTE: For inference, the vars in inference_root_scope_vars
+  // shouldn't be deleted during inf, for that they may be the result of the
+  // inf. If they are GCed, it will cause error during ZeroCopy the result.
+  std::vector<const framework::OperatorBase*> changed_ops;
+  for (auto pair : unused_vars) {
+    const framework::OperatorBase* op = pair.first;
+    std::vector<std::string> unused = pair.second;
+    for (auto name : inference_root_scope_vars) {
+      auto iter = std::find(unused.begin(), unused.end(), name);
+      if (iter != unused.end()) {
+        VLOG(3) << "Removing var: [" << name
+                << "] from the unused vars list of op: [" << op->Type() << "]";
+        unused.erase(iter);
+        if (std::find(changed_ops.begin(), changed_ops.end(), op) ==
+            changed_ops.end()) {
+          // record the op whose unused vars have been updated
+          changed_ops.emplace_back(op);
+        }
+      }
+    }
+    // update the unused vars list in the map
+    unused_vars[op] = unused;
+  }
+  for (auto op : changed_ops) {
+    auto iter = unused_vars.find(op);
+    if (iter->second.empty()) {
+      // remove those ops in the map that have empty unused vars list
+      VLOG(3) << "Removing op: [" << op->Type() << "] from unused_vars map.";
+      unused_vars.erase(iter);
+    }
+  }
   runtime_graph_ = std::make_shared<RuntimeGraph>();
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
   for (auto task_node : task_nodes) {
@@ -82,17 +115,18 @@ void FleetExecutor::Init(
   carrier_ids_.insert(carrier_id);
   // Set current running carrier
   GlobalVal<std::string>::Set(new std::string(carrier_id));
-  InitCarrier(carrier, scope, place, num_micro_batches, program_desc);
+  InitCarrier(carrier, scope, place, num_micro_batches, program_desc,
+              inference_root_scope_vars);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 
-void FleetExecutor::InitCarrier(Carrier* carrier, framework::Scope* scope,
-                                const platform::Place& place,
-                                int64_t num_micro_batches,
-                                const framework::ProgramDesc& program_desc) {
+void FleetExecutor::InitCarrier(
+    Carrier* carrier, framework::Scope* scope, const platform::Place& place,
+    int64_t num_micro_batches, const framework::ProgramDesc& program_desc,
+    const std::vector<std::string>& inference_root_scope_vars) {
   carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
                 runtime_graph_->interceptor_id_to_node(), program_desc, scope,
-                num_micro_batches, place);
+                num_micro_batches, place, inference_root_scope_vars);
 }
 
 void FleetExecutor::InitMessageBus() {

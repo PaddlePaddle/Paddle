@@ -28,6 +28,7 @@
 #include "paddle/fluid/eager/utils.h"
 
 // Eager Generated
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 
 // Fluid
@@ -36,7 +37,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
-static size_t max_num_benchmark_runs = 5000;
+static size_t max_num_benchmark_runs = 4000;
 
 namespace egr {
 
@@ -57,13 +58,36 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 10)
     eager_test::CompareTensorWithValue<float>(input_tensor, 8189.0);
     // Examine Backward Grad (w.r.t max_num_runs = 10)
     eager_test::CompareGradTensorWithValue<float>(tensor, 1024.0);
+  }
+}
+
+void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
+                            const paddle::experimental::Tensor& Y,
+                            bool accuracy_check) {
+  paddle::experimental::Tensor input_tensor0 = X;
+
+  size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
+  for (size_t i = 0; i < max_num_runs; i++) {
+    input_tensor0 =
+        matmul_final_state_dygraph_function(input_tensor0, Y, false, false);
+  }
+
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
+  Backward(target_tensors, {});
+
+  if (accuracy_check) {
+    // Examine Forward Grad (w.r.t max_num_runs = 2)
+    eager_test::CompareTensorWithValue<float>(input_tensor0, 16);
+    // Examine Backward Grad (w.r.t max_num_runs = 2)
+    eager_test::CompareGradTensorWithValue<float>(X, 16);
+    eager_test::CompareGradTensorWithValue<float>(Y, 16);
   }
 }
 
@@ -82,7 +106,7 @@ void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
@@ -113,7 +137,7 @@ void benchmark_eager_intermediate_mlp(
       reduce_sum_dygraph_function(input0, {{"reduce_all", true}});
 
   std::vector<paddle::experimental::Tensor> target_tensors = {Out};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     std::unordered_map<std::string, float> result =

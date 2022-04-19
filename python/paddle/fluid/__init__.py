@@ -212,6 +212,7 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
+    core.init_default_kernel_signatures()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
@@ -226,3 +227,7 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+atexit.register(core.clear_kernel_factory)
+# NOTE(wangran16): clean up DeviceManger in advance manually.
+atexit.register(core.clear_device_manager)

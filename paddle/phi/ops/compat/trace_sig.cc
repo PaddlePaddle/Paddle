@@ -23,12 +23,12 @@ KernelSignature TraceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("trace_grad",
-                         {GradVarName("Out"), "Input"},
+                         {"Input", "Out@GRAD"},
                          {"offset", "axis1", "axis2"},
-                         {GradVarName("Input")});
+                         {"Input@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trace, phi::TraceOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trace_grad, phi::TraceGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trace, phi::TraceOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trace_grad, phi::TraceGradOpArgumentMapping);

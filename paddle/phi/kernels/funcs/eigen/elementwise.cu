@@ -55,5 +55,5 @@ struct EigenSub<Eigen::GpuDevice, T> {
 
 template struct EigenSub<Eigen::GpuDevice, float>;
 
-}  // namespace fucns
+}  // namespace funcs
 }  // namespace phi

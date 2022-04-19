@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 
-// TODO(wilber): The pten computing library requires a component to manage
+// TODO(wilber): The phi computing library requires a component to manage
 // flags.
 #include "paddle/fluid/platform/flags.h"
 
@@ -100,7 +100,7 @@ void SetXPUDeviceId(int id) {
   PADDLE_ENFORCE_LT(
       id,
       GetXPUDeviceCount(),
-      paddle::platform::errors::InvalidArgument("id must less than XPU count"));
+      phi::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
 

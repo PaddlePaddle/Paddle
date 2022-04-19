@@ -618,7 +618,7 @@ class BinaryMKLDNNHandler
                       const dnnl::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
                       float scale_x, float scale_y, float scale_z,
-                      const dnnl::post_ops& post_ops = dnnl::post_ops())
+                      const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         x->layout(), DataLayout::kMKLDNN,
@@ -676,8 +676,8 @@ class BinaryMKLDNNHandler
     const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                      MKLDNNMemoryFormat::any);
 
-    auto attributes = CreateAttributes(algo, scale_x, scale_y, scale_z);
-    attributes.set_post_ops(post_ops);
+    auto attributes =
+        CreateAttributes(algo, scale_x, scale_y, scale_z, post_ops);
 
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             dst_md);
@@ -690,10 +690,9 @@ class BinaryMKLDNNHandler
   }
 
  private:
-  static inline dnnl::primitive_attr CreateAttributes(dnnl::algorithm op,
-                                                      float scale_x,
-                                                      float scale_y,
-                                                      float scale_z) {
+  static inline dnnl::primitive_attr CreateAttributes(
+      dnnl::algorithm op, float scale_x, float scale_y, float scale_z,
+      dnnl::post_ops post_ops = dnnl::post_ops{}) {
     // Scales set in attributes for inputs contibute to the output equation
     // in the following way (assuming no broadcasting takes place):
     // output_i = scale_0 * x_i <+ or *> scale_1 * y_i;
@@ -718,6 +717,7 @@ class BinaryMKLDNNHandler
                           {scale_0});
     attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
                           {scale_1});
+    if (post_ops.len() > 0) attributes.set_post_ops(post_ops);
     return attributes;
   }
 };
@@ -1056,7 +1056,7 @@ class ReorderMKLDNNHandler {
                                                  platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
-        place, framework::TransToPtenDataType(vtype_dst_), dst_md.get_size());
+        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
@@ -1065,7 +1065,7 @@ class ReorderMKLDNNHandler {
       const MKLDNNMemoryFormat& fmt, platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
-        place, framework::TransToPtenDataType(vtype_dst_), dst_md.get_size());
+        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 

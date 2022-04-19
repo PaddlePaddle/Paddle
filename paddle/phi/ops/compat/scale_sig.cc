@@ -20,7 +20,7 @@ namespace phi {
  * Note [ Why does the ArgumentMapping function need to be so complicated? ]
  *
  * In order to meet the requirements of infrt, the function used to match Op
- * and Kernel parameters, need to be placed in pten as a compatible component,
+ * and Kernel parameters, need to be placed in phi as a compatible component,
  * and does not depend on fluid.
  *
  * Because infrt not only needs to dynamically call this argument mapping
@@ -72,4 +72,4 @@ KernelSignature ScaleOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace phi
 
 // op_type, api_name, arg_mapping_fn
-PT_REGISTER_ARG_MAPPING_FN(scale, phi::ScaleOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(scale, phi::ScaleOpArgumentMapping);

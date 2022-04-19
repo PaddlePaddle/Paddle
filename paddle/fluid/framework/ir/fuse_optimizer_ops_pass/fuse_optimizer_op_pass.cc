@@ -276,13 +276,13 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   bool support_gpu = false;
   auto &kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
-      kernel_factory.SelectKernelMap(phi::TransToPtenKernelName(op_type));
+      kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
   bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
   for (auto &kernel : kernel_key_map) {
-    if (platform::is_gpu_place(phi::TransToPtenPlace(kernel.first.backend()))) {
+    if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       support_gpu = true;
     } else if (platform::is_cpu_place(
-                   phi::TransToPtenPlace(kernel.first.backend()))) {
+                   phi::TransToPhiPlace(kernel.first.backend()))) {
       support_cpu = true;
     }
   }
@@ -622,6 +622,23 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
   }
 
   outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
+
+  auto nodes_to_string =
+      [](std::unordered_set<ir::Node *> nodes) -> std::string {
+    std::stringstream ss;
+    for (auto n : nodes) {
+      if (n->IsVar()) {
+        ss << n->Name() << " ";
+      }
+    }
+    return ss.str();
+  };
+
+  VLOG(4) << "add inputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(inputs);
+  VLOG(4) << "add outputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(outputs);
+
   fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
                                 inputs.end());
   fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),

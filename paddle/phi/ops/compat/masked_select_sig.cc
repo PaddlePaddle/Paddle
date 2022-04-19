@@ -23,14 +23,12 @@ KernelSignature MaskedSelectOpArgumentMapping(
 
 KernelSignature MaskedSelectGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("masked_select_grad",
-                         {GradVarName("Y"), "X", "Mask"},
-                         {},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "masked_select_grad", {"X", "Mask", "Y@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(masked_select, phi::MaskedSelectOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(masked_select_grad,
+PD_REGISTER_ARG_MAPPING_FN(masked_select, phi::MaskedSelectOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(masked_select_grad,
                            phi::MaskedSelectGradOpArgumentMapping);

@@ -40,7 +40,7 @@ class SkipLayerNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);
+      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
       return temp_data;
     };
 
@@ -105,7 +105,7 @@ class SkipLayerNormOpConverter : public OpConverter {
                               "in CustomSkipLayerNormPluginDynamic hidden "
                               "dimension should > 0"));
         if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kINT8);
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
         }
 
         const std::vector<nvinfer1::PluginField> fields{

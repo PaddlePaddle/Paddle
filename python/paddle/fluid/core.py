@@ -271,10 +271,6 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _switch_tracer
-        from .core_avx import _set_eager_tracer
-        from .core_avx import _disable_eager_mode
-        from .core_avx import _enable_eager_mode
-        from .core_avx import _in_eager_mode
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
@@ -283,6 +279,7 @@ if avx_supported():
         from .core_avx import _set_cached_executor_build_strategy
         from .core_avx import _device_synchronize
         from .core_avx import _get_current_stream
+        from .core_avx import _Profiler, _ProfilerResult, _RecordEvent
         from .core_avx import _set_current_stream
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
@@ -331,10 +328,6 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _switch_tracer
-        from .core_noavx import _set_eager_tracer
-        from .core_noavx import _disable_eager_mode
-        from .core_noavx import _enable_eager_mode
-        from .core_noavx import _in_eager_mode
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
@@ -344,6 +337,7 @@ if load_noavx:
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         from .core_noavx import _set_current_stream
+        from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

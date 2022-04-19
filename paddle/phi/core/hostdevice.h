@@ -18,14 +18,14 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#ifdef __xpu_kp__
+#if defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
 #endif
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu_kp__))
+#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__

@@ -438,7 +438,7 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
   auto place = platform::CustomPlace(dev_type_, dev_id_);
-  auto device = platform::DeviceManager::GetDeviceWithPlace(place);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   p = device->MemoryAllocate(size);
   if (LIKELY(p)) {
     VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
@@ -447,7 +447,7 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
   } else {
     size_t avail, total;
 
-    platform::DeviceManager::MemoryStats(place, &total, &avail);
+    phi::DeviceManager::MemoryStats(place, &total, &avail);
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on %s %d. "
         "total memory is %s, used memory is %s, "
@@ -470,7 +470,7 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
                         size, plug_alloc_size));
   plug_alloc_size -= size;
   auto place = platform::CustomPlace(dev_type_, dev_id_);
-  auto device = platform::DeviceManager::GetDeviceWithPlace(place);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
 }
 

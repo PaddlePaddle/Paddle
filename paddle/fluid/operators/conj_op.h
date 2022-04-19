@@ -37,7 +37,7 @@ class ConjKernel : public framework::OpKernel<T> {
 
     // call new kernel
     phi::ConjKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, out);
   }

@@ -16,6 +16,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include <cuda.h>
+#include <cuda_occupancy.h>
 #include <cupti.h>
 #include <mutex>  // NOLINT
 
@@ -50,7 +51,8 @@ namespace dynload {
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \
-  __macro(cuptiEnableDomain);
+  __macro(cuptiEnableDomain);                 \
+  __macro(cudaOccMaxActiveBlocksPerMultiprocessor);
 
 CUPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUPTI_WRAP);
 

@@ -20,7 +20,7 @@
 
 #include "paddle/phi/common/complex.h"
 
-PT_REGISTER_KERNEL(dot_grad,
+PD_REGISTER_KERNEL(dot_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::DotGradKernel,

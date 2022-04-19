@@ -26,7 +26,7 @@ def get_wrapped_infermeta_name(api_name):
 def gene_wrapped_infermeta_and_register(api):
     if api.is_base_api and not api.is_dygraph_api:
         register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
+PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
             kernel_params = api.kernel['param']
@@ -43,12 +43,17 @@ PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'const paddle::optional<Tensor&>':
+                'const paddle::optional<MetaTensor&>',
+                'paddle::optional<const Tensor&>':
+                'paddle::optional<const MetaTensor&>'
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
+                    print("type", api.inputs['input_info'])
                     args.append(tensor_type_map[api.inputs['input_info'][
                         input_name]] + ' ' + input_name)
             for attr_name in api.attrs['names']:
@@ -73,7 +78,7 @@ void {wrapped_infermeta_name}({", ".join(args)}) {{
 """
 
             register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
+PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
             return declare_code, defind_code, register_code
         else:
@@ -86,7 +91,7 @@ def header_include():
     return """
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 """
 
 
@@ -98,6 +103,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/ternary.h"
 """
 
 

@@ -39,6 +39,10 @@ TEST(Device, Init) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(i))
             .get());
+    device_context->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     device_context->PartialInitWithAllocator();
 
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
@@ -65,6 +69,10 @@ TEST(Device, CUDADeviceContext) {
     device_context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(i))
+            .get());
+    device_context->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     device_context->PartialInitWithAllocator();
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();

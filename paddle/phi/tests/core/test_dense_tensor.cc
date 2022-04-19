@@ -85,7 +85,7 @@ TEST(dense_tensor, ctor) {
     r = r && (t.dims() == m.dims);
     r = r && (t.dtype() == m.dtype);
     r = r && (t.layout() == m.layout);
-    r = r && (t.place() == paddle::platform::CPUPlace());
+    r = r && (t.place() == phi::CPUPlace());
     r = r && t.initialized();
     r = r && t.IsSharedWith(t);
     return r;

@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 import numpy
 from test_momentum_op import calculate_momentum_by_numpy
 
+paddle.enable_static()
+
 
 class TestMomentumOp1(OpTest):
     def setUp(self):
@@ -608,5 +610,4 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/erfinv_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,14 +23,6 @@ namespace operators {
 class ErfinvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "erfinv");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "erfinv");
-
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class ErfinvOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -78,23 +73,13 @@ DECLARE_INPLACE_OP_INFERER(ErfinvInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(erfinv, ErfinvInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(
     erfinv, paddle::operators::ErfinvOp, paddle::operators::ErfinvOpMaker,
     paddle::operators::ErfinvGradMaker<paddle::framework::OpDesc>,
     paddle::operators::ErfinvGradMaker<paddle::imperative::OpBase>,
-    paddle::operators::ErfinvInplaceInferer);
+    paddle::operators::ErfinvInplaceInferer, ErfinvInferShapeFunctor);
 
 REGISTER_OPERATOR(erfinv_grad, paddle::operators::ErfinvGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    erfinv,
-    paddle::operators::ErfinvKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::ErfinvKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
-
-REGISTER_OP_CPU_KERNEL(
-    erfinv_grad,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>);

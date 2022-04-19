@@ -21,7 +21,7 @@
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -82,8 +82,8 @@ struct TraceGradFunctor {
 
 template <typename T, typename Context>
 void TraceGradKernel(const Context& ctx,
-                     const DenseTensor& out_grad,
                      const DenseTensor& x,
+                     const DenseTensor& out_grad,
                      int offset,
                      int axis1,
                      int axis2,
@@ -130,7 +130,7 @@ void TraceGradKernel(const Context& ctx,
     const auto* input_arr = input_stride.Get();
 #endif
 
-    paddle::platform::ForRange<Context> for_range(ctx, in_grad->numel());
+    phi::funcs::ForRange<Context> for_range(ctx, in_grad->numel());
     TraceGradFunctor<T> functor(out_data,
                                 output_arr,
                                 input_arr,

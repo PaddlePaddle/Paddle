@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -27,8 +29,8 @@ namespace phi {
 
 class DnnWorkspaceHandle {
  public:
-  explicit inline DnnWorkspaceHandle(Allocator* allocator)
-      : allocator_(allocator) {
+  inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
+      : allocator_(allocator), stream_(stream) {
     mtx_.reset(new std::mutex());
   }
 
@@ -47,11 +49,9 @@ class DnnWorkspaceHandle {
    *  running the function. Currently this function is only used when cudnn
    *  exhaustive searching and callers have to guarantee that the input function
    *  is host blocking */
-  inline void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
+  void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                   size_t required_workspace_bytes,
+                   bool use_cached_allocation = true);
 
   inline size_t WorkspaceSize() {
     if (allocation_ == nullptr) {
@@ -69,13 +69,16 @@ class DnnWorkspaceHandle {
 
  private:
   Allocator::AllocationPtr allocation_{nullptr};
-  Allocator* allocator_{nullptr};
+  Allocator* allocator_{nullptr};  // Not owned
+  gpuStream_t stream_{nullptr};    // Not owned
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class GPUContext : public DeviceContext {
+class PADDLE_API GPUContext : public DeviceContext {
  public:
   GPUContext();
+  GPUContext(GPUContext&&);
+  GPUContext& operator=(GPUContext&&);
 
   explicit GPUContext(const GPUPlace& place);
 
@@ -92,6 +95,9 @@ class GPUContext : public DeviceContext {
 
   /*! \brief  Return cublas handle in the device context. */
   blasHandle_t cublas_handle() const;
+
+  /*! \brief  Return cublasLt handle in the device context. */
+  blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
@@ -193,6 +199,8 @@ class GPUContext : public DeviceContext {
 
   void SetBlasHandle(blasHandle_t);
 
+  void SetBlasLtHandle(blasLtHandle_t);
+
   void SetDnnHandle(dnnHandle_t);
 
   void SetSolverHandle(solverHandle_t);
@@ -219,5 +227,20 @@ class GPUContext : public DeviceContext {
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
+
+// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
+// has the same name, this will lead to duplicate instantiations of GPU kernel
+// and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
+// must use different function name for cudnn kernel
+using GPUDNNContext = GPUContext;
+
+// KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
+// because we want to implement a KPS-based kernel and make it run
+// on GPU and XPU at the same time, so we need KPSContext when registering
+// KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+using KPSContext = GPUContext;
+#endif
 
 }  // namespace phi

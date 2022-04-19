@@ -11,7 +11,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/gather_nd_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -20,9 +23,9 @@ template <typename T>
 class GatherNdXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<framework::Tensor>("X");
+    auto *index = ctx.Input<framework::Tensor>("Index");
+    auto *out = ctx.Output<framework::Tensor>("Out");
 
     out->template mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;

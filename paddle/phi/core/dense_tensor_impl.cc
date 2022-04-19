@@ -73,11 +73,6 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
   if (holder_) {
-    // TODO(zyfncg): The change of static_cast<> in check will recover back
-    // when SetAllocationForOutputTenosr is deleted.
-    // Now the numel() may return -1, and will cast to a very large number when
-    // compare with a data with unsigned long type, this will make checking
-    // failed, so it's a temporary solution to deal with this problem.
     PADDLE_ENFORCE_LE(
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
@@ -161,7 +156,7 @@ void* DenseTensor::mutable_data(const Place& place,
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
    defined in OpProto. This part need another clean up once the data type across
    Fluid
-   and Pten get unified.
+   and Phi get unified.
    */
 template <typename T>
 inline T* DenseTensor::mutable_data(const DDim& dims,

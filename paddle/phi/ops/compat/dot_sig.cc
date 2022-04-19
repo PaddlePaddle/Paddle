@@ -17,12 +17,10 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature DotGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("dot_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "dot_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(dot_grad, phi::DotGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(dot_grad, phi::DotGradOpArgumentMapping);

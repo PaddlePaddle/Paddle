@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/bbox_util.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -86,8 +87,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   }
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
   scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
-  GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
-  GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
+  phi::funcs::GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
+  phi::funcs::GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -104,8 +105,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor scores_nms, proposals_nms;
   proposals_nms.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
   scores_nms.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
-  GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
-  GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
+  phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
+  phi::funcs::GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
 
   return std::make_pair(proposals_nms, scores_nms);
 }

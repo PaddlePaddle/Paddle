@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 class MeanMLUKernel : public framework::OpKernel<T> {
@@ -93,7 +95,8 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc mean_var_desc(mean_var, CNNL_LAYOUT_ARRAY,
                                     ToCnnlDataType(mean_var.dtype()));
     auto value = static_cast<T>(1.0 / static_cast<float>(input_grad->numel()));
-    MLUCnnl::Fill(context, value, mean_var_desc.get(), GetBasePtr(&mean_var));
+    MLUCnnl::Fill(context, CNNL_POINTER_MODE_HOST, &value, mean_var_desc.get(),
+                  GetBasePtr(&mean_var));
 
     // means mul output_grad
     MLUCnnlTensorDesc in_desc(*output_grad, CNNL_LAYOUT_ARRAY,

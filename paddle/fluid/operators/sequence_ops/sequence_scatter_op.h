@@ -15,8 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/scatter.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
 namespace paddle {
 namespace operators {

@@ -63,7 +63,8 @@ class MlirToRuntimeTranslator {
   //! Emit a "ts.build_shape" operation.
   bool EmitBuildShapeOp(mlir::Operation* op);
   //! Emit an operation other than the special cases above.
-  bool EmitGeneralOp(mlir::Operation* op);
+  bool EmitGeneralOp(mlir::Operation* op,
+                     const KernelRegistry& kernel_registry);
   //! Emit all the functions.
   bool EmitFunctions();
 

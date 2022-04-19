@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/impl/expand_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(expand_grad,
+PD_REGISTER_KERNEL(expand_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ExpandGradKernel,

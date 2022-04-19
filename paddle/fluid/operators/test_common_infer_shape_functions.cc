@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/phi/core/ddim.h"
 
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 
 namespace paddle {
 namespace operators {

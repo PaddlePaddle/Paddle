@@ -23,4 +23,4 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& mask,
                         DenseTensor* out);
 
-}  // namspace pten
+}  // namspace phi

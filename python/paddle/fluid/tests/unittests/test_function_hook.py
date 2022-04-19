@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestCapture:
@@ -41,7 +42,7 @@ def grad_hook(grad):
 
 
 class TestBakcwardFunctionHookError(unittest.TestCase):
-    def test_hook(self):
+    def func_hook(self):
         input_data = np.ones([4, 4]).astype('float32')
 
         x = paddle.to_tensor(input_data.astype(np.float32), stop_gradient=False)
@@ -57,6 +58,12 @@ class TestBakcwardFunctionHookError(unittest.TestCase):
         out.backward()
 
         assert test_cap.list == [1, 2, 1]
+
+    def test_hook(self):
+        # _register_void_function_post_hook do not support in eager mode
+        with _test_eager_guard():
+            pass
+        self.func_hook()
 
 
 if __name__ == "__main__":

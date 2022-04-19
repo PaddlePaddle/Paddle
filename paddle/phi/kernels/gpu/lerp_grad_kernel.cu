@@ -17,5 +17,5 @@
 #include "paddle/phi/kernels/impl/lerp_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lerp_grad_kernel.h"
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     lerp_grad, GPU, ALL_LAYOUT, phi::LerpGradKernel, float, double) {}

@@ -215,6 +215,8 @@ class TestLayerNormOp(unittest.TestCase):
                                   for name in ['x', 'scale', 'bias', 'y@GRAD']
                               },
                               fetch_list=fetch_list)
+                # print(y)
+                # print(out[0])
                 self.__assert_close(y, out[0], "y")
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
@@ -238,6 +240,7 @@ class TestLayerNormOp(unittest.TestCase):
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
+
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(
             shape=[2, 3, 4, 5],
@@ -375,6 +378,53 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
         assert_equal(b_g_np_1, b_g_np_2)
 
 
+class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
+    def check_main(self, x_np, weight_np, bias_np, dtype):
+        paddle.disable_static()
+
+        x = paddle.to_tensor(x_np)
+        weight = paddle.to_tensor(weight_np)
+        bias = paddle.to_tensor(bias_np)
+
+        if dtype == "bfloat16":
+            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
+
+        x.stop_gradient = False
+        weight.stop_gradient = False
+        bias.stop_gradient = False
+
+        y = F.layer_norm(x, x.shape[1:], weight, bias)
+        x_g, w_g, b_g = paddle.grad(y, [x, weight, bias])
+
+        y_np = y.cast('float32').numpy()
+        x_g_np = x_g.cast('float32').numpy()
+        w_g_np = w_g.cast('float32').numpy()
+        b_g_np = b_g.cast('float32').numpy()
+
+        paddle.enable_static()
+        return y_np, x_g_np, w_g_np, b_g_np
+
+    def test_main(self):
+        if (not core.is_compiled_with_cuda()) or (core.cudnn_version() < 8100):
+            return
+        x_np = np.random.random([10, 20]).astype('float32')
+        weight_np = np.random.random([20]).astype('float32')
+        bias_np = np.random.random([20]).astype('float32')
+
+        y_np_1, x_g_np_1, w_g_np_1, b_g_np_1 = self.check_main(
+            x_np, weight_np, bias_np, 'float32')
+        y_np_2, x_g_np_2, w_g_np_2, b_g_np_2 = self.check_main(
+            x_np, weight_np, bias_np, 'bfloat16')
+
+        def assert_equal(x, y):
+            self.assertTrue(np.allclose(x, y, atol=1.e-1))
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
+        assert_equal(w_g_np_1, w_g_np_2)
+        assert_equal(b_g_np_1, b_g_np_2)
+
+
 class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
     def test_main(self):
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
@@ -385,4 +435,5 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

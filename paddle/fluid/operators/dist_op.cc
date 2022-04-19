@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/dist_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -121,13 +124,11 @@ class DistGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(dist, DistInferShapeFunctor,
+                            PD_INFER_META(phi::DistInferMeta));
+
 REGISTER_OPERATOR(dist, ops::DistOp, ops::DistOpMaker,
                   ops::DistGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DistGradOpMaker<paddle::imperative::OpBase>);
+                  ops::DistGradOpMaker<paddle::imperative::OpBase>,
+                  DistInferShapeFunctor);
 REGISTER_OPERATOR(dist_grad, ops::DistOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    dist, ops::DistKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DistKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    dist_grad, ops::DistGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DistGradKernel<paddle::platform::CPUDeviceContext, double>)

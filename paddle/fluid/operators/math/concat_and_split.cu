@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
-#include "paddle/phi/kernels/gpu/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace paddle {
 namespace operators {
 namespace math {
@@ -29,10 +29,8 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    std::vector<phi::DenseTensor> pt_input{input.begin(), input.end()};
-
-    phi::ConcatImpl<T, platform::CUDADeviceContext>(context, pt_input, axis,
-                                                    output);
+    phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
+    functor(context, input, axis, output);
   }
 };
 
@@ -43,16 +41,12 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 class SplitFunctor<platform::CUDADeviceContext, T> {
  public:
-  SplitFunctor();
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   int axis, std::vector<framework::Tensor*>* outputs) {
-    std::vector<const phi::DenseTensor*> pt_ref_inputs{ref_inputs.begin(),
-                                                       ref_inputs.end()};
-    std::vector<phi::DenseTensor*> pt_outputs{outputs->begin(), outputs->end()};
-    phi::SplitImpl<T, platform::CUDADeviceContext>(
-        context, input, pt_ref_inputs, axis, &pt_outputs);
+    phi::funcs::SplitFunctor<phi::GPUContext, T> functor;
+    functor(context, input, ref_inputs, axis, outputs);
   }
 };
 

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
-PT_REGISTER_KERNEL(matmul,
+PD_REGISTER_KERNEL(matmul,
                    CPU,
                    ALL_LAYOUT,
                    phi::MatmulKernel,
@@ -28,3 +28,10 @@ PT_REGISTER_KERNEL(matmul,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(matmul_with_flatten,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MatmulWithFlattenKernel,
+                   float,
+                   double) {}

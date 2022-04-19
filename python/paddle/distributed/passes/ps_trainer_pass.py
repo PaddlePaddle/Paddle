@@ -74,6 +74,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
+        print("pass loss program id:", id(attrs['loss'].block.program))
+        print("pass main program id:", id(main_program))
         ps_mode = attrs['ps_mode']
         if ps_mode == DistributedMode.GEO:
             send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
@@ -83,6 +85,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
+                continue
+            if send.program_id() != id(attrs['loss'].block.program):
                 continue
             logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
@@ -112,7 +116,7 @@ class DistributedOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _push_sparse_fuse(self, _program, push_sparse_ops, attrs):
+    def _push_sparse_fuse(self, _program, push_sparse_ops, attrs, use_cvm_op):
         if attrs['use_ps_gpu']:
             return
         if len(push_sparse_ops) == 0:
@@ -207,7 +211,8 @@ class DistributedOpsPass(PassBase):
                     "is_distributed": is_distributed,
                     "padding_idx": padding_idx,
                     "table_id": table_id,
-                    "size": self.emb_size[param]
+                    "size": self.emb_size[param],
+                    "use_cvm_op": use_cvm_op
                 })
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
@@ -416,6 +421,7 @@ class DistributedOpsPass(PassBase):
         pull_sparse_ids = {}
         push_sparse_ops = {}
         ops = {}
+        use_cvm_op = False
         for op in _program.global_block().ops:
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
@@ -429,6 +435,9 @@ class DistributedOpsPass(PassBase):
                 ids = pull_sparse_ids.get(param_name, [])
                 ids.append(op.input("Ids")[0])
                 pull_sparse_ids[param_name] = ids
+            if op.type == 'cvm':
+                use_cvm_op = True
+
         for op in _program.global_block().ops:
             if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
                 param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
@@ -438,16 +447,16 @@ class DistributedOpsPass(PassBase):
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
 
-        return pull_sparse_ops, push_sparse_ops
+        return pull_sparse_ops, push_sparse_ops, use_cvm_op
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(
+        pull_sparse_ops, push_sparse_ops, use_cvm_op = self._get_pull_sparse_ops(
             main_program, attrs)
         send_ctx = get_the_one_send_context(
             attrs, split_dense_table=attrs['is_heter_ps_mode'])
         self._pull_sparse_fuse(main_program, pull_sparse_ops, attrs, send_ctx)
-        self._push_sparse_fuse(main_program, push_sparse_ops, attrs)
+        self._push_sparse_fuse(main_program, push_sparse_ops, attrs, use_cvm_op)
 
 
 @register_pass("delete_optimizer_pass")
@@ -496,6 +505,7 @@ class DeleteOptimizesPass(PassBase):
             persistable=True)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        print("delete_optimizer_pass")
         attrs = pass_ctx._attrs
         optimizer_ops = get_optimize_ops(main_program)
         lr_ops = get_lr_ops(main_program)
@@ -560,9 +570,9 @@ class FakeInitOpsPass(PassBase):
         return True
 
     def _get_sparse_table_names(self, attrs):
-        dist_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        dist_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                               True)
-        sparse_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        sparse_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                                 False)
         return list(set(dist_varnames + sparse_varnames))
 

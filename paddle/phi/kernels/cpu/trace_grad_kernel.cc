@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/trace_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(trace_grad,
+PD_REGISTER_KERNEL(trace_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TraceGradKernel,

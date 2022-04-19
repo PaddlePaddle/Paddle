@@ -29,6 +29,7 @@ paddle.enable_static()
 class TestTruncOp(OpTest):
     def setUp(self):
         self.op_type = "trunc"
+        self.python_api = paddle.trunc
         self.dtype = np.float64
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
@@ -75,6 +76,16 @@ class TestTruncAPI(unittest.TestCase):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.trunc(x_tensor)
+        out_ref = np.trunc(self.x)
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        paddle.enable_static()
+
+    def test_api_eager(self):
+        paddle.disable_static(self.place)
+
+        with _test_eager_guard():
+            x_tensor = paddle.to_tensor(self.x)
+            out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
         paddle.enable_static()

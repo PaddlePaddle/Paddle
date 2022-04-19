@@ -28,6 +28,7 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
 namespace imperative {
@@ -73,16 +74,32 @@ class Tracer {
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
                bool use_default_attr_map = true);
 
+  template <typename VarType>
+  void TraceOpImpl(
+      const std::string& type, const NameVarMap<VarType>& ins,
+      const NameVarMap<VarType>& outs,
+      framework::AttributeMap& attrs,  // NOLINT
+      const platform::Place& place, bool trace_backward,
+      const std::map<std::string, std::string>& inplace_map = {},
+      paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
+      bool use_default_attr_map = true);
+
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameTensorMap& ins,
-               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap& attrs,  // NOLINT
                const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameTensorMap& ins,
-               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap attrs);
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap& attrs,  // NOLINT
                const paddle::platform::Place& place,
                paddle::framework::AttributeMap* default_attrs,
                bool use_default_attr_map,
@@ -154,16 +171,21 @@ class Tracer {
     }
   }
 
+  phi::KernelSignature GetExpectedKernelSignature(
+      const std::string& type, const NameTensorMap& ins,
+      const NameTensorMap& outs, framework::AttributeMap attrs) const;
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
-  bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
+
+  static thread_local bool enable_program_desc_tracing_;
   static thread_local bool has_grad_;
   static thread_local AmpLevel amp_level_;
   static thread_local phi::DataType amp_dtype_;

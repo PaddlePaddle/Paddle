@@ -23,6 +23,8 @@ import paddle
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
+from paddle.fluid.contrib.sparsity.supported_layer_list import supported_layers_and_prune_func_map
+from paddle.fluid.contrib.sparsity.supported_layer_list import _default_pruning
 from paddle.fluid import core
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -155,8 +157,7 @@ def prune_model(main_program=None,
                 n=2,
                 m=4,
                 mask_algo='mask_1d',
-                with_mask=True,
-                sharding=False):
+                with_mask=True):
     r"""
     Pruning parameters of supported layers in :attr:`main_program` via 
     specified mask generation function given by :attr:`mask_algo`. This 
@@ -179,7 +180,6 @@ def prune_model(main_program=None,
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
         with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
-        sharding (bool, optional): Whether to turn on sharding (model parallel) during training. Please consider turning it ON when encountering OOM using sharding. Default is False.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
@@ -221,7 +221,10 @@ def prune_model(main_program=None,
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
             sparsity.prune_model(main_program, mask_algo='mask_2d_best')
     """
-    if sharding:
+    if main_program is not None and hasattr(
+            main_program,
+            "distributed_info_") and main_program.distributed_info_[
+                "sharding_degree"] > 1 and paddle.fluid.is_compiled_with_cuda():
         gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
         place = paddle.CUDAPlace(gpu_id)
     else:
@@ -291,8 +294,8 @@ class ASPHelper(object):
     2. pruning well-trained models into 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 for fine-tuning.
     """
 
-    MASK_APPENDDED_NAME = '_asp_mask'
-    SUPPORTED_LAYERS = {'fc': 'w_0', 'linear': 'w_0', 'conv2d': 'w_0'}
+    MASK_APPENDDED_NAME = 'asp_mask'
+    PADDLE_WEIGHT_SUFFIX = "w_"
 
     __asp_info = {}
 
@@ -333,7 +336,6 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
-        checked_func_name = sparsity.CheckMethod.get_checking_method(mask_algo)
 
         if main_program is None:
             main_program = paddle.static.default_main_program()
@@ -344,33 +346,27 @@ class ASPHelper(object):
                 weight_tensor = global_scope().find_var(param.name).get_tensor()
                 weight_nparray = np.array(weight_tensor)
 
-                # The double transpose ops here make sure pruning direction consistent with cuSparseLt.
-                # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
-                # cuSparseLt would prune matrix A along k dimension.
-                # In sparse training, layer weight matriices is viewed sparse matrix A, so
-                # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
-                #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed 
-                # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension 
-                # of W^T, which is m dimension of W. Moreove, all mask generating functions in 
-                # sparsity/utils is row-major pruning. That is the reason we have to transpose weight 
-                # matrices beforce invoking create_mask. Then we transpose the result maks to make 
-                # sure its shape to be the same as the input weight.
-                weight_sparse_mask = sparsity.create_mask(
-                    weight_nparray.T, func_name=mask_algo, n=n, m=m).T
-                weight_pruned_nparray = np.multiply(weight_nparray,
-                                                    weight_sparse_mask)
+                prune_func = ASPHelper._get_prune_func_by_name(param.name)
+
+                weight_pruned_nparray, weight_sparse_mask = \
+                    prune_func(weight_nparray, m, n, mask_algo, param.name)
+                weight_pruned_nparray = weight_pruned_nparray.astype(
+                    weight_nparray.dtype)
                 weight_tensor.set(weight_pruned_nparray, place)
-                assert sparsity.check_sparsity(weight_pruned_nparray.T,  n=n, m=m, func_name=checked_func_name), \
-                        'Pruning {} weight matrix failure!!!'.format(param.name)
+
                 if with_mask:
                     weight_mask_param = global_scope().find_var(
                         ASPHelper._get_mask_name(param.name))
                     assert weight_mask_param is not None, \
-                        'Cannot find {} variable, please call ASPHelper.minimize' \
+                        'Cannot find {} variable, please call optimizer.minimize (' \
+                        'paddle.sparsity.decorate(optimizer).minimize(loss)' \
                         ' and initialization (exe.run(startup_program)) first!'.format(ASPHelper._get_mask_name(param.name))
                     weight_mask_tensor = weight_mask_param.get_tensor()
+                    weight_sparse_mask = weight_sparse_mask.astype(
+                        np.array(weight_mask_tensor).dtype)
                     weight_mask_tensor.set(weight_sparse_mask, place)
                 asp_info.update_masks(param.name, weight_sparse_mask)
+
         return asp_info.masks.copy()
 
     @staticmethod
@@ -383,7 +379,7 @@ class ASPHelper(object):
         Returns:
             string: The mask name of :attr:`param_name`.
         """
-        return param_name + ASPHelper.MASK_APPENDDED_NAME
+        return param_name + "." + ASPHelper.MASK_APPENDDED_NAME
 
     @staticmethod
     def _get_not_ASP_relevant_vars(main_program):
@@ -433,18 +429,45 @@ class ASPHelper(object):
               # fc_0.w_0 -> True
               # fc_0.b_0 -> False
         """
-        if ASPHelper.MASK_APPENDDED_NAME in param_name:
+        param_name_list = param_name.split('.')
+
+        if ASPHelper.MASK_APPENDDED_NAME in param_name_list:
             return False
 
         for layer in cls._get_program_asp_info(main_program).excluded_layers:
             if layer in param_name:
                 return False
 
-        for name in ASPHelper.SUPPORTED_LAYERS:
-            if name in param_name and \
-               ASPHelper.SUPPORTED_LAYERS[name] in param_name:
-                return True
+        if param_name in supported_layers_and_prune_func_map:
+            return True
+
+        param_name_no_weight_suffix = param_name_list[0]
+        param_type_suffix = param_name_list[1]
+        layer_name = param_name_no_weight_suffix[:param_name_no_weight_suffix.
+                                                 rfind('_')]
+        if ASPHelper.PADDLE_WEIGHT_SUFFIX not in param_type_suffix:
+            return False
+
+        if param_name_no_weight_suffix in supported_layers_and_prune_func_map or \
+            layer_name in supported_layers_and_prune_func_map:
+            return True
+
         return False
+
+    @classmethod
+    def _get_prune_func_by_name(cls, param_name):
+        func = supported_layers_and_prune_func_map.get(param_name, None)
+        param_name_no_weight_suffix = param_name.split('.')[0]
+        if func is None:
+            func = supported_layers_and_prune_func_map.get(
+                param_name_no_weight_suffix, None)
+        if func is None:
+            layer_name = param_name_no_weight_suffix[:
+                                                     param_name_no_weight_suffix.
+                                                     rfind('_')]
+            func = supported_layers_and_prune_func_map.get(layer_name,
+                                                           _default_pruning)
+        return func
 
     @classmethod
     def _minimize(cls,
@@ -508,8 +531,7 @@ class ASPHelper(object):
                 if ASPHelper._is_supported_layer(main_program,
                                                  param_and_grad[0].name):
                     mask_param = layers.create_parameter(
-                        name=param_and_grad[0].name +
-                        ASPHelper.MASK_APPENDDED_NAME,
+                        name=ASPHelper._get_mask_name(param_and_grad[0].name),
                         shape=param_and_grad[0].shape,
                         dtype=param_and_grad[0].dtype,
                         default_initializer=ConstantInitializer(value=1.0))

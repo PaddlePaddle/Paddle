@@ -50,7 +50,7 @@ template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
-                      const ScalarArray& shape,
+                      const IntArray& shape,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
@@ -88,7 +88,7 @@ void ExpandGradKernel(const Context& ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    phi::Copy(ctx, out_grad, false, in_grad);
+    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
   } else {
     PADDLE_ENFORCE_GE(dims,
                       1,

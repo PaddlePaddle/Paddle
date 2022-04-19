@@ -106,6 +106,18 @@ __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
 }
 
 template <>
+__forceinline__ __device__ bfloat16 CudaShuffleXorSync(unsigned mask,
+                                                       bfloat16 val,
+                                                       int width) {
+#if defined(PADDLE_CUDA_BF16)
+  return bfloat16(__shfl_xor_sync(mask, static_cast<nv_bfloat16>(val), width));
+#else
+  PADDLE_ENFORCE(
+      false, "__shfl_xor_sync with bfloat16 is not supported on cuda <= 11.");
+#endif
+}
+
+template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
     unsigned mask, paddle::platform::complex<float> val, int width) {
   float real = static_cast<float>(

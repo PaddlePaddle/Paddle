@@ -14,7 +14,7 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {

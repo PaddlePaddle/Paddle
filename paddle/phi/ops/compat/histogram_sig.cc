@@ -22,4 +22,4 @@ KernelSignature HistogramOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(histogram, phi::HistogramOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(histogram, phi::HistogramOpArgumentMapping);

@@ -23,13 +23,24 @@ import unittest
 import numpy as np
 from collections import OrderedDict
 from paddle.distributed.ps.utils.public import logger
-from dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
 import paddle.distributed.fleet as fleet
 
 
 class PsPassTestBase(unittest.TestCase):
     def init(self):
-        raise NotImplementedError
+        self.config = {}
+        self.config['ps_mode_config'] = ""
+        self.config['worker_num'] = "1"
+        self.config['server_num'] = "1"
+        self.config['run_minimize'] = "0"
+        self.config['run_single_pass'] = "0"
+        self.config['run_the_one_ps'] = '0'
+        self.config['debug_new_minimize'] = "0"
+        self.config['debug_new_pass'] = "0"
+        self.config['debug_the_one_ps'] = '0'
+        self.config['log_dir'] = ""
+        self.config['applied_pass_name'] = ""
 
     def setUp(self):
         print('Ps setUp...')
@@ -37,7 +48,7 @@ class PsPassTestBase(unittest.TestCase):
     def tearDown(self):
         print('Ps tearDown...')
 
-    def ps_launch(self, config, ps_mode="cpu-ps"):
+    def ps_launch(self, ps_mode="cpu-ps"):
         if ps_mode == "cpu-ps" or ps_mode == 'heter-ps':
             os.environ['WITH_DISTRIBUTE'] = 'ON'
 
@@ -45,23 +56,26 @@ class PsPassTestBase(unittest.TestCase):
                 sys.executable,
                 "-u",
             ] + [
-                "-m", "launch", "--log_dir", config['log_dir'], "--worker_num",
-                config['worker_num'], "--server_num", config['server_num']
+                "-m", "launch", "--log_dir", self.config['log_dir'],
+                "--worker_num", self.config['worker_num'], "--server_num",
+                self.config['server_num']
             ]
             if ps_mode == 'heter-ps':
                 os.environ['FLAGS_START_PORT'] = '12004'
                 cmd += [
-                    '--heter_worker_num', config['heter_worker_num'],
-                    '--heter_devices', config['heter_devices']
+                    '--heter_worker_num', self.config['heter_worker_num'],
+                    '--heter_devices', self.config['heter_devices']
                 ]
 
             cmd += [
-                "../ps/ps_dnn_trainer.py", "-m", config['ps_mode_config'],
-                "--run_minimize", config['run_minimize'], "--run_single_pass",
-                config['run_single_pass'], "--debug_new_pass",
-                config['debug_new_pass'], "--debug_new_minimize",
-                config['debug_new_minimize'], "--applied_pass_name",
-                config['applied_pass_name']
+                "../ps/ps_dnn_trainer.py", "-m", self.config['ps_mode_config'],
+                "--run_minimize", self.config['run_minimize'],
+                "--run_single_pass", self.config['run_single_pass'],
+                "--run_the_one_ps", self.config['run_the_one_ps'],
+                "--debug_new_pass", self.config['debug_new_pass'],
+                "--debug_new_minimize", self.config['debug_new_minimize'],
+                "--applied_pass_name", self.config['applied_pass_name'],
+                "--debug_the_one_ps", self.config['debug_the_one_ps']
             ]
         elif ps_mode == "gpu-ps":
             os.environ['FLAGS_LAUNCH_BARRIER'] = '0'
@@ -80,12 +94,14 @@ class PsPassTestBase(unittest.TestCase):
 
             cmd = [
                 sys.executable, "-u", "../ps/ps_dnn_trainer.py", "-m",
-                config['ps_mode_config'], "--run_minimize",
-                config['run_minimize'], "--run_single_pass",
-                config['run_single_pass'], "--debug_new_pass",
-                config['debug_new_pass'], "--debug_new_minimize",
-                config['debug_new_minimize'], "--applied_pass_name",
-                config['applied_pass_name']
+                self.config['ps_mode_config'], "--run_minimize",
+                self.config['run_minimize'], "--run_single_pass",
+                self.config['run_single_pass'], "--run_the_one_ps",
+                self.config['run_the_one_ps'], "--debug_new_pass",
+                self.config['debug_new_pass'], "--debug_new_minimize",
+                self.config['debug_new_minimize'], "--applied_pass_name",
+                self.config['applied_pass_name'], "--debug_the_one_ps",
+                self.config['debug_the_one_ps']
             ]
 
         cmd = [shlex.quote(c) for c in cmd]

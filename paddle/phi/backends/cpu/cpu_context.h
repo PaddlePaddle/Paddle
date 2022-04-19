@@ -19,12 +19,12 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/core/device_context.h"
 
-// TODO(wilber): Do we need to use place in pten kernel?
+// TODO(wilber): Do we need to use place in phi kernel?
 #include "paddle/phi/common/place.h"
 
 namespace phi {
 
-class CPUContext : public DeviceContext {
+class PADDLE_API CPUContext : public DeviceContext {
  public:
   CPUContext();
   CPUContext(CPUContext&&);

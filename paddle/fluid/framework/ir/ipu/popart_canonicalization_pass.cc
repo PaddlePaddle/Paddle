@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
@@ -28,11 +29,8 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
 
   auto custom_ops = Get<std::unordered_set<std::string>>("custom_ops");
   std::vector<std::string> missing_ops;
-  auto nodes = graph->Nodes();
-  for (auto* node : nodes) {
-    if (!node->IsOp()) {
-      continue;
-    }
+  auto sorted_ops = TopologySortOperations(*graph);
+  for (auto* node : sorted_ops) {
     auto* op = node->Op();
     auto op_type = op->Type();
 

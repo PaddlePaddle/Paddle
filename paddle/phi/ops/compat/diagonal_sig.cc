@@ -19,10 +19,10 @@ namespace phi {
 KernelSignature DiagonalGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("diagonal_grad",
-                         {"Input", GradVarName("Out")},
+                         {"Input", "Out@GRAD"},
                          {"offset", "axis1", "axis2"},
-                         {GradVarName("Input")});
+                         {"Input@GRAD"});
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(diagonal_grad, phi::DiagonalGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(diagonal_grad, phi::DiagonalGradOpArgumentMapping);

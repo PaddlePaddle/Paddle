@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/platform/profiler/cupti_data_process.h"
 #include <cstdio>
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {
@@ -26,7 +27,7 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel, uint64_t start_ns,
     return;
   }
   DeviceTraceEvent event;
-  event.name = kernel->name;
+  event.name = demangle(kernel->name);
   event.type = TracerEventType::Kernel;
   event.start_ns = kernel->start;
   event.end_ns = kernel->end;

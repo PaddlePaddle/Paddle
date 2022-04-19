@@ -47,45 +47,6 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
 
-        # TRT
-        # config = self.create_trt_inference_config()
-        # config.enable_tensorrt_engine(
-        #     max_batch_size=10,
-        #     workspace_size=10240,
-        #     min_subgraph_size=0,
-        #     precision_mode=paddle_infer.PrecisionType.Float32,
-        #     use_static=False,
-        #     use_calib_mode=False)
-        # yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
-
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            if predictor_config.tensorrt_engine_enabled():
-                # On 3080, the results of MatMul and Mul are different 
-                # When the input Y is weight
-                return True
-
-                # On TRT when the input Y is weight, Mul is converted to FC
-                predictor_config.exp_disable_tensorrt_ops(["elementwise_add"])
-                if "matmul_y" not in program_config.weights \
-                       or "bias" not in program_config.weights:
-                    return True
-
-                y_shape = list(program_config.weights["matmul_y"].shape)
-                bias_shape = program_config.weights["bias"].shape
-                axis = program_config.ops[2].attrs["axis"]
-                # bias should be [mul_y_shape[-1]]
-                if axis == 0 or bias_shape[0] != y_shape[1] or len(
-                        bias_shape) != 1:
-                    return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass error on TRT while shape of bias is not [out_size].", )
-
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of squeeze2
         x_shape = draw(
@@ -111,18 +72,20 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
         # 4. Generate legal attr:axis of elementwise_add
         axis = draw(st.integers(min_value=-1, max_value=1))
         if axis == 0 or axis == -1:
-            bias_shape = [x_shape[0], y_shape[1]]
-        else:
+            if draw(st.booleans()):
+                if axis == 0:
+                    bias_shape = [x_shape[0], ]
+                else:
+                    bias_shape = [y_shape[1], ]
+            else:
+                bias_shape = [x_shape[0], y_shape[1]]
+        elif axis == 1:
             bias_shape = [y_shape[1], ]
-        if draw(st.booleans()):
+
+        if draw(st.integers(min_value=1, max_value=10)) <= 1:
             bias_shape[-1] = 1
             if len(bias_shape) == 2 and draw(st.booleans()):
                 bias_shape[0] = 1
-
-        axis = 0
-        bias_shape = [2, ]
-        x_shape = [2, 1, 1, 1]
-        y_shape = [1, 2]
 
         squeeze2_op = OpConfig(
             "squeeze2",

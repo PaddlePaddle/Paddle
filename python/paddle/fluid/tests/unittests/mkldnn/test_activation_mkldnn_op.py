@@ -113,6 +113,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         super(TestMKLDNNSwishDim2, self).setUp()
 
         self.attrs["use_mkldnn"] = True
+        self.check_eager = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -284,6 +285,7 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
+        self.check_eager = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -324,6 +326,18 @@ class TestMKLDNNMish(TestActivation):
         out = x * np.tanh(np.log(1 + np.exp(x)))
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNRound(TestActivation):
+    def setUp(self):
+        self.op_type = "round"
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = np.round(x)
+
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 

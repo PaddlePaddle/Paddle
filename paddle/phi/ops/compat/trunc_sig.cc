@@ -21,11 +21,10 @@ KernelSignature TruncOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature TruncGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "trunc_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("trunc_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trunc, phi::TruncOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trunc_grad, phi::TruncGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trunc, phi::TruncOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trunc_grad, phi::TruncGradOpArgumentMapping);
