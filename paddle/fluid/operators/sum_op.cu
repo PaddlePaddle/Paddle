@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace plat = paddle::platform;
 
@@ -215,18 +214,9 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   if (!in_data.empty()) {
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-    if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
-      // when use cudaGraphCapture, tmp will be a pooled allocation.
-      // So we can initialize it only when the cuda graph is capturing.
-      memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
-                  reinterpret_cast<void *>(in_data.data()),
-                  in_data.size() * sizeof(T *));
-      phi::backends::gpu::GpuDeviceSync();
-    } else {
-      memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
-                  reinterpret_cast<void *>(in_data.data()),
-                  in_data.size() * sizeof(T *), dev_ctx.stream());
-    }
+    memory::CopyConstantFromCPU(dev_ctx.GetPlace(), tmp_in_array->ptr(),
+                reinterpret_cast<void *>(in_data.data()),
+                in_data.size() * sizeof(T *), dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);

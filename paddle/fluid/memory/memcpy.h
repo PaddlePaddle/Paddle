@@ -56,5 +56,26 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           void* stream);
+
+/**
+ * \brief   Copy memory from one place to another place.
+ *
+ * \param[in]  DstPlace Destination allocation place (CPU or GPU or XPU or
+ * CustomDevice).
+ * \param[in]  dst      Destination memory address.
+ * \param[in]  src      Source memory address.
+ * \param[in]  num      memory size in bytes to copy.
+ * \param[in]  stream   stream for asynchronously memory copy.
+ *
+ * \note    For copy constance values from CPU, this function support 
+ *          captured by cuda graph.
+ *          When its not capturing, this function will call 
+ *          Copy(dstplace, dst, src, CPUPlace, num, stream)
+ *
+ */
+template <typename DstPlace>
+void CopyConstantFromCPU(DstPlace, void* dst, const void* src, size_t num,
+          void* stream);
+
 }  // namespace memory
 }  // namespace paddle
