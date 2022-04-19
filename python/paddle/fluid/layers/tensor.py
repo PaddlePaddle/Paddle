@@ -329,7 +329,9 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.final_state_concat(input, axis)
+        out = _varbase_creator()
+        _C_ops.concat(input, out, 'axis', axis)
+        return out
 
     if _in_legacy_dygraph():
         if isinstance(axis, Variable):
@@ -678,8 +680,7 @@ def assign(input, output=None):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
