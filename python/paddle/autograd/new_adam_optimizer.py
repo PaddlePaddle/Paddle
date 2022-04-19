@@ -64,7 +64,7 @@ def append_backward_new(loss,
     if parameter_list is None:
         parameter_list = program.global_block().all_parameters()
     param_dot, loss_dot = ad.linearize(parameter_list, update_var_list)
-    param_bar, loss_bar = ad.transpose(param_dot, loss_dot)
+    loss_bar, param_bar = ad.transpose(loss_dot, param_dot)
 
     if len(parameter_list) == 1:
         params_and_grads = [(paramteter_list, param_bar)]

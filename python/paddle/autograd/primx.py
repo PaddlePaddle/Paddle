@@ -21,6 +21,7 @@ from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
+from .primrules import get_input_var_list, get_output_var_list
 from collections import OrderedDict
 
 
@@ -440,6 +441,24 @@ def to_tensors(xs):
         return [xs]
 
 
+def single_layer_list(xs):
+    rt_l = []
+    for x in xs:
+        if isinstance(x, list):
+            rt_l = rt_l + single_layer_list(x)
+        else:
+            rt_l.append(x)
+    return rt_l
+
+
+def bind(args, to_bind, vlt):
+    for i in range(len(args)):
+        if isinstance(args[i], list):
+            bind(args[i], to_bind, vlt)
+        elif args[i] is not None and args[i].name in to_bind:
+            args[i] = vlt[to_bind[args[i].name]]
+
+
 def _lower(block, reverse, update_var_list):
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
@@ -459,13 +478,12 @@ def _lower(block, reverse, update_var_list):
         op = block.ops[op_idx]
         ops_to_remove.append(op_idx)
         if lookup_fn(op.type) is not None:
-            input_args = list(get_input_vars(op))
-            for i in range(len(input_args)):
-                if input_args[i] is not None and input_args[i].name in to_bind:
-                    input_args[i] = vlt[to_bind[input_args[i].name]]
+            input_args = get_input_var_list(op)
+            bind(input_args, to_bind, vlt)
 
             for orig_out, new_out in zip(
-                    get_output_vars(op), to_tensors(lower_fn(op, *input_args))):
+                    single_layer_list(get_output_var_list(op)),
+                    single_layer_list(to_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
                 vars_to_remove.append(orig_out.name)
