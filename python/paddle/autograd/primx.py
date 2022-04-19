@@ -194,7 +194,9 @@ class Transform(object):
         block = self.block
         for var in vars_to_erase:
             block.desc._remove_var(cpt.to_bytes(var.name))
+            del block.vars[var.name]
         block._sync_with_cpp()
+
 
     def var2dot_rec(self, vars, defaults=None):
 
