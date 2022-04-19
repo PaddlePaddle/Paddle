@@ -203,14 +203,11 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
-
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
         cache.Set(key, node);
       }
     }
@@ -383,14 +380,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
-
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
         cache.Set(key, node);
       }
     }
@@ -575,14 +569,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
-
         } else {
           result = FindAlgoHeuristic(args, ctx);
-          phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                      result.workspace_size);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
         cache.Set(key, node);
       }
     }

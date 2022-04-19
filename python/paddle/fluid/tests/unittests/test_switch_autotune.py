@@ -60,13 +60,12 @@ class TestAutoTune(unittest.TestCase):
     def get_expected_res(self, step_id, enable_autotune):
         expected_res = {
             "step_id": step_id,
-            "cache_size": 3,
+            "cache_size": 0,
             "cache_hit_rate": 0
         }
         if paddle.is_compiled_with_cuda():
             # Total 3 * num_iters cache accesses, only iter 2 hits the cache.
-            if enable_autotune and step_id >= 1:
-                expected_res["cache_size"] = 3
+            expected_res["cache_size"] = 3
             expected_res["cache_hit_rate"] = (step_id) / (step_id + 1.0)
         return expected_res
 
