@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -194,6 +195,17 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
+    if (tensor_dims.size() == 0) {
+      py_dims[0] = 0;
+      py_strides[0] = 0;
+      PyObject* array = api.PyArray_NewFromDescr_(
+          api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,
+          py_dims, py_strides, nullptr,
+          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+          nullptr);
+      return array;
+    }
     return array;
   }
 
@@ -713,15 +725,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
+    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
+                                         infer_flags.end());
+    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
+                                           decrease_axis.end());
+
     if (op_type == "slice") {
-      out = slice_dygraph_function(self->tensor, paddle::experimental::Tensor(),
-                                   paddle::experimental::Tensor(), {}, {},
-                                   std::move(attrs));
+      out = slice_final_state_dygraph_function(
+          self->tensor, slice_axes_tmp, slice_starts, slice_ends,
+          infer_flags_tmp, decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_dygraph_function(
-          self->tensor, paddle::experimental::Tensor(),
-          paddle::experimental::Tensor(), paddle::experimental::Tensor(), {},
-          {}, {}, attrs);
+      out = strided_slice_final_state_dygraph_function(
+          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
@@ -776,8 +792,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
                                         idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_dygraph_function(self->tensor, select_index,
-                                        std::move(attrs));
+    out = index_select_final_state_dygraph_function(self->tensor, select_index,
+                                                    0);
   }
 
   return ToPyObject(out);
