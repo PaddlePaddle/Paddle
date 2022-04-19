@@ -536,5 +536,5 @@ def _lower(block, reverse, update_var_list):
 
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)
-    for var_name in vars_to_remove:
+    for var_name in sorted(vars_to_remove):
         block._remove_var(var_name)
