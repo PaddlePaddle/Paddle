@@ -107,8 +107,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       astream, {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  out->set_layout(DataLayout::kMKLDNN);
-  out->set_format(GetMKLDNNFormat(*dst_memory_p));
+  out->set_mem_desc(dst_memory_p->get_desc());
 }
 
 template <typename T>
@@ -136,8 +135,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T>
@@ -165,8 +163,7 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T, dnnl::algorithm algorithm>
@@ -347,6 +344,7 @@ namespace ops = paddle::operators;
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 
+// round eltwise primitive doesn't support BF16, nor does it support grad
 REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
 
 namespace ops = paddle::operators;
