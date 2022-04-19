@@ -540,6 +540,7 @@ class DataLoader(object):
 
         self._persistent_workers = persistent_workers
         self._iterator = None
+        self.tune()
 
     @AuToTune
     def tune(self):
