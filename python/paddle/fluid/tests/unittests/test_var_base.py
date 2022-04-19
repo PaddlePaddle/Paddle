@@ -214,6 +214,13 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x.item(), 1 + 1j)
                 self.assertTrue(isinstance(x.item(), complex))
 
+                # empty tensor
+                x = paddle.to_tensor([])
+                self.assertEqual(x.shape, [0])
+                expected_result = np.array([], dtype='float32')
+                self.assertEqual(x.numpy().shape, expected_result.shape)
+                self.assertTrue(np.array_equal(x.numpy(), expected_result))
+
                 numpy_array = np.random.randn(3, 4)
                 # covert core.LoDTensor to paddle.Tensor
                 lod_tensor = paddle.fluid.core.LoDTensor()
