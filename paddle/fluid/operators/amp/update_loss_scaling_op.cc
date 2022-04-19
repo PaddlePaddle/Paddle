@@ -72,9 +72,11 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifndef PADDLE_WITH_XPU
     if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
       return expected_kernel_type;
     }
+#endif
     return framework::OperatorWithKernel::GetKernelTypeForVar(
         var_name, tensor, expected_kernel_type);
   }
