@@ -91,26 +91,26 @@ class PixelShuffle(Layer):
 
 class ChannelShuffle(Layer):
     """
-    
-    ChannelShuffle Layer    
-
-    This operator divides channels in a tensor of shape [N, C, H, W] into g groups 
-    and rearranges them as [N, C/g, g, H, W] while keeping the original tensor shape.
-    Please refer to the paper: `ShuffleNet: An Extremely Efficient 
+    This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
+    getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
+    as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
+    operation can improve the interaction between channels, using features efficiently. Please 
+    refer to the paper: `ShuffleNet: An Extremely Efficient 
     Convolutional Neural Network for Mobile Devices <https://arxiv.org/abs/1707.01083>`_ .
     by Zhang et. al (2017) for more details. 
 
     Parameters:
-        groups(int): Number of groups to divide channels in.
-        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        groups (int): Number of groups to divide channels in.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
-        - out: 4-D tensor with shape same as x.
+        - **x**: 4-D tensor with shape of [N, C, H, W] or [N, H, W, C].
+        - **out**: 4-D tensor with shape and dtype same as x.
 
     Examples:
         .. code-block:: python
+            :name: ChannelShuffle-example
 
             import paddle
             import paddle.nn as nn
