@@ -141,9 +141,9 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(soft_margin_loss, SoftMarginLossInferShapeFunctor,
                             PD_INFER_META(phi::SoftMarginLossInferMeta));
 
-REGISTER_OPERATOR(bce_loss, ops::SoftMarginLossOp, ops::SoftMarginLossOpMaker,
+REGISTER_OPERATOR(soft_margin_loss, ops::SoftMarginLossOp, ops::SoftMarginLossOpMaker,
                   ops::SoftMarginLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::SoftMarginLossGradOpMaker<paddle::imperative::OpBase>,
                   ops::SoftMarginLossInplaceInferer, SoftMarginLossInferShapeFunctor);
-REGISTER_OPERATOR(bce_loss_grad, ops::SoftMarginLossGradOp,
+REGISTER_OPERATOR(soft_margin_loss_grad, ops::SoftMarginLossGradOp,
                   ops::SoftMarginLossGradInplaceInferer);
