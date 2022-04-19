@@ -291,17 +291,21 @@ void HeterCommKernel::sort_pairs(void* d_temp_storage,
                                  bool debug_synchronous) {}
 
 template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
-          void HeterCommKernel::reduce_by_key(
-              void* d_temp_storage,
-              size_t& temp_storage_bytes,  // NOLINT
-              KeysInputIteratorT d_keys_in, UniqueOutputIteratorT d_unique_out,
-              ValuesInputIteratorT d_values_in,
-              AggregatesOutputIteratorT d_aggregates_out,
-              NumRunsOutputIteratorT d_num_runs_out, int num_items,
-              StreamType stream, bool debug_synchronous) {}
+          typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+          typename NumRunsOutputIteratorT, typename StreamType>
+void HeterCommKernel::reduce_by_key(void* d_temp_storage,
+                                    size_t& temp_storage_bytes,  // NOLINT
+                                    KeysInputIteratorT d_keys_in,
+                                    UniqueOutputIteratorT d_unique_out,
+                                    ValuesInputIteratorT d_values_in,
+                                    AggregatesOutputIteratorT d_aggregates_out,
+                                    NumRunsOutputIteratorT d_num_runs_out,
+                                    int num_items, StreamType stream,
+                                    bool debug_synchronous) {}
 
 template void HeterCommKernel::fill_idx<int, XPUStream>(
     int* idx, long long len, const XPUStream& stream);
+
 template void HeterCommKernel::calc_shard_offset<int, XPUStream>(
     int* idx, int* left, int* right, long long len, int total_devs,
     const XPUStream& stream);
