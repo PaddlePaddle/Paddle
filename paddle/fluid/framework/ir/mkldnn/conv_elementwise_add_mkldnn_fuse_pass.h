@@ -14,15 +14,8 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-
-#include <boost/optional.hpp>
 
 namespace paddle {
 namespace framework {
@@ -30,14 +23,11 @@ namespace ir {
 
 using GraphWithStats = std::pair<ir::Graph*, int>;
 
-bool IsReachable(ir::Graph* graph, Node* from, Node* to);
-
 class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
-  GraphWithStats FuseConvAsX(const std::string& name_scope,
-                             const GraphWithStats& graph_with_stats) const;
-  GraphWithStats FuseConvAsY(const std::string& name_scope,
-                             const GraphWithStats& graph_with_stats) const;
+  GraphWithStats FuseConv(const std::string& name_scope,
+                          const GraphWithStats& graph_with_stats,
+                          bool as_x) const;
   GraphWithStats FuseProjectionConv(
       const std::string& name_scope,
       const GraphWithStats& graph_with_stats) const;

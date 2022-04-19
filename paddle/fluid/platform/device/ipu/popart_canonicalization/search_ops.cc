@@ -86,10 +86,10 @@ Node *topk_handler(Graph *graph, Node *node) {
                     static_cast<int>(framework::proto::VarType::INT32));
 }
 
-REGISTER_HANDLER(top_k, topk_handler);
-REGISTER_HANDLER(top_k_v2, topk_handler);
-
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle
+
+REGISTER_HANDLER(top_k, topk_handler);
+REGISTER_HANDLER(top_k_v2, topk_handler);

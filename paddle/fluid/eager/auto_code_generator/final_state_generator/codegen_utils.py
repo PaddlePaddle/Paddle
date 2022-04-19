@@ -21,7 +21,19 @@ import os
 ########################
 ### Global Variables ###
 ########################
-ops_to_fill_zero_for_empty_grads = set(["split", "rnn"])
+ops_to_fill_zero_for_empty_grads = set([
+    "split_grad",
+    "rnn_grad",
+    "matmul_double_grad",
+    "matmul_triple_grad",
+    "sigmoid_double_grad",
+    "sigmoid_triple_grad",
+    "add_double_grad",
+    "add_triple_grad",
+    "multiply_double_grad",
+    "multiply_triple_grad",
+    "conv2d_grad_grad",
+])
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -33,7 +45,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
-    'Place' : 'paddle::experimental::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
@@ -43,7 +55,7 @@ yaml_types_mapping = {
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',
     'Scalar(float)' : 'paddle::experimental::Scalar',
     'Scalar(double)' : 'paddle::experimental::Scalar',
-    'ScalarArray' : 'paddle::experimental::ScalarArray'
+    'IntArray' : 'paddle::experimental::IntArray'
 }
 
 
@@ -133,7 +145,7 @@ def RemoveConstAndReference(string):
 
 
 def GetGradNodeName(string):
-    return f"FinalGradNode{string}"
+    return f"GradNode{string}Final"
 
 
 def GetDygraphForwardFunctionName(string):
@@ -170,10 +182,9 @@ def GetForwardFunctionName(string):
     return f"{string}_final_state_dygraph_function"
 
 
-def TransformGradVarNameForDoubleGradGeneration(string):
-    if IsGradName(string):
-        string = "grad_" + string[:-5]
-    return string
+def GetIndent(num):
+    tab = "   "
+    return "".join([tab for i in range(num)])
 
 
 ######################
@@ -224,7 +235,7 @@ def ParseYamlReturns(string):
     returns = [x.strip() for x in string.strip().split(",")]
 
     for i in range(len(returns)):
-        ret = returns[i]
+        ret = returns[i].split("{")[0].strip()
 
         ret_name = ""
         if "(" in ret and ")" in ret:

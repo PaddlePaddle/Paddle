@@ -306,15 +306,15 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context &ctx,
-                            const DenseTensor &y_grad,
                             const DenseTensor &x,
                             const DenseTensor &scale,
                             const DenseTensor &bias,
+                            paddle::optional<const DenseTensor &> mean,
+                            paddle::optional<const DenseTensor &> variance,
                             const DenseTensor &saved_mean,
                             const DenseTensor &saved_variance,
                             paddle::optional<const DenseTensor &> reserve_space,
-                            paddle::optional<const DenseTensor &> mean,
-                            paddle::optional<const DenseTensor &> variance,
+                            const DenseTensor &y_grad,
                             float momentum,
                             float epsilon_f,
                             const std::string &data_layout_str,
@@ -570,7 +570,8 @@ void BatchNormGradRawKernel(const Context &ctx,
                   /*sizeInBytes=*/&workspace_size));
 
       workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-      workspace_ptr = ctx.template Alloc<T>(&workspace_tensor);
+      workspace_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationBackwardEx(
@@ -603,8 +604,8 @@ void BatchNormGradRawKernel(const Context &ctx,
               /*activationDesc=*/nullptr,
               /*workspace=*/workspace_ptr,
               /*workSpaceSizeInBytes=*/workspace_size,
-              /*reserveSpace=*/const_cast<T *>(
-                  reserve_space->template data<T>()),
+              /*reserveSpace=*/const_cast<uint8_t *>(
+                  reserve_space->template data<uint8_t>()),
               /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #endif  // CUDNN_VERSION_MIN(7, 4, 1)
       if (!called) {
@@ -863,15 +864,15 @@ void BatchNormGradRawKernel(const Context &ctx,
 
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
-                         const DenseTensor &y_grad,
                          const DenseTensor &x,
                          const DenseTensor &scale,
                          const DenseTensor &bias,
+                         paddle::optional<const DenseTensor &> mean,
+                         paddle::optional<const DenseTensor &> variance,
                          const DenseTensor &saved_mean,
                          const DenseTensor &saved_variance,
                          paddle::optional<const DenseTensor &> reserve_space,
-                         paddle::optional<const DenseTensor &> mean,
-                         paddle::optional<const DenseTensor &> variance,
+                         const DenseTensor &y_grad,
                          float momentum,
                          float epsilon,
                          const std::string &data_layout,
@@ -883,15 +884,15 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
   BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     y_grad,
                                      x,
                                      scale,
                                      bias,
+                                     mean,
+                                     variance,
                                      saved_mean,
                                      saved_variance,
                                      reserve_space,
-                                     mean,
-                                     variance,
+                                     y_grad,
                                      momentum,
                                      epsilon,
                                      data_layout,

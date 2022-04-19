@@ -38,9 +38,9 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -90,7 +90,8 @@ using ValueVariantType =
             std::vector<const ::phi::DenseTensor*>,
             std::vector<::phi::DenseTensor*>,
             paddle::experimental::ScalarBase<::phi::DenseTensor>,
-            paddle::experimental::ScalarArrayBase<::phi::DenseTensor>,
+            paddle::experimental::IntArrayBase<::phi::DenseTensor>,
+            std::vector<const ::phi::MetaTensor*>,
             std::vector<::phi::MetaTensor*>,
             ::phi::MetaConfig,
             paddle::experimental::Backend,

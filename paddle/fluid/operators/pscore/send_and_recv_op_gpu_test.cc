@@ -167,8 +167,8 @@ void StartSendAndRecvServer(std::string endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
 
-  std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
-  b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
+  std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+  b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
@@ -183,7 +183,7 @@ void StartSendAndRecvServer(std::string endpoint) {
         return b_req_handler->Handle(request, response, cntl);
       });
 
-  b_rpc_service2->SetRequestHandler(b_req_handler);
+  b_rpc_service2->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
 
   RunServer(b_rpc_service2);
@@ -228,13 +228,11 @@ TEST(SENDANDRECV, GPU) {
   b_rpc_service2->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
-          .get();
-
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
+  std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0);
+  if (heter_client_ptr_ == nullptr) {
+    LOG(ERROR) << "heter_client_ptr_ is null";
+  }
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
@@ -316,7 +314,6 @@ TEST(SENDANDRECV, GPU) {
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->FinalizeWorker();
   b_rpc_service2->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

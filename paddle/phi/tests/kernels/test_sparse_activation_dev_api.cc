@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_activation_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_activation_kernel.h"
+#include "paddle/phi/kernels/sparse/activation_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/activation_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {

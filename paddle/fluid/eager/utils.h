@@ -168,15 +168,15 @@ class EagerUtils {
     }
   }
 
+  // View Strategy
+  static void HandleViewBetweenInputAndOutput(
+      const std::shared_ptr<EagerVariable>& input_var,
+      const std::shared_ptr<EagerVariable>& view_output_var);
+
   // TensorWrapper Utils
-  static paddle::experimental::Tensor RecoverTensorWrapper(
-      TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
+  static paddle::experimental::Tensor RecoverTensorWrapper(TensorWrapper* tw);
   static std::vector<paddle::experimental::Tensor> RecoverTensorWrapper(
-      std::vector<TensorWrapper>* tw,
-      const std::shared_ptr<GradNodeBase>& grad_node);
-  static paddle::optional<const paddle::experimental::Tensor&>
-  RecoverOptionalTensorWrapper(TensorWrapper* tw,
-                               const std::shared_ptr<GradNodeBase>& grad_node);
+      std::vector<TensorWrapper>* tw);
 
   // Intermidate needed remove this once we don't need legacy
   // Inner Method
@@ -198,9 +198,6 @@ class EagerUtils {
   static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
   // Construct Tensor From var
-  static void ModifyInplaceInput(
-      const std::shared_ptr<EagerVariable>& inplace_variable,
-      paddle::experimental::Tensor* inplace_tensor);
   static std::vector<paddle::experimental::Tensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(

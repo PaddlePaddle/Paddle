@@ -29,12 +29,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
     def setUp(self):
-        self.set_flag_to_test_eager_mode()
         self.init_shape()
-
-    # some op don't suport eager_final_state in temporary
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
 
     def init_shape(self):
         self.input_shape = [2, 3, 1]
@@ -46,10 +41,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
     def func_test_view_api(self):
         var = paddle.rand(self.input_shape)
         view_var = self.view_api_processing(var)
-        # setitem don't support inplace in temporary.
-        # replace setitem with inplace exp_ in temporary.
-        # view_var[0] = 2.
-        view_var.exp_()
+        view_var[0] = 2.
         self.assertEqual(var.shape, self.input_shape)
         self.assertEqual(view_var.shape, self.output_shape)
 
@@ -58,9 +50,8 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
 
     def test_view_api(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_view_api()
+        with _test_eager_guard():
+            self.func_test_view_api()
         self.func_test_view_api()
 
     def func_test_forward_version(self):
@@ -69,23 +60,20 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         view_var = self.view_api_processing(var)
         self.assertEqual(view_var.inplace_version, 0)
 
-        # var[0] = 2.
-        var.exp_()
+        var[0] = 2.
         self.assertEqual(var.inplace_version, 1)
         self.assertEqual(view_var.inplace_version, 1)
 
         view_var_2 = self.view_api_processing(var)
         self.assertEqual(view_var_2.inplace_version, 1)
 
-        # var[0] = 3.
-        var.exp_()
+        var[0] = 3.
         self.assertEqual(view_var.inplace_version, 2)
         self.assertEqual(view_var_2.inplace_version, 2)
 
     def test_forward_version(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_forward_version()
+        with _test_eager_guard():
+            self.func_test_forward_version()
         self.func_test_forward_version()
 
     def func_test_backward_error(self):
@@ -100,34 +88,22 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             # Here, the gradient computation will use the value of var_b
             var_c = var_b**2
             view_var_b = self.view_api_processing(var_b)
-            # view_var_b[0] = 2.  # var_b is modified inplace
-            view_var_b.exp_()
+            view_var_b[0] = 2.  # var_b is modified inplace
 
             loss = paddle.nn.functional.relu(var_c)
-            if in_dygraph_mode():
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received current_inplace_version:{} != inplace_version_snapshot_:{}".
-                        format(1, 0)):
-                    loss.backward()
-            else:
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received tensor_version:{} != wrapper_version_snapshot:{}".
-                        format(1, 0)):
-                    loss.backward()
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
     def test_backward_error(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_backward_error()
+        with _test_eager_guard():
+            self.func_test_backward_error()
         self.func_test_backward_error()
 
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
-
     def init_shape(self):
         self.input_shape = [2, 3]
         self.output_shape = [2, 3, 1]
@@ -137,9 +113,6 @@ class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = True
-
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [2, 2, 3]
@@ -149,9 +122,6 @@ class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
-
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [12]

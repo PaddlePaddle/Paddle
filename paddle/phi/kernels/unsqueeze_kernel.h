@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const ScalarArray& axes,
+                     const IntArray& axes,
                      DenseTensor* xshape,
                      DenseTensor* out);
 }  // namespace phi

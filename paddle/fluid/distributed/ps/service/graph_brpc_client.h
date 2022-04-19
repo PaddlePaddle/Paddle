@@ -97,12 +97,12 @@ class GraphBrpcClient : public BrpcPsClient {
                                                        std::string path);
   virtual std::future<int32_t> remove_graph_node(
       uint32_t table_id, std::vector<int64_t>& node_id_list);
-  virtual int32_t initialize();
+  virtual int32_t Initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   int get_server_index_by_id(int64_t id);
   void set_local_channel(int index) {
-    this->local_channel = get_cmd_channel(index);
+    this->local_channel = GetCmdChannel(index);
   }
   void set_local_graph_service(GraphBrpcService* graph_service) {
     this->graph_service = graph_service;

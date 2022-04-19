@@ -28,8 +28,10 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
+USE_INTERCEPTOR(Sink);
 
 void Carrier::Init(
     int64_t rank,

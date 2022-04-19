@@ -48,7 +48,10 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-from .framework import VarBase as Tensor  # noqa: F401
+if fluid.framework._in_eager_mode_:
+    Tensor = framework.core.eager.Tensor
+else:
+    from .framework import VarBase as Tensor  # noqa: F401
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
@@ -72,6 +75,7 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.sparse  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -210,6 +214,7 @@ from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
+from .tensor.math import nanmean  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -263,6 +268,7 @@ from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
 from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
+from .tensor.math import frac  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -323,6 +329,7 @@ from .tensor.stat import var  # noqa: F401
 from .tensor.stat import numel  # noqa: F401
 from .tensor.stat import median  # noqa: F401
 from .tensor.stat import quantile  # noqa: F401
+from .tensor.stat import nanquantile  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
@@ -489,6 +496,7 @@ __all__ = [  # noqa
            'numel',
            'median',
            'quantile',
+           'nanquantile',
            'no_grad',
            'set_grad_enabled',
            'is_grad_enabled',
@@ -542,6 +550,7 @@ __all__ = [  # noqa
            'not_equal',
            'sum',
            'nansum',
+           'nanmean',
            'tile',
            'greater_equal',
            'isfinite',
@@ -600,6 +609,7 @@ __all__ = [  # noqa
            'concat',
            'check_shape',
            'trunc',
+           'frac',
            'digamma',
            'standard_normal',
            'diagonal',

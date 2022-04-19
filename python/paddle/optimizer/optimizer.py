@@ -133,7 +133,7 @@ class Optimizer(object):
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
             # list(paddle.Tensor) will be a error value
-            if isinstance(parameters, paddle.Tensor):
+            if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
                     "an iterable of paddle Tensors, but got argument type is `{}`.".
@@ -987,7 +987,9 @@ class Optimizer(object):
 
         assert regularization_term is not None
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            return _C_ops.final_state_add_n([grad, regularization_term])
+        elif framework._in_legacy_dygraph():
             return _C_ops.sum([grad, regularization_term])
 
         new_grad = grad
@@ -1112,8 +1114,7 @@ class Optimizer(object):
 
         if _in_eager_without_dygraph_check():
             for p in param_list:
-                clear_func = p._zero_grads if set_to_zero else p.clear_gradient
-                clear_func()
+                p.clear_gradient(set_to_zero)
         else:
             core.clear_gradients(param_list, set_to_zero)
 

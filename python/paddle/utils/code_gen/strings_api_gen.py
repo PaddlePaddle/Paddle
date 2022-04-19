@@ -144,9 +144,9 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
                 # set attr for kernel_context
-                if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const phi::ScalarArray&')
-                    param = 'phi::ScalarArray(' + param + ')'
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append('const phi::IntArray&')
+                    param = 'phi::IntArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
@@ -277,7 +277,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
