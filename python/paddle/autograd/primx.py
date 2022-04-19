@@ -378,9 +378,6 @@ class Transform(object):
                     path.pop(0)
                     if len(path) == 0:
                         break
-                if (op.type == 'fill_constant_p') and (
-                        get_output_vars(op)[0] in vars_to_remove):
-                    op_indexes.append(i)
 
             self.erase_ops(op_indexes)
             self.erase_dots(vars_to_remove)
