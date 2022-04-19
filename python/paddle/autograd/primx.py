@@ -212,7 +212,6 @@ class Transform(object):
             del block.vars[name]
         block._sync_with_cpp()
 
-
     def var2dot_rec(self, vars, defaults=None):
 
         if isinstance(vars, paddle.fluid.framework.Variable):
@@ -379,6 +378,9 @@ class Transform(object):
                     path.pop(0)
                     if len(path) == 0:
                         break
+                if (op.type == 'fill_constant_p') and (
+                        get_output_vars(op)[0] in vars_to_remove):
+                    op_indexes.append(i)
 
             self.erase_ops(op_indexes)
             self.erase_dots(vars_to_remove)
@@ -414,14 +416,14 @@ def _gradients(ys, xs, ys_bar=None):
     xs_dot, ys_dot = ad.linearize(new_xs, new_ys)
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
     # remove xs_dot and their constructor ops
-    
+
     op_indexes = []
     for var in xs_dot:
         if var is not None:
             op_index = block.ops.index(var.op)
             assert op_index >= 0
             op_indexes.append(op_index)
-    
+
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
@@ -476,7 +478,7 @@ def _lower(block, reverse, update_var_list):
         vlt[var.name()] = block.var(var.name())
 
     ops_to_remove = []
-    vars_to_remove = []
+    vars_to_remove = set()
     for op_idx in range(len(block.ops)):
         op = block.ops[op_idx]
         ops_to_remove.append(op_idx)
@@ -489,17 +491,44 @@ def _lower(block, reverse, update_var_list):
                     single_layer_list(to_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
-                vars_to_remove.append(orig_out.name)
+                vars_to_remove.add(orig_out.name)
                 vlt[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
         else:
-            op_desc = op.desc
-            for name in op_desc.input_arg_names():
-                if name in to_bind:
-                    op_desc._rename_input(name, to_bind[name])
+
+            def bind_name(names, to_bind):
+                rt_l = []
+                for name in names:
+                    if isinstance(name, list):
+                        rt_l.append(bind_name(name, to_bind))
+                    else:
+                        rt_l.append(to_bind[name] if name in to_bind else name)
+                return rt_l
+
+            inputs = {}
+            for i in range(len(op.input_names)):
+                inputs[op.input_names[i]] = bind_name(
+                    op.input(op.input_names[i]), to_bind)
+            # print(inputs)
+
+            outputs = {}
+            for i in range(len(op.output_names)):
+                outputs[op.output_names[i]] = op.output(op.output_names[i])
+            # print(outputs)
+
+            attrs = {}
+            for name in sorted(op.attr_names):
+                attrs[name] = op.attr(name)
+            from paddle.fluid.dygraph.base import param_guard
             new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(op_desc)
-            new_op = Operator(block=block, desc=new_op_desc)
+            with param_guard(inputs), param_guard(outputs):
+                op = Operator(
+                    block=block,
+                    desc=new_op_desc,
+                    type=op.type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs)
             block.ops.append(op)
 
     if update_var_list is not None:
