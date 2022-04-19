@@ -282,9 +282,11 @@ void CpuPassStrategy::EnableMKLDNN() {
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-             "conv_transpose_bn_fuse_pass",   //
-             "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-             "conv_bias_mkldnn_fuse_pass",              //
+             "conv_affine_channel_mkldnn_fuse_pass",             //
+             "conv_eltwiseadd_affine_channel_mkldnn_fuse_pass",  //
+             "conv_transpose_bn_fuse_pass",                      //
+             "conv_transpose_eltwiseadd_bn_fuse_pass",           //
+             "conv_bias_mkldnn_fuse_pass",                       //
              "conv_transpose_bias_mkldnn_fuse_pass",
              // TODO(baoachun): Need to support 5-dimensional input.
              // "conv3d_bias_mkldnn_fuse_pass",  //
