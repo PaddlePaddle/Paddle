@@ -1,24 +1,10 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,7 +44,7 @@ __all__ = [
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
     'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
-    'correlation', 'fused_bn_add_act'
+    'correlation', 'fused_bn_add_act', 'fused_seqpool_cvm'
 ]
 
 
@@ -537,6 +523,87 @@ def fused_embedding_seq_pool(input,
     return out
 
 
+def fused_seqpool_cvm(input,
+                      pool_type,
+                      cvm,
+                      pad_value=0.0,
+                      use_cvm=True,
+                      cvm_offset=2):
+    """
+    :api_attr: Static Graph
+
+    This OP is the fusion of sequence_pool and continuous_value_model op.
+
+    **Note:** The Op only receives List of LoDTensor as input, only support SUM pooling now.
+
+    Args:
+        input(Variable|list of Variable): Input is List of LoDTensor.
+        pool_type(str): pooling type, only support SUM pooling now.
+        cvm(Variable): cvm Variable.
+        pad_value(float, optional): padding value of sequence pool. Default: 0.0.
+        use_cvm(bool, optional): use cvm or not. Default: True.
+        cvm_offset(int, optional): cvm offset. Default: 2, which means cvm contains show, click.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing sequence pool and cvm
+        of input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            paddle.enable_static()
+
+            data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
+            data2 = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
+            inputs = [data, data2]
+            embs = fluid.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
+
+            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
+            ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+            show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+            show_clk.stop_gradient = True
+
+            cvms = fluid.contrib.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
+
+
+    """
+    helper = LayerHelper('fused_seqpool_cvm', **locals())
+
+    if pool_type.upper() != 'SUM':
+        raise ValueError(
+            "fused_seqpool_cvm only support SUM pooling now, and your type is: "
+            + pool_type)
+
+    check_type(input, 'input', list, 'fused_seqpool_cvm')
+    if isinstance(input, list):
+        for _input in input:
+            check_variable_and_dtype(_input, 'input', ['float32'],
+                                     'fused_seqpool_cvm')
+
+    dtype = helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+
+    helper.append_op(
+        type="fused_seqpool_cvm",
+        inputs={"X": inputs,
+                "CVM": cvm},
+        outputs={"Out": outs},
+        attrs={
+            "pooltype": pool_type.upper(),
+            "pad_value": pad_value,
+            "use_cvm": use_cvm,
+            "cvm_offset": cvm_offset,
+        })
+
+    return outs
+
+
 def multiclass_nms2(bboxes,
                     scores,
                     score_threshold,
@@ -968,15 +1035,124 @@ def sparse_embedding(input,
                      padding_idx=None,
                      is_test=False,
                      entry=None,
-                     table_class="CommonSparseTable",
+                     table_class="MemorySparseTable",
                      param_attr=None,
                      dtype='float32'):
+    r"""
+    :api_attr: Static Graph
+
+    The OP is used as the operator of the Embedding Lookup layer in the large-scale 
+    sparse training of the parameter server mode, instead of using the paddle.nn.functional.embedding.
+
+    The operator is used to lookup embeddings vector of ids provided by :attr:`input` . 
+    It automatically constructs a 2D embedding matrix based on the input :attr:`size` 
+    (vocab_size, emb_size) and :attr:`dtype` .
+
+    The shape of output Tensor is generated by appending an emb_size dimension to the
+    last dimension of the input Tensor shape.
+
+    **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` , otherwise 
+    the program will throw an exception and exit.
+
+    .. code-block:: text
+
+        Case 1:
+
+        input is a Tensor. padding_idx = -1
+            input.data = [[1, 3], [2, 4], [4, 127]]
+            input.shape = [3, 2]
+        Given size = [128, 16]
+        output is a Tensor:
+            out.shape = [3, 2, 16]
+            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
+                        [0.345421456, 0.524563927, ..., 0.144534654]],
+
+                        [[0.345249859, 0.124939536, ..., 0.194353745],
+                        [0.945345345, 0.435394634, ..., 0.435345365]],
+                        
+                        [[0.945345345, 0.435394634, ..., 0.435345365],
+                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+        The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
+        It will pad all-zero data when ids is 127.
+        
+        Case 2:
+
+        input is a LoDTensor with 1-level LoD. padding_idx = 0
+            input.lod = [[2, 3]]
+            input.data = [[1], [3], [2], [4], [0]]
+            input.shape = [5, 1]
+        Given size = [128, 16]
+        output is a LoDTensor:
+            out.lod = [[2, 3]]
+            out.shape = [5, 1, 16]
+            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452]],
+                        [[0.345421456, 0.524563927, ..., 0.144534654]],
+                        [[0.345249859, 0.124939536, ..., 0.194353745]],
+                        [[0.945345345, 0.435394634, ..., 0.435345365]],
+                        [[0.0,         0.0,         ..., 0.0        ]]]  # padding data
+        It will pad all-zero data when ids is 0.
+
+    Args:
+        input(Variable): A Tensor or LoDTensor with type int64, which contains the id 
+            information. The value of the input id should satisfy :math:`0<= id < size[0]` .
+        size(tuple|list): The shape of lookup table parameter (vocab_size, emb_size). It 
+            should have two elements which indicates the size of the dictionary of embeddings 
+            and the size of each embedding vector respectively. The initial parameter size 
+            is 0 in the large-scale sparse scenario, which will gradually expand with the 
+            training. So if vocab_size is temporarily useless, its value can be any integer.
+            The emb_size is the dimensional configuration of the word embedding weight parameter.
+        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-vocab_size, vocab_size). 
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever 
+            lookup encounters :math:`padding\_idx` in id. And the padding data will not be updated 
+            while training. If set None, it makes no efe mfect to output. Default: None.
+        is_test(bool, optional): Training or prediction mode. In prediction mode (is_test=False), 
+            the output is not initialized and created, and it is filled with 0 and returned. Default: False.
+        entry(str, optional): Entry config with parameter server whose value is ProbabilityEntry, 
+            CountFilterEntry or None. Default: None.
+        table_class(str, optional): The type of the sparse table. The value can be CommonSparseTable 
+            or SSDSparseTable. The default is CommonSparseTable.
+        param_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. In addition, user-defined or pre-trained word 
+            vectors can be loaded with the :attr:`param_attr` parameter. The local word vector needs 
+            to be transformed into numpy format, and the shape of local word vector should be consistent 
+            with :attr:`size` .
+        dtype(str): It refers to the data type of output Tensor. It must be float32 or 
+            float64. Default: float32.
+            
+    Returns:
+        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            paddle.enable_static()
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            # Only when the feature appear more than 10 times or more will be participated in the training.
+            entry = paddle.distributed.CountFilterEntry(10)
+
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+        
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                initializer=paddle.nn.initializer.Uniform()))
+
+    """
+
     helper = LayerHelper('sparse_embedding', **locals())
 
     check_variable_and_dtype(input, 'input', ['int64'],
                              'fluid.contrib.layers.sparse_embedding')
 
-    check_dtype(dtype, 'dtype', ['float32'],
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
                 'paddle.static.nn.sparse_embedding')
 
     w = helper.create_parameter(
@@ -991,18 +1167,21 @@ def sparse_embedding(input,
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
 
-    if table_class not in ["CommonSparseTable", "SSDSparseTable"]:
+    if table_class not in [
+            "CommonSparseTable", "SSDSparseTable", "MemorySparseTable"
+    ]:
         raise ValueError(
-            "table_class must be in [CommonSparseTable, SSDSparseTable]")
+            "table_class must be in [CommonSparseTable, SSDSparseTable, MemorySparseTable]"
+        )
 
     entry_str = "none"
 
     if entry is not None:
         if entry.__class__.__name__ not in [
-                "ProbabilityEntry", "CountFilterEntry"
+                "ProbabilityEntry", "CountFilterEntry", "ShowClickEntry"
         ]:
             raise ValueError(
-                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
+                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry, paddle.distributed.ShowClickEntry]"
             )
         entry_str = entry._to_attr()
 
@@ -1539,7 +1718,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ('has_offset', has_offset)
         return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
 
@@ -1613,7 +1792,7 @@ def correlation(x,
 
     """
 
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
@@ -1823,3 +2002,38 @@ def fused_bn_add_act(x,
         attrs=attrs)
 
     return batch_norm_out
+
+
+def pow2_decay_with_linear_warmup(warmup_steps,
+                                  total_steps,
+                                  base_lr,
+                                  end_lr,
+                                  dtype='float32',
+                                  name=None):
+    if paddle.fluid._non_static_mode():
+        raise NotImplementedError(
+            "pow2_decay_with_linear_warmup does not support dygraph mode yet.")
+
+    helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
+    lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
+    helper.set_variable_initializer(
+        lr, Constant(value=float(base_lr) / warmup_steps))
+
+    step = helper.create_global_variable(
+        persistable=True, dtype='int64', shape=[1])
+    helper.set_variable_initializer(step, Constant(value=0))
+    assert warmup_steps <= total_steps, "warmup_steps cannot be larger than total_steps"
+
+    helper.append_op(
+        type="pow2_decay_with_linear_warmup",
+        inputs={"LearningRate": lr,
+                "Step": step},
+        outputs={"LearningRateOut": lr,
+                 "StepOut": step},
+        attrs={
+            "warmup_steps": warmup_steps,
+            "total_steps": total_steps,
+            "base_lr": base_lr,
+            "end_lr": end_lr,
+        })
+    return lr

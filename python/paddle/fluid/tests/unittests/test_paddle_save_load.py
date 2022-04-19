@@ -315,7 +315,9 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.save(tensor, path)
         t_dygraph = paddle.load(path)
         np_dygraph = paddle.load(path, return_numpy=True)
-        self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
+        self.assertTrue(
+            isinstance(t_dygraph, (paddle.fluid.core.VarBase,
+                                   paddle.fluid.core.eager.Tensor)))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
         paddle.enable_static()
@@ -685,27 +687,34 @@ class TestSaveLoadAny(unittest.TestCase):
                         np.array(v), np.array(load_tensor2['k2'][k])))
             self.assertTrue(load_tensor2['epoch'] == 123)
 
-            self.assertTrue(isinstance(load_tensor3[0], fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(load_tensor3[0], (fluid.core.VarBase,
+                                             fluid.core.eager.Tensor)))
             self.assertTrue(np.array_equal(load_tensor3[0].numpy(), obj3[0]))
-            self.assertTrue(isinstance(load_tensor3[1], fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(load_tensor3[1], (fluid.core.VarBase,
+                                             fluid.core.eager.Tensor)))
             self.assertTrue(np.array_equal(load_tensor3[1].numpy(), obj3[1]))
 
             for k, v in state_dict.items():
                 self.assertTrue(
-                    isinstance(load_tensor3[2]["state_dict"][k],
-                               fluid.core.VarBase))
+                    isinstance(load_tensor3[2]["state_dict"][k], (
+                        fluid.core.VarBase, fluid.core.eager.Tensor)))
                 self.assertTrue(
                     np.array_equal(load_tensor3[2]["state_dict"][k].numpy(),
                                    np.array(v)))
 
             for k, v in state_dict.items():
                 self.assertTrue(
-                    isinstance(load_tensor3[2]["opt"][k], fluid.core.VarBase))
+                    isinstance(load_tensor3[2]["opt"][k], (
+                        fluid.core.VarBase, fluid.core.eager.Tensor)))
                 self.assertTrue(
                     np.array_equal(load_tensor3[2]["opt"][k].numpy(),
                                    np.array(v)))
 
-            self.assertTrue(isinstance(load_tensor4[0], fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(load_tensor4[0], (fluid.core.VarBase,
+                                             fluid.core.eager.Tensor)))
             self.assertTrue(np.array_equal(load_tensor4[0].numpy(), obj4[0]))
 
             load_array1 = paddle.load(path1, return_numpy=True)

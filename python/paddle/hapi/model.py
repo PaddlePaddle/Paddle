@@ -29,7 +29,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -68,8 +68,9 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
-    if isinstance(var, fluid.core.VarBase):
+    assert isinstance(var, (Variable, fluid.core.VarBase,
+                            fluid.core.eager.Tensor)), "not a variable"
+    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
@@ -214,7 +215,7 @@ def prepare_distributed_context(place=None):
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
@@ -278,7 +279,7 @@ class StaticGraphAdapter(object):
         self._amp_level = "O0"
         self._amp_configs = {}
         self._amp_custom_lists = {}
-        self._use_fp16_guard = True
+        self._use_fp16_guard = None
 
     @property
     def mode(self):
@@ -338,6 +339,7 @@ class StaticGraphAdapter(object):
 
         _save(optim, optim_path)
 
+    # TODO: support save/load scaler state in static graph
     def load(self, param_state_pairs, optim_state):
         if self._executor is None:
             executor = fluid.Executor(fluid.CPUPlace())._default_executor
@@ -455,10 +457,19 @@ class StaticGraphAdapter(object):
 
         feed = {}
         input_names = [v.name for v in self._input_vars[self.mode]]
+        input_dtypes = [v.dtype for v in self._input_vars[self.mode]]
+
         for idx, n in enumerate(input_names):
             # train and test may take different arguments
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
+            if self._amp_level == 'O2' and input_dtypes[
+                    idx] == core.VarDesc.VarType.FP16:
+                if isinstance(feed[n], core.LoDTensor):
+                    feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
+                elif isinstance(feed[n], numpy.array):
+                    feed[n] = feed[n].astype('float16')
+
         if labels is not None:
             for idx, v in enumerate(self._label_vars[self.mode]):
                 feed[v.name] = labels[idx]
@@ -592,7 +603,6 @@ class StaticGraphAdapter(object):
                     amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                         **self.
                         _amp_custom_lists) if self._amp_custom_lists else None
-
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
@@ -702,10 +712,14 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        if self._amp_level != "O0":
-            scaler = paddle.amp.GradScaler(**self._amp_configs)
+        # scaler should be initialized only once
+        if self._amp_level != "O0" and self.model._scaler is None:
+            self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
+
         with paddle.amp.auto_cast(
-                enable=self._amp_level != 'O0', **self._amp_custom_lists):
+                enable=self._amp_level != 'O0',
+                **self._amp_custom_lists,
+                level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
                     *[to_variable(x) for x in inputs])
@@ -713,15 +727,15 @@ class DynamicGraphAdapter(object):
                 outputs = self.model.network.forward(
                     *[to_variable(x) for x in inputs])
 
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
+        losses = self.model._loss(*(to_list(outputs) + labels))
+        losses = to_list(losses)
+        final_loss = fluid.layers.sum(losses)
 
         if self._amp_level != "O0":
-            scaled = scaler.scale(final_loss)
+            scaled = self.model._scaler.scale(final_loss)
             scaled.backward()
             if update:
-                scaler.minimize(self.model._optimizer, scaled)
+                self.model._scaler.minimize(self.model._optimizer, scaled)
                 self.model.network.clear_gradients()
         else:
             final_loss.backward()
@@ -804,16 +818,23 @@ class DynamicGraphAdapter(object):
     def save(self, path):
         params = self.model.network.state_dict()
         fluid.save_dygraph(params, path)
-        if self.model._optimizer is None:
-            return
-        if self.model._optimizer.state_dict():
-            optim = self.model._optimizer.state_dict()
-            fluid.save_dygraph(optim, path)
+        if self.model._optimizer is not None:
+            if self.model._optimizer.state_dict():
+                optim = self.model._optimizer.state_dict()
+                fluid.save_dygraph(optim, path)
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
+            if self.model._scaler.state_dict():
+                scaler = self.model._scaler.state_dict()
+                paddle.save(scaler, path + '.pdscaler')
 
-    def load(self, param_state_pairs, optim_state):
+    def load(self, param_state_pairs, optim_state, scaler_state=None):
         # restore parameter states
         for param, state in param_state_pairs:
             param.set_value(state)
+
+        if hasattr(self.model, '_scaler') and self.model._scaler is not None:
+            if scaler_state:
+                self.model._scaler.load_state_dict(scaler_state)
 
         # resotre optimizer states
         if not self.model._optimizer or not optim_state:
@@ -872,6 +893,16 @@ class DynamicGraphAdapter(object):
         else:
             self.model._optimizer.set_state_dict(converted_state)
 
+    def prepare(self):
+        if self._amp_level == "O2" and self.model.mode == 'train' and core.is_compiled_with_cuda(
+        ):
+            self.model.network, self.model._optimizer = paddle.amp.decorate(
+                models=self.model.network,
+                optimizers=self.model._optimizer,
+                level='O2')
+        if self._amp_level != "O0":
+            self.model._scaler = None
+
 
 class Model(object):
     """
@@ -882,9 +913,9 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
-    When training on GPU, auto mixed precision (AMP) training is supported, and
-    pure float16 training is also supported in static mode while using Adam,
-    AdamW and Momentum optimizer. Before using pure float16 training,
+    When training on GPU, auto mixed precision (AMP O1) and pure float16 
+    (AMP O2) training are both supported in static mode and dynamic mode.
+    In static graph mode, before traing with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
     should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
@@ -946,7 +977,8 @@ class Model(object):
         2. An example using mixed precision training.
 
         .. code-block:: python
-
+        
+          # required: gpu
           import paddle
           import paddle.nn as nn
           import paddle.vision.transforms as T
@@ -993,7 +1025,7 @@ class Model(object):
         self._test_dataloader = None
         self.stop_training = False
 
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or tuple or dict, and couldn't be None."
@@ -1005,7 +1037,7 @@ class Model(object):
         self._labels = self._verify_spec(labels)
 
         # init backend
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1059,7 +1091,7 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.train_batch(inputs, labels, update)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1111,7 +1143,7 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.eval_batch(inputs, labels)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1156,7 +1188,7 @@ class Model(object):
               print(out)
         """
         loss = self._adapter.predict_batch(inputs)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1331,7 +1363,18 @@ class Model(object):
 
         optim_state = None if reset_optimizer else _load_state_from_path(
             path + ".pdopt")
-        return self._adapter.load(matched_param_state, optim_state)
+
+        # TODO: support save/load scaler state in static graph
+        if _non_static_mode():
+            scaler_state = None
+            if hasattr(self, '_scaler') and self._scaler is not None:
+                if os.path.exists(path + '.pdscaler'):
+                    scaler_state = paddle.load(path + '.pdscaler')
+
+            return self._adapter.load(matched_param_state, optim_state,
+                                      scaler_state)
+        else:
+            return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
         """
@@ -1363,15 +1406,10 @@ class Model(object):
     def _prepare_amp(self, amp_configs):
         def _check_pure_fp16_configs():
             # pure float16 training has some restricts now
-            if self._adapter._amp_level == "O2":
-                if in_dygraph_mode():
-                    warnings.warn(
-                        "Pure float16 training is not supported in dygraph mode now, and it will be supported in future version."
-                    )
-                else:
-                    # grad clip is not supported in pure fp16 training now
-                    assert self._optimizer._grad_clip is None, \
-                        "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+            if self._adapter._amp_level == "O2" and self._optimizer._grad_clip:
+                # clip by value is not supported
+                assert isinstance(self._optimizer._grad_clip, (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm)), \
+                     "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1433,7 +1471,7 @@ class Model(object):
                     format(tuple(amp_config_key_set - accepted_param_set)))
 
             if 'use_fp16_guard' in amp_config_key_set:
-                if in_dygraph_mode():
+                if _non_static_mode():
                     raise ValueError(
                         "'use_fp16_guard' is supported in static mode only.")
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
@@ -1479,12 +1517,11 @@ class Model(object):
         Returns:
             None
         """
-
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
             if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
-                if fluid.in_dygraph_mode():
+                if fluid._non_static_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
                     startup_prog_seed = fluid.default_startup_program(
                     ).random_seed
@@ -1515,8 +1552,7 @@ class Model(object):
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
-        if not in_dygraph_mode():
-            self._adapter.prepare()
+        self._adapter.prepare()
 
     def fit(self,
             train_data=None,
@@ -1667,7 +1703,6 @@ class Model(object):
                         epochs=2,
                         save_dir='mnist_checkpoint')
         """
-
         assert train_data is not None, \
                 "train_data must be given!"
 
@@ -1975,7 +2010,7 @@ class Model(object):
             None
         """
 
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
                 if self._input_info is None:  # No provided or inferred
@@ -2157,7 +2192,7 @@ class Model(object):
             if is_input:
                 arg_names = extract_args(self.network.forward)[1:]
                 # While Saving inference model in dygraph, and providing inputs only in running.
-                if shapes is not None and dtypes is not None and fluid.in_dygraph_mode(
+                if shapes is not None and dtypes is not None and fluid._non_static_mode(
                 ):
                     out_specs = [
                         Input(

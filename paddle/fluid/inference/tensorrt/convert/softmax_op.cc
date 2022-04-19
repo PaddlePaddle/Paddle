@@ -88,5 +88,5 @@ class SoftMaxOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 REGISTER_TRT_OP_CONVERTER(softmax, SoftMaxOpConverter);

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 namespace paddle {
 namespace operators {
@@ -86,6 +87,10 @@ TEST(StridedMemcpy, GPUCrop) {
   platform::CPUPlace cpu;
 
   platform::CUDADeviceContext ctx(gpu0);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   auto src_allocation = memory::Alloc(gpu0, sizeof(src));
 
@@ -124,6 +129,10 @@ TEST(StridedMemcpy, GPUConcat) {
   platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
   platform::CUDADeviceContext ctx(gpu0);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   auto gpu_src_allocation = memory::Alloc(gpu0, sizeof(src));
   int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
   memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());

@@ -278,23 +278,6 @@ void ParallelConnectContext::connectFullMesh(
             std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
             VLOG(0) << "peer " << i << " ip addr: " << ip
                     << ", port: " << sa->sin_port;
-
-            auto start = std::chrono::steady_clock::now();
-            std::chrono::seconds connect_wait_timeout_ =
-                std::chrono::seconds(600);
-            while (true) {
-              auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                  std::chrono::steady_clock::now() - start);
-              if (elapsed > connect_wait_timeout_) {
-                break;
-              }
-              try {
-                transportContext->getPair(i)->connect(addr);
-                break;
-              } catch (...) {
-                VLOG(0) << "gloo connect failed, retrying...";
-              }
-            }
             transportContext->getPair(i)->connect(addr);
           }
           VLOG(0) << "peer connected success";

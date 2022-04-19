@@ -17,7 +17,7 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace inference {
@@ -65,18 +65,13 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
 #endif
                                 cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
-
-  PADDLE_ENFORCE_EQ(input_dims.nbDims, 3,
-                    platform::errors::InvalidArgument(
-                        "Input Dims should be 3 (except the batch), got %d",
-                        input_dims.nbDims));
   int n = batch_size;
   int c = input_dims.d[0];
   int h = input_dims.d[1];
   int w = input_dims.d[2];
 
-  scale_t.Resize(framework::make_ddim({batch_size, c}));
-  bias_t.Resize(framework::make_ddim({batch_size, c}));
+  scale_t.Resize(phi::make_ddim({batch_size, c}));
+  bias_t.Resize(phi::make_ddim({batch_size, c}));
   int device_id;
   cudaGetDevice(&device_id);
   float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));

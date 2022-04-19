@@ -81,15 +81,14 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} connot be empyt".format(name)
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var, paddle.
-                    Tensor), "Elements of {} must be paddle.Tensor".format(name)
+                assert isinstance(each_var, (
+                    paddle.Tensor, core.eager.Tensor
+                )), "Elements of {} must be paddle.Tensor".format(name)
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list,
-                paddle.Tensor), "{} must be Tensor or list of Tensor".format(
-                    name)
+            assert isinstance(in_out_list, (
+                paddle.Tensor, core.eager.Tensor
+            )), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
@@ -105,10 +104,13 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         for each_tensor in grad_tensors:
             if each_tensor is not None:
                 assert isinstance(
-                    each_tensor, paddle.Tensor
+                    each_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
-        grad_tensors = [None] * len(tensors)
+        if framework._in_eager_mode_:
+            grad_tensors = []
+        else:
+            grad_tensors = [None] * len(tensors)
 
     if len(grad_tensors) > 0:
         assert len(tensors) == len(
@@ -116,5 +118,8 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
-                              framework._dygraph_tracer())
+    if framework._in_eager_mode_:
+        core.eager.run_backward(tensors, grad_tensors, retain_graph)
+    else:
+        core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
+                                  framework._dygraph_tracer())

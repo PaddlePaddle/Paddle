@@ -11,8 +11,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -22,12 +22,14 @@ using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T>
 class SoftmaxXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     const int rank = x->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     out->mutable_data<T>(context.GetPlace());
@@ -43,36 +45,50 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     int r = XPU_SUCCESS;
-    Tensor clip_x;
-    int len = x->numel();
-    T* clip_x_data =
-        clip_x.mutable_data<T>(context.GetPlace(), len * sizeof(T));
-    r = xpu::clip_v2(dev_ctx.x_context(), x->data<float>(), clip_x_data, len,
-                     static_cast<float>(-1e20), static_cast<float>(1e20));
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External("XPU API(clip) return wrong "
-                                                 "value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
-
-    r = xpu::softmax<T>(dev_ctx.x_context(), clip_x_data, out->data<float>(),
-                        x_dims, axis);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU API(softmax2d_forward) return wrong "
-                                   "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* clip_x_data_l3 = RAII_GUARD.alloc_l3_or_gm<XPUType>(x->numel());
+      r = xpu::clip_v2(dev_ctx.x_context(),
+                       reinterpret_cast<const XPUType*>(x->data<T>()),
+                       clip_x_data_l3, x->numel(), static_cast<XPUType>(-1e20),
+                       static_cast<XPUType>(1e20));
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU API(clip_v2) return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
+      r = xpu::softmax<XPUType>(dev_ctx.x_context(), clip_x_data_l3,
+                                reinterpret_cast<XPUType*>(out->data<T>()),
+                                x_dims, axis);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU API(softmax2d_forward) return wrong "
+                                     "value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    } else {
+      r = xpu::softmax<XPUType>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x->data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()), x_dims, axis);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU API(softmax2d_forward) return wrong "
+                                     "value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
+    }
   }
 };
 
 template <typename DeviceContext, typename T>
 class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Input<Tensor>("Out");
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dx->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     dx->mutable_data<T>(context.GetPlace());
@@ -86,9 +102,10 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::softmax_grad<T>(dev_ctx.x_context(), out->data<float>(),
-                                 dout->data<float>(), dx->data<float>(), x_dims,
-                                 axis);
+    int r = xpu::softmax_grad<XPUType>(
+        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(out->data<T>()),
+        reinterpret_cast<const XPUType*>(dout->data<T>()),
+        reinterpret_cast<XPUType*>(dx->data<T>()), x_dims, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU API(softmax2d_backward) return wrong "
@@ -103,9 +120,13 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    softmax, ops::SoftmaxXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    softmax, ops::SoftmaxXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::SoftmaxXPUKernel<paddle::platform::XPUDeviceContext,
+                          paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     softmax_grad,
-    ops::SoftmaxGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::SoftmaxGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::SoftmaxGradXPUKernel<paddle::platform::XPUDeviceContext,
+                              paddle::platform::float16>);
 
 #endif  // PADDLE_WITH_XPU

@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
@@ -36,7 +37,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             return np.random.random([batch, 2]).astype(np.int32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for class_num in [80, 30]:
                 for anchors in [[10, 13, 16, 30, 33, 23]]:
                     for downsample_ratio in [32, 16]:
@@ -96,24 +97,24 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             if attrs[0]['iou_aware'] == True:
                 channel = 3 * (attrs[0]['class_num'] + 6)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "scale_input": [1, channel, 12, 12]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 48, 48]
+                    "scale_input": [4, channel, 24, 24]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 48]
+                    "scale_input": [1, channel, 24, 24]
                 }
             else:
                 channel = 3 * (attrs[0]['class_num'] + 5)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "scale_input": [1, channel, 12, 12]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 48, 48]
+                    "scale_input": [4, channel, 24, 24]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 48]
+                    "scale_input": [1, channel, 24, 24]
                 }
 
         def clear_dynamic_shape():

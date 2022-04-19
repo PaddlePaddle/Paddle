@@ -49,15 +49,15 @@ class LeakyReluOpConverter : public OpConverter {
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
-      CHECK(op_desc.HasAttr("X_scale"));
-      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
+      CHECK(op_desc.HasAttr("Input_scale"));
+      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else
     platform::CPUPlace place;
     std::unique_ptr<framework::LoDTensor> alpha_tensor(
         new framework::LoDTensor());
-    alpha_tensor->Resize(framework::make_ddim({2}));
+    alpha_tensor->Resize(phi::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);
     alpha_data[0] = alpha;
     alpha_data[1] = 1.f - alpha;

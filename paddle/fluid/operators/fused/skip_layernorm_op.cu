@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

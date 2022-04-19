@@ -12,10 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/tile_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,66 +29,6 @@ using framework::Tensor;
 class TileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Tile");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Tile");
-    auto x_dims = ctx->GetInputDim("X");
-    auto repeat_times = ctx->Attrs().Get<std::vector<int>>("repeat_times");
-    if (repeat_times.size() == 0) {
-      repeat_times = std::vector<int>(x_dims.size(), -1);
-    }
-
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
-            "The rank of the input 'x' for tile op "
-            "must not be greater than %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, x_dims.size()));
-    PADDLE_ENFORCE_LE(
-        repeat_times.size(), MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
-            "The size of the shape of input 'repeat_times' for tile op "
-            "must not be greater than %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, repeat_times.size()));
-    PADDLE_ENFORCE_GE(
-        repeat_times.size(), 1,
-        platform::errors::InvalidArgument(
-            "The size of the shape of input 'repeat_times' for tile op "
-            "must be positive integers, but the value received is %d.",
-            repeat_times.size()));
-
-    auto out_rank =
-        std::max(static_cast<size_t>(x_dims.size()), repeat_times.size());
-    std::vector<int64_t> out_shape(out_rank);
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
-    if (x_dim_vec.size() > repeat_times.size()) {
-      auto diff = x_dim_vec.size() - repeat_times.size();
-      repeat_times.insert(repeat_times.begin(), diff, -1);
-    } else {
-      auto diff = repeat_times.size() - x_dim_vec.size();
-      x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
-    }
-    for (size_t i = 0; i < repeat_times.size(); ++i) {
-      if (x_dim_vec[i] == -1 || repeat_times[i] == -1) {
-        out_shape[i] = -1;
-      } else {
-        PADDLE_ENFORCE_GT(
-            repeat_times[i], 0,
-            platform::errors::InvalidArgument(
-                "Every element of the input 'repeat_times' for tile op must be "
-                "greater than 0, but the value given is %d.",
-                repeat_times[i]));
-        out_shape[i] = x_dim_vec[i] * repeat_times[i];
-      }
-    }
-
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
-    if (out_shape[0] == x_dims[0]) {
-      ctx->ShareLoD("X", "Out");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -175,7 +119,7 @@ class TileGradOp : public framework::OperatorWithKernel {
     }
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     if (x_dim_vec.size() > repeat_times.size()) {
       auto diff = x_dim_vec.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, -1);
@@ -268,38 +212,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(TileGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(tile, TileInferMetaFunctor,
+                            PD_INFER_META(phi::TileInferMeta));
+
 REGISTER_OPERATOR(tile, ops::TileOp, ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TileGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TileGradOpMaker<paddle::imperative::OpBase>,
+                  TileInferMetaFunctor);
 REGISTER_OPERATOR(tile_grad, ops::TileGradOp,
                   ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::TileGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    tile, ops::TileKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TileKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TileKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TileKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TileKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    tile_grad, ops::TileGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TileGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TileGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TileGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    tile, ops::TileKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TileKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::TileKernel<paddle::platform::CUDADeviceContext,
-                    paddle::platform::float16>,
-    ops::TileKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::TileKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::TileKernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    tile_grad, ops::TileGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TileGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::TileGradKernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>,
-    ops::TileGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::TileGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-#endif

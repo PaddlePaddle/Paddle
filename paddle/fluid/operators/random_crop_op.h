@@ -197,7 +197,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
     *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(
-        framework::make_ddim({1}), platform::CPUPlace()) = engine();
+        phi::make_ddim({1}), platform::CPUPlace()) = engine();
   }
 };
 

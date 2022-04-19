@@ -49,8 +49,11 @@ class HybridParallelClipGrad:
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
-        params_and_grads = []
-        sum_square_list = []
+        sum_square_dist_fp16 = []
+        sum_square_dist_fp32 = []
+        sum_square_not_dist_fp16 = []
+        sum_square_not_dist_fp32 = []
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -62,41 +65,106 @@ class HybridParallelClipGrad:
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
             square = layers.square(merge_grad)
             sum_square = layers.reduce_sum(square)
-            sum_square_list.append(sum_square)
 
-        # all parameters have been filterd out
-        if len(sum_square_list) == 0:
-            return params_grads
+            not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                hasattr(p, 'is_firstly_shared') and
+                getattr(p, 'is_firstly_shared', True))
 
-        global_norm_var = layers.concat(sum_square_list)
-        global_norm_var = layers.reduce_sum(global_norm_var)
-        # add all reduce to get global norm in world size
-        paddle.distributed.all_reduce(global_norm_var,
-                                      self._hcg.get_check_parallel_group())
-        global_norm_var = layers.sqrt(global_norm_var)
+            if not_shared_enable:
+                if p.is_distributed:
+                    if p.dtype == paddle.float16:
+                        sum_square_dist_fp16.append(sum_square)
+                    elif p.dtype == paddle.float32:
+                        sum_square_dist_fp32.append(sum_square)
+                else:
+                    if p.dtype == paddle.float16:
+                        sum_square_not_dist_fp16.append(sum_square)
+                    elif p.dtype == paddle.float32:
+                        sum_square_not_dist_fp32.append(sum_square)
+
+        # global norm of distributed FP16 params_and_grads
+        if len(sum_square_dist_fp16) == 0:
+            global_norm_dist_fp16 = paddle.to_tensor([0.], dtype=paddle.float32)
+        else:
+            global_norm_dist_fp16 = layers.concat(sum_square_dist_fp16)
+            global_norm_dist_fp16 = layers.reduce_sum(global_norm_dist_fp16)
+            global_norm_dist_fp16 = paddle.cast(
+                global_norm_dist_fp16, dtype=paddle.float32)
+
+        # global norm of non-distributed FP16 params_and_grads
+        if len(sum_square_not_dist_fp16) == 0:
+            global_norm_not_dist_fp16 = paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        else:
+            global_norm_not_dist_fp16 = layers.concat(sum_square_not_dist_fp16)
+            global_norm_not_dist_fp16 = layers.reduce_sum(
+                global_norm_not_dist_fp16)
+            global_norm_not_dist_fp16 = paddle.cast(
+                global_norm_not_dist_fp16, dtype=paddle.float32)
+
+        # global norm of distributed FP32 params_and_grads
+        global_norm_dist_fp32 = layers.concat(sum_square_dist_fp32) if len(
+            sum_square_dist_fp32) != 0 else paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        global_norm_dist_fp32 = layers.reduce_sum(global_norm_dist_fp32)
+
+        # global norm of non-distributed FP32 params_and_grads
+        global_norm_not_dist_fp32 = layers.concat(
+            sum_square_not_dist_fp32) if len(
+                sum_square_not_dist_fp32) != 0 else paddle.to_tensor(
+                    [0.], dtype=paddle.float32)
+        global_norm_not_dist_fp32 = layers.reduce_sum(global_norm_not_dist_fp32)
+
+        global_norm_var_dist = global_norm_dist_fp16 + global_norm_dist_fp32
+        global_norm_var_not_dist = global_norm_not_dist_fp16 + global_norm_not_dist_fp32
+
+        # add all reduce to get global norm of distributed params_and_grads
+        if self._hcg.get_model_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group())
+
+        # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
+        if self._hcg.get_pipe_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_pipe_parallel_group())
+
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group())
+
+        global_norm_var_fp32 = layers.sqrt(global_norm_var_dist +
+                                           global_norm_var_not_dist)
 
         max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+            shape=[1], dtype=global_norm_var_fp32.dtype, value=self.clip_norm)
         clip_var = layers.elementwise_div(
             x=max_global_norm,
             y=layers.elementwise_max(
-                x=global_norm_var, y=max_global_norm))
+                x=global_norm_var_fp32, y=max_global_norm))
+        clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         for p, g in params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
                 continue
-            new_grad = layers.elementwise_mul(x=g, y=clip_var)
-            params_and_grads.append((p, new_grad))
+            if p.dtype == paddle.float16:
+                g.scale_(clip_var_fp16)
+            else:
+                g.scale_(clip_var)
+            p._reset_grad_inplace_version(True)
 
-        return params_and_grads
+        return params_grads
 
     def __getattr__(self, item):
         return getattr(self._clip, item)
 
     def __call__(self, params_grads):
-        return self._clip(params_grads)
+        return self._dygraph_clip(params_grads)
 
 
 class HybridParallelOptimizer:
@@ -112,7 +180,7 @@ class HybridParallelOptimizer:
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
         # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization 
-        # is achieved through reducer, so there is no need to call fuse_allreduce in oprimizer. 
+        # is achieved through reducer, so there is no need to call fuse_allreduce in optimizer. 
         self._dp_enable = not self._use_dp_mode and self._need_dp
 
         self._sharding_enable = (
@@ -120,11 +188,22 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
-            logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
-                  "optmizer'grad clip will be changed.")
+            logger.warning("While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel " \
+                           "or Sharding, the grad clip of original optimizer will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                # change sharding inner_optimizer's _grad_clip
+                self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+                if self._inner_opt._parameter_list and isinstance(
+                        self._inner_opt._parameter_list[0], dict):
+                    for item in self._inner_opt._param_groups:
+                        if "grad_clip" in item.keys():
+                            item["grad_clip"] = HybridParallelClipGrad(
+                                self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only

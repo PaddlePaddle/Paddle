@@ -156,6 +156,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         return avg_cost
 
     def check_model_right(self, dirname):
+        dirname = dirname + '/dnn_plugin/'
         model_filename = os.path.join(dirname, "__model__")
 
         with open(model_filename, "rb") as f:
@@ -240,7 +241,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
 
-    def do_dataset_training(self, fleet):
+    def do_dataset_training_queuedataset(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = self.get_executor()
@@ -274,6 +275,57 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 print_period=2,
                 debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
+
+        if os.getenv("SAVE_MODEL") == "1":
+            model_dir = tempfile.mkdtemp()
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
+            self.check_model_right(model_dir)
+            shutil.rmtree(model_dir)
+
+        dirname = os.getenv("SAVE_DIRNAME", None)
+        if dirname:
+            fleet.save_persistables(exe, dirname=dirname)
+
+    def do_dataset_training(self, fleet):
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
+
+        exe = self.get_executor()
+        exe.run(fluid.default_startup_program())
+        fleet.init_worker()
+
+        thread_num = 2
+        batch_size = 128
+        filelist = train_file_list
+
+        # config dataset
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_use_var(self.feeds)
+        dataset.set_batch_size(128)
+        dataset.set_thread(2)
+        dataset.set_filelist(filelist)
+        dataset.set_pipe_command('python ctr_dataset_reader.py')
+        dataset.load_into_memory()
+
+        dataset.global_shuffle(fleet, 12)  ##TODO: thread configure
+        shuffle_data_size = dataset.get_shuffle_data_size(fleet)
+        local_data_size = dataset.get_shuffle_data_size()
+        data_size_list = fleet.util.all_gather(local_data_size)
+        print('after global_shuffle data_size_list: ', data_size_list)
+        print('after global_shuffle data_size: ', shuffle_data_size)
+
+        for epoch_id in range(1):
+            pass_start = time.time()
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                fetch_list=[self.avg_cost],
+                fetch_info=["cost"],
+                print_period=2,
+                debug=int(os.getenv("Debug", "0")))
+            pass_time = time.time() - pass_start
+        dataset.release_memory()
 
         if os.getenv("SAVE_MODEL") == "1":
             model_dir = tempfile.mkdtemp()

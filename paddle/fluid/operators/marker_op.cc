@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -63,8 +63,9 @@ class MarkerOpCPUKernel : public framework::OpKernel<T> {
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
 
     platform::RecordEvent record_event(
-        "MarkerCPU", platform::EventRole::kInnerOp,
-        "marker_" + marker_role + "_" + marker_pos);
+        "MarkerCPU", "marker_" + marker_role + "_" + marker_pos,
+        platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
   }
 };
 }  // namespace operators

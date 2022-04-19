@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adamax_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,67 +25,6 @@ class AdamaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "Adamax");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "Adamax");
-    OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment", "Adamax");
-    OP_INOUT_CHECK(ctx->HasInput("InfNorm"), "Input", "InfNorm", "Adamax");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
-                   "Adamax");
-    OP_INOUT_CHECK(ctx->HasInput("Beta1Pow"), "Input", "Beta1Pow", "Adamax");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Param").front(),
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Grad").front(),
-            ctx->GetInputsVarType("Grad").front()));
-
-    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "Adamax");
-    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"), "Output", "MomentOut",
-                   "Adamax");
-    OP_INOUT_CHECK(ctx->HasOutput("InfNormOut"), "Output", "InfNormOut",
-                   "Adamax");
-
-    auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
-                      platform::errors::InvalidArgument(
-                          "Maybe the Input variable LearningRate has not "
-                          "been initialized. You may need to confirm "
-                          "if you put exe.run(startup_program) "
-                          "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      platform::errors::InvalidArgument(
-                          "Learning rate should have 1 dimension"));
-    auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-    PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
-                      platform::errors::InvalidArgument(
-                          "Beta1 power accumulator should have 1 dimension"));
-    auto param_dims = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
-        platform::errors::InvalidArgument(
-            "Param and Grad input of AdamaxOp should have same dimension"));
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Moment"),
-        platform::errors::InvalidArgument(
-            "Param and Moment input of AdamaxOp should have same dimension"));
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("InfNorm"),
-        platform::errors::InvalidArgument(
-            "Param and InfNorm input of AdamaxOp should have same dimension"));
-
-    ctx->SetOutputDim("ParamOut", param_dims);
-    ctx->SetOutputDim("MomentOut", param_dims);
-    ctx->SetOutputDim("InfNormOut", param_dims);
-  }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
@@ -150,7 +92,11 @@ division by 0 error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(adamax, ops::AdamaxOp, ops::AdamaxOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    adamax, ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(adamax, AdamaxInferMetaFunctor,
+                            PD_INFER_META(phi::AdamaxInferMeta));
+
+REGISTER_OPERATOR(
+    adamax, ops::AdamaxOp, ops::AdamaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AdamaxInferMetaFunctor);

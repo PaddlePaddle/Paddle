@@ -17,6 +17,39 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+paddle::any GetAttrValue(const Attribute& attr) {
+  if (attr.type() == typeid(int)) {
+    return paddle::any(BOOST_GET_CONST(int, attr));
+  } else if (attr.type() == typeid(float)) {
+    return paddle::any(BOOST_GET_CONST(float, attr));
+  } else if (attr.type() == typeid(std::string)) {
+    return paddle::any(BOOST_GET_CONST(std::string, attr));
+  } else if (attr.type() == typeid(std::vector<int>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<int>, attr));
+  } else if (attr.type() == typeid(std::vector<float>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<float>, attr));
+  } else if (attr.type() == typeid(std::vector<std::string>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<std::string>, attr));
+  } else if (attr.type() == typeid(bool)) {
+    return paddle::any(BOOST_GET_CONST(bool, attr));
+  } else if (attr.type() == typeid(std::vector<bool>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<bool>, attr));
+  } else if (attr.type() == typeid(BlockDesc*)) {
+    return paddle::any(BOOST_GET_CONST(BlockDesc*, attr));
+  } else if (attr.type() == typeid(int64_t)) {
+    return paddle::any(BOOST_GET_CONST(int64_t, attr));
+  } else if (attr.type() == typeid(std::vector<BlockDesc*>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<BlockDesc*>, attr));
+  } else if (attr.type() == typeid(std::vector<int64_t>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<int64_t>, attr));
+  } else if (attr.type() == typeid(std::vector<double>)) {
+    return paddle::any(BOOST_GET_CONST(std::vector<double>, attr));
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unsupported Attribute value type."));
+  }
+}
+
 Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case proto::AttrType::BOOLEAN: {

@@ -27,6 +27,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard
 
 
 class Policy(fluid.dygraph.Layer):
@@ -63,7 +64,7 @@ class TestImperativeMnist(unittest.TestCase):
         mask_list = [[0, 1]]
         mask = np.array(mask_list).astype("float32")
 
-        with fluid.dygraph.guard():
+        def run_dygraph():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -103,6 +104,16 @@ class TestImperativeMnist(unittest.TestCase):
             dy_param_value = {}
             for param in policy.parameters():
                 dy_param_value[param.name] = param.numpy()
+
+            return dy_out, dy_param_init_value, dy_param_value
+
+        with fluid.dygraph.guard():
+            dy_out, dy_param_init_value, dy_param_value = run_dygraph()
+
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                eager_out, eager_param_init_value, eager_param_value = run_dygraph(
+                )
 
         with new_program_scope():
             paddle.seed(seed)
@@ -171,6 +182,16 @@ class TestImperativeMnist(unittest.TestCase):
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(np.equal(value, dy_param_value[key]).all())
 
+        # check eager
+        for key, value in six.iteritems(static_param_init_value):
+            self.assertTrue(np.equal(value, eager_param_init_value[key]).all())
+
+        self.assertTrue(np.equal(static_out, eager_out).all())
+
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(np.equal(value, eager_param_value[key]).all())
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

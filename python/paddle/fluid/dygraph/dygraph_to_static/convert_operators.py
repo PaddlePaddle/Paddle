@@ -20,6 +20,7 @@ from paddle.fluid.layers import array_length, array_read, array_write, create_ar
 from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -204,28 +205,49 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
 
     """
     if isinstance(pred, Variable):
-        return _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                                return_vars)
+        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                               return_vars)
     else:
-        return _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+        out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+
+    return _remove_no_value_return_var(out)
+
+
+def _remove_no_value_return_var(out):
+    if isinstance(out, tuple) and len(out) > 0:
+        processed_out = out
+        align_ret = out[0]
+        if isinstance(align_ret, tuple):
+            for index, item in enumerate(align_ret):
+                if isinstance(item, Variable) and (
+                        RETURN_NO_VALUE_VAR_NAME in item.name):
+                    # return None
+                    if index == 0:
+                        processed_out = (None, ) + out[1:]
+                    elif index == 1:
+                        processed_out = align_ret[:1] + out[1:]
+                    else:
+                        processed_out = (align_ret[:index], ) + out[1:]
+                    break
+
+        for index, item in enumerate(processed_out):
+            if isinstance(item, Variable) and (
+                    RETURN_NO_VALUE_VAR_NAME in item.name):
+                processed_out = processed_out[:index]
+
+        if not processed_out:
+            return None
+        elif len(processed_out) == 1:
+            return processed_out[0]
+        else:
+            return processed_out
+
+    else:
+        return out
 
 
 def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
                      return_vars):
-
-    return_var_ids = [id(var) for var in return_vars]
-    # NOTE 1: Returned vars of Paddle op `control_flow.cond` must be Paddle Tensors
-    # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
-    #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
-    true_args = [
-        to_static_variable(var) if id(var) in return_var_ids else var
-        for var in true_args
-    ]
-    false_args = [
-        to_static_variable(var) if id(var) in return_var_ids else var
-        for var in false_args
-    ]
-
     pred = cast_bool_if_necessary(pred)
     return control_flow.cond(pred, lambda: true_fn(*true_args),
                              lambda: false_fn(*false_args))
@@ -260,6 +282,15 @@ def convert_len(var):
                 % type(var))
     else:
         return len(var)
+
+
+def convert_zip(*args):
+    for i, arg in enumerate(args):
+        if isinstance(arg, Variable) and arg.shape[0] == -1:
+            raise RuntimeError(
+                "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
+                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i)))
+    return zip(*args)
 
 
 def convert_var_shape(x, idx=None, in_control_flow=False):

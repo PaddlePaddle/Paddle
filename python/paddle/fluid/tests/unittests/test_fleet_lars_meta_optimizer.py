@@ -103,7 +103,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
                 'op_role_var')[0] or ".b" in op.attr('op_role_var')[0])
         ]
         for op in ops_without_wd:
-            self.assertEqual(op.attr('lars_weight_decay'), 0)
+            self.assertEqual(op.attr('lars_weight_decay')[0], 0)
 
     def test_lars_apply_with_amp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)

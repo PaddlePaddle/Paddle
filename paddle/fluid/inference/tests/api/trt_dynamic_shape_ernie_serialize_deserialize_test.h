@@ -14,7 +14,12 @@ limitations under the License. */
 #pragma once
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#ifndef _WIN32
 #include <unistd.h>
+#else  // headers below are substitute of unistd.h in windows
+#include <io.h>
+#include <process.h>
+#endif
 #include <functional>
 #include <map>
 #include <string>

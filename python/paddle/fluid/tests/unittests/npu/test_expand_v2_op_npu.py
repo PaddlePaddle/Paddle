@@ -201,13 +201,16 @@ class TestExpandV2OpFloat(OpTest):
 # Situation 5: input x is int32
 # skip grad check for int32
 class TestExpandV2OpInteger(OpTest):
+    def init_dtype(self):
+        self.dtype = 'int32'
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "expand_v2"
         self.inputs = {
             'X': np.random.randint(
-                10, size=(2, 4, 20)).astype("int32")
+                10, size=(2, 4, 20)).astype(self.dtype)
         }
         self.attrs = {'shape': [2, 4, 20]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -219,6 +222,25 @@ class TestExpandV2OpInteger(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
+
+class TesstExpandV2OpInt64(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'int64'
+
+
+class TesstExpandV2OpBool(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'bool'
+
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "expand_v2"
+        self.inputs = {'X': np.random.randint(10, size=(2, 4, 20)) > 5}
+        self.attrs = {'shape': [2, 4, 20]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
 
 
 class TestExpandV2Error(unittest.TestCase):

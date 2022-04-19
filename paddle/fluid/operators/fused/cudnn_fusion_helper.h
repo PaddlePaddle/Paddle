@@ -14,10 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
 #include <vector>
-#include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -33,20 +31,19 @@ class CudnnFusionOp {
  public:
   explicit CudnnFusionOp(cudnnFusedOps_t op_id) : plan_created_(false) {
     // New 'fused op' descriptor creation
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFusedOpsPlan(&op_, op_id));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateFusedOpsPlan(&op_, op_id));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnCreateFusedOpsConstParamPack(&op_const_params_, op_id));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFusedOpsVariantParamPack(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateFusedOpsVariantParamPack(
         &op_variant_params_, op_id));
   }
 
-  ~CudnnFusionOp() {
-    // New 'fused op' descriptor destruction
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+  ~CudnnFusionOp() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
   }
 
   // Execute fused op
@@ -56,7 +53,7 @@ class CudnnFusionOp {
         platform::errors::Fatal(
             "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnFusedOpsExecute(cudnn_handle, op_, op_variant_params_));
   }
 
@@ -64,9 +61,8 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpConstParamDesc(cudnnFusedOpsConstParamLabel_t param_label,
                            T *param_ptr) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnSetFusedOpsConstParamPackAttribute(
-            op_const_params_, param_label, param_ptr));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFusedOpsConstParamPackAttribute(
+        op_const_params_, param_label, param_ptr));
     plan_created_ = false;
   }
 
@@ -84,9 +80,8 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpConstParamAttr(cudnnFusedOpsConstParamLabel_t param_label,
                            T param) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnSetFusedOpsConstParamPackAttribute(op_const_params_,
-                                                         param_label, &param));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFusedOpsConstParamPackAttribute(
+        op_const_params_, param_label, &param));
     plan_created_ = false;
   }
 
@@ -104,7 +99,7 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpVariantParamAttrPtr(cudnnFusedOpsVariantParamLabel_t param_label,
                                 T *param_ptr) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnSetFusedOpsVariantParamPackAttribute(
             op_variant_params_, param_label, param_ptr));
   }
@@ -121,41 +116,49 @@ class CudnnFusionOp {
 
   // Get the workspace, which is required before Execute().
   size_t GetWorkspaceSizeInBytes(cudnnHandle_t cudnn_handle) {
-    size_t workspace_bytes = 0U;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
-        cudnn_handle, op_, op_const_params_, &workspace_bytes));
-    plan_created_ = true;
-    return workspace_bytes;
+    if (!plan_created_) {
+      workspace_bytes_ = 0U;
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
+          cudnn_handle, op_, op_const_params_, &workspace_bytes_));
+      plan_created_ = true;
+    }
+    return workspace_bytes_;
   }
 
  private:
   bool plan_created_;
+  size_t workspace_bytes_;
 
   cudnnFusedOpsPlan_t op_;
   cudnnFusedOpsConstParamPack_t op_const_params_;
   cudnnFusedOpsVariantParamPack_t op_variant_params_;
 };
 
-static inline std::vector<int> GetStrides(const std::vector<int> &shape) {
-  if (shape.size() < 1) {
-    return {};
+class CudnnFusionOpCache {
+ public:
+  static CudnnFusionOpCache &Instance() {
+    static CudnnFusionOpCache instance;
+    return instance;
   }
-  int dim = static_cast<int>(shape.size());
-  std::vector<int> pro_shape(shape);
-  std::vector<int> strides(dim);
-  int temp = pro_shape[1];
-  pro_shape.erase(pro_shape.begin() + 1);
-  pro_shape.push_back(temp);
-  strides.back() = 1;
-  for (int i = dim - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * pro_shape[i + 1];
-  }
-  strides.pop_back();
-  strides.insert(strides.begin() + 1, 1);
-  return strides;
-}
 
-static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
+    return &forward_cache_;
+  }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
+    return &backward_cache_;
+  }
+
+ private:
+  CudnnFusionOpCache() {}
+  ~CudnnFusionOpCache() {
+    // Need to delete the memory of cache.
+  }
+  CudnnFusionOpCache(const CudnnFusionOpCache &) {}
+
+ private:
+  framework::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
+  framework::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
+};
 
 #endif  // CUDNN_VERSION >= 8000
 }  // namespace operators

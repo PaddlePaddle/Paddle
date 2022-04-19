@@ -21,6 +21,7 @@ import unittest
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 def log_softmax(x, axis=-1):
@@ -1175,6 +1176,56 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
+    def test_cross_entropy_loss_2d_with_weight_axis_change_mean(self):
+        input_np = np.random.random(size=(2, 3, 2, 2)).astype(self.dtype)  #NCHW
+        label_np = np.random.randint(
+            0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
+        weight_np = np.random.random(size=(3, )).astype(self.dtype)  #C
+
+        paddle.enable_static()
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[2, 3, 2, 2], dtype=self.dtype)
+            label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
+            weight = fluid.data(name='weight', shape=[3], dtype=self.dtype)
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=weight, reduction='mean', axis=1)
+            # specify the class channels to axis 1
+            ret = cross_entropy_loss(input, label)
+
+            exe = fluid.Executor(place)
+            static_ret = exe.run(prog,
+                                 feed={
+                                     'input': input_np,
+                                     'label': label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[ret])
+
+            self.assertIsNotNone(static_ret)
+        with fluid.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=fluid.dygraph.to_variable(weight_np),
+                reduction='mean',
+                axis=1)
+            dy_ret = cross_entropy_loss(
+                fluid.dygraph.to_variable(input_np),
+                fluid.dygraph.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        expected = cross_entropy_loss_2d(
+            np.transpose(input_np, [0, 2, 3, 1]),
+            label_np,
+            weight=weight_np,
+            reduction='mean')[0]
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
+        self.assertTrue(np.allclose(static_ret, expected))
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+
     def test_cross_entropy_loss_2d_with_weight_mean_ignore_exceedlabel(self):
         N = 4
         C = 3
@@ -1396,6 +1447,43 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
+
+    def test_soft_1d_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_cross_entropy_loss_soft_1d()
+            self.test_cross_entropy_loss_soft_1d_weight()
+            self.test_cross_entropy_loss_soft_1d_mean()
+            self.test_cross_entropy_loss_soft_1d_weight_mean()
+
+    # put all testcases in one test will be failed
+    def test_soft_2d_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_cross_entropy_loss_soft_2d()
+            self.test_cross_entropy_loss_soft_2d_weight_mean()
+
+    def test_other_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_cross_entropy_loss_1d_with_mean_ignore()
+            self.test_cross_entropy_loss_1d_with_mean_ignore_negative()
+            self.test_cross_entropy_loss_1d_with_weight_mean_ignore()
+            self.test_cross_entropy_loss_1d_with_weight_mean_ignore_exceedlabel(
+            )
+            self.test_cross_entropy_loss_1d_with_weight_mean()
+            self.test_cross_entropy_loss_1d_with_weight_sum()
+            self.test_cross_entropy_loss_1d_with_weight_none()
+            self.test_cross_entropy_loss_1d_with_weight_none_func()
+            self.test_cross_entropy_loss_1d_mean()
+            self.test_cross_entropy_loss_1d_sum()
+            self.test_cross_entropy_loss_1d_none()
+            self.test_cross_entropy_loss_2d_with_weight_none()
+            self.test_cross_entropy_loss_2d_with_weight_axis_change_mean()
+            self.test_cross_entropy_loss_2d_with_weight_mean_ignore_exceedlabel(
+            )
+            self.test_cross_entropy_loss_2d_with_weight_mean()
+            self.test_cross_entropy_loss_2d_with_weight_sum()
+            self.test_cross_entropy_loss_2d_none()
+            self.test_cross_entropy_loss_2d_mean()
+            self.test_cross_entropy_loss_2d_sum()
 
 
 class TestCrossEntropyFAPIError(unittest.TestCase):

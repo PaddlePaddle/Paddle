@@ -21,9 +21,12 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Scope;
 class SelectedRows;
 }  // namespace framework
@@ -40,7 +43,7 @@ struct TensorArrayBatchCleaner {
     constexpr auto kLoDTensorId =
         framework::VarTypeTrait<framework::LoDTensor>::kId;
     constexpr auto kSelectedRowsId =
-        framework::VarTypeTrait<framework::SelectedRows>::kId;
+        framework::VarTypeTrait<phi::SelectedRows>::kId;
     constexpr auto kFetchListId =
         framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);

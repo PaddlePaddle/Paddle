@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -46,7 +46,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
 
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *x, out, *pad_value,
-        padded_length, 0, false, false, false, math::kBatchLengthWidth);
+        padded_length, 0, false, math::kBatchLengthWidth);
 
     LoDTensor seq_len;
     seq_len.Resize(len_t->dims());
@@ -72,7 +72,7 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
 
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *d_out, d_x,
-          padded_length, 0, false, false, false, math::kBatchLengthWidth);
+          padded_length, 0, false, math::kBatchLengthWidth);
     }
   }
 };

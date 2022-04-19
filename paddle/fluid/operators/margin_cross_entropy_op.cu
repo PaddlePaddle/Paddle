@@ -22,15 +22,16 @@ namespace cub = hipcub;
 #include <vector>
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/margin_cross_entropy_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -69,11 +70,12 @@ void GetClassInterval(const gpuStream_t& stream, const platform::Place& place,
           platform::DeviceContextPool::Instance().Get(place))
           ->stream();
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       num_classes_per_device_ptr, num_classes_per_device_ptr,
       num_classes_per_device.numel(),
-      platform::ToNCCLDataType(num_classes_per_device.type()), ncclSum,
-      comm->comm(), calcu_stream));
+      platform::ToNCCLDataType(
+          framework::TransToProtoVarType(num_classes_per_device.dtype())),
+      ncclSum, comm->comm(), calcu_stream));
 
   auto class_interval_ptr =
       class_interval->mutable_data<int>({nranks + 1}, place);
@@ -128,17 +130,6 @@ __global__ void AddMarginToPositiveLogitsKernel(
   }
 }
 
-template <typename Tx, typename Ty = Tx>
-struct ExpAndSum {
-  using Transformer = kpds::ExpLogitTransformer<Tx>;
-
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
-
 template <typename T>
 __global__ void ScaleLogitKernel(T* logits, const float scale, const int64_t N,
                                  const int64_t D) {
@@ -159,7 +150,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits, const T* logits_sum_per_row,
                                         const int64_t N, const int64_t D) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
-    logits[i] -= kpds::LogFunctor(logits_sum_per_row[row]);
+    logits[i] -= kps::details::Log(logits_sum_per_row[row]);
   }
 }
 
@@ -174,9 +165,9 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     if ((col + start_index) == labels[row]) {
       auto softmax = log_softmax[i];
       loss[row] = -softmax;
-      log_softmax[i] = kpds::ExpFunctor(softmax);
+      log_softmax[i] = kps::details::Exp(softmax);
     } else {
-      log_softmax[i] = kpds::ExpFunctor(log_softmax[i]);
+      log_softmax[i] = kps::details::Exp(log_softmax[i]);
     }
   }
 }
@@ -256,12 +247,12 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = SizeToAxis(axis, logits_dims);
-    const int D = SizeFromAxis(axis, logits_dims);
+    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
-    const auto& label_type = labels->type();
+    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     // copy logits to softmax variable since we can't modify logits,
     // and it also be used when calculate grad
@@ -309,15 +300,17 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     logits_max =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* logits_max_buff = logits_max.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, CustomMax>(softmax_2d, &logits_max, {1},
-                                             dev_ctx.stream());
+    TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+        dev_ctx, softmax_2d, &logits_max, kps::IdentityFunctor<T>(), {1},
+        dev_ctx.stream());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           logits_max_buff, logits_max_buff, logits_max.numel(),
-          platform::ToNCCLDataType(logits_max.type()), ncclMax, comm->comm(),
-          stream));
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(logits_max.dtype())),
+          ncclMax, comm->comm(), stream));
     }
 #endif
 
@@ -330,15 +323,17 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     sum_exp_logits =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, ExpAndSum>(softmax_2d, &sum_exp_logits, {1},
-                                             dev_ctx.stream());
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
+        dev_ctx, softmax_2d, &sum_exp_logits, kps::ExpFunctor<T>(), {1},
+        dev_ctx.stream());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
-          platform::ToNCCLDataType(sum_exp_logits.type()), ncclSum,
-          comm->comm(), stream));
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(sum_exp_logits.dtype())),
+          ncclSum, comm->comm(), stream));
     }
 #endif
 
@@ -350,8 +345,8 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    math::SetConstant<platform::CUDADeviceContext, T>()(dev_ctx, loss,
-                                                        static_cast<T>(0.0));
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T>()(
+        dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
       HardLabelSoftmaxWithCrossEntropyKernel<
@@ -368,10 +363,11 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           loss_ptr, loss_ptr, loss->numel(),
-          platform::ToNCCLDataType(loss->type()), ncclSum, comm->comm(),
-          stream));
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(loss->dtype())),
+          ncclSum, comm->comm(), stream));
     }
 #endif
   }
@@ -406,8 +402,8 @@ class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
-    const int N = SizeToAxis(axis, sofrmax_dims);
-    const int D = SizeFromAxis(axis, sofrmax_dims);
+    const int N = phi::funcs::SizeToAxis(axis, sofrmax_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, sofrmax_dims);
 
     if (return_softmax) {
       framework::TensorCopy(*softmax, context.GetPlace(),
@@ -418,7 +414,7 @@ class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(N * D);
     int threads = kNumCUDAThreads;
-    const auto& label_type = labels->type();
+    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     Tensor class_interval;
     GetClassInterval(dev_ctx.stream(), context.GetPlace(),

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -96,7 +96,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dx);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
@@ -126,7 +126,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dy);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
@@ -146,6 +146,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseAddNPUKernel<int64_t>,
+#endif
                        ops::ElementwiseAddNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(elementwise_add_grad,

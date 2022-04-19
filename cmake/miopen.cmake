@@ -15,8 +15,6 @@ find_path(MIOPEN_INCLUDE_DIR "miopen/miopen.h"
           NO_DEFAULT_PATH
 )
 
-get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
-
 find_library(MIOPEN_LIBRARY NAMES "libMIOpen.so"
     PATHS ${MIOPEN_ROOT} ${MIOPEN_ROOT}/lib ${MIOPEN_ROOT}/lib64 ${__libpath_hist} 
           $ENV{MIOPEN_ROOT} $ENV{MIOPEN_ROOT}/lib $ENV{MIOPEN_ROOT}/lib64 

@@ -12,20 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gumbel_softmax_op.h"
-#include <string>
-#include <unordered_map>
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 class GumbelSoftmaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchangedInferShapeCheckAxis(ctx);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -71,20 +68,6 @@ Samples from the Gumbel-Softmax distribution and optionally discretizes.
 class GumbelSoftmaxGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "gumbel_softmax_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "gumbel_softmax_grad");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputDim("Out"),
-        ctx->GetInputDim(framework::GradVarName("Out")),
-        platform::errors::InvalidArgument("Input(Out) and its gradients "
-                                          "should have the same shape."));
-
-    ctx->SetOutputDim(framework::GradVarName("X"),
-                      ctx->GetInputDim(framework::GradVarName("Out")));
-  }
 };
 
 template <typename T>
@@ -107,17 +90,16 @@ class GumbelSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(gumbel_softmax, GumbelSoftmaxInferShapeFunctor,
+                            PD_INFER_META(phi::GumbelSoftmaxInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(gumbel_softmax_grad,
+                            GumbelSoftmaxGradInferShapeFunctor,
+                            PD_INFER_META(phi::GumbelSoftmaxGradInferMeta));
+
 REGISTER_OPERATOR(gumbel_softmax, ops::GumbelSoftmaxOp,
                   ops::GumbelSoftmaxOpMaker,
                   ops::GumbelSoftmaxGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GumbelSoftmaxGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gumbel_softmax_grad, ops::GumbelSoftmaxGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    gumbel_softmax,
-    ops::GumbelSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GumbelSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    gumbel_softmax_grad,
-    ops::GumbelSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GumbelSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);
+                  ops::GumbelSoftmaxGradOpMaker<paddle::imperative::OpBase>,
+                  GumbelSoftmaxInferShapeFunctor);
+REGISTER_OPERATOR(gumbel_softmax_grad, ops::GumbelSoftmaxGradOp,
+                  GumbelSoftmaxGradInferShapeFunctor);

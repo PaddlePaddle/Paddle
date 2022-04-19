@@ -23,10 +23,11 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::concat;
-using mkldnn::stream;
+using framework::LoDTensor;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::concat;
+using dnnl::stream;
 using platform::to_void_cast;
 
 template <typename T>
@@ -34,7 +35,7 @@ class ConcatMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::concat> {
  public:
   ConcatMKLDNNHandler(const framework::ExecutionContext& ctx,
-                      const mkldnn::engine mkldnn_engine,
+                      const dnnl::engine mkldnn_engine,
                       const std::vector<const Tensor*>& inputs, Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
@@ -60,17 +61,18 @@ class ConcatMKLDNNHandler
       concat_axis = concat_axis + rank;
     }
 
-    memory::data_type dt = framework::ToMKLDNNDataType(inputs[0]->type());
+    memory::data_type dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(inputs[0]->dtype()));
     std::vector<memory::desc> srcs_md;
     srcs_md.reserve(inputs.size());
 
     // Create memory descriptors for each of inputs
     for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto dims = framework::vectorize<int64_t>(inputs[i]->dims());
+      const auto dims = phi::vectorize<int64_t>(inputs[i]->dims());
       srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
     }
 
-    auto dst_dims = framework::vectorize<int64_t>(output->dims());
+    auto dst_dims = phi::vectorize<int64_t>(output->dims());
     auto dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
@@ -85,7 +87,7 @@ class ConcatMKLDNNHandler
         dst_md, concat_axis, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(const Tensor& input, int i) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const Tensor& input, int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
                                             to_void_cast<T>(input_data));
@@ -138,9 +140,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::unordered_map<int, memory> args;
     for (size_t i = 0; i < multi_input.size(); ++i) {
       srcs.push_back(handler.AcquireSrcMemory(*(multi_input[i]), i));
-      args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, *(srcs.at(i))});
+      args.insert({DNNL_ARG_MULTIPLE_SRC + i, *(srcs.at(i))});
     }
-    args.insert({MKLDNN_ARG_DST, *dst_mem});
+    args.insert({DNNL_ARG_DST, *dst_mem});
 
     concat_p->execute(astream, args);
     astream.wait();
@@ -149,6 +151,73 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     output->set_format(platform::GetMKLDNNFormat(*dst_mem));
   }
 };
+
+template <typename T>
+class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    const auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
+
+    const auto x = ctx.MultiInput<LoDTensor>("X");
+    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto dx = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+
+    for (size_t i = 0; i < dx.size(); ++i) {
+      if (dx[i] != nullptr) {
+        dx[i]->set_lod(x[i]->lod());
+      }
+    }
+
+    int axis = ctx.Attr<int>("axis");
+    if (ctx.HasInput("AxisTensor")) {
+      auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
+    }
+
+    auto dout_vec_dims = phi::vectorize(dout->dims());
+
+    axis = ComputeAxis(axis, dout_vec_dims.size());
+
+    std::vector<int64_t> offset(dout_vec_dims.size(), 0);
+
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        dout_vec_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
+    auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+        dout->format(), platform::to_void_cast(dout->data<T>()));
+
+    for (size_t i = 0; i < dx.size(); ++i) {
+      if (out_var_names[i] != framework::kEmptyVarName &&
+          dx[i]->numel() != 0UL) {
+        auto dx_vec_dims = phi::vectorize(dx[i]->dims());
+        auto slice_mem_p = reorder_handler.AcquireSubmemory(
+            dx_vec_dims, offset, reorder_src_memory_p);
+
+        auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+            dx[i], dx_vec_dims, dout->format(), ctx.GetPlace());
+        auto reorder_p =
+            reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
+
+        reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
+
+        offset[axis] += dx[i]->dims()[axis];
+
+        dx[i]->set_layout(framework::DataLayout::kMKLDNN);
+        dx[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+      }
+    }
+    astream.wait();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -159,3 +228,7 @@ REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);
+
+REGISTER_OP_KERNEL(concat_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::ConcatGradMKLDNNOpKernel<float>,
+                   ops::ConcatGradMKLDNNOpKernel<paddle::platform::bfloat16>);

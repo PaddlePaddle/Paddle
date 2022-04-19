@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.reader import _reader_process_loop
+from paddle.fluid.framework import _test_eager_guard
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -51,7 +52,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
         self.epoch_num = 2
         self.capacity = 2
 
-    def test_reader_process_loop(self):
+    def func_test_reader_process_loop(self):
         # This unittest's memory mapped files needs to be cleaned manually
         def __clear_process__(util_queue):
             while True:
@@ -79,7 +80,12 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
                 target=__clear_process__, args=(util_queue, ))
             clear_process.start()
 
-    def test_reader_process_loop_simple_none(self):
+    def test_reader_process_loop(self):
+        with _test_eager_guard():
+            self.func_test_reader_process_loop()
+        self.func_test_reader_process_loop()
+
+    def func_test_reader_process_loop_simple_none(self):
         def none_sample_genarator(batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -99,6 +105,11 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             except ValueError as ex:
                 exception = ex
             self.assertIsNotNone(exception)
+
+    def test_reader_process_loop_simple_none(self):
+        with _test_eager_guard():
+            self.func_test_reader_process_loop_simple_none()
+        self.func_test_reader_process_loop_simple_none()
 
 
 if __name__ == '__main__':

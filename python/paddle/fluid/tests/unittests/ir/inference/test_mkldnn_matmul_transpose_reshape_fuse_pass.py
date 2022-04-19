@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,69 +12,118 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
 
 
-class MatmulTransposeReshapeMkldnnFusePassTest(InferencePassTest):
-    def setUp(self):
-        self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=self.data_shape, dtype="float32")
-            weight = fluid.layers.create_parameter(
-                shape=self.weight_shape, dtype="float32")
-            matmul = fluid.layers.matmul(
-                data,
-                weight,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y)
-            transpose = fluid.layers.transpose(matmul, self.tranpose_perm)
-            reshape = fluid.layers.reshape(transpose, shape=self.reshape_shape)
+class TestMatmulTransposeReshapeMkldnnFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        # If the problem has been fixed, the judgment 
+        # needs to be deleted!!!
+        if 0 in attrs[2]['shape']:
+            return False
 
-        self.fetch_list = [reshape]
-        self.enable_mkldnn = True
+        return True
 
-    def set_params(self):
-        self.data_shape = [-1, 3, 100, 110]
-        self.weight_shape = [1, 3, 110, 100]
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 110)).astype("float32")
-        }
-        self.transpose_x = False
-        self.transpose_y = False
-        self.tranpose_perm = [0, 2, 1, 3]
-        self.reshape_shape = [3, 100, 100]
-        self.pass_name = 'matmul_transpose_reshape_fuse_pass'
+    def sample_program_config(self, draw):
+        transpose_X = draw(st.booleans())
+        transpose_Y = draw(st.booleans())
+        alpha = draw(st.floats(min_value=0.01, max_value=2))
+        axis = draw(st.sampled_from([[0, 2, 1, 3]]))
+        shape = draw(st.sampled_from([[0, -1, 128], [-1, 1, 64]]))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
+        channel = draw(st.integers(min_value=1, max_value=64))
+        input_dim = draw(st.sampled_from([32, 64]))
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
+        def generate_input(type):
+            if transpose_X and transpose_Y:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, 64, input_dim]
+            elif transpose_X:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, input_dim, 64]
+            elif transpose_Y:
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, 8, input_dim]
+            else:
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, input_dim, 16]
 
-    def test_pass_compatible(self):
-        self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
+            if type == "x":
+                return np.random.random(shape_x).astype(np.float32)
+            else:
+                return np.random.random(shape_y).astype(np.float32)
 
+        matmul_op = OpConfig(
+            type="matmul",
+            inputs={"X": ["input_data1"],
+                    "Y": ["input_data2"]},
+            outputs={"Out": ["matmul_output"]},
+            attrs={
+                "transpose_X": transpose_X,
+                "transpose_Y": transpose_Y,
+                "alpha": alpha,
+                "fused_reshape_X": [],
+                "fused_reshape_Y": [],
+                "fused_transpose_X": [],
+                "fused_transpose_Y": [],
+                "fused_reshape_Out": [],
+                "fused_transpose_Out": []
+            })
 
-class MatmulTransposeReshapeMkldnnFusePassTest_1(
-        MatmulTransposeReshapeMkldnnFusePassTest):
-    def set_params(self):
-        self.data_shape = [-1, 3, 100, 100]
-        self.weight_shape = [1, 3, 100, 100]
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32")
-        }
-        self.transpose_x = True
-        self.transpose_y = True
-        self.tranpose_perm = [0, 2, 1, 3]
-        self.reshape_shape = [6, 50, 100]
-        self.pass_name = 'matmul_transpose_reshape_fuse_pass'
+        transpose2_op = OpConfig(
+            type="transpose2",
+            inputs={"X": ["matmul_output"]},
+            outputs={
+                "Out": ["transpose2_output"],
+                "XShape": ["transpose2_xshape"]
+            },
+            attrs={'axis': axis})
+
+        reshape2_op = OpConfig(
+            type="reshape2",
+            inputs={"X": ["transpose2_output"]},
+            outputs={
+                "Out": ["reshape2_output"],
+                "XShape": ["reshape2_xshape"]
+            },
+            attrs={'shape': shape})
+
+        model_net = [matmul_op, transpose2_op, reshape2_op]
+
+        program_config = ProgramConfig(
+            ops=model_net,
+            weights={},
+            inputs={
+                "input_data1":
+                TensorConfig(data_gen=partial(generate_input, "x")),
+                "input_data2":
+                TensorConfig(data_gen=partial(generate_input, "y"))
+            },
+            outputs=["reshape2_output"])
+
+        return program_config
+
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_mkldnn=True)
+        yield config, ["matmul"], (1e-5, 1e-5)
+
+    def test(self):
+        self.run_and_statis(
+            quant=False, passes=["matmul_transpose_reshape_fuse_pass"])
 
 
 if __name__ == "__main__":

@@ -13,16 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <curand_kernel.h>
-#include <vector>
-#include "optimizer_conf.h"
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-
 #ifdef PADDLE_WITH_HETERPS
+
+#if defined(PADDLE_WITH_CUDA)
+#include <curand_kernel.h>
+#endif
+#include <vector>
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename ValType, typename GradType>
 class Optimizer {
  public:
@@ -32,7 +35,8 @@ class Optimizer {
 
   void initialize() {}
 
-  __device__ void update_lr(float& w, float& g2sum, float g, float scale) {
+  __device__ void update_lr(float& w, float& g2sum, float g,  // NOLINT
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::learning_rate *
                    sqrt(optimizer_config::initial_g2sum /
@@ -49,8 +53,8 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
-                            float scale) {
+  __device__ void update_mf(int n, float* w, float& g2sum,  // NOLINT
+                            const float* g, float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::mf_learning_rate *
                    sqrt(optimizer_config::mf_initial_g2sum /
@@ -69,7 +73,8 @@ class Optimizer {
 
     g2sum += add_g2sum / n;
   }
-  __device__ void update_value(ValType& val, const GradType& grad) {
+
+  __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
@@ -96,8 +101,43 @@ class Optimizer {
       update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, grad.show);
     }
   }
+
+  __device__ void dy_mf_update_value(ValType* ptr, const GradType& grad) {
+    ptr->slot = grad.slot;
+    ptr->show += grad.show;
+    ptr->clk += grad.clk;
+    ptr->delta_score +=
+        optimizer_config::nonclk_coeff * (grad.show - grad.clk) +
+        optimizer_config::clk_coeff * grad.clk;
+
+    update_lr(ptr->lr, ptr->lr_g2sum, grad.lr_g, grad.show);
+    // use MF_DIM temporarily
+    // ptr->mf_dim = grad.mf_dim;
+
+    if (ptr->mf_size == 0) {
+      if (optimizer_config::mf_create_thresholds <=
+          optimizer_config::nonclk_coeff * (ptr->show - ptr->clk) +
+              optimizer_config::clk_coeff * ptr->clk) {
+        // ptr->mf_size = ptr->mf_dim + 1;
+
+        ptr->mf_size = MF_DIM + 1;
+        ptr->mf[0] = 0;
+        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+        curandState state;
+        curand_init(clock64(), tid_x, 0, &state);
+        for (int i = 0; i < MF_DIM; ++i) {
+          ptr->mf[i + 1] =
+              (curand_uniform(&state)) * optimizer_config::mf_initial_range;
+        }
+      }
+    } else {
+      update_mf(MF_DIM, &(ptr->mf[1]), ptr->mf[0], grad.mf_g,
+                grad.show);  // for local test
+    }
+  }
 };
 
+#endif
 }  // end namespace framework
 }  // end namespace paddle
 #endif

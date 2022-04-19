@@ -42,10 +42,9 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
                             i));
-      auto out_dim = framework::vectorize(
-          framework::slice_ddim(ids_dims, 0, ids_rank - 1));
+      auto out_dim = phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_dim.push_back(hidden_size);
-      outs_dims[i] = framework::make_ddim(out_dim);
+      outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
@@ -133,5 +132,7 @@ REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
                   ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)
+REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>);
+REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(pull_box_sparse, ops::PullBoxSparseXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(push_box_sparse, ops::PushBoxSparseXPUKernel<float>);

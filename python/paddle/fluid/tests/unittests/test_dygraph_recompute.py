@@ -23,6 +23,7 @@ from paddle.distributed.fleet.utils import recompute
 import random
 
 import paddle.fluid.layers as layers
+from paddle.fluid.framework import _test_eager_guard
 
 
 def get_fc_block(block_idx, input_size, is_last=False):
@@ -92,7 +93,10 @@ class Naive_fc_net(paddle.nn.Layer):
         return inputs
 
 
-def run_model(recompute_block=[], recompute_kwargs={}, enable_autocast=False):
+def run_model(recompute_block=[],
+              recompute_kwargs={},
+              enable_autocast=False,
+              pure_fp16=False):
     gen = paddle.seed(10)
     gen.manual_seed(10)
     np.random.seed(10)
@@ -118,7 +122,8 @@ def run_model(recompute_block=[], recompute_kwargs={}, enable_autocast=False):
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False
-        with paddle.amp.auto_cast(True):
+        level = 'O2' if pure_fp16 else 'O1'
+        with paddle.amp.auto_cast(True, level=level):
             y_pred = model(x)
             loss = y_pred.mean()
         if enable_autocast:
@@ -137,66 +142,75 @@ def run_model(recompute_block=[], recompute_kwargs={}, enable_autocast=False):
 
 
 class TestPyLayer(unittest.TestCase):
-    def test_fc_net_with_dropout(self):
+    def test_base_case(self, enable_autocast=False, pure_fp16=False):
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
             self.assertEqual(param_ref, param)
             self.assertEqual(grad_ref, grad)
 
         # without recompute
-        loss_ref, param_ref, grad_ref = run_model(recompute_block=[])
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16)
 
         # recompute second block
-        loss, param, grad = run_model(recompute_block=[1])
+        loss, param, grad = run_model(
+            recompute_block=[1],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # recompute fourth block
-        loss, param, grad = run_model(recompute_block=[3])
+        loss, param, grad = run_model(
+            recompute_block=[3],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # recompute second to fourth block
-        loss, param, grad = run_model(recompute_block=[1, 2, 3])
+        loss, param, grad = run_model(
+            recompute_block=[1, 2, 3],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # recompute second & fourth block
-        loss, param, grad = run_model(recompute_block=[1, 3])
+        loss, param, grad = run_model(
+            recompute_block=[1, 3],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+    def test_fc_net_with_dropout(self):
+        with _test_eager_guard():
+            self.test_base_case()
+        self.test_base_case()
 
     def test_fc_net_without_restore_rng(self):
-        loss_ref, param_ref, grad_ref = run_model(
-            recompute_block=[2],
-            recompute_kwargs={"preserve_rng_state": False},
-            enable_autocast=True)
+        with _test_eager_guard():
+            loss_ref, param_ref, grad_ref = run_model(
+                recompute_block=[2],
+                recompute_kwargs={"preserve_rng_state": False},
+                enable_autocast=True)
 
     def test_fc_net_with_amp(self):
-        def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
-            self.assertEqual(loss_ref, loss)
-            self.assertEqual(param_ref, param)
-            self.assertEqual(grad_ref, grad)
+        with _test_eager_guard():
+            self.test_base_case(enable_autocast=True)
+        self.test_base_case(enable_autocast=True)
 
-        # without recompute
-        loss_ref, param_ref, grad_ref = run_model(
-            recompute_block=[], enable_autocast=True)
-
-        # recompute second block
-        loss, param, grad = run_model(recompute_block=[1], enable_autocast=True)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
-
-        # recompute fourth block
-        loss, param, grad = run_model(recompute_block=[3], enable_autocast=True)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
-
-        # recompute second to fourth block
-        loss, param, grad = run_model(
-            recompute_block=[1, 2, 3], enable_autocast=True)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
-
-        # recompute second & fourth block
-        loss, param, grad = run_model(
-            recompute_block=[1, 3], enable_autocast=True)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+    def test_fc_net_with_fp16(self):
+        with _test_eager_guard():
+            self.test_base_case(enable_autocast=True, pure_fp16=True)
+        self.test_base_case(enable_autocast=True, pure_fp16=True)
 
     def test_recompute_kwargs(self):
+        with _test_eager_guard():
+            paddle.set_device("gpu")
+            kwargs = {"is_test": False}
+            with self.assertRaises(ValueError):
+                loss_ref, param_ref, grad_ref = run_model(
+                    recompute_block=[2], recompute_kwargs=kwargs)
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
         with self.assertRaises(ValueError):
@@ -204,6 +218,11 @@ class TestPyLayer(unittest.TestCase):
                 recompute_block=[2], recompute_kwargs=kwargs)
 
     def test_recompute_cpu_rng(self):
+        with _test_eager_guard():
+            paddle.set_device("cpu")
+            with self.assertRaises(RuntimeError):
+                loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])
+
         paddle.set_device("cpu")
         with self.assertRaises(RuntimeError):
             loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])

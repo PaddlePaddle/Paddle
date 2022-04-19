@@ -107,8 +107,13 @@ bool StackPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT ||
-              in.type == nvinfer1::DataType::kHALF) &&
+      return (
+// It's workaround for ernie fix len model.
+// Enabling float, half on the same time will cause trt hang.
+#if IS_TRT_VERSION_LT(8000)
+                 in.type == nvinfer1::DataType::kFLOAT ||
+#endif
+                 in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&

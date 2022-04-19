@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/size_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,13 +23,6 @@ namespace operators {
 class SizeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Size");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Size");
-
-    ctx->SetOutputDim("Out", {1});
-  }
 };
 
 class SizeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -49,11 +44,10 @@ Return the number of elements in the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(size, SizeInferShapeFunctor,
+                            PD_INFER_META(phi::SizeInferMeta));
 REGISTER_OPERATOR(
     size, ops::SizeOp, ops::SizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(size, ops::SizeKernel<int>, ops::SizeKernel<int64_t>,
-                       ops::SizeKernel<paddle::platform::float16>,
-                       ops::SizeKernel<float>, ops::SizeKernel<double>,
-                       ops::SizeKernel<bool>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    SizeInferShapeFunctor);

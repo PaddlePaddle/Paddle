@@ -28,9 +28,6 @@ namespace ir {
 class Node;
 }  // namespace ir
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -45,6 +42,12 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
   ~ScaleLossGradOpHandle() final;
 
   std::string Name() const override;
+
+  platform::Place GetPlace() const { return place_; }
+
+  void RunOnVar(Variable *var, bool record_event = false);
+
+  std::string LossGradName() const;
 
  protected:
   void RunImpl() override;

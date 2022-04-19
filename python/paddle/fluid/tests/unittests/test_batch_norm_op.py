@@ -36,6 +36,11 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
             x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
         else:
             x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
 
     if data_format == "NCHW":
         n, c, h, w = x.shape
@@ -55,13 +60,19 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
     else:
         raise ValueError("Unknown data order.")
 
-    if len(x_shape) == 2:
+    if len(x_shape) == 2 or len(x_shape) == 3:
         y = np.reshape(y, x_shape)
     return y
 
 
 def _cal_mean_variance(x, epsilon, data_format):
     assert data_format in ['NCHW', 'NHWC']
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
     x_square = x * x
     axis = (0, 2, 3) if data_format == 'NCHW' else (0, 1, 2)
     C = x.shape[1] if data_format == 'NCHW' else x.shape[-1]
@@ -75,6 +86,12 @@ def _cal_mean_variance(x, epsilon, data_format):
 
 def _reference_training(x, scale, offset, epsilon, data_format):
     x_shape = x.shape
+
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
 
     if data_format == "NCHW":
         n, c, h, w = x.shape
@@ -94,7 +111,6 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         offset_tile = np.reshape(offset, (1, c, 1, 1))
         offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
         y = normalized * scale_tile + offset_tile
-        return y, mean, var
     elif data_format == "NHWC":
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 1, 2))
@@ -104,9 +120,12 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         var = x_square_sum / element_count - mean * mean
         normalized = (x - mean) / np.sqrt(var + epsilon)
         y = normalized * scale + offset
-        return y, mean, var
     else:
         raise ValueError("Unknown data order.")
+
+    if len(x_shape) == 3:
+        y = np.reshape(y, x_shape)
+    return y, mean, var
 
 
 def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
@@ -123,6 +142,15 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
     # transfer from (N, C, H, W) to (N, H, W, C) to simplify computation
     if data_format != "NCHW" and data_format != "NHWC":
         raise ValueError("Unknown data order.")
+
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], 1, x_shape[2]))
 
     if data_format == "NCHW":
         x = np.transpose(x, (0, 2, 3, 1))
@@ -141,6 +169,9 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
         x_grad = np.transpose(x_grad, (0, 3, 1, 2))
         x = np.transpose(x, (0, 3, 1, 2))
         y_grad = np.transpose(y_grad, (0, 3, 1, 2))
+
+    if len(x_shape) == 3:
+        x_grad = np.reshape(x_grad, x_shape)
 
     return x_grad, grad_scale, grad_offset
 
@@ -289,7 +320,7 @@ class TestBatchNormOpInference(unittest.TestCase):
 
     def test_check_output(self):
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -311,13 +342,13 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
     def test_check_output(self):
         places = []
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 places.append(place)
-
         for place in places:
-            for data_format in ["NCHW", "NHWC"]:
+            #for data_format in ["NCHW", "NHWC"]:
+            for data_format in ["NCHW"]:
                 self.check_with_place(place, data_format, self.dtype,
                                       [2, 3, 4, 5])
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
@@ -486,7 +517,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
         places = [core.CPUPlace()]
 
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -626,7 +657,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
@@ -647,7 +678,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
     def test_static(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
@@ -685,4 +716,6 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

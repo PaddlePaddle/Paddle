@@ -46,9 +46,9 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
-    ctx->SetOutputDim("Out", framework::make_ddim({-1, x1_dims[1]}));
-    ctx->SetOutputDim("LossWeight", framework::make_ddim({-1, 1}));
-    ctx->SetOutputDim("IndexMap", framework::make_ddim({-1, 2}));
+    ctx->SetOutputDim("Out", phi::make_ddim({-1, x1_dims[1]}));
+    ctx->SetOutputDim("LossWeight", phi::make_ddim({-1, 1}));
+    ctx->SetOutputDim("IndexMap", phi::make_ddim({-1, 2}));
   }
 
  protected:
@@ -109,7 +109,7 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
     auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x1_dims = ctx->GetInputDim("Ins");
     ctx->SetOutputDim(framework::GradVarName("Ins"),
-                      framework::make_ddim({x1_dims[0], grad_out_dims[1]}));
+                      phi::make_ddim({x1_dims[0], grad_out_dims[1]}));
   }
 
  protected:

@@ -579,11 +579,15 @@ class GradScaler(AmpScaler):
 
         Reurns:
             A dict of scaler includes:
-            init_loss_scaling (float, optional): The initial loss scaling factor.
-            incr_ratio(float, optional): The multiplier to use when increasing the loss scaling.
-            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing the loss scaling.
-            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive steps with finite gradients.
-            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            scale (tensor): The loss scaling factor.
+            incr_ratio(float): The multiplier to use when increasing the loss scaling.
+            decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling.
+            incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients.
+            decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            incr_count(int): The number of recent consecutive unskipped steps.
+            decr_count(int): The number of recent consecutive skipped steps.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+
         
         Examples:
 

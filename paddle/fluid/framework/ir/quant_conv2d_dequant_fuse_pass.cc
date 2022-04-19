@@ -210,6 +210,22 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("y_num_col_dims")
       .IsNumEQ(1)
       .End();
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("trans_y")
+      .IsBoolEQ(false)
+      .End();
   AddOpCompat(OpCompat("matmul"))
       .AddInput("X")
       .IsTensor()
@@ -325,7 +341,6 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
     Node* output_scale = subgraph.at(pattern.GetPDNode("output_scale_node"));
     Node* output_act = subgraph.at(pattern.GetPDNode("output_act_node"));
     int bit_length = BOOST_GET_CONST(int, quant->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
@@ -340,7 +355,7 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float in_scale = input_scale_data[0];
-    float scale_value = in_scale / range;
+    float scale_value = in_scale;
 
     // Set input scale in attr, and relink nodes
     std::string input_act_name = input_act->Var()->Name();
@@ -353,10 +368,10 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
           quantized_op_type == "conv2d_fusion" ||
           quantized_op_type == "depthwise_conv2d" ||
           quantized_op_type == "fc" ||
-          quantized_op_type == "conv2d_transpose") {
+          quantized_op_type == "conv2d_transpose" ||
+          quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+          quantized_op_type == "matmul_v2") {
         op_desc->SetAttr("Input_scale", scale_value);
-      } else if (quantized_op_type == "mul" || quantized_op_type == "matmul") {
-        op_desc->SetAttr("X_scale", scale_value);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported quantized op type %s.", quantized_op_type));
@@ -387,7 +402,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       quantized_op_type == "conv2d_transpose") {
     weight_name = "Filter";
     input_name = "Input";
-  } else if (quantized_op_type == "mul" || quantized_op_type == "matmul") {
+  } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+             quantized_op_type == "matmul_v2") {
     weight_name = "Y";
     input_name = "X";
   } else if (quantized_op_type == "fc") {
@@ -396,7 +412,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "QuantDequantFuse: We only support conv2d, conv2d_fusion, "
-        "conv2d_transpose, fc, mul, matmul for "
+        "conv2d_transpose, fc, mul, matmul, matmul_v2 for "
         "now."));
   }
   const std::string pattern_name = "dequant_fuse";
@@ -437,7 +453,11 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
         BOOST_GET_CONST(int, quantized_op_node->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
-
+    int quant_axis = 0;
+    if (dequant_op_node->Op()->HasAttr("quant_axis")) {
+      quant_axis =
+          BOOST_GET_CONST(int, dequant_op_node->Op()->GetAttr("quant_axis"));
+    }
     // Get weight scale
     if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
       Node* dequant_channel_scale_node =
@@ -475,25 +495,37 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     // If quantized op is conv2d, weight scale size = weight dims[0]
     // If quantized op is conv2d_transpose, weight scale size = weight dims[1]
     if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-        quantized_op_type == "fc") {
+        quantized_op_type == "matmul_v2" || quantized_op_type == "fc") {
       if (dequant_type == "fake_dequantize_max_abs") {
-        PADDLE_ENFORCE_EQ(
-            weight_scale.size(), 1,
-            platform::errors::InvalidArgument(
-                "mul/matmul op weight dequantized by [fake_dequantize_max_abs] "
-                "requires weight scale size = 1, but got %d.",
-                weight_scale.size()));
+        PADDLE_ENFORCE_EQ(weight_scale.size(), 1,
+                          platform::errors::InvalidArgument(
+                              "mul/matmul/matmul_v2 op weight dequantized by "
+                              "[fake_dequantize_max_abs] "
+                              "requires weight scale size = 1, but got %d.",
+                              weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           quantized_weight_data[j] *= weight_scale[0];
         }
       }
       if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+        if (quant_axis == 0) {
+        } else {
+          PADDLE_ENFORCE_EQ(
+              quant_axis == 1, true,
+              platform::errors::InvalidArgument(
+                  "'quant_axis' of mul/matmul/fc/matmul_v2 op weight "
+                  "dequantized by "
+                  "[fake_channel_wise_dequantize_max_abs]should be 1, but "
+                  "the received is %d",
+                  quant_axis));
+        }
         PADDLE_ENFORCE_EQ(
             weight_scale.size(), static_cast<size_t>(w_dims[1]),
             platform::errors::InvalidArgument(
-                "mul/matmul op weight dequantized by "
+                "mul/matmul/matmul_v2 op weight dequantized by "
                 "[fake_channel_wise_dequantize_max_abs] requires weight scale "
-                "size = 2nd dim of mul/matmul's weight, which is %d, but got "
+                "size = 2nd dim of mul/matmul/matmul_v2's weight, which is %d, "
+                "but got "
                 "%d.",
                 static_cast<size_t>(w_dims[1]), weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
@@ -511,6 +543,16 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
               "model, please set the 'weight_quantize_type' params as "
               "'channel_wise_abs_max' and generate the quantized model again.",
               dequant_type));
+      if (quant_axis == 0) {
+      } else {
+        PADDLE_ENFORCE_EQ(
+            quant_axis == 0, true,
+            platform::errors::InvalidArgument(
+                "'quant_axis' of conv2d/depthwise_conv2d op weight dequantized "
+                "by [fake_channel_wise_dequantize_max_abs]should be 0, but "
+                "the received is %d",
+                quant_axis));
+      }
       PADDLE_ENFORCE_EQ(
           weight_scale.size(), static_cast<size_t>(w_dims[0]),
           platform::errors::InvalidArgument(
@@ -528,6 +570,16 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
               "conv2d_transpose must be dequantized by "
               "[fake_channel_wise_dequantize_max_abs], but got %s",
               dequant_type));
+      if (quant_axis == 0) {
+      } else {
+        PADDLE_ENFORCE_EQ(
+            quant_axis == 1, true,
+            platform::errors::InvalidArgument(
+                "'quant_axis' of conv2d_transpose op weight dequantized by "
+                "[fake_channel_wise_dequantize_max_abs]should be 1, but "
+                "the received is %d",
+                quant_axis));
+      }
       PADDLE_ENFORCE_EQ(
           weight_scale.size(), static_cast<size_t>(w_dims[1]),
           platform::errors::InvalidArgument(
@@ -548,7 +600,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     std::string new_input = quantized_op_input_node->Name();
     std::string new_output = dequant_op_out_node->Name();
 
-    framework::OpDesc new_op_desc(base_op_desc, nullptr);
+    framework::OpDesc new_op_desc(base_op_desc,
+                                  quantized_op_node->Op()->Block());
     new_op_desc.SetType(quantized_op_type);
     new_op_desc.SetAttr("enable_int8", true);
     if (quantized_op_type == "conv2d" || quantized_op_type == "conv2d_fusion" ||
@@ -559,11 +612,11 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     } else if (quantized_op_type == "fc") {
       new_op_desc.SetInput("Input", {new_input});
       new_op_desc.SetOutput("Out", {new_output});
-    } else if (quantized_op_type == "mul" || quantized_op_type == "matmul") {
+    } else if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
+               quantized_op_type == "matmul_v2") {
       new_op_desc.SetInput("X", {new_input});
       new_op_desc.SetOutput("Out", {new_output});
     }
-    new_op_desc.SetAttr("weight_scale", weight_scale);
     new_op_desc.Flush();
     auto* new_op = graph->CreateOpNode(&new_op_desc);
     IR_NODE_LINK_TO(quantized_op_input_node, new_op);
@@ -586,7 +639,9 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> quant_types = {
       "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
   std::unordered_set<std::string> quantized_op_types = {
-      "conv2d", "mul", "matmul", "depthwise_conv2d", "fc", "conv2d_transpose"};
+      "conv2d",           "mul", "matmul",    "depthwise_conv2d",
+      "conv2d_transpose", "fc",  "matmul_v2",
+  };
   auto* scope = param_scope();
 
   for (auto& quant_type : quant_types) {

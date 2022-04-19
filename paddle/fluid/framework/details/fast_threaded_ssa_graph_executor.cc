@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -47,16 +47,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
         << "Change thread number to 1 because the toposort order is unique";
     strategy_.num_threads_ = 1;
   }
-  if (strategy_.num_threads_ > 1) {
-    pool_.reset(new ::ThreadPool(strategy.num_threads_));
-  } else {
-    auto nodes = ir::TopologySortOperations(*graph_);
-    traced_ops_.clear();
-    traced_ops_.reserve(nodes.size());
-    for (auto *node : nodes) {
-      traced_ops_.push_back(&node->Wrapper<OpHandleBase>());
-    }
-  }
+  pool_.reset(new ::ThreadPool(strategy.num_threads_));
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -74,7 +65,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
-      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare",
+                                platform::TracerEventType::UserDefined, 2));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
@@ -139,10 +131,15 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     }
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_, &fetch_ops);
+  if (!fetch_ops.empty()) {
+    platform::RecordEvent record_wait(
+        "FastThreadedSSAGraphExecutor::WaitFetchOps",
+        platform::TracerEventType::Operator, 1);
+    ClearFetchOp(graph_, &fetch_ops);
 
-  for (auto &place : places_) {
-    fetch_ctxs_.Get(place)->Wait();
+    for (auto &place : places_) {
+      fetch_ctxs_.Get(place)->Wait();
+    }
   }
 
   return fetches;
@@ -237,7 +234,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  auto func = [=] {
+  platform::RecordEvent record("WorkQueue::AddTask",
+                               platform::TracerEventType::UserDefined,
+                               10 /*level*/);
+  this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
 
@@ -296,12 +296,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     }
     --remaining_;
     complete_q->Push(complete);
-  };
-  if (pool_) {
-    pool_->enqueue(func);
-  } else {
-    func();
-  }
+  });
 }
 
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {

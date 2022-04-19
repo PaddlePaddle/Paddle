@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -47,7 +47,8 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int64_t recv_numel = in->numel() / nranks;
     const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -57,7 +58,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduceScatter(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
         send_buff, recv_buff, recv_numel, static_cast<ncclDataType_t>(dtype),
         ncclSum, comm->comm(), stream));
 #else

@@ -42,7 +42,6 @@ class SimpleNet(fluid.Layer):
             dtype=dtype,
             is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
-                name='embedding_param',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
         self.softmax_weight = self.create_parameter(
@@ -103,8 +102,8 @@ class TestSparseEmbedding(TestParallelDyGraphRunnerBase):
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True)
 
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001,
-                                        parameter_list=model.parameters())
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
 
         return model, train_reader, optimizer
 

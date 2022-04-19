@@ -3,6 +3,8 @@ coverage
 pycrypto ; platform_system != "Windows"
 mock
 gym
+pygame==2.1.0
+hypothesis
 opencv-python<=4.2.0.32
 visualdl
 paddle2onnx>=0.8.2

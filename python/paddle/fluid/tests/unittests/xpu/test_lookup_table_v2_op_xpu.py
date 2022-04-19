@@ -30,21 +30,6 @@ from paddle.fluid import Program, program_guard
 paddle.enable_static()
 
 
-class TestDygraphEmbeddingAPIError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            dict_size = 20
-            layer = fluid.dygraph.nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
-            # the input must be Variable
-            x0 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], paddle.XPUPlace(0))
-            self.assertRaises(TypeError, layer, x0)
-            # the input dtype must be int64
-            data_t = fluid.data(name='word', shape=[1], dtype='int32')
-            self.assertRaises(TypeError, layer, data_t)
-
-
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"

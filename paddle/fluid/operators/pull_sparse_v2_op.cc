@@ -37,9 +37,9 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
     outs_dims.resize(n_ids);
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
-      auto out_dim = framework::vectorize(ids_dims);
+      auto out_dim = phi::vectorize(ids_dims);
       out_dim.push_back(hidden_size);
-      outs_dims[i] = framework::make_ddim(out_dim);
+      outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
