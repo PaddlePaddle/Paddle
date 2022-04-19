@@ -193,10 +193,10 @@ class Transform(object):
         self.var2dot.delete_valuevars(vars_to_erase)
         block = self.block
         for var in vars_to_erase:
-            block.desc._remove_var(cpt.to_bytes(var.name))
-            del block.vars[var.name]
-        block._sync_with_cpp()
-
+            block._remove_var(var.name)
+            # block.desc._remove_var(cpt.to_bytes(var.name))
+            # del block.vars[var.name]
+        # block._sync_with_cpp()
 
     def var2dot_rec(self, vars, defaults=None):
 
@@ -364,10 +364,14 @@ class Transform(object):
                     path.pop(0)
                     if len(path) == 0:
                         break
+                if (op.type == 'fill_constant_p') and (
+                        get_output_vars(op)[0] in vars_to_remove):
+                    op_indexes.append(i)
 
             # remove ops
             for op_index in reversed(op_indexes):
-                block.desc._remove_op(op_index, op_index + 1)
+                block._remove_op(op_index)
+                # block.desc._remove_op(op_index, op_index + 1)
 
             self.erase_dots(vars_to_remove)
 
@@ -471,13 +475,40 @@ def _lower(block, reverse, update_var_list):
                 vlt[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
         else:
-            op_desc = op.desc
-            for name in op_desc.input_arg_names():
-                if name in to_bind:
-                    op_desc._rename_input(name, to_bind[name])
+
+            def bind_name(names, to_bind):
+                rt_l = []
+                for name in names:
+                    if isinstance(name, list):
+                        rt_l.append(bind_name(name, to_bind))
+                    else:
+                        rt_l.append(to_bind[name] if name in to_bind else name)
+                return rt_l
+
+            inputs = {}
+            for i in range(len(op.input_names)):
+                inputs[op.input_names[i]] = bind_name(
+                    op.input(op.input_names[i]), to_bind)
+            # print(inputs)
+
+            outputs = {}
+            for i in range(len(op.output_names)):
+                outputs[op.output_names[i]] = op.output(op.output_names[i])
+            # print(outputs)
+
+            attrs = {}
+            for name in sorted(op.attr_names):
+                attrs[name] = op.attr(name)
+            from paddle.fluid.dygraph.base import param_guard
             new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(op_desc)
-            new_op = Operator(block=block, desc=new_op_desc)
+            with param_guard(inputs), param_guard(outputs):
+                op = Operator(
+                    block=block,
+                    desc=new_op_desc,
+                    type=op.type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs)
             block.ops.append(op)
 
     if update_var_list is not None:
