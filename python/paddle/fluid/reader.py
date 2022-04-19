@@ -18,11 +18,13 @@ import six
 import numpy as np
 import threading
 import paddle
+import time
+
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, _non_static_mode, cpu_places, _current_expected_place, _in_eager_without_dygraph_check
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
-from .dataloader import BatchSampler, Dataset, IterableDataset
+from .dataloader import BatchSampler, Dataset, IterableDataset, Subset
 from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, default_collate_fn
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
@@ -31,6 +33,8 @@ from .framework import _get_paddle_place, _get_paddle_place_list
 from paddle.fluid.framework import _set_expected_place, _current_expected_place
 import logging
 import warnings
+
+### Dygraph DataLoader configs ###
 import os
 import multiprocessing
 import signal
@@ -50,10 +54,7 @@ USE_AUTOTUNE = False
 
 def set_autotune(flag):
     global USE_AUTOTUNE
-    if flag:
-        USE_AUTOTUNE = True
-    else:
-        USE_AUTOTUNE = False
+    USE_AUTOTUNE = flag
 
 
 def keep_data_loader_order(*args):
@@ -148,23 +149,20 @@ class DataLoaderBase(object):
         return arr
 
 
-def AutoTune(Loader):
-    import time
-    from .dataloader import Subset
-
-    def updateWithDict(kw_tune, kw):
+def auto_tune(Loader):
+    def update_with_dict(kw_tune, kw):
         for key in kw_tune:
             if key in kw.keys():
                 kw_tune[key] = kw[key]
 
-    def updateWithStr(kw_tune, args):
+    def update_with_str(kw_tune, args):
         idx = 0
         for key in kw_tune:
             if idx < len(args):
                 kw_tune[key] = args[idx]
             idx += 1
 
-    def updateWithSampler(kw_tune):
+    def update_with_samplter(kw_tune):
         if kw_tune['batch_sampler'] is not None:
             if isinstance(kw_tune['batch_sampler'],
                           paddle.io.DistributedBatchSampler):
@@ -176,7 +174,7 @@ def AutoTune(Loader):
             if kw_tune['batch_size'] is None:
                 kw_tune['batch_size'] = kw_tune['batch_sampler'].batch_size
 
-    def updateSampler(kw_tune, kw_bak):
+    def upate_sampler(kw_tune, kw_bak):
         if 'batch_sampler' in kw_bak.keys() and kw_bak[
                 'batch_sampler'] is not None:
             tmp_sampler = kw_bak['batch_sampler']
@@ -193,11 +191,11 @@ def AutoTune(Loader):
                     kw_tune['dataset'],
                     batch_size=kw_tune['batch_size'],
                     drop_last=tmp_sampler.drop_last)
+            # if batch_sampler is not none then dataset and batch_size shuffle drop_last must be not set
             kw_tune.pop('dataset')
             kw_tune.pop('batch_size')
             kw_tune.pop('shuffle')
             kw_tune.pop('drop_last')
-            # if batch_sampler is not none then dataset and batch_size shuffle drop_last must be not set
         else:
             kw_tune.pop('dataset')
 
@@ -262,9 +260,9 @@ def AutoTune(Loader):
 
         kw_bak = kw.copy()
         # update kw_tune according to kw and args
-        updateWithDict(kw_tune, kw_bak)
-        updateWithStr(kw_tune, args)
-        updateWithSampler(kw_tune)
+        update_with_dict(kw_tune, kw_bak)
+        update_with_str(kw_tune, args)
+        update_with_samplter(kw_tune)
         # update according to args
         # evaluate cost with subset of origin dataset
         new_batch_size = min(kw_tune['batch_size'] * 500,
@@ -275,7 +273,7 @@ def AutoTune(Loader):
         kw_tune['dataset'] = sub_dataset
         args_tune = (sub_dataset, )
         #update kw_tune with new_batch_size and dataset
-        updateSampler(kw_tune, kw_bak)
+        upate_sampler(kw_tune, kw_bak)
         num_workers = 0
         logging.debug("Tuning Range for num_workers: 0 ~ " + str(
             multiprocessing.cpu_count() / 2))
@@ -297,7 +295,7 @@ def AutoTune(Loader):
             logging.debug("num_workers: " + str(num_workers) + " avg_cost: " +
                           str(avg_cost))
             num_workers += 2
-        logging.info("AutoTune dataLoader best_num_workers: " + str(
+        logging.info("auto_tune dataLoader best_num_workers: " + str(
             best_num_workers))
         kw['num_workers'] = best_num_workers
         reader = Loader(*args, **kw)
@@ -308,7 +306,7 @@ def AutoTune(Loader):
     return wrapper
 
 
-@AutoTune
+@auto_tune
 class DataLoader(object):
     """
     DataLoader prodives an iterator which iterates given dataset
