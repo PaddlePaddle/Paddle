@@ -40,6 +40,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
     return Backend::NPU;
   } else if (allocation_type == phi::AllocationType::IPU) {
     return Backend::IPU;
+  } else if (allocation_type == phi::AllocationType::MLU) {
+    return Backend::MLU;
   } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
