@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import tempfile
 
-import logging
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
 from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
-from paddle.fluid.reader import set_autotune
-from paddle.fluid.log_helper import get_logger
+from paddle.fluid.reader import set_autotune_config
+import sys
 
 
 class RandomDataset(Dataset):
@@ -45,8 +40,32 @@ class SimpleNet(nn.Layer):
         super(SimpleNet, self).__init__()
         self.fc = nn.Linear(100, 10)
 
-    def forward(self, image, label=None):
+    def forward(self, image):
         return self.fc(image)
+
+
+class IterLoader:
+    def __init__(self, dataloader):
+        self._dataloader = dataloader
+        self.iter_loader = iter(self._dataloader)
+        self._epoch = 1
+
+    @property
+    def epoch(self):
+        return self._epoch
+
+    def __next__(self):
+        try:
+            data = next(self.iter_loader)
+        except StopIteration:
+            self._epoch += 1
+            self.iter_loader = iter(self._dataloader)
+            data = next(self.iter_loader)
+
+        return data
+
+    def __len__(self):
+        return len(self._dataloader)
 
 
 def train(loader):
@@ -55,63 +74,53 @@ def train(loader):
                                parameters=simple_net.parameters())
     for i, (image, label) in enumerate(loader()):
         out = simple_net(image)
-        loss = F.cross_entropy(out, label)
-        avg_loss = paddle.mean(loss)
-        avg_loss.backward()
-        opt.minimize(avg_loss)
-        simple_net.clear_gradients()
+
+
+def train_iter_loader(iter_loader):
+    simple_net = SimpleNet()
+    opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                               parameters=simple_net.parameters())
+    for i in range(5):
+        image = next(iter_loader)
 
 
 class TestAutoTune(unittest.TestCase):
     def setUp(self):
-        self.num_samples = 1000
-        self.num_classes = 10
-        self.batch_size = 32
-        self.shuffle = False
-        self.drop_last = False
-        self.dataset = RandomDataset(self.num_samples)
+        self.batch_size = 4
+        self.dataset = RandomDataset(20)
 
     def test_dataloader_use_autotune(self):
-        set_autotune(True)
-        dataset = RandomDataset(10000)
+        set_autotune_config(True)
         loader = DataLoader(
-            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
+            self.dataset, batch_size=self.batch_size, num_workers=0)
+        iter_loader = IterLoader(loader)
+        train_iter_loader(iter_loader)
 
-        train(loader)
-
-    def test_dataloader_no_autotune(self):
-        set_autotune(False)
-        dataset = RandomDataset(20 * 4)
+    def test_dataloader_disable_autotune(self):
+        set_autotune_config(False)
         loader = DataLoader(
-            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
-        self.assertEqual(loader.num_workers, 2)
+            self.dataset, batch_size=self.batch_size, num_workers=2)
         train(loader)
-
-    def test_batchsampler_use_autotune(self):
-        set_autotune(True)
-        bs = BatchSampler(
-            dataset=self.dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            drop_last=self.drop_last)
-        loader = DataLoader(self.dataset, batch_sampler=bs, num_workers=2)
-        train(loader)
+        if (sys.platform == 'darwin' or sys.platform == 'win32'):
+            self.assertEqual(loader.num_workers, 0)
+        else:
+            self.assertEqual(loader.num_workers, 2)
 
     def test_sampler_use_autotune(self):
-        set_autotune(True)
+        set_autotune_config(True, 2)
         sampler = SequenceSampler(self.dataset)
-        bs = BatchSampler(
-            sampler=sampler,
-            batch_size=self.batch_size,
-            drop_last=self.drop_last)
-        loader = DataLoader(self.dataset, batch_sampler=bs, num_workers=2)
+        batch_sampler = BatchSampler(
+            sampler=sampler, batch_size=self.batch_size)
+        loader = DataLoader(
+            self.dataset, batch_sampler=batch_sampler, num_workers=0)
         train(loader)
 
     def test_distributer_batch_sampler_autotune(self):
-        set_autotune(True)
-        bs = paddle.io.DistributedBatchSampler(
+        set_autotune_config(True)
+        batch_sampler = paddle.io.DistributedBatchSampler(
             self.dataset, batch_size=self.batch_size)
-        loader = DataLoader(self.dataset, batch_sampler=bs, num_workers=2)
+        loader = DataLoader(
+            self.dataset, batch_sampler=batch_sampler, num_workers=2)
         train(loader)
 
 

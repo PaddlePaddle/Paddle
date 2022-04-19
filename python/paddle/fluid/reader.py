@@ -49,12 +49,17 @@ data_loader_unique_name_generator = UniqueNameGenerator()
 
 KEEP_DATA_LOADER_ORDER = True
 USE_PINNED_MEMORY = None
+
+# AutoTune Flags
 USE_AUTOTUNE = False
+TUNING_STEPS = 500
 
 
-def set_autotune(flag):
+def set_autotune_config(use_autotune, tuning_steps=500):
     global USE_AUTOTUNE
-    USE_AUTOTUNE = flag
+    USE_AUTOTUNE = use_autotune
+    global TUNING_STEPS
+    TUNING_STEPS = tuning_steps
 
 
 def keep_data_loader_order(*args):
@@ -150,26 +155,25 @@ class DataLoaderBase(object):
 
 
 class AuToTune(object):
-    def __init__(self, func):
-        self.func = func
+    def __init__(self, loader):
+        self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
-        self.loader = None
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
         # use default loader
         if (not USE_AUTOTUNE) or (not self.need_autotune()):
-            return self.func(*args, **kwargs)
+            return self.loader.num_workers
 
         # get autotune loader
-        self.loader = args[0]
         auto_tune_loader = self.get_autotune_loader()
         if auto_tune_loader is None:
-            return self.func(*args, **kwargs)
+            return self.loader.num_workers
 
         # pick the best num_workers
         auto_tune_start = time.time()
         logging.debug("========= DataLoader Auto Tune =========")
-        logging.debug("User config for DataLoader: " + str(args) + str(kwargs))
+        logging.debug("User config for DataLoader: " + str(
+            self.loader.num_workers))
         best_num_workers = 0
         min_cost = float("inf")
         logging.debug("Tuning Range for num_workers: 0 ~ " + str(
@@ -197,15 +201,7 @@ class AuToTune(object):
         ) - auto_tune_start) + ' seconds')
 
         # tune the default loader's num_workers
-        args[0].num_workers = best_num_workers
-        return self.func(*args, **kwargs)
-
-    def __get__(self, instance, cls):
-        import types
-        if instance is None:
-            return self
-        else:
-            return types.MethodType(self, instance)
+        return best_num_workers
 
     def need_autotune(self):
         if (sys.platform == 'darwin' or sys.platform == 'win32'):
@@ -214,7 +210,7 @@ class AuToTune(object):
             return True
 
     def get_sub_dataset(self, dataset, batch_size):
-        num_samples = min(batch_size * 500, len(dataset))
+        num_samples = min(batch_size * TUNING_STEPS, len(dataset))
         sub_dataset = Subset(dataset, indices=list(range(num_samples)))
         return sub_dataset
 
@@ -540,6 +536,7 @@ class DataLoader(object):
 
         self._persistent_workers = persistent_workers
         self._iterator = None
+        self.num_workers = AuToTune(self).__call__()
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:
@@ -562,7 +559,6 @@ class DataLoader(object):
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    @AuToTune
     def __call__(self):
         return self.__iter__()
 
