@@ -161,6 +161,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (custom_in.is_gpu_pinned()) {
         VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
         auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
@@ -169,6 +170,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       } else {
         kernel_ctx.EmplaceBackInput(std::move(custom_in));
       }
+#else
+      kernel_ctx.EmplaceBackInput(std::move(custom_in));
+#endif
     }
   }
 
