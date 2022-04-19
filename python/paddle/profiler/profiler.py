@@ -27,6 +27,7 @@ from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
+from paddle.profiler import utils
 from .timer import benchmark
 
 
@@ -475,6 +476,7 @@ class Profiler:
         if self.timer_only:
             return
         # CLOSED -> self.current_state
+        utils._is_profiler_used = True
         if self.current_state == ProfilerState.READY:
             self.profiler.prepare()
         elif self.current_state == ProfilerState.RECORD:
@@ -527,6 +529,7 @@ class Profiler:
             self.profiler_result = self.profiler.stop()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
+        utils._is_profiler_used = False
 
     def step(self, num_samples: Optional[int]=None):
         r"""
