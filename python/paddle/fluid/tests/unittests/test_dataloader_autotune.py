@@ -73,7 +73,7 @@ class TestAutoTune(unittest.TestCase):
 
     def test_dataloader_use_autotune(self):
         set_autotune(True)
-        dataset = RandomDataset(10000)
+        dataset = RandomDataset(1000)
         loader = DataLoader(
             dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
 
@@ -83,8 +83,8 @@ class TestAutoTune(unittest.TestCase):
         set_autotune(False)
         dataset = RandomDataset(20 * 4)
         loader = DataLoader(
-            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
-        self.assertEqual(loader.num_workers, 2)
+            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=0)
+        self.assertEqual(loader.num_workers, 0)
         train(loader)
 
     def test_batchsampler_use_autotune(self):
