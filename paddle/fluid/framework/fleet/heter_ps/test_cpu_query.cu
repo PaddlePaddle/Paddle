@@ -49,6 +49,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
     g.cpu_graph_table->add_comm_edge(i, (i - 1 + n) % n);
     if (i % 2 == 0) ids0.push_back(i);
   }
+  g.cpu_graph_table->build_sampler();
   ids1.push_back(5);
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(ids0));
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(ids1));
@@ -56,6 +57,15 @@ TEST(TEST_FLEET, test_cpu_cache) {
   vec[1].display_on_cpu();
   g.build_graph_from_cpu(vec);
   int64_t cpu_key[3] = {0, 1, 2};
+  /*
+  std::vector<std::shared_ptr<char>> buffers(3);
+  std::vector<int> actual_sizes(3,0);
+  g.cpu_graph_table->random_sample_neighbors(cpu_key,2,buffers,actual_sizes,false);
+  for(int i = 0;i < 3;i++){
+    VLOG(0)<<"sample from cpu key->"<<cpu_key[i]<<" actual sample size =
+  "<<actual_sizes[i]/sizeof(int64_t);
+  }
+  */
   void *key;
   platform::CUDADeviceGuard guard(0);
   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
