@@ -14,8 +14,7 @@
 
 #include "paddle/phi/kernels/soft_margin_loss_grad_kernel.h"
 
-#include <algorithm>  // for max
-//#include "paddle/fluid/operators/math.h"
+#include <algorithm>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 

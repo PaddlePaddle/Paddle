@@ -23,12 +23,13 @@ def test_static_layer(place,
                       input_np,
                       label_np,
                       reduction='mean',):
+    paddle.enable_static()
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=input_np.shape, dtype='float64')
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64')
         sm_loss = paddle.nn.loss.SoftMarginLoss(reduction=reduction)
         res = sm_loss(input, label)
@@ -44,12 +45,13 @@ def test_static_functional(place,
                            input_np,
                            label_np,
                            reduction='mean',):
+    paddle.enable_static()
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=input_np.shape, dtype='float64')
-        label = paddle.fluid.data(
+        label = paddle.static.data(
             name='label', shape=label_np.shape, dtype='float64')
 
         res = paddle.nn.functional.soft_margin_loss(
@@ -108,7 +110,7 @@ class TestSoftMarginLoss(unittest.TestCase):
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [fluid.CPUPlace()]
+        places = ['cpu']
         # if fluid.core.is_compiled_with_cuda():
             # places.append(fluid.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
@@ -182,5 +184,4 @@ class TestSoftMarginLossOpCase2(OpTest):
 """
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
