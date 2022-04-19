@@ -20,9 +20,9 @@ namespace phi {
 KernelSignature KLDivLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("kldiv_loss_grad",
-                         {"X", "Target", GradVarName("Loss")},
+                         {"X", "Target", "Loss@GRAD"},
                          {"reduction"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

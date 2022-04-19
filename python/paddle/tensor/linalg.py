@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..framework import _varbase_creator, _dygraph_tracer, in_dygraph_mode, _non_static_mode
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
 from ..fluid.framework import _in_legacy_dygraph
 from .manipulation import cast
+from .math import multiply, add
+from .logic import logical_not
+from .creation import full
 
-from ..fluid import layers
 import paddle
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
@@ -756,10 +758,13 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
-                                        keepdim, 'reduce_all', reduce_all)
+            if in_dygraph_mode():
+                sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+            else:
+                sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                            keepdim, 'reduce_all', reduce_all)
             if porder == 1 or porder == np.inf:
                 return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                          keepdim, 'reduce_all', reduce_all)
@@ -813,7 +818,12 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            pow_out = _C_ops.pow(input, 'factor', porder)
+            sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
+            sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+        elif paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                           keepdim, 'reduce_all', reduce_all)
@@ -867,10 +877,13 @@ def cond(x, p=None, name=None):
 
         u, s, vh = svd(input, full_matrices=False)
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             if porder == "nuc":
-                return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
-                                         'reduce_all', reduce_all)
+                if in_dygraph_mode():
+                    return _C_ops.final_state_sum(s, axis, None, keepdim)
+                else:
+                    return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
+                                             'reduce_all', reduce_all)
             max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
@@ -1193,7 +1206,15 @@ def t(input, name=None):
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.final_state_transpose(input, perm)
+        return out
+
+    if _in_legacy_dygraph():
         if len(input.shape) == 1:
             return input
         # 2-D tensor
@@ -2520,7 +2541,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # or              out * x * out = x ;
     """
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2532,11 +2553,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = paddle.to_tensor(y, dtype=x.dtype)
 
             condition = s > cutoff
-            cond_int = layers.cast(condition, s.dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
             st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2544,8 +2565,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             v, _ = _C_ops.transpose2(vt, 'axis', perm)
 
             out_1 = v * st
-            out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
+                                         True)
             return out_2
         else:
             # combine eigh and matmul op
@@ -2559,17 +2583,20 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = paddle.to_tensor(y, dtype=s.dtype)
 
             condition = s_abs > cutoff
-            cond_int = layers.cast(condition, s.dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
             st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
 
             out_1 = u * st
             u_conj = _C_ops.conj(u)
-            out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
+                                         'trans_y', True)
             return out_2
     else:
         if not hermitian:
@@ -2597,17 +2624,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                        'keep_dim': True,
                        'reduce_all': False})
 
-            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=dtype)
+            rcond = full(shape=[1], fill_value=rcond, dtype=dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
-            y = layers.fill_constant(shape=[1], value=y, dtype=dtype)
+            y = full(shape=[1], fill_value=y, dtype=dtype)
 
             condition = s > cutoff
-            cond_int = layers.cast(condition, dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, dtype)
+            cond_not_int = cast(logical_not(condition), dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2682,17 +2709,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                        'keep_dim': True,
                        'reduce_all': False})
 
-            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=s_type)
+            rcond = full(shape=[1], fill_value=rcond, dtype=s_type)
             cutoff = rcond * max_singular_val
             y = float('inf')
-            y = layers.fill_constant(shape=[1], value=y, dtype=s_type)
+            y = full(shape=[1], fill_value=y, dtype=s_type)
 
             condition = s_abs > cutoff
-            cond_int = layers.cast(condition, s_type)
-            cond_not_int = layers.cast(layers.logical_not(condition), s_type)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s_type)
+            cond_not_int = cast(logical_not(condition), s_type)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)
@@ -3070,7 +3097,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:
@@ -3079,8 +3106,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                           False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                          False, 'reduce_all', False)
+            if in_dygraph_mode():
+                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
+            else:
+                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
+                                              False, 'reduce_all', False)
         else:
             residuals = paddle.empty(shape=[0], dtype=x.dtype)
 

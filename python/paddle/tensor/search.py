@@ -14,7 +14,7 @@
 from __future__ import print_function
 import numpy as np
 import paddle
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
 from ..framework import core, in_dygraph_mode, _non_static_mode
@@ -398,7 +398,9 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        outs = _C_ops.final_state_where_index(x)
+    elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
         helper = LayerHelper("where_index", **locals())

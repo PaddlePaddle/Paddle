@@ -226,6 +226,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
@@ -948,6 +949,13 @@ void AnalysisPredictor::PrepareArgument() {
   if (config_.use_mkldnn_bfloat16_) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
+  }
+
+  if (config_.use_mkldnn_int8_) {
+    LOG(INFO) << "Int8 is enabled";
+    argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
+    argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
+    argument_.SetQuantVarScales({});
   }
 #endif
 
@@ -1755,6 +1763,7 @@ USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
 #endif
 

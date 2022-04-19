@@ -77,7 +77,7 @@ struct BroadcastConfig {
 #pragma pack()
 
 template <typename T>
-__device__ __forceinline__ void WriteData(T* _global_ptr_ dst,
+__device__ __forceinline__ void WriteData(T _global_ptr_* dst,
                                           T* src,
                                           int num) {
   if (num > 0) {
@@ -403,16 +403,17 @@ template <typename Tx,
           typename IndexCal,
           typename Functor,
           bool IsBoundary = false>
-__device__ __forceinline__ void ReadDataReduce(Ty* dst,
-                                               const Tx* __restrict__ src,
-                                               int block_offset,
-                                               const IndexCal& index_cal,
-                                               int size_nx,
-                                               int size_ny,
-                                               int stride_nx,
-                                               int stride_ny,
-                                               Functor func,
-                                               bool reduce_last_dim) {
+__device__ __forceinline__ void ReadDataReduce(
+    Ty* dst,
+    const Tx _global_ptr_* __restrict__ src,
+    int block_offset,
+    const IndexCal& index_cal,
+    int size_nx,
+    int size_ny,
+    int stride_nx,
+    int stride_ny,
+    Functor func,
+    bool reduce_last_dim) {
   __local__ Tx in_temp[1];
   int thread_offset = 0;
   int left_idx = 0;

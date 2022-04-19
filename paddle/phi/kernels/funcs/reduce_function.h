@@ -33,11 +33,14 @@
 namespace cub = hipcub;
 #endif
 
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#endif
+
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/array.h"
@@ -184,7 +187,7 @@ struct IndexCalculator {
     strides = details::VectorToArray<int, kMaxRank>(full_strides);
     reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
 #ifndef PADDLE_WITH_XPU_KP
-    std::vector<kps::details::FastDivMod> cal_divmoders;  // namespace
+    std::vector<kps::details::FastDivMod> cal_divmoders;
     // fast divmod
     for (auto i : cal_strides) {
       cal_divmoders.push_back(kps::details::FastDivMod(i));
@@ -326,9 +329,10 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
-
+#ifndef PADDLE_WITH_XPU_KP
     // step5: limit the grid to prevent thead overflow
     paddle::platform::LimitGridDim(dev_ctx, &grid);
+#endif
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data

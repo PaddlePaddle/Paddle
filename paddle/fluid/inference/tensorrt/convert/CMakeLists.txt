@@ -25,6 +25,7 @@ nv_library(tensorrt_converter
                 preln_emb_eltwise_layernorm.cc
 		strided_slice_op.cc
                 preln_skip_layernorm.cc
+		roll_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
