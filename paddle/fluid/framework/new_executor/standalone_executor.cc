@@ -25,19 +25,22 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       startup_prog_(startup_prog),
       main_prog_(main_prog),
       global_scope_(VariableScope(scope)) {
-  // NOTE(zhiqiu): it is needed to sync thhe variables in scope to
-  // variable_scope,
-  // since the some variable only exists in startup program, e.g,
-  // lod_tensor_blocking_queue_0 used in dataloader.
+  // NOTE(zhiqiu): it is needed to sync the variables in scope to
+  // variable_scope, since the some variable only exists in startup program,
+  // For example, 'lod_tensor_blocking_queue_0' used in dataloader.
   // These variables may be created in scope during runing startup program with
   // original executor.
   if (scope) {
     auto name_list = scope->LocalVarNames();
-    for (auto name : name_list) {
-      VLOG(4) << "Sync Variable from variable scope: " << name;
-      auto v = scope->Var(name);
-      if (!global_scope_.HasVar(name)) {
-        global_scope_.AddVar(name, *v);
+    for (auto& var_desc : startup_prog.Block(0).AllVars()) {
+      auto var_name = var_desc->Name();
+      if (std::find(name_list.begin(), name_list.end(), var_name) !=
+          name_list.end()) {
+        auto v = scope->Var(var_name);
+        if (!global_scope_.HasVar(var_name)) {
+          VLOG(4) << "Sync Variable from scope to variable scope: " << var_name;
+          global_scope_.AddVar(var_name, *v);
+        }
       }
     }
   }
