@@ -920,6 +920,7 @@ class Layer(object):
     def __call__(self, *inputs, **kwargs):
         if (not in_declarative_mode()) and (not self._forward_pre_hooks) \
             and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode():
+            self._build_once(*inputs, **kwargs)
             return self.forward(*inputs, **kwargs)
         else:
             return self._dygraph_call_func(*inputs, **kwargs)
