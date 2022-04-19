@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-DECLARE_uint64(conv_workspace_size_limit);
+DECLARE_int64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);
 DECLARE_int64(cudnn_exhaustive_search_times);
 

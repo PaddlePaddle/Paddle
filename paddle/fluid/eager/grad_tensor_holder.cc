@@ -110,6 +110,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
                           "got tensor: %s is empty please check you network "
                           "and make sure it creates grads.",
                           t.name()));
+
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);

@@ -522,8 +522,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
   cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
   auto& instance = memory::allocation::AllocatorFacade::Instance();
   instance.SetDefaultStream(place, phi::GPUContext::stream());
-  workspace_.reset(
-      new phi::DnnWorkspaceHandle(instance.GetAllocator(place).get()));
+  workspace_.reset(new phi::DnnWorkspaceHandle(
+      instance.GetAllocator(place).get(), stream()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -623,7 +623,8 @@ phi::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
     return phi::DnnWorkspaceHandle(
         memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(GetPlace())
-            .get());
+            .get(),
+        stream());
   }
   return phi::GPUContext::cudnn_workspace_handle();
 }

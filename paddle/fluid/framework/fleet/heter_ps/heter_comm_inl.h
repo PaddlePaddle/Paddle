@@ -411,7 +411,6 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
   auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
@@ -1065,7 +1064,6 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
 //  platform::CUDADeviceGuard guard(dev_id);
 //  tables_[index]->dump_to_cpu(dev_id, stream);
 //}
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif
