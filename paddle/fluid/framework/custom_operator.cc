@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
@@ -160,7 +161,14 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
-      kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      if (custom_in.is_gpu_pinned()) {
+        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+      } else {
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      }
     }
   }
 
