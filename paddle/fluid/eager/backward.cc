@@ -766,7 +766,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 << ", rank: " << edge_rank.second;
 
         node_input_buffers_dict[next_node]->add(
-            edge_rank.first, edge_rank.second, grad_output_tensor);
+            edge_rank.first, edge_rank.second, grad_output_tensor,
+            create_graph);
 
         // Update queue
         node_in_degree_map[next_node]--;

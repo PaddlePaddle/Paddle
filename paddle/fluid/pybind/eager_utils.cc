@@ -1027,22 +1027,22 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "int") {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
-    return paddle::experimental::Scalar(value);
-  } else if (type_name == "float") {
-    float value = CastPyArg2Float(obj, op_type, arg_pos);
-    return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "bool") {
+  if (PyBool_Check(obj)) {
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "Tensor") {
+  } else if (PyLong_Check(obj)) {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (PyFloat_Check(obj)) {
+    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
-
+  } else if (PyObject_CheckLongOrToLong(&obj)) {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1151,21 +1151,15 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
   return result;
 }
 
-paddle::experimental::Place CastPyArg2Place(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos) {
+paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+                              ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
 
-paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos) {
+paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+                                    ssize_t arg_pos) {
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "data_type, but got %s",
-        op_type, arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return paddle::experimental::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
