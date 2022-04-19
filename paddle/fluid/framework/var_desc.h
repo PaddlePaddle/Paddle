@@ -74,9 +74,10 @@ class VarDesc {
       : desc_(other.desc_),
         attrs_(other.attrs_),
         original_id_(other.original_id_) {}
-  VarDesc& operator=(VarDesc other) {
-    using std::swap;
-    swap(*this, other);
+  VarDesc& operator=(const VarDesc& other) {
+    desc_ = other.desc_;
+    attrs_ = other.attrs_;
+    original_id_ = other.original_id_;
     return *this;
   }
 
