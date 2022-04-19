@@ -243,7 +243,7 @@ class TestConcatPPrim2Orig(TestAddPPrim2Orig):
         }
         self.attrs = {'axis': 0}
 
-        self.prim2orig_args = (X, Y, Z)
+        self.prim2orig_args = ((X, Y, Z), )
         self.all_ops = ['concat_p', 'concat']
         self.out_map = {self.output['Y']: 0}
 

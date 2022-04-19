@@ -56,12 +56,36 @@ def _transpose(op, dot_checker, *args):
     return _transposerule(op, dot_checker, *args)
 
 
+def get_var_block(block, names):
+    assert isinstance(names, list)
+    if len(names) == 0:
+        return None
+    elif len(names) == 1:
+        return block.var(names[0])
+    else:
+        return [block.var(name) for name in names]
+
+
 def get_input_vars(op):
     return tuple(map(op.block.var, op.input_arg_names))
 
 
 def get_output_vars(op):
     return tuple(map(op.block.var, op.output_arg_names))
+
+
+def get_input_var_list(op):
+    if op.input_names is None:
+        return []
+    else:
+        return [get_var_block(op.block, op.input(n)) for n in op.input_names]
+
+
+def get_output_var_list(op):
+    if op.output_names is None:
+        return []
+    else:
+        return [get_var_block(op.block, op.output(n)) for n in op.output_names]
 
 
 def linear_jvp(op, *args, **kwargs):
@@ -149,14 +173,13 @@ def reshape2_orig2prim(op, shape_t, shape_tl, x):
 
 
 @REGISTER_ORIG2PRIM('concat')
-def concat_orig2prim(op, axis_t, *xs):
+def concat_orig2prim(op, axis_t, xs):
     assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
     return concat(xs, axis=op.attr('axis'))
 
 
 @REGISTER_ORIG2PRIM('slice')
 def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
-
     assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'
     assert ends_t is None, 'Can not lower concat into prim ops with endstensor.'
     assert starts_tl is None, 'Can not lower concat into prim ops with startstensorlist.'
@@ -179,8 +202,9 @@ def fill_zeros_like_orig2prim(op, x):
 
 
 @REGISTER_ORIG2PRIM('sum')
-def sum_orig2prim(op, x0, *x_others):
-    for x in x_others:
+def sum_orig2prim(op, xs):
+    x0 = xs[0]
+    for x in xs[1:]:
         x0 = add(x0, x)
     return x0
 
@@ -299,7 +323,7 @@ def split_prim2orig(op, x):
 
 
 @REGISTER_PRIM2ORIG('concat_p')
-def concat_prim2orig(op, *xs):
+def concat_prim2orig(op, xs):
     return paddle.concat(xs, axis=op.attr('axis'))
 
 
