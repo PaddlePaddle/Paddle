@@ -121,4 +121,24 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   return phi_kernel_name;
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::data_type TransToMKLDNNDataType(
+    const paddle::experimental::DataType& dtype) {
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return dnnl::memory::data_type::f32;
+    case DataType::BFLOAT16:
+      return dnnl::memory::data_type::bf16;
+    case DataType::INT8:
+      return dnnl::memory::data_type::s8;
+    case DataType::UINT8:
+      return dnnl::memory::data_type::u8;
+    case DataType::INT32:
+      return dnnl::memory::data_type::s32;
+    default:
+      return dnnl::memory::data_type::undef;
+  }
+}
+#endif
+
 }  // namespace phi
