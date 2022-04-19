@@ -1492,6 +1492,34 @@ static PyObject* tensor__offset(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__grad_name(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  return ToPyObject(grad->name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  return ToPyObject(*grad);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1632,6 +1660,10 @@ PyMethodDef variable_methods[] = {
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_name", (PyCFunction)(void (*)(void))tensor__grad_name,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_value", (PyCFunction)(void (*)(void))tensor__grad_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
