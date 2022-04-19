@@ -31,16 +31,11 @@ from .framework import _get_paddle_place, _get_paddle_place_list
 from paddle.fluid.framework import _set_expected_place, _current_expected_place
 import logging
 import warnings
-
-### Dygraph DataLoader configs ###
 import os
 import multiprocessing
-import psutil
 import signal
-
 # NOTE: queue has a different name in python2 and python3
 import queue
-
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
@@ -50,6 +45,15 @@ data_loader_unique_name_generator = UniqueNameGenerator()
 
 KEEP_DATA_LOADER_ORDER = True
 USE_PINNED_MEMORY = None
+USE_AUTOTUNE = False
+
+
+def set_autotune(flag):
+    global USE_AUTOTUNE
+    if flag:
+        USE_AUTOTUNE = True
+    else:
+        USE_AUTOTUNE = False
 
 
 def keep_data_loader_order(*args):
@@ -162,27 +166,38 @@ def AutoTune(Loader):
 
     def updateWithSampler(kw_tune):
         if kw_tune['batch_sampler'] is not None:
-            if kw_tune['dataset'] is None:
+            if isinstance(kw_tune['batch_sampler'],
+                          paddle.io.DistributedBatchSampler):
                 kw_tune['dataset'] = kw_tune['batch_sampler'].dataset
+            else:  #batch_sampler
+                kw_tune['dataset'] = kw_tune[
+                    'batch_sampler'].sampler.data_source
 
             if kw_tune['batch_size'] is None:
                 kw_tune['batch_size'] = kw_tune['batch_sampler'].batch_size
 
     def updateSampler(kw_tune, kw_bak):
-        if kw_bak['batch_sampler'] is not None:
+        if 'batch_sampler' in kw_bak.keys() and kw_bak[
+                'batch_sampler'] is not None:
             tmp_sampler = kw_bak['batch_sampler']
-            kw_tune['batch_sampler'] = paddle.io.DistributedBatchSampler(
-                kw_tune['dataset'],
-                kw_tune['batch_size'],
-                num_replicas=tmp_sampler.nranks,
-                rank=tmp_sampler.local_rank,
-                shuffle=tmp_sampler.shuffle,
-                drop_last=tmp_sampler.drop_last)
-            # if batch_sampler is not none then dataset and batch_size shuffle drop_last must be not set
+            if isinstance(tmp_sampler, paddle.io.DistributedBatchSampler):
+                kw_tune['batch_sampler'] = paddle.io.DistributedBatchSampler(
+                    kw_tune['dataset'],
+                    kw_tune['batch_size'],
+                    num_replicas=tmp_sampler.nranks,
+                    rank=tmp_sampler.local_rank,
+                    shuffle=tmp_sampler.shuffle,
+                    drop_last=tmp_sampler.drop_last)
+            else:  # batchSampler
+                kw_tune['batch_sampler'] = paddle.io.BatchSampler(
+                    kw_tune['dataset'],
+                    batch_size=kw_tune['batch_size'],
+                    drop_last=tmp_sampler.drop_last)
             kw_tune.pop('dataset')
             kw_tune.pop('batch_size')
             kw_tune.pop('shuffle')
             kw_tune.pop('drop_last')
+            # if batch_sampler is not none then dataset and batch_size shuffle drop_last must be not set
         else:
             kw_tune.pop('dataset')
 
@@ -190,30 +205,25 @@ def AutoTune(Loader):
         costs = []
         avg_cost = 0
         start = time.time()
-        cpu_percent = []
-        cpu_percent_avg = 0
         for i, data in enumerate(reader):
             costs.append(time.time() - start)
-            cpu_percent.append(psutil.cpu_percent())
             start = time.time()
         if len(costs) > 2:
             avg_cost = sum(costs[2:]) / len(costs[2:])
-            cpu_percent_avg = sum(cpu_percent[2:]) / len(costs[2:])
         else:
-            cpu_percent_avg = sum(cpu_percent[0:]) / len(costs[0:])
-        return avg_cost, cpu_percent_avg
+            avg_cost = sum(costs[0:]) / len(costs[0:])
+        return avg_cost
 
     def isBest(best_workers, best_time, num_work_boundary, arg, kw):
         step = 0
         new_num = best_workers + 1
-        cpu_percent = psutil.cpu_percent()
         boundary = 1
-        while new_num < num_work_boundary and step < 5 and cpu_percent < 100.0:
+        while new_num < num_work_boundary and step < 5:
             kw['num_workers'] = new_num
             reader = Loader(*arg, **kw)
-            time, cpu_percent = avgTime(reader)
-            print("for back num_workers: ", new_num, " avg_cost: ", time,
-                  "cpu_percent: ", cpu_percent)
+            time = avgTime(reader)
+            logging.debug("for back num_workers: " + str(new_num) +
+                          " avg_cost: " + str(time))
             step += 1
             if (time < best_time * 0.70 * boundary):
                 return new_num
@@ -223,10 +233,12 @@ def AutoTune(Loader):
         return best_workers
 
     def wrapper(*args, **kw):
+        if not USE_AUTOTUNE:
+            return Loader(*args, **kw)
         auto_tune_start = time.time()
-        print("========= DataLoader Auto Tune =========")
-        print("User config for DataLoader: ", kw)
-        print("Args for DataLoader:", args)
+        logging.debug("========= DataLoader Auto Tune =========")
+        logging.debug("User config for DataLoader: " + str(kw))
+        logging.debug("Args for DataLoader:" + str(args))
         best_num_workers = 0
         min_cost = float("inf")
         # init
@@ -237,7 +249,7 @@ def AutoTune(Loader):
             'places': None,
             'return_list': False,
             'batch_sampler': None,
-            'batch_size': 1,
+            'batch_size': None,
             'shuffle': False,
             'drop_last': False,
             'collate_fn': None,
@@ -265,12 +277,12 @@ def AutoTune(Loader):
         #update kw_tune with new_batch_size and dataset
         updateSampler(kw_tune, kw_bak)
         num_workers = 0
-        print("Tuning Range for num_workers: ", 0, "~",
-              multiprocessing.cpu_count())
+        logging.debug("Tuning Range for num_workers: 0 ~ " + str(
+            multiprocessing.cpu_count() / 2))
         while num_workers < multiprocessing.cpu_count() / 2:
             kw_tune['num_workers'] = num_workers
             reader = Loader(*args_tune, **kw_tune)
-            avg_cost, cpu_percent = avgTime(reader)
+            avg_cost = avgTime(reader)
             if min_cost * 0.75 > avg_cost:
                 min_cost = avg_cost
                 best_num_workers = num_workers
@@ -282,14 +294,15 @@ def AutoTune(Loader):
                     break
                 else:
                     best_num_workers = update_num
-            print("num_workers: ", num_workers, " avg_cost: ", avg_cost,
-                  " cpu_percent: ", cpu_percent)
+            logging.debug("num_workers: " + str(num_workers) + " avg_cost: " +
+                          str(avg_cost))
             num_workers += 2
-        print("best_num_workers: ", best_num_workers)
+        logging.info("AutoTune dataLoader best_num_workers: " + str(
+            best_num_workers))
         kw['num_workers'] = best_num_workers
         reader = Loader(*args, **kw)
-        print("AutoTuning Cost for DataLoader: ",
-              time.time() - auto_tune_start, 'seconds')
+        logging.debug("AutoTuning Cost for DataLoader: " + str(time.time(
+        ) - auto_tune_start) + ' seconds')
         return reader
 
     return wrapper
