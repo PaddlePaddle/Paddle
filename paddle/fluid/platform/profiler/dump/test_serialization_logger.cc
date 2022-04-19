@@ -152,7 +152,7 @@ TEST(SerializationLoggerTest, dump_case1) {
 TEST(DeserializationReaderTest, restore_case0) {
   DeserializationReader reader("test_serialization_logger_case0.pb");
   auto profiler_result = reader.Parse();
-  auto& tree = profiler_result->GetNodeTrees();
+  auto tree = profiler_result->GetNodeTrees();
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree->Traverse(true);
   EXPECT_EQ(nodes[10].size(), 4u);
@@ -179,7 +179,7 @@ TEST(DeserializationReaderTest, restore_case0) {
 TEST(DeserializationReaderTest, restore_case1) {
   DeserializationReader reader("test_serialization_logger_case1.pb");
   auto profiler_result = reader.Parse();
-  auto& tree = profiler_result->GetNodeTrees();
+  auto tree = profiler_result->GetNodeTrees();
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree->Traverse(true);
   EXPECT_EQ(nodes[10].size(), 1u);

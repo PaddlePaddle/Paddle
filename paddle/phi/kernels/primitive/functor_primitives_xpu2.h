@@ -25,6 +25,12 @@ namespace kps {
  */
 template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
+#ifdef PADDLE_WITH_XPU_KP
+  HOSTDEVICE inline IdentityFunctor() {}
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+  HOSTDEVICE Ty operator()(const Tx x) const { return static_cast<Ty>(x); }
+  HOSTDEVICE inline void SetDiv(int n) {}
+#else
   inline IdentityFunctor() {}
 
   explicit inline IdentityFunctor(int n) {}
@@ -38,6 +44,7 @@ struct IdentityFunctor {
     return static_cast<Ty>(x);
   }
   __device__ inline void SetDiv(int n) {}
+#endif
 };
 
 /**

@@ -26,6 +26,8 @@ limitations under the License. */
 
 namespace phi {
 
+const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
+
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
     "raw"  // fallback kernel of origfinal fluid op
@@ -134,9 +136,9 @@ class OpUtilsMap {
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetBaseKernelName(const std::string& op_type) const {
+  const std::string& GetBaseKernelName(const std::string& op_type) const {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
-      return "deprecated";
+      return deprecated_kernel_name;
     }
     auto it = base_kernel_name_map_.find(op_type);
     if (it == base_kernel_name_map_.end()) {
@@ -150,7 +152,7 @@ class OpUtilsMap {
     auto it = arg_mapping_fn_map_.find(op_type);
     if (it == arg_mapping_fn_map_.end()) {
       auto func =
-          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
+          [&op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
         return DefaultKernelSignatureMap::Instance().Get(op_type);
       };
       return func;
