@@ -475,7 +475,7 @@ def _lower(block, reverse, update_var_list):
         vlt[var.name()] = block.var(var.name())
 
     ops_to_remove = []
-    vars_to_remove = []
+    vars_to_remove = set()
     for op_idx in range(len(block.ops)):
         op = block.ops[op_idx]
         ops_to_remove.append(op_idx)
@@ -488,7 +488,7 @@ def _lower(block, reverse, update_var_list):
                     single_layer_list(to_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
-                vars_to_remove.append(orig_out.name)
+                vars_to_remove.add(orig_out.name)
                 vlt[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
         else:
