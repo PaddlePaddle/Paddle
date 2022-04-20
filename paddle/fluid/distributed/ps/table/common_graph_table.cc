@@ -430,8 +430,9 @@ int32_t GraphTable::add_comm_edge(int64_t src_id, int64_t dst_id) {
     return -1;
   }
   size_t index = src_shard_id - shard_start;
-  extra_shards[index]->add_graph_node(src_id)->build_edges(false);
-  extra_shards[index]->add_neighbor(src_id, dst_id, 1.0);
+  VLOG(0) << "index add edge " << src_id << " " << dst_id;
+  shards[index]->add_graph_node(src_id)->build_edges(false);
+  shards[index]->add_neighbor(src_id, dst_id, 1.0);
   return 0;
 }
 int32_t GraphTable::add_graph_node(std::vector<int64_t> &id_list,
