@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
@@ -67,6 +68,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
                 FLAGS_infer_model + "/inference.pdiparams");
+  cfg->DisableGpu();
+  cfg->SwitchSpecifyInputNames(false);
 
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
