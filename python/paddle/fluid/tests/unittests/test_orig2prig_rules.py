@@ -276,7 +276,9 @@ class TestScaleOrig2Prim(TestElementWiseAddOrig2Prim):
         }
         self.attrs = {'scale': 2.0, 'bias': 1.0, 'bias_after_scale': True}
 
-        self.orig2prim_args = (X, )
+        self.orig2prim_args = (
+            None,
+            X, )
         self.all_ops = [
             'scale', 'fill_constant_p', 'fill_constant_p', 'mul_p', 'add_p'
         ]
