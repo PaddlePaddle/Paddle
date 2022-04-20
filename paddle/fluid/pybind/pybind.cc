@@ -191,6 +191,7 @@ PyTypeObject *g_xpuplace_pytype = nullptr;
 PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
+PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
@@ -2122,8 +2123,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
-  py::class_<platform::CustomPlace>(m, "CustomPlace",
-                                    R"DOC(
+  py::class_<platform::CustomPlace> customplace(m, "CustomPlace",
+                                                R"DOC(
     CustomPlace is a descriptor of a device.
     It represents a custom device on which a tensor will be allocated and a model will run.
 
@@ -2132,7 +2133,9 @@ All parameter, weight, gradient are variables in Paddle.
 
           import paddle
           fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC")
+                                             )DOC");
+  g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
+  customplace
       .def("__init__",
            [](platform::CustomPlace &self, const std::string &device_type,
               int dev_id) {
