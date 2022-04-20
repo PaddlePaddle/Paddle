@@ -310,7 +310,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     //    local_keys[i].data(), key_size);
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(i,
           reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
@@ -388,7 +388,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     int32_t status = -1;
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(i,
           reinterpret_cast<char**>(local_dim_ptr[i][j].data()), this->table_id_,
           local_dim_keys[i][j].data(), key_size);
       bool flag = true;
@@ -431,12 +431,18 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       threads[i] = std::thread(ptl_func, i);
     }
   } else {
-    threads.resize(thread_keys_shard_num_ * multi_mf_dim_);
+    //threads.resize(thread_keys_shard_num_ * multi_mf_dim_);
+    std::vector<std::future<void>> task_futures;
     for (int i = 0; i < thread_keys_shard_num_; i++) {
       for (int j = 0; j < multi_mf_dim_; j++) {
-        threads[i * multi_mf_dim_ + j] = std::thread(ptl_dynamic_mf_func, i, j);
+        //threads[i * multi_mf_dim_ + j] = std::thread(ptl_dynamic_mf_func, i, j);
+        task_futures.emplace_back(pull_thread_pool_[i]->enqueue(ptl_dynamic_mf_func, i, j));
       }
     }
+    for (auto& f : task_futures) {
+      f.wait();
+    }
+    task_futures.clear();
   }
   for (std::thread& t : threads) {
     t.join();
