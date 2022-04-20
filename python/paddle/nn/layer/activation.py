@@ -513,6 +513,55 @@ class ReLU6(Layer):
         return name_str
 
 
+class RReLU(Layer):
+    """
+    RReLU activation.
+    `Empirical Evaluation of Rectified Activations in Convolutional Network`:
+    https://arxiv.org/abs/1505.00853
+    .. math::
+        \text{RReLU}(x) =
+        \begin{cases}
+            x & \text{if } x \geq 0 \\
+            ax & \text{ otherwise }
+        \end{cases}
+    where :math:`a` is randomly sampled from uniform distribution
+    :math:`\mathcal{U}(\text{lower}, \text{upper})`.
+
+    Parameters:
+        lower (float, optional): The lower bound of uniform distribution. Default: :math:`\frac{1}{8}`.
+        upper (float, optional): The upper bound of uniform distribution. Default: :math:`\frac{1}{3}`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape. Default dtype is float32.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.randn([2, 3, 4])
+            m = paddle.nn.RReLU(0.1, 0.3)
+            out = m(x)
+    """
+
+    def __init__(self, lower=1. / 8., upper=1. / 3., name=None):
+        super(RReLU, self).__init__()
+        self.lower = lower
+        self.upper = upper
+        self.name = name
+
+    def forward(self, x):
+        return F.rrelu(
+            x, lower=self.lower, upper=self.upper, 
+            training=self.training, name=self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'lower={}, upper={}{}'.format(
+            self.lower, self.upper, name_str)
+
+
 class SELU(Layer):
     r"""
     SELU Activation
