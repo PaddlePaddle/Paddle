@@ -34,6 +34,7 @@ from .layer.activation import Hardtanh  # noqa: F401
 from .layer.activation import PReLU  # noqa: F401
 from .layer.activation import ReLU  # noqa: F401
 from .layer.activation import ReLU6  # noqa: F401
+from .layer.activation import RReLU  # noqa: F401
 from .layer.activation import SELU  # noqa: F401
 from .layer.activation import Silu  # noqa: F401
 from .layer.activation import LeakyReLU  # noqa: F401
@@ -300,6 +301,7 @@ __all__ = [     #noqa
            'PixelShuffle',
            'ELU',
            'ReLU6',
+           'RReLU',
            'LayerDict',
            'ZeroPad2D',
            'MaxUnPool1D',
