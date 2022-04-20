@@ -47,7 +47,11 @@ def relu(x, name=None):
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    assert x.is_sparse_coo(
-    ), "Currently, sparse.relu only support the input of SparseCooTensor"
 
-    return _C_ops.final_state_sparse_relu(x)
+    if x.is_sparse_coo():
+        return _C_ops.final_state_sparse_coo_relu(x)
+    elif x.is_sparse_csr():
+        return _C_ops.final_state_sparse_csr_relu(x)
+    else:
+        raise ValueError("Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor")
+
