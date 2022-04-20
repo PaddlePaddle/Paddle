@@ -87,7 +87,7 @@ def train_iter_loader(iter_loader):
 
 class TestAutoTune(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 4
+        self.batch_size = 2
         self.dataset = RandomDataset(20)
 
     def test_dataloader_use_autotune(self):
@@ -117,7 +117,7 @@ class TestAutoTune(unittest.TestCase):
         train(loader)
 
     def test_distributer_batch_sampler_autotune(self):
-        set_autotune_config(True)
+        set_autotune_config(True, 2)
         batch_sampler = paddle.io.DistributedBatchSampler(
             self.dataset, batch_size=self.batch_size)
         loader = DataLoader(
