@@ -30,6 +30,7 @@ from .activation import prelu  # noqa: F401
 from .activation import relu  # noqa: F401
 from .activation import relu_  # noqa: F401
 from .activation import relu6  # noqa: F401
+from .activation import rrelu  # noqa: F401
 from .activation import selu  # noqa: F401
 from .activation import sigmoid  # noqa: F401
 from .activation import silu  # noqa: F401
@@ -143,6 +144,7 @@ __all__ = [     #noqa
            'relu',
            'relu_',
            'relu6',
+           'rrelu',
            'selu',
            'softmax',
            'softmax_',
