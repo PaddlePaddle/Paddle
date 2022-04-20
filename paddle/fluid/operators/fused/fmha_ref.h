@@ -14,8 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/fluid/operators/fused/fused_elemwise_activation_op.h"
+#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
@@ -353,7 +353,8 @@ template <typename T>
 class FMHAGateRef {
  public:
   FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, int64_t batch_size,
-          int64_t seq_len_m, int64_t seq_len_r, int64_t num_head, int64_t head_dim)
+              int64_t seq_len_m, int64_t seq_len_r, int64_t num_head,
+              int64_t head_dim)
       : dev_ctx_(dev_ctx),
         batch_size_(batch_size),
         seq_len_m_(seq_len_m),
@@ -366,14 +367,10 @@ class FMHAGateRef {
   void ComputeForward(const Tensor* nonbatched_bias_tensor,
                       const Tensor& qkv_input_tensor,
                       const Tensor* src_mask_tensor,
-                      Tensor* transpose_2_out_tensor,
-                      Tensor* qk_out_tensor,
-                      Tensor* src_mask_out_tensor, 
-                      Tensor* softmax_out_tensor,
-                      Tensor* qktv_out_tensor,
-                      Tensor* fmha_out_tensor) {
-
-    // batch_size, seq_len_m, seq_len_r, 3, num_head, c 
+                      Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
+                      Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
+                      Tensor* qktv_out_tensor, Tensor* fmha_out_tensor) {
+    // batch_size, seq_len_m, seq_len_r, 3, num_head, c
     // 3, batch_size, seq_len_m, num_head, seq_len_r, c
     int ndims = 6;
     std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
@@ -386,7 +383,8 @@ class FMHAGateRef {
     T* softmax_out_data = softmax_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
 
-    int64_t q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
+    int64_t q_size =
+        batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
     T* q_ptr = qkv_data;
     T* k_ptr = nullptr;
     T* v_ptr = nullptr;
@@ -394,7 +392,7 @@ class FMHAGateRef {
     int64_t k_size = q_size;
     k_ptr = q_ptr + q_size;
     v_ptr = k_ptr + k_size;
-    
+
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
@@ -404,19 +402,19 @@ class FMHAGateRef {
     int gemm_n = seq_len_r_;
     int gemm_k = head_dim_;
 
-    T alpha = static_cast<T>( 1.0 / sqrt(head_dim_) );
+    T alpha = static_cast<T>(1.0 / sqrt(head_dim_));
     T beta = static_cast<T>(0.0);
     int64_t stride_a = gemm_m * gemm_k;
     int64_t stride_b = gemm_k * gemm_n;
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha, q_ptr,
                      k_ptr, beta, qk_out_data, gemm_batch_size, stride_a,
                      stride_b);
-    
-    // std::cout << "nonbatched_bias_tensor: " << *nonbatched_bias_tensor << "\n";
+
+    // std::cout << "nonbatched_bias_tensor: " << *nonbatched_bias_tensor <<
+    // "\n";
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
-      
-      if( nonbatched_bias_tensor != nullptr){
+      if (nonbatched_bias_tensor != nullptr) {
         std::vector<const Tensor*> ins;
         std::vector<Tensor*> outs;
         ins.emplace_back(qk_out_tensor);
@@ -424,9 +422,9 @@ class FMHAGateRef {
         ins.emplace_back(src_mask_tensor);
         outs.emplace_back(src_mask_out_tensor);
         int elewise_add_axis = -1;
-        paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
-                                                      T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, TernaryAddFunctor<T>());
+        paddle::operators::LaunchElementwiseCudaKernel<
+            ElementwiseType::kTernary, T, T>(
+            dev_ctx_, ins, &outs, elewise_add_axis, TernaryAddFunctor<T>());
         // std::cout << "src_mask_out_tensor: " << *src_mask_out_tensor << "\n";
 
       } else {
@@ -437,10 +435,10 @@ class FMHAGateRef {
         outs.emplace_back(src_mask_out_tensor);
         int elewise_add_axis = -1;
         paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+                                                       T, T>(
+            dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
       }
-      
+
       phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
                                              softmax_axis, softmax_out_tensor);
     } else {
@@ -457,35 +455,30 @@ class FMHAGateRef {
     stride_b = gemm_k * gemm_n;
 
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                       softmax_out_data, v_ptr, beta, qktv_out_data,
-                       gemm_batch_size, stride_a, stride_b);
+                     softmax_out_data, v_ptr, beta, qktv_out_data,
+                     gemm_batch_size, stride_a, stride_b);
     // std::cout << "qktv_out_tensor: "<< qktv_out_tensor << "\n";
-   
-    // transpose: [0, 2, 1, 3]
-    // output shape: [batch_size, seq_len, num_heads, head_dim]
-    // std::vector<int> perm_3 = {0, 2, 1, 3};
-    //[batch_size, seq_len_m, num_head, seq_len_r, c ] [0,1,2,3,4]  [1,3,2,8,2]
-    //[batch_size, seq_len_m, seq_len_r, num_head, c ] 
+
+    // [batch_size, seq_len_m, num_head, seq_len_r, c]
+    // [batch_size, seq_len_m, seq_len_r, num_head, c]
     std::vector<int> perm_3 = {0, 1, 3, 2, 4};
     ndims = 5;
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out_tensor, perm_3,
                                 fmha_out_tensor);
-    
+
     // std::cout << "fmha_out_tensor" << *fmha_out_tensor << "\n";
   }
 
   void ComputeBackward(
       const Tensor& transpose_2_out_tensor, const Tensor* src_mask_tensor,
-      const Tensor& softmax_out_tensor, 
-      const Tensor& qk_out_tensor,
+      const Tensor& softmax_out_tensor, const Tensor& qk_out_tensor,
       const Tensor& src_mask_out_tensor, const Tensor& fmha_out_grad_tensor,
-      Tensor* qktv_out_grad_tensor, 
-      Tensor* softmax_out_grad_tensor, Tensor* src_mask_out_grad_tensor,
-      Tensor* qk_out_grad_tensor, Tensor* transpose_2_out_grad_tensor,
-      Tensor* src_mask_grad_tensor, Tensor* qkv_input_grad_tensor) {
-
+      Tensor* qktv_out_grad_tensor, Tensor* softmax_out_grad_tensor,
+      Tensor* src_mask_out_grad_tensor, Tensor* qk_out_grad_tensor,
+      Tensor* transpose_2_out_grad_tensor, Tensor* src_mask_grad_tensor,
+      Tensor* qkv_input_grad_tensor) {
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
-    int q_size = batch_size_ * seq_len_m_ *seq_len_r_ * num_head_ * head_dim_;
+    int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;
 
@@ -521,14 +514,14 @@ class FMHAGateRef {
     T beta = static_cast<T>(0.0);
     int64_t stride_a = gemm_m * gemm_k;
     int64_t stride_b = gemm_k * gemm_n;
-
-    std::cout << "softmax_out_grad_tensor1: " << *softmax_out_grad_tensor << "\n";
+    std::cout << "softmax_out_grad_tensor1: " << *softmax_out_grad_tensor
+              << "\n";
 
     // bw: dy = x^t * dout
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                       softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
-                       gemm_batch_size, stride_a, stride_b);
-    
+                     softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
+                     gemm_batch_size, stride_a, stride_b);
+
     // // bw: dx = dout * y^t
     transA = CblasNoTrans;
     transB = CblasTrans;
@@ -538,20 +531,20 @@ class FMHAGateRef {
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
 
-
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                       qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
-                       gemm_batch_size, stride_a, stride_b);
+                     qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
+                     gemm_batch_size, stride_a, stride_b);
 
-
-     std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor << "\n";
+    std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor
+              << "\n";
     // std::cout << "src_mask_out_tensor: " << *src_mask_out_tensor << "\n";
     if (src_mask_tensor != nullptr) {
       phi::SoftmaxBackwardCUDAKernelDriver<T>(
           dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
           src_mask_out_grad_tensor);
- 
-      std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor << "\n";
+
+      std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor
+                << "\n";
       // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
       // src_mask
       // Special case when dy is not needed and dx doesn't reduce
@@ -567,15 +560,16 @@ class FMHAGateRef {
             "dy is not needed and dx is not reduce"));
         return;
       }
-
     }
 
-      std::cout << "softmax_out_grad_tensor: " << *softmax_out_grad_tensor << "\n";
+    std::cout << "softmax_out_grad_tensor: " << *softmax_out_grad_tensor
+              << "\n";
 
     // } else {
     //   phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
     //                                           *softmax_out_grad_tensor,
-    //                                           softmax_axis, qk_out_grad_tensor);
+    //                                           softmax_axis,
+    //                                           qk_out_grad_tensor);
     // }
 
     T* qk_out_grad_data = qk_out_grad_tensor->data<T>();
@@ -602,13 +596,15 @@ class FMHAGateRef {
     // stride_a = gemm_m * gemm_k;
     // stride_b = gemm_k * gemm_n;
     // blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-    //                  qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
+    //                  qk_out_grad_data, k_ptr, beta, q_grad_ptr,
+    //                  gemm_batch_size,
     //                  stride_a, stride_b);
 
     // // transpose bw
     // ndims = 5;
     // std::vector<int> perm_1 = {1, 3, 0, 2, 4};
-    // TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *transpose_2_out_grad_tensor,
+    // TransposeGPUKernelDriver<T>(dev_ctx_, ndims,
+    // *transpose_2_out_grad_tensor,
     //                             perm_1, qkv_input_grad_tensor);
   }
 
@@ -620,44 +616,38 @@ class FMHAGateRef {
   int64_t seq_len_r_;
   int64_t num_head_;
   int64_t head_dim_;
-
 };
 
 template <typename T>
 class GateRef {
  public:
-  GateRef(const framework::ExecutionContext& ctx)
-        : ctx_(ctx) {}
+  explicit GateRef(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
 
   ~GateRef() {}
 
   void ComputeForward(const Tensor& gate_input_tensor,
-                      const Tensor& fma_out_tensor,
-                      Tensor* gate_out_tensor) {
-      // Z = Binary(X, Unary(Y))
-      std::vector<Tensor *> outputs;
-      outputs.emplace_back(gate_out_tensor);
-      RunBinaryCompoundFunctor<platform::CUDADeviceContext, T, phi::funcs::MultiplyFunctor<T>,
+                      const Tensor& fma_out_tensor, Tensor* gate_out_tensor) {
+    // Z = Binary(X, Unary(Y))
+    std::vector<Tensor*> outputs;
+    outputs.emplace_back(gate_out_tensor);
+    RunBinaryCompoundFunctor<platform::CUDADeviceContext, T,
+                             phi::funcs::MultiplyFunctor<T>,
                              phi::funcs::SigmoidFunctor<T>>(
         ctx_, phi::funcs::MultiplyFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
         fma_out_tensor, gate_input_tensor, &outputs, -1);
-                       
   }
 
-  void ComputeBackward(const Tensor* fma_out_tensor, 
-                      const Tensor* gate_input_tensor, 
-                      const Tensor* gate_out_tensor,
-                      const Tensor* gate_out_grad_tensor,
-                      const Tensor* intermediate_out_tensor,
-                      Tensor* fma_out_grad_tensor,
-                      Tensor* gate_input_grad_tensor,
-                      Tensor* intermediate_out_grad_tensor
-                      ){
+  void ComputeBackward(
+      const Tensor* fma_out_tensor, const Tensor* gate_input_tensor,
+      const Tensor* gate_out_tensor, const Tensor* gate_out_grad_tensor,
+      const Tensor* intermediate_out_tensor, Tensor* fma_out_grad_tensor,
+      Tensor* gate_input_grad_tensor, Tensor* intermediate_out_grad_tensor) {
     //  RunBinaryCompoundGradFunctors<DeviceContext, T,
     //                               phi::funcs::MulGradFunctor<T>,
     //                               phi::funcs::SigmoidFunctor<T>,
     //                               phi::funcs::SigmoidGradFunctor<T>, false>(
-    //     ctx_, phi::funcs::MulGradFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
+    //     ctx_, phi::funcs::MulGradFunctor<T>(),
+    //     phi::funcs::SigmoidFunctor<T>(),
     //     phi::funcs::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
     //     nullptr, in_out_grad, x_grad, y_grad, nullptr, -1);
     std::cout << "fma_out_tensor:" << *fma_out_tensor << "\n";
@@ -671,13 +661,15 @@ class GateRef {
                                   phi::funcs::SigmoidFunctor<T>,
                                   phi::funcs::SigmoidGradFunctor<T>, false>(
         ctx_, phi::funcs::MulGradFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
-        phi::funcs::SigmoidGradFunctor<T>(), fma_out_tensor, gate_input_tensor, gate_out_tensor,
-        intermediate_out_tensor, gate_out_grad_tensor, fma_out_grad_tensor, gate_input_grad_tensor, intermediate_out_grad_tensor, -1);
+        phi::funcs::SigmoidGradFunctor<T>(), fma_out_tensor, gate_input_tensor,
+        gate_out_tensor, intermediate_out_tensor, gate_out_grad_tensor,
+        fma_out_grad_tensor, gate_input_grad_tensor,
+        intermediate_out_grad_tensor, -1);
     std::cout << "gate_input_grad_tensor: " << gate_input_grad_tensor << "\n";
-  } 
+  }
 
-  private:
-   const framework::ExecutionContext& ctx_;
+ private:
+  const framework::ExecutionContext& ctx_;
 };
 
 }  // namespace operators
