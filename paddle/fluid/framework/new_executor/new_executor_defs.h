@@ -237,6 +237,10 @@ class VariableScope : public ScopeBase {
 
   bool GetVarSikpInplace(int id) const;
 
+  void ClearListener();
+
+  void ResetListener();
+
   friend class VariableScopeListener;
 
  private:
