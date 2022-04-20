@@ -74,7 +74,7 @@ class XPUCacheArray {
 #if defined(__xpu__)
   __device__ ValType* find(const KeyType& key) {
     for (int i = 0; i < size_; i++) {
-      if (keys[i] == key) return vals[i];
+      if (keys[i] == key) return &vals[i];
     }
     return NULL;
   }
