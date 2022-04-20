@@ -473,6 +473,7 @@ class FMHAGateRef {
       const Tensor& transpose_2_out_tensor, const Tensor* src_mask_tensor,
       const Tensor& softmax_out_tensor, const Tensor& qk_out_tensor,
       const Tensor& src_mask_out_tensor, const Tensor& fmha_out_grad_tensor,
+      const Tensor* nonbatched_bias, Tensor* nonbatched_bias_grad_tensor,
       Tensor* qktv_out_grad_tensor, Tensor* softmax_out_grad_tensor,
       Tensor* src_mask_out_grad_tensor, Tensor* qk_out_grad_tensor,
       Tensor* transpose_2_out_grad_tensor, Tensor* src_mask_grad_tensor,
@@ -502,8 +503,6 @@ class FMHAGateRef {
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad_tensor, perm_3,
                                 qktv_out_grad_tensor);
 
-    // recall batchedgemm(nn) fw: softmax_out_data(x) * v_ptr(y) =
-    // qktv_out_data(out)
     CBLAS_TRANSPOSE transA = CblasTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
     int gemm_batch_size = batch_size_ * num_head_;
@@ -514,8 +513,6 @@ class FMHAGateRef {
     T beta = static_cast<T>(0.0);
     int64_t stride_a = gemm_m * gemm_k;
     int64_t stride_b = gemm_k * gemm_n;
-    std::cout << "softmax_out_grad_tensor1: " << *softmax_out_grad_tensor
-              << "\n";
 
     // bw: dy = x^t * dout
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
@@ -535,7 +532,7 @@ class FMHAGateRef {
                      qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
                      gemm_batch_size, stride_a, stride_b);
 
-    std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor
+    std::cout << "softmax_out_grad_tensor: " << *softmax_out_grad_tensor
               << "\n";
     // std::cout << "src_mask_out_tensor: " << *src_mask_out_tensor << "\n";
     if (src_mask_tensor != nullptr) {
@@ -561,31 +558,32 @@ class FMHAGateRef {
         return;
       }
     }
+    // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
+    if (nonbatched_bias != nullptr) {
+      gpuStream_t stream = dev_ctx_.stream();
+      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx_, *src_mask_out_grad_tensor, nonbatched_bias_grad_tensor,
+          kps::IdentityFunctor<T>(), {0}, stream);
+    }
 
     std::cout << "softmax_out_grad_tensor: " << *softmax_out_grad_tensor
               << "\n";
 
-    // } else {
-    //   phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
-    //                                           *softmax_out_grad_tensor,
-    //                                           softmax_axis,
-    //                                           qk_out_grad_tensor);
-    // }
-
-    T* qk_out_grad_data = qk_out_grad_tensor->data<T>();
-    alpha = static_cast<T>(1.0 / sqrt(head_dim_));
-    // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
-    // bw: dy (seq_len * head_dim) = (dout)^t * x
-    transA = CblasTrans;
-    transB = CblasNoTrans;
-    gemm_m = seq_len_r_;
-    gemm_n = seq_len_r_;
-    gemm_k = head_dim_;
-    stride_a = gemm_m * gemm_k;
-    stride_b = gemm_k * gemm_n;
-    blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                     qk_out_grad_data, q_ptr, beta, k_grad_ptr, gemm_batch_size,
-                     stride_a, stride_b);
+    // T* qk_out_grad_data = qk_out_grad_tensor->data<T>();
+    // alpha = static_cast<T>(1.0 / sqrt(head_dim_));
+    // // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
+    // // bw: dy (seq_len * head_dim) = (dout)^t * x
+    // transA = CblasTrans;
+    // transB = CblasNoTrans;
+    // gemm_m = seq_len_r_;
+    // gemm_n = seq_len_r_;
+    // gemm_k = head_dim_;
+    // stride_a = gemm_m * gemm_k;
+    // stride_b = gemm_k * gemm_n;
+    // blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+    //                  qk_out_grad_data, q_ptr, beta, k_grad_ptr,
+    //                  gemm_batch_size,
+    //                  stride_a, stride_b);
 
     // // dx (seq_len * head_dim) = dout * y
     // transA = CblasNoTrans;
@@ -600,12 +598,11 @@ class FMHAGateRef {
     //                  gemm_batch_size,
     //                  stride_a, stride_b);
 
-    // // transpose bw
+    // transpose bw
     // ndims = 5;
     // std::vector<int> perm_1 = {1, 3, 0, 2, 4};
     // TransposeGPUKernelDriver<T>(dev_ctx_, ndims,
-    // *transpose_2_out_grad_tensor,
-    //                             perm_1, qkv_input_grad_tensor);
+    // *transpose_2_out_grad_tensor, perm_1, qkv_input_grad_tensor);
   }
 
  private:
@@ -619,57 +616,107 @@ class FMHAGateRef {
 };
 
 template <typename T>
+struct SGradFunctor {
+  inline HOSTDEVICE T operator()(T x, T out, T dout) const {
+    return dout * out * (static_cast<T>(1) - out);
+  }
+};
+
+template <typename T>
 class GateRef {
  public:
-  explicit GateRef(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  explicit GateRef(const platform::CUDADeviceContext& dev_ctx)
+      : dev_ctx_(dev_ctx) {}
 
   ~GateRef() {}
 
   void ComputeForward(const Tensor& gate_input_tensor,
-                      const Tensor& fma_out_tensor, Tensor* gate_out_tensor) {
+                      const Tensor& fma_out_tensor, Tensor* sigmoid_out_tensor,
+                      Tensor* gate_out_tensor) {
     // Z = Binary(X, Unary(Y))
-    std::vector<Tensor*> outputs;
-    outputs.emplace_back(gate_out_tensor);
-    RunBinaryCompoundFunctor<platform::CUDADeviceContext, T,
-                             phi::funcs::MultiplyFunctor<T>,
-                             phi::funcs::SigmoidFunctor<T>>(
-        ctx_, phi::funcs::MultiplyFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
-        fma_out_tensor, gate_input_tensor, &outputs, -1);
+    // gate_out_tensor = mul(fma_out_tensor, sigmoid(gate_input_tensor));
+    // std::vector<Tensor*> outputs;
+    // outputs.emplace_back(gate_out_tensor);
+    // RunBinaryCompoundFunctor<platform::CUDADeviceContext, T,
+    //                          phi::funcs::MultiplyFunctor<T>,
+    //                          phi::funcs::SigmoidFunctor<T>>(
+    //     ctx_, phi::funcs::MultiplyFunctor<T>(),
+    //     phi::funcs::SigmoidFunctor<T>(),
+    //     fma_out_tensor, gate_input_tensor, &outputs, -1);
+
+    // std::vector<const Tensor*> ins = {&gate_input_tensor};
+    // std::vector<Tensor*> outputs = {sigmoid_out_tensor};
+    // paddle::operators::LaunchElementwiseCudaKernel<
+    //         ElementwiseType::kUnary, T, T>(
+    //         dev_ctx_, ins, &outputs, -1, phi::funcs::SigmoidFunctor<T>());
+
+    // std::vector<const Tensor*> ins_1 = {&fma_out_tensor, sigmoid_out_tensor};
+    // std::vector<Tensor*> outputs_1 = {gate_out_tensor};
+    // paddle::operators::LaunchElementwiseCudaKernel<
+    //         ElementwiseType::kBinary, T, T>(
+    //         dev_ctx_, ins_1, &outputs_1, -1,
+    //         phi::funcs::MultiplyFunctor<T>());
   }
 
   void ComputeBackward(
-      const Tensor* fma_out_tensor, const Tensor* gate_input_tensor,
+      const Tensor* fma_out_tensor, const Tensor* gate_bias_out_tensor,
       const Tensor* gate_out_tensor, const Tensor* gate_out_grad_tensor,
       const Tensor* intermediate_out_tensor, Tensor* fma_out_grad_tensor,
-      Tensor* gate_input_grad_tensor, Tensor* intermediate_out_grad_tensor) {
-    //  RunBinaryCompoundGradFunctors<DeviceContext, T,
+      Tensor* gate_bias_out_grad_tensor, Tensor* intermediate_out_grad_tensor) {
+    // // mul(fma_out_tensor, sigmoid(gate_bias_out_tensor))
+    // std::cout << "fma_out_tensor:" << *fma_out_tensor << "\n";
+    // // std::cout << "gate_input_tensor:" << *gate_input_tensor << "\n";
+    // std::cout << "gate_out_tensor:" << *gate_out_tensor << "\n";
+    // std::cout << "gate_out_grad_tensor:" << *gate_out_grad_tensor << "\n";
+    // std::cout << "fma_out_grad_tensor:" << *fma_out_grad_tensor << "\n";
+    // std::cout << "gate_input_grad_tensor:" << *gate_input_grad_tensor <<
+    // "\n";
+
+    // std::vector<const Tensor*> ins = {&x, &out_grad};
+    // std::vector<Tensor*> outs = {x_grad};
+    // phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+    //     dev_ctx_, ins, &outs, 0, phi::funcs::MulGradFunctor<T>());
+
+    // std::vector<const Tensor*> ins = {&x, &out_grad};
+    // std::vector<Tensor*> outs = {x_grad};
+    // phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+    //     dev_ctx_, ins, &outs, 0, MulSigmoidGradFunctor<T>());
+    // std::vector<const Tensor*> ins = {&fma_out_tensor, &out_grad};
+    // std::vector<Tensor*> outs = {x_grad};
+    // paddle::operators::LaunchElementwiseCudaKernel<
+    //         ElementwiseType::kTernary, T, T>(
+    //         dev_ctx_, ins, &outs, -1, phi::funcs::MulGradFunctor<T>());
+
+    // // The backward of Z = Binary(X, Unary(Y))
+    // RunBinaryCompoundGradFunctors<platform::CUDADeviceContext, T,
     //                               phi::funcs::MulGradFunctor<T>,
     //                               phi::funcs::SigmoidFunctor<T>,
     //                               phi::funcs::SigmoidGradFunctor<T>, false>(
     //     ctx_, phi::funcs::MulGradFunctor<T>(),
     //     phi::funcs::SigmoidFunctor<T>(),
-    //     phi::funcs::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
-    //     nullptr, in_out_grad, x_grad, y_grad, nullptr, -1);
-    std::cout << "fma_out_tensor:" << *fma_out_tensor << "\n";
-    std::cout << "gate_input_tensor:" << *gate_input_tensor << "\n";
-    std::cout << "gate_out_tensor:" << *gate_out_tensor << "\n";
-    std::cout << "gate_out_grad_tensor:" << *gate_out_grad_tensor << "\n";
-    std::cout << "fma_out_grad_tensor:" << *fma_out_grad_tensor << "\n";
-    std::cout << "gate_input_grad_tensor:" << *gate_input_grad_tensor << "\n";
-    RunBinaryCompoundGradFunctors<platform::CUDADeviceContext, T,
-                                  phi::funcs::MulGradFunctor<T>,
-                                  phi::funcs::SigmoidFunctor<T>,
-                                  phi::funcs::SigmoidGradFunctor<T>, false>(
-        ctx_, phi::funcs::MulGradFunctor<T>(), phi::funcs::SigmoidFunctor<T>(),
-        phi::funcs::SigmoidGradFunctor<T>(), fma_out_tensor, gate_input_tensor,
-        gate_out_tensor, intermediate_out_tensor, gate_out_grad_tensor,
-        fma_out_grad_tensor, gate_input_grad_tensor,
-        intermediate_out_grad_tensor, -1);
-    std::cout << "gate_input_grad_tensor: " << gate_input_grad_tensor << "\n";
+    //     phi::funcs::SigmoidGradFunctor<T>(), fma_out_tensor,
+    //     gate_bias_out_tensor,
+    //     gate_out_tensor, intermediate_out_tensor, gate_out_grad_tensor,
+    //     fma_out_grad_tensor, gate_bias_out_grad_tensor,
+    //     intermediate_out_grad_tensor, -1);
+    // std::cout << "gate_bias_out_grad_tensor: " << *gate_bias_out_grad_tensor
+    // << "\n";
+    // std::cout << "fma_out_grad_tensor: " << *fma_out_grad_tensor << "\n";
+
+    // sigmoid_out_tensor = sigmoid(gate_bias_out_tensor);
+    // MultiplyGradKernel<T, platform::CUDADeviceContext>(dev_ctx,
+    // fma_out_tensor, sigmoid_out_tensor, gate_out_grad_tensor, -1,
+    // fma_out_grad_tensor, sigmoid_out_grad_tensor);
+    // std::vector<const Tensor*> ins = {&gate_bias_out_tensor,
+    // &sigmoid_out_tensor, sigmoid_out_grad_tensor};
+    // std::vector<Tensor*> outs = {gate_bias_out_grad_tensor};
+    // paddle::operators::LaunchElementwiseCudaKernel<
+    //         ElementwiseType::kTernary, T, T>(
+    //         dev_ctx_, ins, &outs, -1, SGradFunctor<T>());
   }
 
  private:
-  const framework::ExecutionContext& ctx_;
+  const platform::CUDADeviceContext& dev_ctx_;
 };
 
 }  // namespace operators
