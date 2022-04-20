@@ -266,9 +266,9 @@ class TestPyPrimOps(unittest.TestCase):
             bias = paddle.static.create_parameter(
                 shape=[2], dtype='float32', is_bias=True)
             y = paddle.matmul(x, w) + bias
-            jac = _gradients(y, x)
-            hes_0 = _gradients(jac[0][:, 0], x)
-            hes_1 = _gradients(jac[0][:, 1], x)
+            jac, = _gradients([y], [x])
+            # hes_0, = _gradients([jac[:, 0]], [x])
+            # hes_1, = _gradients([jac[:, 1]], [x])
 
     def test_lower(self):
         main = paddle.static.Program()
