@@ -30,7 +30,7 @@ SinkInterceptor::SinkInterceptor(int64_t interceptor_id, TaskNode* node)
 void SinkInterceptor::StopCarrierIfComplete() {
   bool flag = true;
   for (const auto& up : upstream_step_) {
-    flag = flag & (up.second == max_run_times_);
+    flag = flag && (up.second == max_run_times_);
   }
   if (flag) {
     VLOG(3) << "Sink Interceptor is stopping carrier";

@@ -758,10 +758,13 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
-                                        keepdim, 'reduce_all', reduce_all)
+            if in_dygraph_mode():
+                sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+            else:
+                sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                            keepdim, 'reduce_all', reduce_all)
             if porder == 1 or porder == np.inf:
                 return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                          keepdim, 'reduce_all', reduce_all)
@@ -815,7 +818,12 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            pow_out = _C_ops.pow(input, 'factor', porder)
+            sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
+            sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+        elif paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                           keepdim, 'reduce_all', reduce_all)
@@ -869,10 +877,13 @@ def cond(x, p=None, name=None):
 
         u, s, vh = svd(input, full_matrices=False)
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             if porder == "nuc":
-                return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
-                                         'reduce_all', reduce_all)
+                if in_dygraph_mode():
+                    return _C_ops.final_state_sum(s, axis, None, keepdim)
+                else:
+                    return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
+                                             'reduce_all', reduce_all)
             max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
@@ -1155,40 +1166,37 @@ def t(input, name=None):
     the paddle.transpose function which perm dimensions set 0 and 1.
 
     Args:
-        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
 
-    For Example:
-
-        .. code-block:: text
-
-             # Example 1 (0-D tensor)
-             x = tensor([0.79])
-             paddle.t(x) = tensor([0.79])
-
-             # Example 2 (1-D tensor)
-             x = tensor([0.79, 0.84, 0.32])
-             paddle.t(x) = tensor([0.79, 0.84, 0.32])
-
-             # Example 3 (2-D tensor)
-             x = tensor([0.79, 0.84, 0.32],
-                        [0.64, 0.14, 0.57])
-             paddle.t(x) = tensor([0.79, 0.64],
-                                  [0.84, 0.14],
-                                  [0.32, 0.57])
-
-     Examples:
+    Examples:
 
         .. code-block:: python
+           :name: code-example
+             import paddle
+             
+             # Example 1 (0-D tensor)
+             x = paddle.to_tensor([0.79])
+             paddle.t(x) # [0.79]
+             
+             # Example 2 (1-D tensor)
+             x = paddle.to_tensor([0.79, 0.84, 0.32])
+             paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
+             paddle.t(x).shape # [3]
 
-            import paddle
-            x = paddle.ones(shape=[2, 3], dtype='int32')
-            x_transposed = paddle.t(x)
-            print(x_transposed.shape)
-            # [3, 2]
+             # Example 3 (2-D tensor)
+             x = paddle.to_tensor([[0.79, 0.84, 0.32],
+                                  [0.64, 0.14, 0.57]])
+             x.shape # [2, 3]
+             paddle.t(x)
+             # [[0.79000002, 0.63999999],
+             #  [0.83999997, 0.14000000],
+             #  [0.31999999, 0.56999999]]
+             paddle.t(x).shape # [3, 2]
+
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -2530,7 +2538,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # or              out * x * out = x ;
     """
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2554,8 +2562,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             v, _ = _C_ops.transpose2(vt, 'axis', perm)
 
             out_1 = v * st
-            out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
+                                         True)
             return out_2
         else:
             # combine eigh and matmul op
@@ -2578,8 +2589,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             out_1 = u * st
             u_conj = _C_ops.conj(u)
-            out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
+                                         'trans_y', True)
             return out_2
     else:
         if not hermitian:
@@ -3080,7 +3094,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:
@@ -3089,8 +3103,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                           False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                          False, 'reduce_all', False)
+            if in_dygraph_mode():
+                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
+            else:
+                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
+                                              False, 'reduce_all', False)
         else:
             residuals = paddle.empty(shape=[0], dtype=x.dtype)
 
