@@ -89,7 +89,7 @@ _supported_float_dtype_ = [
 
 
 def log(x, name=None):
-    r"""
+    """
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
