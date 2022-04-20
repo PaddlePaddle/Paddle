@@ -40,6 +40,9 @@ class TaskNode;
 class Carrier;
 class TaskLoop;
 
+constexpr int64_t SOURCE_ID = -1;
+constexpr int64_t SINK_ID = -2;
+
 class Interceptor {
  public:
   using MsgHandle = std::function<void(const InterceptorMessage&)>;

@@ -128,14 +128,15 @@ class ControllerBase(object):
         self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            time.sleep(11)
             sys.exit(sigint)
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 
