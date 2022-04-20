@@ -651,6 +651,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_transpose_mkldnn_op',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_mkldnn_conv_concat_relu_mkldnn_fuse_pass',
+    'test_mkldnn_conv_int8_scales_pass',
     'test_mkldnn_matmul_op_output_fuse_pass',
     'test_mkldnn_matmul_transpose_reshape_fuse_pass',
     'test_mkldnn_scale_matmul_fuse_pass',
