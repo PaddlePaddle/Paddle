@@ -28,15 +28,13 @@ class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
         self.conv1 = paddle.nn.Conv2D(
-            in_channels=3, out_channels=4, kernel_size=3, padding=2)
-        self.linear1 = paddle.nn.Linear(32 * 32 * 4, 32)
-        self.linear2 = paddle.nn.Linear(32, 10)
+            in_channels=3, out_channels=2, kernel_size=3, padding=2)
+        self.linear1 = paddle.nn.Linear(24 * 24 * 2, 10)
 
     def forward(self, img):
         hidden = self.conv1(img)
         hidden = paddle.flatten(hidden, start_axis=1)
-        hidden = self.linear1(hidden)
-        prediction = self.linear2(hidden)
+        prediction = self.linear1(hidden)
         return prediction
 
 
@@ -50,7 +48,7 @@ class TestASPDynamicPruningBase(unittest.TestCase):
 
         self.img = paddle.to_tensor(
             np.random.uniform(
-                low=-0.5, high=0.5, size=(64, 3, 32, 32)),
+                low=-0.5, high=0.5, size=(64, 3, 24, 24)),
             dtype=np.float32,
             place=place,
             stop_gradient=False)
