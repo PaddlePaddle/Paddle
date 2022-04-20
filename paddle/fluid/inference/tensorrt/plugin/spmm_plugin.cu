@@ -53,7 +53,9 @@ inline cudaDataType_t convertTrtType(nvinfer1::DataType type) {
 
 inline void deserialize_value_size(void const** buffer, size_t* buffer_size,
                                    void* value, size_t value_size) {
-  PADDLE_ENFORCE(*buffer_size >= value_size, "buffer_size >= value_size");
+  PADDLE_ENFORCE_GE(
+      *buffer_size, value_size,
+      platform::errors::InvalidArgument("buffer_size must >= value_size"));
   memcpy(value, *buffer, value_size);
   reinterpret_cast<char const*&>(*buffer) += value_size;
   *buffer_size -= value_size;
@@ -69,6 +71,7 @@ inline void convertAndCopy(const nvinfer1::Weights& src,
   PADDLE_ENFORCE(
       type == nvinfer1::DataType::kFLOAT || type == nvinfer1::DataType::kHALF,
       "convertAndCopy only supports src type [FLOAT|HALF]");
+
   if (type == nvinfer1::DataType::kFLOAT) {
     if (src.type == nvinfer1::DataType::kFLOAT) {
       std::copy_n(static_cast<const float*>(src.values), src.count,
@@ -110,8 +113,10 @@ void SpmmPluginDynamic::cusparseLtContext::init(
   4. Init algorithm selection descriptor (alg_sel)
   5. Init plan descriptor (plan)
   */
-  PADDLE_ENFORCE(is_initialized == false,
-                 "Descriptor should be destroyed before calling create");
+  PADDLE_ENFORCE_EQ(
+      is_initialized, false,
+      platform::errors::InvalidArgument(
+          "Descriptor should be destroyed before calling create"));
   constexpr int alignment = 16;
   cusparseComputeType compute_type;
   switch (type) {
@@ -158,8 +163,9 @@ void SpmmPluginDynamic::cusparseLtContext::init(
         &handle, &matmul, CUSPARSELT_MATMUL_ACTIVATION_GELU, &true_value,
         sizeof(true_value));
   } else {
-    PADDLE_ENFORCE(activation == SpmmPluginDynamic::Activation::kNone,
-                   "Received unknown activation");
+    PADDLE_ENFORCE_EQ(
+        activation, SpmmPluginDynamic::Activation::kNone,
+        platform::errors::InvalidArgument("Received unknown activation"));
   }
   if (bias_ptr != nullptr) {
     paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
@@ -179,8 +185,10 @@ void SpmmPluginDynamic::cusparseLtContext::init(
 }
 
 void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
-  PADDLE_ENFORCE(is_initialized == true,
-                 "Descriptor should be initialized before setting algorithm");
+  PADDLE_ENFORCE_EQ(
+      is_initialized, true,
+      platform::errors::InvalidArgument(
+          "Descriptor should be initialized before setting algorithm"));
   paddle::platform::dynload::cusparseLtMatmulAlgSetAttribute(
       &handle, &alg_sel, CUSPARSELT_MATMUL_ALG_CONFIG_ID, &alg, sizeof(alg));
   paddle::platform::dynload::cusparseLtMatmulGetWorkspace(&handle, &alg_sel,
@@ -191,7 +199,8 @@ void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
 }
 
 void SpmmPluginDynamic::cusparseLtContext::destroy() {
-  PADDLE_ENFORCE(is_initialized == true, "destroy error");
+  PADDLE_ENFORCE_EQ(is_initialized, true,
+                    platform::errors::InvalidArgument("destroy error"));
   paddle::platform::dynload::cusparseLtMatmulPlanDestroy(&plan);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matC);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
@@ -202,8 +211,10 @@ void SpmmPluginDynamic::cusparseLtContext::destroy() {
 void SpmmPluginDynamic::cusparseLtContext::compressMatB(
     int n, int k, cudaDataType_t type, void* src, void** dest,
     size_t* compressed_size) {
-  PADDLE_ENFORCE(is_initialized == false, "should not initialized");
-  PADDLE_ENFORCE(*dest == nullptr, "*dest == nullptr");
+  PADDLE_ENFORCE_EQ(is_initialized, false, platform::errors::InvalidArgument(
+                                               "should not initialized"));
+  PADDLE_ENFORCE_EQ(*dest, nullptr,
+                    platform::errors::InvalidArgument("*dest must == nullptr"));
   constexpr int alignment = 16;
   paddle::platform::dynload::cusparseLtStructuredDescriptorInit(
       &handle, &matB, n, k, k, alignment, type, CUSPARSE_ORDER_ROW,
@@ -250,8 +261,11 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   precision_size_ = getElementSize(precision);
   element_size_ =
       (precision_ == nvinfer1::DataType::kINT8 ? 4 : precision_size_);
-  PADDLE_ENFORCE(weight.count % out_dim == 0,
-                 "The size of weight should be divided by output dimension.");
+
+  PADDLE_ENFORCE_EQ(
+      weight.count % out_dim, 0,
+      platform::errors::InvalidArgument(
+          "The size of weight should be divided by output dimension."));
   k_ = weight.count / out_dim;
   PADDLE_ENFORCE(weight.type == nvinfer1::DataType::kFLOAT ||
                      weight.type == nvinfer1::DataType::kHALF,
@@ -301,8 +315,9 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "The dimension of bias should be equal to output dimension"));
     }
-    PADDLE_ENFORCE(bias.type == nvinfer1::DataType::kFLOAT,
-                   "SpmmPluginDynamic only supports FLOAT bias");
+    PADDLE_ENFORCE_EQ(bias.type, nvinfer1::DataType::kFLOAT,
+                      platform::errors::InvalidArgument(
+                          "SpmmPluginDynamic only supports FLOAT bias"));
 
     bias_ = new float[out_dim_];
     convertAndCopy(bias, nvinfer1::DataType::kFLOAT, bias_);
@@ -390,8 +405,9 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
   DeserializeValue(&data, &length, &has_bias_);
   DeserializeValue(&data, &length, &activation_);
 
-  PADDLE_ENFORCE(is_configured_ == true,
-                 "Deserialize data should be configured");
+  PADDLE_ENFORCE_EQ(is_configured_, true,
+                    platform::errors::InvalidArgument(
+                        "Deserialize data should be configured"));
   weight_compressed_ = new char[compressed_size_];
   deserialize_value_size(&data, &length, weight_compressed_, compressed_size_);
   cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
@@ -436,14 +452,18 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
     nvinfer1::IExprBuilder& exprBuilder) noexcept {
   int nbDims = inputs[0].nbDims;
   try {
-    PADDLE_ENFORCE(nbInputs == 1 && outputIndex == 0,
-                   "nbInputs or outputIndex is invalid");
+    PADDLE_ENFORCE_EQ(nbInputs, 1,
+                      platform::errors::InvalidArgument("nbInputs is invalid"));
+    PADDLE_ENFORCE_EQ(outputIndex, 0, platform::errors::InvalidArgument(
+                                          "outputIndex is invalid"));
     if (nbDims == 5) {
       int nbDims = inputs[0].nbDims;
-      PADDLE_ENFORCE(inputs[0].nbDims == 5 &&
-                         inputs[0].d[3]->getConstantValue() == 1 &&
-                         inputs[0].d[4]->getConstantValue() == 1,
-                     "ininvalid inputs dims");
+      PADDLE_ENFORCE_EQ(inputs[0].nbDims, 5, platform::errors::InvalidArgument(
+                                                 "only 5d is supported"));
+      PADDLE_ENFORCE_EQ(inputs[0].d[3]->getConstantValue(), 1,
+                        platform::errors::InvalidArgument("d[3] should be 1"));
+      PADDLE_ENFORCE_EQ(inputs[0].d[4]->getConstantValue(), 1,
+                        platform::errors::InvalidArgument("d[4] should be 1"));
       nvinfer1::DimsExprs ret;
       ret.nbDims = nbDims;
       ret.d[0] = inputs[0].d[0];
@@ -454,10 +474,12 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
       return ret;
     } else if (nbDims == 4) {
       int nbDims = inputs[0].nbDims;
-      PADDLE_ENFORCE(inputs[0].nbDims == 4 &&
-                         inputs[0].d[2]->getConstantValue() == 1 &&
-                         inputs[0].d[3]->getConstantValue() == 1,
-                     "ininvalid inputs dims");
+      PADDLE_ENFORCE_EQ(inputs[0].nbDims, 4, platform::errors::InvalidArgument(
+                                                 "only 4d is supported"));
+      PADDLE_ENFORCE_EQ(inputs[0].d[2]->getConstantValue(), 1,
+                        platform::errors::InvalidArgument("d[2] should be 1"));
+      PADDLE_ENFORCE_EQ(inputs[0].d[3]->getConstantValue(), 1,
+                        platform::errors::InvalidArgument("d[3] should be 1"));
       nvinfer1::DimsExprs ret;
       ret.nbDims = nbDims;
       ret.d[0] = inputs[0].d[0];
@@ -478,8 +500,11 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
 bool SpmmPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
     int nbOutputs) noexcept {
-  PADDLE_ENFORCE(nbInputs == 1 && nbOutputs == 1,
-                 "nbInputs or nbOutputs is invalid");
+  PADDLE_ENFORCE_EQ(nbInputs, 1,
+                    platform::errors::InvalidArgument("nbInputs should be 1"));
+  PADDLE_ENFORCE_EQ(nbOutputs, 1,
+                    platform::errors::InvalidArgument("nbOutputs should be 1"));
+
   const nvinfer1::PluginTensorDesc& in = inOut[pos];
   if (pos == 0) {
     return (in.type == precision_) &&
@@ -500,13 +525,22 @@ void SpmmPluginDynamic::configurePlugin(
   3. Search the optimal algorithm
   */
   try {
-    PADDLE_ENFORCE(
-        nbInputs == 1 && nbOutputs == 1 && precision_ == inputs[0].desc.type,
-        "nbInputs or nbOutputs or precision is invalid");
+    PADDLE_ENFORCE_EQ(
+        nbInputs, 1, platform::errors::InvalidArgument("nbInputs should be 1"));
+    PADDLE_ENFORCE_EQ(nbOutputs, 1, platform::errors::InvalidArgument(
+                                        "nbOutputs should be 1"));
+    PADDLE_ENFORCE_EQ(
+        precision_, inputs[0].desc.type,
+        platform::errors::InvalidArgument("precision is invalid"));
     const auto& inDims0 = inputs[0].desc.dims;
-    PADDLE_ENFORCE(inDims0.nbDims == 5 && k_ == inDims0.d[2] &&
-                       inDims0.d[3] == 1 && inDims0.d[4] == 1,
-                   "invalid inDims0");
+    PADDLE_ENFORCE_EQ(inDims0.nbDims, 5,
+                      platform::errors::InvalidArgument("invalid inDims0"));
+    PADDLE_ENFORCE_EQ(k_, inDims0.d[2],
+                      platform::errors::InvalidArgument("invalid inDims0"));
+    PADDLE_ENFORCE_EQ(inDims0.d[3], 1,
+                      platform::errors::InvalidArgument("invalid inDims0"));
+    PADDLE_ENFORCE_EQ(inDims0.d[4], 1,
+                      platform::errors::InvalidArgument("invalid inDims0"));
     const int BS = inputs->max.d[0];
 
     // The optimal algorighm id is for m = m_max_
@@ -571,9 +605,12 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                const void* const* inputs, void* const* outputs,
                                void* workSpace, cudaStream_t stream) noexcept {
   try {
-    PADDLE_ENFORCE(is_configured_ == true,
-                   "The plugin is not configured before enqueue");
-    PADDLE_ENFORCE(k_ == inputDesc->dims.d[2], "k_ == inputDesc->dims.d[2]");
+    PADDLE_ENFORCE_EQ(is_configured_, true,
+                      platform::errors::InvalidArgument(
+                          "The plugin is not configured before enqueue"));
+    PADDLE_ENFORCE_EQ(
+        k_, inputDesc->dims.d[2],
+        platform::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
     float alpha = 1.0f;
     float beta = 0.0f;
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
@@ -612,8 +649,10 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 nvinfer1::DataType SpmmPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
     noexcept {
-  PADDLE_ENFORCE(index == 0 && nbInputs == 1, "invalid index or nbInputs");
-
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument("invalid index"));
+  PADDLE_ENFORCE_EQ(nbInputs, 1,
+                    platform::errors::InvalidArgument("invalid nbInputs"));
   PADDLE_ENFORCE(inputTypes[0] == nvinfer1::DataType::kFLOAT ||
                      inputTypes[0] == nvinfer1::DataType::kHALF ||
                      inputTypes[0] == nvinfer1::DataType::kINT8,
@@ -768,11 +807,15 @@ nvinfer1::IPluginV2* SpmmPluginDynamicCreator::createPlugin(
       }
     }
 
-    PADDLE_ENFORCE(type_id != -1, "Invalid type id");
-    PADDLE_ENFORCE(out_dim != 0, "Invalid output dimension");
-    PADDLE_ENFORCE(weight.count != 0, "Invalid weight size");
-    PADDLE_ENFORCE(activation_id != -1, "Invalid activation (could be none)");
-
+    PADDLE_ENFORCE_NE(type_id, -1,
+                      platform::errors::InvalidArgument("Invalid type id"));
+    PADDLE_ENFORCE_NE(out_dim, 0, platform::errors::InvalidArgument(
+                                      "Invalid output dimension"));
+    PADDLE_ENFORCE_NE(weight.count, 0,
+                      platform::errors::InvalidArgument("Invalid weight size"));
+    PADDLE_ENFORCE_NE(activation_id, -1,
+                      platform::errors::InvalidArgument(
+                          "Invalid activation (could be none)"));
     nvinfer1::DataType type = static_cast<nvinfer1::DataType>(type_id);
     SpmmPluginDynamic::Activation activation =
         static_cast<SpmmPluginDynamic::Activation>(activation_id);
