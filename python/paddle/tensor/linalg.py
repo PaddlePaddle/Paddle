@@ -1103,7 +1103,15 @@ def t(input, name=None):
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.final_state_transpose(input, perm)
+        return out
+
+    if _in_legacy_dygraph():
         if len(input.shape) == 1:
             return input
         # 2-D tensor
@@ -2744,6 +2752,10 @@ def triangular_solve(x,
         print(out)
         # [7, -2, -5]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
+                                                   unitriangular)
+
     if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',

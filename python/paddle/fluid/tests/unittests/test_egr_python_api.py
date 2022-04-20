@@ -114,7 +114,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         egr_tensor = core.eager.Tensor()
         self.assertEqual(egr_tensor.persistable, False)
         self.assertTrue("generated" in egr_tensor.name)
-        self.assertEqual(egr_tensor.shape, [])
+        self.assertEqual(egr_tensor.shape, [0])
         self.assertEqual(egr_tensor.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor.stop_gradient, True)
 
