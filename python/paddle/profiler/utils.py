@@ -154,13 +154,20 @@ def load_profiler_result(filename: str):
     return core.load_profiler_result(filename)
 
 
+def in_profiler_mode():
+    return _is_profiler_used == True
+
+
 def wrap_optimizers():
     def optimizer_warpper(func):
         @functools.wraps(func)
         def warpper(*args, **kwargs):
-            with RecordEvent(
-                    'Optimization Step',
-                    event_type=TracerEventType.Optimization):
+            if in_profiler_mode():
+                with RecordEvent(
+                        'Optimization Step',
+                        event_type=TracerEventType.Optimization):
+                    return func(*args, **kwargs)
+            else:
                 return func(*args, **kwargs)
 
         return warpper
