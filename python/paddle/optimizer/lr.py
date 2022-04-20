@@ -1596,18 +1596,22 @@ class MultiplicativeDecay(LRScheduler):
 
 class OneCycleLR(LRScheduler):
     r"""
-    Sets the learning rate according to the 1cycle learning rate scheduler.
+    Sets the learning rate according to the one cycle learning rate scheduler.
     The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
-    from that maximum learning rate to the minimum learning rate, which is much lower than the initial learning rate.
+    from that maximum learning rate to the minimum learning rate, which is much less than the initial learning rate.
 
     It has been proposed in `Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates <https://arxiv.org/abs/1708.07120>`_.
 
-    Please note that the default behaviour of this scheduler follows the fastai implementation of 1cycle,
+    Please note that the default behaviour of this scheduler follows the fastai implementation of one cycle,
     which claims that “unpublished work has shown even better results by using only two phases”.
     Set ``three_phase=True``, If you want the behaviour of this scheduler to be consistent with the paper.
 
+    Also note that you should update learning rate each step.
+
+    This implementation was adapted from PyTorch.
+
     Args:
-        max_learning_rate (float): Upper boundary of learning rate in the whole training phase.
+        max_learning_rate (float): Upper boundary of learning rate during training.
              Functionally, it defines the initial learning rate and the minimum learning rate by ``divide_factor`` and
              ``final_divide_factor`` respectively.
         total_steps (int, optional): Number of total training steps.
@@ -1615,7 +1619,7 @@ class OneCycleLR(LRScheduler):
             If ``total_steps`` is not specified, it will be determined by ``epochs`` and ``steps_per_epoch``. Default: None.
         epochs (int, optional): Number of total training epochs. Default: None.
         steps_per_epoch (int, optional): Number of training steps for each epoch. Default: None.
-        pct_start (float): The percentage of learning rate increasing steps to total steps. Default: 0.3.
+        pct_start (float): The percentage of total steps, which used to increasing learning rate. Default: 0.3.
         anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
             'linear' for linear annealing. Default: 'cos'.
         divide_factor (float, optional): Initial learning rate will be determined by initial_lr = max_lr/div_factor. Default: 25.
@@ -1623,7 +1627,7 @@ class OneCycleLR(LRScheduler):
         three_phase (bool, optional): Whether to use three phase.
             If ``True``:
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
-                2. Then it will be decrease to learning rate.
+                2. Then it will be decrease to learning rate. Number of step in this phase is the same as the one in first phase.
                 3. Finally, it decrease to minimum learning rate which is much less than initial learning rate.
             If ``False``:
                 1. The learning rate will increase to maximum learning rate.
@@ -1689,11 +1693,12 @@ class OneCycleLR(LRScheduler):
                  three_phase=False,
                  last_epoch=-1,
                  verbose=False):
+        # Check type of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
                 "The type of learning rate must be float, but received {}".
                 format(type(max_learning_rate)))
-
+        # Check type and value of total_steps
         if total_steps is None and epochs is None and steps_per_epoch is None:
             raise ValueError(
                 "either total_steps or (epochs, steps_per_epoch) must be specified"
@@ -1706,6 +1711,7 @@ class OneCycleLR(LRScheduler):
                 raise ValueError("'total_step' must be a positive integer.")
             self.total_steps = total_steps
         else:
+            # Check type and value of epochs and steps_per_epochs
             if not isinstance(epochs, int):
                 raise TypeError("'epochs' must be 'int', but received {}".
                                 format(type(epochs)))
@@ -1719,7 +1725,7 @@ class OneCycleLR(LRScheduler):
                 raise ValueError(
                     "'steps_per_epoch' must be a positive integer.")
             self.total_steps = epochs * steps_per_epoch
-
+        # Check type and value of pac_start
         if not isinstance(pct_start, float):
             raise TypeError("'pct_start' must be 'float', but received {}".
                             format(type(pct_start)))
