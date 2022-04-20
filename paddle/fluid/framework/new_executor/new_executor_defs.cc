@@ -641,6 +641,28 @@ void VariableScope::CheckExist(const std::string& name) const {
                                             "%s not in VariableScope.", name));
 }
 
+void VariableScope::ClearListener() {
+  if (scope_ && listener_ && scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << scope_;
+    scope_->DelListener(listener_);
+  }
+  if (local_scope_ && listener_ && local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << local_scope_;
+    local_scope_->DelListener(listener_);
+  }
+}
+
+void VariableScope::ResetListener() {
+  if (scope_ && listener_ && !scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << scope_;
+    scope_->AddListener(listener_);
+  }
+  if (local_scope_ && listener_ && !local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << local_scope_;
+    local_scope_->AddListener(listener_);
+  }
+}
+
 VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
   var_scope_ = var_scope;
 }
