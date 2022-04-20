@@ -82,6 +82,7 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                int64_t data_layout);
 
 struct ConvCacheKey {
+  ConvCacheKey() {}
   explicit ConvCacheKey(const std::vector<int64_t>& x_dims,
                         const std::vector<int64_t>& w_dims,
                         const std::vector<int>& strides,
@@ -110,9 +111,9 @@ struct ConvCacheKey {
   }
   std::vector<int64_t> x_dims_;
   std::vector<int64_t> w_dims_;
-  const std::vector<int>& strides_;
-  const std::vector<int>& paddings_;
-  const std::vector<int>& dilations_;
+  std::vector<int> strides_;
+  std::vector<int> paddings_;
+  std::vector<int> dilations_;
   phi::DataType dtype_;
   int groups_;
   int64_t data_layout_;
