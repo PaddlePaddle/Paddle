@@ -21,6 +21,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "cinn/auto_schedule/auto_tuner.h"
+#include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/frontend/decomposer/use_decomposer.h"
@@ -31,11 +33,13 @@
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/pass.h"
 #include "cinn/hlir/pass/use_pass.h"
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -45,6 +49,8 @@
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
+DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_cinn_auto_tune);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -55,6 +61,7 @@ using inference::analysis::Dot;
 using ::cinn::common::Target;
 using ::cinn::common::Float;
 using ::cinn::hlir::framework::GraphCompiler;
+using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::frontend::ProgramPass;
 using ::cinn::hlir::framework::ApplyPass;
@@ -217,6 +224,33 @@ void CinnCompiler::Clear() {
   real_compiled_num_.store(0);
 }
 
+void CinnCompiler::CheckCompiledValid(
+    const ir::Graph& graph,
+    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const CinnCompiledObject& compiled_obj) const {
+  const auto& input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
+  const auto& output_var_names =
+      graph.Get<std::vector<std::string>>(kOutputVars);
+  auto* launch_context = compiled_obj.launch_context.get();
+  // 1. check all of the output variables will be assigned by compiled program
+  for (auto&& var_name : output_var_names) {
+    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name), true,
+                      platform::errors::PreconditionNotMet(
+                          "Variable(%s) not applied in CINN", var_name));
+  }
+  // 2. check all of the used input variables were correctly deduced by CINN.
+  for (const auto& var_name : input_var_names) {
+    // some input variables were not used by CINN because they were eliminated
+    // by its optimized passes or some operators of it need less inputs
+    if (!launch_context->IsVariableUsed(var_name)) {
+      VLOG(4) << "Input variable" << var_name << " not used by cinn";
+      continue;
+    }
+    launch_context->CheckTensorEquivalent(var_name,
+                                          *input_tensors.at(var_name));
+  }
+}
+
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
@@ -244,16 +278,30 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
+  if (!FLAGS_enable_pe_launch_cinn) {
+    options.with_buffer_handle_instruction_inserted = true;
+  }
+  std::unique_ptr<AutoTuner> auto_tuner;
+  if (FLAGS_enable_cinn_auto_tune) {
+    VLOG(4) << "Compile with auto-tune";
+    auto_tuner = std::make_unique<AutoTuner>(target, cinn_graph.get());
+    auto_tuner->Initialize(AutoTuner::Config(), graph_compiler.get());
+    ::cinn::auto_schedule::TuningOptions tuning_options;
+    tuning_options.num_measure_trials = 0;
+    auto tuning_result = auto_tuner->Tune(tuning_options);
+    options.Apply(tuning_result);
+  }
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {std::move(graph_compiler),
+  *compiled_obj = {std::move(graph_compiler), std::move(auto_tuner),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;
   compiled_obj->launch_context =
       std::make_unique<operators::details::CinnLaunchContext>(graph,
                                                               *compiled_obj);
+  CheckCompiledValid(graph, input_tensors, *compiled_obj);
   return compiled_obj;
 }
 

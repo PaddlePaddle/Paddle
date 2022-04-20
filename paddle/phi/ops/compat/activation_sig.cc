@@ -19,26 +19,22 @@ namespace phi {
 #define DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(               \
       const ArgumentMappingContext& ctx) {                        \
-    return KernelSignature(op_name "_grad",                       \
-                           {"X", GradVarName("Out")},             \
-                           {attrs},                               \
-                           {GradVarName("X")});                   \
+    return KernelSignature(                                       \
+        op_name "_grad", {"X", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
 
 #define DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(                 \
       const ArgumentMappingContext& ctx) {                          \
-    return KernelSignature(op_name "_grad",                         \
-                           {"Out", GradVarName("Out")},             \
-                           {attrs},                                 \
-                           {GradVarName("X")});                     \
+    return KernelSignature(                                         \
+        op_name "_grad", {"Out", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
 
-#define DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(func_name, op_name, attrs)           \
-  KernelSignature func_name##GradOpArgumentMapping(                          \
-      const ArgumentMappingContext& ctx) {                                   \
-    return KernelSignature(                                                  \
-        op_name "_grad", {GradVarName("Out")}, {attrs}, {GradVarName("X")}); \
+#define DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(func_name, op_name, attrs) \
+  KernelSignature func_name##GradOpArgumentMapping(                \
+      const ArgumentMappingContext& ctx) {                         \
+    return KernelSignature(                                        \
+        op_name "_grad", {"Out@GRAD"}, {attrs}, {"X@GRAD"});       \
   }
 
 #define comma ,
@@ -139,13 +135,13 @@ KernelSignature TanhTripleGradOpArgumentMapping(
 KernelSignature SigmoidDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "sigmoid_double_grad", {"Out", "DDX", "DOut"}, {}, {"DOutNew", "DDOut"});
+      "sigmoid_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
 }
 
 KernelSignature SigmoidTripleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sigmoid_triple_grad",
-                         {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
+                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
                          {},
                          {"D_OutNew", "D_DOut", "D_DDx"});
 }
@@ -165,15 +161,12 @@ KernelSignature EluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature LogitGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "logit_grad", {"X", GradVarName("Out")}, {"eps"}, {GradVarName("X")});
+  return KernelSignature("logit_grad", {"X", "Out@GRAD"}, {"eps"}, {"X@GRAD"});
 }
 
 KernelSignature EluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("elu_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"alpha"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "elu_grad", {"X", "Out", "Out@GRAD"}, {"alpha"}, {"X@GRAD"});
 }
 
 KernelSignature EluDoubleGradOpArgumentMapping(
@@ -198,13 +191,11 @@ KernelSignature PowOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("FactorTensor")) {
-    return KernelSignature("pow_grad",
-                           {"X", GradVarName("Out")},
-                           {"FactorTensor"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "pow_grad", {"X", "Out@GRAD"}, {"FactorTensor"}, {"X@GRAD"});
   } else {
     return KernelSignature(
-        "pow_grad", {"X", GradVarName("Out")}, {"factor"}, {GradVarName("X")});
+        "pow_grad", {"X", "Out@GRAD"}, {"factor"}, {"X@GRAD"});
   }
 }
 

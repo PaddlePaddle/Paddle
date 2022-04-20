@@ -826,6 +826,8 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
 }
 
 void PartialGradTask::RunEachOp(OpBase *op) {
+  platform::RecordEvent op_type_record_event(
+      op->Type() + " grad trace_op", platform::TracerEventType::Operator, 1);
   // Prepare new inputs
   NameVarMap<VarBase> tmp_ins;
   for (auto &input_pair : op->GetInsMap()) {
@@ -908,7 +910,6 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   // Run op
   OpBase::Run(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),
               op->DefaultAttrsMap(), op->place());
-
   if (create_graph_) {
     auto double_grad_node =
         CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),

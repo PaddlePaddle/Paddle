@@ -76,7 +76,13 @@ TEST(MemorySparseTable, SGD) {
   std::vector<float> init_values;
   init_values.resize(init_keys.size() * (emb_dim + 3));
   auto value = PullSparseValue(init_keys, init_fres, emb_dim);
-  table->PullSparse(init_values.data(), value);
+
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.pull_context.pull_value = value;
+  table_context.pull_context.values = init_values.data();
+  table->Pull(table_context);
+  // table->PullSparse(init_values.data(), value);
 
   // for check
   std::vector<float> total_gradients;
@@ -109,7 +115,14 @@ TEST(MemorySparseTable, SGD) {
     auto &push_keys = trainer_keys[i];
     auto &push_values = trainer_gradient_values[i];
     auto task = [table, &push_keys, &push_values] {
-      table->PushSparse(push_keys.data(), push_values.data(), push_keys.size());
+      TableContext table_context;
+      table_context.value_type = Sparse;
+      table_context.push_context.keys = push_keys.data();
+      table_context.push_context.values = push_values.data();
+      table_context.num = push_keys.size();
+      table->Push(table_context);
+      // table->PushSparse(push_keys.data(), push_values.data(),
+      // push_keys.size());
     };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
@@ -119,7 +132,13 @@ TEST(MemorySparseTable, SGD) {
 
   std::vector<float> pull_values;
   pull_values.resize(init_keys.size() * (emb_dim + 3));
-  table->PullSparse(pull_values.data(), value);
+
+  TableContext table_context1;
+  table_context1.value_type = Sparse;
+  table_context1.pull_context.pull_value = value;
+  table_context1.pull_context.values = pull_values.data();
+  table->Pull(table_context1);
+  // table->PullSparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size(); ++i) {
     for (size_t j = 2; j < emb_dim + 3; ++j) {

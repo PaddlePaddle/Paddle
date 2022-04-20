@@ -23,6 +23,7 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 # Test python API
@@ -74,6 +75,67 @@ class TestFullAPI(unittest.TestCase):
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
+
+    def test_api_eager(self):
+        with fluid.dygraph.base.guard():
+            with _test_eager_guard():
+                positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
+
+                positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+                out_1 = paddle.full(
+                    shape=[1, 2], dtype="float32", fill_value=1.1)
+
+                out_2 = paddle.full(
+                    shape=[1, positive_2_int32.item()],
+                    dtype="float32",
+                    fill_value=1.1)
+
+                out_3 = paddle.full(
+                    shape=[1, positive_2_int64.item()],
+                    dtype="float32",
+                    fill_value=1.1)
+
+                out_4 = paddle.full(
+                    shape=[1, 2], dtype="float32", fill_value=1.2)
+
+                out_5 = paddle.full(
+                    shape=[1, 2], dtype="float32", fill_value=1.1)
+
+                out_6 = paddle.full(
+                    shape=[1, 2], dtype=np.float32, fill_value=1.1)
+
+                val = fluid.layers.fill_constant(
+                    shape=[1], dtype=np.float32, value=1.1)
+                out_7 = paddle.full(
+                    shape=[1, 2], dtype=np.float32, fill_value=val)
+                # test for numpy.float64 as fill_value
+                out_8 = paddle.full_like(
+                    out_7, dtype=np.float32, fill_value=np.abs(1.1))
+
+                assert np.array_equal(
+                    out_1, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_2, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_3, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_4, np.full(
+                        [1, 2], 1.2, dtype="float32"))
+                assert np.array_equal(
+                    out_5, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_6, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_7, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_8, np.full(
+                        [1, 2], 1.1, dtype="float32"))
 
 
 class TestFullOpError(unittest.TestCase):

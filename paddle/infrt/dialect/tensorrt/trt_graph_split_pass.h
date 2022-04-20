@@ -17,6 +17,9 @@
 
 namespace infrt {
 namespace trt {
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphSplitPass(size_t min_subgraph_size);
+
 /*
  * trtGraphSplitPass.
  *

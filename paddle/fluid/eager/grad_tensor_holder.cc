@@ -53,7 +53,7 @@ void GradTensorHolder::CopyValueFromTensor(
     paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
-      buffer_tensor.copy_(t, t.inner_place(), false);
+      buffer_tensor.copy_(t, t.place(), false);
       buffer_tensor.set_autograd_meta(t.mutable_autograd_meta());
 
     } else {
@@ -64,14 +64,16 @@ void GradTensorHolder::CopyValueFromTensor(
   } else {
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
-      // Fill 1.0
-      buffer_[slot_id][rank] = paddle::experimental::ones_like(t, t.dtype());
+      // Fill 1.0, use full to support complex, one_like don't support it.
+      buffer_[slot_id][rank] =
+          paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
     }
   }
 }
 
 void GradTensorHolder::add(size_t slot_id, size_t rank,
-                           const paddle::experimental::Tensor& t) {
+                           const paddle::experimental::Tensor& t,
+                           bool create_graph) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -109,10 +111,15 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
                           "got tensor: %s is empty please check you network "
                           "and make sure it creates grads.",
                           t.name()));
+
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
-        buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
-
+        if (create_graph) {
+          buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
+        } else {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t, &buffer_tensor);
+        }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with

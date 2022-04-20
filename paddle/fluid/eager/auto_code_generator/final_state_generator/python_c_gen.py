@@ -23,7 +23,7 @@ from codegen_utils import ParseYamlForward, GetInplacedFunctionName
 ###########################
 ## Global Configurations ##
 ###########################
-skipped_forward_api_names = set(["scale"])
+skipped_forward_api_names = set([])
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -46,7 +46,7 @@ atype_to_parsing_function = {
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
-    "paddle::experimental::Place": "CastPyArg2Place",
+    "paddle::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 

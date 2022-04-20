@@ -16,10 +16,11 @@ import paddle
 import unittest
 from paddle.fluid import core
 from paddle.device.cuda import device_count, memory_allocated, max_memory_allocated
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):
-    def test_max_memory_allocated(self, device=None):
+    def func_test_max_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             alloc_time = 100
             max_alloc_size = 10000
@@ -35,16 +36,26 @@ class TestMaxMemoryAllocated(unittest.TestCase):
             self.assertEqual(peak_memory_allocated_size,
                              max_memory_allocated(device))
 
-    def test_max_memory_allocated_for_all_places(self):
+    def test_max_memory_allocated(self):
+        with _test_eager_guard():
+            self.func_test_max_memory_allocated()
+        self.func_test_max_memory_allocated()
+
+    def func_test_max_memory_allocated_for_all_places(self):
         if core.is_compiled_with_cuda():
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.test_max_memory_allocated(core.CUDAPlace(i))
-                self.test_max_memory_allocated(i)
-                self.test_max_memory_allocated("gpu:" + str(i))
+                self.func_test_max_memory_allocated(core.CUDAPlace(i))
+                self.func_test_max_memory_allocated(i)
+                self.func_test_max_memory_allocated("gpu:" + str(i))
 
-    def test_max_memory_allocated_exception(self):
+    def test_max_memory_allocated_for_all_places(self):
+        with _test_eager_guard():
+            self.func_test_max_memory_allocated_for_all_places()
+        self.func_test_max_memory_allocated_for_all_places()
+
+    def func_test_max_memory_allocated_exception(self):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(), device_count() + 1, -2, 0.5, "gpu1", "npu"
@@ -55,6 +66,11 @@ class TestMaxMemoryAllocated(unittest.TestCase):
         else:
             with self.assertRaises(BaseException):
                 max_memory_allocated()
+
+    def test_max_memory_allocated_exception(self):
+        with _test_eager_guard():
+            self.func_test_max_memory_allocated_exception()
+        self.func_test_max_memory_allocated_exception()
 
 
 if __name__ == "__main__":
