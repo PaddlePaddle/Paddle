@@ -255,6 +255,21 @@ class TestPyPrimOps(unittest.TestCase):
             print(f'xx_grad: {xx_grad.name}')
             print(x.block)
 
+    def test_second_order_gradients_set2(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data('x', shape=[121, 2], dtype='float32')
+            x.stop_gradient = False
+            w = paddle.static.create_parameter(
+                shape=[2, 2], dtype='float32', is_bias=False)
+            bias = paddle.static.create_parameter(
+                shape=[2], dtype='float32', is_bias=True)
+            y = paddle.matmul(x, w) + bias
+            jac = _gradients(y, x)
+            hes_0 = _gradients(jac[0][:, 0], x)
+            hes_1 = _gradients(jac[0][:, 1], x)
+
     def test_lower(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
