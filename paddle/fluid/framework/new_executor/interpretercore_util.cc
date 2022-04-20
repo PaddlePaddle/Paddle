@@ -172,6 +172,8 @@ void build_variable_scope(const framework::BlockDesc& block,
       auto* ptr = inner_scope->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
+      // NOTE(zhiqiu): if var exists in scope and the type is right,
+      // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
       VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
