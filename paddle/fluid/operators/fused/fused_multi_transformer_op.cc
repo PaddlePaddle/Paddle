@@ -23,7 +23,7 @@ using Tensor = framework::Tensor;
 
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
-  static constexpr const char *OpName = "FusedAttentionOp";
+  static constexpr const char *OpName = "FusedMultiTransformerOp";
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -282,30 +282,7 @@ class FusedMultiTransformerOpOpMaker
         "ring id for tensor model parallel. distributed training and inference")
         .SetDefault(-1);
 
-    AddComment(R"DOC(
-  Add fused attention op whose logic is as follows:
-  // @input: [batch_size, seq_len, 3, num_head, head_dim] 
-  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
-  if (pre_layernorm)
-    out = layer_norm(input);
-	out = compute_qkv(out) + bias;
-	// fmha module
-  {
-    out = transpose(out, perm=[2, 0, 3, 1, 4]);
-    out = q * k^t;
-    out = attn_mask + out;
-    out = softmax(out);
-    out = dropout(out);
-    out = out * v;
-    out = transpose(out, perm=[0, 2, 1, 3]);
-                
-  }
-	out = out_linear(out);
-  if (pre_layernorm)
-    final_out = residual + dropout(bias + out);
-  else
-    final_out = layer_norm(residual + dropout(bias + out));
-    )DOC");
+    AddComment(R"DOC(fused multi transformer layers op)DOC");
   }
 };
 

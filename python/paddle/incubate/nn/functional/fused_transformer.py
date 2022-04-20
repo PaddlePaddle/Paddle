@@ -488,3 +488,106 @@ def fused_multi_head_attention(x,
             attrs=attrs)
 
         return (final_out, cache_kv_out) if cache_kv else final_out
+
+
+def fused_multi_transformer(x,
+                            ln_scales,
+                            ln_biases,
+                            qkv_weights,
+                            qkv_biases,
+                            linear_weights,
+                            linear_biases,
+                            ffn_ln_scales,
+                            ffn_ln_biases,
+                            ffn1_weights,
+                            ffn1_biases,
+                            ffn2_weights,
+                            ffn2_biases,
+                            pre_layer_norm=True,
+                            epsilon=1e-05,
+                            cache_kvs=None,
+                            time_step=None,
+                            attn_mask=None,
+                            dropout_rate=0.5,
+                            training=False,
+                            mode='upscale_in_train',
+                            ring_id=-1,
+                            name=None):
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+    if _non_static_mode():
+        cache_kv_out, final_out = _C_ops.fused_multi_transformer(
+            x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
+            time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
+            ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
+            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
+            'attn_dropout_rate', dropout_rate, 'attn_dropout_is_test',
+            not training, 'attn_dropout_implementation', mode,
+            'dropout_implementation', mode, 'ring_id', ring_id)
+        if cache_kvs is not None:
+            return final_out, cache_kv_out
+        return final_out
+    else:
+        helper = LayerHelper('fused_multi_transformer', **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32'],
+                                 'fused_multi_transformer')
+        check_dtype(dtype, 'dtype', ['float16', 'float32'],
+                    'fused_multi_transformer')
+
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        inputs['LnScale'] = ln_scales
+        inputs['LnBias'] = ln_biases
+        inputs['QKVW'] = qkv_weights
+        if qkv_biases is not None:
+            inputs['QKVBias'] = qkv_biases
+        if cache_kvs is not None:
+            assert len(cache_kvs) == len(qkv_weights)
+            inputs['CacheKV'] = cache_kvs
+            if time_step is not None:
+                inputs['TimeStep'] = time_step
+        inputs['SrcMask'] = attn_mask
+        inputs['OutLinearW'] = linear_weights
+        if linear_biases is not None:
+            inputs['OutLinearBias'] = linear_biases
+
+        inputs['FFNLnScale'] = ffn_ln_scales
+        inputs['FFNLnBias'] = ffn_ln_biases
+        inputs['FFN1Weight'] = ffn1_weights
+        if ffn1_biases is not None:
+            inputs['FFN1Bias'] = ffn1_biases
+        inputs['FFN2Weight'] = ffn2_weights
+        if ffn2_biases is not None:
+            inputs['FFN2Bias'] = ffn2_biases
+
+        # set attrs
+        attrs = {
+            'pre_layer_norm': pre_layer_norm,
+            'epsilon': epsilon,
+            'attn_dropout_rate': dropout_rate,
+            'attn_dropout_is_test': not training,
+            'attn_dropout_implementation': mode,
+            'dropout_implementation': mode,
+            'ring_id': ring_id
+        }
+
+        outputs = dict()
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
+        outputs['Out'] = final_out
+        if cache_kvs:
+            # NOTE: inplace
+            outputs['CacheKVOut'] = cache_kvs
+
+        helper.append_op(
+            type='fused_multi_transformer',
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs)
+
+        return (final_out, cache_kvs) if cache_kvs else final_out

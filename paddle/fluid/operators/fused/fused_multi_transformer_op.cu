@@ -1,4 +1,5 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+ * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,8 +12,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-// This file is inspired by FasterTransformer
-// https://github.com/NVIDIA/FasterTransformer/blob/main/fastertransformer/cuda/masked_multihead_attention.cu
+// This file has been adapted from FasterTransformer file:
+// https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
+// We add License in the head.
 
 #include <cuda_fp16.h>
 #include <float.h>
@@ -69,6 +71,7 @@ static void AllReduce(framework::Tensor &tensor,  // NOLINT
 namespace {
 
 namespace plat = paddle::platform;
+using float16 = plat::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
@@ -77,20 +80,21 @@ template <typename T>
 struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
-  // qkv_out, [3, B, 1(seq_len), num_head * dim_head]
+  // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
   const T *qkv;
   // bias, [3, num_head, dim_head]
   const T *qkv_bias;
-  // TODO(wangxi): optimize with input_lengths and max_input_len
+  // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
 
-  // [2, B, num_head, cache_seq_len(padding max_seq_len), dim_head]
+  // [2, B, num_head, max_seq_len(valid cache_seq_len), dim_head]
+  // k [B, num_head, dim_head/x, max_seq_len, x], that is `seq_len` first
+  // v [B, num_head, max_seq_len, dim_head]
   T *cache_kv;
 
   int batch_size;
   int num_head;
-  // int dim_head;
   int timestep;  // cache_seq_length
   int max_seq_length;
 
@@ -105,104 +109,43 @@ struct Float8_ {
   float2 w;
 };
 
-template <typename T, int Dh>
-struct Qk_vec_ {};
-template <>
-struct Qk_vec_<float, 32> {
-  using Type = float;
-};
-template <>
-struct Qk_vec_<float, 64> {
-  using Type = float2;
-};
-template <>
-struct Qk_vec_<float, 128> {
-  using Type = float4;
-};
-template <>
-struct Qk_vec_<plat::float16, 32> {
-  using Type = uint32_t;
-};
-template <>
-struct Qk_vec_<plat::float16, 64> {
-  using Type = uint32_t;
-};
-template <>
-struct Qk_vec_<plat::float16, 128> {
-  using Type = uint2;
-};
+// clang-format off
 
-template <typename T, int THREADS_PER_KEY>
-struct K_vec_ {};
-template <>
-struct K_vec_<float, 4> {
-  using Type = float;
-};
-template <>
-struct K_vec_<float, 2> {
-  using Type = float2;
-};
-template <>
-struct K_vec_<float, 1> {
-  using Type = float4;
-};
-template <>
-struct K_vec_<plat::float16, 4> {
-  using Type = uint32_t;
-};
-template <>
-struct K_vec_<plat::float16, 2> {
-  using Type = uint2;
-};
-template <>
-struct K_vec_<plat::float16, 1> {
-  using Type = uint4;
-};
+template <typename T, int Dh> struct Qk_vec_ {};
+template <> struct Qk_vec_<float,    32> { using Type = float;    };
+template <> struct Qk_vec_<float,    64> { using Type = float2;   };
+template <> struct Qk_vec_<float,   128> { using Type = float4;   };
+template <> struct Qk_vec_<float16,  32> { using Type = uint32_t; };
+template <> struct Qk_vec_<float16,  64> { using Type = uint32_t; };
+template <> struct Qk_vec_<float16, 128> { using Type = uint2;    };
 
-template <typename T, int V_VEC_SIZE>
-struct V_vec_ {};
-template <>
-struct V_vec_<float, 1> {
-  using Type = float;
-};
-template <>
-struct V_vec_<float, 2> {
-  using Type = float2;
-};
-template <>
-struct V_vec_<float, 4> {
-  using Type = float4;
-};
-template <>
-struct V_vec_<plat::float16, 2> {
-  using Type = uint32_t;
-};
-template <>
-struct V_vec_<plat::float16, 4> {
-  using Type = uint2;
-};
-template <>
-struct V_vec_<plat::float16, 8> {
-  using Type = uint4;
-};
+template <typename T, int THREADS_PER_KEY> struct K_vec_ {};
+template <> struct K_vec_<float,   4> { using Type = float;    };
+template <> struct K_vec_<float,   2> { using Type = float2;   };
+template <> struct K_vec_<float,   1> { using Type = float4;   };
+template <> struct K_vec_<float16, 4> { using Type = uint32_t; };
+template <> struct K_vec_<float16, 2> { using Type = uint2;    };
+template <> struct K_vec_<float16, 1> { using Type = uint4;    };
+
+template <typename T, int V_VEC_SIZE> struct V_vec_ {};
+template <> struct V_vec_<float,   1> { using Type = float;    };
+template <> struct V_vec_<float,   2> { using Type = float2;   };
+template <> struct V_vec_<float,   4> { using Type = float4;   };
+template <> struct V_vec_<float16, 2> { using Type = uint32_t; };
+template <> struct V_vec_<float16, 4> { using Type = uint2;    };
+template <> struct V_vec_<float16, 8> { using Type = uint4;    };
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-template <typename T>
-struct V_vec_acum_fp32_ {};
-
-// template<> struct V_vec_acum_fp32_<float   > { using Type = float;    };
-// template<> struct V_vec_acum_fp32_<float2  > { using Type = float2;   };
-template <>
-struct V_vec_acum_fp32_<float4> {
-  using Type = float4;
-};
-// template<> struct V_vec_acum_fp32_<uint32_t> { using Type = float2;   };
-// template<> struct V_vec_acum_fp32_<uint2   > { using Type = Float4_;  };
-template <>
-struct V_vec_acum_fp32_<uint4> {
-  using Type = Float8_;
-};
+template <typename T> struct V_vec_acum_fp32_ {};
+// template <> struct V_vec_acum_fp32_<float>  { using Type = float;  };
+// template <> struct V_vec_acum_fp32_<float2> { using Type = float2; };
+template <> struct V_vec_acum_fp32_<float4> { using Type = float4; };
+// template <> struct V_vec_acum_fp32_<uint32_t> { using Type = float2;   };
+// template <> struct V_vec_acum_fp32_<uint2   > { using Type = Float4_;  };
+template <> struct V_vec_acum_fp32_<uint4> { using Type = Float8_; };
 #endif
+
+// clang-format on
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
@@ -587,15 +530,6 @@ inline __device__ void zero(T &dst) {  // NOLINT
   dst = tmp.raw;
 }
 
-template <typename T>
-__global__ void print_kernel(const T *tensor_data, int num) {
-  printf("in kernel");
-  for (int i = 0; i < num; ++i) {
-    printf("%f ", static_cast<float>(tensor_data[i]));
-  }
-  printf("\n");
-}
-
 template <typename T, int Dh, int THREADS_PER_KEY, int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK>
 __global__ void masked_multihead_attention_kernel(
@@ -657,6 +591,8 @@ __global__ void masked_multihead_attention_kernel(
         *reinterpret_cast<const Qk_vec *>(&k_bias_base[qk_bias_offset]);
 
     q = add(q, q_bias);
+    // TODO(wangxi): See this https://github.com/microsoft/unilm/issues/510
+    //   we may not require k_bias.
     k = add(k, k_bias);
 
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
@@ -959,7 +895,10 @@ void fmha(const platform::CUDADeviceContext &dev_ctx, const Tensor &qkv_tensor,
       fmha_launch_kernel<T, 128>(params, dev_ctx.stream());
       break;
     default:
-      assert(false);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "dim_head = %d is unsupport, only support "
+          "dim_head = 32, 64 or 128 for now.",
+          dim_head));
   }
 }
 
@@ -1033,8 +972,11 @@ void write_cache_kv(const platform::CUDADeviceContext &dev_ctx, T *cache_k,
   constexpr int block_sz = 128;
   constexpr int x = VEC_16B / sizeof(T);
 
-  // dim_head must be 32, 64, or 128
   assert(dim_head % x == 0);
+  PADDLE_ENFORCE_EQ(
+      dim_head % x, 0,
+      platform::errors::PreconditionNotMet(
+          "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   int max_size = max_seq_len * dim_head / x;
   int size = seq_len * dim_head / x;
@@ -1070,9 +1012,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "0. input";
-#endif
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -1084,9 +1023,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     Tensor ln_mean, ln_var;
     auto *ln_mean_data = ln_mean.mutable_data<U>({bsz_seq}, place);
     auto *ln_var_data = ln_var.mutable_data<U>({bsz_seq}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "1. ln";
-#endif
 
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -1107,9 +1043,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     Tensor qkv_out;
     auto *qkv_out_data =
         qkv_out.mutable_data<T>({bsz, seq_len, 3, num_head, dim_head}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "2. qkv";
-#endif
 
     // 3. fmha
     AttnDropoutParam attn_param(true, "upscale_in_train", 0.0, true, true, 0,
@@ -1123,11 +1056,20 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     auto out_seq_len = seq_len;
     if (time_step) {
-      assert(time_step->place() == platform::CPUPlace());
+      PADDLE_ENFORCE_EQ(time_step->place(), platform::CPUPlace(),
+                        platform::errors::PreconditionNotMet(
+                            "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
-      assert(time_step_value > 0);
-      assert(seq_len == 1);
+      PADDLE_ENFORCE_GT(time_step_value, 0,
+                        platform::errors::PreconditionNotMet(
+                            "The value of time_step must > 0, but now is %d",
+                            time_step_value));
+      PADDLE_ENFORCE_EQ(
+          seq_len, 1,
+          platform::errors::PreconditionNotMet(
+              "In decode stage, the seq_len of input must be 1, but now is %d",
+              seq_len));
       out_seq_len += time_step_value;
     }
 
@@ -1154,9 +1096,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         qktv_out.mutable_data<T>({bsz, num_head, seq_len, dim_head}, place);
     auto *fmha_out_data =
         fmha_out.mutable_data<T>({bsz, seq_len, num_head, dim_head}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "3. fmha";
-#endif
 
     // 4. out_linear
     auto out_linear_weights = ctx.MultiInput<Tensor>("OutLinearW");
@@ -1165,9 +1104,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute = AttnMatMul<T>(dev_ctx, false, false, bsz_seq,
                                             dim_embed, hidden_size, false);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "4. out_linear";
-#endif
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
@@ -1181,9 +1117,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                   place);
     auto *dropout_mask_out_data = dropout_mask_out.mutable_data<uint8_t>(
         {bsz, seq_len, dim_embed}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "5. ln(redis)";
-#endif
 
     // 6. ffn matmul1
     auto ffn1_weights = ctx.MultiInput<Tensor>("FFN1Weight");
@@ -1195,9 +1128,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                              dim_ffn, dim_embed, false);
     Tensor ffn1_out;
     auto *ffn1_out_data = ffn1_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "6. ffn1";
-#endif
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
@@ -1208,26 +1138,18 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         ffn1_dropout_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
     auto *ffn1_dropout_mask_data =
         ffn1_dropout_mask.mutable_data<uint8_t>({bsz_seq, dim_ffn}, place);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "7. ffn act";
-#endif
 
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<Tensor>("FFN2Bias");
     auto ffn2_linear_compute = AttnMatMul<T>(dev_ctx, false, false, bsz_seq,
                                              dim_embed, dim_ffn, false);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "8. ffn2 matmul";
-#endif
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
         dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    VLOG(0) << "9. ffn2 redis";
-#endif
+
     // calc
     auto *out = ctx.Output<Tensor>("Out");
     auto *from_data = out->mutable_data<T>(place);
@@ -1263,8 +1185,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         ln_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,
                                   buf1->data<T>(), ln_mean_data, ln_var_data);
       } else {
-        //        from_data = x_data;
-        //        from_tensor = input_x;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unimplemented post_layer_norm for now."));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step1";
@@ -1272,7 +1194,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
       // step2. qkv
       const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
-      // in decoder stage, bias is fused in fmha
+      // NOTE: in decoder stage, bias is fused in fmha
       const Tensor *bias = time_step ? nullptr : qkv_bias;
       qkv_compute.ComputeForward(qkv_weights[i], buf1, bias, &qkv_out,
                                  &qkv_out);
@@ -1287,8 +1209,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
-
-        // FIXME(wangxi): bias add again
         fmha<T>(dev_ctx, qkv_out, *qkv_bias, *src_mask, cache_kv_out, &fmha_out,
                 bsz, max_seq_len, num_head, dim_head, time_step->data<int>()[0],
                 1. / sqrt(dim_head));
@@ -1346,7 +1266,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             dev_ctx, buf1->data<T>(), x_data, out_linear_bias_data,
             ln_scale_data, ln_bias_data, bias_dropout_residual_out_data,
             dropout_mask_out_data, buf1->data<T>(), ln_mean_data, ln_var_data);
-        // dropout_mask_out_data, from_data, ln_mean_data, ln_var_data);
       } else {
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
@@ -1354,7 +1273,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step6. ffn matmul1
-      // ffn1_linear_compute.ComputeForward(ffn1_weights[i], out, nullptr,
       ffn1_linear_compute.ComputeForward(ffn1_weights[i], buf1, nullptr,
                                          &ffn1_out, nullptr);
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
