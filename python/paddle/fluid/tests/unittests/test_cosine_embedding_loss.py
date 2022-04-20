@@ -151,49 +151,6 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         with static.program_guard(static.Program()):
             self.run_static(use_gpu=True)
 
-    def test_legal_type(self):
-        paddle.disable_static()
-        input1 = paddle.to_tensor(self.input1_np).astype(paddle.float32)
-        input2 = paddle.to_tensor(self.input2_np).astype(paddle.float32)
-        label = paddle.to_tensor(self.label_np.astype(np.int64))
-        result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
-        self.assertTrue(np.allclose(result.numpy(), expected, atol=1.e-6))
-        print("result:    {}".format(result.numpy()))
-        print("expected:  {}".format(expected))
-
-        label = paddle.to_tensor(self.label_np.astype(np.float32))
-        result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
-        self.assertTrue(np.allclose(result.numpy(), expected, atol=1.e-6))
-        print("result:    {}".format(result.numpy()))
-        print("expected:  {}".format(expected))
-
-        label = paddle.to_tensor(self.label_np.astype(np.float64))
-        result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
-        self.assertTrue(np.allclose(result.numpy(), expected, atol=1.e-6))
-        print("result:    {}".format(result.numpy()))
-        print("expected:  {}".format(expected))
-
     def test_errors(self):
         paddle.disable_static()
         input1 = paddle.to_tensor(self.input1_np)
