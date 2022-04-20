@@ -136,6 +136,7 @@ function(select_nvcc_arch_flags out_variable)
       set(cuda_arch_bin "80")
     elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
       set(cuda_arch_bin "80 86")
+    endif()
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
