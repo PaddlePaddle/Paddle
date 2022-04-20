@@ -673,7 +673,9 @@ nvinfer1::DataType SpmmPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(inputTypes[0] == nvinfer1::DataType::kFLOAT ||
                         inputTypes[0] == nvinfer1::DataType::kHALF ||
                         inputTypes[0] == nvinfer1::DataType::kINT8,
-                    true, "SpmmPluginDynamic is not support this format now");
+                    true,
+                    platform::errors::InvalidArgument(
+                        "SpmmPluginDynamic is not support this format now"));
 
   return inputTypes[0];
 }
