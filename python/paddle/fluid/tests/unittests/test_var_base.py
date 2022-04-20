@@ -1750,9 +1750,10 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             a.stop_gradient = False
             b = a**2
+            self.assertEqual(a._grad_value(), None)
             b.backward()
             self.assertEqual('eager_tmp' in a._grad_name(), True)
-            self.assertEqual((a._grad_value().numpy() == 2 * a_np).all(), True)
+            self.assertNotEqual(a._grad_value(), None)
 
 
 if __name__ == '__main__':

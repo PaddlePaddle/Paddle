@@ -1514,7 +1514,22 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
                     platform::errors::InvalidArgument(
                         "Detected NULL grad. Please check if you have manually "
                         "cleared the grad inside autograd_meta"));
-  return ToPyObject(*grad);
+
+  if (!grad->defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  if (grad->is_dense_tensor()) {
+    auto* grad_tensor =
+        static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
+    return ToPyObject(grad_tensor);
+  } else {
+    PADDLE_ENFORCE(grad->is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "this method is only supported for DenseTensor"));
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
