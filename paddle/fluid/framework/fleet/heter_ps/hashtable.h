@@ -72,9 +72,23 @@ class XPUCacheArray {
   void print() {}
 
 #if defined(__xpu__)
-  __device__ ValType* find(const KeyType& key) { return NULL; }
+  __device__ ValType* find(const KeyType& key) {
+    for (int i = 0; i < size_; i++) {
+      if (keys[i] == key) return vals[i];
+    }
+    return NULL;
+  }
   __device__ bool insert(const KeyType& key, const ValType& val) {
-    return true;
+    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
+    // one batch
+    if (size_ == capacity_) {
+      return false;
+    } else {
+      keys[size_] = key;
+      vals[size_] = val;
+      size_++;
+      return true;
+    }
   }
 #endif
 

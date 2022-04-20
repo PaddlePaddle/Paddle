@@ -18,13 +18,11 @@ limitations under the License. */
 namespace optimizer_config {
 extern _global_ptr_ float* nonclk_coeff;
 extern _global_ptr_ float* clk_coeff;
-
 extern _global_ptr_ float* min_bound;
 extern _global_ptr_ float* max_bound;
 extern _global_ptr_ float* learning_rate;
 extern _global_ptr_ float* initial_g2sum;
 extern _global_ptr_ float* initial_range;
-
 extern _global_ptr_ float* mf_create_thresholds;
 extern _global_ptr_ float* mf_learning_rate;
 extern _global_ptr_ float* mf_initial_g2sum;
@@ -229,7 +227,8 @@ __global__ void update_kernel(Table& table, const KeyType* const keys,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
-  xpu_malloc(reinterpret_cast<void**>(&container_), sizeof(XPUCacheArray<KeyType, ValType>));
+  xpu_malloc(reinterpret_cast<void**>(&container_),
+             sizeof(XPUCacheArray<KeyType, ValType>));
   xpu_memcpy((void*)container_, &tmp_container,
              sizeof(XPUCacheArray<KeyType, ValType>), XPU_HOST_TO_DEVICE);
   rwlock_.reset(new phi::RWLock);
