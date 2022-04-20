@@ -32,7 +32,7 @@ void SoftMarginLossKernel(const Context& dev_ctx,
 
   // out = ln(1+exp(-label * x)/(x_numel)
   for (int64_t i = 0; i < x_numel; ++i) {
-    out_data[i] =std::log(static_cast<T>(1) + std::exp(-label_data[i]* x_data[i]))/x_numel;
+    out_data[i] =std::log(static_cast<T>(1) + std::exp(-label_data[i]* x_data[i]));
   }
 }
 }  // namespace phi

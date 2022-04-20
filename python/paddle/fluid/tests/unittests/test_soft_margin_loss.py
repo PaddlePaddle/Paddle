@@ -94,7 +94,7 @@ def test_dygraph_functional(place,
 def calc_softmarginloss(input_np, label_np, reduction='mean',):
 
     expected = np.log(1+np.exp(-label_np *input_np))
-    expected = np.mean(expected, axis=-1)
+    # expected = np.mean(expected, axis=-1)
 
     if reduction == 'mean':
         expected = np.mean(expected)
