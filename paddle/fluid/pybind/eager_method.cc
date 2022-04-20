@@ -1524,9 +1524,8 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
         static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
     return ToPyObject(grad_tensor);
   } else {
-    PADDLE_ENFORCE(grad->is_dense_tensor(),
-                   paddle::platform::errors::Fatal(
-                       "this method is only supported for DenseTensor"));
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "this method is only supported for DenseTensor"));
     Py_IncRef(Py_None);
     return Py_None;
   }
