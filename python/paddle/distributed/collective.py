@@ -1786,12 +1786,12 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        if len(tensor_list) == 0:
-            tensor_shape = list(tensor.shape)
-            tensor_shape[0] *= group.nranks
-            out = paddle.empty(tensor_shape, tensor.dtype)
+        if len(out_tensor_list) == 0:
+            tensor_shape = list(in_tensor_list[0].shape)
+            tensor_shape[0] *= nranks
+            out = paddle.empty(tensor_shape, in_tensor_list[0].dtype)
         else:
-            out = paddle.concat(tensor_list, axis=0)
+            out = paddle.concat(out_tensor_list, axis=0)
         task = group.process_group.alltoall(temp, out)
         task.wait()
         out_tensor_list.clear()

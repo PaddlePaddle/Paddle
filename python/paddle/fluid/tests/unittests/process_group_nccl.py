@@ -185,6 +185,24 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(tensor_y, out_2)
             print("test allgather api ok\n")
 
+            if pg.rank() == 0:
+                task = pg.all_gather(tensor_x, tensor_out)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                tensor_out_list = []
+                task = dist.all_gather(
+                    tensor_out_list, tensor_y, use_calc_stream=False)
+                paddle.device.cuda.synchronize()
+                tensor_out = paddle.concat(tensor_out_list)
+            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
+                                 [out_shape[0]])
+            assert np.array_equal(tensor_x, out_1)
+            assert np.array_equal(tensor_y, out_2)
+            print("test allgather api2 ok\n")
+
             # test alltoall
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
@@ -218,6 +236,38 @@ class TestProcessGroupFp32(unittest.TestCase):
             else:
                 assert np.array_equal(out2_1, raw_tensor_x_2)
             print("test alltoall api ok\n")
+
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            out1 = np.random.random(self.shape).astype(self.dtype)
+            out2 = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            tensor_out1 = paddle.to_tensor(out1)
+            tensor_out2 = paddle.to_tensor(out2)
+            raw_tensor_x_2 = paddle.slice(tensor_x, [0], [self.shape[0] // 2],
+                                          [self.shape[0]])
+            raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0],
+                                          [self.shape[0] // 2])
+            if pg.rank() == 0:
+                task = pg.alltoall(tensor_x, tensor_out1)
+                task.wait()
+            # rank 1
+            else:
+                in_1, in_2 = paddle.split(tensor_y, 2)
+                out_1, out_2 = paddle.split(tensor_out2, 2)
+                out_tensor_list = []
+                task = dist.alltoall([in_1, in_2], out_tensor_list)
+                paddle.device.cuda.synchronize()
+                tensor_out2 = paddle.concat(out_tensor_list)
+            out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
+                                  [self.shape[0]])
+            out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
+            if pg.rank() == 0:
+                assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+            else:
+                assert np.array_equal(out2_1, raw_tensor_x_2)
+            print("test alltoall api2 ok\n")
 
             # test Reduce
             # rank 0
