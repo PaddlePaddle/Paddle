@@ -166,21 +166,21 @@ namespace sparse {
     out->SetMember(out_crows, out_cols, out_values, x.dims());                 \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                          \
-  template <typename T, typename Context>                            \
-  void ElementWise##name##CooKernel(const Context& dev_ctx,          \
-                                    const SparseCooTensor& x,        \
-                                    const SparseCooTensor& y,        \
-                                    SparseCooTensor* out) {          \
-    const auto csr_x = SparseCooToCsr<T>(dev_ctx, x);                \
-    const auto csr_y = SparseCooToCsr<T>(dev_ctx, y);                \
-    DenseTensor non_zero_crows;                                      \
-    DenseTensor non_zero_cols;                                       \
-    DenseTensor non_zero_elements;                                   \
-    SparseCsrTensor csr_out(                                         \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims()); \
-    ElementWiseAddCsrKernel<T>(dev_ctx, csr_x, csr_y, &csr_out);     \
-    *out = SparseCsrToCoo<T>(dev_ctx, csr_out);                      \
+#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                           \
+  template <typename T, typename Context>                             \
+  void ElementWise##name##CooKernel(const Context& dev_ctx,           \
+                                    const SparseCooTensor& x,         \
+                                    const SparseCooTensor& y,         \
+                                    SparseCooTensor* out) {           \
+    const auto csr_x = SparseCooToCsr<T>(dev_ctx, x);                 \
+    const auto csr_y = SparseCooToCsr<T>(dev_ctx, y);                 \
+    DenseTensor non_zero_crows;                                       \
+    DenseTensor non_zero_cols;                                        \
+    DenseTensor non_zero_elements;                                    \
+    SparseCsrTensor csr_out(                                          \
+        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());  \
+    ElementWise##name##CsrKernel<T>(dev_ctx, csr_x, csr_y, &csr_out); \
+    *out = SparseCsrToCoo<T>(dev_ctx, csr_out);                       \
   }
 
 template <typename T, typename Context>
