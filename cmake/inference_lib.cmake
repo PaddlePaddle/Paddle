@@ -132,6 +132,13 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     endif()
 
+    if (WITH_SPARSELT)
+        set(dst_dir "${DST}/third_party/install/cusparselt")
+        copy(${TARGET}
+                SRCS ${CUSPARSELT_INC_DIR} ${CUSPARSELT_LIB_DIR}
+                DSTS ${dst_dir} ${dst_dir})
+    endif()
+
     set(dst_dir "${DST}/third_party/install/gflags")
     copy(${TARGET}
             SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
