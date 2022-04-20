@@ -24,6 +24,9 @@ from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, 
 from .primrules import get_input_var_list, get_output_var_list
 from collections import OrderedDict
 
+#TODO(lml): this is a bad and unsafe design used for get laplace2d program, please refactor it later
+global_lower_update = []
+
 
 def flatten(inp):
     if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
@@ -528,6 +531,12 @@ def _lower(block, reverse, update_var_list):
                     outputs=outputs,
                     attrs=attrs)
             block.ops.append(op)
+
+    if global_lower_update is not None:
+        for i in range(len(global_lower_update)):
+            if global_lower_update[i].name in to_bind:
+                global_lower_update[i] = vlt[to_bind[global_lower_update[i]
+                                                     .name]]
 
     if update_var_list is not None:
         for i in range(len(update_var_list)):
