@@ -76,6 +76,7 @@ def set_excluded_layers(param_names, main_program=None):
                 optimizer = sparsity.decorate(optimizer)
 
         2. Usage of Static Graph
+
             .. code-block:: python
 
                 import paddle
@@ -134,6 +135,7 @@ def reset_excluded_layers(main_program=None):
                                           Default is None.
     Examples:
         1. Usage of Dynamic Graph
+
             .. code-block:: python
 
                 import paddle
@@ -165,6 +167,7 @@ def reset_excluded_layers(main_program=None):
                 optimizer = sparsity.decorate(optimizer)
 
         2. Usage of Static Graph
+
             .. code-block:: python
 
                 import paddle
@@ -225,6 +228,7 @@ def decorate(optimizer):
         OptimizerWithSparsityGuarantee: A wrapper for ASP to decorate `minimize` function of the given optimizer.
     Examples:
         1. Usage of Dynamic Graph
+
             .. code-block:: python
 
                 import paddle
@@ -257,6 +261,7 @@ def decorate(optimizer):
                 optimizer = sparsity.decorate(optimizer)
 
         2. Usage of Static Graph
+
             .. code-block:: python
 
                 import paddle
@@ -322,6 +327,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
         1. Usage of Dynamic Graph
+
             .. code-block:: python
 
                 import paddle
@@ -373,6 +379,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                     optimizer.clear_grad()
 
         2. Usage of Static Graph
+
             .. code-block:: python
 
                 import paddle
