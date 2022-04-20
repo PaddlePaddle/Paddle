@@ -348,10 +348,6 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   weight_compressed_ = new char[compressed_size];
   std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
               static_cast<char*>(weight_compressed_));
-  cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
-             compressed_size);
-  cudaMemcpy(weight_compressed_dev_, weight_compressed_, compressed_size,
-             cudaMemcpyHostToDevice);
 
   has_bias_ = (bias != nullptr);
   if (has_bias_) {
@@ -426,6 +422,7 @@ nvinfer1::IPluginV2DynamicExt* SpmmPluginDynamic::clone() const noexcept {
                               is_configured_, m_max_, optim_alg_, activation_);
     p->weight_scale_ = weight_scale_;
     p->setPluginNamespace(namespace_.c_str());
+    p->weight_compressed_dev_ = weight_compressed_dev_;
 
     return p;
   } catch (const std::exception& e) {
@@ -670,7 +667,10 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
 
 void SpmmPluginDynamic::destroy() noexcept {
   delete[] reinterpret_cast<char*>(weight_compressed_);
-  cudaFree(weight_compressed_dev_);
+  if (weight_compressed_dev_) {
+    cudaFree(weight_compressed_dev_);
+    weight_compressed_dev_ = nullptr;
+  }
   if (has_bias_) {
     cudaFree(bias_dev_);
   }

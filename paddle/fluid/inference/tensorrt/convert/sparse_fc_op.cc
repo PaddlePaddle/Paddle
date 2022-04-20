@@ -166,7 +166,7 @@ class SparseFcOpConverter : public OpConverter {
         }
       }
     };
-
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
                          TensorRTEngine::Weight* weight,
                          TensorRTEngine::Weight* bias) {
@@ -201,7 +201,9 @@ class SparseFcOpConverter : public OpConverter {
                                  {output_name}, test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            weight, bias, activation_type, nvinfer1::DataType::kFLOAT, n);
+            weight, bias, activation_type,
+            with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+            n);
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.emplace_back(inputs);
         auto fc_layer_float = engine_->network()->addPluginV2(
@@ -234,10 +236,21 @@ class SparseFcOpConverter : public OpConverter {
       weight_w = m;
       weight_h = n;
     }
+    half* half_data = nullptr;
+    void* w_data = nullptr;
+    if (with_fp16) {
+      half_data = new half[Y_t->numel()];
+      for (int i = 0; i < Y_t->numel(); i++) {
+        half_data[i] = static_cast<half>(weight_data[i]);
+      }
+      w_data = static_cast<void*>(half_data);
+    } else {
+      w_data = static_cast<void*>(weight_data);
+    }
     size_t n_output = weight_w;
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                  static_cast<void*>(weight_data),
-                                  static_cast<size_t>(Y_t->numel())};
+    TensorRTEngine::Weight weight{
+        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+        w_data, static_cast<size_t>(Y_t->numel())};
     weight.dims.assign({weight_w, weight_h});
 
     float* bias_data = nullptr;
@@ -272,7 +285,9 @@ class SparseFcOpConverter : public OpConverter {
                                  {output_name}, test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            &weight, &bias, activation_type, nvinfer1::DataType::kFLOAT, n);
+            &weight, &bias, activation_type,
+            with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+            n);
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.emplace_back(X);
         auto fc_layer_float = engine_->network()->addPluginV2(
