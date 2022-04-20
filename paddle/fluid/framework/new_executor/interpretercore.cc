@@ -121,12 +121,18 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -162,12 +168,18 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
 
   } else {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
