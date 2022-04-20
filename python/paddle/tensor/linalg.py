@@ -3099,8 +3099,12 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:
             matmul_out = _varbase_creator(dtype=x.dtype)
-            _C_ops.matmul(x, solution, matmul_out, 'trans_x', False, 'trans_y',
-                          False)
+
+            if in_dygraph_mode():
+                _C_ops.final_state_matmul(x, solution, False, False)
+            else:
+                _C_ops.matmul_v2(x, solution, 'trans_x', False, 'trans_y',
+                                 False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
             if in_dygraph_mode():

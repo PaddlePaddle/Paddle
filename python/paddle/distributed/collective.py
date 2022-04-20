@@ -20,7 +20,7 @@ from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
-from ..fluid.framework import _in_legacy_dygraph
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
@@ -1325,8 +1325,10 @@ def _linear(x, weight, bias=None, name=None):
     """
     if _non_static_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        if in_dygraph_mode():
+            _C_ops.final_state_matmul(x, weight, False, False)
+        else:
+            _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y', False)
         return dygraph_utils._append_bias_in_dygraph(
             pre_bias, bias, axis=len(x.shape) - 1)
     else:
