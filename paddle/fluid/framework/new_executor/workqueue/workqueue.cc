@@ -21,8 +21,8 @@ void WorkQueueOptions::Validate() const {
       name.find('_'), std::string::npos,
       platform::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
-  PADDLE_ENFORCE_NE(
-      allow_spinning == false && always_spinning == true,
+  PADDLE_ENFORCE_EQ(
+      allow_spinning == false && always_spinning == true, false,
       platform::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
                                         "be true when always_spinning is set"));
 }
