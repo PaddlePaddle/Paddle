@@ -531,8 +531,6 @@ void build_op_func_list(const platform::Place& place,
                   << var_scope->GetNameById(p.second);
         }
       }
-
-      VLOG(1) << "delete scope";
     }
 
     VLOG(4) << "End run " << place << " "
