@@ -73,11 +73,14 @@ class Engine:
         # Default dist strategy is data parallel when user is not 
         from .dist_context import _g_default_distributed_context
         self._default_strategy = None
-        if _g_default_distributed_context is None and self._nranks > 1:
-            self._default_strategy = "dp"
-        elif _g_default_distributed_context is None and self._nranks == 1:
-            self._default_strategy = "serial"
-        self._default_process_mesh = auto.ProcessMesh(list(range(self._nranks)))
+        if _g_default_distributed_context is None:
+            if self._nranks > 1:
+                self._default_strategy = "dp"
+                processes = list(range(self._nranks))
+                self._default_process_mesh = auto.ProcessMesh(processes)
+            else:
+                self._default_strategy = "serial"
+                self._default_process_mesh = auto.ProcessMesh([0])
 
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
