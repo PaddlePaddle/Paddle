@@ -17,7 +17,7 @@ if(NOT WITH_XPU_KP)
 endif()
 
 if(NOT XPU_TOOLCHAIN)
-  set(XPU_TOOLCHAIN /workspace/output/XTDK-ubuntu_x86_64)
+  set(XPU_TOOLCHAIN /workspace/output/XTDK)
   get_filename_component(XPU_TOOLCHAIN ${XPU_TOOLCHAIN} REALPATH)
 endif()
 if(NOT IS_DIRECTORY ${XPU_TOOLCHAIN})
