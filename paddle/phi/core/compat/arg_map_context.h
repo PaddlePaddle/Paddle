@@ -50,7 +50,8 @@ struct KernelSignature {
 
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
-  KernelSignature(const KernelSignature& other) : name(other.name), args(other.args) { }
+  KernelSignature(const KernelSignature& other)
+      : name(other.name), args(other.args) {}
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
     args = other.args;
