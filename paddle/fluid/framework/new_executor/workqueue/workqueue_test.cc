@@ -127,7 +127,7 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   work_queue.reset();
   waiter_thread.join();
   // Forever spin unittest
-  WorkQueueOptions default_options("SingleThreadedWorkQueueForTesting",
+  WorkQueueOptions default_options("MultiThreadedWorkQueueForTesting",
                                    /*num_threads*/ 10, /*allow_spinning*/ false,
                                    /*track_task*/ false);
   work_queue = CreateMultiThreadedWorkQueue(default_options);
