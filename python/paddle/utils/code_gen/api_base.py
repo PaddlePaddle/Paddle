@@ -555,9 +555,11 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             kernel_param = input_names + attr_names
 
         input_tensor_code = ""
+        kernel_idx = -1
         for i, input_name in enumerate(input_names):
             # set input code
             if input_name in kernel_param:
+                kernel_idx = kernel_idx + 1
                 trans_flag = "{}"
                 if input_name in self.data_transform['skip_transform']:
                     trans_flag = "{true}"
@@ -566,7 +568,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
 {code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({kernel_idx}), {trans_flag});
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
 {code_indent}  }}"""
@@ -574,12 +576,12 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 else:
                     if self.inputs['input_info'][input_name] == "const Tensor&":
                         input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_idx}), {trans_flag});"""
 
                     elif self.inputs['input_info'][
                             input_name] == "const std::vector<Tensor>&":
                         input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_idx}), {trans_flag});
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -588,7 +590,8 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                     else:
                         # do nothing
                         pass
-            else:
+            elif self.infer_meta[
+                    'param'] is None or input_name in self.infer_meta['param']:
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
 {code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
