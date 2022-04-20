@@ -110,7 +110,7 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-phi::DDim Tensor::dims() const { return impl_->dims(); }
+const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
   auto dims = impl_->dims();
@@ -158,7 +158,7 @@ bool Tensor::is_string_tensor() const {
 }
 /* Part 3: Device and Backend methods */
 
-Place Tensor::place() const {
+const Place &Tensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::PermissionDenied(
