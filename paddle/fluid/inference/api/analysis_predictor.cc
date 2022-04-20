@@ -226,6 +226,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
@@ -1074,6 +1075,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = false;
       } else {
         process_level_allocator_enabled = true;
+      }
+
+      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
+      // auto_growth
+      if (config.tensorrt_engine_enabled()) {
+        gflags.push_back("--allocator_strategy=naive_best_fit");
       }
 
       if (framework::InitGflags(gflags)) {

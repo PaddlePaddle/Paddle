@@ -17,10 +17,13 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
+using float16 = paddle::platform::float16;
 REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
-                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>);
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>,
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(
     fake_channel_wise_dequantize_max_abs,
     ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float>,
-    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>);
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>,
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float16>);

@@ -20,7 +20,9 @@ limitations under the License. */
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else

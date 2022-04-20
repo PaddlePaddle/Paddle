@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
-devices = ['cpu']
+devices = ['cpu', 'gpu']
 
 
 class TestSparseCreate(unittest.TestCase):

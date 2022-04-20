@@ -202,10 +202,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -214,10 +214,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {

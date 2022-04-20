@@ -12,6 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The file has been adapted from the file:
+#     https://github.com/microsoft/DeepSpeed/blob/master/deepspeed/runtime/pipe/module.py
+#     Git commit hash: fafc827d643b3eed611e282d909025f16be36601
+# We retain the following license from the original files:
+# MIT License
+
+# Copyright (c) Microsoft Corporation.
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE
+
 import math
 import re
 import glob
@@ -24,6 +50,7 @@ import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 from ..pp_utils.utils import _hp_recompute, _initialize_recompute_setting
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -269,15 +296,20 @@ class PipelineLayer(Layer):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
-            with paddle.framework.no_grad():
-                paddle.fluid.framework._dygraph_tracer().trace_op(
-                    type="c_allreduce_sum",
-                    inputs={'X': param._grad_ivar()},
-                    outputs={'Out': param._grad_ivar()},
-                    attrs={
-                        'ring_id': comm['group'].id,
-                        'use_calc_stream': True
-                    })
+            if in_dygraph_mode():
+                with paddle.framework.no_grad():
+                    paddle.distributed.all_reduce(
+                        param.grad, group=comm['group'])
+            else:
+                with paddle.framework.no_grad():
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="c_allreduce_sum",
+                        inputs={'X': param._grad_ivar()},
+                        outputs={'Out': param._grad_ivar()},
+                        attrs={
+                            'ring_id': comm['group'].id,
+                            'use_calc_stream': True
+                        })
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
