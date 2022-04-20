@@ -71,7 +71,7 @@ void Main(bool use_gpu) {
   auto& tensor = output.front();
 
   // compare with reference result
-  CheckOutput(FLAGS_refer, tensor);
+  CheckOutput(FLAGS_refer, tensor, 1e-4);
 
   // the analysis_output has some diff with native_output,
   // TODO(luotao): add CheckOutput for analysis_output later.
