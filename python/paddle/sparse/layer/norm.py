@@ -112,10 +112,10 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                  epsilon=1e-05,
                  weight_attr=None,
                  bias_attr=None,
-                 data_format='NCL',
+                 data_format='NDHWC',
                  use_global_stats=None,
                  name=None):
-        super(BatchNorm1D, self).__init__(
+        super(BatchNorm, self).__init__(
             num_features,
             momentum=momentum,
             epsilon=epsilon,
@@ -125,18 +125,23 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             use_global_stats=use_global_stats,
             name=name)
 
+    def _check_data_format(self, input):
+        if input != "NDHWC":
+            raise ValueError('sparse BatchNorm only support layout of "NDHWC"')
+
     def forward(self, input):
         values = input.values()
-        #out = super(BatchNorm1D, self).forward(values)
         self._check_data_format(self._data_format)
 
-        self._check_input_dim(values)
+        if len(values.shape) != 2:
+            raise ValueError('expected 2D input.values() (got {}D)'.format(
+                len(values.shape)))
 
         if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        out = paddle.nn.functional.batch_norm(
+        batch_norm_out = paddle.nn.functional.batch_norm(
             values,
             self._mean,
             self._variance,
@@ -145,11 +150,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             training=self.training,
             momentum=self._momentum,
             epsilon=self._epsilon,
-            data_format=self._data_format,
+            data_format='NC',
             use_global_stats=self._use_global_stats)
 
         return paddle.sparse.sparse_coo_tensor(
             input.indices(),
-            out,
+            batch_norm_out,
             shape=input.shape,
             stop_gradient=input.stop_gradient)

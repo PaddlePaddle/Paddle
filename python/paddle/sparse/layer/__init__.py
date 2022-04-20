@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .activation import ReLU
-from .norm import BatchNorm1D
+from .norm import BatchNorm
 from .conv import Conv3D
 from .conv import SubmConv3D
 

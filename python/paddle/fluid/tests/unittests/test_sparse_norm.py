@@ -17,38 +17,55 @@ import unittest
 import numpy as np
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+import copy
 
 
 class TestSparseBatchNorm(unittest.TestCase):
-    def test_sparse_batch_norm(self):
+    def test(self):
         with _test_eager_guard():
-            channels = 1
-            shape = [1, 1, 6, 6, channels]
+            paddle.seed(0)
+            channels = 4
+            shape = [2, 3, 6, 6, channels]
+            #there is no zero in dense_x
             dense_x = paddle.randn(shape)
+            dense_x.stop_gradient = False
+
             batch_norm = paddle.nn.BatchNorm3D(channels, data_format="NDHWC")
             dense_y = batch_norm(dense_x)
+            dense_y.backward(dense_y)
 
             sparse_dim = 4
-            sparse_x = dense_x.to_sparse_coo(sparse_dim)
+            dense_x2 = copy.deepcopy(dense_x)
+            dense_x2.stop_gradient = False
+            sparse_x = dense_x2.to_sparse_coo(sparse_dim)
             sparse_batch_norm = paddle.sparse.BatchNorm(channels)
+            # set same params
+            sparse_batch_norm._mean.set_value(batch_norm._mean)
+            sparse_batch_norm._variance.set_value(batch_norm._variance)
+            sparse_batch_norm.weight.set_value(batch_norm.weight)
+
             sparse_y = sparse_batch_norm(sparse_x)
+            # compare the result with dense batch_norm
             assert np.allclose(
                 dense_y.flatten().numpy(),
                 sparse_y.values().flatten().numpy(),
                 atol=1e-5,
                 rtol=1e-5)
 
-    def test(self):
+            # test backward
+            sparse_y.backward(sparse_y)
+            assert np.allclose(
+                dense_x.grad.flatten().numpy(),
+                sparse_x.grad.values().flatten().numpy(),
+                atol=1e-5,
+                rtol=1e-5)
+
+    def test_error_layout(self):
         with _test_eager_guard():
-            np.random.seed(123)
-            channels = 3
-            x_data = np.random.random(size=(1, 6, 6, 6,
-                                            channels)).astype('float32')
-            dense_x = paddle.to_tensor(x_data)
-            sparse_x = dense_x.to_sparse_coo(4)
-            batch_norm = paddle.sparse.BatchNorm(channels)
-            batch_norm_out = batch_norm(sparse_x)
-            print(batch_norm_out)
-
-
-#TODO(zkh2016): add more test
+            with self.assertRaises(ValueError):
+                shape = [2, 3, 6, 6, 3]
+                x = paddle.randn(shape)
+                sparse_x = x.to_sparse_coo(4)
+                sparse_batch_norm = paddle.sparse.BatchNorm(
+                    3, data_format='NCDHW')
+                sparse_batch_norm(sparse_x)
