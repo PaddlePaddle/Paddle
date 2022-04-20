@@ -42,6 +42,8 @@ PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
 }
 PD_REGISTER_KERNEL(
     floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
+PD_REGISTER_KERNEL(
+    elementwise_pow_raw, KPS, ALL_LAYOUT, phi::ElementwisePowRawKernel, float) {}
 
 #else
 using float16 = phi::dtype::float16;
