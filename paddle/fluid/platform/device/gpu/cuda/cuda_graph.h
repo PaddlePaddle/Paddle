@@ -104,7 +104,7 @@ class CUDAGraph {
   static bool IsThreadLocalCapturing() {
 #if CUDA_VERSION >= 10010
     return IsCapturing() &&
-           capturing_graph_->capture_mode_ == cudaStreamCaptureModeThreadLocal;
+           capture_mode_ == cudaStreamCaptureModeThreadLocal;
 #else
     return false;
 #endif
@@ -130,7 +130,6 @@ class CUDAGraph {
 #if CUDA_VERSION >= 10010
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
-  cudaStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
   platform::CUDAPlace place_;
@@ -140,6 +139,7 @@ class CUDAGraph {
   std::mutex mtx_;
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
+  static volatile cudaStreamCaptureMode capture_mode_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
