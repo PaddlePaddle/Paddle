@@ -20,6 +20,7 @@ import tempfile
 
 import paddle
 import paddle.profiler as profiler
+import paddle.profiler.utils as utils
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.io import Dataset, DataLoader
@@ -40,11 +41,17 @@ class TestProfiler(unittest.TestCase):
         with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU], ) as prof:
             y = x / 2.0
         prof = None
+        self.assertEqual(utils._is_profiler_used, False)
+        with profiler.RecordEvent(name='test'):
+            y = x / 2.0
+
         with profiler.Profiler(
                 targets=[profiler.ProfilerTarget.CPU],
                 scheduler=(1, 2)) as prof:
+            self.assertEqual(utils._is_profiler_used, True)
             with profiler.RecordEvent(name='test'):
                 y = x / 2.0
+
         prof = None
         with profiler.Profiler(
                 targets=[profiler.ProfilerTarget.CPU],

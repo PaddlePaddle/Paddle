@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -243,35 +244,8 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
 }
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  kernel_key_set.backend_set =
-      kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "copy", kernel_key);
-
-  VLOG(6) << "copy API kernel key: " << kernel_key;
-  VLOG(6) << "copy API kernel: " << kernel;
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-
-  auto dense_x = TensorToDenseTensor(x);
-
   Tensor out;
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
-  phi::MetaTensor meta_out(kernel_out);
-  phi::UnchangedInferMeta(*dense_x, &meta_out);
-
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    phi::Place,
-                                    bool,
-                                    phi::DenseTensor*);
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
-  (*kernel_fn)(*dev_ctx, *dense_x, place, blocking, kernel_out);
-
+  copy(x, place, blocking, &out);
   return out;
 }
 
