@@ -221,6 +221,8 @@ class TestClipAPI(unittest.TestCase):
             paddle.cast(images * 10, 'int32'), min=2, max=8)
         out_5 = self._executed_api(
             paddle.cast(images * 10, 'int64'), min=2, max=8)
+        # test with numpy.generic
+        out_6 = self._executed_api(images, min=np.abs(0.2), max=np.abs(0.8))
 
         self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
         self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
@@ -229,6 +231,7 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
         self.assertTrue(
             np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
+        self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
 
     def test_eager(self):
         with _test_eager_guard():

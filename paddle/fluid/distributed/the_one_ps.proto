@@ -153,6 +153,7 @@ message CtrAccessorParameter {
                         // will be delete in shrink_model
   optional int32 ssd_unseenday_threshold = 9
       [ default = 1 ]; // threshold to save ssd
+  optional bool show_scale = 10 [ default = true ];
 }
 
 message TensorAccessorParameter {
