@@ -117,7 +117,6 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
-  int *offset;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
 
   NeighborSampleResult(int _sample_size, int _key_size, int dev_id)
@@ -130,7 +129,6 @@ struct NeighborSampleResult {
     actual_sample_size_mem =
         memory::AllocShared(place, _key_size * sizeof(int));
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
-    offset = NULL;
   };
   ~NeighborSampleResult() {
     // if (val != NULL) cudaFree(val);
