@@ -33,6 +33,7 @@ template <typename T, typename... Rest>
 inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
   std::hash<T> hasher;
   *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
+  *seed *= 0x00000100000001B3;
   HashCombine(seed, rest...);
 }
 
@@ -42,6 +43,7 @@ namespace std {
 template <typename T>
 struct hash<std::vector<T>> {
   std::size_t operator()(std::vector<T> const& vec) const noexcept {
+    // std::size_t seed = 0xcbf29ce484222325;
     std::size_t seed = 0;
     for (auto val : vec) {
       HashCombine(&seed, val);
@@ -79,12 +81,71 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                int groups,
                int64_t data_layout);
 
+struct ConvCacheKey {
+  explicit ConvCacheKey(const std::vector<int64_t>& x_dims,
+                        const std::vector<int64_t>& w_dims,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations,
+                        phi::DataType dtype,
+                        int groups,
+                        int64_t data_layout)
+      : x_dims_(x_dims),
+        w_dims_(w_dims),
+        strides_(strides),
+        paddings_(paddings),
+        dilations_(dilations),
+        dtype_(dtype),
+        groups_(groups),
+        data_layout_(data_layout) {}
+  size_t hash_value() const {
+    return ConvKey(x_dims_,
+                   w_dims_,
+                   strides_,
+                   paddings_,
+                   dilations_,
+                   dtype_,
+                   groups_,
+                   data_layout_);
+  }
+  std::vector<int64_t> x_dims_;
+  std::vector<int64_t> w_dims_;
+  const std::vector<int>& strides_;
+  const std::vector<int>& paddings_;
+  const std::vector<int>& dilations_;
+  phi::DataType dtype_;
+  int groups_;
+  int64_t data_layout_;
+};
+
+struct ConvCacheKeyHash {
+  size_t operator()(const ConvCacheKey& cache) const {
+    return cache.hash_value();
+  }
+};
+
+struct ConvCacheKeyEqual {
+  size_t operator()(const ConvCacheKey& first,
+                    const ConvCacheKey& second) const {
+    if (first.x_dims_ != second.x_dims_) return false;
+    if (first.w_dims_ != second.w_dims_) return false;
+    if (first.strides_ != second.strides_) return false;
+    if (first.paddings_ != second.paddings_) return false;
+    if (first.dilations_ != second.dilations_) return false;
+    if (first.dtype_ != second.dtype_) return false;
+    if (first.groups_ != second.groups_) return false;
+    if (first.data_layout_ != second.data_layout_) return false;
+
+    return true;
+  }
+};
+
 template <typename AlgorithmT>
 class AlgorithmsCache {
  public:
   AlgorithmsCache() : cache_mutex_(new std::mutex()) { hash_.clear(); }
 
-  AlgorithmT Get(size_t key) {
+  AlgorithmT Get(const ConvCacheKey& key) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
@@ -93,7 +154,7 @@ class AlgorithmsCache {
     return hash_[key];
   }
 
-  bool Find(size_t key) {
+  bool Find(const ConvCacheKey& key) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     if (hash_.find(key) != hash_.end()) {
@@ -112,7 +173,7 @@ class AlgorithmsCache {
     cache_misses_ = 0;
   }
 
-  void Set(size_t key, AlgorithmT algo) {
+  void Set(const ConvCacheKey& key, AlgorithmT algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     if (hash_.size() > static_cast<size_t>(FLAGS_search_cache_max_number)) {
       VLOG(8) << "hash size over serach cache_max_numebr "
@@ -139,7 +200,11 @@ class AlgorithmsCache {
   int64_t Size() const { return hash_.size(); }
 
  private:
-  std::unordered_map<size_t, AlgorithmT> hash_;
+  std::unordered_map<ConvCacheKey,
+                     AlgorithmT,
+                     ConvCacheKeyHash,
+                     ConvCacheKeyEqual>
+      hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
 
   int64_t cache_hits_{0};

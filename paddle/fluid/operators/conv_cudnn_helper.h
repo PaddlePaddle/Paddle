@@ -192,7 +192,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
       if (cache.Find(key)) {
         auto t = cache.Get(key);
@@ -368,7 +368,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
       if (cache.Find(key)) {
@@ -557,7 +557,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
       if (cache.Find(key)) {

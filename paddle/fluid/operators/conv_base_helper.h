@@ -114,6 +114,16 @@ struct ConvArgsBase {
                                              // deprecated enum, show use phi
                                              // datalayout
   }
+
+  template <typename T>
+  phi::autotune::ConvCacheKey Convert2ConvCacheKey() const {
+    auto x_shape = phi::vectorize(x->dims());
+    auto w_shape = phi::vectorize(w->dims());
+    return phi::autotune::ConvCacheKey(
+        x_shape, w_shape, p, s, d,
+        paddle::experimental::CppTypeToDataType<T>::Type(), group,
+        static_cast<int64_t>(data_layout));
+  }
 };
 
 static inline void GetNCDHW(const framework::DDim& dims,
