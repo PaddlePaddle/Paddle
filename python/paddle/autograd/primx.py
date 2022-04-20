@@ -440,7 +440,7 @@ def prim2orig(block=None, update_var_list=None):
 
 
 def to_tensors(xs):
-    if isinstance(xs, list or tuple):
+    if isinstance(xs, (tuple, list)):
         return xs
     else:
         return [xs]

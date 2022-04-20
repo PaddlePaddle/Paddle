@@ -78,14 +78,19 @@ def get_input_var_list(op):
     if op.input_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.input(n)) for n in op.input_names]
+        return [
+            get_var_block(op.block, op.input(n)) for n in sorted(op.input_names)
+        ]
 
 
 def get_output_var_list(op):
     if op.output_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.output(n)) for n in op.output_names]
+        return [
+            get_var_block(op.block, op.output(n))
+            for n in sorted(op.output_names)
+        ]
 
 
 def linear_jvp(op, *args, **kwargs):
@@ -250,8 +255,12 @@ def elementwise_sub_orig2prim(op, x, y):
 
 
 @REGISTER_ORIG2PRIM('scale')
-def scale_orig2prim(op, x):
-    scale_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+def scale_orig2prim(op, scaletensor, x):
+    if scaletensor is None:
+        scale_t = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+    else:
+        scale_t = reshape(scaletensor, shape=x.shape)
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
