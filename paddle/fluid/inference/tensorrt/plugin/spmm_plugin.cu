@@ -65,12 +65,15 @@ inline float round_scale(float x) { return std::floor(x + 0.5f); }
 
 inline void convertAndCopy(const nvinfer1::Weights& src,
                            nvinfer1::DataType type, void* dest) {
-  PADDLE_ENFORCE(src.type == nvinfer1::DataType::kFLOAT ||
-                     src.type == nvinfer1::DataType::kHALF,
-                 "convertAndCopy only supports src type [FLOAT|HALF]");
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(src.type == nvinfer1::DataType::kFLOAT ||
+                        src.type == nvinfer1::DataType::kHALF,
+                    true,
+                    platform::errors::InvalidArgument(
+                        "convertAndCopy only supports src type [FLOAT|HALF]"));
+  PADDLE_ENFORCE_EQ(
       type == nvinfer1::DataType::kFLOAT || type == nvinfer1::DataType::kHALF,
-      "convertAndCopy only supports src type [FLOAT|HALF]");
+      true, platform::errors::InvalidArgument(
+                "convertAndCopy only supports src type [FLOAT|HALF]"));
 
   if (type == nvinfer1::DataType::kFLOAT) {
     if (src.type == nvinfer1::DataType::kFLOAT) {
@@ -271,9 +274,11 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
       platform::errors::InvalidArgument(
           "The size of weight should be divided by output dimension."));
   k_ = weight.count / out_dim;
-  PADDLE_ENFORCE(weight.type == nvinfer1::DataType::kFLOAT ||
-                     weight.type == nvinfer1::DataType::kHALF,
-                 "SpmmPluginDynamic only supports weight of type [FLOAT|HALF]");
+  PADDLE_ENFORCE_EQ(
+      weight.type == nvinfer1::DataType::kFLOAT ||
+          weight.type == nvinfer1::DataType::kHALF,
+      true, platform::errors::InvalidArgument(
+                "SpmmPluginDynamic only supports weight of type [FLOAT|HALF]"));
   nvinfer1::DataType weight_type;
   if (precision_ == nvinfer1::DataType::kINT8) {
     weight_type = nvinfer1::DataType::kFLOAT;
@@ -480,10 +485,12 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
       return ret;
     } else if (nbDims == 4) {
       int nbDims = inputs[0].nbDims;
-      PADDLE_ENFORCE_EQ(inputs[0].d[2]->getConstantValue(), 1,
-                        platform::errors::InvalidArgument("d[2] should be 1"));
-      PADDLE_ENFORCE_EQ(inputs[0].d[3]->getConstantValue(), 1,
-                        platform::errors::InvalidArgument("d[3] should be 1"));
+      PADDLE_ENFORCE_EQ(
+          inputs[0].d[2]->getConstantValue(), 1,
+          platform::errors::InvalidArgument("now the input d[2] should be 1"));
+      PADDLE_ENFORCE_EQ(
+          inputs[0].d[3]->getConstantValue(), 1,
+          platform::errors::InvalidArgument("now the input d[3] should be 1"));
       nvinfer1::DimsExprs ret;
       ret.nbDims = nbDims;
       ret.d[0] = inputs[0].d[0];
@@ -531,10 +538,12 @@ void SpmmPluginDynamic::configurePlugin(
   3. Search the optimal algorithm
   */
   try {
-    PADDLE_ENFORCE_EQ(
-        nbInputs, 1, platform::errors::InvalidArgument("nbInputs should be 1"));
-    PADDLE_ENFORCE_EQ(nbOutputs, 1, platform::errors::InvalidArgument(
-                                        "nbOutputs should be 1"));
+    PADDLE_ENFORCE_EQ(nbInputs, 1,
+                      platform::errors::InvalidArgument(
+                          "SpmmPluginDynamic's nbInputs should be 1"));
+    PADDLE_ENFORCE_EQ(nbOutputs, 1,
+                      platform::errors::InvalidArgument(
+                          "SpmmPluginDynamic's nbOutputs should be 1"));
     PADDLE_ENFORCE_EQ(precision_, inputs[0].desc.type,
                       platform::errors::InvalidArgument(
                           "precision_ should be equal to inputs[0].desc.type"));
@@ -656,14 +665,15 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 nvinfer1::DataType SpmmPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
     noexcept {
-  PADDLE_ENFORCE_EQ(index, 0,
-                    platform::errors::InvalidArgument("invalid index"));
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "SpmmPluginDynamic's index should be 0"));
   PADDLE_ENFORCE_EQ(nbInputs, 1,
-                    platform::errors::InvalidArgument("invalid nbInputs"));
-  PADDLE_ENFORCE(inputTypes[0] == nvinfer1::DataType::kFLOAT ||
-                     inputTypes[0] == nvinfer1::DataType::kHALF ||
-                     inputTypes[0] == nvinfer1::DataType::kINT8,
-                 "invalid input type");
+                    platform::errors::InvalidArgument(
+                        "SpmmPluginDynamic's nbInputs should be 1"));
+  PADDLE_ENFORCE_EQ(inputTypes[0] == nvinfer1::DataType::kFLOAT ||
+                        inputTypes[0] == nvinfer1::DataType::kHALF ||
+                        inputTypes[0] == nvinfer1::DataType::kINT8,
+                    true "SpmmPluginDynamic is not support this format now");
 
   return inputTypes[0];
 }
