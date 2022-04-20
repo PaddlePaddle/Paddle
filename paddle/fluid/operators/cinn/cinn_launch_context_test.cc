@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/auto_schedule/auto_tuner.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/hlir/framework/graph_compiler.h"
