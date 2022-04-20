@@ -488,3 +488,23 @@ def fused_multi_head_attention(x,
             attrs=attrs)
 
         return (final_out, cache_kv_out) if cache_kv else final_out
+
+
+def fused_gate_attention(x,
+                        qkv_weight,
+                        gate_weight=None,
+                        linear_weight=None,
+                        is_gating=True,
+                        qkv_bias=None,
+                        gate_bias=None,
+                        linear_bias=None,
+                        nonbatched_bias=None,
+                        attn_mask=None,
+                        training=True,
+                        name=None):
+
+    if _non_static_mode():
+        _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
+            x, qkv_weight, gate_weight, linear_weight, gate_bias, linear_bias, nonbatched_bias, attn_mask, 'is_gating', is_gating)
+        # print(cache_kv_out)
+        return final_out

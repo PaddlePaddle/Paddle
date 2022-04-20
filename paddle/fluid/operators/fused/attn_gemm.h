@@ -163,10 +163,17 @@ class AttnMatMul {
       bool support_case_2 =
           (input_dims.size() == 3 && output_dims.size() == 1 &&
            (input_dims[2] == output_dims[0]));
+      bool support_case_3 = 
+         (input_dims.size() == 4 && output_dims.size() == 1 && input_dims[3] == output_dims[0]);
       if (support_case_1 || support_case_2) {
         gpuStream_t stream = dev_ctx_.stream();
         TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
             dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1},
+            stream);
+      } else if(support_case_3){
+        gpuStream_t stream = dev_ctx_.stream();
+        TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1, 2},
             stream);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
