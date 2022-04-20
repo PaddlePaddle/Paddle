@@ -1,5 +1,5 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.distributed.models.moe.utils import *
+#
+# The file has been adapted from the file:
+#     https://github.com/laekov/fastmoe/blob/master/fmoe/functions.py
+#     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+# We retain the following license from the original files:
+#     Copyright 2021, Jiaao He. All rights reserved.
+#   Licensed under the Apache License, Version 2.0 (the "License").
+
+from paddle.distributed.models.moe.utils import _number_count, _limit_by_capacity, _prune_gate_by_capacity, _assign_pos
+import paddle
 
 
 def _alltoall(in_tensor_list, group=None, use_calc_stream=True):

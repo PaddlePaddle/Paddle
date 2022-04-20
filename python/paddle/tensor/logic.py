@@ -63,6 +63,9 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_equal_all(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.equal_all(x, y)
 

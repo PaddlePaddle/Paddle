@@ -87,7 +87,7 @@ class GradSlotMeta {
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
-class GradNodeBase : public std::enable_shared_from_this<GradNodeBase> {
+class GradNodeBase {
  public:
   GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
