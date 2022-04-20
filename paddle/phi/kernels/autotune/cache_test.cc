@@ -47,7 +47,7 @@ TEST(AlgosCache, AlgosCache) {
   EXPECT_EQ(cache.Find(key1), false);
   phi::autotune::DnnNode node1(static_cast<int64_t>(ConvAlgos::CuDNNKernel_1),
                                0);
-  cache.Set(key, node1);
+  cache.Set(key1, node1);
   EXPECT_EQ(cache.Size(), 2);
   EXPECT_EQ(cache.CacheHits(), 1);
   EXPECT_EQ(cache.CacheMisses(), 2);
