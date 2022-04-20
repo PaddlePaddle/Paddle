@@ -1284,24 +1284,33 @@ void Pad3dInferMeta(const MetaTensor& x,
                         "5, but received %d. ",
                         x_dim.size()));
 
-  std::vector<int64_t> out_dims(x_dim.size());
+  std::vector<int64_t> out_dims(x_dim.size(), -1);
   out_dims[0] = x_dim[0];
+  auto& paddings = paddings_int_array.GetData();
+  if (data_format == "NCDHW") {
+    out_dims[1] = x_dim[1];
+  } else {
+    out_dims[4] = x_dim[4];
+  }
   if (paddings_int_array.FromTensor()) {
     if (config.is_runtime) {
       PADDLE_ENFORCE_EQ(
-          paddings_int_array.GetData().size(),
+          paddings.size(),
           6,
           errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
                                   "[6], but received [%d].",
-                                  paddings_int_array.GetData().size()));
+                                  paddings.size()));
+      if (data_format == "NCDHW") {
+        out_dims[2] = x_dim[2] + paddings[4] + paddings[5];
+        out_dims[3] = x_dim[3] + paddings[2] + paddings[3];
+        out_dims[4] = x_dim[4] + paddings[0] + paddings[1];
+      } else {
+        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
+      }
     }
-    out_dims[1] = x_dim[1];
-    out_dims[2] = x_dim[2];
-    out_dims[3] = x_dim[3];
-    out_dims[4] = x_dim[4];
   } else {
-    auto paddings = paddings_int_array.GetData();
-
     PADDLE_ENFORCE_EQ(
         paddings.size(),
         6,
@@ -1309,7 +1318,6 @@ void Pad3dInferMeta(const MetaTensor& x,
             "Size of paddings should be equal to 6, but received %d.",
             static_cast<int>(paddings.size())));
     if (data_format == "NCDHW") {
-      out_dims[1] = x_dim[1];  // channel
       out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
                         ? x_dim[2]
                         : (x_dim[2] + paddings[4] + paddings[5]);  // depth
@@ -1322,8 +1330,6 @@ void Pad3dInferMeta(const MetaTensor& x,
                         ? x_dim[4]
                         : (x_dim[4] + paddings[0] + paddings[1]);  // width
     } else {                                                       // NDHWC
-      out_dims[4] = x_dim[4];                                      // channel
-
       out_dims[1] = ((!config.is_runtime) && (x_dim[1] < 0))
                         ? x_dim[1]
                         : (x_dim[1] + paddings[4] + paddings[5]);  // depth

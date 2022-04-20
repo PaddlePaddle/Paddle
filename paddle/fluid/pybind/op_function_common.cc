@@ -174,8 +174,13 @@ void CastPyArg2AttrLong(PyObject* obj,
 
 float CastPyArg2Float(PyObject* obj, const std::string& op_type,
                       ssize_t arg_pos) {
+  return static_cast<float>(CastPyArg2Double(obj, op_type, arg_pos));
+}
+
+double CastPyArg2Double(PyObject* obj, const std::string& op_type,
+                        ssize_t arg_pos) {
   if (PyObject_CheckFloatOrToFloat(&obj)) {
-    return (float)PyFloat_AsDouble(obj);  // NOLINT
+    return PyFloat_AsDouble(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

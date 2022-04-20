@@ -934,9 +934,8 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     beta_ptr = static_cast<const void*>(&beta_int);
   }
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetOpTensorWorkspaceSize_v2(
-      handle, op_tensor_desc, alpha1_ptr, a_desc, a, alpha2_ptr, b_desc, b,
-      beta_ptr, output_desc, output, &workspace_size));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetOpTensorWorkspaceSize(
+      handle, a_desc, b_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
