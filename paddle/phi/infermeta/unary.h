@@ -269,6 +269,16 @@ void RollInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
+void RReluInferMeta(const MetaTensor& x, 
+                    const MetaTensor& seed_tensor,
+                    float lower,
+                    float upper, 
+                    bool is_test,
+                    bool fix_seed,
+                    int seed,
+                    MetaTensor* out,
+                    MetaTensor* mask);
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
