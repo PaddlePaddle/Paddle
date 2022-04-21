@@ -60,52 +60,53 @@
                                                                             \
   template <typename T, typename Context>                                   \
   void SparseCoo##dense_kernel_func(const Context& dev_ctx,                 \
-                                    const SparseCooTensor& x,               \
+                                    const SparseCooTensor& x_or_out,        \
                                     const SparseCooTensor& out_grad,        \
                                     SparseCooTensor* x_grad) {              \
     DenseTensor non_zero_indices =                                          \
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_indices());          \
+        phi::EmptyLike<T, Context>(dev_ctx, x_or_out.non_zero_indices());   \
     DenseTensor non_zero_elements =                                         \
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_elements());         \
+        phi::EmptyLike<T, Context>(dev_ctx, x_or_out.non_zero_elements());  \
     phi::Copy(dev_ctx,                                                      \
-              x.non_zero_indices(),                                         \
+              x_or_out.non_zero_indices(),                                  \
               dev_ctx.GetPlace(),                                           \
               false,                                                        \
               &non_zero_indices);                                           \
     phi::dense_kernel_func<T, Context>(dev_ctx,                             \
-                                       x.non_zero_elements(),               \
+                                       x_or_out.non_zero_elements(),        \
                                        out_grad.non_zero_elements(),        \
                                        &non_zero_elements);                 \
-    x_grad->SetMember(non_zero_indices, non_zero_elements, x.dims(), true); \
+    x_grad->SetMember(                                                      \
+        non_zero_indices, non_zero_elements, x_or_out.dims(), true);        \
   }                                                                         \
                                                                             \
   template <typename T, typename Context>                                   \
   void SparseCsr##dense_kernel_func(const Context& dev_ctx,                 \
-                                    const SparseCsrTensor& x,               \
+                                    const SparseCsrTensor& x_or_out,        \
                                     const SparseCsrTensor& out_grad,        \
                                     SparseCsrTensor* out) {                 \
     DenseTensor non_zero_crows =                                            \
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_crows());            \
+        phi::EmptyLike<T, Context>(dev_ctx, x_or_out.non_zero_crows());     \
     DenseTensor non_zero_cols =                                             \
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_cols());             \
+        phi::EmptyLike<T, Context>(dev_ctx, x_or_out.non_zero_cols());      \
     DenseTensor non_zero_elements =                                         \
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_elements());         \
+        phi::EmptyLike<T, Context>(dev_ctx, x_or_out.non_zero_elements());  \
     phi::Copy(dev_ctx,                                                      \
-              x.non_zero_crows(),                                           \
+              x_or_out.non_zero_crows(),                                    \
               dev_ctx.GetPlace(),                                           \
               false,                                                        \
               &non_zero_crows);                                             \
     phi::Copy(dev_ctx,                                                      \
-              x.non_zero_cols(),                                            \
+              x_or_out.non_zero_cols(),                                     \
               dev_ctx.GetPlace(),                                           \
               false,                                                        \
               &non_zero_cols);                                              \
     phi::dense_kernel_func<T, Context>(dev_ctx,                             \
-                                       x.non_zero_elements(),               \
+                                       x_or_out.non_zero_elements(),        \
                                        out_grad.non_zero_elements(),        \
                                        &non_zero_elements);                 \
     out->SetMember(                                                         \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());        \
+        non_zero_crows, non_zero_cols, non_zero_elements, x_or_out.dims()); \
   }                                                                         \
   }                                                                         \
   }
@@ -167,4 +168,3 @@
                                                      dense_kernel_func) \
   DEFINE_SPARSE_UNARY_GRAD_KERNEL(dense_kernel_func)                    \
   REGISTER_SPARSE_UNARY_KERNEL(kernel_name, dense_kernel_func)
-
