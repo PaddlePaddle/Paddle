@@ -35,6 +35,7 @@ __all__ = [ #noqa
     'image_decode',
     'image_decode_random_crop',
     'random_flip',
+    'mirror_normalize',
     'roi_pool',
     'RoIPool',
     'psroi_pool',
