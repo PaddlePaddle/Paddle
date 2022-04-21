@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {
@@ -184,6 +185,12 @@ class VariableWrapper {
 
   framework::proto::VarType::Type ForwardDataType() const {
     return fwd_data_type_;
+  }
+
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    layout_ = layout;
   }
 
   const platform::Place Place() const {
@@ -357,6 +364,10 @@ class VariableWrapper {
   // training
   // NOTE: Now no need to support remove void hook
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative
