@@ -378,7 +378,7 @@ def sync_params_buffers(model,
                 param.name)
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, ParamBase):
+        if isinstance(param, (ParamBase, core.eager.Tensor)):
             if is_model_parallel and param.is_distributed:
                 continue
 

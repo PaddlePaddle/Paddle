@@ -218,6 +218,14 @@ template void HeterCommKernel::calc_shard_index<
                                       int* shard_index, int total_devs,
                                       const cudaStream_t& stream);
 
+template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
+    long* d_keys, long long len, int* shard_index, int total_devs,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_shard_key<long, int, cudaStream_t>(
+    long* d_shard_keys, long* d_keys, int* idx, long long len,
+    const cudaStream_t& stream);
+
 template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
     unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
     const cudaStream_t& stream);

@@ -25,6 +25,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 
@@ -39,8 +40,10 @@ void BindPSGPUWrapper(py::module* m) {
       .def(py::init([]() { return framework::PSGPUWrapper::GetInstance(); }))
       .def("set_slot_vector", &framework::PSGPUWrapper::SetSlotVector,
            py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_CUDA
       .def("set_slot_dim_vector", &framework::PSGPUWrapper::SetSlotDimVector,
            py::call_guard<py::gil_scoped_release>())
+#endif
       .def("set_slot_offset_vector",
            &framework::PSGPUWrapper::SetSlotOffsetVector,
            py::call_guard<py::gil_scoped_release>())

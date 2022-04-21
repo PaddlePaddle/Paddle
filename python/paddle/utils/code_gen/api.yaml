@@ -448,7 +448,7 @@
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
-  infer_meta : 
+  infer_meta :
     func : DeformableConvInferMeta
   kernel :
     func : deformable_conv
@@ -597,6 +597,14 @@
   kernel :
     func : equal
 
+- api : equal_all
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : CompareAllInferMeta
+  kernel :
+    func : equal_all
+
 # erf
 - api : erf
   args : (Tensor x)
@@ -626,6 +634,16 @@
   kernel :
     func : exp
   backward : exp_grad
+
+# expand
+- api : expand
+  args : (Tensor x, IntArray shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+  backward : expand_grad
 
 # expand_as
 - api : expand_as
@@ -763,6 +781,8 @@
     param : [x, value, dtype]
     data_type : dtype > x
     backend : place > x
+  data_transform :
+    skip_transform : x
 
 - api : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -1312,8 +1332,11 @@
 
 - api : meshgrid
   args : (Tensor[] inputs)
-  output : Tensor[]
-  invoke : meshgrid_impl(inputs)
+  output : Tensor[]{inputs.size()}
+  infer_meta :
+    func : MeshgridInferMeta
+  kernel :
+    func : meshgrid
   backward : meshgrid_grad
 
 - api : min
@@ -1494,7 +1517,7 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
-# poisson  // no need grad
+# poisson
 - api : poisson
   args : (Tensor x)
   output : Tensor
@@ -1502,6 +1525,7 @@
     func : UnchangedInferMeta
   kernel :
     func : poisson
+  backward : poisson_grad
 
 - api : pool2d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1683,6 +1707,16 @@
   kernel :
     func : round
   backward : round_grad
+
+- api : rsqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : rsqrt
+  inplace : (x -> out)
+  backward : rsqrt_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -2037,7 +2071,7 @@
     func : TriangularSolveInferMeta
   kernel :
     func : triangular_solve
-  # backward : triangular_solve_grad
+  backward : triangular_solve_grad
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
@@ -2072,8 +2106,11 @@
 
 - api : unbind
   args : (Tensor input, int axis)
-  output : Tensor[]
-  invoke : unbind_impl(input, axis)
+  output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
   backward : unbind_grad
 
 # unfold
