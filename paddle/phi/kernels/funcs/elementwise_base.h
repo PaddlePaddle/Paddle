@@ -710,7 +710,7 @@ struct ElementwiseWriteDataCallerBc {
       int block_offset,
       int num,
       int read_lens) {
-    OutT dst[NumOuts][read_lens];
+    OutT dst[NumOuts][VecSize];
 #pragma unroll
     for (int i = 0; i < read_lens; ++i) {
 #pragma unroll
