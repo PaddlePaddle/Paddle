@@ -92,4 +92,3 @@ for stype in support_types:
 
 if __name__ == '__main__':
     unittest.main()
-    
