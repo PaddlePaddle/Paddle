@@ -15,5 +15,6 @@
 from .activation import relu  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
+from .pool import max_pool3d  # noqa: F401
 
-__all__ = ['relu', 'conv3d', 'subm_conv3d']
+__all__ = ['relu', 'conv3d', 'subm_conv3d', 'max_pool3d']

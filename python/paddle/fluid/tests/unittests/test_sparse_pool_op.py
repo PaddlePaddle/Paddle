@@ -30,7 +30,6 @@ class TestSparseMaxPool3D(unittest.TestCase):
             kernel_sizes = [1, 3, 3]
             paddings = [0, 0, 0]
             strides = [1, 1, 1]
-            dilations = [1, 1, 1]
-            out = _C_ops.final_state_sparse_max_pool3d(
-                sparse_x, kernel_sizes, paddings, dilations, strides)
+            out = paddle.sparse.functional.max_pool3d(
+                sparse_x, kernel_sizes, stride=strides, padding=paddings)
             print(out)
