@@ -32,15 +32,21 @@ class TestSparseActivation(unittest.TestCase):
     ):
         def tensor_equal(dense_tensor: paddle.Tensor, sparse_tensor: paddle.Tensor):
             mask = ~np.isnan(dense_tensor.numpy())
-            return np.array_equal(dense_tensor.numpy()[mask], sparse_tensor.to_dense().numpy()[mask])
+            return np.array_equal(
+                dense_tensor.numpy()[mask], sparse_tensor.to_dense().numpy()[mask]
+            )
 
         with _test_eager_guard():
-            dense_x = paddle.to_tensor(x, dtype="float32", stop_gradient=not test_gradient)
+            dense_x = paddle.to_tensor(
+                x, dtype="float32", stop_gradient=not test_gradient
+            )
 
-            sparse_x = to_sparse(dense_x) 
+            sparse_x = to_sparse(dense_x)
             sparse_out = sparse_func(sparse_x)
 
-            dense_x = paddle.to_tensor(x, dtype="float32", stop_gradient=not test_gradient)
+            dense_x = paddle.to_tensor(
+                x, dtype="float32", stop_gradient=not test_gradient
+            )
             dense_out = dense_func(dense_x)
 
             assert tensor_equal(dense_out, sparse_out)
@@ -48,21 +54,43 @@ class TestSparseActivation(unittest.TestCase):
             if test_gradient:
                 dense_out.backward(dense_out)
                 sparse_out.backward(sparse_out)
-                assert tensor_equal(
-                    dense_x.grad, sparse_x.grad
-                )
+                assert tensor_equal(dense_x.grad, sparse_x.grad)
 
     def test_sparse_relu(self):
         x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
         sparse_dim = 2
-        self.compare_with_dense(x, lambda x: x.to_sparse_coo(sparse_dim), lambda x: paddle.nn.ReLU()(x), lambda x: paddle.sparse.ReLU()(x), True)
-        self.compare_with_dense(x, lambda x: x.to_sparse_csr(), lambda x: paddle.nn.ReLU()(x), lambda x: paddle.sparse.ReLU()(x), False)
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_coo(sparse_dim),
+            lambda x: paddle.nn.ReLU()(x),
+            lambda x: paddle.sparse.ReLU()(x),
+            True,
+        )
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_csr(),
+            lambda x: paddle.nn.ReLU()(x),
+            lambda x: paddle.sparse.ReLU()(x),
+            False,
+        )
 
     def test_sparse_sqrt(self):
         x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
         sparse_dim = 2
-        self.compare_with_dense(x, lambda x: x.to_sparse_coo(sparse_dim), paddle.sqrt, paddle.sparse.functional.sqrt, True)
-        self.compare_with_dense(x, lambda x: x.to_sparse_csr(), paddle.sqrt, paddle.sparse.functional.sqrt, False)
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_coo(sparse_dim),
+            paddle.sqrt,
+            paddle.sparse.functional.sqrt,
+            True,
+        )
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_csr(),
+            paddle.sqrt,
+            paddle.sparse.functional.sqrt,
+            False,
+        )
 
 
 if __name__ == "__main__":

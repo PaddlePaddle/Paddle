@@ -62,4 +62,3 @@ PD_REGISTER_KERNEL(sparse_csr_relu_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 #endif
-

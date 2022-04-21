@@ -53,7 +53,9 @@ def relu(x, name=None):
     elif x.is_sparse_csr():
         return _C_ops.final_state_sparse_csr_relu(x)
     else:
-        raise ValueError("Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor")
+        raise ValueError(
+            "Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor"
+        )
 
 
 def sqrt(x, name=None):
@@ -92,5 +94,7 @@ def sqrt(x, name=None):
     elif x.is_sparse_csr():
         return _C_ops.final_state_sparse_csr_sqrt(x)
     else:
-        raise ValueError("Currently, sparse.sqrt only support the input of SparseCooTensor or SparseCsrTensor")
+        raise ValueError(
+            "Currently, sparse.sqrt only support the input of SparseCooTensor or SparseCsrTensor"
+        )
 
