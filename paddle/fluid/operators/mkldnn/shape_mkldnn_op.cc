@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -40,9 +40,13 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
       out_data[i] = in_dims[i];
     }
 
-    auto* out = ctx.Output<Tensor>("Out");
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetPlainMKLDNNFormat(out->dims().size()));
+    dnnl::memory::desc out_mem_desc(
+        phi::vectorize(out_t->dims()),
+        framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(out_t->dtype())),
+        platform::GetPlainMKLDNNFormat(out_t->dims().size()));
+
+    out_t->set_mem_desc(out_mem_desc);
   }
 };
 }  // namespace operators
