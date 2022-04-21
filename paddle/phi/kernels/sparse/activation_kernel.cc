@@ -16,21 +16,50 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/utils.h"
 
-DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(relu, ReluKernel)
 DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sqrt, SqrtKernel)
 
-namespace phi {
-namespace sparse {
+// NOTE: the following code is to bypass the restriction of Paddle
+// kernel registration mechanism. Do NOT refactor them unless you
+// know what you are doing.
+// If you want to implement any new kernel, please follow `sqrt` above
+// instead of `relu` following
+DEFINE_SPARSE_UNARY_KERNEL(ReluKernel)
 
-template <typename T, typename Context>
-void SparseCooXX(const Context& dev_ctx,
-                 const SparseCooTensor& x,
-                 SparseCooTensor* out) {
-}
-}  // namespace sparse
-}  // namespace phi
-
-PD_REGISTER_KERNEL(
-    sparse_coo_xx, CPU, ALL_LAYOUT, phi::sparse::SparseCooXX, float, double) {
+PD_REGISTER_KERNEL(sparse_coo_relu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooReluKernel,
+                   float,
+                   double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+PD_REGISTER_KERNEL(sparse_csr_relu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCsrReluKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(sparse_coo_relu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooReluKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_csr_relu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCsrReluKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+#endif

@@ -17,21 +17,49 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/utils.h"
 
-DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(relu_grad, ReluGradKernel)
 DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 
-namespace phi {
-namespace sparse {
-
-template <typename T, typename Context>
-void SparseCooXXGrad(const Context& dev_ctx,
-                 const SparseCooTensor& x,
-                 SparseCooTensor* out) {
-}
-}  // namespace sparse
-}  // namespace phi
-
-PD_REGISTER_KERNEL(
-    sparse_coo_xx_grad, CPU, ALL_LAYOUT, phi::sparse::SparseCooXXGrad, float, double) {
+// NOTE: the following code is to bypass the restriction of Paddle
+// kernel registration mechanism. Do NOT refactor them unless you
+// know what you are doing.
+// If you want to implement any new kernel, please follow `sqrt_grad` above
+// instead of `relu_grad` following
+DEFINE_SPARSE_UNARY_GRAD_KERNEL(ReluGradKernel)
+PD_REGISTER_KERNEL(sparse_coo_relu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooReluGradKernel,
+                   float,
+                   double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+PD_REGISTER_KERNEL(sparse_csr_relu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCsrReluGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(sparse_coo_relu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooReluGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(sparse_csr_relu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCsrReluGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+#endif
+
