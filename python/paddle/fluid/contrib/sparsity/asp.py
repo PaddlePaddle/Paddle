@@ -384,6 +384,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
                 import paddle
                 from paddle.static import sparsity
+                import numpy as np
 
                 paddle.enable_static()
 
@@ -435,7 +436,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
                 for i in range(10):
                     imgs = np.random.randn(64, 3, 32, 32).astype('float32')
-                    labels = np.random.randint(10, size=(64, 1))
+                    labels = np.random.randint(10, size=(64, 1)).astype('float32')
                     exe.run(main_program, feed={'data':imgs, 'label':labels})
     """
     device = paddle.device.get_device()
