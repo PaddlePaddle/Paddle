@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/pixel_unshuffle_kernel.h"
+#pragma once
+
 #include <string>
 #include <vector>
-#include "paddle/phi/backends/all_context.h"
+
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void PixelUnshuffleKernel(const Context& ctx,
+void PixelUnshuffleKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           int downscale_factor,
                           const std::string& data_format,
                           DenseTensor* out) {
   auto* in = &x;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   int factor = downscale_factor;
   bool channel_last = (data_format == "NHWC");
   auto in_dims = in->dims();
@@ -50,24 +50,8 @@ void PixelUnshuffleKernel(const Context& ctx,
     o.Resize({in_dims[0], o_dims[1], o_dims[2], in_dims[3], factor, factor});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
-  trans(ctx, t, &o, axis);
+  trans(dev_ctx, t, &o, axis);
   out->Resize(o_dims);
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(pixel_unshuffle,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PixelUnshuffleKernel,
-                   float,
-                   double) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(pixel_unshuffle,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::PixelUnshuffleKernel,
-                   float,
-                   double) {}
-#endif

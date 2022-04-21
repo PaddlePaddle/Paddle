@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/impl/pixel_unshuffle_kernel_impl.h"
+#include "paddle/phi/kernels/pixel_unshuffle_kernel.h"
 
-#include <string>
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void PixelUnshuffleKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int downscale_factor,
-                          const std::string& data_format,
-                          DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(pixel_unshuffle,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PixelUnshuffleKernel,
+                   float,
+                   double) {}
