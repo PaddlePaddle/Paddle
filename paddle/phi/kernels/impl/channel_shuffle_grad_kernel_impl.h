@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/channel_shuffle_grad_kernel.h"
+#pragma once
+
 #include <string>
 #include <vector>
-#include "paddle/phi/backends/all_context.h"
+
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ChannelShuffleGradKernel(const Context& ctx,
+void ChannelShuffleGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               int groups,
                               const std::string& data_format,
                               DenseTensor* x_grad) {
   auto* dout = &out_grad;
   auto* dx = x_grad;
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   bool channel_last = (data_format == "NHWC");
   auto do_dims = dout->dims();
   auto dx_dims = dx->dims();
@@ -51,24 +51,8 @@ void ChannelShuffleGradKernel(const Context& ctx,
     o.Resize({dx_dims[0], dx_dims[1], dx_dims[2], groups, dx_dims[3] / groups});
   }
   phi::funcs::Transpose<Context, T, 5> trans;
-  trans(ctx, t, &o, axis);
+  trans(dev_ctx, t, &o, axis);
   dx->Resize(dx_dims);
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(channel_shuffle_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ChannelShuffleGradKernel,
-                   float,
-                   double) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(channel_shuffle_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ChannelShuffleGradKernel,
-                   float,
-                   double) {}
-#endif

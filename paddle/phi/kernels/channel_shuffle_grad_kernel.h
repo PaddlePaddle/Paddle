@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ChannelShuffleGradKernel(const Context& ctx,
+void ChannelShuffleGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               int groups,
                               const std::string& data_format,
