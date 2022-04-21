@@ -73,6 +73,36 @@
     func : sparse_csr_sqrt
     layout : x
 
+- api : coo_tanh
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_coo_tanh
+    layout : x
+  backward : sparse_coo_tanh_grad
+
+- api : csr_tanh
+  args : (Tensor x)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_csr_tanh
+    layout : x
+
+- api : coo_sin
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_coo_sin
+    layout : x
+  backward : sparse_coo_sin_grad
+
+- api : csr_sin
+  args : (Tensor x)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_csr_sin
+    layout : x
+
 - api : to_dense
   args : (Tensor x)
   output : Tensor(out@DenseTensor)

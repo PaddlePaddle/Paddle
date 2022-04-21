@@ -31,9 +31,10 @@ class TestSparseActivation(unittest.TestCase):
         test_gradient: bool,
     ):
         def tensor_allclose(dense_tensor: paddle.Tensor, sparse_tensor: paddle.Tensor):
-            mask = ~np.isnan(dense_tensor.numpy())
+            dense_numpy = dense_tensor.numpy()
+            mask = ~(np.isnan(dense_numpy) | np.isinf(dense_numpy))
             return np.allclose(
-                dense_tensor.numpy()[mask], sparse_tensor.to_dense().numpy()[mask]
+                dense_numpy[mask], sparse_tensor.to_dense().numpy()[mask]
             )
 
         with _test_eager_guard():
@@ -92,6 +93,41 @@ class TestSparseActivation(unittest.TestCase):
             False,
         )
 
+    def test_sparse_sin(self):
+        x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
+        sparse_dim = 2
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_coo(sparse_dim),
+            paddle.sin,
+            paddle.sparse.functional.sin,
+            True,
+        )
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_csr(),
+            paddle.sin,
+            paddle.sparse.functional.sin,
+            False,
+        )
+
+    def test_sparse_tanh(self):
+        x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, -4, 2, 0]]
+        sparse_dim = 2
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_coo(sparse_dim),
+            paddle.tanh,
+            paddle.sparse.functional.tanh,
+            True,
+        )
+        self.compare_with_dense(
+            x,
+            lambda x: x.to_sparse_csr(),
+            paddle.tanh,
+            paddle.sparse.functional.tanh,
+            False,
+        )
 
 if __name__ == "__main__":
     unittest.main()

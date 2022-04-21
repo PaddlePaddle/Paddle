@@ -1,8 +1,32 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+
+#define DECLARE_SPARSE_UNARY_KERNEL(name)                                      \
+  template <typename T, typename Context>                                      \
+  void SparseCoo##name##Kernel(                                                \
+      const Context& dev_ctx, const SparseCooTensor& x, SparseCooTensor* out); \
+                                                                               \
+  template <typename T, typename Context>                                      \
+  void SparseCsr##name##Kernel(                                                \
+      const Context& dev_ctx, const SparseCsrTensor& x, SparseCsrTensor* out);
+
+#define DECLARE_SPARSE_UNARY_GRAD_KERNEL(name)                      \
+  template <typename T, typename Context>                           \
+  void SparseCoo##name##GradKernel(const Context& dev_ctx,          \
+                                   const SparseCooTensor& x,        \
+                                   const SparseCooTensor& out_grad, \
+                                   SparseCooTensor* x_grad);        \
+                                                                    \
+  template <typename T, typename Context>                           \
+  void SparseCsr##name##GradKernel(const Context& dev_ctx,          \
+                                   const SparseCsrTensor& x,        \
+                                   const SparseCsrTensor& out_grad, \
+                                   SparseCsrTensor* x_grad);
 
 #define DEFINE_SPARSE_UNARY_KERNEL(dense_kernel_func)                    \
   namespace phi {                                                        \

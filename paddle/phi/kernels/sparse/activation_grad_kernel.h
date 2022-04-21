@@ -14,29 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/sparse_coo_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/kernels/sparse/utils.h"
 
 namespace phi {
 namespace sparse {
 
-#define DECLARE_SPARSE_ACTIVATION_GRAD_KERNEL(name)                 \
-  template <typename T, typename Context>                           \
-  void SparseCoo##name##GradKernel(const Context& dev_ctx,          \
-                                   const SparseCooTensor& x,        \
-                                   const SparseCooTensor& out_grad, \
-                                   SparseCooTensor* x_grad);        \
-                                                                    \
-  template <typename T, typename Context>                           \
-  void SparseCsr##name##GradKernel(const Context& dev_ctx,          \
-                                   const SparseCsrTensor& x,        \
-                                   const SparseCsrTensor& out_grad, \
-                                   SparseCsrTensor* x_grad);
-
-DECLARE_SPARSE_ACTIVATION_GRAD_KERNEL(Relu)
-DECLARE_SPARSE_ACTIVATION_GRAD_KERNEL(Sqrt)
-
-#undef DECLARE_SPARSE_ACTIVATION_GRAD_KERNEL
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Relu)
 
 }  // namespace sparse
 }  // namespace phi

@@ -19,37 +19,18 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/utils.h"
 
 namespace phi {
 namespace sparse {
 
-#define DECLARE_SPARSE_ACTIVATION_KERNEL(name)                                 \
-  template <typename T, typename Context>                                      \
-  void SparseCoo##name##Kernel(                                                \
-      const Context& dev_ctx, const SparseCooTensor& x, SparseCooTensor* out); \
-                                                                               \
-  template <typename T, typename Context>                                      \
-  void SparseCsr##name##Kernel(                                                \
-      const Context& dev_ctx, const SparseCsrTensor& x, SparseCsrTensor* out);
-
-DECLARE_SPARSE_ACTIVATION_KERNEL(Relu)
-DECLARE_SPARSE_ACTIVATION_KERNEL(Sqrt)
-
-#undef DECLARE_SPARSE_ACTIVATION_KERNEL
+DECLARE_SPARSE_UNARY_KERNEL(Relu)
 
 template <typename T, typename Context>
 SparseCooTensor SparseRelu(const Context& dev_ctx, const SparseCooTensor& x) {
   DenseTensor indices, values;
   SparseCooTensor coo(indices, values, x.dims());
   SparseCooReluKernel<T, Context>(dev_ctx, x, &coo);
-  return coo;
-}
-
-template <typename T, typename Context>
-SparseCooTensor SparseSqrt(const Context& dev_ctx, const SparseCooTensor& x) {
-  DenseTensor indices, values;
-  SparseCooTensor coo(indices, values, x.dims());
-  SparseCooSqrtKernel<T, Context>(dev_ctx, x, &coo);
   return coo;
 }
 

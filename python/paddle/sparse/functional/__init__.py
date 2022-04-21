@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from .activation import relu  # noqa: F401
-from .activation import sqrt  # noqa: F401
+from .activation import tanh  # noqa: F401
+from .math import sqrt  # noqa: F401
+from .math import sin  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
 
-__all__ = ['relu', 'conv3d', 'subm_conv3d', 'sqrt']
+__all__ = ['relu', 'tanh', 'conv3d', 'subm_conv3d', 'sqrt', 'sin']
