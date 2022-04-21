@@ -30,9 +30,9 @@ class TestSparseActivation(unittest.TestCase):
         sparse_func: Callable[[paddle.Tensor], paddle.Tensor],
         test_gradient: bool,
     ):
-        def tensor_equal(dense_tensor: paddle.Tensor, sparse_tensor: paddle.Tensor):
+        def tensor_allclose(dense_tensor: paddle.Tensor, sparse_tensor: paddle.Tensor):
             mask = ~np.isnan(dense_tensor.numpy())
-            return np.array_equal(
+            return np.allclose(
                 dense_tensor.numpy()[mask], sparse_tensor.to_dense().numpy()[mask]
             )
 
@@ -49,12 +49,12 @@ class TestSparseActivation(unittest.TestCase):
             )
             dense_out = dense_func(dense_x)
 
-            assert tensor_equal(dense_out, sparse_out)
+            assert tensor_allclose(dense_out, sparse_out)
 
             if test_gradient:
                 dense_out.backward(dense_out)
                 sparse_out.backward(sparse_out)
-                assert tensor_equal(dense_x.grad, sparse_x.grad)
+                assert tensor_allclose(dense_x.grad, sparse_x.grad)
 
     def test_sparse_relu(self):
         x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
