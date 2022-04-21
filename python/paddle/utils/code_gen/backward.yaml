@@ -840,8 +840,8 @@
     func : log2_grad
 
 - backward_api : log_double_grad
-  forward : log_grad (Tensor x, Tensor out_grad) -> Tensor(grad_x)
-  args : (Tensor x, Tensor out_grad, Tensor grad_x_grad)
+  forward : log_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
   output : Tensor(x_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -858,6 +858,7 @@
     param : [x]
   kernel :
     func : log_grad
+  backward : log_double_grad
 
 - backward_api : log_loss_grad
   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
