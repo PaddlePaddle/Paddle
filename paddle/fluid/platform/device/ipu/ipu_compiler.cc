@@ -620,14 +620,37 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
 
 void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
                          const OpDesc* op_desc) {
+  // Set pipline
+  // Due to the limitation of popart, if an op has multiple outputs,
+  // pipline settings needs to be set at the same time
+  auto tensor_ids_set =
+      std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
+  if (op_desc->HasAttr(sIpuIndexAttr)) {
+    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
+    builder_->virtualGraph(tensor_ids_set, ipu_index);
+    VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
+             << " for op: " << op_desc->Type();
+    if (op_desc->HasAttr(sIpuStageAttr)) {
+      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
+      builder_->pipelineStage(tensor_ids_set, ipu_stage);
+      VLOG(10) << "set " << sIpuStageAttr << " = " << ipu_stage
+               << " for op: " << op_desc->Type();
+    }
+  }
+
   for (auto& tensor_id : tensor_ids) {
-    PostLower(tensor_id, op_desc);
+    PostLower(tensor_id, op_desc, true);
   }
 }
 
 void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc) {
-  // Set piplinie
-  if (op_desc->HasAttr(sIpuIndexAttr)) {
+  PostLower(tensor_id, op_desc, false);
+}
+
+void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc,
+                         bool skip_pipline) {
+  // Set pipline
+  if (!skip_pipline && op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_id, ipu_index);
     VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index

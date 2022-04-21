@@ -145,6 +145,7 @@ class Compiler {
                      const std::string &tensor_id);
   void PostLower(const std::vector<std::string> &, const OpDesc *);
   void PostLower(const std::string &, const OpDesc *);
+  void PostLower(const std::string &, const OpDesc *, bool);
 
  private:
   std::unique_ptr<popart::Builder> builder_;
