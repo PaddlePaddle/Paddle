@@ -32,7 +32,7 @@ class TestSparseActivation(unittest.TestCase):
     ):
         def tensor_allclose(dense_tensor: paddle.Tensor, sparse_tensor: paddle.Tensor):
             dense_numpy = dense_tensor.numpy()
-            mask = ~(np.isnan(dense_numpy) | np.isinf(dense_numpy))
+            mask = ~np.isnan(dense_numpy)
             return np.allclose(
                 dense_numpy[mask], sparse_tensor.to_dense().numpy()[mask]
             )
@@ -63,15 +63,15 @@ class TestSparseActivation(unittest.TestCase):
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_coo(sparse_dim),
-            lambda x: paddle.nn.ReLU()(x),
-            lambda x: paddle.sparse.ReLU()(x),
+            paddle.nn.ReLU(),
+            paddle.sparse.ReLU(),
             True,
         )
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_csr(),
-            lambda x: paddle.nn.ReLU()(x),
-            lambda x: paddle.sparse.ReLU()(x),
+            paddle.nn.ReLU(),
+            paddle.sparse.ReLU(),
             False,
         )
 

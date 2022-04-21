@@ -58,47 +58,6 @@ def relu(x, name=None):
         )
 
 
-def sqrt(x, name=None):
-    """
-    sparse sqrt activation.
-
-    .. math::
-
-        out = sqrt(x)
-
-    Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Sparse Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-            from paddle.fluid.framework import _test_eager_guard
-
-            with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([4, 0, 1]).astype('float32'))
-                sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.functional.sqrt(sparse_x) 
-    """
-
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-
-    if x.is_sparse_coo():
-        return _C_ops.final_state_sparse_coo_sqrt(x)
-    elif x.is_sparse_csr():
-        return _C_ops.final_state_sparse_csr_sqrt(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.sqrt only support the input of SparseCooTensor or SparseCsrTensor"
-        )
-
-
 def tanh(x, name=None):
     """
     sparse tanh activation.
