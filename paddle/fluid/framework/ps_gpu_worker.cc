@@ -241,7 +241,6 @@ void PSGPUWorker::TrainFiles() {
       PrepareCudaGraph();
     } else if (graph_batch_size != cur_batch || batch_cnt <= thread_id_) {
       // when batch_size changed, run original ops
-      graph_batch_size = -1;
       for (auto& op : ops_) {
         bool need_skip = false;
         for (auto t = 0u; t < skip_ops_.size(); ++t) {

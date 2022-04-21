@@ -86,8 +86,6 @@ class HashTable {
 
  private:
   TableContainer<KeyType, ValType>* container_;
-  curandState* g_rand_state_;
-  uint64_t g_rand_state_size_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
