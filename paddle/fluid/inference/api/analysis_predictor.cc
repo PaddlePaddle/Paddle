@@ -226,6 +226,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
@@ -1076,6 +1077,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = true;
       }
 
+      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
+      // auto_growth
+      if (config.tensorrt_engine_enabled()) {
+        gflags.push_back("--allocator_strategy=naive_best_fit");
+      }
+
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
@@ -1924,11 +1931,29 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
 #endif
   return false;
 }
+
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
 #ifdef PADDLE_WITH_CUDA
   c->trt_with_interleaved_ = with_interleaved;
 #endif
 }
+
+void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
+#ifdef PADDLE_WITH_CUDA
+  auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+      pool.Get(pred->place_));
+  cudaStreamSynchronize(dev_ctx->stream());
+#endif
+}
+void InternalUtils::SyncStream(cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  cudaStreamSynchronize(stream);
+#endif
+}
+
 }  // namespace experimental
 }  // namespace paddle_infer

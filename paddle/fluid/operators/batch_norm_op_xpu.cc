@@ -1,5 +1,4 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -60,7 +59,7 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
     C = (C == 0) ? 1 : C;
     H = (H == 0)? 1 : H;
     W = (W == 0) ? 1 : W;
-    
+
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
     const auto *x_data = x->data<T>();
@@ -98,6 +97,7 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
                                           &mom_cpu);
         momentum = mom_tensor->data<float>()[0];
       }
+
       int r = xpu::batch_norm<T>(dev_ctx.x_context(), x_data, y_data, N, C, H,
                                  W, epsilon, momentum, scale_data, bias_data,
                                  saved_mean_data, saved_variance_data,
@@ -334,7 +334,6 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
     const auto *global_var = ctx.Input<Tensor>("Variance");
 
     // TODO(guozibin): hadle the situation case of N * H * W = 1
-    
     if (is_inplace) {
       float *global_inv_std_data = nullptr;
       if (use_global_stats) {
@@ -365,7 +364,6 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
                                              "return wrong value[%d %s]",
                                              r2, XPUAPIErrorMsg[r2]));
     }
-    
     int r3;
     bool is_nchw = data_layout_str == "NCHW";
     if (use_global_stats) {

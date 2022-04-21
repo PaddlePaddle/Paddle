@@ -21,10 +21,8 @@ KernelSignature CrossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature CrossGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("cross_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"dim"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "cross_grad", {"X", "Y", "Out@GRAD"}, {"dim"}, {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

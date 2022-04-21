@@ -22,7 +22,7 @@ KernelSignature DiagOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature DiagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "diag_grad", {"X", GradVarName("Out")}, {"offset"}, {GradVarName("X")});
+      "diag_grad", {"X", "Out@GRAD"}, {"offset"}, {"X@GRAD"});
 }
 
 }  // namespace phi
