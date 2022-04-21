@@ -59,6 +59,10 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
       return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
       return MKLDNNMemoryFormat::nchw;
+    case DataLayout::kNCDHW:
+      return MKLDNNMemoryFormat::ncdhw;
+    case DataLayout::kNDHWC:
+      return MKLDNNMemoryFormat::ndhwc;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert layout %s to MKLDNN format.",
@@ -72,6 +76,10 @@ inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
       return DataLayout::kNHWC;
     case MKLDNNMemoryFormat::nchw:
       return DataLayout::kNCHW;
+    case MKLDNNMemoryFormat::ncdhw:
+      return DataLayout::kNCDHW;
+    case MKLDNNMemoryFormat::ndhwc:
+      return DataLayout::kNDHWC;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert MKLDNN format to paddle layout."));

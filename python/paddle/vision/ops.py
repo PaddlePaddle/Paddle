@@ -558,7 +558,15 @@ def deform_conv2d(x,
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_deformable_conv(
+            x, offset, weight, mask, stride, padding, dilation,
+            deformable_groups, groups, 1)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=1)
+        else:
+            out = pre_bias
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'deformable_groups', deformable_groups, 'groups', groups,
                  'im2col_step', 1)
@@ -1391,26 +1399,27 @@ def nms(boxes,
         IoU = \frac{intersection\_area(box1, box2)}{union\_area(box1, box2)}
 
     If scores are provided, input boxes will be sorted by their scores firstly.
+
     If category_idxs and categories are provided, NMS will be performed with a batched style, 
     which means NMS will be applied to each category respectively and results of each category
     will be concated and sorted by scores.
+    
     If K is provided, only the first k elements will be returned. Otherwise, all box indices sorted by scores will be returned.
 
     Args:
         boxes(Tensor): The input boxes data to be computed, it's a 2D-Tensor with 
-            the shape of [num_boxes, 4] and boxes should be sorted by their 
-            confidence scores. The data type is float32 or float64. 
+            the shape of [num_boxes, 4]. The data type is float32 or float64. 
             Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates. 
             Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
-        iou_threshold(float32): IoU threshold for determine overlapping boxes. Default value: 0.3.
+        iou_threshold(float32, optional): IoU threshold for determine overlapping boxes. Default value: 0.3.
         scores(Tensor, optional): Scores corresponding to boxes, it's a 1D-Tensor with 
-            shape of [num_boxes]. The data type is float32 or float64.
+            shape of [num_boxes]. The data type is float32 or float64. Default: None.
         category_idxs(Tensor, optional): Category indices corresponding to boxes. 
-            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64.
-        categories(List, optional): A list of unique id of all categories. The data type is int64.
+            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64. Default: None.
+        categories(List, optional): A list of unique id of all categories. The data type is int64. Default: None.
         top_k(int64, optional): The top K boxes who has higher score and kept by NMS preds to 
-            consider. top_k should be smaller equal than num_boxes.
+            consider. top_k should be smaller equal than num_boxes. Default: None.
 
     Returns:
         Tensor: 1D-Tensor with the shape of [num_boxes]. Indices of boxes kept by NMS.

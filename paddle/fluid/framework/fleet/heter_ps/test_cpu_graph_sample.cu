@@ -66,7 +66,6 @@ TEST(TEST_FLEET, graph_sample) {
   1,4,7
   gpu 2:
   2,5,8
-
   query(2,6) returns nodes [6,9,1,4,7,2]
   */
   ::paddle::distributed::GraphParameter table_proto;

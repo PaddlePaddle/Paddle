@@ -22,6 +22,14 @@ from paddle.fluid import framework
 from paddle import _C_ops
 
 final_state_name_mapping = {
+    "graph_send_recv": {
+        "final_op_name": "final_state_graph_send_recv",
+        "x": "X",
+        "src_index": "Src_index",
+        "dst_index": "Dst_index",
+        "out": "Out",
+        "dst_count": "Dst_count"
+    },
     "matmul_v2": {
         "final_op_name": "final_state_matmul",
         "transpose_x": "trans_x",
@@ -63,6 +71,17 @@ final_state_name_mapping = {
         "axis1": "axis1",
         "axis2": "axis2",
         "out": "Out",
+    },
+    "roi_align": {
+        "final_op_name": "final_state_roi_align",
+        "x": "X",
+        "boxes": "ROIs",
+        "boxes_num": "RoisNum",
+        "pooled_height": "pooled_height",
+        "pooled_width": "pooled_width",
+        "spatial_scale": "spatial_scale",
+        "sampling_ratio": "sampling_ratio",
+        "aligned": "aligned",
     },
     # "one_hot": {
     #     "final_op_name": "final_state_one_hot",

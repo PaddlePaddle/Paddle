@@ -20,6 +20,7 @@ import paddle
 import paddle.static as static
 import subprocess
 import numpy as np
+from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.framework import _test_eager_guard
 
@@ -328,6 +329,33 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     np.array_equal(dx_grad, pd_dx_grad),
                     "custom op dx grad: {},\n paddle api dx grad: {}".format(
                         dx_grad, pd_dx_grad))
+
+    def test_with_dataloader(self):
+        for device in self.devices:
+            paddle.set_device(device)
+            # data loader
+            transform = Compose(
+                [Normalize(
+                    mean=[127.5], std=[127.5], data_format='CHW')])
+            train_dataset = paddle.vision.datasets.MNIST(
+                mode='train', transform=transform)
+            train_loader = paddle.io.DataLoader(
+                train_dataset,
+                batch_size=64,
+                shuffle=True,
+                drop_last=True,
+                num_workers=0)
+
+            for batch_id, (image, _) in enumerate(train_loader()):
+                out = self.custom_ops[0](image)
+                pd_out = paddle.nn.functional.relu(image)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(out,
+                                                                     pd_out))
+
+                if batch_id == 5:
+                    break
 
 
 if __name__ == '__main__':
