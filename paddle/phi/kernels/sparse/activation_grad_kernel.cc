@@ -22,9 +22,10 @@ DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 // NOTE: the following code is to bypass the restriction of Paddle
 // kernel registration mechanism. Do NOT refactor them unless you
 // know what you are doing.
-// If you want to implement any new kernel, please follow `sqrt_grad` above
-// instead of `relu_grad` following
+// If you want to implement any new kernel, please follow the above `sqrt_grad`,
+// do NOT follow the following `relu_grad`.
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(ReluGradKernel)
+
 PD_REGISTER_KERNEL(sparse_coo_relu_grad,
                    CPU,
                    ALL_LAYOUT,

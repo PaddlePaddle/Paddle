@@ -21,8 +21,8 @@ DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sqrt, SqrtKernel)
 // NOTE: the following code is to bypass the restriction of Paddle
 // kernel registration mechanism. Do NOT refactor them unless you
 // know what you are doing.
-// If you want to implement any new kernel, please follow `sqrt` above
-// instead of `relu` following
+// If you want to implement any new kernel, please follow the above `sqrt`,
+// do NOT follow the following `relu`.
 DEFINE_SPARSE_UNARY_KERNEL(ReluKernel)
 
 PD_REGISTER_KERNEL(sparse_coo_relu,
