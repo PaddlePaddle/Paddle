@@ -217,7 +217,7 @@ void PSGPUWorker::TrainFiles() {
   int cur_batch;
   int batch_cnt = 0;
 
-  int last_batch_size = 0;
+  int graph_batch_size = 0;
 
   platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
@@ -237,11 +237,11 @@ void PSGPUWorker::TrainFiles() {
           op->Run(*thread_scope_, place_);
         }
       }
-      last_batch_size = cur_batch;
+      graph_batch_size = cur_batch;
       PrepareCudaGraph();
-    } else if (last_batch_size != cur_batch) {
+    } else if (graph_batch_size != cur_batch || batch_cnt <= thread_id_) {
       // when batch_size changed, run original ops
-      last_batch_size = -1;
+      graph_batch_size = -1;
       for (auto& op : ops_) {
         bool need_skip = false;
         for (auto t = 0u; t < skip_ops_.size(); ++t) {
