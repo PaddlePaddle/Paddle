@@ -39,20 +39,14 @@ KernelSignature ExpandGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
         "expand_grad", {"X", "Out@GRAD"}, {"shape"}, {"X@GRAD"});
   }
   if (ctx.HasInput("Shape")) {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"Shape"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"Shape"}, {"X@GRAD"});
   } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"expand_shapes_tensor"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"expand_shapes_tensor"}, {"X@GRAD"});
   } else {
-    return KernelSignature("expand_grad",
-                           {"X", GradVarName("Out")},
-                           {"shape"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"shape"}, {"X@GRAD"});
   }
 }
 
