@@ -616,23 +616,23 @@ __device__ __forceinline__ void WriteData(T* dst,
   }
 }
 
-template <typename T, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst,
                                           T* __restrict__ src,
                                           int num,
                                           int read_lens) {
   if (IsBoundary) {
-    int thread_offset = threadIdx.x * vec_size;
+    int thread_offset = threadIdx.x * NX;
 #pragma unroll
-    for (int idx = 0; idx < vec_size; ++idx) {
+    for (int idx = 0; idx < NX; ++idx) {
       if ((thread_offset + idx) < num) {
         dst[thread_offset + idx] = src[idx];
       }
     }
   } else {
     // Vector type
-    constexpr int kVectorSize = (vec_size % 4 == 0) ? 4 : (vec_size % 2 == 0) ? 2 : 1;
-    constexpr int kVectorsPerThread = vec_size / kVectorSize;
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
 
     int thread_offset = threadIdx.x * kVectorsPerThread;
     using VecType = details::VectorType<T, kVectorSize>;
