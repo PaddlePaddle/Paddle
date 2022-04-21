@@ -487,8 +487,8 @@ class TestLossIsInplaceVar(unittest.TestCase):
         self.assertTrue(np.array_equal(inplace_grad_var_a, grad_var_a))
 
     def test_loss_is_inplace_var(self):
-        with _test_eager_guard():
-            self.func_test_loss_is_inplace_var()
+        # with _test_eager_guard():
+        #     self.func_test_loss_is_inplace_var()
         self.func_test_loss_is_inplace_var()
 
 
