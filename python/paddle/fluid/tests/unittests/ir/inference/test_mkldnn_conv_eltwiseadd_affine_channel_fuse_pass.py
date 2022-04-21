@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+import os
 
 import hypothesis
 from hypothesis import given, settings, seed, example, assume
@@ -160,9 +161,10 @@ class TestConvEltwiseAddAffineChannelFusePass(PassAutoScanTest):
             "Currently mkldnn Output has diff with bias!")
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            passes=["conv_eltwiseadd_affine_channel_mkldnn_fuse_pass"], )
+        if os.name != 'nt':
+            self.run_and_statis(
+                quant=False,
+                passes=["conv_eltwiseadd_affine_channel_mkldnn_fuse_pass"], )
 
 
 if __name__ == "__main__":
