@@ -173,6 +173,7 @@ def wrap_optimizers():
 
         return warpper
 
+    global _has_optimizer_wrapped
     if _has_optimizer_wrapped == True:
         return
     import paddle.optimizer as optimizer
