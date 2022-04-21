@@ -21,13 +21,14 @@ namespace framework {
 
 #if defined(PADDLE_WITH_XPU_KP)
 
-__device__ void update_lr(OptimizerConfig& tmp, float& w, float& g2sum,
+__device__ void update_lr(OptimizerConfig& optimizer_config, float& w,
+                          float& g2sum,
                           float g,  // NOLINT
                           float scale) {
-  float local_learning_rate = tmp.learning_rate;
-  float local_initial_g2sum = tmp.initial_g2sum;
-  float local_min_bound = tmp.min_bound;
-  float local_max_bound = tmp.max_bound;
+  float local_learning_rate = optimizer_config.learning_rate;
+  float local_initial_g2sum = optimizer_config.initial_g2sum;
+  float local_min_bound = optimizer_config.min_bound;
+  float local_max_bound = optimizer_config.max_bound;
 
   double add_g2sum = 0;
   double ratio = local_learning_rate *
@@ -44,12 +45,12 @@ __device__ void update_lr(OptimizerConfig& tmp, float& w, float& g2sum,
   g2sum += add_g2sum;
 }
 
-__device__ void update_mf(OptimizerConfig& tmp, int n, float* w, float& g2sum,
-                          const float* g, float scale) {
-  float local_mf_learning_rate = tmp.mf_learning_rate;
-  float local_mf_initial_g2sum = tmp.mf_initial_g2sum;
-  float local_mf_min_bound = tmp.mf_min_bound;
-  float local_mf_max_bound = tmp.mf_max_bound;
+__device__ void update_mf(OptimizerConfig& optimizer_config, int n, float* w,
+                          float& g2sum, const float* g, float scale) {
+  float local_mf_learning_rate = optimizer_config.mf_learning_rate;
+  float local_mf_initial_g2sum = optimizer_config.mf_initial_g2sum;
+  float local_mf_min_bound = optimizer_config.mf_min_bound;
+  float local_mf_max_bound = optimizer_config.mf_max_bound;
 
   double add_g2sum = 0;
   double ratio =
@@ -70,22 +71,22 @@ __device__ void update_mf(OptimizerConfig& tmp, int n, float* w, float& g2sum,
 __device__ float xpu_rand_uniform() { return 0.1; }
 
 template <typename ValType, typename GradType>
-__device__ void update_value(OptimizerConfig& tmp, ValType& val,
+__device__ void update_value(OptimizerConfig& optimizer_config, ValType& val,
                              const GradType& grad) {  // NOLINT
   val.slot = grad.slot;
   val.show += grad.show;
   val.clk += grad.clk;
 
-  float local_nonclk_coeff = tmp.nonclk_coeff;
-  float local_clk_coeff = tmp.clk_coeff;
+  float local_nonclk_coeff = optimizer_config.nonclk_coeff;
+  float local_clk_coeff = optimizer_config.clk_coeff;
 
-  float local_mf_create_thresholds = tmp.mf_create_thresholds;
-  float local_mf_initial_range = tmp.mf_initial_range;
+  float local_mf_create_thresholds = optimizer_config.mf_create_thresholds;
+  float local_mf_initial_range = optimizer_config.mf_initial_range;
 
   val.delta_score +=
       local_nonclk_coeff * (grad.show - grad.clk) + local_clk_coeff * grad.clk;
 
-  update_lr(tmp, val.lr, val.lr_g2sum, grad.lr_g, grad.show);
+  update_lr(optimizer_config, val.lr, val.lr_g2sum, grad.lr_g, grad.show);
 
   if (val.mf_size == 0) {
     if (local_mf_create_thresholds <=
@@ -98,7 +99,8 @@ __device__ void update_value(OptimizerConfig& tmp, ValType& val,
       }
     }
   } else {
-    update_mf(tmp, MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, grad.show);
+    update_mf(optimizer_config, MF_DIM, &val.mf[1], val.mf[0], grad.mf_g,
+              grad.show);
   }
 }
 
@@ -161,7 +163,7 @@ __global__ void search_kernel(Table& table, const KeyType* const keys,
 }
 
 template <typename KeyType, typename ValType, typename Table, typename GradType>
-__global__ void update_kernel(OptimizerConfig& tmp, Table& table,
+__global__ void update_kernel(OptimizerConfig& optimizer_config, Table& table,
                               const KeyType* const keys,
                               const GradType* const grads, long long len) {
   int cid = core_id();
@@ -187,7 +189,7 @@ __global__ void update_kernel(OptimizerConfig& tmp, Table& table,
     for (int k = 0; k < read_len; k++) {
       ValType* val = table.find(local_keys[k]);
       if (val != NULL) {
-        update_value(tmp, *val, local_grads[i]);
+        update_value(optimizer_config, *val, local_grads[i]);
       }
     }
   }
