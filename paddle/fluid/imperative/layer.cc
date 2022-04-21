@@ -509,6 +509,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
+  if (std::getenv("XPU_PADDLE_SYNC") != nullptr) {
+  	if (platform::is_xpu_place(place)) {
+		int r = xpu_wait();
+		PADDLE_ENFORCE_EQ(r,0,platform::errors::InvalidArgument(
+					"not initialized.[",op.Type()));
+	}
+  }
+
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 
   // set the output var
