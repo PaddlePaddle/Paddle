@@ -240,13 +240,6 @@ class TestClipAPI(unittest.TestCase):
 
     def test_clip_dygraph_default_max(self):
         paddle.disable_static()
-        with _test_eager_guard():
-            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
-            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
-            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
-            egr_out1 = paddle.clip(x_int32, min=1)
-            egr_out2 = paddle.clip(x_int64, min=1)
-            egr_out3 = paddle.clip(x_f32, min=1)
         x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
         x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
         x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
