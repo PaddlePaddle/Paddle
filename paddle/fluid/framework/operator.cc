@@ -718,18 +718,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const override {
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override {
     const auto& outs = ctx_.outputs;
     auto it = outs.find(name);
     if (it == outs.end() || it->second.empty()) {
       return false;
     }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) return true;
       }
+      return false;
+    } else {
+      for (auto& output : it->second) {
+        if (output == nullptr) return false;
+      }
+      return true;
     }
-    return true;
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
@@ -939,19 +945,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
   }
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
@@ -1318,8 +1324,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                   << ", using_kernel_key:" << *kernel_type_.get();
           auto try_pt_kernel_key =
               TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-          if (!phi::KernelFactory::Instance().IsSelectKernelValid(
-                  pt_kernel_name, try_pt_kernel_key)) {
+          if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                        try_pt_kernel_key)) {
             kernel_type_->library_type_ = expected_kernel_key_library_type;
             VLOG(3) << "modify XPU KP kernel in static graph: " << type_
                     << " is failed " << *kernel_type_.get();
@@ -2107,10 +2113,12 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
-  InitDefaultKernelSignatureMap();
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
-      arg_mapping_ctx);
+  if (arg_map_fn_ == nullptr) {
+    arg_map_fn_.reset(new phi::ArgumentMappingFn(
+        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
+  }
+  return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePhiData(

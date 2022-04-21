@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/elementwise/elementwise_mlu.h"
 
 namespace paddle {
 namespace operators {
@@ -21,53 +20,11 @@ namespace operators {
 using Tensor = framework::Tensor;
 using MLUDeviceContext = platform::MLUDeviceContext;
 
-static void GetReduceAxes(const int axis, const framework::DDim& src_ddims,
-                          const framework::DDim& target_ddims,
-                          std::vector<int>* axes) {
-  int64_t src_dim_size = src_ddims.size();
-  int64_t target_dim_size = target_ddims.size();
-  for (int64_t i = 0; i < src_dim_size; ++i) {
-    if (i < axis || i >= target_dim_size + axis) {
-      axes->push_back(i);
-      continue;
-    }
-    if (src_ddims[i] > target_ddims[i - axis]) {
-      axes->push_back(i);
-    }
-  }
-}
-
 template <typename T>
 class ElementwiseMulMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    int axis = ctx.Attr<int>("axis");
-    const auto& x_dims = x->dims();
-    const auto& y_dims = y->dims();
-    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
-                     : axis);
-    int max_dim = std::max(x_dims.size(), y_dims.size());
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
-    GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                           y_dims_array.data(), out_dims_array.data(), max_dim,
-                           axis);
-
-    MLUCnnlTensorDesc x_desc(max_dim, x_dims_array.data(), ToCnnlDataType<T>());
-    MLUCnnlTensorDesc y_desc(max_dim, y_dims_array.data(), ToCnnlDataType<T>());
-    MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                       CNNL_NOT_PROPAGATE_NAN);
-
-    MLUCnnl::OpTensor(ctx, op_tensor_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), out_desc.get(),
-                      GetBasePtr(out), ToCnnlDataType<T>());
+    MLUOpTensorKernel<T>(ctx, CNNL_OP_TENSOR_MUL);
   }
 };
 
