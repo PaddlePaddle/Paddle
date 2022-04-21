@@ -257,6 +257,19 @@
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
   invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : conv2d_grad_grad
+
+- backward_api : conv2d_grad_grad
+  forward : conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : conv2d_grad_grad
+    use_cudnn : true
+  optional : grad_input_grad, grad_filter_grad
 
 - backward_api : conv2d_transpose_grad
   forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -739,6 +752,16 @@
     func : label_smooth_grad
   optional : prior_dist
 
+- backward_api : leaky_relu_double_grad
+  forward : leaky_relu_grad (Tensor x, Tensor grad_out, float alpha) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, float alpha)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_x_grad]
+  kernel :
+    func : leaky_relu_double_grad
+
 - backward_api : leaky_relu_grad
   forward : leaky_relu (Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float alpha)
@@ -748,6 +771,7 @@
     param : [x]
   kernel :
     func : leaky_relu_grad
+  backward : leaky_relu_double_grad
 
 - backward_api : lerp_grad
   forward : lerp (Tensor x, Tensor y, Tensor weight) -> Tensor(out)
