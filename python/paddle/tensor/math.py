@@ -4414,7 +4414,7 @@ def angle(x, name=None):
 
 def heaviside(x, y, name=None):
     """
-    Computes the Heaviside step function determined by y for each element in x. The equation is:
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is:
     .. math::
         heaviside(x, y)=
             \left\{
@@ -4426,18 +4426,20 @@ def heaviside(x, y, name=None):
             \right.
 
     Notes:
-    ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
 
     Examples:
         .. code-block:: python
+            :name: heaviside-example
+
             import paddle
             x = paddle.to_tensor([-0.5, 0, 0.5])
             y = paddle.to_tensor([0.1])
