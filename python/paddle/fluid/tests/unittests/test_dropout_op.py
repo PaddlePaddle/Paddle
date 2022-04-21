@@ -952,6 +952,7 @@ class TestDropoutBackward(unittest.TestCase):
         return mask.astype("float32")
 
     def test_backward_downscale_in_infer(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
