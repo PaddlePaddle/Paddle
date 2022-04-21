@@ -22,7 +22,7 @@ __all__ = []
 
 model_urls = {
     'mobilenetv1_1.0':
-    ('https://bj.bcebos.com/v1/ai-studio-online/e4780dbc69e44e88af956736840ecf31a74a91dcbff64ede8e311fffcd99b64f',
+    ('https://paddle-hapi.bj.bcebos.com/models/mobilenetv1_1.0.pdparams',
      '3033ab1975b1670bef51545feb65fc45')
 }
 

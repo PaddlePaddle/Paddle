@@ -31,7 +31,7 @@ __all__ = []
 
 model_urls = {
     "inception_v3":
-    ("https://bj.bcebos.com/v1/ai-studio-online/37bdfacc03a3478d807287da1433c27c3b4cb5094aca4ff78e1738fa5ddd45c0",
+    ("https://paddle-hapi.bj.bcebos.com/models/inception_v3.pdparams",
      "649a4547c3243e8b59c656f41fe330b8")
 }
 

@@ -27,25 +27,25 @@ __all__ = []
 
 model_urls = {
     "shufflenet_v2_x0_25": (
-        "https://bj.bcebos.com/v1/ai-studio-online/648cc351973b4233a016d158621a8e600568c6de97a14b469b2902676d939e6c",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_25.pdparams",
         "1e509b4c140eeb096bb16e214796d03b", ),
     "shufflenet_v2_x0_33": (
-        "https://bj.bcebos.com/v1/ai-studio-online/df83b6202b784a72b8486936333da529fca22335189e4b9e88b3e0bc9b7597b8",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_33.pdparams",
         "3d7b3ab0eaa5c0927ff1026d31b729bd", ),
     "shufflenet_v2_x0_5": (
-        "https://bj.bcebos.com/v1/ai-studio-online/ac3e4a06a3714939bed412307bafcc19193beff575dc48548b47b34d9ccbb3d8",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_5.pdparams",
         "5e5cee182a7793c4e4c73949b1a71bd4", ),
     "shufflenet_v2_x1_0": (
-        "https://bj.bcebos.com/v1/ai-studio-online/a20dfea65c614e8baeb6530dc1c84c3004cf2a09a96348938d0a14da9412bc05",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x1_0.pdparams",
         "122d42478b9e81eb49f8a9ede327b1a4", ),
     "shufflenet_v2_x1_5": (
-        "https://bj.bcebos.com/v1/ai-studio-online/d9f3eaf999d345c7bba7683bc6cc69d61881c3c37e45479bbf4dcf9ab132025d",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x1_5.pdparams",
         "faced5827380d73531d0ee027c67826d", ),
     "shufflenet_v2_x2_0": (
-        "https://bj.bcebos.com/v1/ai-studio-online/653d1228c8ca4274984d341111d0254fecdbf0954cfe4f85bc4bddd9545912e4",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x2_0.pdparams",
         "cd3dddcd8305e7bcd8ad14d1c69a5784", ),
     "shufflenet_v2_swish": (
-        "https://bj.bcebos.com/v1/ai-studio-online/cb7a029e746a423c9219d034c4dd834438945503157b4b41aa26f7cda62e1fc9",
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_swish.pdparams",
         "adde0aa3b023e5b0c94a68be1c394b84", ),
 }
 
