@@ -16,12 +16,6 @@
 
 namespace phi {
 
-KernelSignature ChannelShuffleOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "channel_shuffle", {"X"}, {"groups", "data_format"}, {"Out"});
-}
-
 KernelSignature ChannelShuffleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("channel_shuffle_grad",
@@ -32,7 +26,5 @@ KernelSignature ChannelShuffleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(channel_shuffle,
-                           phi::ChannelShuffleOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(channel_shuffle_grad,
                            phi::ChannelShuffleGradOpArgumentMapping);
