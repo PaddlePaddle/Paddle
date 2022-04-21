@@ -69,3 +69,19 @@ class TestSparseBatchNorm(unittest.TestCase):
                 sparse_batch_norm = paddle.sparse.BatchNorm(
                     3, data_format='NCDHW')
                 sparse_batch_norm(sparse_x)
+
+    def test2(self):
+        with _test_eager_guard():
+            paddle.seed(123)
+            channels = 3
+            x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+            dense_x = paddle.to_tensor(x_data)
+            sparse_x = dense_x.to_sparse_coo(4)
+            batch_norm = paddle.sparse.BatchNorm(channels)
+            batch_norm_out = batch_norm(sparse_x)
+            print(batch_norm_out.shape)
+            # [1, 6, 6, 6, 3]
+
+
+if __name__ == "__main__":
+    unittest.main()

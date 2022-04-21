@@ -66,8 +66,8 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
@@ -92,13 +92,12 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         .. code-block:: python
 
           import paddle
-          import numpy as np
           from paddle.fluid.framework import _test_eager_guard
 
           with _test_eager_guard():
-              np.random.seed(123)
+              paddle.seed(123)
               channels = 3
-              x_data = np.random.random(size=(1, 6, 6, 6, channels)).astype('float32')
+              x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
               dense_x = paddle.to_tensor(x_data) 
               sparse_x = dense_x.to_sparse_coo(4)
               batch_norm = paddle.sparse.BatchNorm(channels)
