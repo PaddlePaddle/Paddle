@@ -1,19 +1,23 @@
-/*Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/backward.h"
 
 namespace paddle {
 namespace operators {
@@ -76,42 +80,6 @@ class PixelUnshuffleGradOpMaker : public framework::SingleGradOpMaker<T> {
 class PixelUnshuffleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::NotFound("Input(Out@Grad) should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
-        platform::errors::NotFound("Output(X@Grad) should not be null"));
-
-    auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(do_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input should be a 4-D tensor of format [N, C, H, W] "
-                          "or [N, H, W, C], but got %u.",
-                          do_dims.size()));
-
-    auto downscale_factor = ctx->Attrs().Get<int>("downscale_factor");
-
-    const std::string data_format =
-        ctx->Attrs().Get<std::string>("data_format");
-    const bool channel_last = (data_format == "NHWC");
-
-    auto dx_dims = do_dims;
-    dx_dims[0] = do_dims[0];
-
-    if (!channel_last) {
-      dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
-      dx_dims[2] = do_dims[2] * downscale_factor;
-      dx_dims[3] = do_dims[3] * downscale_factor;
-    } else {
-      dx_dims[1] = do_dims[1] * downscale_factor;
-      dx_dims[2] = do_dims[2] * downscale_factor;
-      dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
-    }
-    ctx->SetOutputDim(framework::GradVarName("X"), dx_dims);
-  }
 };
 
 }  // namespace operators
@@ -127,4 +95,10 @@ REGISTER_OPERATOR(pixel_unshuffle, ops::PixelUnshuffleOp,
                   ops::PixelUnshuffleGradOpMaker<paddle::imperative::OpBase>,
                   PixelUnshuffleInferShapeFunctor);
 
-REGISTER_OPERATOR(pixel_unshuffle_grad, ops::PixelUnshuffleGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle_grad,
+                            PixelUnshuffleGradInferShapeFunctor,
+                            PD_INFER_META(phi::PixelUnshuffleGradInferMeta));
+
+REGISTER_OPERATOR(pixel_unshuffle_grad,
+                  ops::PixelUnshuffleGradOp,
+                  PixelUnshuffleGradInferShapeFunctor);
