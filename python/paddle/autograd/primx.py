@@ -127,6 +127,8 @@ class VarMap(object):
         self.tab[id(key_var)] = id(value_var)
 
     def add_rec(self, key_vars, value_vars):
+        if value_vars is None:
+            return
         if isinstance(key_vars, paddle.fluid.framework.Variable):
             assert isinstance(value_vars, paddle.fluid.framework.Variable)
             self.tab[id(key_vars)] = id(value_vars)
@@ -143,7 +145,9 @@ class VarMap(object):
             return None
 
     def delete(self, key_var):
-        del self.tab[id(key_var)]
+        varid = id(key_var)
+        if varid in self.tab:
+            del self.tab[id(key_var)]
 
     def delete_keyvars(self, key_vars):
         for var in key_vars:
@@ -217,21 +221,13 @@ class Transform(object):
             del block.vars[name]
         block._sync_with_cpp()
 
-    def var2dot_rec(self, vars, defaults=None):
-
+    def var2dot_rec(self, vars):
+        """ Lookup var2dot recursively."""
         if isinstance(vars, paddle.fluid.framework.Variable):
             dot = self.var2dot.lookup(vars)
-            if dot is None and defaults is not None:
-                dot = defaults
             return dot
 
-        if defaults is None:
-            defaults = [None for _ in range(vars)]
-
-        dots = [
-            self.var2dot_rec(var, default)
-            for var, default in zip(vars, defaults)
-        ]
+        dots = [self.var2dot_rec(var) for var in vars]
         return dots
 
     def dot2bar_rec(self, dots, defaults=None):
@@ -279,7 +275,11 @@ class Transform(object):
             assert x.shape == dot.shape
             self.var2dot.add(x, dot)
 
-        path, _, _ = topo_path(xs, ys, self.block)
+        path, unused_xs, _ = topo_path(xs, ys, self.block)
+
+        # No need to track unused inputs
+        for x in unused_xs:
+            self.var2dot.delete(x)
 
         for op in path:
             # An input var may not be on the input-output path, which implies 
@@ -287,7 +287,7 @@ class Transform(object):
             # the original input in the position of the otherwise forward
             # gradient.
             ins = op_position_inputs(op)
-            jvp_ins = self.var2dot_rec(ins, defaults=ins)
+            jvp_ins = self.var2dot_rec(ins)
             # apply op's forward ad rule
             outs_dot = _jvp(op, *jvp_ins)
             self.add_vars_rec(outs_dot)
@@ -316,6 +316,9 @@ class Transform(object):
             the list outputs of the resulting transposed program
             
         """
+        assert all(v is not None for v in xs_dot), f'`xs_dot` includes None.'
+        assert all(v is not None for v in ys_dot), f'`ys_dot` includes None.'
+
         if ys_bar is None:
             ys_bar = []
             for y in ys_dot:
@@ -331,7 +334,11 @@ class Transform(object):
             self.dot2bar.add(dot, bar)
 
         # find all the relevant forward gradients
-        path, _, _ = topo_path(xs_dot, ys_dot, self.block)
+        path, unused_xs_dot, _ = topo_path(xs_dot, ys_dot, self.block)
+
+        # No need to track unused inputs
+        for dot in unused_xs_dot:
+            self.dot2bar.delete(dot)
 
         dotvars = output_vars_on_path(path)
         dotvars.update((id(var), var) for var in xs_dot)
@@ -417,6 +424,8 @@ def _gradients(ys, xs, ys_bar=None):
     ys = new_vars[len(xs):]
 
     xs_dot, ys_dot = ad.linearize(xs, ys)
+    if any(var is None for var in ys_dot):
+        assert False, f'Gradients cannot be computed. The given output `ys` does not depend on input `xs`.'
     ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
     # remove xs_dot and their constructor ops
 

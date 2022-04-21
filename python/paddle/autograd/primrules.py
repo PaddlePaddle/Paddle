@@ -393,33 +393,58 @@ def fill_constant_prim2orig(op):
 ## Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
-    return linear_jvp(op, x_dot, y_dot)
+    if x_dot is None:
+        return y_dot
+    elif y_dot is None:
+        return x_dot
+    else:
+        return linear_jvp(op, x_dot, y_dot)
 
 
 @REGISTER_JVP('sub_p')
 def sub_jvp(op, x_dot, y_dot):
-    return linear_jvp(op, x_dot, y_dot)
+    if x_dot is None:
+        return neg(y_dot)
+    elif y_dot is None:
+        return x_dot
+    else:
+        return linear_jvp(op, x_dot, y_dot)
 
 
 @REGISTER_JVP('mul_p')
 def mul_jvp(op, x_dot, y_dot):
-    assert op.type == 'mul_p'
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1, t2 = mul(x_dot, y), mul(x, y_dot)
-    z_dot = add(t1, t2)
-    return z_dot
+    if x_dot is None:
+        return mul(x, y_dot)
+    elif y_dot is None:
+        return mul(x_dot, y)
+    else:
+        t1, t2 = mul(x_dot, y), mul(x, y_dot)
+        z_dot = add(t1, t2)
+        return z_dot
 
 
 @REGISTER_JVP('div_p')
 def div_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1, t2 = div(x_dot, y), div(mul(x, y_dot), mul(y, y))
-    z_dot = sub(t1, t2)
-    return z_dot
+    if y_dot is None:
+        return div(x_dot, y)
+    elif x_dot is None:
+        return div(mul(x, y_dot), mul(y, y))
+    else:
+        t1 = div(x_dot, y)
+        t2 = div(mul(x, y_dot), mul(y, y))
+        return sub(t1, t2)
 
 
 @REGISTER_JVP('sqrt_p')
 def sqrt_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     y = op_position_output(op)
     c2 = fill_const(value=2.0, shape=y.shape, dtype=y.dtype)
     y_dot = div(x_dot, mul(c2, y))
@@ -428,6 +453,8 @@ def sqrt_jvp(op, x_dot):
 
 @REGISTER_JVP('tanh_p')
 def tanh_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     y = op_position_output(op)
     c1 = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, sub(c1, mul(y, y)))
@@ -436,24 +463,32 @@ def tanh_jvp(op, x_dot):
 
 @REGISTER_JVP('reshape_p')
 def reshape_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     shape = op.attr('shape')
     return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('broadcast_p')
 def broadcast_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     shape = op.attr('shape')
     return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('transpose_p')
 def transpose_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, axis=axis)
 
 
 @REGISTER_JVP('split_p')
 def split_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     num_or_sections = op.attr('num_or_sections')
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, num_or_sections=num_or_sections, axis=axis)
@@ -461,12 +496,16 @@ def split_jvp(op, x_dot):
 
 @REGISTER_JVP('concat_p')
 def concat_jvp(op, xs_dot):
+    if xs_dot is None:
+        return None
     axis = op.attr('axis')
     return linear_jvp(op, xs_dot, axis=axis)
 
 
 @REGISTER_JVP('reduce_p')
 def reduce_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     axis = op.attr('axis')
     keepdim = op.attr('keepdim')
     return linear_jvp(op, x_dot, axis=axis, keepdim=keepdim)
@@ -474,15 +513,23 @@ def reduce_jvp(op, x_dot):
 
 @REGISTER_JVP('matmul_p')
 def matmul_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1 = matmul(x, y_dot)
-    t2 = matmul(x_dot, y)
-    z_dot = add(t1, t2)
-    return z_dot
+    if x_dot is None:
+        return matmul(x, y_dot)
+    elif y_dot is None:
+        return matmul(x_dot, y)
+    else:
+        t1 = matmul(x, y_dot)
+        t2 = matmul(x_dot, y)
+        return add(t1, t2)
 
 
 @REGISTER_JVP('slice_select_p')
 def slice_select_jvp(op, x_dot):
+    if x_dot is None:
+        return x_dot
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
@@ -493,6 +540,11 @@ def slice_select_jvp(op, x_dot):
 
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
+    if x_dot is None:
+        assert y_dot is None
+        return None
+    else:
+        assert y_dot is not None
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
@@ -502,14 +554,18 @@ def slice_assign_jvp(op, x_dot, y_dot):
 
 
 @REGISTER_JVP('gather_p')
-def gather_jvp(op, x_dot, indextensor_dot):
+def gather_jvp(op, x_dot, indextensor):
+    if x_dot is None:
+        return None
     _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, indextensor, axis=axis)
 
 
 @REGISTER_JVP('scatter_add_p')
-def scatter_add_jvp(op, x_dot, y_dot, indextensor_dot):
+def scatter_add_jvp(op, x_dot, y_dot):
+    if x_dot is None:
+        return None
     _, _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
