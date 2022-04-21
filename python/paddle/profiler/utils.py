@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
 
 _is_profiler_used = False
+_has_optimizer_wrapped = False
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -172,9 +173,12 @@ def wrap_optimizers():
 
         return warpper
 
+    if _has_optimizer_wrapped == True:
+        return
     import paddle.optimizer as optimizer
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) != None:
                 classobject.step = optimizer_warpper(classobject.step)
+    _has_optimizer_wrapped = True
