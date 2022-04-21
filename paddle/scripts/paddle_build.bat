@@ -218,18 +218,16 @@ exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
-set WITH_MKL=ON
-set WITH_GPU=ON
-set WITH_AVX=ON
-set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
-set WITH_TENSORRT=ON
-set WITH_INFERENCE_API_TEST=OFF
+set ON_INFER=ON
+set WITH_PYTHON=OFF
+set CUDA_ARCH_NAME=All
+python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
-call :test_unit || goto test_unit_error
+call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -248,21 +246,16 @@ goto:success
 
 rem ------PR CI windows check for unittests and inference in CUDA11-MKL-AVX----------
 :CASE_wincheck_inference
-set WITH_MKL=ON
-set WITH_GPU=ON
-set WITH_AVX=ON
-set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
-set WITH_TENSORRT=ON
-set WITH_INFERENCE_API_TEST=ON
+set WITH_PYTHON=OFF
+set CUDA_ARCH_NAME=All
+python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
-call :test_unit || goto test_unit_error
-::call :test_inference || goto test_inference_error
-::call :test_inference_ut || goto test_inference_ut_error
-::call :check_change_of_unittest || goto check_change_of_unittest_error
+call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 goto:success
 
 rem ------Build windows avx whl package------
@@ -297,8 +290,8 @@ if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference || goto test_inference_error
-call :test_inference_ut || goto test_inference_ut_error
+call :test_inference
+call :test_inference_ut
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -753,6 +746,8 @@ for /F %%i in ("%libsize%") do (
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
+
+d:
 
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
