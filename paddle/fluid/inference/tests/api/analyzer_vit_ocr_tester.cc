@@ -68,8 +68,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
                 FLAGS_infer_model + "/inference.pdiparams");
-  cfg->DisableGpu();
-  cfg->SwitchSpecifyInputNames(false);
 
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
