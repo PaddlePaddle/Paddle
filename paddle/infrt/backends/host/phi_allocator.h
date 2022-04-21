@@ -20,31 +20,37 @@ limitations under the License. */
 namespace infrt {
 namespace backends {
 
-class CpuPhiAllocator : public phi::Allocator {
+class CpuPhiAllocator : public ::phi::Allocator {
  public:
-  static void deleter(phi::Allocation* ptr) { ::operator delete(ptr); }
+  static void deleter(::phi::Allocation* ptr) {
+    ::operator delete(ptr->ptr());
+    ::operator delete(ptr);
+  }
 
   AllocationPtr Allocate(size_t bytes_size) {
     return AllocationPtr(
-        new phi::Allocation(::operator new(bytes_size),
-                            bytes_size,
-                            phi::Place(phi::AllocationType::CPU)),
+        new ::phi::Allocation(::operator new(bytes_size),
+                              bytes_size,
+                              ::phi::Place(::phi::AllocationType::CPU)),
         deleter);
   }
 };
 
 #ifdef INFRT_WITH_GPU
 // TODO(wilber): Just for demo test. we need a more efficient gpu allocator.
-class GpuPhiAllocator : public phi::Allocator {
+class GpuPhiAllocator : public ::phi::Allocator {
  public:
-  static void deleter(phi::Allocation* ptr) { cudaFree(ptr->ptr()); }
+  static void deleter(::phi::Allocation* ptr) {
+    cudaFree(ptr->ptr());
+    ::operator delete(ptr);
+  }
 
   AllocationPtr Allocate(size_t bytes_size) {
     void* ptr;
     cudaMalloc(&ptr, bytes_size);
     return AllocationPtr(
-        new phi::Allocation(
-            ptr, bytes_size, phi::Place(phi::AllocationType::GPU)),
+        new ::phi::Allocation(
+            ptr, bytes_size, ::phi::Place(::phi::AllocationType::GPU)),
         deleter);
   }
 };

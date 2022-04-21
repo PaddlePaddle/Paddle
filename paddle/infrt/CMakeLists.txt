@@ -118,7 +118,12 @@ if (INFRT_WITH_PHI)
         )
 endif()
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive)
+set(Gperftools_ROOT_DIR "/wilber/repo/gperftools/install")
+find_package(Gperftools)
+include_directories(${GPERFTOOLS_INCLUDE_DIR})
+link_directories(${GPERFTOOLS_LIBRARIES})
+
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive gperftools::tcmalloc)
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 

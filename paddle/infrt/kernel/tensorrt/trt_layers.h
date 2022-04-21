@@ -31,7 +31,7 @@ namespace infrt {
 namespace kernel {
 namespace tensorrt {
 
-using ValueToTensorMap = llvm::DenseMap<mlir::Value, phi::DenseTensor*>;
+using ValueToTensorMap = llvm::DenseMap<mlir::Value, ::phi::DenseTensor*>;
 using ValueToITensorMap = llvm::DenseMap<mlir::Value, nvinfer1::ITensor*>;
 
 inline void ActivationFunc(

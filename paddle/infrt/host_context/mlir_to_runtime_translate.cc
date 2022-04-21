@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/host_context/mlir_to_runtime_translate.h"
 
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/Support/SourceMgr.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -246,32 +247,30 @@ PROCESS_ARRAY_INT(int64_t, 64);
 template <>
 boost::optional<std::vector<float>> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!(attr.isa<mlir::ArrayAttr>() || attr.isa<mlir::DenseElementsAttr>()))
-    return boost::none;
+  if (!attr.isa<mlir::ArrayAttr>()) return boost::none;
+  auto array = attr.cast<mlir::ArrayAttr>();
+  CHECK(!array.empty());
 
-  // if (!attr.isa<mlir::ArrayAttr>()) return boost::none;
-  if (attr.isa<mlir::ArrayAttr>()) {
-    auto array = attr.cast<mlir::ArrayAttr>();
-    CHECK(!array.empty());
+  if (!array[0].getType().isF32()) return boost::none;
 
-    if (!array[0].getType().isF32()) return boost::none;
-
-    std::vector<float> res;
-    for (auto& v : array) {
-      res.push_back(v.cast<mlir::FloatAttr>().getValueAsDouble());
-    }
-    return res;
-  } else if (attr.isa<mlir::DenseElementsAttr>()) {
-    auto array = attr.cast<mlir::DenseElementsAttr>();
-    CHECK(!array.empty());
-    if (!array.getElementType().isF32()) return boost::none;
-    const float* data =
-        reinterpret_cast<const float*>(array.getRawData().data());
-    std::vector<float> res(data, data + array.size());
-    return res;
-  } else {
-    return boost::none;
+  std::vector<float> res;
+  for (auto& v : array) {
+    res.push_back(v.cast<mlir::FloatAttr>().getValueAsDouble());
   }
+  return res;
+}
+
+template <>
+boost::optional<llvm::ArrayRef<float>> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::DenseElementsAttr>()) return boost::none;
+
+  auto array = attr.cast<mlir::DenseElementsAttr>();
+  CHECK(!array.empty());
+  if (!array.getElementType().isF32()) return boost::none;
+  const float* data = reinterpret_cast<const float*>(array.getRawData().data());
+  llvm::ArrayRef<float> res(data, array.size());
+  return res;
 }
 
 template <>
@@ -287,6 +286,20 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
   for (auto& v : array) {
     res.push_back(v.cast<mlir::FloatAttr>().getValueAsDouble());
   }
+  return res;
+}
+
+template <>
+boost::optional<llvm::ArrayRef<double>> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::DenseElementsAttr>()) return boost::none;
+
+  auto array = attr.cast<mlir::DenseElementsAttr>();
+  CHECK(!array.empty());
+  if (!array.getElementType().isF64()) return boost::none;
+  const double* data =
+      reinterpret_cast<const double*>(array.getRawData().data());
+  llvm::ArrayRef<double> res(data, array.size());
   return res;
 }
 
@@ -436,6 +449,11 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
       tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<std::vector<double>>(attr.getValue())) {
       tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<llvm::ArrayRef<float>>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v =
+                   EmitAttribute<llvm::ArrayRef<double>>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
     } else {
       LOG(FATAL) << "Not supported attribute type";
     }

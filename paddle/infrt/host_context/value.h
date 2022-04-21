@@ -107,7 +107,9 @@ using ValueVariantType =
             std::vector<int32_t>,
             std::vector<int64_t>,
             std::vector<float>,
-            std::vector<double>>;
+            std::vector<double>,
+            llvm::ArrayRef<float>,
+            llvm::ArrayRef<double>>;
 
 //! Copy content from \param from to \param to.
 void CopyTo(const Value& from, Value* to);
@@ -129,6 +131,8 @@ class Value : public common::Object {
   explicit Value(::infrt::LayoutType x) : data(x) {}
   explicit Value(::infrt::PrecisionType x) : data(x) {}
   explicit Value(std::string x) : data(x) {}
+  explicit Value(llvm::ArrayRef<float> x) : data(x) {}
+  explicit Value(llvm::ArrayRef<double> x) : data(x) {}
   explicit Value(tensor::TensorMap&& x) : data(x) {}
   explicit Value(std::vector<int16_t>&& x) : data(x) {}
   explicit Value(std::vector<int32_t>&& x) : data(x) {}

@@ -44,7 +44,7 @@ namespace phi {
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<std::vector<float>> values);
+    host_context::Attribute<llvm::ArrayRef<float>> values);
 
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,

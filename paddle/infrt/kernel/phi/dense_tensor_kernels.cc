@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+
 #include <memory>
+
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/string.h"
@@ -74,19 +77,19 @@ namespace phi {
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<std::vector<float>> values) {
+    host_context::Attribute<llvm::ArrayRef<float>> values) {
+  std::shared_ptr<::phi::Allocation> allocation =
+      std::make_shared<::phi::Allocation>(
+          const_cast<float*>(values.get().data()),
+          values.get().size() * sizeof(float),
+          ::phi::CPUPlace());
   ::phi::DenseTensor dense_tensor(
-      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      allocation,
       ::phi::DenseTensorMeta(
           ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
           ::phi::make_ddim(dims.get()),
           ConvertLayoutToPhi(layout.get()),
           {}));
-  CHECK_EQ(dense_tensor.numel(), static_cast<int64_t>(values.get().size()));
-  float* data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
-  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
-    data[i] = values.get()[i];
-  }
   return dense_tensor;
 }
 
