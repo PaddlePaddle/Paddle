@@ -202,6 +202,7 @@ CnpapiRuntimeCbidStr::CnpapiRuntimeCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cnCtxSetCurrent);
   REGISTER_RUNTIME_CBID_STR(cnCtxGetDevice);
   REGISTER_RUNTIME_CBID_STR(cnCtxSync);
+  REGISTER_RUNTIME_CBID_STR(cnInvokeHostFunc);
 #undef REGISTER_RUNTIME_CBID_STR
 }
 

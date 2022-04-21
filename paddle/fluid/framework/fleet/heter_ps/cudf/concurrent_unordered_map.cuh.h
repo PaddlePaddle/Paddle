@@ -551,6 +551,7 @@ class concurrent_unordered_map : public managed {
         update_existing_value(existing_value, x, op);
 
         insert_success = true;
+        break;
       }
 
       current_index = (current_index + 1) % hashtbl_size;

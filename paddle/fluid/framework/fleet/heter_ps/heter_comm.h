@@ -153,11 +153,13 @@ class HeterComm {
 
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDAPlace place_;
+
 #elif defined(PADDLE_WITH_XPU_KP)
     platform::XPUPlace place_;
 #endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
+
     KeyType* all_keys;
     GradType* all_grads;
 
@@ -210,10 +212,10 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
-  int topo_aware_{0};
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
  private:
-  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
+  int topo_aware_{0};
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
@@ -228,5 +230,7 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
+
 #endif
