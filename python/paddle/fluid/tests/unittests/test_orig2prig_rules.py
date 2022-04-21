@@ -257,10 +257,7 @@ class TestElementwiseSubOrig2Prim(TestElementWiseAddOrig2Prim):
         self.orig2prim_args = (
             X,
             Y, )
-        self.all_ops = [
-            'elementwise_sub', 'broadcast_p', 'fill_constant_p', 'mul_p',
-            'fill_constant_p', 'mul_p', 'sub_p', 'fill_constant_p', 'mul_p'
-        ]
+        self.all_ops = ['elementwise_sub', 'broadcast_p', 'sub_p']
         self.out_map = {0: self.output['Out']}
 
 
