@@ -347,7 +347,7 @@ class Transform(object):
 
         for op in reversed(path):
             out = op_position_output(op)
-            out_bar_rec = self.dot2bar_rec(out, defaults=out)
+            out_bar_rec = self.dot2bar_rec(out)
             ins_bar_rec = _transpose(op, is_dot, out_bar_rec)
 
             # TODO(Tongxin): this is hacky. Tuple implies the Transpose rule
@@ -443,11 +443,11 @@ def _gradients(ys, xs, ys_bar=None):
     return xs_bar
 
 
-def orig2prim(block=None, update_var_list=None):
+def orig2prim(block=None, update_var_list=[]):
     _lower(block, reverse=False, update_var_list=update_var_list)
 
 
-def prim2orig(block=None, update_var_list=None):
+def prim2orig(block=None, update_var_list=[]):
     _lower(block, reverse=True, update_var_list=update_var_list)
 
 
@@ -541,16 +541,13 @@ def _lower(block, reverse, update_var_list):
                     attrs=attrs)
             block.ops.append(op)
 
-    if global_lower_update is not None:
-        for i in range(len(global_lower_update)):
-            if global_lower_update[i].name in to_bind:
-                global_lower_update[i] = vlt[to_bind[global_lower_update[i]
-                                                     .name]]
+    for i in range(len(global_lower_update)):
+        if global_lower_update[i].name in to_bind:
+            global_lower_update[i] = vlt[to_bind[global_lower_update[i].name]]
 
-    if update_var_list is not None:
-        for i in range(len(update_var_list)):
-            if update_var_list[i].name in to_bind:
-                update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
+    for i in range(len(update_var_list)):
+        if update_var_list[i].name in to_bind:
+            update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
 
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)

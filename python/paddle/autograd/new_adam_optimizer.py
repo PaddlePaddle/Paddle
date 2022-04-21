@@ -48,7 +48,7 @@ from .primx import orig2prim, prim2orig, Transform
 
 
 @framework.static_only
-def append_backward_new(loss,
+def append_backward_new(loss_list,
                         parameter_list=None,
                         no_grad_set=None,
                         callbacks=None,
@@ -58,13 +58,23 @@ def append_backward_new(loss,
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
 
-    update_var_list = [loss]
-    orig2prim(block, update_var_list=update_var_list)
+    orig2prim(block, update_var_list=loss_list)
     ad = Transform(block)
     if parameter_list is None:
         parameter_list = program.global_block().all_parameters()
-    param_dot, loss_dot = ad.linearize(parameter_list, update_var_list)
+    param_dot, loss_dot = ad.linearize(parameter_list, loss_list)
     loss_bar, param_bar = ad.transpose(loss_dot, param_dot)
+
+    # remove param_dot and their constructor ops
+    op_indexes = []
+    for var in param_dot:
+        if var is not None:
+            op_index = block.ops.index(var.op)
+            assert op_index >= 0
+            op_indexes.append(op_index)
+
+    ad.erase_ops(sorted(op_indexes))
+    ad.erase_dots(param_dot)
 
     if len(parameter_list) == 1:
         params_and_grads = [(paramteter_list, param_bar)]
@@ -924,7 +934,7 @@ class Optimizer(object):
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
             with program_guard(program, startup_program):
-                params_grads = append_backward_new(loss, parameter_list,
+                params_grads = append_backward_new([loss], parameter_list,
                                                    act_no_grad_set, callbacks)
         return params_grads
 
