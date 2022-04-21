@@ -78,14 +78,19 @@ def get_input_var_list(op):
     if op.input_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.input(n)) for n in op.input_names]
+        return [
+            get_var_block(op.block, op.input(n)) for n in sorted(op.input_names)
+        ]
 
 
 def get_output_var_list(op):
     if op.output_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.output(n)) for n in op.output_names]
+        return [
+            get_var_block(op.block, op.output(n))
+            for n in sorted(op.output_names)
+        ]
 
 
 def linear_jvp(op, *args, **kwargs):
@@ -351,7 +356,7 @@ def slice_select_prim2orig(op, x):
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
 def slice_assign_prim2orig(op, x, y):
-    x_copy = add(x, fill_const(0.0, x.shape, x.dtype))
+    x_copy = paddle.assign(x)
     return set_value(
         x_copy,
         y,
@@ -386,42 +391,69 @@ def fill_constant_prim2orig(op):
 ## Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
-    return linear_jvp(op, x_dot, y_dot)
+    if x_dot is None:
+        return y_dot
+    elif y_dot is None:
+        return x_dot
+    else:
+        return linear_jvp(op, x_dot, y_dot)
 
 
 @REGISTER_JVP('sub_p')
 def sub_jvp(op, x_dot, y_dot):
-    return linear_jvp(op, x_dot, y_dot)
+    if x_dot is None:
+        return neg(y_dot)
+    elif y_dot is None:
+        return x_dot
+    else:
+        return linear_jvp(op, x_dot, y_dot)
 
 
 @REGISTER_JVP('mul_p')
 def mul_jvp(op, x_dot, y_dot):
-    assert op.type == 'mul_p'
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1, t2 = mul(x_dot, y), mul(x, y_dot)
-    z_dot = add(t1, t2)
-    return z_dot
+    if x_dot is None:
+        return mul(x, y_dot)
+    elif y_dot is None:
+        return mul(x_dot, y)
+    else:
+        t1, t2 = mul(x_dot, y), mul(x, y_dot)
+        z_dot = add(t1, t2)
+        return z_dot
 
 
 @REGISTER_JVP('div_p')
 def div_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1, t2 = div(x_dot, y), div(mul(x, y_dot), mul(y, y))
-    z_dot = sub(t1, t2)
-    return z_dot
+    if y_dot is None:
+        return div(x_dot, y)
+    elif x_dot is None:
+        return div(mul(x, y_dot), mul(y, y))
+    else:
+        t1 = div(x_dot, y)
+        t2 = div(mul(x, y_dot), mul(y, y))
+        return sub(t1, t2)
 
 
 @REGISTER_JVP('sqrt_p')
 def sqrt_jvp(op, x_dot):
-    x, = op_position_inputs(op)
-    c2 = fill_const(value=2.0, shape=x.shape, dtype=x.dtype)
-    y_dot = div(x_dot, mul(c2, sqrt(x)))
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    c2 = fill_const(value=2.0, shape=y.shape, dtype=y.dtype)
+    y_dot = div(x_dot, mul(c2, y))
     return y_dot
 
 
 @REGISTER_JVP('tanh_p')
 def tanh_jvp(op, x_dot):
-    y, = op_position_inputs(op)
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
     c1 = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, sub(c1, mul(y, y)))
     return y_dot
@@ -429,24 +461,32 @@ def tanh_jvp(op, x_dot):
 
 @REGISTER_JVP('reshape_p')
 def reshape_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     shape = op.attr('shape')
     return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('broadcast_p')
 def broadcast_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     shape = op.attr('shape')
     return linear_jvp(op, x_dot, shape=shape)
 
 
 @REGISTER_JVP('transpose_p')
 def transpose_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, axis=axis)
 
 
 @REGISTER_JVP('split_p')
 def split_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     num_or_sections = op.attr('num_or_sections')
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, num_or_sections=num_or_sections, axis=axis)
@@ -454,12 +494,16 @@ def split_jvp(op, x_dot):
 
 @REGISTER_JVP('concat_p')
 def concat_jvp(op, xs_dot):
+    if xs_dot is None:
+        return None
     axis = op.attr('axis')
     return linear_jvp(op, xs_dot, axis=axis)
 
 
 @REGISTER_JVP('reduce_p')
 def reduce_jvp(op, x_dot):
+    if x_dot is None:
+        return None
     axis = op.attr('axis')
     keepdim = op.attr('keepdim')
     return linear_jvp(op, x_dot, axis=axis, keepdim=keepdim)
@@ -467,15 +511,23 @@ def reduce_jvp(op, x_dot):
 
 @REGISTER_JVP('matmul_p')
 def matmul_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
     x, y = op_position_inputs(op)
-    t1 = matmul(x, y_dot)
-    t2 = matmul(x_dot, y)
-    z_dot = add(t1, t2)
-    return z_dot
+    if x_dot is None:
+        return matmul(x, y_dot)
+    elif y_dot is None:
+        return matmul(x_dot, y)
+    else:
+        t1 = matmul(x, y_dot)
+        t2 = matmul(x_dot, y)
+        return add(t1, t2)
 
 
 @REGISTER_JVP('slice_select_p')
 def slice_select_jvp(op, x_dot):
+    if x_dot is None:
+        return x_dot
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
@@ -486,6 +538,11 @@ def slice_select_jvp(op, x_dot):
 
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
+    if x_dot is None:
+        assert y_dot is None
+        return None
+    else:
+        assert y_dot is not None
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
@@ -495,7 +552,9 @@ def slice_assign_jvp(op, x_dot, y_dot):
 
 
 @REGISTER_JVP('gather_p')
-def gather_jvp(op, x_dot):
+def gather_jvp(op, x_dot, indextensor):
+    if x_dot is None:
+        return None
     _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, indextensor, axis=axis)
@@ -503,6 +562,8 @@ def gather_jvp(op, x_dot):
 
 @REGISTER_JVP('scatter_add_p')
 def scatter_add_jvp(op, x_dot, y_dot):
+    if x_dot is None:
+        return None
     _, _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
@@ -513,6 +574,8 @@ def scatter_add_jvp(op, x_dot, y_dot):
 
 @REGISTER_TRANSPOSE('add_p')
 def add_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert check_dot(x) or check_dot(y)
     x_bar = z_bar if check_dot(x) else None
@@ -522,6 +585,8 @@ def add_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('sub_p')
 def sub_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert check_dot(x) or check_dot(y)
     x_bar = z_bar if check_dot(x) else None
@@ -531,6 +596,8 @@ def sub_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('mul_p')
 def mul_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert check_dot(x) ^ check_dot(y)
     if check_dot(x):
@@ -541,6 +608,8 @@ def mul_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('div_p')
 def div_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert not check_dot(y)
     x_bar = div(z_bar, y) if check_dot(x) else None
@@ -549,6 +618,8 @@ def div_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('reshape_p')
 def reshape_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     return reshape(y_bar, shape=x.shape)
@@ -556,6 +627,8 @@ def reshape_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('broadcast_p')
 def broadcast_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     bat = len(y_bar.shape) - len(x.shape)
@@ -569,6 +642,8 @@ def broadcast_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('transpose_p')
 def transpose_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     axis = op.attr('axis')
@@ -579,6 +654,8 @@ def transpose_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('split_p')
 def split_transpose(op, check_dot, ys_bar):
+    if ys_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     return concat(ys_bar, axis=op.attr('axis'))
@@ -586,6 +663,8 @@ def split_transpose(op, check_dot, ys_bar):
 
 @REGISTER_TRANSPOSE('concat_p')
 def concat_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     xs, = op_position_inputs(op)
     for x in xs:
         assert check_dot(x)
@@ -596,6 +675,8 @@ def concat_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('reduce_p')
 def reduce_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     axes = op.attr('axis')
@@ -606,6 +687,8 @@ def reduce_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('matmul_p')
 def matmul_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert check_dot(x) ^ check_dot(y)
     # TODO: replace it. this is hacky
@@ -618,6 +701,8 @@ def matmul_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('slice_select_p')
 def slice_select_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None
     x, = op_position_inputs(op)
     assert check_dot(x)
     zeros = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
@@ -631,6 +716,8 @@ def slice_select_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('slice_assign_p')
 def slice_assign_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None
     x, y = op_position_inputs(op)
     assert check_dot(x) and check_dot(y)
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
@@ -647,19 +734,26 @@ def slice_assign_transpose(op, check_dot, z_bar):
 
 @REGISTER_TRANSPOSE('gather_p')
 def gather_transpose(op, check_dot, y_bar):
+    if y_bar is None:
+        return None, None
     x, indextensor = op_position_inputs(op)
     assert check_dot(x)
     axis = op.attr('axis')
     zeros = fill_const(0.0, x.shape, x.dtype)
-    return scatter_add(zeros, y_bar, indextensor, axis=axis), None
+    x_bar = scatter_add(zeros, y_bar, indextensor, axis=axis)
+    indextensor_bar = None
+    return x_bar, indextensor_bar
 
 
 @REGISTER_TRANSPOSE('scatter_add_p')
 def scatter_add_transpose(op, check_dot, z_bar):
+    if z_bar is None:
+        return None, None, None
     indextensor, x, y = get_input_vars(op)
     assert check_dot(x) and check_dot(y)
     axis = op.attr('axis')
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
-    return scatter_add(
-        z_bar, zeros, indextensor, axis=axis), gather(
-            z_bar, indextensor, axis=axis), None
+    x_bar = scatter_add(z_bar, zeros, indextensor, axis=axis)
+    y_bar = gather(z_bar, indextensor, axis=axis)
+    indextensor_bar = None
+    return x_bar, y_bar, indextensor_bar
