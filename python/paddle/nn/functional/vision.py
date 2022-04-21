@@ -351,17 +351,19 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
     See more details in :ref:`api_nn_vision_PixelUnshuffle` .
+
     Parameters:
-        x(Tensor): 4-D tensor, the data type should be float32 or float64.
-        downscale_factor(int): factor to decrease spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+        downscale_factor (int): Factor to decrease spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
-        Out(tensor): Reshaped tensor according to the new dimension.
-    Raises:
-        ValueError: If downscale_factor cannot divide both the height and width of input.
+        Out (Tensor): Reshaped tensor according to the new dimension.
+
     Examples:
         .. code-block:: python
+            :name: pixel_unshuffle-example
 
             import paddle
             import paddle.nn.functional as F
