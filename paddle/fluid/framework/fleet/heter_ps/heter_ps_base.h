@@ -16,7 +16,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#if defined(PADDLE_WITH_XPU_KP)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#endif
 
 #ifdef PADDLE_WITH_HETERPS
 
