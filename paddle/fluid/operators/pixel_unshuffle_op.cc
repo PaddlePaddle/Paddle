@@ -16,8 +16,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -99,6 +99,5 @@ DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle_grad,
                             PixelUnshuffleGradInferShapeFunctor,
                             PD_INFER_META(phi::PixelUnshuffleGradInferMeta));
 
-REGISTER_OPERATOR(pixel_unshuffle_grad,
-                  ops::PixelUnshuffleGradOp,
+REGISTER_OPERATOR(pixel_unshuffle_grad, ops::PixelUnshuffleGradOp,
                   PixelUnshuffleGradInferShapeFunctor);
