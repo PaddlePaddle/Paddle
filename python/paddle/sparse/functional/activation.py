@@ -80,7 +80,7 @@ def sqrt(x, name=None):
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+                dense_x = paddle.to_tensor(np.array([4, 0, 1]).astype('float32'))
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.functional.sqrt(sparse_x) 
     """
