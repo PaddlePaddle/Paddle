@@ -1357,15 +1357,15 @@ class CosineEmbeddingLoss(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            import paddles
 
-            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
-            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8]], 'float32')
             label = paddle.to_tensor([1], 'int32')
 
             cosine_embedding_loss = paddle.nn.loss.CosineEmbeddingLoss(margin=0.5, reduction='mean)
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # output: [0.42310387]
+            print(output) # output: [0.42310394]
 
     """
 
