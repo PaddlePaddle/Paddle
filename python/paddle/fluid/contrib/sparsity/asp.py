@@ -392,7 +392,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                         super(MyLayer, self).__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
-                        self.linear1 = paddle.nn.Linear(4624, 100)
+                        self.linear1 = paddle.nn.Linear(4624, 10)
 
                     def forward(self, img):
                         hidden = self.conv1(img)
@@ -404,8 +404,8 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                 startup_program = paddle.static.Program()
 
                 with paddle.static.program_guard(main_program, startup_program):
-                    input_data = paddle.static.data(name='data', shape=[None, 3, 224, 224])
-                    label = paddle.static.data(name='label', shape=[None, 100])
+                    input_data = paddle.static.data(name='data', shape=[None, 3, 32, 32])
+                    label = paddle.static.data(name='label', shape=[None, 1])
                     my_layer = MyLayer()
                     prob = my_layer(input_data)
                     loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
@@ -430,7 +430,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                 # sparsity.prune_model(main_program, mask_algo='mask_2d_best')
 
                 for i in range(10):
-                    imgs = np.random.randn(64, 3, 32, 32).astype('float32)
+                    imgs = np.random.randn(64, 3, 32, 32).astype('float32')
                     labels = np.random.randint(10, size=(64, 1))
                     exe.run(main_program, feed={'data':imgs, 'label':labels})
     """
