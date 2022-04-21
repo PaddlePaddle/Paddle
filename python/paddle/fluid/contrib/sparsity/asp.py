@@ -392,12 +392,16 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                         super(MyLayer, self).__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
-                        self.linear1 = paddle.nn.Linear(4624, 10)
+                        self.linear1 = paddle.nn.Linear(4624, 32)
+                        self.linear2 = paddle.nn.Linear(32, 32)
+                        self.linear3 = paddle.nn.Linear(32, 10)
 
                     def forward(self, img):
                         hidden = self.conv1(img)
                         hidden = paddle.flatten(hidden, start_axis=1)
-                        prediction = self.linear1(hidden)
+                        hidden = self.linear1(hidden)
+                        hidden = self.linear2(hidden)
+                        prediction = self.linear3(hidden)
                         return prediction
 
                 main_program = paddle.static.Program()
