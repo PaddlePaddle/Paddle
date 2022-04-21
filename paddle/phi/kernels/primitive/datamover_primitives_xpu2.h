@@ -106,14 +106,14 @@ struct BroadcastConfig {
     memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
 
     cmp_res = get_mnk_for_broadcast_ops(in_dims, another_in_dims);
-
     get_opt_type(another_in_dims);
-    printf("shixingbo m = %d, n = %d, k = %d,dim_size_after_cmp = %d,cmp_res = %d,\n", m , n, k, dim_size_after_cmp, cmp_res);
-
     buf_len = get_buf_len();
   }
  
   int get_buf_len() {
+    if (cmp_type == OptType::CanNotOptimize) {
+      return 256;
+    }
     int max_buf_len = 512;
     int buf_len = m / 16 * 16;
     if (buf_len == 0) {
@@ -133,7 +133,8 @@ struct BroadcastConfig {
         index_src = div * m + mod;
 	break;
       case OptType::MNK_1N1:
-	index_src = index_output / m % n;
+	//index_src = index_output / m % n;
+	index_src = index_output % (m * n) / m;
 	break;
       case OptType::N_1:
 	index_src = 0;
@@ -925,6 +926,301 @@ __device__ __inline__ void ReadDataBc(
   }
 }
 
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * {m, 1, k}-> {m, n, k} form.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, int Rank>
+__device__ __inline__ void ReadDataBcM1kMnk(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  int m = config.m;
+  int n = config.n;  
+
+  int m_pos = index_base % m;
+  if ((m - m_pos)  < read_lens) {
+    int last_col = m - m_pos;
+    GM2LM(src + index_base, dst, last_col * sizeof(T));
+    int n_pos = index_output % (m * n) / m;
+    int next_part_index = 0;
+    if (n_pos != config.n - 1) {
+      next_part_index = index_base / m * m;
+    } else {
+      next_part_index = (index_base / m + 1) * m;
+    }
+    GM2LM(src + next_part_index, dst + last_col, (read_lens - last_col) * sizeof(T));
+  } else {
+    GM2LM(src + index_base, dst, read_lens * sizeof(T));
+  }
+}
+
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * {m, 1}-> {m, n} form.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, int Rank>
+__device__ __inline__ void ReadDataBcM1Mn(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  int m = config.m;
+  int n = config.n;  
+
+  int m_pos = index_base % m;
+  if ((m - m_pos)  < read_lens) {
+    int last_col = m - m_pos;
+    GM2LM(src + index_base, dst, last_col * sizeof(T));
+    GM2LM(src, dst + last_col, (read_lens - last_col) * sizeof(T));
+  } else {
+    GM2LM(src + index_base, dst, read_lens * sizeof(T));
+  }
+}
+
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * {1, n}-> {m, n} form.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, int Rank>
+__device__ __inline__ void ReadDataBc1NMn(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  int m = config.m;
+  int n = config.n;  
+  T in_temp;
+
+  int m_pos = index_output % m;
+  if ((m - m_pos) < read_lens) {
+    int last_col = m - m_pos;
+    GM2LM(src + index_base, &in_temp, sizeof(T));
+    for (int i = 0; i < last_col; i++) {
+      dst[i] = in_temp;
+    }
+    GM2LM(src + index_base + 1, &in_temp, sizeof(T));
+    for (int i = 0; i < read_lens - last_col; i++) {
+      dst[last_col + i] = in_temp;
+    }
+  } else {
+    GM2LM(src + index_base, &in_temp, sizeof(T));
+    for (int i = 0; i < read_lens; i++) {
+      dst[i] = in_temp;
+    }
+  }
+}
+
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * {1, n, 1}-> {m, n, k} form.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, int Rank>
+__device__ __inline__ void ReadDataBc1N1Mnk(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  int m = config.m;
+  int n = config.n;  
+  T in_temp;
+
+  int m_pos = index_output % m; 
+  if ((m - m_pos)  < read_lens) {
+    int last_col = m - m_pos;
+    GM2LM(src + index_base, &in_temp, sizeof(T));
+    for (int i = 0; i < last_col; i++) {
+      dst[i] = in_temp;
+    }
+    int n_pos = index_output % (m * n) / m;
+    int next_part_index = 0;
+    if (n_pos != n - 1) {
+      next_part_index = n_pos + 1;
+    } else {
+      next_part_index = 0;
+    }
+    GM2LM(src + next_part_index, &in_temp, sizeof(T));
+    for (int i = 0; i < read_lens - last_col; i++) {
+      dst[last_col + i] = in_temp;
+    }
+  } else {
+    GM2LM(src + index_base, &in_temp, sizeof(T));
+    for (int i = 0; i < read_lens; i++) {
+      dst[i] = in_temp;
+    }
+  }
+}
+
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * {1}-> {n} form.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, int Rank>
+__device__ __inline__ void ReadDataBc1N(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  T in_temp;
+
+  //TODO: it can use svadd
+  GM2LM(src + index_base, &in_temp, sizeof(T));
+  for (int i = 0; i < read_lens; i++) {
+    dst[i] = in_temp;
+  }
+}
+
+/**
+ * @brief Read data from global memory to local memory with broadcast
+ * form which can not compress.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * src: The original input data pointer of kernel.
+ * thread_offset: The data offset of this thread.
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * total_num_output: Total number of original output.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename T, 
+	 int Rank,
+         bool IsBoundary = false>
+__device__ __inline__ void ReadDataBcCanNotCmp(
+    T* dst,
+    const T _global_ptr_* src,
+    int thread_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int total_num_output,
+    int read_lens) {
+  int index_output = thread_offset;
+  int index_base = config(index_output);
+  T in_temp;
+  int cache_size = 256;
+  __local__ T src_temp[cache_size];
+  GM2LM(src + index_base, src_temp, cache_size * sizeof(T));
+
+  for (int nx = 0; nx < read_lens; ++nx) {
+    index_output = thread_offset + nx;
+    if (IsBoundary) {
+      if (index_output >= total_num_output) {
+        break;
+      }
+    }
+    int index_src = config(index_output);
+    if (index_src >= index_base && index_src < index_base + cache_size) {
+      in_temp = src_temp[index_src - index_base];
+    } else {
+      GM2LM(src + index_src, &in_temp, sizeof(T));
+    }
+    dst[nx] = in_temp;
+  }
+}
+
+/**
+ * @brief Read 1D data from global memory to register with broadcast form.
+ *
+ * @template paraments
+ * T: The type of data stored in the global memory.
+ * NX: The number of data continuously loaded by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The original input data pointer of kernel.
+ * block_offset: The data offset of this block, core_num() * blockIdx.x * NX;
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ * total_num_output: Total number of original output.
+ */
 template <typename T,
 	  int NX,
 	  int NY,
@@ -939,77 +1235,20 @@ __device__ __inline__ void ReadDataBc(
     int total_num_output,
     int read_lens) {
   int thread_offset = block_offset + core_id() * read_lens;
-  int index_output = thread_offset;
-  int index_base = config(index_output);
-  int m = config.m;
-  int n = config.n;
-  T in_temp;
 
   if (config.cmp_type == details::OptType::MNK_M1K) {
-    if ((m - index_base % m)  < read_lens) {
-      int last_col = m - index_base % m;
-      GM2LM(src + index_base, dst, last_col * sizeof(T));
-      int n_pos = index_output % (m * n) / m;
-      int next_part_index = 0;
-      if (n_pos != config.n - 1) {
-        next_part_index = index_base / m * m;
-      } else {
-        next_part_index = (index_base / m + 1) * m;
-      }
-      GM2LM(src + next_part_index, dst + last_col, (read_lens - last_col) * sizeof(T));
-    } else {
-      GM2LM(src + index_base, dst, read_lens * sizeof(T));
-    }
+    ReadDataBcM1kMnk<T, Rank>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::N_1) {
-    //TODO: it can use svadd
-    GM2LM(src + index_base, &in_temp, sizeof(T));
-    for (int i = 0; i < read_lens; i++) {
-      dst[i] = in_temp;
-    }
+    ReadDataBc1N<T, Rank>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::MN_M) {
-    if ((m - index_base % m)  < read_lens) {
-      int last_col = m - index_base % m;
-      GM2LM(src + index_base, dst, last_col * sizeof(T));
-      GM2LM(src, dst + last_col, (read_lens - last_col) * sizeof(T));
-    } else {
-      GM2LM(src + index_base, dst, read_lens * sizeof(T));
-    }
+    ReadDataBcM1Mn<T, Rank>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::MN_N) {
-    int m_pos = index_output % m;
-    if ((m - m_pos) < read_lens) {
-      int last_col = m - m_pos;
-      GM2LM(src + index_base, &in_temp, sizeof(T));
-      for (int i = 0; i < last_col; i++) {
-        dst[i] = in_temp;
-      }
-      GM2LM(src + index_base + 1, &in_temp, sizeof(T));
-      for (int i = 0; i < read_lens - last_col; i++) {
-        dst[last_col + i] = in_temp;
-      }
-    } else {
-      GM2LM(src + index_base, &in_temp, sizeof(T));
-      for (int i = 0; i < read_lens; i++) {
-        dst[i] = in_temp;
-      }
-    }
+    ReadDataBc1NMn<T, Rank>(dst, src, thread_offset, config, read_lens);
+  } else if (config.cmp_type == details::OptType::MNK_1N1) {
+    ReadDataBc1N1Mnk<T, Rank>(dst, src, thread_offset, config, read_lens);
   } else {
-    int cache_size = 512;
-    __local__ T src_temp[cache_size];
-    GM2LM(src + index_base, src_temp, cache_size * sizeof(T));
-
-    for (int nx = 0; nx < read_lens; ++nx) {
-      index_output = thread_offset + nx;
-      int index_src = config(index_output);
-      if (index_src >= index_base && index_src < index_base + cache_size)
-      {
-        in_temp = src_temp[index_src - index_base];
-      }
-      else
-      {
-        GM2LM(src + index_src, &in_temp, sizeof(T));
-      }
-      dst[nx] = in_temp;
-    }
+    ReadDataBcCanNotCmp<T, Rank, IsBoundary>(
+        dst, src, thread_offset, config, total_num_output, read_lens);
   }
 }
 

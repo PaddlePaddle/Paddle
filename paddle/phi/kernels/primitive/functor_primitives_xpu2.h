@@ -17,6 +17,7 @@
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
+#include "xpu/kernel/simd_header.h"
 
 namespace phi {
 namespace kps {
@@ -120,6 +121,19 @@ struct AddFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
   __device__ T operator()(const T a, const T b) const { return b + a; }
+  #if 0
+  __device__ T operator()(T* out, const T* in1, const T* in2, int read_lens) { 
+    float32x16_t v_x;
+    float32x16_t v_y;
+    for (int idx = 0; idx < read_lens; idx += 16) {
+      v_x = vload_lm_float32x16(in1 + idx);
+      v_y = vload_lm_float32x16(in2 + idx);
+      v_y = vvadd_float32x16(v_x, v_y);
+      vstore_lm_float32x16((out + idx), v_y);
+    }
+    mfence_local();
+  }
+#endif
 };
 
 /**

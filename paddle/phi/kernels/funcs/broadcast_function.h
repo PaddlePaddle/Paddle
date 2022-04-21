@@ -258,17 +258,15 @@ __device__ void VectorizedBroadcastKernelImpl(
                                              use_broadcast[i],
                                              read_lens);
   }
-
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  phi::funcs::ElementwisePrimitiveCallerBc<InT,
+  phi::funcs::ElementwisePrimitiveCaller<InT,
                                          ConditionalT<OutT, NumOuts>,
                                          VecSize,
                                          Functor,
                                          Arity,
                                          kCallElementwiseAny>()(
       func, args, result, read_lens);
-
   phi::funcs::ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
         outs, result, block_offset, num, read_lens);
 }
@@ -294,7 +292,7 @@ __global__ void VectorizedBroadcastKernel(
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
 
 #ifdef PADDLE_WITH_XPU_KP
-  for (; block_offset < numel; block_offset += stride) {
+  for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
                                   Functor,
@@ -311,6 +309,18 @@ __global__ void VectorizedBroadcastKernel(
                                          block_offset,
                                          read_lens,
                                          func);
+  }
+  int num = numel - block_offset;
+  if (num > 0) {
+    VectorizedBroadcastKernelImpl<InT,
+                                  OutT,
+                                  Functor,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  Rank,
+                                  true>(
+        ins, outs, use_broadcast, numel, configs, num, block_offset, read_lens, func);
   }
 #else
   if (block_offset < main_offset) {
@@ -395,21 +405,40 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
   auto stream = ctx.x_context()->xpu_stream;
-  VectorizedBroadcastKernel<InT,
-                            OutT,
-                            Functor,
-                            Arity,
-                            NumOuts,
-                            512,
-                            Rank><<<blocks, threads, stream>>>(ins_data,
-                                                               outs_data,
-                                                               use_broadcast,
-                                                               numel,
-                                                               configs,
-                                                               main_offset,
-                                                               tail_tid,
-                                                               read_lens,
-                                                               func);
+  if (configs[0].cmp_type != kps::details::OptType::CanNotOptimize) {
+    main_offset = numel;
+    VectorizedBroadcastKernel<InT,
+                              OutT,
+                              Functor,
+                              Arity,
+                              NumOuts,
+                              512,
+                              Rank><<<blocks, threads, stream>>>(ins_data,
+                                                                 outs_data,
+                                                                 use_broadcast,
+                                                                 numel,
+                                                                 configs,
+                                                                 main_offset,
+                                                                 tail_tid,
+                                                                 read_lens,
+                                                                 func);
+  } else {
+    VectorizedBroadcastKernel<InT,
+                              OutT,
+                              Functor,
+                              Arity,
+                              NumOuts,
+                              256,
+                              Rank><<<blocks, threads, stream>>>(ins_data,
+                                                                 outs_data,
+                                                                 use_broadcast,
+                                                                 numel,
+                                                                 configs,
+                                                                 main_offset,
+                                                                 tail_tid,
+                                                                 read_lens,
+                                                                 func);
+  }
 #else
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
