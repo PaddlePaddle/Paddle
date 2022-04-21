@@ -1,4 +1,6 @@
-if(WITH_ROCM)
+if(WITH_GPU)
+  nv_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor glog)
+elseif(WITH_ROCM)
   hip_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor glog)
 else()
   cc_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor glog)

@@ -105,7 +105,7 @@ class BaseAPI(object):
             'double': 'double',
             'bool': 'bool',
             'str': 'const std::string&',
-            'Place': 'Place',
+            'Place': 'const Place&',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
@@ -120,7 +120,7 @@ class BaseAPI(object):
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',
-            'Place': 'paddle::optional<Place>',
+            'Place': 'paddle::optional<const Place&>',
             'DataLayout': 'paddle::optional<DataLayout>',
             'DataType': 'paddle::optional<DataType>'
         }
@@ -328,7 +328,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 assert len(
                     vars_list
                 ) == 2, f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in self.attrs['names']) and (self.attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                assert (vars_list[0].strip() in self.attrs['names']) and (self.attrs['attr_info'][vars_list[0].strip()][0] == 'const Place&'), \
                     f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
                 backend_select_code = f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
@@ -360,7 +360,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
         attr_layout_count = 0
         attr_data_type_count = 0
         for attr_name in attrs['names']:
-            if attrs['attr_info'][attr_name][0] == 'Place':
+            if attrs['attr_info'][attr_name][0] == 'const Place&':
                 assert kernel['backend'] is not None, \
                     f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
                 attr_backend_count = attr_backend_count + 1
@@ -420,7 +420,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
         if len(input_names) == 0:
             assert attr_backend_count > 0 and attr_data_type_count > 0, \
-                f"{api} api: When there is no input tensor, the args must have 'Backend' and 'DataType'."
+                f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
 
         kernel_select_args = ""
         for input_name in input_names:
@@ -474,7 +474,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                         param] == "const std::vector<Tensor>&":
                     meta_tensor_code = meta_tensor_code + f"""
 {code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
 {code_indent}  }}

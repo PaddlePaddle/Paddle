@@ -89,6 +89,7 @@ from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
 from .tensor.creation import eye  # noqa: F401
 from .tensor.creation import linspace  # noqa: F401
+from .tensor.creation import logspace  # noqa: F401
 from .tensor.creation import ones  # noqa: F401
 from .tensor.creation import ones_like  # noqa: F401
 from .tensor.creation import zeros  # noqa: F401
@@ -329,6 +330,7 @@ from .tensor.stat import var  # noqa: F401
 from .tensor.stat import numel  # noqa: F401
 from .tensor.stat import median  # noqa: F401
 from .tensor.stat import quantile  # noqa: F401
+from .tensor.stat import nanquantile  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
@@ -495,6 +497,7 @@ __all__ = [  # noqa
            'numel',
            'median',
            'quantile',
+           'nanquantile',
            'no_grad',
            'set_grad_enabled',
            'is_grad_enabled',
@@ -589,6 +592,7 @@ __all__ = [  # noqa
            'sqrt',
            'randperm',
            'linspace',
+           'logspace',
            'reshape',
            'reshape_',
            'reverse',
