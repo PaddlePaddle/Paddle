@@ -314,9 +314,7 @@ class TestSliceAssignPPrim2Orig(TestAddPPrim2Orig):
         self.attrs = {'axis': [1], 'starts': [0], 'ends': [3], 'strides': [1]}
 
         self.prim2orig_args = (X, Y)
-        self.all_ops = [
-            'slice_assign_p', 'add_p', 'fill_constant_p', 'set_value'
-        ]
+        self.all_ops = ['slice_assign_p', 'assign', 'set_value']
         self.out_map = {self.output['Z']: 0}
 
 

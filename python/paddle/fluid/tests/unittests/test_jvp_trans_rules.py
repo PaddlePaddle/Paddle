@@ -226,7 +226,7 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
             'div_p',
             'mul_p',
             'fill_constant_p',
-            'sqrt_p',
+            # 'sqrt_p',
             # transpose op:
         ]
 
@@ -631,7 +631,9 @@ class TestGatherPJVPAndTranspose(TestAddPJVPAndTranspose):
 
         # Set JVP
         X_DOT = paddle.static.data(name='X_DOT', shape=[9, 5], dtype='float64')
-        self.jvp_args = (X_DOT, )
+        self.jvp_args = (
+            X_DOT,
+            IndexTensor, )
         self.jvp_out_shape_map = {0: self.prim_output['Y']}
 
         # Set transpose
