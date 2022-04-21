@@ -70,7 +70,7 @@ TEST(DEV_API, sparse_relu) {
 
   SparseCooTensor sparse_out_grad(
       sparse_coo.non_zero_indices(), dense_out, {3, 4});
-  sparse::SparseReluGradKernel<float>(
+  sparse::SparseCooReluGradKernel<float>(
       dev_ctx_cpu, sparse_coo, sparse_out_grad, &sparse_grad_x);
 
   cmp = memcmp(dense_grad_x.data<float>(),
