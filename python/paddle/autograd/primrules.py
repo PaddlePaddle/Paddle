@@ -255,12 +255,10 @@ def elementwise_sub_orig2prim(op, x, y):
 
 
 @REGISTER_ORIG2PRIM('scale')
-def scale_orig2prim(op, scaletensor, x):
-    if scaletensor is None:
+def scale_orig2prim(op, scale_t, x):
+    if scale_t is None:
         scale_t = fill_const(
             shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
-    else:
-        scale_t = reshape(scaletensor, shape=x.shape)
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
