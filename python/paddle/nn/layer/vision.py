@@ -91,31 +91,27 @@ class PixelShuffle(Layer):
 
 class PixelUnshuffle(Layer):
     """
-    
-    PixelUnshuffle Layer    
-
-    This operator rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C*downscale_factor**2, H/downscale_factor, W/downscale_factor],
-    or from shape [N, H, W, C] to [N, H/downscale_factor, W/downscale_factor, C*downscale_factor**2].
-    This operation is the reversion of PixelShuffle operation.
+    This operator rearranges elements in a tensor of shape :math:`[N, C, H, W]` 
+    to a tensor of shape :math:`[N, r^2C, H/r, W/r]`, or from shape 
+    :math:`[N, H, W, C]` to :math:`[N, H/r, W/r, r^2C]`, where :math:`r` is the 
+    downscale factor. This operation is the reversion of PixelShuffle operation.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
     Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
     by Shi et. al (2016) for more details.
 
     Parameters:
-
-        downscale_factor(int): factor to decrease spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        downscale_factor (int): Factor to decrease spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
-        - out: 4-D tensor with shape: (N, C*downscale_factor**2, H/downscale_factor, W/downscale_factor) or (N, H/downscale_factor, W/downscale_factor, C*downscale_factor**2).
-
+        - **x**: 4-D tensor with shape of :math:`[N, C, H, W]` or :math:`[N, C, H, W]`.
+        - **out**: 4-D tensor with shape of :math:`[N, r^2C, H/r, W/r]` or :math:`[N, H/r, W/r, r^2C]`, where :math:`r` is :attr:`downscale_factor`.
 
     Examples:
         .. code-block:: python
-            
+            :name: PixelUnshuffle-example
+
             import paddle
             import paddle.nn as nn
 
