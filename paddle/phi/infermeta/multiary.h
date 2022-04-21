@@ -228,6 +228,12 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out);
+
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 

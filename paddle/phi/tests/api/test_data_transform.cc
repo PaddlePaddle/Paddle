@@ -37,13 +37,11 @@ namespace tests {
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, data_transform_same_place) {
   // 1. create tensor
-  auto x = paddle::experimental::full({3, 3},
-                                      1.0,
-                                      experimental::DataType::COMPLEX128,
-                                      experimental::CPUPlace());
+  auto x =
+      paddle::experimental::full({3, 3}, 1.0, DataType::COMPLEX128, CPUPlace());
 
-  auto y = paddle::experimental::full(
-      {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::CPUPlace());
+  auto y =
+      paddle::experimental::full({3, 3}, 2.0, DataType::FLOAT32, CPUPlace());
 
   std::vector<phi::dtype::complex<double>> sum(9, 6.0);
 
@@ -75,10 +73,10 @@ TEST(API, data_transform_same_place) {
 TEST(Tensor, data_transform_diff_place) {
   // 1. create tensor
   auto x = paddle::experimental::full(
-      {3, 3}, 1.0, experimental::DataType::FLOAT64, experimental::CPUPlace());
+      {3, 3}, 1.0, experimental::DataType::FLOAT64, CPUPlace());
 
   auto y = paddle::experimental::full(
-      {3, 3}, 2.0, experimental::DataType::FLOAT64, experimental::GPUPlace());
+      {3, 3}, 2.0, experimental::DataType::FLOAT64, GPUPlace());
 
   std::vector<float> sum(9, 6.0);
 
@@ -93,10 +91,9 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.dtype(), phi::DataType::FLOAT64);
   ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
-  ASSERT_EQ(out.impl()->place(),
-            phi::TransToPhiPlace(experimental::Backend::GPU));
+  ASSERT_EQ(out.impl()->place(), phi::TransToPhiPlace(phi::Backend::GPU));
 
-  auto ref_out = experimental::copy_to(out, experimental::CPUPlace(), true);
+  auto ref_out = experimental::copy_to(out, CPUPlace(), true);
 
   auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(ref_out.impl());
   for (size_t i = 0; i < 9; i++) {
