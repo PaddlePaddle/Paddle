@@ -325,9 +325,9 @@ __device__ __forceinline__ void ReadData(T* dst,
                                          int num,
                                          int read_lens) {
   if (IsBoundary) {  // blockDim.x * NX > num
-    int thread_offset = threadIdx.x * vec_size;
+    int thread_offset = threadIdx.x * NX;
 #pragma unroll
-    for (int idx = 0; idx < vec_size; ++idx) {
+    for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
         dst[idx] = src[thread_offset + idx];
       }
@@ -345,7 +345,7 @@ __device__ __forceinline__ void ReadData(T* dst,
     for (int i = 0; i < kVectorsPerThread; ++i) {
       vec_temp[i] = vec_input[thread_offset + i];
 #pragma unroll
-      for (int idx = 0; idx < vec_size; ++idx) {
+      for (int idx = 0; idx < NX; ++idx) {
         dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
       }
     }
