@@ -21,3 +21,6 @@ if((WITH_DISTRIBUTE) AND (NOT WIN32) AND (NOT APPLE))
         py_test_modules(test_fleet_with_asp_sharding MODULES test_fleet_with_asp_sharding ENVS ${dist_ENVS})
     endif()
 endif()
+
+set_tests_properties(test_asp_pruning_dynamic PROPERTIES TIMEOUT 30)
+set_tests_properties(test_asp_pruning_static PROPERTIES TIMEOUT 30)
