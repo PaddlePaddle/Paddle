@@ -246,9 +246,6 @@ class TestClipAPI(unittest.TestCase):
         out1 = paddle.clip(x_int32, min=1)
         out2 = paddle.clip(x_int64, min=1)
         out3 = paddle.clip(x_f32, min=1)
-        self.assertTrue(np.allclose(out1.numpy(), egr_out1.numpy()))
-        self.assertTrue(np.allclose(out2.numpy(), egr_out2.numpy()))
-        self.assertTrue(np.allclose(out3.numpy(), egr_out3.numpy()))
 
     def test_errors(self):
         paddle.enable_static()
