@@ -69,6 +69,7 @@ class TensorWrapper {
               "Unrecognized tensor type for no_need_buffer feature"));
         }
       }
+      return;
     }
 
     // shallow copy tensor_impl here
