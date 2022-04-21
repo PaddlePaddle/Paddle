@@ -176,6 +176,29 @@ function(create_static_lib TARGET_NAME)
   endif()
 endfunction()
 
+function(create_dummy_static_lib TARGET_NAME)
+  set(libs ${ARGN})
+  list(REMOVE_DUPLICATES libs)
+  set(index 1)
+  set(offset 1)
+  # the dummy target would be consisted of limit size libraries
+  set(limit 100)
+  list(LENGTH libs libs_len)
+  foreach(lib ${libs})
+    list(APPEND merge_list ${lib})
+    list(LENGTH merge_list listlen)
+    if ((${listlen} GREATER ${limit}) OR (${offset} EQUAL ${libs_len}))
+      message("Merge and generate static library: ${TARGET_NAME}_static_${index}")
+      merge_static_libs(${TARGET_NAME}_static_${index} ${merge_list})
+      set(merge_list)
+      list(APPEND ${TARGET_NAME}_list ${TARGET_NAME}_static_${index})
+      MATH(EXPR index "${index}+1")
+    endif()
+    MATH(EXPR offset "${offset}+1")
+  endforeach()
+  cc_library(${TARGET_NAME} DEPS ${${TARGET_NAME}_list})
+endfunction()
+
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
@@ -211,6 +234,7 @@ function(merge_static_libs TARGET_NAME)
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMENT "Merge and generate static lib: $<TARGET_FILE:${TARGET_NAME}>"
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
       )
@@ -251,6 +275,7 @@ function(merge_static_libs TARGET_NAME)
     set(target_LIBNAME "$<TARGET_FILE:${TARGET_NAME}>")
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMENT "Merge and generate static lib: $<TARGET_FILE:${TARGET_NAME}>"
         COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
         COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
         WORKING_DIRECTORY ${target_DIR})
@@ -274,6 +299,7 @@ function(merge_static_libs TARGET_NAME)
     # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMENT "Merge and generate static lib: $<TARGET_FILE:${TARGET_NAME}>"
       COMMAND cmake -E make_directory $<TARGET_FILE_DIR:${TARGET_NAME}>
       COMMAND lib /OUT:$<TARGET_FILE:${TARGET_NAME}> ${libfiles}
       )
@@ -1076,4 +1102,3 @@ function(math_library TARGET)
         cc_library(${TARGET} SRCS ${cc_srcs} DEPS ${math_library_DEPS} ${math_common_deps})
     endif()
 endfunction()
-
