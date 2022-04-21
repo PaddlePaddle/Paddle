@@ -16,12 +16,6 @@
 
 namespace phi {
 
-KernelSignature PixelUnshuffleOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "pixel_unshuffle", {"X"}, {"downscale_factor", "data_format"}, {"Out"});
-}
-
 KernelSignature PixelUnshuffleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("pixel_unshuffle_grad",
@@ -32,7 +26,5 @@ KernelSignature PixelUnshuffleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(pixel_unshuffle,
-                           phi::PixelUnshuffleOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pixel_unshuffle_grad,
                            phi::PixelUnshuffleGradOpArgumentMapping);
