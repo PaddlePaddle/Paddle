@@ -17,6 +17,7 @@
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
+#include "xpu/kernel/simd_header.h"
 
 namespace phi {
 namespace kps {
@@ -154,6 +155,22 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
                                                   OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseBinary(OutT* out,
+                                                  const InT* in1,
+                                                  const InT* in2,
+                                                  OpFunc compute,
+                                                  int read_lens) {
+  for (int idx = 0; idx < read_lens; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
   }
 }
