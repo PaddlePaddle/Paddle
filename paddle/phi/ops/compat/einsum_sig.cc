@@ -19,7 +19,14 @@ namespace phi {
 KernelSignature EinsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("einsum", {"Operands"}, {"equation"}, {"Out"});
 }
+
+KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("einsum_grad",
+                         {"Operands", {GradVarName("Out")}},
+                         {"equation"},
+                         {{GradVarName("Operands")}});
+}
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(einsum, phi::EinsumOpArgumentMapping);
-
+PD_REGISTER_ARG_MAPPING_FN(einsum_grad, phi::EinsumGradOpArgumentMapping);
