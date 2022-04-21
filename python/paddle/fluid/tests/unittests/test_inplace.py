@@ -505,8 +505,8 @@ class TestContinuouslyInplace(unittest.TestCase):
         b.backward()
 
     def test_continuously_inplace(self):
-        with _test_eager_guard():
-            self.func_test_continuously_inplace()
+        # with _test_eager_guard():
+        #     self.func_test_continuously_inplace()
         self.func_test_continuously_inplace()
 
 
