@@ -10,4 +10,3 @@ DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sin)
 
 }  // namespace sparse
 }  // namespace phi
-
