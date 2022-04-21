@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -51,41 +52,6 @@ void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
 }
 
 template <typename DeviceContext, typename T>
-void RunLSTMLayer(const framework::ExecutionContext& ctx, int seq_len,
-                  int batch_size, int xdim, int hidden_size, const T* x, T* y,
-                  const T* init_h, const T* init_c, T* last_h, T* last_c,
-                  int state_offset, const std::vector<int>& seq_len_tensor,
-                  const std::vector<const T*>& param_list, T* i_f_g_o, T* c,
-                  bool is_bidirect, int layer_idx, int offset) {
-  bool is_reverse = false;
-  if (is_bidirect) {
-    layer_idx = 2 * layer_idx + offset;
-    if (offset > 0) {
-      is_reverse = true;
-    }
-  }
-  auto w_x = param_list[0 + offset * 4];
-  auto w_h = param_list[1 + offset * 4];
-  auto b_x = param_list[2 + offset * 4];
-  auto b_h = param_list[3 + offset * 4];
-
-  auto h_0 = init_h + layer_idx * state_offset;
-  auto c_0 = init_c + layer_idx * state_offset;
-  auto last_h_ptr = last_h + layer_idx * state_offset;
-  auto last_c_ptr = last_c + layer_idx * state_offset;
-  auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  int r = xpu::lstm_train<T, T, int16_t>(
-      dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
-      (const T*)w_x, (const T*)w_h, (const T*)b_x, (const T*)b_h,
-      reinterpret_cast<T*>(y), reinterpret_cast<T*>(last_h_ptr),
-      reinterpret_cast<T*>(last_c_ptr), batch_size, xdim, hidden_size, seq_len,
-      seq_len_tensor, is_reverse, nullptr, nullptr, nullptr, nullptr,
-      reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c),
-      xpu::Activation_t::TANH, xpu::Activation_t::SIGMOID);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
-}
-
-template <typename DeviceContext, typename T>
 class RnnXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -114,6 +80,9 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
     }
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    phi::funcs::SetConstant<platform::XPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
 
     PADDLE_ENFORCE_EQ(
         mode, "LSTM",
@@ -181,7 +150,6 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
     const T* cur_input_ptr = nullptr;
@@ -214,40 +182,34 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       auto b_x = parameter_lists[i][2];
       auto b_h = parameter_lists[i][3];
       if (is_bidirec) {
-        std::vector<Tensor> output_vec(2);
-        std::vector<T*> output_ptr_vec(2);
-        for (int k = 0; k < 2; ++k) {
-          output_vec[k].Resize({seq_len, batch_size, output->dims()[2] / 2});
-          output_ptr_vec[k] = output_vec[k].mutable_data<T>(ctx.GetPlace());
-        }
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            output_ptr_vec[0], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
-            is_bidirec, i, 0);
+        auto bw_x = parameter_lists[i][4];
+        auto bw_h = parameter_lists[i][5];
+        auto bb_x = parameter_lists[i][6];
+        auto bb_h = parameter_lists[i][7];
 
-        T* bw_i_f_g_o = i_f_g_o + seq_len * batch_size * hidden_size * 4;
-        T* bw_c = c + seq_len * batch_size * hidden_size;
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            output_ptr_vec[1], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], bw_i_f_g_o, bw_c,
-            is_bidirec, i, 1);
+        int r = xpu::bilstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, (const T*)bw_x, (const T*)bw_h, (const T*)bb_x,
+            (const T*)bb_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, nullptr, nullptr,
+            reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c));
 
-        // concat
-        int r = xpu::concat<T>(
-            dev_ctx.x_context(), {output_ptr_vec[0], output_ptr_vec[1]},
-            cur_output_ptr, {{seq_len, batch_size, hidden_size},
-                             {seq_len, batch_size, hidden_size}},
-            2);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_train");
       } else {
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            cur_output_ptr, init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
-            is_bidirec, i, 0);
+        int r = xpu::lstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, reinterpret_cast<T*>(i_f_g_o),
+            reinterpret_cast<T*>(c), xpu::Activation_t::TANH,
+            xpu::Activation_t::SIGMOID);
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
       }
     }
   }
