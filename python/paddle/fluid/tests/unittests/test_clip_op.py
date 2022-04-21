@@ -200,7 +200,7 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
         paddle.disable_static()
 
-    def test_clip_dygraph(self):
+    def func_clip_dygraph(self):
         paddle.disable_static()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
@@ -233,9 +233,19 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
         self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
 
-    def test_eager(self):
+    def test_clip_dygraph(self):
         with _test_eager_guard():
-            self.test_clip_dygraph()
+            self.func_clip_dygraph()
+        self.func_clip_dygraph()
+
+    def test_clip_dygraph_default_max(self):
+        paddle.disable_static()
+        with _test_eager_guard():
+            x = paddle.to_tensor([1, 2, 3])
+            egr_out = paddle.clip(x, min=1)
+        x = paddle.to_tensor([1, 2, 3])
+        out = paddle.clip(x, min=1)
+        self.assertTrue(np.allclose(out.numpy(), egr_out.numpy()))
 
     def test_errors(self):
         paddle.enable_static()
