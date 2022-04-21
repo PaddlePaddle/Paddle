@@ -6,6 +6,7 @@ namespace phi {
 namespace sparse {
 
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sqrt)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sin)
 
 }  // namespace sparse
 }  // namespace phi
