@@ -68,12 +68,13 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
       if (stop_axis < 0) stop_axis += dims;
 
       int dim_prod = 1;
+      int dim_negative = 0;
       nvinfer1::Dims flatten_dim;
       flatten_dim.nbDims = dims - (stop_axis - start_axis);
       bool need_slice = false;
       for (int i = 0, j = 0; i < dims; ++i) {
+        int dim_i = input_dim.d[i];
         if (start_axis <= i && i <= stop_axis) {
-          int dim_i = input_dim.d[i];
           if (dim_i < 0) {
             need_slice = true;
             break;
@@ -83,6 +84,11 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
             flatten_dim.d[j++] = dim_prod;
           }
         } else {
+          if (dim_i < 0) dim_negative++;
+          if (dim_negative > 1) {
+            need_slice = true;
+            break;
+          }
           flatten_dim.d[j++] = input_dim.d[i];
         }
       }
