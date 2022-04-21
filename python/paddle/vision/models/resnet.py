@@ -34,23 +34,23 @@ model_urls = {
     'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
                   '7ad16a2f1e7333859ff986138630fd7a'),
     'resnext50_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/d416003b0c2442ba84b7f1d979f758eeb9e806c3bb30409598e74caa2d091fd2',
+    ('https://paddle-hapi.bj.bcebos.com/models/resnext50_32x4d.pdparams',
      'dc47483169be7d6f018fcbb7baf8775d'),
     "resnext50_64x4d":
-    ('https://bj.bcebos.com/v1/ai-studio-online/ab91153a5f424e2da776b4567db8aba38bb2a962e4ce4476a08a7759fc40f4bd',
+    ('https://paddle-hapi.bj.bcebos.com/models/resnext50_64x4d.pdparams',
      '063d4b483e12b06388529450ad7576db'),
-    'resnext101_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/3a05705f6b5a4cc88c372312eedf6f91510440dc1d0740d0ac08235dae17a187',
-     '967b090039f9de2c8d06fe994fb9095f'),
-    'resnext101_64x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/4a68929db53c48039df7888b65bf5f161a4683676cce40aa92c0b7777422c16f',
-     '98e04e7ca616a066699230d769d03008'),
-    'resnext152_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/708c5de2dcc14180b8792bd2d756c357929c695f97fc4837baf925ca147f1289',
-     '18ff0beee21f2efc99c4b31786107121'),
-    'resnext152_64x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/a393f016a6fa425b9b666c01fb64c54015b49d683cf84fc4af16b37786bd4d54',
-     '77c4af00ca42c405fa7f841841959379'),
+    'resnext101_32x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext101_32x4d.pdparams',
+        '967b090039f9de2c8d06fe994fb9095f'),
+    'resnext101_64x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext101_64x4d.pdparams',
+        '98e04e7ca616a066699230d769d03008'),
+    'resnext152_32x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext152_32x4d.pdparams',
+        '18ff0beee21f2efc99c4b31786107121'),
+    'resnext152_64x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext152_64x4d.pdparams',
+        '77c4af00ca42c405fa7f841841959379'),
     'wide_resnet50_2': (
         'https://paddle-hapi.bj.bcebos.com/models/wide_resnet50_2.pdparams',
         '0282f804d73debdab289bd9fea3fa6dc'),
