@@ -230,21 +230,14 @@ class Transform(object):
         dots = [self.var2dot_rec(var) for var in vars]
         return dots
 
-    def dot2bar_rec(self, dots, defaults=None):
+    def dot2bar_rec(self, dots):
 
         if isinstance(dots, paddle.fluid.framework.Variable):
             bar = self.dot2bar.lookup(dots)
-            if bar is None and defaults is not None:
-                bar = defaults
+            assert bar is not None
             return bar
 
-        if defaults is None:
-            defaults = [None for _ in range(dots)]
-
-        bars = [
-            self.dot2bar_rec(dot, default)
-            for dot, default in zip(dots, defaults)
-        ]
+        bars = [self.dot2bar_rec(dot) for dot in dots]
         return bars
 
     def linearize(self, xs, ys, xs_dot=None):
@@ -360,7 +353,7 @@ class Transform(object):
             self.add_vars_rec(ins_bar_rec)
 
             ins_bar = flatten(ins_bar_rec)
-            ins = get_input_vars(op)
+            ins = flatten(op_position_inputs(op))
             assert len(ins) == len(ins_bar)
 
             for dot, bar in zip(ins, ins_bar):
