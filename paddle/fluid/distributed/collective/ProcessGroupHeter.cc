@@ -25,6 +25,8 @@ namespace distributed {
 
 using Place = paddle::platform::Place;
 
+int ProcessGroupHeter::send_count = 0;
+int ProcessGroupHeter::recv_count = 0;
 std::shared_ptr<ProcessGroupHeter::HeterTask> ProcessGroupHeter::CreateTask(
     int rank, CommType comm_type, const std::vector<phi::DenseTensor>& inputs) {
   return std::make_shared<ProcessGroupHeter::HeterTask>(rank, comm_type,
@@ -56,6 +58,7 @@ ProcessGroupHeter::ProcessGroupHeter(
       gloo_size_(gloo_size),
       with_switch_(with_switch),
       switch_endpoint_(switch_endpoint) {
+  return;
 #if defined(PADDLE_WITH_NCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
                                                  place_, IGNORE_ID);
@@ -244,6 +247,93 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
   auto broadcast_task = inner_pg_->Broadcast(out_tensors, out_tensors, b_opts);
   broadcast_task->Wait();
   return CreateTask(rank_, CommType::BROADCAST, in_tensors);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
+    std::vector<phi::DenseTensor>& in_tensors, int peer) {
+#if defined(PADDLE_WITH_NCCL)
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors), true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+#endif
+
+  PADDLE_ENFORCE_EQ(
+      in_tensors.size(), 1,
+      platform::errors::PreconditionNotMet(
+          "For each send operation, there can only be one tensor to send."));
+  // Copy Tensor to cpu
+  phi::DenseTensor cpu_tensor;
+  auto& gpu_tensor = in_tensors[0];
+  cpu_tensor.Resize(gpu_tensor.dims());
+  framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
+  PADDLE_ENFORCE_EQ(with_switch_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Gloo does not support the send operation."));
+
+  // Send to switch
+  HeterClient* client_ =
+      HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
+  std::vector<int> send_size;
+  send_size.push_back(cpu_tensor.numel());
+  std::string file_name = std::string("send_") + std::to_string(gid_) +
+                          std::string("_") + std::to_string(send_count);
+  FILE* fp = fopen(file_name.c_str(), "wb");
+  fwrite(cpu_tensor.data(), sizeof(float), cpu_tensor.numel(), fp);
+  fclose(fp);
+  std::string tensor_name =
+      std::to_string(gid_) + std::string("_") + std::to_string(send_count++);
+  int ret = client_->Send(
+      gid_, {tensor_name}, send_size, cpu_tensor.data(),
+      cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
+  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                "Send to the switch module error."));
+  return CreateTask(rank_, CommType::SEND, in_tensors);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
+    std::vector<phi::DenseTensor>& out_tensors, int peer) {
+#if defined(PADDLE_WITH_NCCL)
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors), true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+#endif
+
+  PADDLE_ENFORCE_EQ(
+      out_tensors.size(), 1,
+      platform::errors::PreconditionNotMet(
+          "For each rece operation, there can only be one tensor to receive."));
+
+  // Copy Tensor to cpu
+  phi::DenseTensor cpu_tensor;
+  auto& gpu_tensor = out_tensors[0];
+  cpu_tensor.Resize(gpu_tensor.dims());
+  framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
+
+  PADDLE_ENFORCE_EQ(with_switch_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Gloo does not support the send operation."));
+  // recv from switch
+  HeterClient* client_ =
+      HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
+  std::vector<int> recv_size;
+  recv_size.push_back(cpu_tensor.numel());
+  std::string file_name = std::string("recv_") + std::to_string(gid_) +
+                          std::string("_") + std::to_string(recv_count);
+  std::string tensor_name =
+      std::to_string(gid_) + std::string("_") + std::to_string(recv_count++);
+  int ret = client_->Recv(
+      gid_, {tensor_name}, cpu_tensor.data(),
+      cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
+  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                "receive to the switch module error."));
+  FILE* fp = fopen(file_name.c_str(), "wb");
+  fwrite(cpu_tensor.data(), sizeof(float), cpu_tensor.numel(), fp);
+  fclose(fp);
+  framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
+  VLOG(0) << "In heter:" << gpu_tensor.data()
+          << ", cpu numel: " << cpu_tensor.numel()
+          << ", gpu numel: " << gpu_tensor.numel();
+  return CreateTask(rank_, CommType::RECV, out_tensors);
 }
 
 }  // namespace distributed

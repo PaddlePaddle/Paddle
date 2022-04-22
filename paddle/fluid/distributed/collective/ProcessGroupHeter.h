@@ -97,6 +97,12 @@ class ProcessGroupHeter : public ProcessGroup {
       std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& in_tensors, int peer) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& out_tensors, int peer) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupHeter::HeterTask> CreateTask(
       int rank, CommType opType, const std::vector<phi::DenseTensor>& inputs);
@@ -112,6 +118,8 @@ class ProcessGroupHeter : public ProcessGroup {
   int gloo_size_;
   bool with_switch_;
   std::string switch_endpoint_;
+  static int send_count;
+  static int recv_count;
 };
 
 }  //  namespace distributed

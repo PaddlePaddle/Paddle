@@ -100,10 +100,10 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self._get_process_group_info()
         collective_helper = CollectiveHelper(self.role_maker, wait_port=False)
         # Create global ring for all gpus (ring_id = 0)
-        collective_helper._init_communicator(
-            self.startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, True, self.global_ring_id,
-            True)
+        # collective_helper._init_communicator(
+        #     self.startup_program, self.current_endpoint, self.global_endpoints,
+        #     self.global_rank, self.global_ring_id, True, self.global_ring_id,
+        #     True)
         self._broadcast_params(self.global_ring_id)
 
     def minimize_impl(self,

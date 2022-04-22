@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
+
 namespace paddle {
 namespace operators {
 
@@ -29,6 +32,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
+    auto* x_var = ctx.InputVar("X");
     PADDLE_ENFORCE_GE(
         rid, 0,
         platform::errors::InvalidArgument(
@@ -39,6 +43,19 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         peer, 0,
         platform::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      auto x = ctx.Input<framework::LoDTensor>("X");
+      VLOG(0) << "send name:" << x->name();
+      in_tensor.push_back(*x);
+      auto task = pg->Send(in_tensor, peer);
+      task->Wait();
+      return;
+    }
+
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
@@ -54,7 +71,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
 
-    auto* x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensorArray>()) {
       auto& x_array = x_var->Get<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < x_array.size(); idx++) {

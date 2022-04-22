@@ -157,7 +157,7 @@ def init_parallel_env():
         warnings.warn(
             "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
         )
-        return
+        # return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
     #                 enable cpu only gloo prarllel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
@@ -232,8 +232,7 @@ def init_parallel_env():
         master_addr, master_port = endpoints.split(":")
         master_port = int(master_port)
         is_master = rank == 0
-        default_store = core.TCPStore(master_addr, master_port, is_master,
-                                      world_size)
+        default_store = core.TCPStore(master_addr, master_port, is_master, 1)
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,

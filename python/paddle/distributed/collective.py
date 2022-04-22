@@ -263,7 +263,7 @@ def _new_process_group_impl(backend,
             rank=global_rank,
             world_size=global_world_size,
             place=place,
-            gid=0,
+            gid=group_id,
             local_rank=rank,
             local_size=world_size,
             gloo_rank=cluster_id,
@@ -322,7 +322,7 @@ def barrier(group=None):
         attrs={'ring_id': ring_id})
 
 
-def new_group(ranks=None, backend=None):
+def new_group(ranks=None, backend=None, group_id=None):
     """
 
     Creates a new distributed communication group.
@@ -348,7 +348,7 @@ def new_group(ranks=None, backend=None):
     global _group_map
     if in_dygraph_mode():
         global _default_group_name
-        gid = _new_ring_id()
+        gid = group_id if group_id else _new_ring_id()
         group_name = _default_group_name + str(gid)
         global_group = _get_default_group()
         global_rank = global_group.rank
