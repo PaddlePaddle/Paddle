@@ -1178,13 +1178,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < layers; ++i) {
       // step1. layer_norm
-      if (pre_layer_norm) {
+      if (i == 0 && pre_layer_norm) {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
         // TODO(wangxi): can remove mean var in inference
         ln_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,
                                   buf1->data<T>(), ln_mean_data, ln_var_data);
-      } else {
+      } else if (!pre_layer_norm) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unimplemented post_layer_norm for now."));
       }
@@ -1303,9 +1303,20 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       // step9. residual bias
       if (pre_layer_norm) {
         // TODO(wangxi): remove dropout mask in inference
-        ffn2_fused_dropout_helper.ResidualDropoutBias(
-            dev_ctx, buf1->data<T>(), bias_dropout_residual_out_data,
-            ffn2_biases[i]->data<T>(), buf1->data<T>(), dropout_mask_out_data);
+        if (i < layers - 1) {
+          auto *ln_scale_data = ln_scales[i + 1]->data<U>();
+          auto *ln_bias_data = ln_biases[i + 1]->data<U>();
+          ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
+              dev_ctx, buf1->data<T>(), bias_dropout_residual_out_data,
+              ffn2_biases[i]->data<T>(), ln_scale_data, ln_bias_data,
+              buf1->data<T>(), dropout_mask_out_data, buf0->data<T>(),
+              ln_mean_data, ln_var_data);
+        } else {
+          ffn2_fused_dropout_helper.ResidualDropoutBias(
+              dev_ctx, buf1->data<T>(), bias_dropout_residual_out_data,
+              ffn2_biases[i]->data<T>(), buf1->data<T>(),
+              dropout_mask_out_data);
+        }
       } else {
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
