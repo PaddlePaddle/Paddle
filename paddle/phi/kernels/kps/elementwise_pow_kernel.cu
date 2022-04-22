@@ -34,6 +34,7 @@ void ElementwisePowKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifndef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -50,3 +51,4 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t) {}
+#endif

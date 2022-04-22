@@ -34,6 +34,7 @@ void ModuloKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifndef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(modulo_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -44,3 +45,4 @@ PD_REGISTER_KERNEL(modulo_raw,
                    int64_t) {}
 PD_REGISTER_KERNEL(
     modulo, KPS, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
+#endif

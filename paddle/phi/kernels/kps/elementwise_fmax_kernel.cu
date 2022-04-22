@@ -18,5 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
+#ifndef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(
     fmax, KPS, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+#endif
