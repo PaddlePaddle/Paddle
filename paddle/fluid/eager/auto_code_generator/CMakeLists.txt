@@ -1,6 +1,6 @@
 add_subdirectory(final_state_generator)
 
-set(EAGER_GENERETOR_DEPS ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+set(EAGER_GENERETOR_DEPS glob_op pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
 
 add_executable(eager_generator eager_generator.cc)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})

@@ -154,8 +154,7 @@ if(WITH_PYTHON)
   else()
     set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   endif()
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
+  list(APPEND OP_FUNCTION_GENERETOR_DEPS glob_op)
 
   if (WITH_NCCL OR WITH_RCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
@@ -368,7 +367,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
+    DEPS ${PYBIND_DEPS} glob_op ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)

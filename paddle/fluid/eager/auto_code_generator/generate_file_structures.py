@@ -63,7 +63,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
     |  |- forwards
     |     |- "dygraph_forward_functions.cc"
     |     |- CMakeLists.txt
-    |     |  "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} GLOB_OP_LIB)"
+    |     |  "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} glob_op)"
     |
     |  |- nodes
     |     |- "nodes.cc"
@@ -109,7 +109,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
+            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} glob_op)\n"
         )
         f.write("add_dependencies(dygraph_function eager_codegen)")
 

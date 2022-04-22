@@ -230,6 +230,8 @@ if (WITH_ASCEND_CL)
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+
+create_dummy_static_lib(glob_op LIBS ${GLOB_OP_LIB} DEPS ${GLOB_OPERATOR_DEPS} LIMIT 50)
 add_subdirectory(benchmark)
 
 cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
