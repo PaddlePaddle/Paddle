@@ -57,14 +57,14 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     int img_h = -1;
     int img_w = -1;
     if (data_format != "NHWC") {
-        img_c = static_cast<int>(input->dims()[1]);
-        img_h = static_cast<int>(input->dims()[2]);
-        img_w = static_cast<int>(input->dims()[3]);
+      img_c = static_cast<int>(input->dims()[1]);
+      img_h = static_cast<int>(input->dims()[2]);
+      img_w = static_cast<int>(input->dims()[3]);
     }
     else {
-        img_c = static_cast<int>(input->dims()[3]);
-        img_h = static_cast<int>(input->dims()[1]);
-        img_w = static_cast<int>(input->dims()[2]);
+      img_c = static_cast<int>(input->dims()[3]);
+      img_h = static_cast<int>(input->dims()[1]);
+      img_w = static_cast<int>(input->dims()[2]);
     }
     const int f = static_cast<int>(filter.dims()[0]);
 
@@ -130,14 +130,14 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     int img_h = -1;
     int img_w = -1;
     if (data_format != "NHWC") {
-        img_c = static_cast<int>(input->dims()[1]);
-        img_h = static_cast<int>(input->dims()[2]);
-        img_w = static_cast<int>(input->dims()[3]);
+      img_c = static_cast<int>(input->dims()[1]);
+      img_h = static_cast<int>(input->dims()[2]);
+      img_w = static_cast<int>(input->dims()[3]);
     }
     else {
-        img_c = static_cast<int>(input->dims()[3]);
-        img_h = static_cast<int>(input->dims()[1]);
-        img_w = static_cast<int>(input->dims()[2]);
+      img_c = static_cast<int>(input->dims()[3]);
+      img_h = static_cast<int>(input->dims()[1]);
+      img_w = static_cast<int>(input->dims()[2]);
     }
     const int f = static_cast<int>(filter.dims()[0]);
 
