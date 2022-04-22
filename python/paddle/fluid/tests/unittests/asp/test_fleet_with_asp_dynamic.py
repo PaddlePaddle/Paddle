@@ -33,18 +33,12 @@ else:
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
-        self.conv1 = paddle.nn.Conv2D(
-            in_channels=3, out_channels=4, kernel_size=3, padding=2)
-        self.linear1 = paddle.nn.Linear(4624, 32)
-        self.linear2 = paddle.nn.Linear(32, 32)
-        self.linear3 = paddle.nn.Linear(32, 10)
+        self.linear1 = paddle.nn.Linear(32, 32)
+        self.linear2 = paddle.nn.Linear(32, 10)
 
-    def forward(self, img):
-        hidden = self.conv1(img)
-        hidden = paddle.flatten(hidden, start_axis=1)
-        hidden = self.linear1(hidden)
-        hidden = self.linear2(hidden)
-        prediction = self.linear3(hidden)
+    def forward(self, x):
+        hidden = self.linear1(x)
+        prediction = self.linear2(hidden)
         return prediction
 
 
@@ -74,7 +68,7 @@ class TestFleetWithASPDynamic(unittest.TestCase):
         self.layer = fleet.distributed_model(self.layer)
 
         imgs = paddle.to_tensor(
-            np.random.randn(64, 3, 32, 32),
+            np.random.randn(64, 32),
             dtype='float32',
             place=self.place,
             stop_gradient=False)
@@ -128,7 +122,7 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
         self.layer = fleet.distributed_model(self.layer)
 
         imgs = paddle.to_tensor(
-            np.random.randn(64, 3, 32, 32),
+            np.random.randn(64, 32),
             dtype='float32',
             place=self.place,
             stop_gradient=False)
