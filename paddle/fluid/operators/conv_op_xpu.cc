@@ -38,9 +38,11 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",true,
+    PADDLE_ENFORCE_EQ(data_format == "NDHWC",false,
                       platform::errors::InvalidArgument(
-                          ("XPU do support data_format is NCHW or NHWC in conv op.")));
+                      "XPU do support data_format is NCHW or NHWC in conv op."
+		      "But recevived 'data_format' is [%s].",
+                      data_format));
 
     framework::DDim in_data_dims =
         phi::slice_ddim(input->dims(), 2, input->dims().size());
@@ -54,12 +56,12 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     int img_c = -1;
     int img_h = -1;
     int img_w = -1;
-    if (data_format == "NCHW") {
+    if (data_format != "NHWC") {
         img_c = static_cast<int>(input->dims()[1]);
         img_h = static_cast<int>(input->dims()[2]);
         img_w = static_cast<int>(input->dims()[3]);
     }
-    else if (data_format == "NHWC") {
+    else {
         img_c = static_cast<int>(input->dims()[3]);
         img_h = static_cast<int>(input->dims()[1]);
         img_w = static_cast<int>(input->dims()[2]);
@@ -109,10 +111,11 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(
-        data_format == "NCHW" || data_format == "NHWC",true,
-        platform::errors::InvalidArgument(
-            ("XPU do support data_format is NCHW or NHWC in conv grad op.")));
+    PADDLE_ENFORCE_EQ(data_format == "NDHWC",false,
+                      platform::errors::InvalidArgument(
+                      "XPU do support data_format is NCHW or NHWC in conv grad op."
+		      "But recevived 'data_format' is [%s].",
+                      data_format));
 
     framework::DDim in_data_dims =
         phi::slice_ddim(input->dims(), 2, input->dims().size());
@@ -126,12 +129,12 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     int img_c = -1;
     int img_h = -1;
     int img_w = -1;
-    if (data_format == "NCHW") {
+    if (data_format != "NHWC") {
         img_c = static_cast<int>(input->dims()[1]);
         img_h = static_cast<int>(input->dims()[2]);
         img_w = static_cast<int>(input->dims()[3]);
     }
-    else if (data_format == "NHWC") {
+    else {
         img_c = static_cast<int>(input->dims()[3]);
         img_h = static_cast<int>(input->dims()[1]);
         img_w = static_cast<int>(input->dims()[2]);
