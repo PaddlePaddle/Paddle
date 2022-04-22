@@ -520,7 +520,7 @@ def matmul_jvp(op, x_dot, y_dot):
 @REGISTER_JVP('slice_select_p')
 def slice_select_jvp(op, x_dot):
     if x_dot is None:
-        return x_dot
+        return None
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
