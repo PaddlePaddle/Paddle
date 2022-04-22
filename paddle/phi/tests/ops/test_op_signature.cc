@@ -560,8 +560,7 @@ TEST(ARG_MAP, allclose) {
   auto signature1 =
       OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case1);
   ASSERT_EQ(signature1.name, "allclose");
-  auto attr_names1 = std::get<1>(signature1.args);
-  ASSERT_EQ(attr_names1[0], "Rtol");
+  ASSERT_EQ(signature1.attr_names[0], "Rtol");
 
   TestArgumentMappingContext arg_case2(
       {"Input", "Other", "Atol"},
@@ -573,8 +572,7 @@ TEST(ARG_MAP, allclose) {
   auto signature2 =
       OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case2);
   ASSERT_EQ(signature2.name, "allclose");
-  auto attr_names2 = std::get<1>(signature2.args);
-  ASSERT_EQ(attr_names2[1], "Atol");
+  ASSERT_EQ(signature2.attr_names[1], "Atol");
 }
 
 TEST(ARG_MAP, reshape) {

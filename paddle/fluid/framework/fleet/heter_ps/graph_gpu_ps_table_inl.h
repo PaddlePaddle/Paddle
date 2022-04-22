@@ -847,7 +847,6 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   move_neighbor_sample_result_to_source_gpu(gpu_id, total_gpu, sample_size,
                                             h_left, h_right, d_shard_vals_ptr,
                                             d_shard_actual_sample_size_ptr);
-
   fill_dvalues<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals_ptr, val, d_shard_actual_sample_size_ptr, actual_sample_size,
       d_idx_ptr, sample_size, len);

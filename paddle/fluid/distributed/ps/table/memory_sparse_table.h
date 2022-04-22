@@ -62,9 +62,11 @@ class MemorySparseTable : public Table {
   int32_t InitializeShard() override { return 0; }
   int32_t InitializeValue();
 
-  int32_t Load(const std::string& path, const std::string& param) override;
+  virtual int32_t Load(const std::string& path,
+                       const std::string& param) override;
 
-  int32_t Save(const std::string& path, const std::string& param) override;
+  virtual int32_t Save(const std::string& path,
+                       const std::string& param) override;
 
   int32_t LoadLocalFS(const std::string& path, const std::string& param);
   int32_t SaveLocalFS(const std::string& path, const std::string& param,
@@ -83,7 +85,7 @@ class MemorySparseTable : public Table {
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
   int32_t Flush() override;
-  int32_t Shrink(const std::string& param) override;
+  virtual int32_t Shrink(const std::string& param) override;
   void Clear() override;
 
   void* GetShard(size_t shard_idx) override {
