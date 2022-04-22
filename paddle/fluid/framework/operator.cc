@@ -155,6 +155,109 @@ static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
   }
 }
 
+template <typename T>
+void print_data(const std::vector<T>& vec, std::stringstream& sstr,
+                bool whole = false) {
+  auto& vec1 = vec;
+  size_t step = 1;
+  step = step < 1 ? 1 : step;
+  if (vec.size() <= 0) {
+    return;
+  }
+  double max_val, min_val;
+  min_val = max_val = static_cast<double>(vec[0]);
+  for (size_t i = 1; i < vec1.size(); i++) {
+    max_val = std::max(max_val, static_cast<double>(vec1[i]));
+    min_val = std::min(min_val, static_cast<double>(vec1[i]));
+  }
+  char output[512];
+  snprintf(output, sizeof(output), " max: %.16f min: %.16f data100: ", max_val,
+           min_val);
+  sstr << output;
+  for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
+    snprintf(output, sizeof(output), "%.16f ", static_cast<double>(vec1[i]));
+    sstr << output;
+  }
+}
+
+static std::vector<std::string> split_str(std::string strtem, char a) {
+  std::vector<std::string> strvec;
+
+  std::string::size_type pos1, pos2;
+  pos2 = strtem.find(a);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    strvec.push_back(strtem.substr(pos1, pos2 - pos1));
+
+    pos1 = pos2 + 1;
+    pos2 = strtem.find(a, pos1);
+  }
+  strvec.push_back(strtem.substr(pos1));
+  return strvec;
+}
+template <class VarBaseType>
+void show_var(const std::string& var_name, VarBaseType* var_base) {
+  /*
+  */
+
+  std::stringstream sstr;
+  VLOG(4) << "try to find: " << var_name;
+  sstr << "data of " << var_name << ": ";
+  Variable* var = var_base;
+  if (var != nullptr) {
+    VLOG(4) << "found var: " << var_name;
+    VLOG(4) << "initialized: " << var->IsInitialized();
+
+    std::vector<float> vec_float(0);
+    std::vector<int> vec_int(0);
+    std::vector<int64_t> vec_int64(0);
+    std::vector<paddle::platform::float16> vec_fp16(0);
+
+    if (var->IsInitialized()) {
+      if (var->IsType<LoDTensor>()) {
+        const LoDTensor& tensor = var->Get<LoDTensor>();
+
+        if (tensor.IsInitialized()) {
+          auto* ctx =
+              platform::DeviceContextPool::Instance().Get(tensor.place());
+          auto type = tensor.type();
+          if (type == framework::proto::VarType::INT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == framework::proto::VarType::INT64) {
+            framework::TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == framework::proto::VarType::FP32) {
+            framework::TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == framework::proto::VarType::FP16) {
+            framework::TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      } else if (var->IsType<Tensor>()) {
+        const Tensor& tensor = var->Get<Tensor>();
+        if (tensor.IsInitialized()) {
+          auto* ctx =
+              platform::DeviceContextPool::Instance().Get(tensor.place());
+          auto type = tensor.type();
+          if (type == framework::proto::VarType::INT32) {
+            framework::TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == framework::proto::VarType::INT64) {
+            framework::TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == framework::proto::VarType::FP32) {
+            framework::TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == framework::proto::VarType::FP16) {
+            framework::TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      }
+    }
+    bool show_whole = false;
+    print_data<int64_t>(vec_int64, sstr, show_whole);
+    print_data<int>(vec_int, sstr, show_whole);
+    print_data<float>(vec_float, sstr, show_whole);
+    print_data<paddle::platform::float16>(vec_fp16, sstr, show_whole);
+    VLOG(4) << sstr.str();
+  }
+}
+
 static int GetRowSize(const ScopeBase& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -945,19 +1048,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
   }
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
@@ -1198,8 +1301,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
-                        ctx.Attr<bool>("use_mkldnn") &&
+  const auto& attrs_map = ctx.Attrs();
+  auto iter = attrs_map.find("use_mkldnn");
+  bool use_mkldnn_ctx = iter != attrs_map.end() &&
+                        BOOST_GET_CONST(bool, iter->second) &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
@@ -1324,8 +1429,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                   << ", using_kernel_key:" << *kernel_type_.get();
           auto try_pt_kernel_key =
               TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-          if (!phi::KernelFactory::Instance().IsSelectKernelValid(
-                  pt_kernel_name, try_pt_kernel_key)) {
+          if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                        try_pt_kernel_key)) {
             kernel_type_->library_type_ = expected_kernel_key_library_type;
             VLOG(3) << "modify XPU KP kernel in static graph: " << type_
                     << " is failed " << *kernel_type_.get();
@@ -1481,6 +1586,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
 #endif
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+  }
+  if (true) {
+    for (auto& var_pair : outputs_) {
+      int num = 0;
+      for (const std::string& var : var_pair.second) {
+        auto* tmp_var = scope.FindVar(var);
+        show_var(var_pair.first + std::to_string(num++), tmp_var);
+      }
+    }
   }
 
   if (FLAGS_check_nan_inf) {
@@ -2113,16 +2227,18 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
-  InitDefaultKernelSignatureMap();
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())(
-      arg_mapping_ctx);
+  if (arg_map_fn_ == nullptr) {
+    arg_map_fn_.reset(new phi::ArgumentMappingFn(
+        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
+  }
+  return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePhiData(
     const Scope& scope, const phi::Kernel& pt_kernel,
     const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
   auto input_defs = pt_kernel.args_def().input_defs();
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -2174,11 +2290,15 @@ Scope* OperatorWithKernel::PreparePhiData(
       if (in_def.backend == phi::Backend::ALL_BACKEND) {
         continue;
       }
-      auto expected_place = phi::TransToPhiPlace(in_def.backend);
-      if (platform::is_same_place(tensor_in->place(), expected_place)) {
+
+      auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+      if (in_def.backend == tensor_backend ||
+          (in_def.backend == phi::Backend::GPUDNN &&
+           tensor_backend == phi::Backend::GPU)) {
         continue;
       }
 
+      auto expected_place = phi::TransToPhiPlace(in_def.backend);
       VLOG(3) << "phi Transform Variable " << input_names[i] << " from "
               << tensor_in->place() << " to " << expected_place;
 
@@ -2215,9 +2335,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature_->args);
-  auto& attr_names = std::get<1>(pt_kernel_signature_->args);
-  auto& output_names = std::get<2>(pt_kernel_signature_->args);
+  auto& input_names = pt_kernel_signature_->input_names;
+  auto& attr_names = pt_kernel_signature_->attr_names;
+  auto& output_names = pt_kernel_signature_->output_names;
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
@@ -2538,3 +2658,4 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
 }  // namespace framework
 }  // namespace paddle
+
