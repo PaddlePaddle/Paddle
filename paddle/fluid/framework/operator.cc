@@ -1330,6 +1330,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             kernel_type_->library_type_ = expected_kernel_key_library_type;
             VLOG(3) << "modify XPU KP kernel in static graph: "
                     << pt_kernel_name << " is failed " << *kernel_type_.get();
+          } else {
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is succeed " << *kernel_type_.get();
           }
         }
       }
@@ -1612,10 +1615,10 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     if (use_xpu_kp_kernel_rt) {
-      VLOG(3) << "xpu_kp using rt mode ";
+      VLOG(3) << "fluid xpu_kp using rt mode ";
     }
     if (use_xpu_kp_kernel_debug) {
-      VLOG(3) << "xpu_kp using debug mode ";
+      VLOG(3) << "fluid xpu_kp using debug mode ";
     }
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
     if (is_xpu_kp_support) {
@@ -1632,7 +1635,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
         expected_kernel_key.place_ = platform::CPUPlace();
         kernel_iter = kernels.find(expected_kernel_key);
       } else {
-        VLOG(3) << "using XPU KP kernel: " << type_
+        VLOG(3) << "fluid using XPU KP kernel: " << type_
                 << ", using_kernel_key:" << expected_kernel_key;
       }
     }

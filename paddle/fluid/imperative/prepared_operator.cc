@@ -210,8 +210,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
                                                       try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
-          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name << " is failed "
-                  << expected_kernel_key;
+          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+                  << " in dynamic graph is failed " << expected_kernel_key;
+        } else {
+          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+                  << " in dynamic graph is succeed " << expected_kernel_key;
         }
       }
     }
@@ -313,15 +316,15 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #ifdef PADDLE_WITH_XPU_KP
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
     if (use_xpu_kp_kernel_rt) {
-      VLOG(3) << "xpu_kp using rt mode ";
+      VLOG(3) << "fluid xpu_kp using rt mode ";
     }
     if (use_xpu_kp_kernel_debug) {
-      VLOG(3) << "xpu_kp using debug mode ";
+      VLOG(3) << "fluid xpu_kp using debug mode ";
     }
     if (is_xpu_kp_support) {
       expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
       kernel_iter = kernels.find(expected_kernel_key);
-      VLOG(3) << "using XPU KP kernel: " << op.Type()
+      VLOG(3) << "using fluid XPU KP kernel: " << op.Type()
               << ", using_kernel_key:" << expected_kernel_key;
     }
     if (!is_xpu_kp_support &&
