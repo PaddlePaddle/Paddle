@@ -94,7 +94,12 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("FMHAOut",
                       {batch_size, seq_len_m, seq_len_r, num_head, c});
 
+    ctx->SetOutputDim("FMHAGateOut",
+                      {batch_size, seq_len_m, seq_len_r, num_head, c});
+
     if (ctx->Attrs().Get<bool>("is_gating") == true) {
+      ctx->SetOutputDim("SigmoidOut",
+                        {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateValueOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateBiasOut",
@@ -139,8 +144,10 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
     AddOutput("SrcMaskOut", "Result in fmha.").AsIntermediate();
     AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
+    AddOutput("FMHAGateOut", "Result after fmha.").AsIntermediate();
     AddOutput("GateValueOut", "Result after fmha and q").AsIntermediate();
     AddOutput("GateBiasOut", "Result after add bias").AsIntermediate();
+    AddOutput("SigmoidOut", "Result after fmha.").AsIntermediate();
     AddOutput("GateOut", "Result gate").AsIntermediate();
     AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
     AddOutput("Y", "Result after attention.");
@@ -203,6 +210,8 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("GateBias"));
       ctx->SetOutputDim(framework::GradVarName("GateBiasOut"),
                         ctx->GetInputDim("GateBiasOut"));
+      ctx->SetOutputDim(framework::GradVarName("SigmoidOut"),
+                        ctx->GetInputDim("SigmoidOut"));
       ctx->SetOutputDim(framework::GradVarName("GateOut"),
                         ctx->GetInputDim("GateOut"));
     }
@@ -210,11 +219,18 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
+
+    if (ctx->HasOutput(framework::GradVarName("NonbatchedBias"))) {
+      ctx->SetOutputDim(framework::GradVarName("NonbatchedBias"),
+                        ctx->GetInputDim("NonbatchedBias"));
+    }
+
     ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                       ctx->GetInputDim("OutLinearBias"));
 
     ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
                       ctx->GetInputDim("OutLinearW"));
+
     ctx->SetOutputDim(framework::GradVarName("QKVWeight"),
                       ctx->GetInputDim("QKVWeight"));
 
@@ -265,14 +281,19 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     // inputs x, parameters and their grad.
     op->SetInput("X", this->Input("X"));
+
+    if (this->HasInput("NonbatchedBias")) {
+      op->SetInput("NonbatchedBias", this->Input("NonbatchedBias"));
+      op->SetOutput(framework::GradVarName("NonbatchedBias"),
+                    this->InputGrad("NonbatchedBias"));
+    }
+
     op->SetInput("QKVWeight", this->Input("QKVWeight"));
 
-    // if (this->HasInput("SrcMask")) {
     op->SetInput("SrcMask", this->Input("SrcMask"));
     op->SetInput("SrcMaskOut", this->Output("SrcMaskOut"));
     op->SetOutput(framework::GradVarName("SrcMaskOut"),
                   this->OutputGrad("SrcMaskOut"));
-    // }
 
     op->SetInput("OutLinearW", this->Input("OutLinearW"));
     op->SetOutput(framework::GradVarName("OutLinearW"),
@@ -293,12 +314,15 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetOutput(framework::GradVarName("GateBias"),
                     this->InputGrad("GateBias"));
 
+      op->SetInput("FMHAGateOut", this->Output("FMHAGateOut"));
+
       op->SetInput("GateBiasOut", this->Output("GateBiasOut"));
       op->SetOutput(framework::GradVarName("GateBiasOut"),
                     this->OutputGrad("GateBiasOut"));
 
-      // op->SetOutput(framework::GradVarName("GateValueOut"),
-      // this->OutputGrad("GateValueOut"));
+      op->SetInput("SigmoidOut", this->Output("SigmoidOut"));
+      op->SetOutput(framework::GradVarName("SigmoidOut"),
+                    this->OutputGrad("SigmoidOut"));
 
       op->SetInput("GateOut", this->Output("GateOut"));
       op->SetOutput(framework::GradVarName("GateOut"),
@@ -309,47 +333,15 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("QKVWeight"),
                   this->InputGrad("QKVWeight"));
 
-    //   // use forward outputs as backward inputs.
-    //   if (is_pre_layer_norm) {
-    //     if (this->HasOutput("LnOut")) {
-    //       op->SetInput("LnOut", this->Output("LnOut"));
-    //     }
-    //     if (this->HasOutput("LnMean")) {
-    //       op->SetInput("LnMean", this->Output("LnMean"));
-    //     }
-    //     if (this->HasOutput("LnVariance")) {
-    //       op->SetInput("LnVariance", this->Output("LnVariance"));
-    //     }
-    //   } else {
-    //     op->SetInput("Ln2Mean", this->Output("Ln2Mean"));
-    //     op->SetInput("Ln2Variance", this->Output("Ln2Variance"));
-    //     op->SetInput("BiasDropoutResidualOut",
-    //                  this->Output("BiasDropoutResidualOut"));
-    //   }
     op->SetInput("QKVOut", this->Output("QKVOut"));
-
     op->SetInput("TransposeOut2", this->Output("TransposeOut2"));
     op->SetInput("QKOut", this->Output("QKOut"));
     op->SetInput("QKTVOut", this->Output("QKTVOut"));
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
-    //   op->SetInput("AttnDropoutMaskOut", this->Output("AttnDropoutMaskOut"));
-    //   op->SetInput("AttnDropoutOut", this->Output("AttnDropoutOut"));
 
     op->SetInput("FMHAOut", this->Output("FMHAOut"));
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
-    //   op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
     op->SetInput("QKVOut", this->Output("QKVOut"));
-
-    //   // backward outputs: dinput
-    //   if (is_pre_layer_norm) {
-    //     if (this->HasOutput("LnOut")) {
-    //       op->SetOutput(framework::GradVarName("LnOut"),
-    //                     this->OutputGrad("LnOut"));
-    //     }
-    //   } else {
-    //     op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
-    //                   this->OutputGrad("BiasDropoutResidualOut"));
-    //   }
 
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
 
@@ -360,8 +352,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));
     op->SetOutput(framework::GradVarName("SoftmaxOut"),
                   this->OutputGrad("SoftmaxOut"));
-    //   op->SetOutput(framework::GradVarName("AttnDropoutOut"),
-    //                 this->OutputGrad("AttnDropoutOut"));
 
     op->SetOutput(framework::GradVarName("FMHAOut"),
                   this->OutputGrad("FMHAOut"));

@@ -491,20 +491,102 @@ def fused_multi_head_attention(x,
 
 
 def fused_gate_attention(x,
-                        qkv_weight,
-                        gate_weight=None,
-                        linear_weight=None,
-                        is_gating=True,
-                        qkv_bias=None,
-                        gate_bias=None,
-                        linear_bias=None,
-                        nonbatched_bias=None,
-                        attn_mask=None,
-                        training=True,
-                        name=None):
+                         qkv_weight,
+                         gate_weight=None,
+                         linear_weight=None,
+                         is_gating=True,
+                         qkv_bias=None,
+                         gate_bias=None,
+                         linear_bias=None,
+                         nonbatched_bias=None,
+                         attn_mask=None,
+                         training=True,
+                         name=None):
+    r"""
+    Attention mapps queries and a set of key-value pairs to outputs, and
+    Multi-Head Attention performs multiple parallel attention to jointly attending
+    to information from different representation subspaces. This API only
+    support self_attention. The pseudo code is as follows:
 
+    .. code-block:: python
+
+    	c = self.c ** (-0.5)
+        q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w) * c
+        k = paddle.einsum('nbka,ahc->nbkhc', m_data, self.key_w)
+        v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
+        logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k) + bias
+
+
+        if nonbatched_bias is not None:
+            # wait if using async communication and dap, otherwise do nothing
+            nonbatched_bias = all_gather_opp(nonbatched_bias, axis=2, sync=self.comm_sync)
+            logits += paddle.unsqueeze(nonbatched_bias, axis=1)
+
+        weights = nn.functional.softmax(logits)
+        weighted_avg = paddle.einsum('nbhqk,nbkhc->nbqhc', weights, v)
+
+        if self.gating:
+            gate_values = paddle.einsum('nbqc,chv->nbqhv', q_data,
+                                        self.gating_w) + self.gating_b
+            gate_values = nn.functional.sigmoid(gate_values)
+            weighted_avg *= gate_values
+
+        output = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
+                               self.output_w) + self.output_b
+
+    Parameters:
+        x (Tensor): The input tensor of fused_multi_head_attention. The shape is
+            `[batch\_size, sequence\_len, embed\_dim]`.
+        qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
+        linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
+        pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
+	    (False). Default False.
+        linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
+        attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
+ 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
+            data type is bool, the unwanted positions have `False` values and the others have `True` values.
+            When the data type is int, the unwanted positions have 0 values and the others have 1 values.
+            When the data type is float, the unwanted positions have `-INF` values and the others have 0 values.
+            It can be None when nothing wanted or needed to be prevented attention to. Default None.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor, the data type and shape is same as `x`.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate.nn.functional as F
+
+            # input: [batch_size, seq_len, embed_dim]
+            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            # qkv_weight: [3, num_head, head_dim, embed_dim]
+            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            # qkv_bias: [3, num_head, head_dim]
+            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            # linear_weight: [embed_dim, embed_dim]
+            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            # linear_bias: [embed_dim]
+            linear_bias = paddle.rand(shape=[128], dtype="float32")
+            # self attention mask: [batch_size, num_heads, seq_len, seq_len]
+            attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+
+            # output: [batch_size, seq_len, embed_dim]
+            output = F.fused_gate_head_attention(
+                x, qkv_weight, linear_weight, False,
+                None, None, None, None, 1e-5, qkv_bias,
+                linear_bias, None, attn_mask)
+            # [2, 4, 128]
+            print(output.shape)
+    """
     if _non_static_mode():
-        _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
-            x, qkv_weight, gate_weight, linear_weight, gate_bias, linear_bias, nonbatched_bias, attn_mask, 'is_gating', is_gating)
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
+            x, qkv_weight, gate_weight, linear_weight, gate_bias, linear_bias,
+            nonbatched_bias, attn_mask, 'is_gating', is_gating)
         # print(cache_kv_out)
         return final_out

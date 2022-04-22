@@ -152,7 +152,8 @@ class AttnMatMul {
           "parameters."));
     }
     if (compute_bias_) {
-      // reduce: {0, 1, 2, 3, 4} -> {2, 3, 4} or {0, 1, 2} -> {2}
+      // reduce: {0, 1, 2, 3, 4} -> {2, 3, 4} or {0, 1, 2} -> {2} or {0,1,2,3}
+      // -> {3} or {0,1,2,3,4} -> {3,4}
       const auto input_dims = d_output->dims();
       const auto output_dims = d_bias->dims();
       bool support_case_1 =
@@ -163,15 +164,19 @@ class AttnMatMul {
       bool support_case_2 =
           (input_dims.size() == 3 && output_dims.size() == 1 &&
            (input_dims[2] == output_dims[0]));
-      bool support_case_3 = 
-         (input_dims.size() == 4 && output_dims.size() == 1 && input_dims[3] == output_dims[0]);
+      bool support_case_3 =
+          (input_dims.size() == 4 && output_dims.size() == 1 &&
+           input_dims[3] == output_dims[0]);
+      bool support_case_4 =
+          (input_dims.size() == 5 && output_dims.size() == 2 &&
+           input_dims[3] == output_dims[0] && input_dims[4] == output_dims[1]);
+
+      gpuStream_t stream = dev_ctx_.stream();
       if (support_case_1 || support_case_2) {
-        gpuStream_t stream = dev_ctx_.stream();
         TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
             dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1},
             stream);
-      } else if(support_case_3){
-        gpuStream_t stream = dev_ctx_.stream();
+      } else if (support_case_3 || support_case_4) {
         TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
             dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1, 2},
             stream);

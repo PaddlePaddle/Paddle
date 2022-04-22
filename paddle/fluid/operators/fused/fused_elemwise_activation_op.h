@@ -74,27 +74,6 @@ static void RunBinaryCompoundFunctor(
   }
 }
 
-template <typename DeviceContext, typename T, typename BinaryFunctor,
-          typename UnaryFunctor>
-static void RunBinaryCompoundFunctor(
-    const framework::ExecutionContext &ctx, const BinaryFunctor &binary_functor,
-    const UnaryFunctor &unary_functor, const framework::Tensor &in_x,
-    const framework::Tensor &in_y, std::vector<framework::Tensor *> *outputs, int axis) {
-  // Z = Binary(X, Unary(Y))
-  // intermediate_out = Unary(Y)
-  // out = Binary(X, Unary(Y))
-  // In this case, the shape of intermediate_out and out are different.
-  phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
-      compound_func(binary_functor, unary_functor);
-
-  FusedElemwiseAndActComputeEx<
-        DeviceContext, T,
-        phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
-        false /*KeepIntermediateValue*/,
-        false /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
-}
-
 template <typename DeviceContext, typename T, typename UnaryFunctor,
           typename BinaryFunctor>
 static void RunUnaryCompoundFunctors(
@@ -177,41 +156,6 @@ static void RunBinaryCompoundGradFunctors(
   }
 }
 
-template <typename DeviceContext, typename T, typename BinaryGradFunctor,
-          typename UnaryFunctor, typename UnaryGradFunctor, bool InPlace>
-static void RunBinaryCompoundGradFunctors(
-    const framework::ExecutionContext &ctx,
-    const BinaryGradFunctor &binary_grad_functor,
-    const UnaryFunctor &unary_functor,
-    const UnaryGradFunctor &unary_grad_functor, const framework::Tensor *in_x,
-    const framework::Tensor *in_y, const framework::Tensor *in_out,
-    const framework::Tensor *in_intermediate_out,
-    const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
-    framework::Tensor *y_grad, framework::Tensor *d_intermediate_out, int axis) {
-  // Z = Binary(X, Unary(Y))
-
-  using BinaryCompoundDxFunctor =
-      phi::funcs::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor,
-                                              UnaryFunctor>;
-  using BinaryCompoundDyFunctor = phi::funcs::BinaryCompoundGradDyFunctor<
-      T, BinaryGradFunctor, UnaryFunctor, UnaryGradFunctor, InPlace>;
-  using BinaryCompoundDIntermedaiteOutFunctor =
-      phi::funcs::BinaryCompoundGradDIntermedaiteOutFunctor<
-          T, BinaryGradFunctor, UnaryFunctor>;
-
-  FusedElemwiseAndActGradComputeEx<
-      DeviceContext, T, BinaryCompoundDxFunctor, BinaryCompoundDyFunctor,
-      BinaryCompoundDIntermedaiteOutFunctor, false /*UseIntermediateOut*/,
-      false /*SameShapeOfIntermediateOutAndOut*/>(
-      ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
-      y_grad, d_intermediate_out,
-      BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
-      BinaryCompoundDyFunctor(binary_grad_functor, unary_functor,
-                              unary_grad_functor),
-      BinaryCompoundDIntermedaiteOutFunctor(binary_grad_functor,
-                                            unary_functor));
-}
-
 template <typename DeviceContext, typename T, typename UnaryGradFunctor,
           typename BinaryFunctor, typename BinaryGradFunctor, bool InPlace>
 static void RunUnaryCompoundGradFunctors(
@@ -263,7 +207,6 @@ static void RunUnaryCompoundGradFunctors(
   }
 }
 
-
 template <typename DeviceContext, typename T, typename UnaryGradFunctor,
           typename BinaryFunctor, typename BinaryGradFunctor, bool InPlace>
 static void RunUnaryCompoundGradFunctors(
@@ -274,7 +217,8 @@ static void RunUnaryCompoundGradFunctors(
     const framework::Tensor *in_y, const framework::Tensor *in_out,
     const framework::Tensor *in_intermediate_out,
     const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
-    framework::Tensor *y_grad, framework::Tensor *d_intermediate_out, int axis) {
+    framework::Tensor *y_grad, framework::Tensor *d_intermediate_out,
+    int axis) {
   // Z = Unary(Binary(X, Y))
   // int axis = ctx.Attr<int>("axis");
 
