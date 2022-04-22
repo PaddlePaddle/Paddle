@@ -4420,14 +4420,14 @@ def heaviside(x, y, name=None):
         heaviside(x, y)=
             \left\{
                 \\begin{array}{lcl}
-                0,& &\\text{if} \ x < 0, \\
-                y,& &\\text{if} \ x = 0, \\
+                0,& &\\text{if} \ x < 0, \\\\
+                y,& &\\text{if} \ x = 0, \\\\
                 1,& &\\text{if} \ x > 0.
                 \end{array}
             \\right.
 
     Notes:
-    ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
