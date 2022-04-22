@@ -38,7 +38,7 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(data_format == "NDHWC",false,
+    PADDLE_ENFORCE_EQ(data_format == "NDHWC",0,
                       platform::errors::InvalidArgument(
                       "XPU do support data_format is NCHW or NHWC in conv op."
 		      "But recevived 'data_format' is [%s].",
@@ -111,7 +111,7 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(data_format == "NDHWC",false,
+    PADDLE_ENFORCE_EQ(data_format == "NDHWC",0,
                       platform::errors::InvalidArgument(
                       "XPU do support data_format is NCHW or NHWC in conv grad op."
 		      "But recevived 'data_format' is [%s].",
