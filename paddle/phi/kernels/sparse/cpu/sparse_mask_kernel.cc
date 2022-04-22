@@ -125,7 +125,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   T* out_ptr = out->data<T>();
   memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
   const T* in_ptr = x.non_zero_elements().data<T>();
   // TODO(zhangkaihuo): multithreading can be used for acceleration
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {
