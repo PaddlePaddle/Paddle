@@ -73,7 +73,7 @@ void KernelContext::EmplaceBackOutputsWithoutSetRange(
                   std::make_move_iterator(outputs.end()));
 }
 
-void KernelContext::EmplaceBackAttr(paddle::any attr) {
+void KernelContext::EmplaceBackAttr(Attribute attr) {
   attrs_.emplace_back(std::move(attr));
 }
 

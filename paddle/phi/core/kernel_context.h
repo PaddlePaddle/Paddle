@@ -21,7 +21,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/utils/any.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -64,7 +64,7 @@ class KernelContext {
   void EmplaceBackOutputsWithoutSetRange(
       paddle::SmallVector<TensorBase*> outputs);
 
-  void EmplaceBackAttr(paddle::any attr);
+  void EmplaceBackAttr(Attribute attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 
@@ -128,10 +128,10 @@ class KernelContext {
   }
 
   template <typename AttrType>
-  AttrType AttrAt(size_t idx) const {
+  const AttrType& AttrAt(size_t idx) const {
     try {
-      return paddle::any_cast<AttrType>(attrs_.at(idx));
-    } catch (paddle::bad_any_cast&) {
+      return paddle::get<AttrType>(attrs_.at(idx));
+    } catch (paddle::bad_variant_access const& ex) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Attribute cast error in Op Kernel Context."));
     }
@@ -146,7 +146,7 @@ class KernelContext {
 
   paddle::SmallVector<const TensorBase*> inputs_;
   paddle::SmallVector<TensorBase*> outputs_;
-  paddle::SmallVector<paddle::any> attrs_;
+  paddle::SmallVector<Attribute> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
