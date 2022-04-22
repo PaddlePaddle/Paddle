@@ -880,6 +880,7 @@ int32_t GraphTable::random_sample_neighbors(
     seq_id[index].emplace_back(idy);
     id_list[index].emplace_back(idx, node_ids[idy], sample_size, need_weight);
   }
+
   for (int i = 0; i < (int)seq_id.size(); i++) {
     if (seq_id[i].size() == 0) continue;
     tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
