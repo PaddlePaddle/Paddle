@@ -105,6 +105,9 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.9 ]; then
         ln -s python3.9 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.10 ]; then
+        ln -s python3.10 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
     if [ -e ${prefix}/bin/python3.6 ]; then
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python ez_setup.py
