@@ -895,14 +895,15 @@ def image_decode(x,
     output format is RGBI, for detail infomations, please see
     https://docs.nvidia.com/cuda/nvjpeg/index.html.
 
-    This api is only available for Paddle GPU version
-
     The values of the output tensors are uint8 between 0 and 255.
+
+    This api is only available for Paddle GPU version
 
     Args:
         x (List[Tensor]): A list of one dimensional uint8 Tensors
                           containing the raw bytes of the JPEG image.
-        num_threads (int): The parallel thread number for decoding
+        num_threads (int): The parallel thread number for decoding.
+                Default 2.
         host_memory_padding (int): The CUDA pinned memory allocation
                 padding size of Nvjpeg decoding. Default 0.
         host_memory_padding (int): The CUDA memory allocation padding
@@ -988,9 +989,9 @@ def image_decode_random_crop(x,
     Default Nvjpeg decoding output format is RGBI, for detail infomations, 
     please see https://docs.nvidia.com/cuda/nvjpeg/index.html.
 
-    This api is only available for Paddle GPU version
-
     The values of the output tensors are uint8 between 0 and 255.
+
+    This api is only available for Paddle GPU version
 
     Args:
         x (List[Tensor]): A list of one dimensional uint8 Tensors
@@ -1140,14 +1141,14 @@ def mirror_normalize(x,
 
     Args:
         x (Tensor): The input tensor in shape of [N, ...], N is the batch
-            size to generate random flipping mirror flags.
+            size.
 	mirror (Tensor): The input tensor in shape of [N, 1], N is the
 	    batch size and each value indicates whether to perform
             random flipping on this sample.
         mean (float | List[float]): The mean value for normalizing on each
-            channel.
+            channel. Default [123.675, 116.28, 103.53].
         std (float | List[float]): The std value for normalizing on each
-            channel.
+            channel. Default [58.395, 57.120, 57.375].
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1665,7 +1666,6 @@ def random_crop_and_resize(x,
                            align_corners=True,
                            align_mode=1,
                            data_format='NCHW',
-                           seed=0,
                            name=None):
     """
     This operator implements the paddle.vision.transforms.RandomResizedCrop.
@@ -1675,7 +1675,7 @@ def random_crop_and_resize(x,
     Args:
         x (List[Tensor]): A list of input images, 3D-Tensor with the shape
             of [C,H,W] or [H,W,c]. The data type is uint8 or float32.
-        size (int|list|tuple): Target size of output image, with (height,
+        size (int | List[int]): Target size of output image, with (height,
             width) shape.
         aspect_ratio_min (float): The minimum aspect ratio of random
                 cropping boxes, this should be a value between 0 and
@@ -1706,7 +1706,6 @@ def random_crop_and_resize(x,
         data_format (str, optional): Only used in an optional string
             from: NHWC, NCHW. Specify that the data format of the input
             and output data is channel_first or channel_last. Default: NCHW
-        seed (int, optional): The random seed. Default: 0
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
@@ -1744,7 +1743,7 @@ def random_crop_and_resize(x,
             "aspect_ratio_max", aspect_ratio_max, "area_max", area_max,
             "area_min", area_min, "num_attempts", num_attempts, "interp_method",
             interp_method, "align_corners", align_corners, "align_mode",
-            align_mode, "data_format", data_format, "seed", seed)
+            align_mode, "data_format", data_format)
         return out
 
     helper = LayerHelper('batch_random_crop_and_resize', **locals())
@@ -1762,7 +1761,6 @@ def random_crop_and_resize(x,
         "align_corners": align_corners,
         "align_mode": align_mode,
         "data_format": data_format,
-        "seed": seed,
     }
     helper.append_op(
         type="batch_random_crop_and_resize",
@@ -1778,7 +1776,6 @@ def image_resize(x,
                  align_corners=True,
                  align_mode=1,
                  data_format='NCHW',
-                 seed=0,
                  name=None):
     """
     This operator implements the paddle.vision.transforms.Resize.
@@ -1804,7 +1801,6 @@ def image_resize(x,
         data_format (str, optional): Only used in an optional string
             from: NHWC, NCHW. Specify that the data format of the input
             and output data is channel_first or channel_last. Default: NCHW
-        seed (int, optional): The random seed. Default: 0
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
@@ -1838,9 +1834,8 @@ def image_resize(x,
 
     if in_dygraph_mode():
         out = _C_ops.batch_resize(x, "size", size, "interp_method",
-                                  interp_method, "align_corners", align_corners,
-                                  "align_mode", align_mode, "data_format",
-                                  data_format, "seed", seed)
+                  interp_method, "align_corners", align_corners,
+                  "align_mode", align_mode, "data_format", data_format)
         return out
 
     helper = LayerHelper('batch_resize', **locals())
@@ -1853,7 +1848,6 @@ def image_resize(x,
         "align_corners": align_corners,
         "align_mode": align_mode,
         "data_format": data_format,
-        "seed": seed,
     }
     helper.append_op(
         type="batch_resize", inputs=inputs, outputs={"Out": out}, attrs=attrs)
