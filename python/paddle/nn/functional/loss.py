@@ -2286,50 +2286,49 @@ def soft_margin_loss(input, label,reduction='mean',
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
-            "The value of 'reduction' in binary_cross_entropy should be 'sum', "
+            "The value of 'reduction' in soft_margin_loss should be 'sum', "
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
+    if _non_static_mode():
+        if in_dygraph_mode():
+            out = _C_ops.final_state_soft_margin_loss(input, label)
 
-    if in_dygraph_mode():
-        out = _C_ops.final_state_soft_margin_loss(input, label)
-
-        if reduction == 'sum':
-            return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                     "reduce_all", True)
-        elif reduction == 'mean':
-            return _C_ops.final_state_mean_all(out)
+            if reduction == 'sum':
+                return _C_ops.reduce_sum(out, "reduce_all", True)
+            elif reduction == 'mean':
+                return _C_ops.final_state_mean_all(out)
+            else:
+                return out
         else:
-            return out
-    else:
-        if _in_legacy_dygraph():
             out = _C_ops.soft_margin_loss(input, label)
             if reduction == 'sum':
-                return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                         "reduce_all", True)
+                return _C_ops.reduce_sum(out, "reduce_all", True)
             elif reduction == 'mean':
                 return _C_ops.mean(out)
             else:
                 return out
+    else:
+
+
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
+        fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
+
+        sub_name = name if reduction == 'none' else None
+        helper = LayerHelper("soft_margin_loss", name=sub_name)
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='soft_margin_loss',
+            inputs={
+                'X': [input],
+                'Label': [label],
+            },
+            outputs={'Out': [out]})
+
+        if reduction == 'sum':
+            return paddle.sum(out, name=name)
+        elif reduction == 'mean':
+            return paddle.mean(out, name=name)
         else:
-            fluid.data_feeder.check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
-            fluid.data_feeder.check_variable_and_dtype(
-                label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
-
-            sub_name = name if reduction == 'none' else None
-            helper = LayerHelper("soft_margin_loss", name=sub_name)
-            out = helper.create_variable_for_type_inference(dtype=input.dtype)
-            helper.append_op(
-                type='soft_margin_loss',
-                inputs={
-                    'X': [input],
-                    'Label': [label],
-                },
-                outputs={'Out': [out]})
-
-            if reduction == 'sum':
-                return paddle.sum(out, name=name)
-            elif reduction == 'mean':
-                return paddle.mean(out, name=name)
-            else:
-                return out
+            return out
