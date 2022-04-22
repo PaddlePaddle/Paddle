@@ -346,9 +346,9 @@ inference_analysis_test(test_analyzer_transformer_profile SRCS analyzer_transfor
        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
 # VIT-OCR
-set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit_ocr")
+set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit")
 if (NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
-    inference_download_and_uncompress(${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz" cd7a5c189a935c469d8ecd4f25efab5c)
+    inference_download_and_uncompress_without_verify(${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz")
 endif()
 inference_analysis_test(test_analyzer_vit_ocr SRCS analyzer_vit_ocr_tester.cc
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
