@@ -272,7 +272,7 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv2d_grad_grad
-    use_cudnn : true
+    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_api : conv2d_transpose_grad
@@ -283,6 +283,7 @@
     func : ConvTransposeGradInferMeta
   kernel :
     func : conv2d_transpose_grad
+    use_gpudnn : true
 
 - backward_api : conv3d_transpose_grad
   forward : conv3d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -292,6 +293,7 @@
     func : ConvTransposeGradInferMeta
   kernel :
     func : conv3d_transpose_grad
+    use_gpudnn : true
 
 - backward_api : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
@@ -1234,6 +1236,17 @@
     func : PoolGradInferMeta
   kernel :
     func : pool2d_grad
+    use_gpudnn : true
+
+- backward_api : pool2d_grad_gpudnn_unused
+  forward : pool2d_gpudnn_unused(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PoolGradInferMeta
+  kernel :
+    func : pool2d_grad
+    use_gpudnn : false
 
 - backward_api : pool3d_grad
   forward : pool3d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
@@ -1243,6 +1256,7 @@
     func : PoolGradInferMeta
   kernel :
     func : pool3d_grad
+    use_gpudnn : true
 
 - backward_api : pow_grad
   forward : pow(Tensor x, Scalar s) -> Tensor(out)
@@ -1578,6 +1592,7 @@
     param : [out]
   kernel :
     func : softmax_grad
+    use_gpudnn : true
 
 - backward_api : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
