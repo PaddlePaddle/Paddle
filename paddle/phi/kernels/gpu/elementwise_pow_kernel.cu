@@ -34,9 +34,8 @@ void ElementwisePowKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(elementwise_pow_raw,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
                    float,
@@ -44,11 +43,10 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
                    float,
                    double,
                    int,
                    int64_t) {}
-#endif

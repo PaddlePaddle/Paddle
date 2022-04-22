@@ -12,37 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_modulo_kernel.h"
+#include "paddle/phi/kernels/elementwise_fmin_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
-namespace phi {
-
-// Create the definition of Modulo
-DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
-
-template <typename T, typename Context>
-void ModuloKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
-  int axis = -1;
-  ModuloRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
-}  // namespace phi
-
-#ifndef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(modulo_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::ModuloRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 PD_REGISTER_KERNEL(
-    modulo, KPS, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
-#endif
+    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}

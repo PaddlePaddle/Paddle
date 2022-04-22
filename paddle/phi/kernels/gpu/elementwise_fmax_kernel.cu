@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_fmin_kernel.h"
+#include "paddle/phi/kernels/elementwise_fmax_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
-#ifndef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(
-    fmin, KPS, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
-#endif
+    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
