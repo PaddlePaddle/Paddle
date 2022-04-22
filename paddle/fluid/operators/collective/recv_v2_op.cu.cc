@@ -55,9 +55,9 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(out_dims, place);
 
       out_tensor.emplace_back(*out);
-      VLOG(0) << "in_recv:" << out->data();
+      // VLOG(0) << "in_recv:" << out->data();
       auto task = pg->Recv(out_tensor, peer);
-      task->Wait();
+      // task->Wait();
       return;
     }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);

@@ -264,7 +264,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   // Copy Tensor to cpu
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = in_tensors[0];
-  cpu_tensor.Resize(gpu_tensor.dims());
   framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
   PADDLE_ENFORCE_EQ(with_switch_, true,
                     platform::errors::PreconditionNotMet(
@@ -277,9 +276,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   send_size.push_back(cpu_tensor.numel());
   std::string file_name = std::string("send_") + std::to_string(gid_) +
                           std::string("_") + std::to_string(send_count);
-  FILE* fp = fopen(file_name.c_str(), "wb");
-  fwrite(cpu_tensor.data(), sizeof(float), cpu_tensor.numel(), fp);
-  fclose(fp);
+  // file_name = std::string("/workspace/paddle_abnet/send_20_34");
+  // FILE* fp = fopen(file_name.c_str(), "wb");
+  // fwrite(cpu_tensor.data(), framework::DataTypeSize(cpu_tensor.dtype()),
+  // cpu_tensor.numel(), fp);
+  // fclose(fp);
   std::string tensor_name =
       std::to_string(gid_) + std::string("_") + std::to_string(send_count++);
   int ret = client_->Send(
@@ -307,7 +308,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = out_tensors[0];
   cpu_tensor.Resize(gpu_tensor.dims());
-  framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
+  cpu_tensor.set_layout(gpu_tensor.layout());
+  cpu_tensor.mutable_data(platform::CPUPlace(), gpu_tensor.dtype());
 
   PADDLE_ENFORCE_EQ(with_switch_, true,
                     platform::errors::PreconditionNotMet(
@@ -326,13 +328,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
       cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "receive to the switch module error."));
-  FILE* fp = fopen(file_name.c_str(), "wb");
-  fwrite(cpu_tensor.data(), sizeof(float), cpu_tensor.numel(), fp);
-  fclose(fp);
+  // FILE* fp = fopen(file_name.c_str(), "wb");
+  // fwrite(cpu_tensor.data(), framework::DataTypeSize(cpu_tensor.dtype()),
+  // cpu_tensor.numel(), fp);
+  // fclose(fp);
   framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
-  VLOG(0) << "In heter:" << gpu_tensor.data()
-          << ", cpu numel: " << cpu_tensor.numel()
-          << ", gpu numel: " << gpu_tensor.numel();
+  // VLOG(0) << "In heter:" << gpu_tensor.data()
+  //         << ", cpu numel: " << cpu_tensor.numel()
+  //         << ", gpu numel: " << gpu_tensor.numel();
+  // phi::DenseTensor cpu_tensor2;
+  // framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor2);
+  // file_name += std::string("_bak");
+  // fp = fopen(file_name.c_str(), "wb");
+  // fwrite(cpu_tensor2.data(), framework::DataTypeSize(cpu_tensor2.dtype()),
+  // cpu_tensor2.numel(), fp);
+  // fclose(fp);
   return CreateTask(rank_, CommType::RECV, out_tensors);
 }
 
