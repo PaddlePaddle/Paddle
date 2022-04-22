@@ -23,15 +23,13 @@ from paddle.fluid.initializer import Normal, Constant
 from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import nn
-from paddle.fluid.layers import tensor
 
 __all__ = ['ctr_metric_bundle']
 
 
-def ctr_metric_bundle(input, label, ins_tag_weight=None):
+def ctr_metric_bundle(input, label):
     """
     ctr related metric layer
-
     This function help compute the ctr related metrics: RMSE, MAE, predicted_ctr, q_value.
     To compute the final values of these metrics, we should do following computations using
     total instance number:
@@ -41,7 +39,6 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
     q = local_q / instance number
     Note that if you are doing distribute job, you should all reduce these metrics and instance
     number first
-
     Args:
         input(Variable): A floating-point 2D Variable, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
@@ -49,30 +46,19 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
-        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
-                         data. 1 means real data, 0 means fake data. 
-                         A LoDTensor or Tensor with type float32,float64.
-
     Returns:
         local_sqrerr(Variable): Local sum of squared error
         local_abserr(Variable): Local sum of abs error
         local_prob(Variable): Local sum of predicted ctr
         local_q(Variable): Local sum of q value
-
     Examples:
         .. code-block:: python
-
             import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             label = fluid.layers.data(name="label", shape=[1], dtype="int32")
-            ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[1], dtype="float32")
             predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
-            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
+            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label)
     """
-    if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant(
-            shape=[1, 1], dtype="float32", value=1.0)
-
     assert input.shape == label.shape
     helper = LayerHelper("ctr_metric_bundle", **locals())
 
@@ -207,16 +193,5 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
                          "Y": [local_ins_num]
                      },
                      outputs={"Out": [local_ins_num]})
-
-    #if data is fake, return 0
-    ins_tag_weight_np = ins_tag_weight.to_string(False, False)
-    if ins_tag_weight_np[0] == '0':
-        local_ins_num = tensor.fill_constant_batch_size_like(
-            input=local_ins_num,
-            shape=local_ins_num.shape,
-            dtype="float32",
-            value=0.0)
-        local_q = tensor.fill_constant_batch_size_like(
-            input=local_q, shape=local_q.shape, dtype="float32", value=0.0)
 
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num
