@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
@@ -448,7 +449,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr_name = attr_names[i];
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
+    if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
       // When attr is a vector_tensor or tensor, transform it to IntArray
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
         auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
@@ -518,8 +519,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(phi::Scalar))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
       if (ctx->HasAttr(attr_name)) {
         // TODO(chentianyu03): support other attrs later
         auto& attr = attr_reader.GetAttr(attr_name);
@@ -559,8 +559,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name, infershape_input.size()));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(std::vector<phi::Scalar>))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = attr_reader.GetAttr(attr_name);
       if (std::type_index(attr.type()) ==
           std::type_index(typeid(std::vector<int32_t>))) {
@@ -607,27 +606,23 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
-      if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+      if (attr_defs[i].type_index == phi::AttributeType::BOOL) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::string))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRING) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<bool>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::BOOLS) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<bool>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
@@ -639,20 +634,16 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           infer_meta_context.EmplaceBackAttr(
               BOOST_GET_CONST(std::vector<int64_t>, attr));
         }
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32S) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<double>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT64S) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<double>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<std::string>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRINGS) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(phi::DataType))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::DATA_TYPE) {
         auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
@@ -664,7 +655,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       }
     } else if (ctx->HasInput(attr_name)) {
       // convert from data
-      if (attr_defs[i].type_index == std::type_index(typeid(int32_t))) {
+      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         if (ctx->IsRuntime()) {
           auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
           auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);

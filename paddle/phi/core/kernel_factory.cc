@@ -140,6 +140,59 @@ const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
   return iter->second.cbegin()->second.args_def();
 }
 
+std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
+  switch (attr_type) {
+    case AttributeType::BOOL:
+      os << "bool";
+      break;
+    case AttributeType::INT32:
+      os << "int";
+      break;
+    case AttributeType::INT64:
+      os << "int64_t";
+      break;
+    case AttributeType::FLOAT32:
+      os << "float";
+      break;
+    case AttributeType::STRING:
+      os << "std::string";
+      break;
+    case AttributeType::BOOLS:
+      os << "std::vector<bool>";
+      break;
+    case AttributeType::INT32S:
+      os << "std::vector<int>";
+      break;
+    case AttributeType::INT64S:
+      os << "std::vector<int64_t>";
+      break;
+    case AttributeType::FLOAT32S:
+      os << "std::vector<float>";
+      break;
+    case AttributeType::FLOAT64S:
+      os << "std::vector<double>";
+      break;
+    case AttributeType::STRINGS:
+      os << "std::vector<std::string>";
+      break;
+    case AttributeType::SCALAR:
+      os << "phi::Scalar";
+      break;
+    case AttributeType::SCALARS:
+      os << "std::vector<phi::Scalar>";
+      break;
+    case AttributeType::INT_ARRAY:
+      os << "phi::IntArray";
+      break;
+    case AttributeType::DATA_TYPE:
+      os << "phi::DataType";
+      break;
+    default:
+      os << "Undefined";
+  }
+  return os;
+}
+
 // print kernel info with json format:
 // {
 //   "(CPU, Undefined(AnyLayout), complex64)": {
@@ -175,7 +228,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   need_comma = false;
   for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index.name() << "\"";
+    os << "\"" << arg_def.type_index << "\"";
     need_comma = true;
   }
   os << "]}";

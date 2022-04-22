@@ -677,9 +677,11 @@ class OperatorWithKernel : public OperatorBase {
   // By default all input data must be same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   // used for IndicateDataType
-  void ParseInputDataType(const std::vector<Variable*>& vars,
-                          const std::string& name,
+  void ParseInputDataType(const Variable* vars, const std::string& name,
                           proto::VarType::Type* data_type) const;
+  void ParseMultiInputDataType(const std::vector<Variable*>& vars,
+                               const std::string& name,
+                               proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
@@ -701,7 +703,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
-  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

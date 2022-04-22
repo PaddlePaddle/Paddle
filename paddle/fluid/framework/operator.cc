@@ -1962,6 +1962,36 @@ Scope* OperatorWithKernel::PrepareData(
 }
 
 void OperatorWithKernel::ParseInputDataType(
+    const Variable* var, const std::string& name,
+    proto::VarType::Type* data_type) const {
+  if (var != nullptr) {
+    const Tensor* t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<phi::SelectedRows>()) {
+      t = &(var->Get<phi::SelectedRows>().value());
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto t_arr = &var->Get<LoDTensorArray>();
+      for (size_t j = 0; j < t_arr->size(); j++) {
+        if (t_arr->at(j).IsInitialized()) {
+          t = &(t_arr->at(j));
+        }
+      }
+    }
+    if (t != nullptr) {
+      PADDLE_ENFORCE_EQ(
+          t->IsInitialized(), true,
+          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                            "contains uninitialized Tensor.",
+                                            Type(), name));
+      *data_type = paddle::framework::TransToProtoVarType(t->dtype());
+    }
+  }
+}
+
+void OperatorWithKernel::ParseMultiInputDataType(
     const std::vector<Variable*>& vars, const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
@@ -2012,9 +2042,14 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : ctx.InNameList()) {
-    const std::vector<Variable*> vars = ctx.MultiInputVar(input);
-    ParseInputDataType(vars, input, &data_type);
+  if (ctx.Context().inputs.size() == 1UL) {
+    auto& name = ctx.Context().inputs.begin()->first;
+    ParseInputDataType(ctx.InputVar(name), name, &data_type);
+  } else {
+    for (auto& input : ctx.InNameList()) {
+      const std::vector<Variable*> vars = ctx.MultiInputVar(input);
+      ParseMultiInputDataType(vars, input, &data_type);
+    }
   }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
@@ -2028,7 +2063,11 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  ParseInputDataType(ctx.MultiInputVar(name), name, &data_type);
+  if (ctx.InputSize(name) == 1UL) {
+    ParseInputDataType(ctx.InputVar(name), name, &data_type);
+  } else {
+    ParseMultiInputDataType(ctx.MultiInputVar(name), name, &data_type);
+  }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
@@ -2114,11 +2153,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-  if (arg_map_fn_ == nullptr) {
-    arg_map_fn_.reset(new phi::ArgumentMappingFn(
-        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
-  }
-  return (*arg_map_fn_)(arg_mapping_ctx);
+  auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type());
+  return arg_map_fn(arg_mapping_ctx);
 }
 
 Scope* OperatorWithKernel::PreparePhiData(
@@ -2353,7 +2389,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
+    if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
@@ -2384,8 +2420,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               std::move(experimental::MakePhiIntArrayFromVarList(ins_vector)));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(phi::Scalar))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
@@ -2415,8 +2450,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
       }
 
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(std::vector<phi::Scalar>))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = Attrs().at(attr_names[i]);
       if (std::type_index(attr.type()) ==
           std::type_index(typeid(std::vector<int32_t>))) {
@@ -2461,9 +2495,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
             attr_names[i]));
       }
     } else {
-      // TODO(chenweihang): support other attrs later
       auto attr_it = attrs_.find(attr_names[i]);
-      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         if (attr_it == attrs_.end()) {
           auto in_it = ctx.inputs.find(attr_names[i]);
           if (in_it != ctx.inputs.end()) {
@@ -2480,27 +2513,24 @@ void OperatorWithKernel::BuildPhiKernelContext(
           pt_kernel_context->EmplaceBackAttr(
               BOOST_GET_CONST(int, attr_it->second));
         }
-      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(float, attr_it->second));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::BOOL) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(bool, attr_it->second));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(int64_t, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::string))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRING) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::string, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(phi::DataType))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::DATA_TYPE) {
         auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr_it->second)));
         pt_kernel_context->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
         if (std::type_index(attr_it->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           pt_kernel_context->EmplaceBackAttr(
@@ -2514,17 +2544,14 @@ void OperatorWithKernel::BuildPhiKernelContext(
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
         }
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int32_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
         const auto& vector_int_attr =
             BOOST_GET_CONST(std::vector<int>, attr_it->second);
         pt_kernel_context->EmplaceBackAttr(vector_int_attr);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<std::string>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRINGS) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32S) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
