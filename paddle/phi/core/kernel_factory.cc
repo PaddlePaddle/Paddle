@@ -187,6 +187,12 @@ std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
     case AttributeType::DATA_TYPE:
       os << "phi::DataType";
       break;
+    case AttributeType::DATA_LAYOUT:
+      os << "phi::DataLayout";
+      break;
+    case AttributeType::PLACE:
+      os << "phi::Place";
+      break;
     default:
       os << "Undefined";
   }
