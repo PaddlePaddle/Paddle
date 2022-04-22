@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.nn import Layer
+from .. import functional as F
+
 
 class MaxPool3D(Layer):
     """
@@ -58,20 +61,13 @@ class MaxPool3D(Layer):
         .. code-block:: python
 
             import paddle
-            import paddle.nn as nn
-            import numpy as np
 
             # max pool3d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+            input = paddle.randn((1, 3, 32, 32, 2))
             MaxPool3D = nn.MaxPool3D(kernel_size=2,
                                    stride=2, padding=0)
             output = MaxPool3D(input)
-            # output.shape [1, 2, 3, 16, 16]
-
-            # for return_mask=True
-            MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            output, max_indices = MaxPool3D(input)
-            # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
+            # output.shape [1, 3, 16, 16, 2]
     """
 
     def __init__(self,
@@ -80,7 +76,7 @@ class MaxPool3D(Layer):
                  padding=0,
                  return_mask=False,
                  ceil_mode=False,
-                 data_format="NCDHW",
+                 data_format="NDHWC",
                  name=None):
         super(MaxPool3D, self).__init__()
         self.ksize = kernel_size
@@ -97,7 +93,6 @@ class MaxPool3D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
-            return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
             name=self.name)

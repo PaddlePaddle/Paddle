@@ -69,15 +69,13 @@ def max_pool3d(x,
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.randn((1, 1, 4, 4, 1))
+                dense_x = paddle.randn((1, 4, 4, 4, 3))
                 sparse_x = dense_x.to_sparse_coo(4)
-                kernel_sizes = [1, 3, 3]
+                kernel_sizes = [3, 3, 3]
                 paddings = [0, 0, 0]
                 strides = [1, 1, 1]
-                dilations = [1, 1, 1]
-                out = _C_ops.final_state_sparse_max_pool3d(
-                    sparse_x, kernel_sizes, paddings, dilations, strides)
-                print(out.shape)
+                out = paddle.sparse.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
+                #[1, 2, 2, 2, 3]
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
@@ -99,5 +97,5 @@ def max_pool3d(x,
     #TODO(zkh2016): remove the dependency on dilation from the backend
     dilation = [1, 1, 1]
 
-    return _C_ops.final_state_sparse_max_pool3d(x, kernel_size, padding,
-                                                dilation, strides)
+    return _C_ops.final_state_sparse_maxpool(x, kernel_size, padding, dilation,
+                                             stride)
