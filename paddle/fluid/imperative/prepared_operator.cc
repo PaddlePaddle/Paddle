@@ -175,9 +175,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
     pt_kernel_signature =
         std::move(op.GetExpectedPhiKernelArgs(dygraph_exe_ctx));
-    VLOG(6) << pt_kernel_signature;
+    VLOG(3) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
+    VLOG(3) << pt_kernel_name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -200,14 +201,28 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
         expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-        VLOG(3) << "modifing XPU KP kernel: " << op.Type()
+        VLOG(3) << "modifing XPU KP kernel: " << pt_kernel_name
                 << ", using_kernel_key:" << expected_kernel_key;
+
+        // VLOG(3) << "the pt_kernel_name have all registered kernel follows: ";
+        //         // << phi::KernelFactory::SelectKernelMap(pt_kernel_name);
+        //  auto map =
+        //  phi::KernelFactory::Instance().SelectKernelMap(pt_kernel_name);
+        // //  for(auto kv : map){
+        // //    VLOG(3) << "k-v " << kv.first << " : " << kv.second;
+        // //  }
+        //  for(auto iter = map.begin(); iter != map.end(); iter++) {
+        //     VLOG(3) << iter->first << " : " << iter->second << std::endl;
+        // }
+
         phi::KernelKey try_pt_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+
+        VLOG(3) << "The try_pt_kernel_key follows: " << try_pt_kernel_key;
         if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
                                                       try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
-          VLOG(3) << "modify XPU KP kernel: " << op.Type() << " is failed "
+          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name << " is failed "
                   << expected_kernel_key;
         }
       }
@@ -217,6 +232,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto& pt_kernel = phi::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
+
+    VLOG(3) << "The pt_kernel_key transformed from expected_kernel_key is: "
+            << pt_kernel_key
+            << " and the pt_kernel_name is: " << pt_kernel_name;
 
     if (pt_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
