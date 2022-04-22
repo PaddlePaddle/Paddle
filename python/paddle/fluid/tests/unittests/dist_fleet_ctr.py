@@ -238,7 +238,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         model_dir = tempfile.mkdtemp()
         fleet.save_inference_model(
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        self.check_model_right(model_dir)
+        if fleet.is_first_worker():
+            self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
 
     def do_dataset_training_queuedataset(self, fleet):
@@ -281,7 +282,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-            self.check_model_right(model_dir)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
@@ -332,7 +334,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-            self.check_model_right(model_dir)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
