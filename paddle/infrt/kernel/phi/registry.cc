@@ -68,6 +68,9 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("phi_dt.load_params",
                       INFRT_KERNEL(infrt::kernel::phi::LoadParams),
                       {"path"});
+  registry->AddKernel("phi_dt.load_combined_params_to_gpu",
+                      INFRT_KERNEL(infrt::kernel::phi::LoadCombinedParamsToGpu),
+                      {"model_path", "params_path"});
   registry->AddKernel("phi_dt.load_combined_params",
                       INFRT_KERNEL(infrt::kernel::phi::LoadCombinedParams),
                       {"model_path", "params_path"});

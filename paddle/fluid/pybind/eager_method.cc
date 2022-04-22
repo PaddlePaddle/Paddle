@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -194,6 +195,17 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
+    if (tensor_dims.size() == 0) {
+      py_dims[0] = 0;
+      py_strides[0] = 0;
+      PyObject* array = api.PyArray_NewFromDescr_(
+          api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,
+          py_dims, py_strides, nullptr,
+          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+          nullptr);
+      return array;
+    }
     return array;
   }
 
@@ -713,15 +725,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
+    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
+                                         infer_flags.end());
+    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
+                                           decrease_axis.end());
+
     if (op_type == "slice") {
-      out = slice_dygraph_function(self->tensor, paddle::experimental::Tensor(),
-                                   paddle::experimental::Tensor(), {}, {},
-                                   std::move(attrs));
+      out = slice_final_state_dygraph_function(
+          self->tensor, slice_axes_tmp, slice_starts, slice_ends,
+          infer_flags_tmp, decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_dygraph_function(
-          self->tensor, paddle::experimental::Tensor(),
-          paddle::experimental::Tensor(), paddle::experimental::Tensor(), {},
-          {}, {}, attrs);
+      out = strided_slice_final_state_dygraph_function(
+          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
@@ -776,8 +792,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
                                         idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_dygraph_function(self->tensor, select_index,
-                                        std::move(attrs));
+    out = index_select_final_state_dygraph_function(self->tensor, select_index,
+                                                    0);
   }
 
   return ToPyObject(out);
@@ -1476,6 +1492,46 @@ static PyObject* tensor__offset(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__grad_name(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+  return ToPyObject(grad->name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+
+  if (!grad->defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  if (grad->is_dense_tensor()) {
+    auto* grad_tensor =
+        static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
+    return ToPyObject(grad_tensor);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "this method is only supported for DenseTensor"));
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1616,6 +1672,10 @@ PyMethodDef variable_methods[] = {
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_name", (PyCFunction)(void (*)(void))tensor__grad_name,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_value", (PyCFunction)(void (*)(void))tensor__grad_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,

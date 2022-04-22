@@ -20,6 +20,8 @@ from contextlib import ContextDecorator
 from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
 
+_is_profiler_used = False
+
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
     TracerEventType.UserDefined, TracerEventType.Forward,
@@ -91,6 +93,8 @@ class RecordEvent(ContextDecorator):
                 result = data1 - data2
                 record_event.end()
         """
+        if not _is_profiler_used:
+            return
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
                   can be recorded.".format(*_AllowedEventTypeList))

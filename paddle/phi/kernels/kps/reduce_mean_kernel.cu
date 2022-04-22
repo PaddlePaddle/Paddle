@@ -33,10 +33,13 @@ void MeanRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(mean_raw, KPS, ALL_LAYOUT, phi::MeanRawKernel, float) {}
+#else
 using float16 = phi::dtype::float16;
 
 PD_REGISTER_KERNEL(mean_raw,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,
                    float,
@@ -45,3 +48,4 @@ PD_REGISTER_KERNEL(mean_raw,
                    float16,
                    int,
                    int64_t) {}
+#endif

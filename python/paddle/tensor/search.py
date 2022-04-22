@@ -92,7 +92,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
-        _, ids, = _C_ops.final_state_argsort(x, axis, descending)
+        _, ids = _C_ops.final_state_argsort(x, axis, descending)
         return ids
 
     if _in_legacy_dygraph():
@@ -398,7 +398,9 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        outs = _C_ops.final_state_where_index(x)
+    elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
         helper = LayerHelper("where_index", **locals())
@@ -480,9 +482,13 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if paddle.in_dynamic_mode():
-        out, _ = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
-        return out
+    if in_dygraph_mode():
+        outs, _ = _C_ops.final_state_argsort(x, axis, descending)
+        return outs
+
+    if _in_legacy_dygraph():
+        outs, _ = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
+        return outs
     helper = LayerHelper("sort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=False)
