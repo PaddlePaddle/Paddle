@@ -305,7 +305,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-    VLOG(3) << "missing XPU kernel: " << op.Type()
+    VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -329,7 +329,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     }
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-      VLOG(3) << "missing XPU kernel: " << op.Type()
+      VLOG(3) << "fluid missing XPU kernel: " << op.Type()
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
       expected_kernel_key.place_ = platform::CPUPlace();

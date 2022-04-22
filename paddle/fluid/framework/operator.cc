@@ -1599,7 +1599,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(type_))) {
-    VLOG(3) << "missing XPU kernel: " << type_
+    VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -1644,7 +1644,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
          paddle::platform::is_in_xpu_black_list(type_));
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-      VLOG(3) << "missing XPU kernel: " << type_
+      VLOG(3) << "fluid missing XPU kernel: " << type_
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
       expected_kernel_key.place_ = platform::CPUPlace();
