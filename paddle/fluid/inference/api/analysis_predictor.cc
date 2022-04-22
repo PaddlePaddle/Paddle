@@ -1776,7 +1776,7 @@ USE_TRT_CONVERTER(strided_slice)
 namespace paddle_infer {
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
-bool CheckConvertToONNX(const AnalysisConfig &config) {
+bool CheckConvertToONNX(const Config &config) {
   if (!config.model_dir().empty()) {
     LOG(ERROR) << "Paddle2ONNX not support model_dir config";
     // TODO(heliqi jiangjiajun): Paddle2ONNX not support
@@ -1784,9 +1784,9 @@ bool CheckConvertToONNX(const AnalysisConfig &config) {
     // config.model_dir() + var_name
     return false;
   } else if (config.prog_file().empty() || config.params_file().empty()) {
-    LOG(ERROR) << string::Sprintf(
-        "not valid model path '%s' or program path '%s' or params path '%s'.",
-        config.model_dir(), config.prog_file(), config.params_file());
+    LOG(ERROR) << "not valid model path " << config.model_dir()
+               << " or program path " << config.prog_file()
+               << " or params path " << config.params_file();
     return false;
   }
   return paddle2onnx::IsExportable(config.prog_file(), config.params_file(),

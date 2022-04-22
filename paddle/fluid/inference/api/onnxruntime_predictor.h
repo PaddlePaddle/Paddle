@@ -49,8 +49,6 @@
 
 namespace paddle {
 
-bool CheckConvertToONNX(const AnalysisConfig &config);
-
 struct ONNXDesc {
   std::string name;
   std::vector<int64_t> shape;
