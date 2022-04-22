@@ -68,8 +68,9 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     int seq_len_r = input_x_dims[2];
     int hidden_size = input_x_dims[3];
 
-    int num_head = qkv_w_dims[2];
-    int c = qkv_w_dims[3];
+    // qkv_weight[3, n_head, c, qkv_dim]
+    int num_head = qkv_w_dims[1];
+    int c = qkv_w_dims[2];
 
     ctx->SetOutputDim("QKVOut",
                       {batch_size, seq_len_m, seq_len_r, 3, num_head, c});

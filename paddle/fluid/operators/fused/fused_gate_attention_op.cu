@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +46,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *input_x = ctx.Input<Tensor>("X");
     // x: qkv's input [batch_size, seq_len, dim_embed]
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
-    // std::cout << "\ne23e3ererew\n";
     auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *gate_weight = ctx.Input<Tensor>("GateWeight");
@@ -101,14 +101,13 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     int seq_len_r = input_x_dims[2];
     int hidden_size = input_x_dims[3];
 
-    int num_head = qkv_w_dims[2];
-    int c = qkv_w_dims[3];
+    // qkv_weight[3, n_head, c, qkv_dim]
+    int num_head = qkv_w_dims[1];
+    int c = qkv_w_dims[2];
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
 
-    // int bsz_seq = batch_size * max_seq_len;
-    // int hidden_size = num_head * dim_head;
     // (m, n, k) = bsz_seq, output_size, input_size
     int k = hidden_size;
     // nbhqk,nbkhc->nbqhc [batch_size * seq_len_m * seq_len_r * 3 * num_head *
@@ -117,8 +116,9 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     int n = 3 * num_head * c;
 
     auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, false);
+        AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
     qkv_compute.ComputeForward(qkv_weight, input_x, nullptr, qkv_out, nullptr);
+
     auto fmha_ref_compute =
         FMHAGateRef<T>(ctx.cuda_device_context(), batch_size, seq_len_m,
                        seq_len_r, num_head, c);
@@ -159,6 +159,10 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     // std::cout << "out_linear_out: " << *out_linear_out << "\n";
     // tensor model parallel
     // AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
+
+    // int64_t allocated = memory::StatGetCurrentValue("Allocated", 0);
+    // std::cout << "forward allocated: " << (allocated / 1024 / 1024 / 1024) <<
+    // "\n";
   }
 };
 
@@ -365,6 +369,10 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
                                                    T>(
         ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
         AddFunctor<T>());
+
+    // int64_t allocated = memory::StatGetCurrentValue("Allocated", 0);
+    // std::cout << "backward allocated: " << (allocated / 1024 / 1024 / 1024)
+    // << "\n";
   }
 };
 
