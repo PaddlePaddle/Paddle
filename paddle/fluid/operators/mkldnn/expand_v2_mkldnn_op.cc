@@ -115,10 +115,11 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
           dout_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          dout->format(), paddle::platform::to_void_cast(dout->data<T>()));
+          dout->mem_desc(), paddle::platform::to_void_cast(dout->data<T>()));
 
-      auto reorder_dst_memory_p =
-          reorder_handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
+      auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          dx, paddle::platform::GetPlainMKLDNNFormat(dx_vec_dims.size()),
+          ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
@@ -126,9 +127,7 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
-      dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(
-          paddle::platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc()));
+      dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
           dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
@@ -145,8 +144,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       reduction_p->execute(astream, reduction_args);
       astream.wait();
       dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(paddle::platform::GetMKLDNNFormat(
-          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims()))));
+      dx->set_mem_desc(
+          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims())));
     }
   }
 };

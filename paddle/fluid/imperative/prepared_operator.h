@@ -581,10 +581,11 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    if (ins.find(input_names[i]) == ins.end()) {
+    auto iter = ins.find(input_names[i]);
+    if (iter == ins.end()) {
       continue;
     }
-    auto& ins_vector = ins.at(input_names[i]);
+    auto& ins_vector = iter->second;
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       auto& var = ins_vector[offset];
@@ -593,10 +594,14 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
-        auto expected_place = phi::TransToPhiPlace(in_def.backend);
-        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+        if (in_def.backend == tensor_backend ||
+            (in_def.backend == phi::Backend::GPUDNN &&
+             tensor_backend == phi::Backend::GPU)) {
           continue;
         }
+
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
 
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
