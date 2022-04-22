@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import os
-os.environ['FLAGS_call_stack_level']="2"
+os.environ['FLAGS_call_stack_level'] = "2"
 
 import paddle
 from paddle.autograd.primops import (
@@ -32,10 +32,12 @@ def prog1(x, y):
     # z = paddle.sum(paddle.sqrt(x))
     return t
 
+
 def prog2(x, y):
     t = paddle.multiply(x, x)
     z = paddle.norm(t, p=2)
     return z
+
 
 class TestPyPrimOps(unittest.TestCase):
     """ Test Python wrappers of primitive ops. """
@@ -292,7 +294,9 @@ class TestPyPrimOps(unittest.TestCase):
             print(x.block)
 
     def test_minimize(self):
-        place = paddle.CUDAPlace(0)
+        palce = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         main = paddle.static.Program()
         startup = paddle.static.Program()
