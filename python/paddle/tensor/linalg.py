@@ -1441,7 +1441,6 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     if tol is None:
         attrs['use_default_tol'] = True
     elif isinstance(tol, Variable):
-        check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
         attrs['use_default_tol'] = False
         if tol.dtype != x.dtype:
             inputs['TolTensor'] = cast(tol, x.dtype)

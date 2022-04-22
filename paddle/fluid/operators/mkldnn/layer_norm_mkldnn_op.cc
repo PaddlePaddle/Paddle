@@ -25,22 +25,21 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
  public:
   LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
                          const dnnl::normalization_flags& flags,
-                         const bool& is_test, const MKLDNNMemoryFormat fmt,
+                         const bool& is_test, const Tensor* x,
                          const dnnl::engine engine, platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
-    auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     if (!is_test) {
       // TODO(grygielski) Delete forcing stats_md after DNNL 1.2 is introduced
       auto stats_md = dnnl::memory::desc(
           {begin(dims), end(dims) - 1}, platform::MKLDNNGetDataType<float>(),
-          platform::MKLDNNFormatForSize(dims.size() - 1,
-                                        MKLDNNMemoryFormat::nchw));
+          platform::GetPlainMKLDNNFormat(dims.size() - 1));
       this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              md, stats_md, epsilon, flags);
+                                              x->mem_desc(), stats_md, epsilon,
+                                              flags);
     } else {
       this->AcquireForwardPrimitiveDescriptor(
-          dnnl::prop_kind::forward_inference, md, epsilon, flags);
+          dnnl::prop_kind::forward_inference, x->mem_desc(), epsilon, flags);
     }
   }
 
@@ -83,7 +82,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Y");
 
     const float epsilon = ctx.Attr<float>("epsilon");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -107,12 +106,11 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test,
-                                      x->format(), mkldnn_engine,
-                                      ctx.GetPlace());
+    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test, x,
+                                      mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
-    auto dst_memory = handler.AcquireDstMemory(y);
+    auto dst_memory = handler.AcquireDstMemory(out);
 
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
@@ -140,8 +138,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     layer_norm_p->execute(astream, args);
     astream.wait();
 
-    y->set_layout(phi::DataLayout::kMKLDNN);
-    y->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(dst_memory->get_desc());
   }
 };
 
