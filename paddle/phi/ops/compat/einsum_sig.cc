@@ -22,9 +22,9 @@ KernelSignature EinsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("einsum_grad",
-                         {"Operands", {GradVarName("Out")}},
+                         {"Operands", {"Out@GRAD"}},
                          {"equation"},
-                         {{GradVarName("Operands")}});
+                         {{"Operands@GRAD"}});
 }
 }  // namespace phi
 
