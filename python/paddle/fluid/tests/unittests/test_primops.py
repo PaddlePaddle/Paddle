@@ -294,7 +294,7 @@ class TestPyPrimOps(unittest.TestCase):
             print(x.block)
 
     def test_minimize(self):
-        palce = paddle.CPUPlace()
+        place = paddle.CPUPlace()
         if paddle.device.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
