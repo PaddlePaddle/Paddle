@@ -189,7 +189,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::FLOAT64S);
       } else if (arg_type ==
                  std::type_index(typeid(const std::vector<std::string>&))) {
-        args_def->AppendAttribute(AttributeType::FLOAT64S);
+        args_def->AppendAttribute(AttributeType::STRINGS);
       } else if (arg_type == std::type_index(typeid(const Scalar&))) {
         args_def->AppendAttribute(AttributeType::SCALAR);
       } else if (arg_type ==
