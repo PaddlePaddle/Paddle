@@ -1058,7 +1058,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyLong_Check(obj)) {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
