@@ -1058,7 +1058,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyLong_Check(obj)) {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
@@ -1101,7 +1101,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list" || type_name == "tuple") {
+  if (type_name == "list" || type_name == "tuple" ||
+      type_name == "numpy.ndarray") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
 

@@ -1743,5 +1743,18 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
         self.func_test_copy_gradient_from()
 
 
+class TestEagerTensorGradNameValue(unittest.TestCase):
+    def test_eager_tensor_grad_name_value(self):
+        with _test_eager_guard():
+            a_np = np.array([2, 3]).astype('float32')
+            a = paddle.to_tensor(a_np)
+            a.stop_gradient = False
+            b = a**2
+            self.assertEqual(a._grad_value(), None)
+            b.backward()
+            self.assertEqual('eager_tmp' in a._grad_name(), True)
+            self.assertNotEqual(a._grad_value(), None)
+
+
 if __name__ == '__main__':
     unittest.main()
