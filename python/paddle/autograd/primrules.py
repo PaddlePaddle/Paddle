@@ -78,14 +78,19 @@ def get_input_var_list(op):
     if op.input_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.input(n)) for n in op.input_names]
+        return [
+            get_var_block(op.block, op.input(n)) for n in sorted(op.input_names)
+        ]
 
 
 def get_output_var_list(op):
     if op.output_names is None:
         return []
     else:
-        return [get_var_block(op.block, op.output(n)) for n in op.output_names]
+        return [
+            get_var_block(op.block, op.output(n))
+            for n in sorted(op.output_names)
+        ]
 
 
 def linear_jvp(op, *args, **kwargs):
@@ -235,14 +240,14 @@ def index_select_orig2prim(op, index_t, x):
 def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
-    if op.attr('Scale_x'):
+    if op.attr('Scale_x') - 1.0 > 1e-5:
         tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
         x = mul(x, tmp)
-    if op.attr('Scale_y'):
+    if op.attr('Scale_y') - 1.0 > 1e-5:
         tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
         y = mul(y, tmp)
     z = sub(x, y)
-    if op.attr('Scale_out'):
+    if op.attr('Scale_out') - 1.0 > 1e-5:
         tmp = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
         z = mul(z, tmp)
@@ -250,8 +255,10 @@ def elementwise_sub_orig2prim(op, x, y):
 
 
 @REGISTER_ORIG2PRIM('scale')
-def scale_orig2prim(op, x):
-    scale_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
+def scale_orig2prim(op, scale_t, x):
+    if scale_t is None:
+        scale_t = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('scale'))
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
@@ -349,7 +356,7 @@ def slice_select_prim2orig(op, x):
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
 def slice_assign_prim2orig(op, x, y):
-    x_copy = add(x, fill_const(0.0, x.shape, x.dtype))
+    x_copy = paddle.assign(x)
     return set_value(
         x_copy,
         y,
@@ -367,10 +374,10 @@ def gather_prim2orig(op, index_t, x):
 
 @REGISTER_PRIM2ORIG('scatter_add_p')
 def scatter_add_prim2orig(op, index_t, x, y):
-    # assert op.attr('axis') == 0
-    # using scatter_nd_add
-    return paddle.put_along_axis(
-        x, index_t, y, axis=op.attr('axis'), reduce='add')
+    assert op.attr('axis') == 0, 'Only support axis==0 currently'
+    zeros = paddle.zeros_like(x=x, dtype=x.dtype)
+    tmp = paddle.scatter(x=zeros, index=index_t, updates=y, overwrite=False)
+    return paddle.add(x, tmp)
 
 
 @REGISTER_PRIM2ORIG('fill_constant_p')
@@ -718,5 +725,5 @@ def scatter_add_transpose(op, check_dot, z_bar):
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
     x_bar = scatter_add(z_bar, zeros, indextensor, axis=axis)
     y_bar = gather(z_bar, indextensor, axis=axis)
-    indextensor_bar = None   
+    indextensor_bar = None
     return x_bar, y_bar, indextensor_bar

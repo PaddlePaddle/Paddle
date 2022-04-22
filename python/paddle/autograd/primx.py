@@ -24,6 +24,9 @@ from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, 
 from .primrules import get_input_var_list, get_output_var_list
 from collections import OrderedDict
 
+#TODO(lml): this is a bad and unsafe design used for get laplace2d program, please refactor it later
+global_lower_update = []
+
 
 def flatten(inp):
     if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
@@ -227,21 +230,14 @@ class Transform(object):
         dots = [self.var2dot_rec(var) for var in vars]
         return dots
 
-    def dot2bar_rec(self, dots, defaults=None):
+    def dot2bar_rec(self, dots):
 
         if isinstance(dots, paddle.fluid.framework.Variable):
             bar = self.dot2bar.lookup(dots)
-            if bar is None and defaults is not None:
-                bar = defaults
+            assert bar is not None
             return bar
 
-        if defaults is None:
-            defaults = [None for _ in range(dots)]
-
-        bars = [
-            self.dot2bar_rec(dot, default)
-            for dot, default in zip(dots, defaults)
-        ]
+        bars = [self.dot2bar_rec(dot) for dot in dots]
         return bars
 
     def linearize(self, xs, ys, xs_dot=None):
@@ -344,7 +340,7 @@ class Transform(object):
 
         for op in reversed(path):
             out = op_position_output(op)
-            out_bar_rec = self.dot2bar_rec(out, defaults=out)
+            out_bar_rec = self.dot2bar_rec(out)
             ins_bar_rec = _transpose(op, is_dot, out_bar_rec)
 
             # TODO(Tongxin): this is hacky. Tuple implies the Transpose rule
@@ -419,7 +415,7 @@ def _gradients(ys, xs, ys_bar=None):
     ad = Transform(block)
     xs = new_vars[:len(xs)]
     ys = new_vars[len(xs):]
-    
+
     xs_dot, ys_dot = ad.linearize(xs, ys)
     if any(var is None for var in ys_dot):
         assert False, f'Gradients cannot be computed. The given output `ys` does not depend on input `xs`.'
@@ -440,16 +436,16 @@ def _gradients(ys, xs, ys_bar=None):
     return xs_bar
 
 
-def orig2prim(block=None, update_var_list=None):
+def orig2prim(block=None, update_var_list=[]):
     _lower(block, reverse=False, update_var_list=update_var_list)
 
 
-def prim2orig(block=None, update_var_list=None):
+def prim2orig(block=None, update_var_list=[]):
     _lower(block, reverse=True, update_var_list=update_var_list)
 
 
 def to_tensors(xs):
-    if isinstance(xs, list or tuple):
+    if isinstance(xs, (tuple, list)):
         return xs
     else:
         return [xs]
@@ -518,12 +514,10 @@ def _lower(block, reverse, update_var_list):
             for i in range(len(op.input_names)):
                 inputs[op.input_names[i]] = bind_name(
                     op.input(op.input_names[i]), to_bind)
-            # print(inputs)
 
             outputs = {}
             for i in range(len(op.output_names)):
                 outputs[op.output_names[i]] = op.output(op.output_names[i])
-            # print(outputs)
 
             attrs = {}
             for name in sorted(op.attr_names):
@@ -540,12 +534,15 @@ def _lower(block, reverse, update_var_list):
                     attrs=attrs)
             block.ops.append(op)
 
-    if update_var_list is not None:
-        for i in range(len(update_var_list)):
-            if update_var_list[i].name in to_bind:
-                update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
+    for i in range(len(global_lower_update)):
+        if global_lower_update[i].name in to_bind:
+            global_lower_update[i] = vlt[to_bind[global_lower_update[i].name]]
+
+    for i in range(len(update_var_list)):
+        if update_var_list[i].name in to_bind:
+            update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
 
     for op_idx in reversed(ops_to_remove):
         block._remove_op(op_idx)
-    for var_name in vars_to_remove:
+    for var_name in sorted(vars_to_remove):
         block._remove_var(var_name)
