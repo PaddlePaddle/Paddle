@@ -272,7 +272,7 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv2d_grad_grad
-    use_cudnn : true
+    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_api : conv2d_transpose_grad
