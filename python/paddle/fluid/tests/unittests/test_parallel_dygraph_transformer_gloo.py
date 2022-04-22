@@ -57,20 +57,5 @@ class TestParallelDygraphTransformerAccGrad_GLOO(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphTransformerEager_GLOO(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._eager_mode = True
-        self._gloo_mode = True
-        self._dygraph = True
-
-    def test_transformer(self):
-        self.check_with_place(
-            "parallel_dygraph_transformer.py",
-            delta=1e-5,
-            check_error_log=True,
-            log_name=flag_name)
-
-
 if __name__ == "__main__":
     unittest.main()

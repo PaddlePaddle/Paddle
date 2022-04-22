@@ -1827,11 +1827,18 @@ class LayerNorm(layers.Layer):
                     1:] + ', but got input shape ' + str(input_shape))
 
         if _non_static_mode():
-            pre_act, _, _ = _C_ops.layer_norm(
-                input, self.weight, self.bias, 'epsilon', self._epsilon,
-                'begin_norm_axis', self._begin_norm_axis)
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=self._act)
+            if in_dygraph_mode():
+                pre_act, _, _, = _C_ops.final_state_layer_norm(
+                    input, self.weight, self.bias, self._epsilon,
+                    self._begin_norm_axis, False)
+                return dygraph_utils._append_activation_in_dygraph(
+                    pre_act, act=self._act)
+            else:
+                pre_act, _, _ = _C_ops.layer_norm(
+                    input, self.weight, self.bias, 'epsilon', self._epsilon,
+                    'begin_norm_axis', self._begin_norm_axis)
+                return dygraph_utils._append_activation_in_dygraph(
+                    pre_act, act=self._act)
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'LayerNorm')

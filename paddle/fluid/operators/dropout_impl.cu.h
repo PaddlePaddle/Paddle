@@ -38,42 +38,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
-DECLARE_bool(use_curand);
-
 namespace paddle {
 namespace operators {
-
-template <typename T1, typename T2 = T1, typename OutT = T1>
-struct DstMaskGenerator {
-  const float dropout_prob_;
-  const bool is_upscale_in_train_;
-  using MT = typename details::MPTypeTrait<T1>::Type;
-  MT factor;
-  HOSTDEVICE inline DstMaskGenerator(const float dropout_prob,
-                                     const bool is_upscale_in_train)
-      : dropout_prob_(dropout_prob), is_upscale_in_train_(is_upscale_in_train) {
-    factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
-  }
-
-  HOSTDEVICE inline void operator()(OutT* dst, const T1* src_val,
-                                    const T2* rand, int num) const {
-    static constexpr int kCount =
-        phi::funcs::uniform_distribution<T2>::kReturnsCount;
-// 0 ~ kCount -1 is dist , kCount ~ 2 * kCount - 1 is mask
-#pragma unroll
-    for (int i = 0; i < kCount; i++) {
-      if (rand[i] < dropout_prob_) {
-        dst[i] = static_cast<T1>(0);
-        dst[i + kCount] = dst[i];
-      } else {
-        dst[i] = is_upscale_in_train_
-                     ? static_cast<T1>(static_cast<MT>(src_val[i]) * factor)
-                     : static_cast<T1>(src_val[i]);
-        dst[i + kCount] = static_cast<T1>(1);
-      }
-    }
-  }
-};
 
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct DstMaskFunctor {
@@ -113,7 +79,7 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const T* src, MaskType* mask, T* dst,
                                           bool is_upscale_in_train,
                                           uint64_t increment,
-                                          size_t main_offset, bool use_curand) {
+                                          size_t main_offset) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
       phi::funcs::uniform_distribution<float>::kReturnsCount;
@@ -135,76 +101,41 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   int deal_size = BLOCK_NUM_X * kCount;
 
   size_t fix = idx * kCount;
-  if (use_curand) {
-    auto dst_functor =
-        DstMaskFunctor<T, float>(1.0f - dropout_prob, is_upscale_in_train);
-    for (; fix < main_offset; fix += stride) {
-      kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-      kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                            &state);
-      // dst
-      kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
-          &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-      kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_mask[0],
-                                             deal_size);
-      // mask
-      kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
-          &mask_result[0], &dst_mask[kCount], Cast());
-      kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
-                                                    deal_size);
-      if (fix > idx * kCount + 1) {
-        __syncthreads();
-      }
-    }
-    int remainder = n - fix;
-    if (remainder > 0) {
-      kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-      kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                            &state);
-      // dst
-      kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
-          &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-      kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_mask[0], remainder);
-      // mask
-      kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
-          &mask_result[0], &dst_mask[kCount], Cast());
-      kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
-                                                   remainder);
+
+  auto dst_functor =
+      DstMaskFunctor<T, float>(1.0f - dropout_prob, is_upscale_in_train);
+  for (; fix < main_offset; fix += stride) {
+    kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
+                                                          &state);
+    // dst
+    kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
+        &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
+    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_mask[0], deal_size);
+    // mask
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+        &mask_result[0], &dst_mask[kCount], Cast());
+    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
+                                                  deal_size);
+    if (fix > idx * kCount + 1) {
       __syncthreads();
     }
-  } else {
-    auto dst_functor =
-        DstMaskGenerator<T, float>(dropout_prob, is_upscale_in_train);
-    for (; fix < main_offset; fix += stride) {
-      kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-      kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                            &state);
-      // dst
-      kps::OperatorTernary<T, float, T, DstMaskGenerator<T, float>>(
-          &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-      kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_mask[0],
-                                             deal_size);
-      // mask
-      kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
-          &mask_result[0], &dst_mask[kCount], Cast());
-      kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
-                                                    deal_size);
-    }
-    int remainder = n - fix;
-    if (remainder > 0) {
-      kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-      kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                            &state);
-      // dst
-      kps::OperatorTernary<T, float, T, DstMaskGenerator<T, float>>(
-          &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
-      kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_mask[0], remainder);
-      // mask
-      kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
-          &mask_result[0], &dst_mask[kCount], Cast());
-      kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
-                                                   remainder);
-    }
+  }
+  int remainder = n - fix;
+  if (remainder > 0) {
+    kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
+                                                          &state);
+    // dst
+    kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
+        &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
+    kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_mask[0], remainder);
+    // mask
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+        &mask_result[0], &dst_mask[kCount], Cast());
+    kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
+                                                 remainder);
+    __syncthreads();
   }
 }
 
@@ -251,13 +182,11 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t grid_size = gpu_config.GetGridSize();
     size_t block_size = gpu_config.GetBlockSize();
 
-    if (FLAGS_use_curand) {
-      int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-      const auto& prop = platform::GetDeviceProperties(device_id);
-      size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
-                             prop.multiProcessorCount / block_size;
-      grid_size = std::min(grid_size, max_grid_size);
-    }
+    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+    const auto& prop = platform::GetDeviceProperties(device_id);
+    size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
+                           prop.multiProcessorCount / block_size;
+    grid_size = std::min(grid_size, max_grid_size);
 
     auto offset =
         ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
@@ -268,7 +197,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 
     VectorizedRandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
         size, seed_data, dropout_prob, x_data, mask_data, y_data,
-        upscale_in_train, increment, main_offset, FLAGS_use_curand);
+        upscale_in_train, increment, main_offset);
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?

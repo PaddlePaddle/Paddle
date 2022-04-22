@@ -22,6 +22,7 @@ import warnings
 from contextlib import contextmanager
 
 import paddle
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -307,17 +308,28 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
-        grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-        framework._dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': coalesced_grad},
-            outputs={'Out': origin_grad_vars},
-            attrs={'sections': grad_var_len,
-                   'axis': 0})
-        for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-            _reshape_inplace(x=g_var, shape=g_shape)
-            assert g_var.shape == g_shape
+    if _in_legacy_dygraph():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_grad},
+                outputs={'Out': origin_grad_vars},
+                attrs={'sections': grad_var_len,
+                       'axis': 0})
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                _reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
+    elif in_dygraph_mode():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            attrs = ()
+            attrs += ('sections', grad_var_len)
+            attrs += ('axis', 0)
+            _C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                g_var.reshape_(shape=g_shape)
+                assert g_var.shape == g_shape
 
 
 def scale_loss(loss):
@@ -366,7 +378,7 @@ def sync_params_buffers(model,
                 param.name)
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, ParamBase):
+        if isinstance(param, (ParamBase, core.eager.Tensor)):
             if is_model_parallel and param.is_distributed:
                 continue
 

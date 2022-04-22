@@ -24,8 +24,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/generator.h"
-
 namespace phi {
 
 template <typename T>
@@ -106,8 +104,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
   int64_t size = tensor->numel();
 
-  int device_id = dev_ctx.GetPlace().GetDeviceId();
-  auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
+  auto gen_cuda = dev_ctx.GetGenerator();
 
   if (gen_cuda->GetIsInitPy() && seed_flag) {
     auto seed_offset = gen_cuda->IncrementOffset(1);

@@ -92,81 +92,76 @@ KernelSignature BicubicInterpOpArgumentMapping(
 
 KernelSignature BilinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "bilinear_interp_v2_grad",
-      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
-      {"data_layout",
-       "out_d",
-       "out_h",
-       "out_w",
-       "scale",
-       "interp_method",
-       "align_corners",
-       "align_mode"},
-      {GradVarName("X")});
+  return KernelSignature("bilinear_interp_v2_grad",
+                         {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
+                         {"data_layout",
+                          "out_d",
+                          "out_h",
+                          "out_w",
+                          "scale",
+                          "interp_method",
+                          "align_corners",
+                          "align_mode"},
+                         {"X@GRAD"});
 }
 
 KernelSignature NearestInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "nearest_interp_v2_grad",
-      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
-      {"data_layout",
-       "out_d",
-       "out_h",
-       "out_w",
-       "scale",
-       "interp_method",
-       "align_corners",
-       "align_mode"},
-      {GradVarName("X")});
+  return KernelSignature("nearest_interp_v2_grad",
+                         {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
+                         {"data_layout",
+                          "out_d",
+                          "out_h",
+                          "out_w",
+                          "scale",
+                          "interp_method",
+                          "align_corners",
+                          "align_mode"},
+                         {"X@GRAD"});
 }
 KernelSignature TrilinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "trilinear_interp_v2_grad",
-      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
-      {"data_layout",
-       "out_d",
-       "out_h",
-       "out_w",
-       "scale",
-       "interp_method",
-       "align_corners",
-       "align_mode"},
-      {GradVarName("X")});
+  return KernelSignature("trilinear_interp_v2_grad",
+                         {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
+                         {"data_layout",
+                          "out_d",
+                          "out_h",
+                          "out_w",
+                          "scale",
+                          "interp_method",
+                          "align_corners",
+                          "align_mode"},
+                         {"X@GRAD"});
 }
 
 KernelSignature LinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "linear_interp_v2_grad",
-      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
-      {"data_layout",
-       "out_d",
-       "out_h",
-       "out_w",
-       "scale",
-       "interp_method",
-       "align_corners",
-       "align_mode"},
-      {GradVarName("X")});
+  return KernelSignature("linear_interp_v2_grad",
+                         {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
+                         {"data_layout",
+                          "out_d",
+                          "out_h",
+                          "out_w",
+                          "scale",
+                          "interp_method",
+                          "align_corners",
+                          "align_mode"},
+                         {"X@GRAD"});
 }
 
 KernelSignature BicubicInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "bicubic_interp_v2_grad",
-      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
-      {"data_layout",
-       "out_d",
-       "out_h",
-       "out_w",
-       "scale",
-       "interp_method",
-       "align_corners",
-       "align_mode"},
-      {GradVarName("X")});
+  return KernelSignature("bicubic_interp_v2_grad",
+                         {"X", "OutSize", "SizeTensor", "Scale", "Out@GRAD"},
+                         {"data_layout",
+                          "out_d",
+                          "out_h",
+                          "out_w",
+                          "scale",
+                          "interp_method",
+                          "align_corners",
+                          "align_mode"},
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

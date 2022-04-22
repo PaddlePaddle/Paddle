@@ -28,6 +28,7 @@ from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -195,6 +196,17 @@ __all__ = [
     'unbind',
 ]
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
+}
+
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -203,8 +215,21 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    def is_inplace(op_name):
+        return op_name[-1] == "_"
+
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name]
+                         if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -5092,9 +5117,12 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        out = [_varbase_creator() for n in range(num)]
-        _C_ops.split(input, out, *attrs)
-        return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(input, [num], dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
     check_variable_and_dtype(
         input, 'input',
@@ -5970,8 +5998,11 @@ def multiplex(inputs, index, name=None):
             print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
-    if _non_static_mode():
+
+    if _in_legacy_dygraph():
         return _C_ops.multiplex(index, inputs)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -7095,6 +7126,10 @@ def label_smooth(label,
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
@@ -7276,7 +7311,12 @@ def roi_align(input,
                                                sampling_ratio=-1,
                                                rois_num=rois_num)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(
+            input, rois, rois_num, pooled_height, pooled_width, spatial_scale,
+            sampling_ratio, False)
+    if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             input, rois, rois_num, "pooled_height", pooled_height,
@@ -8839,8 +8879,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(ref, index, updates)
+        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -9030,7 +9069,10 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu(x)
+    if _in_legacy_dygraph():
         return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
@@ -10961,7 +11003,15 @@ def gaussian_random(shape,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',
