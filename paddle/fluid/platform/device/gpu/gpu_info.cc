@@ -143,7 +143,11 @@ class RecordedGpuMallocHelper {
 
  public:
   ~RecordedGpuMallocHelper() {
-    VLOG(0) << "[CI] Memory message : peak memory = " << peak_size_;
+#ifdef PADDLE_WITH_TESTING
+    std::cout << "[CI] GPU " << dev_id_
+              << " memory message : peak memory use = " << peak_size_
+              << std::endl;
+#endif
   }
 
   static RecordedGpuMallocHelper *Instance(int dev_id) {
