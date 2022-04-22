@@ -9,7 +9,7 @@ DEFINE_AND_REGISTER_SPARSE_UNARY_GRAD_KERNEL(sin_grad, SinGradKernel)
 // kernel registration mechanism. Do NOT refactor them unless you
 // know what you are doing.
 // If you want to implement any new kernel, please follow the above
-// `log_grad`, do NOT follow the following `sqrt_grad`.
+// `sin_grad`, do NOT follow the following `sqrt_grad`.
 DEFINE_SPARSE_UNARY_GRAD_KERNEL(SqrtGradKernel)
 
 PD_REGISTER_KERNEL(sparse_coo_sqrt_grad,

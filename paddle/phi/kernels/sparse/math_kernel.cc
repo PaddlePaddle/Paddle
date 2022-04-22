@@ -7,7 +7,7 @@ DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sin, SinKernel)
 // kernel registration mechanism. Do NOT refactor them unless you
 // know what you are doing.
 // If you want to implement any new kernel, please follow the above
-// `log`, do NOT follow the following `sqrt`.
+// `sin`, do NOT follow the following `sqrt`.
 DEFINE_SPARSE_UNARY_KERNEL(SqrtKernel)
 
 PD_REGISTER_KERNEL(sparse_coo_sqrt,
