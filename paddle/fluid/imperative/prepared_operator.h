@@ -233,9 +233,9 @@ void BuildDygraphPhiKernelContext(
     platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& attr_names = std::get<1>(pt_kernel_signature.args);
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
+  const auto& attr_names = pt_kernel_signature.attr_names;
+  const auto& output_names = pt_kernel_signature.output_names;
 
   auto& input_defs = pt_kernel.args_def().input_defs();
   auto& output_defs = pt_kernel.args_def().output_defs();
@@ -558,7 +558,7 @@ template <typename VarType>
 void PreparePhiData(const phi::Kernel& pt_kernel,
                     const framework::KernelSignature& pt_kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
   auto& input_defs = pt_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
@@ -569,10 +569,11 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    if (ins.find(input_names[i]) == ins.end()) {
+    auto iter = ins.find(input_names[i]);
+    if (iter == ins.end()) {
       continue;
     }
-    auto& ins_vector = ins.at(input_names[i]);
+    auto& ins_vector = iter->second;
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       auto& var = ins_vector[offset];
@@ -581,10 +582,14 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
-        auto expected_place = phi::TransToPhiPlace(in_def.backend);
-        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+        if (in_def.backend == tensor_backend ||
+            (in_def.backend == phi::Backend::GPUDNN &&
+             tensor_backend == phi::Backend::GPU)) {
           continue;
         }
+
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
 
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;

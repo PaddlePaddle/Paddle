@@ -415,9 +415,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   CompatInferMetaContext infer_meta_context(
       {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
-  auto& input_names = std::get<0>(signature.args);
-  auto& attr_names = std::get<1>(signature.args);
-  auto& output_names = std::get<2>(signature.args);
+  const auto& input_names = signature.input_names;
+  const auto& attr_names = signature.attr_names;
+  const auto& output_names = signature.output_names;
 
   const auto& args_def =
       phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
