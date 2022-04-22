@@ -61,23 +61,6 @@ paddle_infer::DataType ConvertONNXType(ONNXTensorElementDataType type) {
   }
 }
 
-bool CheckConvertToONNX(const AnalysisConfig &config) {
-  if (!config.model_dir().empty()) {
-    LOG(ERROR) << "Paddle2ONNX not support model_dir config";
-    // TODO(heliqi jiangjiajun): Paddle2ONNX not support
-    // config.model_dir() + "/__model__"
-    // config.model_dir() + var_name
-    return false;
-  } else if (config.prog_file().empty() || config.params_file().empty()) {
-    LOG(ERROR) << string::Sprintf(
-        "not valid model path '%s' or program path '%s' or params path '%s'.",
-        config.model_dir(), config.prog_file(), config.params_file());
-    return false;
-  }
-  return paddle2onnx::IsExportable(config.prog_file(), config.params_file(),
-                                   config.model_from_memory());
-}
-
 bool ONNXRuntimePredictor::Init() {
   VLOG(3) << "ONNXRuntime Predictor::init()";
 

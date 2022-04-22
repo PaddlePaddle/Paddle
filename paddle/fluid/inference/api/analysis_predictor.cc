@@ -1775,6 +1775,25 @@ USE_TRT_CONVERTER(strided_slice)
 
 namespace paddle_infer {
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+bool CheckConvertToONNX(const AnalysisConfig &config) {
+  if (!config.model_dir().empty()) {
+    LOG(ERROR) << "Paddle2ONNX not support model_dir config";
+    // TODO(heliqi jiangjiajun): Paddle2ONNX not support
+    // config.model_dir() + "/__model__"
+    // config.model_dir() + var_name
+    return false;
+  } else if (config.prog_file().empty() || config.params_file().empty()) {
+    LOG(ERROR) << string::Sprintf(
+        "not valid model path '%s' or program path '%s' or params path '%s'.",
+        config.model_dir(), config.prog_file(), config.params_file());
+    return false;
+  }
+  return paddle2onnx::IsExportable(config.prog_file(), config.params_file(),
+                                   config.model_from_memory());
+}
+#endif
+
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
@@ -1783,7 +1802,7 @@ Predictor::Predictor(const Config &config) {
     if (config.use_gpu()) {
       LOG(WARNING) << "The current ONNXRuntime backend doesn't support GPU,"
                       "and it falls back to use Paddle Inference.";
-    } else if (!paddle::CheckConvertToONNX(config)) {
+    } else if (!CheckConvertToONNX(config)) {
       LOG(WARNING)
           << "Paddle2ONNX do't support convert the Model， fall back to using "
              "Paddle Inference.";
