@@ -839,6 +839,16 @@
   kernel :
     func : log2_grad
 
+- backward_api : log_double_grad
+  forward : log_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : log_double_grad
+
 - backward_api : log_grad
   forward : log (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -848,6 +858,7 @@
     param : [x]
   kernel :
     func : log_grad
+  backward : log_double_grad
 
 - backward_api : log_loss_grad
   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
@@ -1473,7 +1484,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : sigmoid_cross_entropy_with_logits_grad
+    func : sigmoid_cross_entropy_with_logits_grad 
 
 - backward_api : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)
