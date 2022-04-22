@@ -175,10 +175,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
     pt_kernel_signature =
         std::move(op.GetExpectedPhiKernelArgs(dygraph_exe_ctx));
-    VLOG(3) << pt_kernel_signature;
+    VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
-    VLOG(3) << pt_kernel_name;
+    VLOG(3) << "The op_type is: " << op.Type()
+            << " and the pt_kernel_name is: " << pt_kernel_name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -219,10 +220,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto& pt_kernel = phi::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
-
-    VLOG(3) << "The pt_kernel_key transformed from expected_kernel_key is: "
-            << pt_kernel_key
-            << " and the pt_kernel_name is: " << pt_kernel_name;
 
     if (pt_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
