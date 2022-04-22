@@ -30,6 +30,7 @@ __all__ = ['ctr_metric_bundle']
 def ctr_metric_bundle(input, label):
     """
     ctr related metric layer
+
     This function help compute the ctr related metrics: RMSE, MAE, predicted_ctr, q_value.
     To compute the final values of these metrics, we should do following computations using
     total instance number:
@@ -39,6 +40,7 @@ def ctr_metric_bundle(input, label):
     q = local_q / instance number
     Note that if you are doing distribute job, you should all reduce these metrics and instance
     number first
+
     Args:
         input(Variable): A floating-point 2D Variable, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
@@ -46,13 +48,16 @@ def ctr_metric_bundle(input, label):
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
+
     Returns:
         local_sqrerr(Variable): Local sum of squared error
         local_abserr(Variable): Local sum of abs error
         local_prob(Variable): Local sum of predicted ctr
         local_q(Variable): Local sum of q value
+
     Examples:
         .. code-block:: python
+
             import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             label = fluid.layers.data(name="label", shape=[1], dtype="int32")
