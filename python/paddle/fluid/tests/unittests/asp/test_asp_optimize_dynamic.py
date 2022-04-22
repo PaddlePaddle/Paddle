@@ -28,8 +28,8 @@ class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
         self.conv1 = paddle.nn.Conv2D(
-            in_channels=3, out_channels=4, kernel_size=3, padding=2)
-        self.linear1 = paddle.nn.Linear(4624, 32)
+            in_channels=3, out_channels=2, kernel_size=3, padding=2)
+        self.linear1 = paddle.nn.Linear(1352, 32)
         self.linear2 = paddle.nn.Linear(32, 32)
         self.linear3 = paddle.nn.Linear(32, 10)
 
@@ -108,13 +108,13 @@ class TestASPDynamicOptimize(unittest.TestCase):
         sparsity.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
-            np.random.randn(64, 3, 32, 32),
+            np.random.randn(32, 3, 24, 24),
             dtype='float32',
             place=self.place,
             stop_gradient=False)
         labels = paddle.to_tensor(
             np.random.randint(
-                10, size=(64, 1)),
+                10, size=(32, 1)),
             dtype='float32',
             place=self.place,
             stop_gradient=False)
@@ -141,13 +141,13 @@ class TestASPDynamicOptimize(unittest.TestCase):
         sparsity.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
-            np.random.randn(64, 3, 32, 32),
+            np.random.randn(32, 3, 24, 24),
             dtype='float32',
             place=self.place,
             stop_gradient=False)
         labels = paddle.to_tensor(
             np.random.randint(
-                10, size=(64, 1)),
+                10, size=(32, 1)),
             dtype='float32',
             place=self.place,
             stop_gradient=False)

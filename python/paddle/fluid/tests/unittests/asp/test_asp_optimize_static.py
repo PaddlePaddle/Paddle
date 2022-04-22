@@ -34,7 +34,7 @@ class TestASPStaticOptimize(unittest.TestCase):
 
         def build_model():
             img = fluid.data(
-                name='img', shape=[None, 3, 32, 32], dtype='float32')
+                name='img', shape=[None, 3, 24, 24], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = fluid.layers.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu")
@@ -131,8 +131,8 @@ class TestASPStaticOptimize(unittest.TestCase):
         exe.run(self.startup_program)
         sparsity.prune_model(self.main_program)
 
-        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-            10, size=(64, 1)))
+        data = (np.random.randn(32, 3, 24, 24), np.random.randint(
+            10, size=(32, 1)))
         exe.run(self.main_program, feed=feeder.feed([data]))
 
         for param in self.main_program.global_block().all_parameters():
@@ -159,8 +159,8 @@ class TestASPStaticOptimize(unittest.TestCase):
             exe.run(self.startup_program)
             sparsity.prune_model(self.main_program)
 
-            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                10, size=(64, 1)))
+            data = (np.random.randn(32, 3, 24, 24), np.random.randint(
+                10, size=(32, 1)))
             exe.run(self.main_program, feed=feeder.feed([data]))
 
             for param in self.main_program.global_block().all_parameters():

@@ -38,6 +38,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = fluid.layers.conv2d(
                 input=img, num_filters=2, filter_size=3, padding=2, act="relu")
+            hidden = fluid.layers.fc(input=hidden, size=32, act='softmax')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
             return img, label, prediction
 
