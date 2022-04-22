@@ -16,7 +16,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
-#include "paddle/phi/kernels/reduce_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
