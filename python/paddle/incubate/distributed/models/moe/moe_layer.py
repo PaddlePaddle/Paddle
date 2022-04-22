@@ -411,7 +411,7 @@ class MoELayer(nn.Layer):
                 last_index = expert_count + last_index
             return paddle.concat(y, axis=0)
 
-        if self.recompute_interval <= 0:
+        if self.recompute_interval <= 0 or x.shape[0] == 0:
             x = experts_fwd(x, fwd_expert_count.numpy(), self.experts)
         else:
             x = _hp_recompute(experts_fwd, x,
