@@ -12,58 +12,55 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_minimum_kernel.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 namespace phi {
 
-// Create the definition of Add
-DEFINE_CPU_ELEMENTWISE_OP(Add)
+template <typename T, typename Context>
+void MinimumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
+      dev_ctx, x, y, axis, funcs::MinimumFunctor<T>(), out);
+}
 
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   int axis = -1;
-  AddRawKernel<T>(dev_ctx, x, y, axis, out);
+  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
-// NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
-
-PD_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(minimum_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddRawKernel,
+                   phi::MinimumRawKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {}
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(minimum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::MinimumKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {}
+                   phi::dtype::bfloat16) {}

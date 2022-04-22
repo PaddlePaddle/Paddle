@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_maximum_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #ifndef PADDLE_WITH_XPU_KP
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,54 +23,48 @@
 
 namespace phi {
 
-// Create the definition of Multiply
-DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+// Create the definition of Maximum
+DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
 
 template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   int axis = -1;
-  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
+  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(
-    multiply_raw, KPS, ALL_LAYOUT, phi::MultiplyRawKernel, float) {}
-#else
+PD_REGISTER_KERNEL(maximum_raw, KPS, ALL_LAYOUT, phi::MaximumRawKernel, float) {
+}
 
+#else
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(maximum_raw,
                    KPS,
                    ALL_LAYOUT,
-                   phi::MultiplyRawKernel,
+                   phi::MaximumRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   bool,
                    float16,
-                   complex64,
-                   complex128,
                    bfloat16) {}
-PD_REGISTER_KERNEL(multiply,
+
+PD_REGISTER_KERNEL(maximum,
                    KPS,
                    ALL_LAYOUT,
-                   phi::MultiplyKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   bool,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   phi::dtype::bfloat16) {}
+
 #endif
