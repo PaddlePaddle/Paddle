@@ -6897,7 +6897,8 @@ def device_guard(device=None):
     Examples:
     
         .. code-block:: python
-
+            
+            # required: gpu
             import paddle
 
             paddle.enable_static()
