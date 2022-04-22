@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,21 +28,12 @@ from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
 
 seed = 2022
 epoch = 2
 linear_size = 1000
-
-strategy = fleet.DistributedStrategy()
-strategy.hybrid_configs = {
-    "dp_degree": 2,
-    "mp_degree": 1,
-    "pp_degree": 1,
-    "sharding_degree": 1
-}
-fleet.init(is_collective=True, strategy=strategy)
 
 np.random.seed(seed)
 paddle.seed(seed)
@@ -77,7 +68,7 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.AdamW(
         parameters=[{
-            "params": model.parameters()
+            "params": model.parameters(),
         }] if opt_group else model.parameters(),
         learning_rate=0.001,
         weight_decay=0.00001,
@@ -93,12 +84,10 @@ def train_mlp(model,
               use_pure_fp16=False,
               accumulate_grad=False,
               opt_group=False,
-              save_model=False):
-    if sharding_stage == "dp":
-        hcg = fleet.get_hybrid_communicate_group()
-        group = hcg.get_check_parallel_group()
-    else:
-        group = paddle.distributed.new_group([0, 1])
+              save_model=False,
+              test_minimize=False):
+    if sharding_stage != "dp":
+        group = paddle.distributed.new_group([0, 1], backend="nccl")
     if opt_group:
         optimizer = optimizer_setting(
             model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group)
@@ -106,14 +95,22 @@ def train_mlp(model,
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if sharding_stage == 2:
-        optimizer = ShardingOptimizerStage2(
-            params=model.parameters(), optim=optimizer, group=group)
+        optimizer = GroupShardedOptimizerStage2(
+            params=optimizer._parameter_list, optim=optimizer, group=group)
 
-        model = ShardingStage2(
+        model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21)
     else:
-        optimizer = fleet.distributed_optimizer(optimizer)
-        model = fleet.distributed_model(model)
+        model = paddle.DataParallel(model)
+
+    # check optimizer.minimize() error
+    if test_minimize:
+        try:
+            optimizer.minimize()
+        except:
+            print(
+                "====== Find sharding_stage2_optimizer.minimize() error ======")
+        return
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
@@ -159,6 +156,7 @@ def train_mlp(model,
 
 
 def test_dp_stage2():
+    paddle.distributed.init_parallel_env()
     mlp = MLP()
     state_dict = mlp.state_dict()
     mlp1 = MLP()
@@ -167,12 +165,14 @@ def test_dp_stage2():
     mlp4 = MLP()
     mlp5 = MLP()
     mlp6 = MLP()
+    mlp7 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
     mlp5.set_state_dict(state_dict)
     mlp6.set_state_dict(state_dict)
+    mlp7.set_state_dict(state_dict)
 
     # DP VS stage2
     dp_params = train_mlp(
@@ -219,10 +219,11 @@ def test_dp_stage2():
     optimizer_stage2.set_state_dict(opt_state_dict)
     shutil.rmtree(output_dir)
 
+    # check optimizer.minimize() error
+    train_mlp(mlp7, sharding_stage=2, test_minimize=True)
     return
 
 
 if __name__ == '__main__':
     with _test_eager_guard():
-        pass
-    test_dp_stage2()
+        test_dp_stage2()
