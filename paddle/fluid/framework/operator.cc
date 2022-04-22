@@ -1284,6 +1284,44 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       dev_ctx = pool.Get(kernel_type_->place_);
 
       pt_kernel_name = pt_kernel_signature_->name;
+// NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
+// But the default library_type is Plain, so we need to modify the
+// library_type here, otherwise it can't work.
+#ifdef PADDLE_WITH_XPU_KP
+      if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
+        bool use_xpu_kp_kernel_rt =
+            FLAGS_run_kp_kernel &&
+            paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+        bool use_xpu_kp_kernel_debug =
+            paddle::platform::is_in_xpu_kpwhite_list(type_);
+        if (use_xpu_kp_kernel_rt) {
+          VLOG(3) << "phi xpu_kp using rt mode in static graph";
+        }
+        if (use_xpu_kp_kernel_debug) {
+          VLOG(3) << "phi xpu_kp using debug mode in static graph";
+        }
+        bool is_xpu_kp_support =
+            (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+        if (is_xpu_kp_support) {
+          auto expected_kernel_key_library_type = kernel_type_->library_type_;
+          kernel_type_->library_type_ = LibraryType::kKP;
+          VLOG(3) << "modifing XPU KP kernel in static graph: "
+                  << pt_kernel_name
+                  << ", using_kernel_key:" << *kernel_type_.get();
+          auto try_pt_kernel_key =
+              TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+          if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                        try_pt_kernel_key)) {
+            kernel_type_->library_type_ = expected_kernel_key_library_type;
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is failed " << *kernel_type_.get();
+          } else {
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is succeed " << *kernel_type_.get();
+          }
+        }
+      }
+#endif
       pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
       pt_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
@@ -1299,9 +1337,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     } else {
       pt_kernel_name = pt_kernel_signature_->name;
-// NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
-// But the default library_type is Plain, so we need to modify the
-// library_type here, otherwise it can't work.
+// NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
+// I can't understand it, it's really confusing.
+// But we still need to keep this to avoid errors.
 #ifdef PADDLE_WITH_XPU_KP
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
