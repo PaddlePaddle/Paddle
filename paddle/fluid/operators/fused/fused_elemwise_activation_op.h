@@ -207,58 +207,6 @@ static void RunUnaryCompoundGradFunctors(
   }
 }
 
-template <typename DeviceContext, typename T, typename UnaryGradFunctor,
-          typename BinaryFunctor, typename BinaryGradFunctor, bool InPlace>
-static void RunUnaryCompoundGradFunctors(
-    const framework::ExecutionContext &ctx,
-    const UnaryGradFunctor &unary_grad_functor,
-    const BinaryFunctor &binary_functor,
-    const BinaryGradFunctor &binary_grad_functor, const framework::Tensor *in_x,
-    const framework::Tensor *in_y, const framework::Tensor *in_out,
-    const framework::Tensor *in_intermediate_out,
-    const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
-    framework::Tensor *y_grad, framework::Tensor *d_intermediate_out,
-    int axis) {
-  // Z = Unary(Binary(X, Y))
-  // int axis = ctx.Attr<int>("axis");
-
-  using UnaryCompoundDxFunctor =
-      phi::funcs::UnaryCompoundGradDxFunctor<T, UnaryGradFunctor, BinaryFunctor,
-                                             BinaryGradFunctor, InPlace>;
-  using UnaryCompoundDyFunctor =
-      phi::funcs::UnaryCompoundGradDyFunctor<T, UnaryGradFunctor, BinaryFunctor,
-                                             BinaryGradFunctor, InPlace>;
-  using UnaryCompoundDIntermediateFunctor =
-      phi::funcs::UnaryCompoundGradDIntermediateFunctor<T, UnaryGradFunctor,
-                                                        BinaryFunctor, InPlace>;
-
-  if (in_intermediate_out) {
-    FusedElemwiseAndActGradComputeEx<
-        DeviceContext, T, UnaryCompoundDxFunctor, UnaryCompoundDyFunctor,
-        UnaryCompoundDIntermediateFunctor, true /*UseIntermediateOut*/,
-        true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
-        y_grad, d_intermediate_out,
-        UnaryCompoundDxFunctor(unary_grad_functor, binary_functor,
-                               binary_grad_functor),
-        UnaryCompoundDyFunctor(unary_grad_functor, binary_functor,
-                               binary_grad_functor),
-        UnaryCompoundDIntermediateFunctor(unary_grad_functor, binary_functor));
-  } else {
-    FusedElemwiseAndActGradComputeEx<
-        DeviceContext, T, UnaryCompoundDxFunctor, UnaryCompoundDyFunctor,
-        UnaryCompoundDIntermediateFunctor, false /*UseIntermediateOut*/,
-        true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
-        y_grad, d_intermediate_out,
-        UnaryCompoundDxFunctor(unary_grad_functor, binary_functor,
-                               binary_grad_functor),
-        UnaryCompoundDyFunctor(unary_grad_functor, binary_functor,
-                               binary_grad_functor),
-        UnaryCompoundDIntermediateFunctor(unary_grad_functor, binary_functor));
-  }
-}
-
 template <typename DeviceContext, typename T>
 static void RunFunctors(const framework::ExecutionContext &ctx,
                         const framework::Tensor &in_x,
