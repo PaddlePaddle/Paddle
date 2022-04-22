@@ -200,7 +200,7 @@ void PhiOpConvertPass::convertStage() {
       // resort input&output according to kernel_sign
       ::llvm::SmallVector<mlir::Value, 4> inputs, ori_output;
       ::llvm::SmallVector<mlir::Type, 4> output_types;
-      for (const std::string &str : std::get<0>(kernel_sign.args)) {
+      for (const std::string &str : kernel_sign.input_names) {
         if (pd_dialect_inputs_info_map_.at(op_name).count(str) == 0) {
           LOG(ERROR) << "No input info for Op " << op_name << " and argument "
                      << str;
@@ -210,7 +210,7 @@ void PhiOpConvertPass::convertStage() {
         inputs.push_back(op->getOperands()[index]);
       }
 
-      for (const std::string &str : std::get<2>(kernel_sign.args)) {
+      for (const std::string &str : kernel_sign.output_names) {
         if (pd_dialect_outputs_info_map_.at(op_name).count(str) == 0) {
           LOG(ERROR) << "No output info for Op " << op_name << " and argument "
                      << str;
