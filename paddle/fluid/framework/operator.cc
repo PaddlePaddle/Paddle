@@ -939,7 +939,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
                framework::DataLayout::kMKLDNN));
-    } catch (std::bad_cast exp) {
+    } catch (const std::bad_cast& exp) {
       return false;
     }
   }
@@ -2044,13 +2044,11 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  if (ctx.Context().inputs.size() == 1UL) {
-    auto& name = ctx.Context().inputs.begin()->first;
-    ParseInputDataType(ctx.InputVar(name), name, &data_type);
-  } else {
-    for (auto& input : ctx.InNameList()) {
-      const std::vector<Variable*> vars = ctx.MultiInputVar(input);
-      ParseMultiInputDataType(vars, input, &data_type);
+  for (auto* name : ctx.InNameList()) {
+    if (ctx.InputSize(*name) == 1UL) {
+      ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
+    } else {
+      ParseMultiInputDataType(ctx.MultiInputVar(*name), *name, &data_type);
     }
   }
   PADDLE_ENFORCE_NE(

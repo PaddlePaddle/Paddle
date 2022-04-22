@@ -330,12 +330,12 @@ class ExecutionContext {
     return it->second;
   }
 
-  virtual std::vector<std::string> InNameList() const {
-    std::vector<std::string> vec_temp;
+  virtual paddle::SmallVector<const std::string*> InNameList() const {
+    paddle::SmallVector<const std::string*> vec_temp;
     vec_temp.reserve(ctx_.inputs.size());
 
     for (auto& input : ctx_.inputs) {
-      vec_temp.push_back(input.first);
+      vec_temp.push_back(&input.first);
     }
 
     return vec_temp;

@@ -117,12 +117,12 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return it->second;
   }
 
-  std::vector<std::string> InNameList() const override {
-    std::vector<std::string> vec_temp;
+  paddle::SmallVector<const std::string*> InNameList() const override {
+    paddle::SmallVector<const std::string*> vec_temp;
     vec_temp.reserve(var_map_in_.size());
 
     for (auto& v : var_map_in_) {
-      vec_temp.push_back(v.first);
+      vec_temp.push_back(&v.first);
     }
 
     return vec_temp;
