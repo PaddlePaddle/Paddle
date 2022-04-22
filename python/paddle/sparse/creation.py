@@ -20,6 +20,8 @@ from ..tensor import to_tensor
 from ..tensor import max
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 
+import numpy as np
+
 __all__ = [
     'sparse_coo_tensor',
     'sparse_csr_tensor',
@@ -33,11 +35,14 @@ def _handle_dtype(data, dtype):
     return data
 
 
-def _infer_dense_shape(indices):
+def _infer_dense_shape(indices, values):
     assert len(indices.shape) == 2
     lens = max(indices, axis=1)
     lens = lens + 1
-    return list(lens.numpy())
+    lens = lens.numpy()
+    if len(values.shape) > 1:
+        lens = np.append(lens, values.shape[1:])
+    return list(lens)
 
 
 def _get_place(place):
@@ -106,7 +111,7 @@ def sparse_coo_tensor(indices,
         with _test_eager_guard():
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
-            dense_shape = [2, 3]
+            dense_shape = [3, 3]
             coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
             # print(coo)
             # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
@@ -145,7 +150,8 @@ def sparse_coo_tensor(indices,
     values = _handle_dtype(values, dtype)
     values.stop_gradient = stop_gradient
 
-    min_shape = _infer_dense_shape(indices)
+    min_shape = _infer_dense_shape(indices, values)
+
     if shape is None:
         shape = min_shape
     else:
