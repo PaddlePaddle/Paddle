@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle import _C_ops
 
 
-class TestSparseActivation(unittest.TestCase):
+class TestSparseUnary(unittest.TestCase):
     def compare_with_dense(
         self,
         x,
