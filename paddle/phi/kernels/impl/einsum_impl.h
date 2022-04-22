@@ -301,7 +301,7 @@ inline void EinsumInferShape(const std::vector<MetaTensor*>& inputs,
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
-  std::vector<LabelMap> label2perms(inputs.size(), -1);
+  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
   std::vector<int> broadcast_dims;
   std::vector<int> output_dims;
@@ -505,7 +505,7 @@ void EinsumKernel(const Context& dev_ctx,
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
-  std::vector<LabelMap> label2perms(inputs.size(), -1);
+  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;  // order: ABO, AO, BO, AB, Reduce
   std::vector<std::vector<int>> ellipsis_dims(2);
   std::vector<int> broadcast_dims;
