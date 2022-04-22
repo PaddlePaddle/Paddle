@@ -4414,17 +4414,17 @@ def angle(x, name=None):
 
 def heaviside(x, y, name=None):
     """
-    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is:
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
 
     .. math::
         heaviside(x, y)=
             \left\{
-                \begin{array}{lcl}
-                0,& &\text{if } \ x < 0, \\
-                y,& &\text{if } \ x = 0, \\
-                1,& &\text{if } \ x > 0.
+                \\begin{array}{lcl}
+                0,& &\\text{if} \ x < 0, \\
+                y,& &\\text{if} \ x = 0, \\
+                1,& &\\text{if} \ x > 0.
                 \end{array}
-            \right.
+            \\right.
 
     Notes:
     ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
