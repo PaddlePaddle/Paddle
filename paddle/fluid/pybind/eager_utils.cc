@@ -1054,25 +1054,24 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
   VLOG(1) << "type_name: " << type_name;
-  if (type_name == "int") {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
+  if (PyBool_Check(obj)) {
+    bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else if (PyLong_Check(obj)) {
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (type_name == "float") {
+  } else if (PyFloat_Check(obj)) {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "bool") {
-    bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
-    return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "Tensor") {
+  } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
   } else if (type_name.find("numpy") != std::string::npos) {
     return CastNumpy2Scalar(obj, op_type, arg_pos);
+  } else if (PyObject_CheckLongOrToLong(&obj)) {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
