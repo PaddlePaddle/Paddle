@@ -37,7 +37,7 @@ struct DimensionsTransform {
   std::vector<DimVector> in_dims;
 
  private:
-  /* To compensate the lackage of input_tensors` dimension with input 
+  /* To compensate the lackage of input_tensors` dimension with input
      variable 'axis' */
   void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
@@ -83,7 +83,7 @@ struct DimensionsTransform {
     std::reverse(out_dims.begin(), out_dims.end());
   }
 
-  /* Merge sequential dimension to shrink calculation cost for 
+  /* Merge sequential dimension to shrink calculation cost for
      offset computation in CUDA Kernel. */
   template <typename MergeFunctor>
   __inline__ void MergeDimensions(MergeFunctor merge_func, int N) {
@@ -123,9 +123,9 @@ struct DimensionsTransform {
     }
   }
 
-  /* To judge whether shape of any input tensors is sequential 
-    1-value-dimensions, and metric the length of it.*/
-  int GetSequentialOneDimLength(int* swap_index) {
+  /* To judge whether shape of any input tensors is sequential
+    1-value-dimensions, and metric the length of it. */
+  int GetSequentialOneDimLength(int *swap_index) {
     int index = 0;
     int max_one_length = 0;
     for (int j = 0; j < N; ++j) {
@@ -144,11 +144,11 @@ struct DimensionsTransform {
           }
         }
       }
-      max_one_length = seq_one_length > max_one_length ?
-                       seq_one_length : max_one_length ;
+      max_one_length =
+          seq_one_length > max_one_length ? seq_one_length : max_one_length;
       index = seq_one_length > max_one_length ? j : index;
     }
-    
+
     if (max_one_length > 1) {
       std::swap(in_dims[0], in_dims[index]);
       *swap_index = index;
@@ -201,7 +201,6 @@ struct DimensionsTransform {
     // equal-dimensions appears.
     MergeFunctor merge_ptr = merge_sequential_dims;
     MergeDimensions<MergeFunctor>(merge_ptr, N);
-
 
     // To Merge the dimension of input_tensors while the sequential
     // 1-value-dimensions appears.
