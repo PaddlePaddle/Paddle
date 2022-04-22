@@ -117,8 +117,6 @@ class TestAutoGradTransform1(unittest.TestCase):
             for k, v in self.ys_shape_map.items():
                 self.assertEqual(flatten_ys_dot[k].shape, v)
 
-            import pdb
-            pdb.set_trace()
             # Test transpose
             ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, retain_fwd=False)
             transpose_ops = [op.type for op in self.main_program.block(0).ops]
@@ -132,8 +130,6 @@ class TestAutoGradTransform1(unittest.TestCase):
             for k, v in self.ys_shape_map.items():
                 self.assertEqual(flatten_ys_bar[k].shape, v)
 
-            import pdb
-            pdb.set_trace()
             # Test prim2orig
             prim2orig(block=self.main_program.block(0))
             prim2orig_ops = [op.type for op in self.main_program.block(0).ops]
@@ -172,9 +168,9 @@ class TestAutoGradTransform2(TestAutoGradTransform1):
             # linearized op
             'reshape_p',
             'mul_p',
-            'mul_p',
-            'add_p',
-            'add_p',
+            # 'mul_p', # JVP rules handle `None` input, some op will not be appended
+            # 'add_p',
+            # 'add_p',
             'matmul_p',
             'matmul_p',
             'add_p'
@@ -191,7 +187,7 @@ class TestAutoGradTransform2(TestAutoGradTransform1):
             'matmul_p',
             'transpose_p',
             'matmul_p',
-            'mul_p',
+            # 'mul_p',
             'reshape_p',
         ]
 
@@ -211,7 +207,7 @@ class TestAutoGradTransform2(TestAutoGradTransform1):
             'matmul_v2',
             'transpose2',
             'matmul_v2',
-            'elementwise_mul',
+            # 'elementwise_mul',
             'reshape2',
         ]
 
@@ -265,7 +261,7 @@ class TestAutoGradTransform3(TestAutoGradTransform1):
             'mul_p',
             'add_p',
             'reduce_p',
-            'fill_constant_p',  # 'sqrt_p', Will not new sqrt_p op when apply JVP for sqrt_p
+            'fill_constant_p',  # 'sqrt_p', Will not append sqrt_p op when apply JVP for sqrt_p
             'mul_p',
             'div_p',
             'broadcast_p',
@@ -299,20 +295,20 @@ class TestAutoGradTransform3(TestAutoGradTransform1):
             'split_p',
             'fill_constant_p',
             'scatter_add_p',
+            'add_p',  # The output of the op is used by multiple subsequent ops
             'add_p',
-            'add_p'  # The output of the op is used by multiple subsequent ops
         ]
 
         self.prim2orig_ops = [
-            'broadcast', 'elementwise_add', 'reshape2', 'elementwise_mul',
-            'reduce', 'sqrt', 'broadcast', 'elementwise_sub', 'concat',
+            'expand_v2', 'elementwise_add', 'reshape2', 'elementwise_mul',
+            'reduce_sum', 'sqrt', 'expand_v2', 'elementwise_sub', 'concat',
             'gather', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant',
-            'elementwise_mul', 'reduce', 'reshape2', 'reshape2',
-            'elementwise_mul', 'elementwise_mul', 'reshape2', 'broadcast',
-            'elementwise_div', 'reduce', 'reshape2', 'fill_constant',
-            'elementwise_sub', 'split', 'fill_constant', 'scatter_add',
-            'elementwise_add', 'elementwise_add'
+            'elementwise_mul', 'reduce_sum', 'reshape2', 'reshape2',
+            'elementwise_mul', 'elementwise_mul', 'reshape2', 'expand_v2',
+            'elementwise_div', 'reduce_sum', 'reshape2', 'fill_constant',
+            'elementwise_sub', 'split', 'fill_constant', 'fill_any_like',
+            'elementwise_add', 'scatter', 'elementwise_add', 'elementwise_add'
         ]
 
 

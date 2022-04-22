@@ -360,7 +360,7 @@ class Transform(object):
             self.add_vars_rec(ins_bar_rec)
 
             ins_bar = flatten(ins_bar_rec)
-            ins = get_input_vars(op)
+            ins = flatten(op_position_inputs(op))
             assert len(ins) == len(ins_bar)
 
             for dot, bar in zip(ins, ins_bar):
