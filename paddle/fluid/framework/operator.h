@@ -703,6 +703,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
