@@ -177,11 +177,11 @@ class ResNet(nn.Layer):
     Args:
         Block (BasicBlock|BottleneckBlock): block module of model.
         depth (int, optional): layers of resnet, Default: 50.
-        groups (int, optional): number of groups for each convolution block, Default: 1.
-        width_per_group (int, optional): base width per convolution group for each convolution block, Default: 64.
+        width (int, optional): base width per convolution group for each convolution block, Default: 64.
         num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        groups (int, optional): number of groups for each convolution block, Default: 1.
 
     Examples:
         .. code-block:: python
@@ -197,10 +197,10 @@ class ResNet(nn.Layer):
             resnet50 = ResNet(BottleneckBlock, 50)
 
             # build Wide ResNet model
-            wide_resnet50_2 = ResNet(BottleneckBlock, 50, width_per_group=64*2)
+            wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64*2)
 
             # build ResNeXt model
-            resnext50_32x4d = ResNet(BottleneckBlock, 50, groups=32, width_per_group=4)
+            resnext50_32x4d = ResNet(BottleneckBlock, 50, width=4, groups=32)
 
             x = paddle.rand([1, 3, 224, 224])
             out = resnet18(x)
@@ -213,10 +213,10 @@ class ResNet(nn.Layer):
     def __init__(self,
                  block,
                  depth=50,
-                 groups=1,
-                 width_per_group=64,
+                 width=64,
                  num_classes=1000,
-                 with_pool=True):
+                 with_pool=True,
+                 groups=1):
         super(ResNet, self).__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
@@ -227,7 +227,7 @@ class ResNet(nn.Layer):
         }
         layers = layer_cfg[depth]
         self.groups = groups
-        self.base_width = width_per_group
+        self.base_width = width
         self.num_classes = num_classes
         self.with_pool = with_pool
         self._norm_layer = nn.BatchNorm2D
@@ -487,8 +487,8 @@ def resnext50_32x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 32
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 32
+    kwargs['width'] = 4
     return _resnet('resnext50_32x4d', BottleneckBlock, 50, pretrained, **kwargs)
 
 
@@ -517,8 +517,8 @@ def resnext50_64x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 64
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 64
+    kwargs['width'] = 4
     return _resnet('resnext50_64x4d', BottleneckBlock, 50, pretrained, **kwargs)
 
 
@@ -547,8 +547,8 @@ def resnext101_32x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 32
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 32
+    kwargs['width'] = 4
     return _resnet('resnext101_32x4d', BottleneckBlock, 101, pretrained,
                    **kwargs)
 
@@ -578,8 +578,8 @@ def resnext101_64x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 64
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 64
+    kwargs['width'] = 4
     return _resnet('resnext101_64x4d', BottleneckBlock, 101, pretrained,
                    **kwargs)
 
@@ -609,8 +609,8 @@ def resnext152_32x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 32
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 32
+    kwargs['width'] = 4
     return _resnet('resnext152_32x4d', BottleneckBlock, 152, pretrained,
                    **kwargs)
 
@@ -640,8 +640,8 @@ def resnext152_64x4d(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs["groups"] = 64
-    kwargs["width_per_group"] = 4
+    kwargs['groups'] = 64
+    kwargs['width'] = 4
     return _resnet('resnext152_64x4d', BottleneckBlock, 152, pretrained,
                    **kwargs)
 
@@ -671,7 +671,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs['width_per_group'] = 64 * 2
+    kwargs['width'] = 64 * 2
     return _resnet('wide_resnet50_2', BottleneckBlock, 50, pretrained, **kwargs)
 
 
@@ -700,6 +700,6 @@ def wide_resnet101_2(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
-    kwargs['width_per_group'] = 64 * 2
+    kwargs['width'] = 64 * 2
     return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained,
                    **kwargs)
