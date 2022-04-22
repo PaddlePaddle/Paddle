@@ -39,16 +39,6 @@ class ConvAffineChannelFusePass : public FusePassBase {
   const std::string name_scope_{"conv_affine_channel_mkldnn_fuse"};
 };
 
-class ConvEltwiseAddAffineChannelFusePass : public FusePassBase {
- public:
-  ConvEltwiseAddAffineChannelFusePass();
-  virtual ~ConvEltwiseAddAffineChannelFusePass() {}
-
- protected:
-  void ApplyImpl(ir::Graph*) const override;
-  const std::string name_scope_{"conv_eltwiseadd_affine_channel_mkldnn_fuse"};
-};
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
