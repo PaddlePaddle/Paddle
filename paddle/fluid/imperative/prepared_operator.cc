@@ -204,21 +204,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         VLOG(3) << "modifing XPU KP kernel: " << pt_kernel_name
                 << ", using_kernel_key:" << expected_kernel_key;
 
-        // VLOG(3) << "the pt_kernel_name have all registered kernel follows: ";
-        //         // << phi::KernelFactory::SelectKernelMap(pt_kernel_name);
-        //  auto map =
-        //  phi::KernelFactory::Instance().SelectKernelMap(pt_kernel_name);
-        // //  for(auto kv : map){
-        // //    VLOG(3) << "k-v " << kv.first << " : " << kv.second;
-        // //  }
-        //  for(auto iter = map.begin(); iter != map.end(); iter++) {
-        //     VLOG(3) << iter->first << " : " << iter->second << std::endl;
-        // }
-
         phi::KernelKey try_pt_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-
-        VLOG(3) << "The try_pt_kernel_key follows: " << try_pt_kernel_key;
         if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
                                                       try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
