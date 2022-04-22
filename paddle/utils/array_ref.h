@@ -96,7 +96,7 @@ class ArrayRef {
   template <size_t N>
   /*implicit*/ constexpr ArrayRef(const T (&Arr)[N]) : Data(Arr), Length(N) {}
 
-  /// Construct an ArrayRef from a std::initializer_list.
+/// Construct an ArrayRef from a std::initializer_list.
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
 // Disable gcc's warning in this constructor as it generates an enormous
 // amount
