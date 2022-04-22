@@ -4415,6 +4415,7 @@ def angle(x, name=None):
 def heaviside(x, y, name=None):
     """
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is:
+
     .. math::
         heaviside(x, y)=
             \left\{
