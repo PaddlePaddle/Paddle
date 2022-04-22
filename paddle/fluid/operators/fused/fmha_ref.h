@@ -383,8 +383,7 @@ class FMHAGateRef {
   ~FMHAGateRef() {}
 
   void ComputeForward(const Tensor* nonbatched_bias_tensor,
-                      const Tensor& qkv_input_tensor,
-                      const Tensor* src_mask_tensor,
+                      const Tensor& qkv_input, const Tensor* src_mask_tensor,
                       Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
                       Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
                       Tensor* qktv_out_tensor, Tensor* fmha_out_tensor) {
@@ -392,10 +391,13 @@ class FMHAGateRef {
     // 3, batch_size, seq_len_m, num_head, seq_len_r, c
     int ndims = 6;
     std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input_tensor, perm_1,
+    // LOG(INFO) << "qkv_input.shape=" << qkv_input.dims();
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input, perm_1,
                                 transpose_2_out_tensor);
+    // LOG(INFO) << "transpose_2_out.shape=[" << transpose_2_out_tensor->dims()
+    // << "]";
+
     T* qkv_data = transpose_2_out_tensor->data<T>();
-    // std::cout << "transpose_2_out_tensor" << *transpose_2_out_tensor << "\n";
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
     T* softmax_out_data = softmax_out_tensor->data<T>();
@@ -403,13 +405,10 @@ class FMHAGateRef {
 
     int64_t q_size =
         batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
-    T* q_ptr = qkv_data;
-    T* k_ptr = nullptr;
-    T* v_ptr = nullptr;
-
     int64_t k_size = q_size;
-    k_ptr = q_ptr + q_size;
-    v_ptr = k_ptr + k_size;
+    T* q_ptr = qkv_data;
+    T* k_ptr = q_ptr + q_size;
+    T* v_ptr = k_ptr + k_size;
 
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
@@ -429,18 +428,16 @@ class FMHAGateRef {
                      stride_b);
 
     int softmax_axis = -1;
-    if (nonbatched_bias_tensor != nullptr) {
+    if (nonbatched_bias_tensor) {
       std::vector<const Tensor*> ins;
       std::vector<Tensor*> outs;
       ins.emplace_back(qk_out_tensor);
       ins.emplace_back(nonbatched_bias_tensor);
       ins.emplace_back(src_mask_tensor);
       outs.emplace_back(src_mask_out_tensor);
-      int elewise_add_axis = -1;
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
                                                      T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, TernaryAddFunctor<T>());
-      // std::cout << "src_mask_out_tensor: " << *src_mask_out_tensor << "\n";
+          dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
 
     } else {
       std::vector<const Tensor*> ins;
@@ -448,10 +445,9 @@ class FMHAGateRef {
       ins.emplace_back(qk_out_tensor);
       ins.emplace_back(src_mask_tensor);
       outs.emplace_back(src_mask_out_tensor);
-      int elewise_add_axis = -1;
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+                                                     T, T>(dev_ctx_, ins, &outs,
+                                                           -1, AddFunctor<T>());
     }
 
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
@@ -650,8 +646,6 @@ class GateRef {
  public:
   explicit GateRef(const platform::CUDADeviceContext& dev_ctx)
       : dev_ctx_(dev_ctx) {}
-
-  ~GateRef() {}
 
   void ComputeForward(const Tensor& gate_input_tensor,
                       const Tensor& fma_out_tensor, Tensor* sigmoid_out_tensor,

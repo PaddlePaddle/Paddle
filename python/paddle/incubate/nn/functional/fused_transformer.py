@@ -577,8 +577,7 @@ def fused_gate_attention(x,
             print(output.shape)
     """
     if _non_static_mode():
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
-            x, qkv_weight, gate_weight, linear_weight, gate_bias, linear_bias,
-            nonbatched_bias, attn_mask, 'is_gating', is_gating)
-        # print(cache_kv_out)
-        return final_out
+        _, _, _, _, _, _, _, _, _, _, _, _, out = _C_ops.fused_gate_attention(
+            x, qkv_weight, nonbatched_bias, attn_mask, gate_weight, gate_bias,
+            linear_weight, linear_bias, 'is_gating', is_gating)
+        return out

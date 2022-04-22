@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,32 +47,22 @@ class AttnMatMul {
                       framework::Tensor* bias_out) {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
-    CBLAS_TRANSPOSE transA = CblasNoTrans;
-    CBLAS_TRANSPOSE transB = CblasNoTrans;
-    if (transA_) {
-      transA = CblasTrans;
-    }
-    if (transB_) {
-      transB = CblasTrans;
-    }
+    CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
+    CBLAS_TRANSPOSE transB = transB_ ? CblasTrans : CblasNoTrans;
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
 
-    // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
+    // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input->data<T>(), weight->data<T>(), beta, output->data<T>());
     if (compute_bias_) {
-      // compute output + bias
-      std::vector<const Tensor*> ins;
-      std::vector<Tensor*> outs;
-      ins.emplace_back(output);
-      ins.emplace_back(bias);
-      outs.emplace_back(bias_out);
-      int elewise_add_axis = -1;
+      // bias_out = output + bias
+      std::vector<const Tensor*> ins = {output, bias};
+      std::vector<Tensor*> outs = {bias_out};
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+                                                     T, T>(dev_ctx_, ins, &outs,
+                                                           -1, AddFunctor<T>());
     }
   }
 
@@ -77,78 +70,63 @@ class AttnMatMul {
                        const framework::Tensor* weight,
                        const framework::Tensor* d_output,
                        framework::Tensor* d_input, framework::Tensor* d_weight,
-                       framework::Tensor* d_bias) {
+                       framework::Tensor* d_bias, bool use_addto = false) {
     T alpha = static_cast<T>(1.0);
-    T beta = static_cast<T>(0.0);
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
+    T beta_dB = static_cast<T>(0.0);
 
-    CBLAS_TRANSPOSE dB_transA = CblasNoTrans;
-    CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
-    CBLAS_TRANSPOSE dA_transA = CblasNoTrans;
-    CBLAS_TRANSPOSE dA_transB = CblasNoTrans;
-    int dB_m = 1;
-    int dB_n = 1;
-    int dB_k = 1;
-    int dA_m = 1;
-    int dA_n = 1;
-    int dA_k = 1;
-
-    T* dB_input_1_ptr = nullptr;
-    T* dB_input_2_ptr = nullptr;
     T* dB_output_ptr = d_weight->data<T>();
-
-    T* dA_input_1_ptr = nullptr;
-    T* dA_input_2_ptr = nullptr;
     T* dA_output_ptr = d_input->data<T>();
 
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     if (!transA_) {
       // fw: gemm-nt
       if (transB_) {
         // bw: gemm-tn, dB = (dC)^t * A
-        dB_transA = CblasTrans;
-        dB_transB = CblasNoTrans;
-        dB_m = output_size_;
-        dB_n = input_size_;
-        dB_k = bsz_seq_;
+        CBLAS_TRANSPOSE dB_transA = CblasTrans;
+        CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
+        int dB_m = output_size_;
+        int dB_n = input_size_;
+        int dB_k = bsz_seq_;
 
         // bw: gemm-nn, dA = dC * B
-        dA_transA = CblasNoTrans;
-        dA_transB = CblasNoTrans;
-        dA_m = bsz_seq_;
-        dA_n = input_size_;
-        dA_k = output_size_;
+        CBLAS_TRANSPOSE dA_transA = CblasNoTrans;
+        CBLAS_TRANSPOSE dA_transB = CblasNoTrans;
+        int dA_m = bsz_seq_;
+        int dA_n = input_size_;
+        int dA_k = output_size_;
 
         blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
-                  d_output->data<T>(), input->data<T>(), beta, dB_output_ptr);
+                  d_output->data<T>(), input->data<T>(), beta_dB,
+                  dB_output_ptr);
         blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
-                  d_output->data<T>(), weight->data<T>(), beta, dA_output_ptr);
+                  d_output->data<T>(), weight->data<T>(), beta_dA,
+                  dA_output_ptr);
       } else {  // fw: gemm-nn
         // bw: gemm-tn, dB = A^t * dC
-        dB_transA = CblasTrans;
-        dB_transB = CblasNoTrans;
-        dB_m = input_size_;
-        dB_n = output_size_;
-        dB_k = bsz_seq_;
+        CBLAS_TRANSPOSE dB_transA = CblasTrans;
+        CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
+        int dB_m = input_size_;
+        int dB_n = output_size_;
+        int dB_k = bsz_seq_;
 
         // bw: gemm-nt, dA = dC * B^t
-        dA_transA = CblasNoTrans;
-        dA_transB = CblasTrans;
-        dA_m = bsz_seq_;
-        dA_n = input_size_;
-        dA_k = output_size_;
+        CBLAS_TRANSPOSE dA_transA = CblasNoTrans;
+        CBLAS_TRANSPOSE dA_transB = CblasTrans;
+        int dA_m = bsz_seq_;
+        int dA_n = input_size_;
+        int dA_k = output_size_;
 
         blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
-                  input->data<T>(), d_output->data<T>(), beta, dB_output_ptr);
+                  input->data<T>(), d_output->data<T>(), beta_dB,
+                  dB_output_ptr);
         blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
-                  d_output->data<T>(), weight->data<T>(), beta, dA_output_ptr);
+                  d_output->data<T>(), weight->data<T>(), beta_dA,
+                  dA_output_ptr);
       }
-    } else if (transB_) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "AttnMatMul wrapper do not support (transA=T, transB=T)"
-          "parameters."));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "AttnMatMul wrapper do not support (transA=T, transB=N)"
+          "AttnMatMul wrapper do not support (transA=T, transB=T/N)"
           "parameters."));
     }
     if (compute_bias_) {
