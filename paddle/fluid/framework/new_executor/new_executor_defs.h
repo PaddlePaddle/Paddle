@@ -238,6 +238,10 @@ class VariableScope : public ScopeBase {
 
   bool GetVarSikpInplace(int id) const;
 
+  void ClearListener();
+
+  void ResetListener();
+
   friend class VariableScopeListener;
 
  private:
@@ -342,6 +346,10 @@ class Instruction {
 
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
+
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 

@@ -33,7 +33,9 @@ using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
 
 struct KernelSignature {
   const char* name;
-  KernelArgsTuple args;
+  paddle::SmallVector<const char*> input_names;
+  paddle::SmallVector<const char*> attr_names;
+  paddle::SmallVector<const char*> output_names;
 
   KernelSignature() = default;
 
@@ -41,12 +43,18 @@ struct KernelSignature {
                   paddle::SmallVector<const char*>&& inputs,
                   paddle::SmallVector<const char*>&& attrs,
                   paddle::SmallVector<const char*>&& outputs)
-      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+      : name(kernel_name),
+        input_names(std::move(inputs)),
+        attr_names(std::move(attrs)),
+        output_names(std::move(outputs)) {}
   KernelSignature(const char* kernel_name,
                   const paddle::SmallVector<const char*>& inputs,
                   const paddle::SmallVector<const char*>& attrs,
                   const paddle::SmallVector<const char*>& outputs)
-      : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+      : name(kernel_name),
+        input_names(inputs),
+        attr_names(attrs),
+        output_names(outputs) {}
 
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
@@ -54,7 +62,9 @@ struct KernelSignature {
       : name(other.name), args(other.args) {}
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
-    args = other.args;
+    input_names = other.input_names;
+    attr_names = other.attr_names;
+    output_names = other.output_names;
     return *this;
   }
 };
