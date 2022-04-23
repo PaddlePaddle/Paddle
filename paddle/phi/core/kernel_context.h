@@ -17,11 +17,11 @@
 #include <iterator>
 #include <utility>
 
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -128,14 +128,7 @@ class KernelContext {
   }
 
   template <typename AttrType>
-  const AttrType& AttrAt(size_t idx) const {
-    try {
-      return paddle::get<AttrType>(attrs_.at(idx));
-    } catch (paddle::bad_variant_access const& ex) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Attribute cast error in Op Kernel Context."));
-    }
-  }
+  const AttrType& AttrAt(size_t idx) const;
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
