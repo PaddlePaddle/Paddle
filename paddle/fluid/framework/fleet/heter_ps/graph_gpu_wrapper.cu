@@ -80,7 +80,7 @@ void GraphGpuWrapper::initialize() {
   resource->enable_p2p();
   GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1);
   g->init_cpu_table(table_proto);
-  graph_table = (char *)&g;
+  graph_table = (char *)g;
   g->cpu_graph_table->Load(node_file_name, "nuser");
   g->cpu_graph_table->Load(node_file_name, "nitem");
   std::remove(node_file_name);
