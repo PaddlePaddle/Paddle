@@ -568,8 +568,8 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_phi_kernel_) {
     PreparedOpRunPtImpl<egr::EagerVariable>(
-        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
-        outs, attrs, default_attrs);
+        op_, kernel_type_, arg_map_fn_, pt_kernel_signature_, pt_kernel_,
+        dev_ctx_, ins, outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<egr::EagerVariable>(op_, ctx_, kernel_type_, func_,
                                           dev_ctx_, ins, outs, attrs,
