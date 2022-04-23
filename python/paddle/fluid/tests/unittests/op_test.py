@@ -1781,7 +1781,6 @@ class OpTest(unittest.TestCase):
             else:
                 abs_a[abs_a < 1e-3] = 1
 
-            assert a.shape == b.shape, "shape is not equal."
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
