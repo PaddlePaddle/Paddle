@@ -23,9 +23,10 @@ from paddle import _C_ops
 
 class TestSparseUnary(unittest.TestCase):
     def assert_raises_on_dense_tensor(self, sparse_func):
-        dense_x = paddle.ones((2, 3))
-        with self.assertRaises(ValueError):
-            sparse_func(dense_x)
+        with _test_eager_guard():
+            dense_x = paddle.ones((2, 3))
+            with self.assertRaises(ValueError):
+                sparse_func(dense_x)
 
     def compare_with_dense(
             self,
