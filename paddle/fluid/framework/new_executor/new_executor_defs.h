@@ -111,8 +111,6 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
 
-  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
-
   void SetSkipLoD(bool skip);
 
  protected:

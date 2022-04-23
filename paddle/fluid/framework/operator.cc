@@ -1083,10 +1083,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return ToVarType(var->Type());
   }
 
-  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
-    return nullptr;
-  }
-
  private:
   const std::vector<Variable*>& InputVars(const std::string& name) const {
     auto it = ctx_.inputs.find(name);

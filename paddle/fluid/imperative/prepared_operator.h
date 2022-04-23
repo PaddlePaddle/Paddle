@@ -154,6 +154,7 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
+             const phi::ArgumentMappingFn* arg_map_fn,
              framework::KernelSignature&& kernel_signature,
              const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
@@ -205,6 +206,7 @@ class PreparedOp {
   // we may polish the implementation here
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
+  const phi::ArgumentMappingFn* arg_map_fn_;
   framework::KernelSignature pt_kernel_signature_;
   const phi::Kernel& pt_kernel_;
 };

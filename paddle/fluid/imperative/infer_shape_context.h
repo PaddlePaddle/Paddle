@@ -38,14 +38,16 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const framework::AttributeMap* attr,
       const framework::AttributeMap* default_attr, const std::string op_type,
       const framework::OpKernelType* op_kernel_type = nullptr,
-      const phi::ArgumentMappingFn* arg_map_fn = nullptr)
+      const phi::ArgumentMappingFn* arg_map_fn = nullptr,
+      const phi::KernelArgsDef* kernel_arg_defs = nullptr)
       : var_map_in_(in),
         var_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
         op_type_(op_type),
         op_kernel_type_(op_kernel_type),
-        arg_map_fn_(arg_map_fn) {}
+        arg_map_fn_(arg_map_fn),
+        kernel_arg_defs_(kernel_arg_defs) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -387,6 +389,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return arg_map_fn_;
   }
 
+  const phi::KernelArgsDef* GetPhiKernelArgsDefs() const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        kernel_arg_defs_,
+        platform::errors::NotFound(
+            "The Kernel attribute defs of %s op is not found.", op_type_));
+    return kernel_arg_defs_;
+  }
+
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
@@ -449,6 +459,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const std::string op_type_;
   const framework::OpKernelType* op_kernel_type_;
   const phi::ArgumentMappingFn* arg_map_fn_;
+  const phi::KernelArgsDef* kernel_arg_defs_;
 };
 
 }  // namespace imperative

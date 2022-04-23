@@ -118,6 +118,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
+                       const phi::ArgumentMappingFn* arg_map_fn,
                        framework::KernelSignature&& kernel_signature,
                        const phi::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
@@ -127,6 +128,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       func_(nullptr),
       dev_ctx_(dev_ctx),
       run_phi_kernel_(true),
+      arg_map_fn_(arg_map_fn),
       pt_kernel_signature_(std::move(kernel_signature)),
       pt_kernel_(pt_kernel) {}
 
@@ -246,7 +248,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
-      return PreparedOp(op, empty_ctx, expected_kernel_key,
+      return PreparedOp(op, empty_ctx, expected_kernel_key, arg_map_fn,
                         std::move(pt_kernel_signature), pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
@@ -483,6 +485,7 @@ template <typename VarType>
 static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::OpKernelType& kernel_type,
+    const phi::ArgumentMappingFn* arg_map_fn,
     const framework::KernelSignature& pt_kernel_signature,
     const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
@@ -494,7 +497,7 @@ static void PreparedOpRunPtImpl(
                                        1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type,
-        &pt_kernel_signature);
+        arg_map_fn, &kernel.args_def());
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
@@ -536,9 +539,9 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
   if (run_phi_kernel_) {
-    PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
-                                 pt_kernel_, dev_ctx_, ins, outs, attrs,
-                                 default_attrs);
+    PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, arg_map_fn_,
+                                 pt_kernel_signature_, pt_kernel_, dev_ctx_,
+                                 ins, outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
                                outs, attrs, default_attrs);
@@ -551,8 +554,8 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const framework::AttributeMap& default_attrs) {
   if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
-        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
-        outs, attrs, default_attrs);
+        op_, kernel_type_, arg_map_fn_, pt_kernel_signature_, pt_kernel_,
+        dev_ctx_, ins, outs, attrs, default_attrs);
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);

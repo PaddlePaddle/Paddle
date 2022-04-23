@@ -393,11 +393,6 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
   SetDims(vars, dims);
 }
 
-const phi::ArgumentMappingFn*
-InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
-  return nullptr;
-}
-
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }

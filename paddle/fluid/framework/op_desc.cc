@@ -332,8 +332,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   void SetRepeatedDims(const std::string &name,
                        const std::vector<DDim> &dims) override;
 
-  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override;
-
   const OpDesc &op_;
   const BlockDesc &block_;
 };
@@ -961,11 +959,6 @@ bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
-}
-
-const phi::ArgumentMappingFn *
-CompileTimeInferShapeContext::GetPhiArgumentMappingFn() const {
-  return nullptr;
 }
 
 }  // namespace framework
