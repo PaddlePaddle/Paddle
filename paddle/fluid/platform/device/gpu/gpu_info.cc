@@ -142,14 +142,6 @@ class RecordedGpuMallocHelper {
   DISABLE_COPY_AND_ASSIGN(RecordedGpuMallocHelper);
 
  public:
-  ~RecordedGpuMallocHelper() {
-#ifdef PADDLE_WITH_TESTING
-    std::cout << "[CI] GPU " << dev_id_
-              << " memory message : peak memory use = " << peak_size_
-              << std::endl;
-#endif
-  }
-
   static RecordedGpuMallocHelper *Instance(int dev_id) {
     std::call_once(once_flag_, [] {
       int dev_cnt = GetGPUDeviceCount();
@@ -203,7 +195,6 @@ class RecordedGpuMallocHelper {
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      peak_size_ = std::max(cur_size_.load(), peak_size_);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
 
@@ -331,7 +322,6 @@ class RecordedGpuMallocHelper {
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
-  uint64_t peak_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
 

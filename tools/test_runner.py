@@ -20,6 +20,7 @@ import sys
 import paddle
 import paddle.fluid as fluid
 import importlib
+import paddle.fluid.core as core
 from six.moves import cStringIO
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -45,6 +46,16 @@ def main():
                     module = importlib.import_module(module_name)
                     tests = test_loader.loadTestsFromModule(module)
                     res = unittest.TextTestRunner(stream=buffer).run(tests)
+
+                    if core.is_compiled_with_cuda():
+                        print("\n=========GPU Memory Use (Bytes)=========")
+                        dev_count = core.get_cuda_device_count()
+                        for dev_id in range(dev_count):
+                            print(
+                                f"[max memory reserved] gpu {dev_id} : {paddle.device.cuda.max_memory_reserved(dev_id)}"
+                            )
+                        print("========================================")
+
                     if not res.wasSuccessful():
                         some_test_failed = True
                         print(
