@@ -37,13 +37,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const NameVarMap<VarType>* in, const NameVarMap<VarType>* out,
       const framework::AttributeMap* attr,
       const framework::AttributeMap* default_attr, const std::string op_type,
-      const framework::OpKernelType* op_kernel_type = nullptr)
+      const framework::OpKernelType* op_kernel_type = nullptr,
+      const phi::ArgumentMappingFn* arg_map_fn = nullptr)
       : var_map_in_(in),
         var_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
         op_type_(op_type),
-        op_kernel_type_(op_kernel_type) {}
+        op_kernel_type_(op_kernel_type),
+        arg_map_fn_(arg_map_fn) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -377,6 +379,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         "SetLoDLevel function not support in dygraph mode"));
   }
 
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        arg_map_fn_,
+        platform::errors::NotFound(
+            "The ArgumentMappingFn of %s op is not found.", op_type_));
+    return arg_map_fn_;
+  }
+
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
@@ -438,6 +448,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
   const framework::OpKernelType* op_kernel_type_;
+  const phi::ArgumentMappingFn* arg_map_fn_;
 };
 
 }  // namespace imperative

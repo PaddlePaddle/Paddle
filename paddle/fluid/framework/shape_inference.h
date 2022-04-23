@@ -113,6 +113,8 @@ class InferShapeContext {
   virtual paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string &name) const = 0;
 
+  virtual const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const = 0;
+
  protected:
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,

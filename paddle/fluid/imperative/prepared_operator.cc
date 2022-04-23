@@ -477,7 +477,8 @@ static void PreparedOpRunPtImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
-        &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
+        &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type,
+        &pt_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
