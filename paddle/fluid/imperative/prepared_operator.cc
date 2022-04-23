@@ -297,7 +297,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, empty_ctx, expected_kernel_key,
+        return PreparedOp(op, empty_ctx, expected_kernel_key, arg_map_fn,
                           std::move(pt_kernel_signature), pt_cpu_kernel,
                           cpu_ctx);
       }
