@@ -13,32 +13,16 @@
 # limitations under the License.
 #
 
-# fluid_modules exclude API-interface of inference/api and inference/capi_exp
-get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-set(utils_modules stringpiece pretty_log string_helper)
-
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc pd_utils.cc)
 
-# shared inference library deps
-set(SHARED_INFERENCE_DEPS ${fluid_modules} ${phi_modules} analysis_predictor)
+cc_library(paddle_inference_c SRCS ${C_API_SRCS} DEPS paddle_inference)
 
-if (WITH_CRYPTO)
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
-endif (WITH_CRYPTO)
-
-if (WITH_PSCORE)
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service tensor_table)
-endif ()
-
-if (WITH_ONNXRUNTIME)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} onnxruntime_predictor)
-endif (WITH_ONNXRUNTIME)
-
-cc_library(paddle_inference_c SRCS ${C_API_SRCS} DEPS paddle_inference ${fluid_modules} ${phi_modules} ${utils_modules})
+if(NOT ON_INFER)
+    return()
+endif()
 
 # Create inference capi shared library
-cc_library(paddle_inference_c_shared SHARED SRCS ${C_API_SRCS} DEPS paddle_inference ${SHARED_INFERENCE_DEPS})
+cc_library(paddle_inference_c_shared SHARED SRCS ${C_API_SRCS} DEPS paddle_inference)
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME paddle_inference_c)
 if(WIN32)
     target_link_libraries(paddle_inference_c_shared shlwapi.lib)
