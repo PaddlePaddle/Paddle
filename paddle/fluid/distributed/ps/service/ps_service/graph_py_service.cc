@@ -90,6 +90,7 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
   server_size = 0;
   std::vector<std::string> ips_list = split(ips_str, ';');
   int index = 0;
+  VLOG(0) << "start to build server";
   for (auto ips : ips_list) {
     auto ip_and_port = split(ips, ':');
     server_list.push_back(ip_and_port[0]);
@@ -99,6 +100,7 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
     host_sign_list.push_back(ph_host.SerializeToString());
     index++;
   }
+  VLOG(0) << "build server done";
 }
 void GraphPyClient::start_client() {
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;

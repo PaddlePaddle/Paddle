@@ -485,7 +485,7 @@ void RunBrpcPushSparse() {
   VLOG(0) << "make 2 servers";
   server1.set_up(ips_str, 127, node_types, edge_types, 0);
   server2.set_up(ips_str, 127, node_types, edge_types, 1);
-
+  VLOG(0) << "make 2 servers done";
   server1.add_table_feat_conf("user", "a", "float32", 1);
   server1.add_table_feat_conf("user", "b", "int32", 2);
   server1.add_table_feat_conf("user", "c", "string", 1);
@@ -497,7 +497,7 @@ void RunBrpcPushSparse() {
   server2.add_table_feat_conf("user", "c", "string", 1);
   server2.add_table_feat_conf("user", "d", "string", 1);
   server2.add_table_feat_conf("item", "a", "float32", 1);
-
+  VLOG(0) << "add conf 1 done";
   client1.set_up(ips_str, 127, node_types, edge_types, 0);
 
   client1.add_table_feat_conf("user", "a", "float32", 1);
@@ -514,6 +514,7 @@ void RunBrpcPushSparse() {
   client2.add_table_feat_conf("user", "d", "string", 1);
   client2.add_table_feat_conf("item", "a", "float32", 1);
 
+  VLOG(0) << "add conf 2 done";
   server1.start_server(false);
   std::cout << "first server done" << std::endl;
   server2.start_server(false);

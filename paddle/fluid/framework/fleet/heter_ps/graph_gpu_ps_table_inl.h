@@ -827,7 +827,7 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
         std::vector<std::shared_ptr<char>> buffers(number_on_cpu);
         std::vector<int> ac(number_on_cpu);
         auto status = cpu_graph_table->random_sample_neighbors(
-            cpu_keys, sample_size, buffers, ac, false);
+            0, cpu_keys, sample_size, buffers, ac, false);
 
         auto& node = path_[gpu_id][i].nodes_.back();
         int* id_array = reinterpret_cast<int*>(node.val_storage);
