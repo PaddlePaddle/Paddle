@@ -3088,6 +3088,7 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         #check_coverage_build
+
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
