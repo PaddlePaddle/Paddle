@@ -295,7 +295,7 @@ inline static void ParseEinsumEquation(
   }
 }
 
-inline void EinsumInferShape(const std::vector<MetaTensor*>& inputs,
+inline void EinsumInferShape(const std::vector<const MetaTensor*>& inputs,
                              const std::string& equation,
                              MetaTensor* out) {
   // collect the following informations to prepare einsum.

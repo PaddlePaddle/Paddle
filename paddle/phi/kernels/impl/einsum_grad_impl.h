@@ -97,7 +97,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   VLOG(5) << "Start EisumGradKernel:";
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
-  std::vector<LabelMap> label2perms(x.size(), -1);
+  std::vector<LabelMap> label2perms(x.size(), LabelMap(-1));
   std::vector<char> all_labels;  // order: ABO, AO, BO, AB, Reduce
   std::vector<std::vector<int>> ellipsis_dims(2);
   std::vector<int> broadcast_dims;
