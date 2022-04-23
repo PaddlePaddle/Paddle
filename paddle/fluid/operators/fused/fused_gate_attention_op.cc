@@ -35,7 +35,6 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
                    "FusedGateAttention");
 
-    // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
     OP_INOUT_CHECK(ctx->HasOutput("QKVOut"), "Output", "QKVOut",
                    "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"), "Output", "TransposeOut2",
@@ -53,20 +52,17 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
                    "FusedGateAttention");
-    OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
-                   "FusedGateAttention");
 
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedGateAttention");
 
     // x: qkv's input [batch_size, seq_len_m, seq_len_r, c]
-    // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+    // y: qkv's weight: [3, n_head, c, qkv_dim]
     auto input_x_dims = ctx->GetInputDim("X");
     auto qkv_w_dims = ctx->GetInputDim("QKVWeight");
 
     int batch_size = input_x_dims[0];
     int seq_len_m = input_x_dims[1];
     int seq_len_r = input_x_dims[2];
-    int hidden_size = input_x_dims[3];
 
     // qkv_weight[3, n_head, c, qkv_dim]
     int num_head = qkv_w_dims[1];
@@ -78,7 +74,6 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("TransposeOut2",
                       {3, batch_size, seq_len_m, num_head, seq_len_r, c});
 
-    // [batch, num_head, seq_len, out_seq_len]
     ctx->SetOutputDim("QKOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, seq_len_r});
 
@@ -88,10 +83,9 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SoftmaxOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, seq_len_r});
 
-    // [batch_size, num_heads, seq_len, head_dim]
     ctx->SetOutputDim("QKTVOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, c});
-    // [batch_size, seq_len, number of heads*head size]
+
     ctx->SetOutputDim("FMHAOut",
                       {batch_size, seq_len_m, seq_len_r, num_head, c});
 
@@ -101,16 +95,11 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("is_gating") == true) {
       ctx->SetOutputDim("SigmoidOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
-      ctx->SetOutputDim("GateValueOut",
-                        {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateBiasOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
     }
-
-    ctx->SetOutputDim("OutLinearOut",
-                      {batch_size, seq_len_m, seq_len_r, hidden_size});
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
   }
@@ -146,11 +135,9 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("SrcMaskOut", "Result in fmha.").AsIntermediate();
     AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
     AddOutput("FMHAGateOut", "Result after fmha.").AsIntermediate();
-    AddOutput("GateValueOut", "Result after fmha and q").AsIntermediate();
     AddOutput("GateBiasOut", "Result after add bias").AsIntermediate();
     AddOutput("SigmoidOut", "Result after fmha.").AsIntermediate();
     AddOutput("GateOut", "Result gate").AsIntermediate();
-    AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
     AddOutput("Y", "Result after attention.");
     AddAttr<bool>("is_gating",
                   "if true, the attention op uses gate architecure, "
@@ -244,9 +231,6 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim(framework::GradVarName("QKVOut"),
                       ctx->GetInputDim("QKVOut"));
-
-    ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
-                      ctx->GetInputDim("OutLinearOut"));
   }
 
  protected:
@@ -330,7 +314,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
 
     op->SetInput("FMHAOut", this->Output("FMHAOut"));
-    op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
     op->SetInput("QKVOut", this->Output("QKVOut"));
 
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
@@ -345,8 +328,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("FMHAOut"),
                   this->OutputGrad("FMHAOut"));
-    op->SetOutput(framework::GradVarName("OutLinearOut"),
-                  this->OutputGrad("OutLinearOut"));
   }
 };
 

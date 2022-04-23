@@ -66,8 +66,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *src_mask_out = ctx.Output<Tensor>("SrcMaskOut");
     auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
     auto *fmha_gate_out = ctx.Output<Tensor>("FMHAGateOut");
-    auto *out_linear_out = ctx.Output<Tensor>("OutLinearOut");
-    auto *gate_value_out = ctx.Output<Tensor>("GateValueOut");
     auto *gate_bias_out = ctx.Output<Tensor>("GateBiasOut");
     auto *gate_out = ctx.Output<Tensor>("GateOut");
 
@@ -78,12 +76,10 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     softmax_out->mutable_data<T>(ctx.GetPlace());
     src_mask_out->mutable_data<T>(ctx.GetPlace());
     fmha_out->mutable_data<T>(ctx.GetPlace());
-    out_linear_out->mutable_data<T>(ctx.GetPlace());
 
     if (is_gating) {
       fmha_gate_out->mutable_data<T>(ctx.GetPlace());
       sigmoid_out->mutable_data<T>(ctx.GetPlace());
-      gate_value_out->mutable_data<T>(ctx.GetPlace());
       gate_bias_out->mutable_data<T>(ctx.GetPlace());
       gate_out->mutable_data<T>(ctx.GetPlace());
     }
@@ -134,8 +130,11 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       n = num_head * c;
       auto gate_attn_compute =
           AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+      // The first gate_bias_out stores the result of the multiplication,
+      // and the second gate_bias_out stores the result of the multiplication +
+      // bias
       gate_attn_compute.ComputeForward(gate_weight, input_x, gate_bias,
-                                       gate_value_out, gate_bias_out);
+                                       gate_bias_out, gate_bias_out);
       auto gate_compute = GateRef<T>(ctx.cuda_device_context());
       // backward mul value
       fmha_gate_out->ShareDataWith(*fmha_out);
@@ -157,7 +156,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     // std::cout << "fmha_out: " << fmha_out << "\n";
     // std::cout << "out_linear_bias: " << *out_linear_bias << "\n";
     out_linear_compute.ComputeForward(out_linear_weight, fmha_out,
-                                      out_linear_bias, out_linear_out, out);
+                                      out_linear_bias, out, out);
     // std::cout << "out: " << *out << "\n";
     // std::cout << "out_linear_out: " << *out_linear_out << "\n";
 
@@ -202,9 +201,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *fmha_gate_out = ctx.Input<Tensor>("FMHAGateOut");
 
     auto *src_mask_out = ctx.Input<Tensor>("SrcMaskOut");
-    auto *out_linear_out = ctx.Input<Tensor>("OutLinearOut");
     auto *src_mask_out_data = src_mask_out->data<T>();
-    auto *out_linear_out_data = out_linear_out->data<T>();
 
     // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -223,11 +220,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_src_mask_out =
         ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
     auto *d_fmha_out = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
-    auto *d_out_linear_out =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearOut"));
 
     auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
-
     auto *d_qkv_out_data = d_qkv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qktv_out_data = d_qktv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_transpose_out_2_data =
@@ -237,8 +231,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_softmax_out_data = d_softmax_out->mutable_data<T>(ctx.GetPlace());
     auto *d_src_mask_out_data = d_src_mask_out->mutable_data<T>(ctx.GetPlace());
     auto *d_fmha_out_data = d_fmha_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_out_linear_out_data =
-        d_out_linear_out->mutable_data<T>(ctx.GetPlace());
 
     // parameter grad
     auto *d_qkv_weight =
