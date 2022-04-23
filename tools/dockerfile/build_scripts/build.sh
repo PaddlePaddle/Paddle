@@ -138,11 +138,13 @@ for PYTHON in /opt/python/*/bin/python; do
     # Add matching directory of libpython shared library to library lookup path
     LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
 
-    # Smoke test to make sure that our Pythons work, and do indeed detect as
-    # being manylinux compatible:
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
-    # Make sure that SSL cert checking works
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    if [ "$(dirname $(dirname ${PYTHON}))" != "/opt/python/cp310-cp310" ]; then
+        # Smoke test to make sure that our Pythons work, and do indeed detect as
+        # being manylinux compatible:
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
+        # Make sure that SSL cert checking works
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    fi
 done
 
 # Restore LD_LIBRARY_PATH
