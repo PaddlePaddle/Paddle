@@ -171,6 +171,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::INT64);
       } else if (arg_type == std::type_index(typeid(float))) {
         args_def->AppendAttribute(AttributeType::FLOAT32);
+      } else if (arg_type == std::type_index(typeid(double))) {
+        args_def->AppendAttribute(AttributeType::FLOAT64);
       } else if (arg_type == std::type_index(typeid(std::string))) {
         args_def->AppendAttribute(AttributeType::STRING);
       } else if (arg_type ==

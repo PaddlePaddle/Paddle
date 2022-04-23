@@ -129,6 +129,7 @@ enum class AttributeType {
   INT32,
   INT64,
   FLOAT32,
+  FLOAT64,
   STRING,
   BOOLS,
   INT32S,

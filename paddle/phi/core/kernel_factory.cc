@@ -154,6 +154,9 @@ std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
     case AttributeType::FLOAT32:
       os << "float";
       break;
+    case AttributeType::FLOAT64:
+      os << "double";
+      break;
     case AttributeType::STRING:
       os << "std::string";
       break;
