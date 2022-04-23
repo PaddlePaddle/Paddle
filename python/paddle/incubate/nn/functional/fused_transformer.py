@@ -494,17 +494,16 @@ def fused_gate_attention(x,
                          qkv_weight,
                          gate_weight=None,
                          linear_weight=None,
-                         is_gating=True,
-                         qkv_bias=None,
                          gate_bias=None,
                          linear_bias=None,
                          nonbatched_bias=None,
                          attn_mask=None,
+                         is_gating=True,
                          training=True,
                          name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
-    Multi-Head Attention performs multiple parallel attention to jointly attending
+    Gate Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
 
@@ -516,10 +515,7 @@ def fused_gate_attention(x,
         v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
         logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k) + bias
 
-
         if nonbatched_bias is not None:
-            # wait if using async communication and dap, otherwise do nothing
-            nonbatched_bias = all_gather_opp(nonbatched_bias, axis=2, sync=self.comm_sync)
             logits += paddle.unsqueeze(nonbatched_bias, axis=1)
 
         weights = nn.functional.softmax(logits)
@@ -536,12 +532,15 @@ def fused_gate_attention(x,
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
-            `[batch\_size, seq\_len_\m, seq\_len_\r, embed\_dim]`.
-        qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
-        linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
+            `[batch_size, seq_len_m, seq_len_r, qkv_dim]`.
+        qkv_weight (Tensor): The qkv weight tensor. The shape is ` [num_head, c, qkv_dim] `.
+        gate_weight (Tensor, optional): The gate weight tensor. The shape is [qkv_dim, num_head, c]
+        linear_weight (Tensor): The linear weight tensor. The shape is `[num_head, c, out_dim]`.
+        linear_bias (Tensor): The bias of linear. The shape is `[out_dim]`. Default None.
+        attn_mask (Tensor):  The mask tensor. The shape is `[]`. Default None.
+        gate_bias (Tensor, optional): The gate bias tensor. The shape is `[num_head, c]`. Default None.
+        nonbatched_bias (Tensor, optional): The bias of linear. The shape is `[]`. Default None.
         is_gating (bool, optional): whether it is is_gating (True). Default True.
-        linear_bias (Tensor): The bias of linear. The shape is `[embed_dim]`. Default None.
-        attn_mask (Tensor):  A tensor used in multi-head attention to prevents attention to
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -555,30 +554,35 @@ def fused_gate_attention(x,
             import paddle
             import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # qkv_weight: [3, num_head, head_dim, embed_dim]
-            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            # qkv_bias: [3, num_head, head_dim]
-            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            # input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
+            x = paddle.rand(shape=(2, 4, 3, 128), dtype="float32")
+            # qkv_weight:  [3，n_head, c, qkv_dim]
+            qkv_weight = paddle.rand(shape=(3, 8, 32, 128), dtype="float32")
+            
             # linear_weight: [embed_dim, embed_dim]
             linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
             # linear_bias: [embed_dim]
             linear_bias = paddle.rand(shape=[128], dtype="float32")
-            # self attention mask: [batch_size, num_heads, seq_len, seq_len]
             attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            gating_w = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            gating_b = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            nonbatched_bias = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
 
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_gate_head_attention(
-                x, qkv_weight, linear_weight, False,
-                None, None, None, None, 1e-5, qkv_bias,
-                linear_bias, None, attn_mask)
-            # [2, 4, 128]
+            # output: [batch_size, seq_len_m, seq_len_r, qkv_dim]
+            output = F.fused_gate_attention( x=q_data, 
+                    qkv_weight = qkv_weight, 
+                    linear_weight=self.output_w, 
+                    gate_weight = self.gating_w, 
+                    linear_bias=self.output_b, 
+                    gate_bias=self.gating_b, 
+                    nonbatched_bias=nonbatched_bias,
+                    attn_mask=bias, 
+                    is_gating =self.gating)
+            # [2, 4, 3, 128]
             print(output.shape)
     """
     if _non_static_mode():
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
             x, qkv_weight, gate_weight, linear_weight, gate_bias, linear_bias,
             nonbatched_bias, attn_mask, 'is_gating', is_gating)
-        # print(cache_kv_out)
         return final_out

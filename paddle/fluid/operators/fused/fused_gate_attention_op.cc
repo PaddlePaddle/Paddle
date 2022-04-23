@@ -28,35 +28,35 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGateAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QKVWeight"), "Input", "QKVWeight",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
     OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
     // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
     OP_INOUT_CHECK(ctx->HasOutput("QKVOut"), "Output", "QKVOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"), "Output", "TransposeOut2",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("QKOut"), "Output", "QKOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("QKTVOut"), "Output", "QKTVOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
     OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"), "Output", "SrcMaskOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
     OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"), "Output", "SoftmaxOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
     OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
-                   "FusedGateAttentionOp");
+                   "FusedGateAttention");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedAttentionOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedGateAttention");
 
     // x: qkv's input [batch_size, seq_len_m, seq_len_r, c]
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
@@ -189,18 +189,11 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    //     PADDLE_ENFORCE_EQ(
-    //         ctx->Attrs().Get<bool>("attn_dropout_is_test"), false,
-    //         platform::errors::InvalidArgument(
-    //             "GradOp is only callable when attn_dropout_is_test is
-    //             false"));
-
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "FusedGateAttentionGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGateAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("QKVWeight"), "Input", "QKVWeight",
-                   "FusedGateAttentionGradOp");
+                   "FusedGateAttentionGrad");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
-                   "FusedGateAttentionGradOp");
+                   "FusedGateAttentionGrad");
 
     if (ctx->Attrs().Get<bool>("is_gating") == true) {
       ctx->SetOutputDim(framework::GradVarName("QKVOut"),
@@ -273,10 +266,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("fused_gate_attention_grad");
-
-    op->SetInput("IntermediateOut", this->EmptyOutput());
-    op->SetOutput(framework::GradVarName("IntermediateOut"),
-                  this->EmptyOutputGrad());
 
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 

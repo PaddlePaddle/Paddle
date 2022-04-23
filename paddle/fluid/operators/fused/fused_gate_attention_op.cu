@@ -99,11 +99,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     int batch_size = input_x_dims[0];
     int seq_len_m = input_x_dims[1];
     int seq_len_r = input_x_dims[2];
-    int hidden_size = input_x_dims[3];
+    int hidden_size = input_x_dims[3];  // qkv_dim
 
     // qkv_weight[3, n_head, c, qkv_dim]
     int num_head = qkv_w_dims[1];
     int c = qkv_w_dims[2];
+
+    // std::cout << batch_size << "\t" << seq_len_m << "\t" << seq_len_r << "\t"
+    // << hidden_size << "\t" << num_head << "\t" << c << "\n";
 
     auto *x_data = input_x->data<T>();
     auto *qkv_weight_data = qkv_weight->data<T>();
@@ -152,13 +155,11 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
 
     // std::cout << "out_linear_weight: " << *out_linear_weight << "\n";
     // std::cout << "fmha_out: " << fmha_out << "\n";
-    // std::cout << "out_linear_bias: " << out_linear_bias << "\n";
+    // std::cout << "out_linear_bias: " << *out_linear_bias << "\n";
     out_linear_compute.ComputeForward(out_linear_weight, fmha_out,
                                       out_linear_bias, out_linear_out, out);
     // std::cout << "out: " << *out << "\n";
     // std::cout << "out_linear_out: " << *out_linear_out << "\n";
-    // tensor model parallel
-    // AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
 
     // int64_t allocated = memory::StatGetCurrentValue("Allocated", 0);
     // std::cout << "forward allocated: " << (allocated / 1024 / 1024 / 1024) <<
@@ -180,11 +181,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     // fw input
     auto *input_x = ctx.Input<Tensor>("X");
     auto *x_data = input_x->data<T>();
-    // auto *ln_scale_data = (ln_scale == nullptr ? nullptr :
-    // ln_scale->data<U>());
-    // auto *ln_2_scale_data =
-    // (ln_2_scale == nullptr ? nullptr : ln_2_scale->data<U>());
-    // fw parameters.
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
     auto *gate_weight = ctx.Input<Tensor>("GateWeight");
@@ -266,7 +262,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
         d_out_linear_weight->mutable_data<T>(ctx.GetPlace());
     auto *d_out_linear_bias_data =
         d_out_linear_bias->mutable_data<T>(ctx.GetPlace());
-    d_gate_bias->mutable_data<T>(ctx.GetPlace());
 
     if (nonbatched_bias != nullptr) {
       d_nonbatched_bias->mutable_data<T>(ctx.GetPlace());
@@ -276,6 +271,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       d_sigmoid_out->mutable_data<T>(ctx.GetPlace());
       d_gate_weight->mutable_data<T>(ctx.GetPlace());
       d_gate_bias_out->mutable_data<T>(ctx.GetPlace());
+      d_gate_bias->mutable_data<T>(ctx.GetPlace());
       d_gate_out->mutable_data<T>(ctx.GetPlace());
     }
 
@@ -287,8 +283,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     int seq_len_r = input_x_dims[2];
     int hidden_size = input_x_dims[3];
 
-    int num_head = qkv_w_dims[2];
-    int c = qkv_w_dims[3];
+    // qkv_weight[3, n_head, c, qkv_dim]
+    int num_head = qkv_w_dims[1];
+    int c = qkv_w_dims[2];
+
+    // std::cout << batch_size << "\t" << seq_len_m << "\t" << seq_len_r << "\t"
+    // << hidden_size << "\t" << num_head << "\t" << c << "\n";
 
     Tensor d_residual;
     d_residual.Resize(input_x_dims);
@@ -312,7 +312,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto out_linear_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
     // std::cout << "fmha_out: " << *fmha_out << "\n";
-    // std::cout << "out_linear_weight: " << *out_linear_weight << "\n";
+    // std::cout << "d_out_linear_bias: " << *d_out_linear_bias << "\n";
     // std::cout << "d_y: " << *d_y << "\n";
     // std::cout << "d_fmha_out: " << *d_fmha_out << "\n";
 
