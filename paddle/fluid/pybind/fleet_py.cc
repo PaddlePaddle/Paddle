@@ -328,7 +328,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
-      .def("load_node_file", &GraphGpuWrapper::load_node_file)
+      .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif
 
