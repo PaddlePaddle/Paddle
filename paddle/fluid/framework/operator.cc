@@ -939,7 +939,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
                framework::DataLayout::kMKLDNN));
-    } catch (std::bad_cast exp) {
+    } catch (const std::bad_cast& exp) {
       return false;
     }
   }
@@ -1964,6 +1964,36 @@ Scope* OperatorWithKernel::PrepareData(
 }
 
 void OperatorWithKernel::ParseInputDataType(
+    const Variable* var, const std::string& name,
+    proto::VarType::Type* data_type) const {
+  if (var != nullptr) {
+    const Tensor* t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<phi::SelectedRows>()) {
+      t = &(var->Get<phi::SelectedRows>().value());
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto t_arr = &var->Get<LoDTensorArray>();
+      for (size_t j = 0; j < t_arr->size(); j++) {
+        if (t_arr->at(j).IsInitialized()) {
+          t = &(t_arr->at(j));
+        }
+      }
+    }
+    if (t != nullptr) {
+      PADDLE_ENFORCE_EQ(
+          t->IsInitialized(), true,
+          platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                            "contains uninitialized Tensor.",
+                                            Type(), name));
+      *data_type = paddle::framework::TransToProtoVarType(t->dtype());
+    }
+  }
+}
+
+void OperatorWithKernel::ParseMultiInputDataType(
     const std::vector<Variable*>& vars, const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
@@ -2014,9 +2044,12 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : ctx.InNameList()) {
-    const std::vector<Variable*> vars = ctx.MultiInputVar(input);
-    ParseInputDataType(vars, input, &data_type);
+  for (auto* name : ctx.InNameList()) {
+    if (ctx.InputSize(*name) == 1UL) {
+      ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
+    } else {
+      ParseMultiInputDataType(ctx.MultiInputVar(*name), *name, &data_type);
+    }
   }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
@@ -2030,7 +2063,11 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  ParseInputDataType(ctx.MultiInputVar(name), name, &data_type);
+  if (ctx.InputSize(name) == 1UL) {
+    ParseInputDataType(ctx.InputVar(name), name, &data_type);
+  } else {
+    ParseMultiInputDataType(ctx.MultiInputVar(name), name, &data_type);
+  }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
@@ -2116,17 +2153,9 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-  if (arg_map_fn_ == nullptr) {
-    auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
-    if (arg_map_fn) {
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
-    } else {
-      auto func =
-          [this](const phi::ArgumentMappingContext& ctx) -> KernelSignature {
-        return phi::DefaultKernelSignatureMap::Instance().Get(type_);
-      };
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
-    }
+  auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
+  if (arg_map_fn == nullptr) {
+    return phi::DefaultKernelSignatureMap::Instance().Get(type_);
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
