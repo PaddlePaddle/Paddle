@@ -402,16 +402,11 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
 CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
+  auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   InferShapeArgumentMappingContext arg_map_context(*ctx);
-  phi::KernelSignature signature;
-  auto* arg_map_fn = ctx->GetPhiArgumentMappingFn();
-  if (arg_map_fn == nullptr) {
-    auto tmp_arg_map_fn =
-        phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
-    signature = std::move(tmp_arg_map_fn(arg_map_context));
-  } else {
-    signature = std::move((*arg_map_fn)(arg_map_context));
-  }
+  KernelSignature signature =
+      arg_map_fn ? (*arg_map_fn)(arg_map_context)
+                 : phi::DefaultKernelSignatureMap::Instance().Get(op_type);
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context

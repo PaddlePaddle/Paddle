@@ -2121,8 +2121,16 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   if (arg_map_fn_ == nullptr) {
-    arg_map_fn_.reset(new phi::ArgumentMappingFn(
-        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
+    auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
+    if (arg_map_fn) {
+      arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
+    } else {
+      auto func =
+          [this](const phi::ArgumentMappingContext& ctx) -> KernelSignature {
+        return phi::DefaultKernelSignatureMap::Instance().Get(type_);
+      };
+      arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
+    }
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
