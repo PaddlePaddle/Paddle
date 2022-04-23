@@ -1004,6 +1004,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     SetDims(vars, dims);
   }
 
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
  protected:
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(
