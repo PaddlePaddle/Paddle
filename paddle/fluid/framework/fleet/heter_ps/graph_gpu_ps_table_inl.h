@@ -499,8 +499,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
 
   */
 
-  NeighborSampleResult* result =
-      new NeighborSampleResult(sample_size, len, resource_->dev_id(gpu_id));
+  NeighborSampleResult* result = new NeighborSampleResult();
+  result->initialize(sample_size, len, resource_->dev_id(gpu_id));
   if (len == 0) {
     return result;
   }
@@ -688,8 +688,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
 
 NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
     int gpu_id, int64_t* key, int sample_size, int len, bool cpu_query_switch) {
-  NeighborSampleResult* result =
-      new NeighborSampleResult(sample_size, len, resource_->dev_id(gpu_id));
+  NeighborSampleResult* result = new NeighborSampleResult();
+  result->initialize(sample_size, len, resource_->dev_id(gpu_id));
 
   if (len == 0) {
     return result;

@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
@@ -255,6 +256,8 @@ void BindGraphPyClient(py::module* m) {
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+using paddle::framework::GraphGpuWrapper;
+using paddle::framework::NeighborSampleResult;
 
 void BindIndexNode(py::module* m) {
   py::class_<IndexNode>(*m, "IndexNode")
@@ -303,6 +306,20 @@ void BindIndexWrapper(py::module* m) {
       .def("insert_tree_index", &IndexWrapper::insert_tree_index)
       .def("get_tree_index", &IndexWrapper::get_tree_index)
       .def("clear_tree", &IndexWrapper::clear_tree);
+}
+
+void BindNeighborSampleResult(py::module* m) {
+  py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
+      .def(py::init<>())
+      .def("initialize", &NeighborSampleResult::initialize);
+}
+
+void BindGraphGpuWrapper(py::module* m) {
+  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
+      .def(py::init<>())
+      .def("test", &GraphGpuWrapper::test)
+      .def("initialize", &GraphGpuWrapper::initialize)
+      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample);
 }
 
 using paddle::distributed::IndexSampler;

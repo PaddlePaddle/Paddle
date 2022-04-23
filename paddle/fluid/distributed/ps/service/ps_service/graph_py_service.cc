@@ -43,6 +43,8 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
       table_feat_mapping[idx][feat_name] = (int)table_feat_mapping[idx].size();
     }
     int feat_idx = table_feat_mapping[idx][feat_name];
+    VLOG(0) << "table_name " << table_name << " mapping id " << id
+            << " feat name " << feat_name << " feat id" << feat_idx;
     if (feat_idx < table_feat_conf_feat_name[idx].size()) {
       // overide
       table_feat_conf_feat_name[idx][feat_idx] = feat_name;
@@ -55,6 +57,7 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
       table_feat_conf_feat_shape[idx].push_back(feat_shape);
     }
   }
+  VLOG(0) << "add conf over";
 }
 
 void add_graph_node(std::string name, std::vector<int64_t> node_ids,
