@@ -322,8 +322,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def(py::init<>())
       .def("test", &GraphGpuWrapper::test)
       .def("initialize", &GraphGpuWrapper::initialize)
-      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample);
-  .def("set_device", &GraphGpuWrapper::set_device)
+      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("set_device", &GraphGpuWrapper::set_device)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
