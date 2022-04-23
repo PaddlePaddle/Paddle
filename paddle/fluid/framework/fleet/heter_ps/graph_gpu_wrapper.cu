@@ -158,6 +158,14 @@ void GraphGpuWrapper::init_service() {
   graph_table = (char *)g;
 }
 
+void GraphGpuWrapper::upload_batch(std::vector<std::vector<int64_t>> &ids) {
+  GpuPsGraphTable *g =  (GpuPsGraphTable *)graph_table);
+  std::vector<paddle::framework::GpuPsCommGraph> vec;
+  for (int i = 0; i < ids.size(); i++) {
+    vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(0, ids[i]));
+  }
+  g->build_graph_from_cpu(vec);
+}
 void GraphGpuWrapper::initialize() {
   std::vector<int> device_id_mapping;
   for (int i = 0; i < 2; i++) device_id_mapping.push_back(i);

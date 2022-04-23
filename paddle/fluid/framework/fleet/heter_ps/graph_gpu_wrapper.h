@@ -29,7 +29,7 @@ class GraphGpuWrapper {
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
                     std::vector<std::string>& node_type);
-
+  void upload_batch(std::vector<std::vector<int64_t>>& ids);
   void add_table_feat_conf(std::string table_name, std::string feat_name,
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
