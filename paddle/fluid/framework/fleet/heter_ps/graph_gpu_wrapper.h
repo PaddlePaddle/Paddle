@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 namespace paddle {
 namespace framework {
+#ifdef PADDLE_WITH_HETERPS
 class GraphGpuWrapper {
  public:
   char* graph_table;
@@ -25,5 +26,6 @@ class GraphGpuWrapper {
                                               int sample_size, int len);
   ::paddle::distributed::GraphParameter table_proto;
 };
+#endif
 }
 };

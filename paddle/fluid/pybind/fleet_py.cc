@@ -256,8 +256,10 @@ void BindGraphPyClient(py::module* m) {
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+#ifdef PADDLE_WITH_HETERPS
 using paddle::framework::GraphGpuWrapper;
 using paddle::framework::NeighborSampleResult;
+#endif
 
 void BindIndexNode(py::module* m) {
   py::class_<IndexNode>(*m, "IndexNode")
@@ -308,6 +310,7 @@ void BindIndexWrapper(py::module* m) {
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
 
+#ifdef PADDLE_WITH_HETERPS
 void BindNeighborSampleResult(py::module* m) {
   py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
       .def(py::init<>())
@@ -321,6 +324,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("initialize", &GraphGpuWrapper::initialize)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample);
 }
+#endif
 
 using paddle::distributed::IndexSampler;
 using paddle::distributed::LayerWiseSampler;

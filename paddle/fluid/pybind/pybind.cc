@@ -4563,8 +4563,10 @@ All parameter, weight, gradient are variables in Paddle.
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
+#ifdef PADDLE_WITH_HETERPS
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
+#endif
 #endif
 }
 }  // namespace pybind

@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 namespace paddle {
 namespace framework {
+#ifdef PADDLE_WITH_HETERPS
 std::string nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
@@ -148,5 +149,6 @@ NeighborSampleResult *GraphGpuWrapper::graph_neighbor_sample(int gpu_id,
   return ((GpuPsGraphTable *)graph_table)
       ->graph_neighbor_sample(gpu_id, key, sample_size, len);
 }
+#endif
 }
 };
