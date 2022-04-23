@@ -39,6 +39,42 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
+struct SigmoidMultiplyFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // sigmoid(x) = 1 / (1 + exp(-x))
+  // out = sigmoid(x) * y
+  inline HOSTDEVICE T operator()(T x, T y) const {
+    MPType x_mp = static_cast<MPType>(x);
+    T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
+    return sigmoid_out * y;
+  }
+};
+
+template <typename T>
+struct SigmoidMultiplyGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // Gradient of Multiply:
+  //  dx = dout * y
+  //  dy = dout * x
+  // Gradient of Sigmoid: dx = dout * out * (1 - out)
+  inline HOSTDEVICE phi::Array<T, 2> operator()(const T dout, const T x,
+                                                T y) const {
+    MPType x_mp = static_cast<MPType>(x);
+    T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
+    T d_sigmoid_out = dout * y;
+    phi::Array<T, 2> outs;
+    outs[0] = d_sigmoid_out * sigmoid_out *
+              (static_cast<T>(1.0f) - sigmoid_out);  // dx
+    outs[1] = dout * sigmoid_out;                    // dy
+    return outs;
+  }
+};
+
+template <typename T>
 Tensor *ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                       const Tensor *x, int m, int n, int k) {
   // LOG(INFO) << "Compute Merged QKV Matmul Forward";
@@ -56,7 +92,8 @@ Tensor *ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
 template <typename T>
 Tensor *ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                                        const Tensor *x, const Tensor *d_qkv_out,
-                                       Tensor *d_x, int m, int n, int k) {
+                                       Tensor *d_x, int m, int n, int k,
+                                       bool use_addto) {
   auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
   auto *d_qkv_weight = ctx.Output<Tensor>(framework::GradVarName("QKVWeight"));
   d_qkv_weight->mutable_data<T>(ctx.GetPlace());
@@ -65,7 +102,7 @@ Tensor *ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   auto qkv_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
   qkv_compute.ComputeBackward(x, qkv_weight, d_qkv_out, d_x, d_qkv_weight,
-                              nullptr);
+                              nullptr, use_addto);
   return d_x;
 }
 
@@ -78,11 +115,11 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
   auto *gate_bias_out = ctx.Output<Tensor>("GateBiasOut");
-  auto *sigmoid_out = ctx.Output<Tensor>("SigmoidOut");
+  // auto *sigmoid_out = ctx.Output<Tensor>("SigmoidOut");
   auto *gate_out = ctx.Output<Tensor>("GateOut");
 
   gate_bias_out->mutable_data<T>(ctx.GetPlace());
-  sigmoid_out->mutable_data<T>(ctx.GetPlace());
+  // sigmoid_out->mutable_data<T>(ctx.GetPlace());
   gate_out->mutable_data<T>(ctx.GetPlace());
 
   // The first gate_bias_out stores the result of the multiplication,
@@ -97,8 +134,13 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
 
   // sigmoid_out = sigmoid(gate_bias_out)
   // gate_out = sigmoid_out * fmha_out
-  auto gate_compute = GateRef<T>(ctx.cuda_device_context());
-  gate_compute.ComputeForward(*gate_bias_out, *fmha_out, sigmoid_out, gate_out);
+  // auto gate_compute = GateRef<T>(ctx.cuda_device_context());
+  // gate_compute.ComputeForward(*gate_bias_out, *fmha_out, sigmoid_out,
+  // gate_out);
+  std::vector<const Tensor *> ins = {gate_bias_out, fmha_out};
+  std::vector<Tensor *> outs = {gate_out};
+  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
   return gate_out;
 }
 
@@ -108,8 +150,8 @@ Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                     int k) {
   auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
   auto *gate_bias_out = ctx.Input<Tensor>("GateBiasOut");
-  auto *gate_out = ctx.Input<Tensor>("GateOut");
-  auto *sigmoid_out = ctx.Input<Tensor>("SigmoidOut");
+  // auto *gate_out = ctx.Input<Tensor>("GateOut");
+  // auto *sigmoid_out = ctx.Input<Tensor>("SigmoidOut");
 
   auto *input_x = ctx.Input<Tensor>("X");
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
@@ -117,12 +159,12 @@ Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   auto *d_fmha_out = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
   auto *d_gate_bias_out =
       ctx.Output<Tensor>(framework::GradVarName("GateBiasOut"));
-  auto *d_sigmoid_out =
-      ctx.Output<Tensor>(framework::GradVarName("SigmoidOut"));
+  // auto *d_sigmoid_out =
+  //    ctx.Output<Tensor>(framework::GradVarName("SigmoidOut"));
 
   d_fmha_out->mutable_data<T>(ctx.GetPlace());
   d_gate_bias_out->mutable_data<T>(ctx.GetPlace());
-  d_sigmoid_out->mutable_data<T>(ctx.GetPlace());
+  // d_sigmoid_out->mutable_data<T>(ctx.GetPlace());
 
   auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
   auto *d_gate_weight =
@@ -134,10 +176,15 @@ Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   d_gate_bias->mutable_data<T>(ctx.GetPlace());
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
-  auto gate_compute = GateRef<T>(ctx.cuda_device_context());
-  gate_compute.ComputeBackward(*fmha_out, *gate_bias_out, *gate_out,
-                               *d_gate_out, *sigmoid_out, d_fmha_out,
-                               d_gate_bias_out, d_sigmoid_out);
+  // auto gate_compute = GateRef<T>(ctx.cuda_device_context());
+  // gate_compute.ComputeBackward(*fmha_out, *gate_bias_out, *gate_out,
+  //                              *d_gate_out, *sigmoid_out, d_fmha_out,
+  //                              d_gate_bias_out, d_sigmoid_out);
+  std::vector<const Tensor *> ins = {d_gate_out, gate_bias_out, fmha_out};
+  std::vector<Tensor *> outs = {d_gate_bias_out, d_fmha_out};
+  paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+      T, SigmoidMultiplyGradFunctor<T>, 2>(
+      ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyGradFunctor<T>());
 
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
@@ -365,18 +412,23 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     n = 3 * num_head * c;
     k = hidden_size;
 
-    Tensor d_residual;
-    d_residual.Resize(input_x_dims);
-    d_residual.mutable_data<T>(ctx.GetPlace());
-    ComputeMergedQKVMatmulBackward<T>(ctx, input_x, d_qkv_out, &d_residual, m,
-                                      n, k);
+    bool use_addto = true;
+    if (use_addto) {
+      ComputeMergedQKVMatmulBackward<T>(ctx, input_x, d_qkv_out, d_x, m, n, k,
+                                        true);
+    } else {
+      Tensor d_residual;
+      d_residual.Resize(input_x_dims);
+      d_residual.mutable_data<T>(ctx.GetPlace());
+      ComputeMergedQKVMatmulBackward<T>(ctx, input_x, d_qkv_out, &d_residual, m,
+                                        n, k, false);
 
-    // Gradient accumulation
-    std::vector<const Tensor *> ins = {&d_residual, d_x};
-    std::vector<Tensor *> outs = {d_x};
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
-        ctx.cuda_device_context(), ins, &outs, -1, AddFunctor<T>());
+      // Gradient accumulation
+      std::vector<const Tensor *> ins = {&d_residual, d_x};
+      std::vector<Tensor *> outs = {d_x};
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          ctx.cuda_device_context(), ins, &outs, AddFunctor<T>());
+    }
   }
 };
 
