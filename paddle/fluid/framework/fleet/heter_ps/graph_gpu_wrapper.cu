@@ -52,6 +52,112 @@ void prepare_file(char file_name[]) {
   }
   ofile.close();
 }
+
+void GraphGpuWrapper::set_device(std::vector<int> ids) {
+  for (auto device_id : ids) {
+    device_id_mapping.push_back(device_id);
+  }
+}
+void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
+                                   std::vector<std::string> &node_types) {
+  id_to_edge = edge_types;
+  for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
+    int res = edge_to_id.size();
+    edge_to_id[edge_types[table_id]] = res;
+  }
+  id_to_feature = node_types;
+  for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
+    int res = feature_to_id.size();
+    feature_to_id[node_types[table_id]] = res;
+  }
+  table_feat_mapping.resize(node_types.size());
+  this->table_feat_conf_feat_name.resize(node_types.size());
+  this->table_feat_conf_feat_dtype.resize(node_types.size());
+  this->table_feat_conf_feat_shape.resize(node_types.size());
+}
+
+void GraphGpuWrapper::load_edge_file(std::string name, std::string filepath,
+                                     bool reverse) {
+  // 'e' means load edge
+  std::string params = "e";
+  if (reverse) {
+    // 'e<' means load edges from $2 to $1
+    params += "<" + name;
+  } else {
+    // 'e>' means load edges from $1 to $2
+    params += ">" + name;
+  }
+  if (edge_to_id.find(name) != edge_to_id.end()) {
+    ((GpuPsGraphTable *)graph_table)
+        ->cpu_graph_table->Load(std::string(filepath), params);
+  }
+}
+
+void GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
+  // 'n' means load nodes and 'node_type' follows
+
+  std::string params = "n" + name;
+
+  if (feature_to_id.find(name) != feature_to_id.end()) {
+    ((GpuPsGraphTable *)graph_table)
+        ->cpu_graph_table->Load(std::string(filepath), params);
+  }
+}
+
+void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
+                                          std::string feat_name,
+                                          std::string feat_dtype,
+                                          int feat_shape) {
+  if (feature_to_id.find(table_name) != feature_to_id.end()) {
+    int idx = feature_to_id[table_name];
+    if (table_feat_mapping[idx].find(feat_name) ==
+        table_feat_mapping[idx].end()) {
+      int res = (int)table_feat_mapping[idx].size();
+      table_feat_mapping[idx][feat_name] = res;
+    }
+    int feat_idx = table_feat_mapping[idx][feat_name];
+    VLOG(0) << "table_name " << table_name << " mapping id " << idx;
+    VLOG(0) << " feat name " << feat_name << " feat id" << feat_idx;
+    if (feat_idx < table_feat_conf_feat_name[idx].size()) {
+      // overide
+      table_feat_conf_feat_name[idx][feat_idx] = feat_name;
+      table_feat_conf_feat_dtype[idx][feat_idx] = feat_dtype;
+      table_feat_conf_feat_shape[idx][feat_idx] = feat_shape;
+    } else {
+      // new
+      table_feat_conf_feat_name[idx].push_back(feat_name);
+      table_feat_conf_feat_dtype[idx].push_back(feat_dtype);
+      table_feat_conf_feat_shape[idx].push_back(feat_shape);
+    }
+  }
+  VLOG(0) << "add conf over";
+}
+
+void GraphGpuWrapper::init_service() {
+  table_proto.set_task_pool_size(24);
+
+  table_proto.set_table_name("cpu_graph_table");
+  table_proto.set_use_cache(false);
+  for (int i = 0; i < id_to_edge.size(); i++)
+    table_proto.add_edge_types(id_to_edge[i]);
+  for (int i = 0; i < id_to_feature.size(); i++) {
+    table_proto.add_node_types(id_to_feature[i]);
+    auto feat_node = id_to_feature[i];
+    ::paddle::distributed::GraphFeature *g_f = table_proto.add_graph_feature();
+    for (int x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
+      g_f->add_name(table_feat_conf_feat_name[i][x]);
+      g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
+      g_f->add_shape(table_feat_conf_feat_shape[i][x]);
+    }
+  }
+  std::shared_ptr<HeterPsResource> resource =
+      std::make_shared<HeterPsResource>(device_id_mapping);
+  resource->enable_p2p();
+  GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1);
+  g->init_cpu_table(table_proto);
+  graph_table = (char *)g;
+}
+
 void GraphGpuWrapper::initialize() {
   std::vector<int> device_id_mapping;
   for (int i = 0; i < 2; i++) device_id_mapping.push_back(i);

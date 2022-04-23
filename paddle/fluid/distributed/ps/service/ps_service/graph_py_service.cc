@@ -38,9 +38,13 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
                                          int feat_shape) {
   if (feature_to_id.find(table_name) != feature_to_id.end()) {
     int idx = feature_to_id[table_name];
+    VLOG(0) << "for table name" << table_name << " idx = " << idx;
     if (table_feat_mapping[idx].find(feat_name) ==
         table_feat_mapping[idx].end()) {
-      table_feat_mapping[idx][feat_name] = (int)table_feat_mapping[idx].size();
+      VLOG(0) << "for table name not found,make a new one";
+      int res = (int)table_feat_mapping[idx].size();
+      table_feat_mapping[idx][feat_name] = res;
+      VLOG(0) << "seq id = " << table_feat_mapping[idx][feat_name];
     }
     int feat_idx = table_feat_mapping[idx][feat_name];
     VLOG(0) << "table_name " << table_name << " mapping id " << idx;
@@ -78,11 +82,13 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
     */
   id_to_edge = edge_types;
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
-    edge_to_id[edge_types[table_id]] = edge_to_id.size();
+    int res = (int)edge_to_id.size();
+    edge_to_id[edge_types[table_id]] = res;
   }
   id_to_feature = node_types;
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
-    feature_to_id[node_types[table_id]] = feature_to_id.size();
+    int res = (int)feature_to_id.size();
+    feature_to_id[node_types[table_id]] = res;
   }
   table_feat_mapping.resize(node_types.size());
   this->table_feat_conf_feat_name.resize(node_types.size());
