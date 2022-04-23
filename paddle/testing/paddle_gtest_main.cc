@@ -91,6 +91,7 @@ int main(int argc, char** argv) {
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
       &new_argc, &new_argv_address, false);
   paddle::framework::InitDevices();
+  paddle::framework::InitDefaultKernelSignatureMap();
 
   int ret = RUN_ALL_TESTS();
 
