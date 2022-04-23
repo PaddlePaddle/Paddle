@@ -1198,8 +1198,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  bool use_mkldnn_ctx = ctx.HasAttr("use_mkldnn") &&
-                        ctx.Attr<bool>("use_mkldnn") &&
+  const auto& attrs_map = ctx.Attrs();
+  auto iter = attrs_map.find("use_mkldnn");
+  bool use_mkldnn_ctx = iter != attrs_map.end() &&
+                        BOOST_GET_CONST(bool, iter->second) &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
@@ -2130,7 +2132,7 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
 Scope* OperatorWithKernel::PreparePhiData(
     const Scope& scope, const phi::Kernel& pt_kernel,
     const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
   auto input_defs = pt_kernel.args_def().input_defs();
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -2182,11 +2184,15 @@ Scope* OperatorWithKernel::PreparePhiData(
       if (in_def.backend == phi::Backend::ALL_BACKEND) {
         continue;
       }
-      auto expected_place = phi::TransToPhiPlace(in_def.backend);
-      if (platform::is_same_place(tensor_in->place(), expected_place)) {
+
+      auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+      if (in_def.backend == tensor_backend ||
+          (in_def.backend == phi::Backend::GPUDNN &&
+           tensor_backend == phi::Backend::GPU)) {
         continue;
       }
 
+      auto expected_place = phi::TransToPhiPlace(in_def.backend);
       VLOG(3) << "phi Transform Variable " << input_names[i] << " from "
               << tensor_in->place() << " to " << expected_place;
 
@@ -2223,9 +2229,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature_->args);
-  auto& attr_names = std::get<1>(pt_kernel_signature_->args);
-  auto& output_names = std::get<2>(pt_kernel_signature_->args);
+  auto& input_names = pt_kernel_signature_->input_names;
+  auto& attr_names = pt_kernel_signature_->attr_names;
+  auto& output_names = pt_kernel_signature_->output_names;
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();

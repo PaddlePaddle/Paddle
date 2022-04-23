@@ -41,6 +41,10 @@ limitations under the License. */
 #include "xpu/kernel/simd.h"
 #endif
 
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -56,11 +60,10 @@ class TableContainer
             capacity, ValType()) {}
 };
 #elif defined(PADDLE_WITH_XPU_KP)
-
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
+  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
     xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
     xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
@@ -71,8 +74,27 @@ class XPUCacheArray {
   }
 
   void print() {}
-  // ValType* find(const KeyType& key) { return NULL; }
-  // bool insert(const KeyType& key, const ValType& val) { return true; }
+
+#if defined(__xpu__)
+  __device__ ValType* find(const KeyType& key) {
+    for (int i = 0; i < size_; i++) {
+      if (keys[i] == key) return &vals[i];
+    }
+    return NULL;
+  }
+  __device__ bool insert(const KeyType& key, const ValType& val) {
+    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
+    // one batch
+    if (size_ == capacity_) {
+      return false;
+    } else {
+      keys[size_] = key;
+      vals[size_] = val;
+      size_++;
+      return true;
+    }
+  }
+#endif
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
@@ -109,6 +131,11 @@ class HashTable {
   void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
 
   void show();
+
+#if defined(PADDLE_WITH_XPU_KP)
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
+#endif
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
@@ -151,6 +178,8 @@ class HashTable {
   TableContainer<KeyType, ValType>* container_;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
+  OptimizerConfig* xpu_optimizer_config_;
+  OptimizerConfig cpu_optimizer_config_;
 #endif
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};

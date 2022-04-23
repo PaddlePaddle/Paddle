@@ -642,6 +642,28 @@ void VariableScope::CheckExist(const std::string& name) const {
                                             "%s not in VariableScope.", name));
 }
 
+void VariableScope::ClearListener() {
+  if (scope_ && listener_ && scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << scope_;
+    scope_->DelListener(listener_);
+  }
+  if (local_scope_ && listener_ && local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << local_scope_;
+    local_scope_->DelListener(listener_);
+  }
+}
+
+void VariableScope::ResetListener() {
+  if (scope_ && listener_ && !scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << scope_;
+    scope_->AddListener(listener_);
+  }
+  if (local_scope_ && listener_ && !local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << local_scope_;
+    local_scope_->AddListener(listener_);
+  }
+}
+
 VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
   var_scope_ = var_scope;
 }
@@ -731,6 +753,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
