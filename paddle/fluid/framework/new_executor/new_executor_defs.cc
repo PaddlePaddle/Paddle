@@ -394,7 +394,7 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
 }
 
 const phi::ArgumentMappingFn*
-InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const override {
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
   return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
 }
 
