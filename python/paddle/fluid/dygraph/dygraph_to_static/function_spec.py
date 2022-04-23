@@ -104,7 +104,7 @@ class FunctionSpec(object):
             if isinstance(input_var, np.ndarray):
                 input_var = paddle.static.InputSpec.from_numpy(input_var)
                 _set_spec_stop_gradient(input_var, True)
-            elif isinstance(input_var, core.VarBase):
+            elif isinstance(input_var, (core.VarBase, core.eager.Tensor)):
                 stop_gradient = input_var.stop_gradient
                 input_var = paddle.static.InputSpec.from_tensor(input_var)
                 _set_spec_stop_gradient(input_var, stop_gradient)

@@ -32,54 +32,88 @@ USE_OP(cinn_launch);
 USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
 DECLARE_double(eager_delete_tensor_gb);
+DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_cinn_auto_tune);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 #ifdef PADDLE_WITH_CUDA
-PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 
 namespace paddle::operators {
 
 using framework::paddle2cinn::CinnCompiler;
 
-TEST(CinnLaunchOpTest, TestWithElementwiseAdd) {
-  paddle::framework::InitDevices();
-  platform::SetNumThreads(1);
-  // cache test graph into CinnCompiler
-  const std::string& test_op_out_name = "cinn_launch_op_out";
-  const std::string& add_op_out_name = "add_op_out";
-  auto compilation_key = CinnCompiler::GetInstance()->AddGraph(
-      CreateOnlyElementwiseAddGraph("x", "y", test_op_out_name));
+class TestCinnLaunchOp : public ::testing::Test {
+ public:
+  const char* test_op_out_name = "add_op_out";
+  const char* add_op_out_name = "add_op_out";
+  std::unique_ptr<framework::OperatorBase> cinn_launch_op;
+  std::unique_ptr<framework::OperatorBase> elementwise_add_op;
 
-  // create cinn_launch_op and elementwise_add op
-  auto cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
-      "cinn_launch", {{"X", {"x", "y"}}}, {{"Out", {test_op_out_name}}},
-      {{"compilation_key", compilation_key}});
-  auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
-      "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
-      {{"Out", {add_op_out_name}}}, {{}});
+  void SetUp() override {
+    paddle::framework::InitDevices();
+    platform::SetNumThreads(1);
+    // cache test graph into CinnCompiler
+    auto compilation_key = CinnCompiler::GetInstance()->AddGraph(
+        CreateOnlyElementwiseAddGraph("x", "y", test_op_out_name));
 
-  // Run ops and check the computation results
-  auto run_and_check_fn = [&](const platform::Place& place) {
+    // create cinn_launch_op and elementwise_add op
+    cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
+        "cinn_launch", {{"X", {"x", "y"}}}, {{"Out", {test_op_out_name}}},
+        {{"compilation_key", compilation_key}});
+    elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
+        "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
+        {{"Out", {add_op_out_name}}}, {{}});
+  }
+
+  void RunAndCheck(const platform::Place& place) {
+    // Run ops and check the computation results
     framework::Scope scope;
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
     scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
     scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
-    cinn_launch_op->Run(scope, place);
     elementwise_add_op->Run(scope, place);
+    cinn_launch_op->Run(scope, place);
     CompareOpResult<float>(scope.GetVar(test_op_out_name),
                            scope.GetVar(add_op_out_name));
-  };
-  FLAGS_eager_delete_tensor_gb = -1;
+  }
 
+  void TearDown() override { CinnCompiler::GetInstance()->Clear(); }
+};
+
+TEST_F(TestCinnLaunchOp, TestRunInstructionByPE) {
   // CPU
-  run_and_check_fn(platform::CPUPlace());
-  run_and_check_fn(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
+  // the second run on the same place is to check the cache logic
+  RunAndCheck(platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA
   // GPU
-  run_and_check_fn(platform::CUDAPlace());
-  run_and_check_fn(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
 #endif
+}
+
+TEST_F(TestCinnLaunchOp, TestRunInstructionByCinnProgram) {
+  // set FLAGS_enable_pe_launch_cinn=false to switch to use
+  // default scheduler of CINN to execute the compiled program
+  FLAGS_enable_pe_launch_cinn = false;
+
+  RunAndCheck(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+  // GPU
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+#endif
+}
+
+TEST_F(TestCinnLaunchOp, TestRunWithAutoTuneEnabled) {
+  FLAGS_enable_cinn_auto_tune = true;
+
+  // currently only check on cpu, will add a test for gpu after CINN ready
+  RunAndCheck(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
 }
 
 namespace details {

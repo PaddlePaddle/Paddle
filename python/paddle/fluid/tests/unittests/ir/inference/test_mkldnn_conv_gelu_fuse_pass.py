@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+import paddle
 
 import hypothesis
 from hypothesis import given, settings, seed, example, assume
@@ -104,4 +105,5 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

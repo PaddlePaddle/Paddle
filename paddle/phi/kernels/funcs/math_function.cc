@@ -331,11 +331,19 @@ template struct ColwiseSum<paddle::platform::CPUDeviceContext, double>;
 template struct ColwiseSum<paddle::platform::CPUDeviceContext, int>;
 template struct ColwiseSum<paddle::platform::CPUDeviceContext, int64_t>;
 
+template struct ColwiseSum<phi::CPUContext, float>;
+template struct ColwiseSum<phi::CPUContext, double>;
+template struct ColwiseSum<phi::CPUContext, int>;
+template struct ColwiseSum<phi::CPUContext, int64_t>;
+
 template struct RowwiseSum<paddle::platform::CPUDeviceContext, float>;
 template struct RowwiseSum<paddle::platform::CPUDeviceContext, double>;
 
 template struct RowwiseMean<paddle::platform::CPUDeviceContext, float>;
 template struct RowwiseMean<paddle::platform::CPUDeviceContext, double>;
+
+template struct RowwiseMean<phi::CPUContext, float>;
+template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
 struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {

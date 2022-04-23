@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
 import paddle
+import paddle.static
 
 paddle.enable_static()
 
@@ -26,30 +26,31 @@ paddle.enable_static()
 class TestIpuShard(unittest.TestCase):
     def _test(self):
         # build graph
-        a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-        b = a + 2  # scale : scale * x + bias, ipu_index : no
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 2  # scale : scale * x + bias, ipu_index : no
 
-        with paddle.static.ipu_shard_guard(index=1):
-            c = b + 1  # scale, ipu_index : 1
+            with paddle.static.ipu_shard_guard(index=1):
+                c = b + 1  # scale, ipu_index : 1
+                with paddle.static.ipu_shard_guard(index=2):
+                    d = c * 2  # scale, ipu_index : 2
+                with paddle.static.ipu_shard_guard(index=3):
+                    e = d + 3  # scale, ipu_index : 3
+                    with paddle.static.ipu_shard_guard(index=1):
+                        e = e + 3  # scale, ipu_index : 1
+                        with paddle.static.ipu_shard_guard(index=2):
+                            e = e + 3  # scale, ipu_index : 2
+
+            with paddle.static.ipu_shard_guard(index=1):
+                f = paddle.tensor.pow(e, 2.0)  # pow, ipu_index : 1
+
             with paddle.static.ipu_shard_guard(index=2):
-                d = c * 2  # scale, ipu_index : 2
-            with paddle.static.ipu_shard_guard(index=3):
-                e = d + 3  # scale, ipu_index : 3
-                with paddle.static.ipu_shard_guard(index=1):
-                    e = e + 3  # scale, ipu_index : 1
-                    with paddle.static.ipu_shard_guard(index=2):
-                        e = e + 3  # scale, ipu_index : 2
+                g = f - 1  # scale, ipu_index : 2
 
-        with paddle.static.ipu_shard_guard(index=1):
-            f = paddle.tensor.pow(e, 2.0)  # pow, ipu_index : 1
-
-        with paddle.static.ipu_shard_guard(index=2):
-            g = f - 1  # scale, ipu_index : 2
-
-        h = g + 1  # scale, ipu_index : no
+            h = g + 1  # scale, ipu_index : no
 
         ipu_index_list = []
-        main_prog = paddle.static.default_main_program()
         for op in main_prog.global_block().ops:
             if op.desc.has_attr("ipu_index"):
                 ipu_index_list.append(op.desc.attr("ipu_index"))
@@ -69,30 +70,31 @@ class TestIpuShard(unittest.TestCase):
 class TestIpuPipeline(unittest.TestCase):
     def _test(self):
         # build graph
-        a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-        b = a + 2  # scale : scale * x + bias, ipu_stage : no
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 2  # scale : scale * x + bias, ipu_stage : no
 
-        with paddle.static.ipu_shard_guard(stage=1):
-            c = b + 1  # scale, ipu_stage : 1
+            with paddle.static.ipu_shard_guard(stage=1):
+                c = b + 1  # scale, ipu_stage : 1
+                with paddle.static.ipu_shard_guard(stage=2):
+                    d = c * 2  # scale, ipu_stage : 2
+                with paddle.static.ipu_shard_guard(stage=3):
+                    e = d + 3  # scale, ipu_stage : 3
+                    with paddle.static.ipu_shard_guard(stage=1):
+                        e = e + 3  # scale, ipu_stage : 1
+                        with paddle.static.ipu_shard_guard(stage=2):
+                            e = e + 3  # scale, ipu_stage : 2
+
+            with paddle.static.ipu_shard_guard(stage=1):
+                f = paddle.tensor.pow(e, 2.0)  # pow, ipu_stage : 1
+
             with paddle.static.ipu_shard_guard(stage=2):
-                d = c * 2  # scale, ipu_stage : 2
-            with paddle.static.ipu_shard_guard(stage=3):
-                e = d + 3  # scale, ipu_stage : 3
-                with paddle.static.ipu_shard_guard(stage=1):
-                    e = e + 3  # scale, ipu_stage : 1
-                    with paddle.static.ipu_shard_guard(stage=2):
-                        e = e + 3  # scale, ipu_stage : 2
+                g = f - 1  # scale, ipu_stage : 2
 
-        with paddle.static.ipu_shard_guard(stage=1):
-            f = paddle.tensor.pow(e, 2.0)  # pow, ipu_stage : 1
-
-        with paddle.static.ipu_shard_guard(stage=2):
-            g = f - 1  # scale, ipu_stage : 2
-
-        h = g + 1  # scale, ipu_stage : no
+            h = g + 1  # scale, ipu_stage : no
 
         ipu_index_list = []
-        main_prog = paddle.static.default_main_program()
         for op in main_prog.global_block().ops:
             if op.desc.has_attr("ipu_stage"):
                 ipu_index_list.append(op.desc.attr("ipu_stage"))

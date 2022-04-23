@@ -18,7 +18,7 @@
 #include <atomic>
 #include <memory>
 #include "paddle/fluid/imperative/tracer.h"
-
+#include "paddle/phi/api/ext/op_meta_info.h"
 namespace egr {
 
 class UniqueNameGenerator {
@@ -66,17 +66,31 @@ class Controller {
     VLOG(6) << "Set current tracer for Controller: " << tracer_;
   }
 
-  bool InEagerMode() const { return in_eager_mode_; }
+  const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+  GetOpMetaInfoMap() {
+    return op_meta_info_map_;
+  }
 
-  void SetInEagerMode(bool in_eager_mode) { in_eager_mode_ = in_eager_mode; }
+  void MergeOpMetaInfoMap(const std::unordered_map<
+                          std::string, std::vector<paddle::OpMetaInfo>>& map) {
+    op_meta_info_map_.insert(map.begin(), map.end());
+  }
+
+  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>&
+  GetCustomEdgesSlotMap() {
+    return custom_edges_slot_map_;
+  }
 
  private:
   Controller() = default;
   static Controller* controller_;
   std::shared_ptr<paddle::imperative::Tracer> tracer_{
       new paddle::imperative::Tracer()};
-  // TODO(jiabin): remove when we don't need imperative.
-  bool in_eager_mode_{false};
+  std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>
+      op_meta_info_map_;
+  /* op_type : {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}*/
+  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>
+      custom_edges_slot_map_;
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 

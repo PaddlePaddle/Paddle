@@ -66,8 +66,6 @@ class TestHardSwishNPU(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         # There is a problem that precision of grad result using float32
         # can't satisfy the default precision requirement 
         # when compared with numeric_grads, but the results on 

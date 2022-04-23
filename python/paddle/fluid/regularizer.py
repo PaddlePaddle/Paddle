@@ -16,7 +16,7 @@ from __future__ import print_function
 import logging
 
 from . import framework
-from .framework import in_dygraph_mode, _varbase_creator
+from .framework import _non_static_mode, _varbase_creator
 from . import core
 from paddle import _C_ops
 
@@ -133,8 +133,12 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        if framework.in_dygraph_mode():
-            return _C_ops.scale(param, "scale", self._regularization_coeff)
+        if framework._non_static_mode():
+            if framework.in_dygraph_mode():
+                return _C_ops.final_state_scale(
+                    param, self._regularization_coeff, 0.0, True)
+            else:
+                return _C_ops.scale(param, "scale", self._regularization_coeff)
         else:
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
@@ -237,7 +241,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             sign = block.create_var(dtype=param.dtype, shape=param.shape)
             decay = block.create_var(dtype=param.dtype, shape=param.shape)
         else:

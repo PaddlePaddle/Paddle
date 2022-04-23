@@ -14,7 +14,7 @@
 
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
-#include <llvm/include/llvm/ADT/TypeSwitch.h>
+#include <llvm/ADT/TypeSwitch.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/DialectImplementation.h>
@@ -29,6 +29,7 @@ namespace infrt {
 namespace phi {
 
 void PHIDialect::initialize() {
+  LOG(INFO) << "PHI Dialect initalized";
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_base.cpp.inc"  // NOLINT

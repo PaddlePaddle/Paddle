@@ -25,6 +25,8 @@ from copy import deepcopy
 import inspect
 
 import paddle
+import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 
 from . import parallel_helper
 from .. import unique_name
@@ -35,7 +37,7 @@ from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, 
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -106,7 +108,7 @@ class Layer(object):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_in_dynamic_mode = framework.in_dygraph_mode()
+        self._init_in_dynamic_mode = framework._non_static_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -161,7 +163,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -202,7 +204,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -760,9 +762,10 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase or
+                                         type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a core.VarBase, but received {}.".
+                "The registered buffer should be a Paddle.Tensor, but received {}.".
                 format(type(tensor).__name__))
         else:
             self._buffers[name] = tensor
@@ -904,7 +907,12 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        if in_profiler_mode():
+            with profiler.RecordEvent(self.full_name(),
+                                      profiler.TracerEventType.Forward):
+                outputs = self.forward(*inputs, **kwargs)
+        else:
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -914,7 +922,12 @@ class Layer(object):
         return outputs
 
     def __call__(self, *inputs, **kwargs):
-        return self._dygraph_call_func(*inputs, **kwargs)
+        if (not in_declarative_mode()) and (not self._forward_pre_hooks) \
+            and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode() and (not in_profiler_mode()):
+            self._build_once(*inputs, **kwargs)
+            return self.forward(*inputs, **kwargs)
+        else:
+            return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1154,7 +1167,7 @@ class Layer(object):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase:
+                if isinstance(value, (core.VarBase, core.eager.Tensor)):
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
@@ -1165,6 +1178,8 @@ class Layer(object):
                     # add a persistable buffer.
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
+                    if not value.name:
+                        value.name = unique_name.generate('_buffers_' + name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
@@ -1467,7 +1482,7 @@ class Layer(object):
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
         else:

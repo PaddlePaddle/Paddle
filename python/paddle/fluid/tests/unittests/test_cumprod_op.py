@@ -73,6 +73,7 @@ class TestCumprod(OpTest):
         self.init_params()
         self.init_dtype()
         self.op_type = "cumprod"
+        self.python_api = paddle.cumprod
         self.inputs = {'X': None}
         self.outputs = {'Out': None}
         self.attrs = {'dim': None}
@@ -110,7 +111,7 @@ class TestCumprod(OpTest):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output()
+                self.check_output(check_eager=True)
 
     # test backward.
     def test_check_grad(self):
@@ -119,13 +120,14 @@ class TestCumprod(OpTest):
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
                 if self.dtype == np.float64:
-                    self.check_grad(['X'], 'Out')
+                    self.check_grad(['X'], 'Out', check_eager=True)
                 else:
                     self.check_grad(
                         ['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out])
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
 
 # test float32 case.

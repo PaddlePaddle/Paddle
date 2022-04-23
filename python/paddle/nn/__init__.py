@@ -41,6 +41,7 @@ from .layer.activation import Sigmoid  # noqa: F401
 from .layer.activation import Hardsigmoid  # noqa: F401
 from .layer.activation import LogSigmoid  # noqa: F401
 from .layer.activation import Softmax  # noqa: F401
+from .layer.activation import Softmax2D  # noqa: F401
 from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401
@@ -260,6 +261,7 @@ __all__ = [     #noqa
            'AdaptiveMaxPool1D',
            'TransformerEncoder',
            'Softmax',
+           'Softmax2D',
            'ParameterList',
            'Conv2D',
            'Softshrink',
@@ -306,4 +308,5 @@ __all__ = [     #noqa
            'MaxUnPool2D',
            'MaxUnPool3D',
            'HingeEmbeddingLoss',
+           'Identity',
 ]

@@ -15,6 +15,7 @@
 import abc
 import numpy as np
 import paddle
+from .utils import to_list
 from paddle.io import DataLoader, DistributedBatchSampler
 
 
@@ -51,10 +52,11 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  places,
                  batch_size=1,
                  epochs=1,
-                 steps_per_epoch=1000,
+                 steps_per_epoch=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
-                 drop_last=False):
+                 drop_last=False,
+                 inputs=[]):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
@@ -62,6 +64,8 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             dataset, batch_size, epochs, data_parallel_world_size,
             data_parallel_rank, drop_last)
         self._inner_dataloader = self._create_inner_dataloader()
+        self._steps = self._infer_steps()
+        self._inputs = inputs
 
     def __iter__(self):
         self._cur_step = 0
@@ -69,23 +73,43 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         return self
 
     def __next__(self):
-        if self._cur_step < self.steps_per_epoch:
+        if self._cur_step < self._steps:
             self._cur_step += 1
         else:
             self._inner_dataloader.reset()
             raise StopIteration
 
+    def _infer_steps(self):
+        if self.steps_per_epoch is not None:
+            return self.steps_per_epoch
+        try:
+            steps_per_epoch = len(self.dataset) // self.batch_size
+        except:
+            raise ValueError(
+                "Pleace set `steps_per_epoch` or implement `__len__` methond in dataset class."
+            )
+        return steps_per_epoch
+
     def _create_inner_dataloader(self):
         def data_generator():
             batch_data = None
             for step, data in enumerate(self.dataset):
-                if batch_data is None:
-                    batch_data = [[] for i in range(len(data))]
-                for idx, data_item in enumerate(data):
-                    batch_data[idx].append(np.array(data_item))
-                if (step + 1) % self.batch_size == 0:
-                    yield batch_data[0], batch_data[1]
+                if not isinstance(data, list):
+                    data = to_list(data)
+
+                if self.batch_size == 1:
+                    yield data
                     batch_data = None
+                else:
+                    if batch_data is None:
+                        batch_data = [[] for i in range(len(data))]
+
+                    for idx in range(len(data)):
+                        batch_data[idx].append(data[idx])
+
+                    if (step + 1) % self.batch_size == 0:
+                        yield batch_data
+                        batch_data = None
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=self.feed_list, capacity=70, iterable=False)

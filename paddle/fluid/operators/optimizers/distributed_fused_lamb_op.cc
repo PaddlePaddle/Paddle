@@ -110,6 +110,7 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddOutput("FoundInf", "Whether there is NaN/Inf");
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
     AddAttr<float>("beta1", "The initial Beta1Pow value.");
     AddAttr<float>("beta2", "The initial Beta2Pow value.");

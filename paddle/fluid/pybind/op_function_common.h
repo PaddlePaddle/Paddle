@@ -50,6 +50,8 @@ int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
                        ssize_t arg_pos);
 float CastPyArg2Float(PyObject* obj, const std::string& op_type,
                       ssize_t arg_pos);
+double CastPyArg2Double(PyObject* obj, const std::string& op_type,
+                        ssize_t arg_pos);
 std::string CastPyArg2String(PyObject* obj, const std::string& op_type,
                              ssize_t arg_pos);
 std::vector<bool> CastPyArg2Booleans(PyObject* obj, const std::string& op_type,
@@ -145,6 +147,11 @@ unsigned long GetUnsignedLongFromArgs(  // NOLINT
     ssize_t arg_idx, bool dispensable = false);
 
 void InitOpsAttrTypeMap();
+
+ssize_t GetIdxFromCoreOpsInfoMap(
+    const std::unordered_map<std::string, std::vector<std::string>>&
+        core_ops_info_map,
+    const std::string& op_type, const std::string& name);
 
 }  // namespace pybind
 }  // namespace paddle

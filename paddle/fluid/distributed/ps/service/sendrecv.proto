@@ -59,6 +59,14 @@ enum PsCmdID {
   PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER = 38;
   PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE = 39;
   PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG = 40;
+  PEER_ROLE_IS_WORKER = 41;
+  PEER_ROLE_IS_SWITCH = 42;
+  PS_SAVE_WITH_SCOPE = 43;
+  PS_SAVE_WITH_SHARD = 44;
+  PS_QUERY_WITH_SCOPE = 45;
+  PS_QUERY_WITH_SHARD = 46;
+  // pserver2pserver cmd start from 100
+  PS_S2S_MSG = 101;
 }
 
 message PsRequestMessage {
@@ -117,9 +125,16 @@ message MultiVariableMessage {
   repeated string send_var_names = 2;
   repeated string recv_var_names = 3;
   repeated VariableMessage var_messages = 4;
+  optional bytes data = 5;
+  repeated int32 vars_len = 6;
+  optional int32 group_id = 7;
 };
 
 service PsService {
   rpc service(PsRequestMessage) returns (PsResponseMessage);
   rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage);
+  rpc SendToWorker(MultiVariableMessage) returns (PsResponseMessage);
+  rpc SendToSwitch(MultiVariableMessage) returns (PsResponseMessage);
+  rpc SendS2S(MultiVariableMessage) returns (PsResponseMessage);
+  rpc RecvFromSwitch(MultiVariableMessage) returns (MultiVariableMessage);
 };
