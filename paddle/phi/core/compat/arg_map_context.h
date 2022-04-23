@@ -59,7 +59,10 @@ struct KernelSignature {
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
   KernelSignature(const KernelSignature& other)
-      : name(other.name), args(other.args) {}
+      : name(other.name),
+        input_names(other.input_names),
+        attr_names(other.attr_names),
+        output_names(other.output_names) {}
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
     input_names = other.input_names;
