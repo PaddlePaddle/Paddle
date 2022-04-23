@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 namespace paddle {
 namespace framework {
 std::string nodes[] = {
@@ -52,7 +54,7 @@ void prepare_file(char file_name[]) {
 void GraphGpuWrapper::initialize() {
   std::vector<int> device_id_mapping;
   for (int i = 0; i < 2; i++) device_id_mapping.push_back(i);
-  gpu_num = device_id_mapping.size();
+  int gpu_num = device_id_mapping.size();
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.add_edge_types("u2u");
   table_proto.add_node_types("user");
@@ -76,19 +78,11 @@ void GraphGpuWrapper::initialize() {
   std::shared_ptr<HeterPsResource> resource =
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
-  int use_nv = 1;
-  GpuPsGraphTable *g = new GpuPsGraphTable(resource, use_nv);
+  GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1);
   g->init_cpu_table(table_proto);
   graph_table = (char *)&g;
-
-  std::shared_ptr<HeterPsResource> resource =
-      std::make_shared<HeterPsResource>(device_id_mapping);
-  resource->enable_p2p();
-  int use_nv = 1;
-  GpuPsGraphTable g(resource, use_nv);
-  g.init_cpu_table(table_proto);
-  g.cpu_graph_table->Load(node_file_name, "nuser");
-  g.cpu_graph_table->Load(node_file_name, "nitem");
+  g->cpu_graph_table->Load(node_file_name, "nuser");
+  g->cpu_graph_table->Load(node_file_name, "nitem");
   std::remove(node_file_name);
   std::vector<paddle::framework::GpuPsCommGraph> vec;
   std::vector<int64_t> node_ids;
@@ -99,7 +93,7 @@ void GraphGpuWrapper::initialize() {
   std::vector<std::string> feature_names;
   feature_names.push_back(std::string("c"));
   feature_names.push_back(std::string("d"));
-  g.cpu_graph_table->get_node_feat(0, node_ids, feature_names, node_feat);
+  g->cpu_graph_table->get_node_feat(0, node_ids, feature_names, node_feat);
   VLOG(0) << "get_node_feat: " << node_feat[0][0];
   VLOG(0) << "get_node_feat: " << node_feat[0][1];
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
@@ -107,19 +101,20 @@ void GraphGpuWrapper::initialize() {
   int n = 10;
   std::vector<int64_t> ids0, ids1;
   for (int i = 0; i < n; i++) {
-    g.cpu_graph_table->add_comm_edge(0, i, (i + 1) % n);
-    g.cpu_graph_table->add_comm_edge(0, i, (i - 1 + n) % n);
+    g->cpu_graph_table->add_comm_edge(0, i, (i + 1) % n);
+    g->cpu_graph_table->add_comm_edge(0, i, (i - 1 + n) % n);
     if (i % 2 == 0) ids0.push_back(i);
   }
-  g.cpu_graph_table->build_sampler(0);
+  g->cpu_graph_table->build_sampler(0);
   ids1.push_back(5);
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids0));
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids1));
+  vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(0, ids0));
+  vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(0, ids1));
   vec[0].display_on_cpu();
   vec[1].display_on_cpu();
-  g.build_graph_from_cpu(vec);
+  g->build_graph_from_cpu(vec);
 }
 void GraphGpuWrapper::test() {
+  int64_t cpu_key[3] = {0, 1, 2};
   void *key;
   platform::CUDADeviceGuard guard(0);
   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
