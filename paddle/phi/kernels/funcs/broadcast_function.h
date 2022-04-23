@@ -176,6 +176,11 @@ struct DimensionsTransform {
     }
     InputDimensionsExtend(N, axis);
 
+    /* To Merge the dimensions of input_tensors while the consequtive
+       equal-dimensions appears. Example below :
+       in_1.shape = [2, 3, 4, 5]    in_1.shape = [2, 12, 5]
+       in_2.shape = [1, 3, 4, 5] -> in_2.shape = [1, 12, 5]
+       in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1] */
     auto merge_sequential_dims = [](bool &equal,
                                     std::vector<DimVector> &in_dims,
                                     DimVector &out,
@@ -185,6 +190,17 @@ struct DimensionsTransform {
         equal &= (in_dims[0][i] == in_dims[j][i]) ? true : false;
       }
     };
+    MergeFunctor merge_ptr = merge_sequential_dims;
+    MergeDimensions<MergeFunctor>(merge_ptr, N);
+
+    /* To Merge the dimension of input_tensors while the sequential
+       1-value-dimensions appears. Example below :
+        in_1.shape = [2, 1, 1, 5]    in_1.shape = [2,  1, 5]
+        in_2.shape = [2, 3, 4, 5] -> in_2.shape = [1, 12, 5]
+        in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
+      Caution: Once 1-value-dimensions appears, the corresponding
+      shape position of other input tensors must be same with the
+      output tensor`s shape, or incorrect merge may occur. */
     auto merge_sequential_one_dims = [](bool &equal,
                                         std::vector<DimVector> &in_dims,
                                         DimVector &out,
@@ -193,17 +209,10 @@ struct DimensionsTransform {
       equal = in_dims[0][i] == 1;
       if (equal) {
         for (int j = 1; j < num; ++j) {
-          equal &= (in_dims[j][i] == out[i]) || (in_dims[j][i] == 1);
+          equal &= in_dims[j][i] == out[i];
         }
       }
     };
-    // To Merge the dimensions of input_tensors while the consequtive
-    // equal-dimensions appears.
-    MergeFunctor merge_ptr = merge_sequential_dims;
-    MergeDimensions<MergeFunctor>(merge_ptr, N);
-
-    // To Merge the dimension of input_tensors while the sequential
-    // 1-value-dimensions appears.
     int swap_idx = 0;
     int max_one_length = GetSequentialOneDimLength(&swap_idx);
     if (max_one_length > 1) {
