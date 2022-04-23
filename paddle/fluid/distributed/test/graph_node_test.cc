@@ -478,7 +478,7 @@ void RunBrpcPushSparse() {
   // }
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
-  std::string ips_str = "127.0.0.1:5211;127.0.0.1:5212";
+  std::string ips_str = "127.0.0.1:5217;127.0.0.1:5218";
   std::vector<std::string> edge_types = {std::string("user2item")};
   std::vector<std::string> node_types = {std::string("user"),
                                          std::string("item")};
