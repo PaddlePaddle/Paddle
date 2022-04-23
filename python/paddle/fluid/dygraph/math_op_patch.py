@@ -279,15 +279,13 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
-            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
-                print("===============================")
+            if op_type in _supported_div_op_ and self.dtype in _supported_int_dtype_:
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
             # 4. calculation
             axis = -1
             math_op = getattr(_C_ops, op_type)
-            print("==============#### ### =================")
             if call_final_api:
                 return math_op(self, other_var, -1)
             return math_op(self, other_var, 'axis', axis)
