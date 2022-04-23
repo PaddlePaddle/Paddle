@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/flags.h"
@@ -96,9 +97,11 @@ int main(int argc, char** argv) {
 #ifdef PADDLE_WITH_CUDA
   std::cout << std::endl
             << "=========GPU Memory Use (Bytes)=========" << std::endl;
-  for (int i = 0; i < paddle::platform::GetGPUDeviceCount(); ++i) {
-    std::cout << "[max memory reserved] gpu " << i << " : "
-              << MEMORY_STAT_PEAK_VALUE(Allocated, i) << std::endl;
+  for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
+       ++dev_id) {
+    int64_t peak_value = MEMORY_STAT_PEAK_VALUE(Reserved, dev_id);
+    std::cout << "[max memory reserved] gpu " << dev_id << " : " << peak_value
+              << std::endl;
   }
   std::cout << "========================================" << std::endl;
 #endif
