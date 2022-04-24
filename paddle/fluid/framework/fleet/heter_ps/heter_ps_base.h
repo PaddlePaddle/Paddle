@@ -46,8 +46,8 @@ class HeterPsBase {
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;
 
-  virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config);
-  virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config);
+  virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config) = 0;
+  virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config) = 0;
 
   static HeterPsBase* get_instance(size_t capacity,
                                    std::shared_ptr<HeterPsResource> resource);

@@ -57,11 +57,9 @@ class OptimizerConfig {
     this->initial_range = optimizer_config.initial_range;
   }
 
-  void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
-                                  float mf_learning_rate,
-                                  float mf_initial_g2sum,
-                                  float mf_initial_range, float mf_min_bound,
-                                  float mf_max_bound) {
+  void set_embedx_sgd(float mf_create_thresholds, float mf_learning_rate,
+                      float mf_initial_g2sum, float mf_initial_range,
+                      float mf_min_bound, float mf_max_bound) {
     this->mf_create_thresholds = mf_create_thresholds;
     this->mf_learning_rate = mf_learning_rate;
     this->mf_initial_g2sum = mf_initial_g2sum;
@@ -70,7 +68,7 @@ class OptimizerConfig {
     this->mf_max_bound = mf_max_bound;
   }
 
-  void PSGPUWrapper::SetEmbedxSGD(const OptimizerConfig& optimizer_config) {
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config) {
     this->mf_create_thresholds = optimizer_config.mf_create_thresholds;
     this->mf_learning_rate = optimizer_config.mf_learning_rate;
     this->mf_initial_g2sum = optimizer_config.mf_initial_g2sum;
@@ -82,5 +80,3 @@ class OptimizerConfig {
 
 }  // namespace framework
 }  // namespace paddle
-
-#endif

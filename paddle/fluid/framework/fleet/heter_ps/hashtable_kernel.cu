@@ -311,7 +311,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, *device_optimizer_config_, device_d_keys, d_grads, len, sgd,
+      container_, *device_optimizer_config_, d_keys, d_grads, len, sgd,
       push_grad_value_size_);
 }
 
