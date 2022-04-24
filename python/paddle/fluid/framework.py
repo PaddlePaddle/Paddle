@@ -627,6 +627,17 @@ def _mlu_ids():
     return device_ids
 
 
+def _custom_device_ids(device_type):
+    device_list = [
+        x for x in core.get_available_custom_device()
+        if x.startswith(device_type)
+    ]
+    if len(device_list) == 1:
+        return [0]
+    else:
+        return [int(x.split(':')[1]) for x in device_list]
+
+
 def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
@@ -962,6 +973,32 @@ def mlu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.MLUPlace(dev_id) for dev_id in device_ids]
+
+
+def custom_places(device_type, device_ids=None):
+    """
+    This function creates a list of :code:`paddle.CustomPlace` objects.
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of custom device ids.
+
+    Returns:
+        list of paddle.CustomPlace: Created CustomPlace list.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            custom_cpu_places = static.custom_places('custom_cpu')
+    """
+    if device_ids is None:
+        device_ids = _custom_device_ids(device_type)
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.CustomPlace(device_type, dev_id) for dev_id in device_ids]
 
 
 class NameScope(object):

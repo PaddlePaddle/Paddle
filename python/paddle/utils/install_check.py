@@ -104,7 +104,11 @@ def _is_xpu_available():
         return False
 
 
-def _run_dygraph_single(use_cuda, use_xpu, use_npu):
+def _run_dygraph_single(use_cuda,
+                        use_xpu,
+                        use_npu,
+                        use_custom,
+                        device_type=None):
     """
     Testing the simple network in dygraph mode using one CPU/GPU/XPU/NPU.
 
@@ -120,6 +124,8 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
         paddle.set_device('xpu')
     elif use_npu:
         paddle.set_device('npu')
+    elif use_custom:
+        paddle.set_device(device_type)
     else:
         paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
@@ -138,7 +144,8 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     opt.step()
 
 
-def _run_static_single(use_cuda, use_xpu, use_npu):
+def _run_static_single(use_cuda, use_xpu, use_npu, use_custom,
+                       device_type=None):
     """
     Testing the simple network with executor running directly, using one CPU/GPU/XPU/NPU.
 
@@ -163,6 +170,8 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
             place = paddle.XPUPlace(0)
         elif use_npu:
             place = paddle.NPUPlace(0)
+        elif use_custom:
+            place = paddle.CustomPlace(device_type, 0)
         else:
             place = paddle.CPUPlace()
 
@@ -217,10 +226,13 @@ def _run_static_parallel(use_cuda, use_xpu, use_npu, device_list):
     paddle.disable_static()
 
 
-def run_check():
+def run_check(custom_device_type=None):
     """
-    Check whether PaddlePaddle is installed correctly and running successfully
-    on your system.
+    Check whether PaddlePaddle or CustomDevice plug-in (custom_device_type is not None) is installed correctly 
+    and running successfully on your system.
+
+    Args:
+        custom_device_type (str): Type of the custom device to be checked. If set, check Plug-in, if not set, check PaddlePaddle. Get all available custom device types by paddle.device.get_all_custom_device_type().
 
     Examples:
         .. code-block:: python
@@ -234,46 +246,70 @@ def run_check():
             # PaddlePaddle works well on 1 GPU.
             # PaddlePaddle works well on 8 GPUs.
             # PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
+
+            # Custom deivce 'CustomCPU' is registerd.
+            # paddle.utils.run_check('CustomCPU')
+            # Running verify PaddlePaddle program ...
+            # PaddlePaddle works well on 1 CustomCPU.
+            # PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
     """
 
     print("Running verify PaddlePaddle program ... ")
 
+    def get_places(device_type):
+        if device_type == "GPU":
+            return paddle.static.cuda_places()
+        elif device_type == "XPU":
+            return paddle.static.xpu_places()
+        elif device_type == "NPU":
+            return paddle.static.npu_places()
+        elif device_type == "CPU":
+            return paddle.static.cpu_places(device_count=2)
+        elif device_type in paddle.device.get_all_custom_device_type():
+            return paddle.static.custom_places(device_type)
+
     use_cuda = False
     use_xpu = False
     use_npu = False
+    use_custom = False
 
-    if paddle.is_compiled_with_cuda():
-        use_cuda = _is_cuda_available()
-    elif paddle.is_compiled_with_xpu():
-        use_xpu = _is_xpu_available()
-    elif paddle.is_compiled_with_npu():
-        use_npu = _is_npu_available()
+    if custom_device_type is not None:
+        use_custom = True
+    else:
+        if paddle.is_compiled_with_cuda():
+            use_cuda = _is_cuda_available()
+        elif paddle.is_compiled_with_npu():
+            use_npu = _is_npu_available()
+        elif paddle.is_compiled_with_xpu():
+            use_xpu = _is_xpu_available()
 
     if use_cuda:
         device_str = "GPU"
-        device_list = paddle.static.cuda_places()
     elif use_xpu:
         device_str = "XPU"
-        device_list = paddle.static.xpu_places()
     elif use_npu:
         device_str = "NPU"
-        device_list = paddle.static.npu_places()
+    elif use_custom:
+        device_str = custom_device_type
     else:
         device_str = "CPU"
-        device_list = paddle.static.cpu_places(device_count=2)
+
+    device_list = get_places(device_str)
+
     device_count = len(device_list)
 
-    _run_static_single(use_cuda, use_xpu, use_npu)
-    _run_dygraph_single(use_cuda, use_xpu, use_npu)
+    _run_static_single(use_cuda, use_xpu, use_npu, use_custom, device_str)
+    _run_dygraph_single(use_cuda, use_xpu, use_npu, use_custom, device_str)
     print("PaddlePaddle works well on 1 {}.".format(device_str))
 
     try:
-        _run_static_parallel(use_cuda, use_xpu, use_npu, device_list)
-        print("PaddlePaddle works well on {} {}s.".format(device_count,
-                                                          device_str))
-        print(
-            "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
-        )
+        if not use_custom:
+            _run_static_parallel(use_cuda, use_xpu, use_npu, device_list)
+            print("PaddlePaddle works well on {} {}s.".format(device_count,
+                                                              device_str))
+            print(
+                "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
+            )
     except Exception as e:
         logging.warning(
             "PaddlePaddle meets some problem with {} {}s. This may be caused by:"
