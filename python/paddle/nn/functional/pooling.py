@@ -1401,9 +1401,9 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             output_size[1] = in_w
 
     if in_dygraph_mode():
-        return _C_ops.final_state_pool2d(x, output_size, [1, 1], [0, 0], False,
-                                         True, data_format, 'avg', False, True,
-                                         "EXPLICIT")
+        return _C_ops.final_state_pool2d_gpudnn_unused(
+            x, output_size, [1, 1], [0, 0], False, True, data_format, 'avg',
+            False, True, "EXPLICIT")
 
     if _in_legacy_dygraph():
         return _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', output_size,

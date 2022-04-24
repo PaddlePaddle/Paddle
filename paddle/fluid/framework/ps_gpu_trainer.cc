@@ -25,7 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -56,7 +58,12 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   std::vector<int> dev_ids;
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
+#ifdef PADDLE_WITH_CUDA
     platform::CUDAPlace place = platform::CUDAPlace(num);
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    platform::XPUPlace place = platform::XPUPlace(num);
+#endif
     places_.push_back(place);
     dev_ids.push_back(num);
   }

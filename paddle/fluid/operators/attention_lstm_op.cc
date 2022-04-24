@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -377,7 +377,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data,
        atten_b_data);
 

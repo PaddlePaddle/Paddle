@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_seqconv_eltadd_relu_op.h"
 #include <algorithm>  // for min, max
 #include <string>
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -244,7 +244,7 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       }
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, x_dims[0], w_dims[1], w_dims[0], col_data, w_data, y_data,
        b_data, true);
   }

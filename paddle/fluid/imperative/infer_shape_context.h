@@ -95,17 +95,27 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const override {
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override {
     auto it = var_map_out_->find(name);
     if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) {
+          return true;
+        }
       }
+      return false;
+    } else {
+      for (auto& output : it->second) {
+        if (output == nullptr) {
+          return false;
+        }
+      }
+      return true;
     }
-    return true;
   }
 
   framework::AttrReader Attrs() const override {
@@ -225,9 +235,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
             (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
   }
 
-  std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) const override {
-    std::vector<framework::InferShapeVarPtr> res;
+  paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override {
+    paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+        res;
     auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
         it, var_map_in_->end(),
@@ -238,9 +249,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return res;
   }
 
-  std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) const override {
-    std::vector<framework::InferShapeVarPtr> res;
+  paddle::SmallVector<framework::InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override {
+    paddle::SmallVector<framework::InferShapeVarPtr,
+                        phi::kOutputSmallVectorSize>
+        res;
     auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
         it, var_map_out_->end(),

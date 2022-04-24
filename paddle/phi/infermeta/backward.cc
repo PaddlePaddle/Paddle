@@ -169,6 +169,27 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void DeformableConvGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& offset,
+                                 const MetaTensor& filter,
+                                 paddle::optional<const MetaTensor&> mask,
+                                 const MetaTensor& out_grad,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 int deformable_groups,
+                                 int groups,
+                                 int im2col_step,
+                                 MetaTensor* dx,
+                                 MetaTensor* offset_grad,
+                                 MetaTensor* filter_grad,
+                                 MetaTensor* mask_grad) {
+  GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
+  if (mask) {
+    UnchangedInferMeta(mask.get(), mask_grad);
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -294,8 +315,8 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
-void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
-                           const std::vector<MetaTensor*>& outputs_grad,
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad) {
   PADDLE_ENFORCE_GT(outputs_grad.size(),
                     1,
@@ -308,7 +329,7 @@ void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
   }
 }
 
-void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad) {
   PADDLE_ENFORCE_EQ(
@@ -520,8 +541,10 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   vec.erase(vec.begin() + axis);
 
   for (size_t i = 0; i < x_grad.size(); ++i) {
-    x_grad[i]->set_dims(phi::make_ddim(vec));
-    x_grad[i]->set_dtype(out_grad.dtype());
+    if (x_grad[i]) {
+      x_grad[i]->set_dims(phi::make_ddim(vec));
+      x_grad[i]->set_dtype(out_grad.dtype());
+    }
   }
 }
 

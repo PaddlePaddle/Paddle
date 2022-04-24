@@ -405,6 +405,78 @@ void EighInferMeta(const MetaTensor& x,
   out_v->set_dims(input_dim);
 }
 
+void ExpandInferMeta(const MetaTensor& x,
+                     const IntArray& shape,
+                     MetaTensor* out) {
+#define MAX_RANK_SUPPORTED 6
+  auto x_dims = x.dims();
+  auto expand_shape = shape.GetData();
+
+  if (expand_shape.size() == 0) {
+    expand_shape = std::vector<int64_t>(x_dims.size(), -1);
+  }
+
+  PADDLE_ENFORCE_GE(
+      expand_shape.size(),
+      static_cast<size_t>(x_dims.size()),
+      phi::errors::InvalidArgument(
+          "The number of elements (%d) of 'shape' for "
+          "expand_v2 op must be greater than or equal to the rank "
+          "(%d) of the input.",
+          expand_shape.size(),
+          static_cast<size_t>(x_dims.size())));
+  PADDLE_ENFORCE_LE(
+      expand_shape.size(),
+      MAX_RANK_SUPPORTED,
+      phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
+                                   "must not be greater than %d.",
+                                   expand_shape.size(),
+                                   MAX_RANK_SUPPORTED));
+  PADDLE_ENFORCE_GE(
+      expand_shape.size(),
+      1,
+      phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
+                                   "must be a positive integer.",
+                                   expand_shape.size()));
+
+  auto out_rank =
+      std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
+  std::vector<int64_t> out_shape(out_rank);
+  auto x_dim_vec = phi::vectorize<int>(x_dims);
+  auto diff = expand_shape.size() - x_dim_vec.size();
+  x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+  for (size_t i = 0; i < expand_shape.size(); ++i) {
+    if (x_dims[i] == -1) {
+      out_shape[i] = -1;
+    } else if (expand_shape[i] == -1) {
+      if (static_cast<size_t>(x_dims.size()) > i) {
+        out_shape[i] = x_dims[i];
+      } else {
+        out_shape[i] = -1;
+      }
+    } else if (expand_shape[i] == -2) {
+      // We use -2 to represent the element in expand_shape is a var.
+      out_shape[i] = -1;
+    } else {
+      PADDLE_ENFORCE_GT(
+          expand_shape[i],
+          0,
+          phi::errors::InvalidArgument(
+              "The %uth element of 'shape' for expand_v2 op must be "
+              "greater than 0, but the value given is %d.",
+              i,
+              expand_shape[i]));
+      out_shape[i] = expand_shape[i];
+    }
+  }
+
+  out->set_dims(make_ddim(out_shape));
+  out->set_dtype(x.dtype());
+  if (out_shape[0] == x_dims[0]) {
+    out->share_lod(x);
+  }
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -1212,24 +1284,33 @@ void Pad3dInferMeta(const MetaTensor& x,
                         "5, but received %d. ",
                         x_dim.size()));
 
-  std::vector<int64_t> out_dims(x_dim.size());
+  std::vector<int64_t> out_dims(x_dim.size(), -1);
   out_dims[0] = x_dim[0];
+  auto& paddings = paddings_int_array.GetData();
+  if (data_format == "NCDHW") {
+    out_dims[1] = x_dim[1];
+  } else {
+    out_dims[4] = x_dim[4];
+  }
   if (paddings_int_array.FromTensor()) {
     if (config.is_runtime) {
       PADDLE_ENFORCE_EQ(
-          paddings_int_array.GetData().size(),
+          paddings.size(),
           6,
           errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
                                   "[6], but received [%d].",
-                                  paddings_int_array.GetData().size()));
+                                  paddings.size()));
+      if (data_format == "NCDHW") {
+        out_dims[2] = x_dim[2] + paddings[4] + paddings[5];
+        out_dims[3] = x_dim[3] + paddings[2] + paddings[3];
+        out_dims[4] = x_dim[4] + paddings[0] + paddings[1];
+      } else {
+        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
+      }
     }
-    out_dims[1] = x_dim[1];
-    out_dims[2] = x_dim[2];
-    out_dims[3] = x_dim[3];
-    out_dims[4] = x_dim[4];
   } else {
-    auto paddings = paddings_int_array.GetData();
-
     PADDLE_ENFORCE_EQ(
         paddings.size(),
         6,
@@ -1237,7 +1318,6 @@ void Pad3dInferMeta(const MetaTensor& x,
             "Size of paddings should be equal to 6, but received %d.",
             static_cast<int>(paddings.size())));
     if (data_format == "NCDHW") {
-      out_dims[1] = x_dim[1];  // channel
       out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
                         ? x_dim[2]
                         : (x_dim[2] + paddings[4] + paddings[5]);  // depth
@@ -1250,8 +1330,6 @@ void Pad3dInferMeta(const MetaTensor& x,
                         ? x_dim[4]
                         : (x_dim[4] + paddings[0] + paddings[1]);  // width
     } else {                                                       // NDHWC
-      out_dims[4] = x_dim[4];                                      // channel
-
       out_dims[1] = ((!config.is_runtime) && (x_dim[1] < 0))
                         ? x_dim[1]
                         : (x_dim[1] + paddings[4] + paddings[5]);  // depth

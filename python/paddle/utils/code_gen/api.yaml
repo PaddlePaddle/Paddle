@@ -59,6 +59,12 @@
   kernel :
     func : adamax
 
+- api : adamw
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  optional : master_param, skip_update
+  invoke : adamw_impl(param, grad, learning_rate, moment1, moment2, beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon, lr_ratio, coeff, with_decay, lazy_mode, min_row_size_to_use_multithread, multi_precision, use_global_beta_pow)
+
 - api : add
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -376,6 +382,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    use_gpudnn : true
   backward : conv2d_transpose_grad
 
 - api : conv3d_transpose
@@ -385,6 +392,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv3d_transpose
+    use_gpudnn : true
   backward : conv3d_transpose_grad
 
 - api : copy_to
@@ -450,6 +458,16 @@
   kernel :
     func : cumsum
   backward : cumsum_grad
+
+- api : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(out)
+  infer_meta :
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+  optional : mask
+  backward : deformable_conv_grad
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -593,6 +611,14 @@
   kernel :
     func : equal
 
+- api : equal_all
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : CompareAllInferMeta
+  kernel :
+    func : equal_all
+
 # erf
 - api : erf
   args : (Tensor x)
@@ -622,6 +648,16 @@
   kernel :
     func : exp
   backward : exp_grad
+
+# expand
+- api : expand
+  args : (Tensor x, IntArray shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+  backward : expand_grad
 
 # expand_as
 - api : expand_as
@@ -759,6 +795,8 @@
     param : [x, value, dtype]
     data_type : dtype > x
     backend : place > x
+  data_transform :
+    skip_transform : x
 
 - api : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -1503,7 +1541,7 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
-# poisson  // no need grad
+# poisson
 - api : poisson
   args : (Tensor x)
   output : Tensor
@@ -1511,6 +1549,7 @@
     func : UnchangedInferMeta
   kernel :
     func : poisson
+  backward : poisson_grad
 
 - api : pool2d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1519,7 +1558,19 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
+    use_gpudnn : true
   backward : pool2d_grad
+
+# Used in adaptive_avg_pool2d API
+- api : pool2d_gpudnn_unused
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d
+    use_gpudnn : false
+  backward : pool2d_grad_gpudnn_unused
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1528,6 +1579,7 @@
     func : PoolInferMeta
   kernel :
     func : pool3d
+    use_gpudnn : true
   backward : pool3d_grad
 
 - api : pow
@@ -1765,6 +1817,12 @@
     func : selu
   backward : selu_grad
 
+- api : sgd
+  args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
+  output : Tensor(param_out), Tensor(master_param_out)
+  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  optional : master_param
+
 - api : shape
   args : (Tensor input)
   output : Tensor
@@ -1772,6 +1830,8 @@
     func : ShapeInferMeta
   kernel :
     func : shape, shape_sr
+  data_transform:
+    skip_transform : input
 
 # shard_index
 - api : shard_index
@@ -1848,6 +1908,8 @@
     func : SizeInferMeta
   kernel :
     func : size
+  data_transform:
+    skip_transform : x
 
 - api : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1876,12 +1938,14 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
+    use_gpudnn : true
   backward : softmax_grad
 
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
+  backward : split_grad
 
 - api : sqrt
   args : (Tensor x)
@@ -2056,7 +2120,7 @@
     func : TriangularSolveInferMeta
   kernel :
     func : triangular_solve
-  # backward : triangular_solve_grad
+  backward : triangular_solve_grad
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
@@ -2131,7 +2195,7 @@
     data_type : x
 
 - api : unsqueeze
-  args : (Tensor x, IntArray axes)
+  args : (Tensor x, IntArray axis)
   output : Tensor(xshape), Tensor(out)
   infer_meta :
     func : UnsqueezeInferMeta

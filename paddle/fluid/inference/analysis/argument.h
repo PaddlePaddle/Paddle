@@ -182,6 +182,8 @@ struct Argument {
   // A set of op types to enable their bfloat16 kernels
   DECL_ARGUMENT_FIELD(bfloat16_enabled_op_types, Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
+
+  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMkldnnInt8, bool);
 #endif
 
   // Passed from config.
