@@ -1711,8 +1711,11 @@ def random_crop_and_resize(x,
                 this should be a value between 0 and 1. Default 0.08.
         area_max (float): The maximum area ratio of random cropping boxes,
                 this should be a value between 0 and 1. Default 1.
-        num_attempts (int): The max attempt number to find random cropping
-                boxes, this should be a position integer. Default 10.
+        num_attempts (int, optional): The max attempt number to find
+                random cropping boxes, If the number of attempts is
+                exceeded and the aspect ratio and area restrictions
+                are not met, no cropping will be made. This should be
+                a position integer.  Default 10.
         data_format (string): The input image format, if NCHW, input  
                 images will be in shape of (channels, image_height,
                 image_width), if NHWC, input images will be in shape of
