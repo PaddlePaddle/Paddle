@@ -1,4 +1,4 @@
-//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -22,7 +21,6 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
-
 #include "paddle/utils/variant.h"
 
 namespace phi {
@@ -48,27 +46,5 @@ using Attribute = paddle::variant<bool,
                                   DataType,
                                   DataLayout,
                                   Place>;
-
-class Kernel;
-class KernelKey;
-class KernelArgsDef;
-class KernelContext;
-struct KernelSignature;
-class ArgumentMappingContext;
-class InferMetaContext;
-
-using KernelFn = std::function<void(KernelContext* ctx)>;
-using KernelArgsDefFn = void (*)(const KernelKey& kernel_key, Kernel* kernel);
-using KernelArgsParseFn = void (*)(const KernelKey& default_key,
-                                   KernelArgsDef* args_def);
-
-using ArgumentMappingFn =
-    std::function<KernelSignature(const ArgumentMappingContext&)>;
-using InferMetaFn = void (*)(InferMetaContext* ctx);
-
-// Global SmallVector size setting
-constexpr size_t kInputSmallVectorSize = 10U;
-constexpr size_t kAttrSmallVectorSize = 10U;
-constexpr size_t kOutputSmallVectorSize = 5U;
 
 }  // namespace phi
