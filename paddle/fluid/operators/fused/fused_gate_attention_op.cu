@@ -115,11 +115,9 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
   auto *gate_bias_out = ctx.Output<Tensor>("GateBiasOut");
-  // auto *sigmoid_out = ctx.Output<Tensor>("SigmoidOut");
   auto *gate_out = ctx.Output<Tensor>("GateOut");
 
   gate_bias_out->mutable_data<T>(ctx.GetPlace());
-  // sigmoid_out->mutable_data<T>(ctx.GetPlace());
   gate_out->mutable_data<T>(ctx.GetPlace());
 
   // The first gate_bias_out stores the result of the multiplication,
@@ -132,11 +130,6 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   gate_attn_compute.ComputeForward(gate_weight, x, gate_bias, gate_bias_out,
                                    gate_bias_out);
 
-  // sigmoid_out = sigmoid(gate_bias_out)
-  // gate_out = sigmoid_out * fmha_out
-  // auto gate_compute = GateRef<T>(ctx.cuda_device_context());
-  // gate_compute.ComputeForward(*gate_bias_out, *fmha_out, sigmoid_out,
-  // gate_out);
   std::vector<const Tensor *> ins = {gate_bias_out, fmha_out};
   std::vector<Tensor *> outs = {gate_out};
   paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
@@ -146,40 +139,27 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
 
 template <typename T>
 Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
-                                    const Tensor *d_gate_out, int m, int n,
-                                    int k) {
+                                    const Tensor *d_gate_out, Tensor *d_x,
+                                    int m, int n, int k) {
   auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
   auto *gate_bias_out = ctx.Input<Tensor>("GateBiasOut");
-  // auto *gate_out = ctx.Input<Tensor>("GateOut");
-  // auto *sigmoid_out = ctx.Input<Tensor>("SigmoidOut");
-
   auto *input_x = ctx.Input<Tensor>("X");
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
 
   auto *d_fmha_out = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
   auto *d_gate_bias_out =
       ctx.Output<Tensor>(framework::GradVarName("GateBiasOut"));
-  // auto *d_sigmoid_out =
-  //    ctx.Output<Tensor>(framework::GradVarName("SigmoidOut"));
 
   d_fmha_out->mutable_data<T>(ctx.GetPlace());
   d_gate_bias_out->mutable_data<T>(ctx.GetPlace());
-  // d_sigmoid_out->mutable_data<T>(ctx.GetPlace());
-
-  auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
   auto *d_gate_weight =
       ctx.Output<Tensor>(framework::GradVarName("GateWeight"));
   auto *d_gate_bias = ctx.Output<Tensor>(framework::GradVarName("GateBias"));
 
-  d_x->mutable_data<T>(ctx.GetPlace());
   d_gate_weight->mutable_data<T>(ctx.GetPlace());
   d_gate_bias->mutable_data<T>(ctx.GetPlace());
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
-  // auto gate_compute = GateRef<T>(ctx.cuda_device_context());
-  // gate_compute.ComputeBackward(*fmha_out, *gate_bias_out, *gate_out,
-  //                              *d_gate_out, *sigmoid_out, d_fmha_out,
-  //                              d_gate_bias_out, d_sigmoid_out);
   std::vector<const Tensor *> ins = {d_gate_out, gate_bias_out, fmha_out};
   std::vector<Tensor *> outs = {d_gate_bias_out, d_fmha_out};
   paddle::operators::LaunchSameDimsElementwiseCudaKernel<
@@ -296,7 +276,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     fmha_ref_compute.ComputeForward(nonbatched_bias, *qkv_out, src_mask,
                                     transpose_out_2, qk_out, src_mask_out,
                                     softmax_out, qktv_out, fmha_out);
-
     // Gating Linear
     Tensor *gate_out = nullptr;
     if (is_gating) {
@@ -348,12 +327,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_src_mask_out =
         ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
 
+    auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
     auto *d_qkv_out_data = d_qkv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qktv_out_data = d_qktv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_transpose_out_2_data =
         d_transpose_out_2->mutable_data<T>(ctx.GetPlace());
     auto *d_qk_out_data = d_qk_out->mutable_data<T>(ctx.GetPlace());
-
     auto *d_softmax_out_data = d_softmax_out->mutable_data<T>(ctx.GetPlace());
     auto *d_src_mask_out_data = d_src_mask_out->mutable_data<T>(ctx.GetPlace());
 
@@ -392,7 +371,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       k = hidden_size;
       // d_out_linear_input is d_gate_out.
       d_fmha_out =
-          ComputeGatingLinearBackward<T>(ctx, d_out_linear_input, m, n, k);
+          ComputeGatingLinearBackward<T>(ctx, d_out_linear_input, d_x, m, n, k);
     } else {
       d_fmha_out = d_out_linear_input;
     }
@@ -400,13 +379,11 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto fmha_ref_compute =
         FMHAGateRef<T>(ctx.cuda_device_context(), batch_size, seq_len_m,
                        seq_len_r, num_head, c);
-
     fmha_ref_compute.ComputeBackward(
         *transpose_out_2, src_mask, *softmax_out, *qk_out, *src_mask_out,
         *d_fmha_out, nonbatched_bias, d_nonbatched_bias, d_qktv_out,
         d_softmax_out, d_src_mask_out, d_qk_out, d_transpose_out_2, nullptr,
         d_qkv_out);
-
     // Gradient of Merged QKV Matmul
     m = batch_size * seq_len_m * seq_len_r;
     n = 3 * num_head * c;
