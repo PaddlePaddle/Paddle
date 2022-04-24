@@ -192,7 +192,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      type + " trace_op", platform::TracerEventType::Operator, 1);
+      "trace_op", platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {

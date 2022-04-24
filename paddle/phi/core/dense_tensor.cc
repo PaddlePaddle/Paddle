@@ -135,7 +135,6 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 
 template <typename T>
 const T* DenseTensor::data() const {
-  check_memory_size();
   PADDLE_ENFORCE_EQ(
       dtype(),
       paddle::experimental::CppTypeToDataType<T>::Type(),
@@ -147,7 +146,6 @@ const T* DenseTensor::data() const {
 
 template <typename T>
 T* DenseTensor::data() {
-  check_memory_size();
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(

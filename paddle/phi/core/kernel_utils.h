@@ -177,7 +177,7 @@ namespace phi {
               int out_idx,                                               \
               typename... PreviousArgs>                                  \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {    \
-      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);     \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);    \
       tensor_type* arg = ctx->MutableOutputAt<tensor_type>(range.first); \
       KernelCallHelper<Tail...>::                                        \
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
@@ -194,7 +194,7 @@ namespace phi {
               int out_idx,                                                    \
               typename... PreviousArgs>                                       \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
-      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);          \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);         \
       std::vector<tensor_type*> arg = std::move(                              \
           ctx->MutableOutputBetween<tensor_type>(range.first, range.second)); \
       KernelCallHelper<Tail...>::                                             \

@@ -207,6 +207,10 @@ class PreparedOp {
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   const phi::Kernel& pt_kernel_;
+
+  static const phi::KernelFactory& phi_kernel_factory;
+  static const phi::OpUtilsMap& phi_op_utils_map;
+  static const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map;
 };
 
 const inline framework::Attribute& GetAttr(
