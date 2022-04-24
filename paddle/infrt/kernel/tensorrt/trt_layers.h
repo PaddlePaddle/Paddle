@@ -115,6 +115,27 @@ inline void PoolFunc(trt::PoolingOp& op,  // NOLINT
     // TODO(Inference)
     // CHECK(false) << "Not supported adaptive pool";
 
+    // TODO(wilber): Reformat.
+    // global average pooling.
+    auto ksize_vec = ArrayAttrToVec<int>(ksize);
+    if (static_cast<nvinfer1::PoolingType>(pool_type) ==
+            nvinfer1::PoolingType::kAVERAGE &&
+        ksize_vec.size() == 2 && ksize_vec[0] == 1 && ksize_vec[1] == 1) {
+      nvinfer1::Dims dims;
+      dims.nbDims = 2;
+      dims.d[0] = input_shape.d[1];
+      dims.d[1] = input_shape.d[2];
+      auto* layer = network->addPoolingNd(
+          *input_itensor, static_cast<nvinfer1::PoolingType>(pool_type), dims);
+      CHECK_NOTNULL(layer);
+
+      mlir::Value out_repr = op.output_tensor();
+      nvinfer1::ITensor* out_tensor = layer->getOutput(0);
+      value_to_trt_tensor_map[out_repr] = out_tensor;
+      return;
+    }
+
+    // plugin...
     std::vector<int> input_shape_v;
     for (int i = 0; i < input_dims; i++) {
       input_shape_v.push_back(input_shape.d[i]);

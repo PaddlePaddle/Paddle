@@ -94,7 +94,7 @@ def log(x, name=None):
 
     .. math::
 
-        Out = \\ln(x)
+        Out = \ln(x)
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
@@ -213,7 +213,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     .. math::
 
-        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+        out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -424,6 +424,10 @@ OP_NAMEMAPPING = {
     'elementwise_pow': 'final_state_elementwise_pow',
     'elementwise_floordiv': 'final_state_floor_divide',
     'elementwise_mod': 'final_state_modulo',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
 }
 
 @dygraph_only
@@ -436,7 +440,7 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return  op_name[-1] == "_"
 
-    if op_name not in OP_NAMEMAPPING.keys():
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
         op = getattr(_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     else:
@@ -1528,7 +1532,9 @@ def mm(input, mat2, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matmul(input, mat2, False, False)
+    elif paddle.in_dynamic_mode():
         return _C_ops.matmul_v2(input, mat2)
 
     def __check_input(x, y):
@@ -1751,7 +1757,9 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            return _C_ops.final_state_matmul(nx, ny.T, False, False).reshape(dstshape)
+        elif paddle.in_dynamic_mode():
             return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
 
         def __check_input(x, y):
@@ -1814,7 +1822,9 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matmul(nx, ny, False, False)
+    elif paddle.in_dynamic_mode():
         return _C_ops.matmul_v2(nx, ny)
 
     def __check_input(x, y):
@@ -1838,7 +1848,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
-       logsumexp(x) = \\log\\sum exp(x)
+       logsumexp(x) = \log\sum exp(x)
 
     Args:
         x (Tensor): The input Tensor with data type float32 or float64, which 
@@ -2407,7 +2417,7 @@ def log1p(x, name=None):
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
-        Out = \\ln(x+1)
+        Out = \ln(x+1)
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
@@ -2445,7 +2455,7 @@ def log2(x, name=None):
 
     .. math::
 
-        Out = \\log_2x
+        Out = \log_2x
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
@@ -2497,7 +2507,7 @@ def log10(x, name=None):
 
     .. math::
 
-        Out = \\log_10_x
+        Out = \log_10_x
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
@@ -2957,7 +2967,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
             y = paddle.cumsum(data, dtype='float64')
             print(y.dtype)
-            # VarType.FP64
+            # paddle.float64
     """
     if axis is None:
         flatten = True
@@ -3279,7 +3289,7 @@ def tanh(x, name=None):
     Tanh Activation Operator.
 
     .. math::
-        out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+        out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Args:
         x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
@@ -3965,7 +3975,11 @@ def rad2deg(x, name=None):
             #         [57.29578018])
     """
     rad2deg_scale = 180 / np.pi
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.final_state_scale(x, rad2deg_scale, 0.0, True)
+    elif paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', rad2deg_scale)
@@ -4018,7 +4032,11 @@ def deg2rad(x, name=None):
             #         [3.14159274])
     """
     deg2rad_scale = np.pi / 180.0
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if convert_dtype(x.dtype) in ['int32', 'int64']:
+            x = cast(x, dtype="float32")
+        return _C_ops.final_state_scale(x, deg2rad_scale, 0.0, True)
+    elif paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, 'scale', deg2rad_scale)
@@ -4263,14 +4281,22 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
-            'infer_flags', infer_flags, *attrs_1)
+        if in_dygraph_mode():
+            input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
+                                            [])
+        else:
+            input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+                'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
-            'infer_flags', infer_flags, *attrs_2)
+        if in_dygraph_mode():
+            input_back = input_front = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+                                            [])
+        else:
+            input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+                'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
             op = getattr(_C_ops, "logical_xor")
@@ -4385,3 +4411,57 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+def frac(x, name=None):
+    """
+    This API is used to return the fractional portion of each element in input.
+
+    Args:
+        x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
+        name: (str, optional): Name for operation (optional, default is None). For more
+
+    Returns:
+        Tensor: The output Tensor of frac.
+
+    Examples:
+        .. code-block:: Python
+
+            import paddle
+            import numpy as np
+
+            input = paddle.rand([3, 3], 'float32')
+            print(input.numpy())
+            # [[ 1.2203873  -1.0035421  -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-1.5131804   0.5850153  -0.17597814]]
+
+            output = paddle.frac(input)
+            print(output.numpy())
+            # [[ 0.22038734 -0.00354207 -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-0.5131804   0.5850153  -0.17597814]]
+    """
+    op_type = 'elementwise_sub'
+    axis = -1
+    act = None
+    if x.dtype not in [paddle.int32, paddle.int64, paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {}".format(x.dtype))
+    if in_dygraph_mode():
+        y = _C_ops.final_state_trunc(x)
+        return _C_ops.final_state_subtract(x, y)
+    else:
+        if _in_legacy_dygraph():
+            y = _C_ops.trunc(x)
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type)
+        else:
+            inputs = {"X": x}
+            attrs = {}
+
+            helper = LayerHelper("trunc", **locals())
+            check_variable_and_dtype(x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc')
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
+            return _elementwise_op(LayerHelper(op_type, **locals()))

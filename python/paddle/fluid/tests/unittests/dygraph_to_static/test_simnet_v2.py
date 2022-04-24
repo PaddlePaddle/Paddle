@@ -20,6 +20,9 @@ import unittest
 
 from simnet_dygraph_model_v2 import BOW, HingeLoss
 
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
+
 SEED = 102
 random.seed(SEED)
 
