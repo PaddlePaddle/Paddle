@@ -114,14 +114,35 @@ node_list[6]-> node_id:8, neighbor_size:1, neighbor_offset:13
 node_list[7]-> node_id:9, neighbor_size:1, neighbor_offset:14
 node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 */
+struct NeighborSampleQuery {
+  int gpu_id;
+  int64_t *key;
+  int sample_size;
+  int len;
+  void initialize(int gpu_id, int64_t *key, int sample_size, int len) {
+    this->gpu_id = gpu_id;
+    this->key = key;
+    this->sample_size = sample_size;
+    this->len = len;
+  }
+  void display() {
+    int64_t *sample_keys = new int64_t[len];
+    VLOG(0) << "device_id " << gpu_id << " sample_size = " << sample_size;
+    VLOG(0) << "there are " << len << " keys ";
+    std::string key_str;
+    cudaMemcpy(sample_keys, key, len * sizeof(int64_t), cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i < len; i++) {
+      if (key_str.size() > 0) key_str += ";";
+      key_str += std::to_string(sample_keys[i]);
+    }
+    VLOG(0) << key_str;
+  }
+};
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
-  int64_t *get_val() { return val; }
-  int *get_actual_sample_size() { return actual_sample_size; }
-  int get_sample_size() { return sample_size; }
-  int get_key_size() { return key_size; }
   void initialize(int _sample_size, int _key_size, int dev_id) {
     sample_size = _sample_size;
     key_size = _key_size;
@@ -134,6 +155,27 @@ struct NeighborSampleResult {
         memory::AllocShared(place, _key_size * sizeof(int));
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
   }
+  void display() {
+    int64_t *res = new int64_t[sample_size * key_size];
+    cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
+    int *ac_size = new int[key_size];
+    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+               cudaMemcpyDeviceToHost);  // 3, 1, 3
+
+    for (int i = 0; i < key_size; i++) {
+      VLOG(0) << "actual sample size for " << i << "th key is " << ac_size[i];
+      VLOG(0) << "sampled neighbors are ";
+      std::string neighbor;
+      for (int j = 0; j < ac_size[i]; j++) {
+        if (neighbor.size() > 0) neighbor += ";";
+        neighbor += std::to_string(res[i * sample_size + j]);
+      }
+      VLOG(0) << neighbor;
+    }
+    delete[] res;
+    delete[] ac_size;
+  }
   NeighborSampleResult(){};
   ~NeighborSampleResult() {
     // if (val != NULL) cudaFree(val);
@@ -145,13 +187,33 @@ struct NeighborSampleResult {
 struct NodeQueryResult {
   int64_t *val;
   int actual_sample_size;
+  int64_t *get_val() { return val; }
+  int get_len() { return actual_sample_size; }
+  std::shared_ptr<memory::Allocation> val_mem;
+  void initialize(int query_size, int dev_id) {
+    platform::CUDADeviceGuard guard(dev_id);
+    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    val_mem = memory::AllocShared(place, query_size * sizeof(int64_t));
+    val = (int64_t *)val_mem->ptr();
+  }
+  void display() {
+    int64_t *res = new int64_t[actual_sample_size];
+    cudaMemcpy(res, val, actual_sample_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
+
+    VLOG(0) << "actual_sample_size =" << actual_sample_size;
+    std::string str;
+    for (int i = 0; i < actual_sample_size; i++) {
+      if (str.size() > 0) str += ";";
+      str += std::to_string(res[i]);
+    }
+    VLOG(0) << str;
+  }
   NodeQueryResult() {
     val = NULL;
     actual_sample_size = 0;
   };
-  ~NodeQueryResult() {
-    if (val != NULL) cudaFree(val);
-  }
+  ~NodeQueryResult() {}
 };
 }
 };

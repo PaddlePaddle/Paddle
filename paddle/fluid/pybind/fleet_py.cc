@@ -259,6 +259,8 @@ using paddle::distributed::IndexNode;
 #ifdef PADDLE_WITH_HETERPS
 using paddle::framework::GraphGpuWrapper;
 using paddle::framework::NeighborSampleResult;
+using paddle::framework::NeighborSampleQuery;
+using paddle::framework::NodeQueryResult;
 #endif
 
 void BindIndexNode(py::module* m) {
@@ -311,10 +313,26 @@ void BindIndexWrapper(py::module* m) {
 }
 
 #ifdef PADDLE_WITH_HETERPS
+void BindNodeQueryResult(py::module* m) {
+  py::class_<NodeQueryResult>(*m, "NodeQueryResult")
+      .def(py::init<>())
+      .def("initialize", &NodeQueryResult::initialize)
+      .def("display", &NodeQueryResult::display)
+      .def("get_val", &NodeQueryResult::get_val)
+      .def("get_len", &NodeQueryResult::get_len);
+}
+void BindNeighborSampleQuery(py::module* m) {
+  py::class_<NeighborSampleQuery>(*m, "NeighborSampleQuery")
+      .def(py::init<>())
+      .def("initialize", &NeighborSampleQuery::initialize)
+      .def("display", &NeighborSampleQuery::display);
+}
+
 void BindNeighborSampleResult(py::module* m) {
   py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
       .def(py::init<>())
-      .def("initialize", &NeighborSampleResult::initialize);
+      .def("initialize", &NeighborSampleResult::initialize)
+      .def("display", &NeighborSampleResult::display);
 }
 
 void BindGraphGpuWrapper(py::module* m) {
@@ -322,10 +340,11 @@ void BindGraphGpuWrapper(py::module* m) {
       .def(py::init<>())
       .def("test", &GraphGpuWrapper::test)
       .def("initialize", &GraphGpuWrapper::initialize)
-      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("set_device", &GraphGpuWrapper::set_device)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
+      .def("query_node_list", &GraphGpuWrapper::query_node_list)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)

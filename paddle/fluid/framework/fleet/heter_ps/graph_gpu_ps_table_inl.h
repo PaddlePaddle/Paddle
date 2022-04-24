@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <thrust/device_vector.h>
-
+#include <functional>
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 //#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
@@ -468,10 +468,15 @@ void GpuPsGraphTable::build_graph_from_cpu(
   cudaDeviceSynchronize();
 }
 
-NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
-                                                             int64_t* key,
-                                                             int sample_size,
-                                                             int len) {
+NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
+    NeighborSampleQuery q, bool cpu_switch) {
+  return graph_neighbor_sample_v2(q.gpu_id, q.key, q.sample_size, q.len,
+                                  cpu_switch);
+}
+NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
+                                                            int64_t* key,
+                                                            int sample_size,
+                                                            int len) {
   /*
  comment 2
   this function shares some kernels with heter_comm_inl.h
@@ -499,8 +504,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
 
   */
 
-  NeighborSampleResult* result = new NeighborSampleResult();
-  result->initialize(sample_size, len, resource_->dev_id(gpu_id));
+  NeighborSampleResult result;
+  result.initialize(sample_size, len, resource_->dev_id(gpu_id));
   if (len == 0) {
     return result;
   }
@@ -508,8 +513,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   // cudaMalloc((void**)&result->val, len * sample_size * sizeof(int64_t));
   // cudaMalloc((void**)&result->actual_sample_size, len * sizeof(int));
-  int* actual_sample_size = result->actual_sample_size;
-  int64_t* val = result->val;
+  int* actual_sample_size = result.actual_sample_size;
+  int64_t* val = result.val;
   int total_gpu = resource_->total_device();
   // int dev_id = resource_->dev_id(gpu_id);
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -686,10 +691,10 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
   return result;
 }
 
-NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
+NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     int gpu_id, int64_t* key, int sample_size, int len, bool cpu_query_switch) {
-  NeighborSampleResult* result = new NeighborSampleResult();
-  result->initialize(sample_size, len, resource_->dev_id(gpu_id));
+  NeighborSampleResult result;
+  result.initialize(sample_size, len, resource_->dev_id(gpu_id));
 
   if (len == 0) {
     return result;
@@ -697,8 +702,8 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
 
   platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
-  int* actual_sample_size = result->actual_sample_size;
-  int64_t* val = result->val;
+  int* actual_sample_size = result.actual_sample_size;
+  int64_t* val = result.val;
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
 
@@ -861,17 +866,19 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample_v2(
   return result;
 }
 
-NodeQueryResult* GpuPsGraphTable::graph_node_sample(int gpu_id,
-                                                    int sample_size) {}
+NodeQueryResult GpuPsGraphTable::graph_node_sample(int gpu_id,
+                                                   int sample_size) {
+  return NodeQueryResult();
+}
 
-NodeQueryResult* GpuPsGraphTable::query_node_list(int gpu_id, int start,
-                                                  int query_size) {
-  NodeQueryResult* result = new NodeQueryResult();
+NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
+                                                 int query_size) {
+  NodeQueryResult result;
   if (query_size <= 0) return result;
-  int& actual_size = result->actual_sample_size;
+  int& actual_size = result.actual_sample_size;
   actual_size = 0;
-  cudaMalloc((void**)&result->val, query_size * sizeof(int64_t));
-  int64_t* val = result->val;
+  result.initialize(query_size, resource_->dev_id(gpu_id));
+  int64_t* val = result.val;
   // int dev_id = resource_->dev_id(gpu_id);
   // platform::CUDADeviceGuard guard(dev_id);
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
@@ -895,21 +902,27 @@ NodeQueryResult* GpuPsGraphTable::query_node_list(int gpu_id, int start,
   sample_size = [2,3]
 
   */
+  std::function<int(int, int, int, int, int&, int&)> range_check = [](
+      int x, int y, int x1, int y1, int& x2, int& y2) {
+    if (y <= x1 || x >= y1) return 0;
+    y2 = min(y, y1);
+    x2 = max(x1, x);
+    return y2 - x2;
+  };
   for (int i = 0; i < gpu_graph_list.size() && query_size != 0; i++) {
     auto graph = gpu_graph_list[i];
     if (graph.node_size == 0) {
       continue;
     }
-    if (graph.node_size + size > start) {
-      int cur_size = min(query_size, graph.node_size + size - start);
-      query_size -= cur_size;
-      idx.emplace_back(i);
-      gpu_begin_pos.emplace_back(start - size);
+    int x2, y2;
+    int len = range_check(start, start + query_size, size,
+                          size + graph.node_size, x2, y2);
+    if (len > 0) {
+      idx.push_back(i);
+      gpu_begin_pos.emplace_back(x2 - size);
       local_begin_pos.emplace_back(actual_size);
-      start += cur_size;
-      actual_size += cur_size;
-      sample_size.emplace_back(cur_size);
-      create_storage(gpu_id, i, 1, cur_size * sizeof(int64_t));
+      sample_size.push_back(len);
+      actual_size += len;
     }
     size += graph.node_size;
   }
@@ -935,6 +948,9 @@ NodeQueryResult* GpuPsGraphTable::query_node_list(int gpu_id, int start,
   for (int i = 0; i < idx.size(); i++) {
     auto& node = path_[gpu_id][idx[i]].nodes_.front();
     cudaStreamSynchronize(node.out_stream);
+  }
+  for (auto x : idx) {
+    destroy_storage(gpu_id, x);
   }
   return result;
 }
