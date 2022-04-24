@@ -37,8 +37,8 @@ struct DimensionsTransform {
   std::vector<DimVector> in_dims;
 
  private:
-  /* To compensate the lackage of input_tensors` dimension with input
-     variable 'axis' */
+  // To compensate the lackage of input_tensors` dimension with input
+  // variable 'axis'.
   void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
       int64_t in_idx = 0;
@@ -83,8 +83,8 @@ struct DimensionsTransform {
     std::reverse(out_dims.begin(), out_dims.end());
   }
 
-  /* Merge sequential dimension to shrink calculation cost for
-     offset computation in CUDA Kernel. */
+  // Merge sequential dimension to shrink calculation cost for
+  // offset computation in CUDA Kernel.
   template <typename MergeFunctor>
   __inline__ void MergeDimensions(MergeFunctor merge_func, int N) {
     auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
@@ -123,8 +123,8 @@ struct DimensionsTransform {
     }
   }
 
-  /* To judge whether shape of any input tensors is sequential
-    1-value-dimensions, and metric the length of it. */
+  // To judge whether shape of any input tensors is sequential
+  // 1-value-dimensions, and metric the length of it.
   int GetSequentialOneDimLength(int *swap_index) {
     int index = 0;
     int max_one_length = 0;
@@ -176,11 +176,11 @@ struct DimensionsTransform {
     }
     InputDimensionsExtend(N, axis);
 
-    /* To Merge the dimensions of input_tensors while the consequtive
-       equal-dimensions appears. Example below :
-       in_1.shape = [2, 3, 4, 5]    in_1.shape = [2, 12, 5]
-       in_2.shape = [1, 3, 4, 5] -> in_2.shape = [1, 12, 5]
-       in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1] */
+    // To Merge the dimensions of input_tensors while the consequtive
+    // equal-dimensions appears. Example below :
+    //   in_1.shape = [2, 3, 4, 5]    in_1.shape = [2, 12, 5]
+    //   in_2.shape = [1, 3, 4, 5] -> in_2.shape = [1, 12, 5]
+    //   in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
     auto merge_sequential_dims = [](bool &equal,
                                     std::vector<DimVector> &in_dims,
                                     DimVector &out,
@@ -193,14 +193,14 @@ struct DimensionsTransform {
     MergeFunctor merge_ptr = merge_sequential_dims;
     MergeDimensions<MergeFunctor>(merge_ptr, N);
 
-    /* To Merge the dimension of input_tensors while the sequential
-       1-value-dimensions appears. Example below :
-        in_1.shape = [2, 1, 1, 5]    in_1.shape = [2,  1, 5]
-        in_2.shape = [2, 3, 4, 5] -> in_2.shape = [1, 12, 5]
-        in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
-      Caution: Once 1-value-dimensions appears, the corresponding
-      shape position of other input tensors must be same with the
-      output tensor`s shape, or incorrect merge may occur. */
+    // To Merge the dimension of input_tensors while the sequential
+    // 1-value-dimensions appears. Example below :
+    //   in_1.shape = [2, 1, 1, 5]    in_1.shape = [2,  1, 5]
+    //   in_2.shape = [2, 3, 4, 5] -> in_2.shape = [1, 12, 5]
+    //   in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
+    // Caution: Once 1-value-dimensions appears, the corresponding
+    // shape position of other input tensors must be same with the
+    // output tensor`s shape, or incorrect merge may occur.
     auto merge_sequential_one_dims = [](bool &equal,
                                         std::vector<DimVector> &in_dims,
                                         DimVector &out,
