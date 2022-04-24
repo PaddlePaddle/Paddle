@@ -280,8 +280,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   const phi::KernelArgsDef *GetPhiKernelArgsDefs() const override {
-    return &phi::KernelFactory::Instance().GetFirstKernelArgsDef(
-        phi::TransToPhiKernelName(op_.Type()));
+    return nullptr;
   }
 
  protected:
