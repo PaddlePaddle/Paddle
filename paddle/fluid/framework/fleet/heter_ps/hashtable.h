@@ -81,6 +81,9 @@ class HashTable {
     VLOG(3) << "hashtable set pull value size: " << pull_feature_value_size_
             << " push value size: " << push_grad_value_size_;
   }
+
+  std::unique_ptr<phi::RWLock> rwlock_{nullptr};
+
  private:
   TableContainer<KeyType, ValType>* container_;
   int BLOCK_SIZE_{256};
