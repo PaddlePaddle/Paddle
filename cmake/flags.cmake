@@ -133,6 +133,7 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
+    -mcmodel=large
     -Werror
     -Wall
     -Wextra
@@ -177,6 +178,7 @@ endif(NOT APPLE)
 
 set(GPU_COMMON_FLAGS
     -fPIC
+    -mcmodel=large
     -fno-omit-frame-pointer
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor

@@ -35,6 +35,7 @@ paddle_extra_compile_args = [
     '-std=c++14',
     '-shared',
     '-fPIC',
+    '-mcmodel=large',
     '-Wno-parentheses',
     '-DPADDLE_WITH_CUSTOM_KERNEL',
 ]
