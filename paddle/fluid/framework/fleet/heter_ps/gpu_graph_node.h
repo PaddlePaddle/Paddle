@@ -117,11 +117,14 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
-  int *offset;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
-
-  NeighborSampleResult(int _sample_size, int _key_size, int dev_id)
-      : sample_size(_sample_size), key_size(_key_size) {
+  int64_t *get_val() { return val; }
+  int *get_actual_sample_size() { return actual_sample_size; }
+  int get_sample_size() { return sample_size; }
+  int get_key_size() { return key_size; }
+  void initialize(int _sample_size, int _key_size, int dev_id) {
+    sample_size = _sample_size;
+    key_size = _key_size;
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
     val_mem =
@@ -130,8 +133,8 @@ struct NeighborSampleResult {
     actual_sample_size_mem =
         memory::AllocShared(place, _key_size * sizeof(int));
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
-    offset = NULL;
-  };
+  }
+  NeighborSampleResult(){};
   ~NeighborSampleResult() {
     // if (val != NULL) cudaFree(val);
     // if (actual_sample_size != NULL) cudaFree(actual_sample_size);
