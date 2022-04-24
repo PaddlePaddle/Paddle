@@ -197,8 +197,8 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("FMHAOut"));
     ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
                       ctx->GetInputDim("QKTVOut"));
-    ctx->SetOutputDim(framework::GradVarName("QKVTransposeOut"),
-                      ctx->GetInputDim("QKVTransposeOut"));
+    // ctx->SetOutputDim(framework::GradVarName("QKVTransposeOut"),
+    //                   ctx->GetInputDim("QKVTransposeOut"));
     ctx->SetOutputDim(framework::GradVarName("QKOut"),
                       ctx->GetInputDim("QKOut"));
     ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
@@ -238,8 +238,8 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
 
     op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
-    op->SetOutput(framework::GradVarName("QKVTransposeOut"),
-                  this->OutputGrad("QKVTransposeOut"));
+    // op->SetOutput(framework::GradVarName("QKVTransposeOut"),
+    //               this->OutputGrad("QKVTransposeOut"));
 
     op->SetInput("QKOut", this->Output("QKOut"));
     op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));

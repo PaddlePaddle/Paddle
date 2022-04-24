@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -379,16 +383,11 @@ class FMHAGateRef {
         num_head_(num_head),
         head_dim_(head_dim) {}
 
-  void ComputeForward(const Tensor* nonbatched_bias, const Tensor& qkv_input,
+  void ComputeForward(const Tensor* nonbatched_bias, const Tensor& qkv_out,
                       const Tensor* src_mask, Tensor* qkv_transpose_out,
                       Tensor* qk_out, Tensor* softmax_out, Tensor* qktv_out,
                       Tensor* fmha_out) {
-    // batch_size, seq_len_m, seq_len_r, 3, num_head, c
-    // 3, batch_size, seq_len_m, num_head, seq_len_r, c
-    int ndims = 6;
-    std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input, perm_1,
-                                qkv_transpose_out);
+    ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
 
     T* qkv_data = qkv_transpose_out->data<T>();
     T* qk_out_data = qk_out->data<T>();
@@ -435,11 +434,7 @@ class FMHAGateRef {
                      softmax_out_data, v_ptr, beta, qktv_out_data,
                      gemm_batch_size, stride_a, stride_b);
 
-    // [batch_size, seq_len_m, num_head, seq_len_r, c]
-    // [batch_size, seq_len_m, seq_len_r, num_head, c]
-    std::vector<int> perm_3 = {0, 1, 3, 2, 4};
-    ndims = 5;
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out, perm_3, fmha_out);
+    ComputeQKTVTransposeForward(*qktv_out, fmha_out);
   }
 
   void ComputeBackward(const Tensor& qkv_transpose_out, const Tensor* src_mask,
@@ -448,16 +443,21 @@ class FMHAGateRef {
                        const Tensor* nonbatched_bias,
                        Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
                        Tensor* softmax_out_grad, Tensor* qk_out_grad,
-                       Tensor* qkv_transpose_out_grad, Tensor* src_mask_grad,
-                       Tensor* qkv_input_grad) {
+                       Tensor* src_mask_grad, Tensor* qkv_out_grad) {
+    ComputeQKTVTransposeBackward(fmha_out_grad, qktv_out_grad);
+
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
     int k_size = q_size;
 
-    T* qkv_grad_data = qkv_transpose_out_grad->data<T>();
-    T* q_grad_ptr = qkv_grad_data;
+    Tensor qkv_transpose_out_grad;
+    qkv_transpose_out_grad.Resize(qkv_transpose_out.dims());
+    T* qkv_grad_ptr =
+        qkv_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+    T* q_grad_ptr = qkv_grad_ptr;
     T* k_grad_ptr = q_grad_ptr + q_size;
     T* v_grad_ptr = k_grad_ptr + k_size;
+
     const T* qkv_data = qkv_transpose_out.data<T>();
     const T* q_ptr = qkv_data;
     const T* k_ptr = q_ptr + q_size;
@@ -466,12 +466,6 @@ class FMHAGateRef {
     const T* softmax_out_data = softmax_out.data<T>();
     T* softmax_out_grad_data = softmax_out_grad->data<T>();
     T* qktv_out_grad_data = qktv_out_grad->data<T>();
-
-    // transpose bw
-    int ndims = 5;
-    std::vector<int> perm_3 = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad, perm_3,
-                                qktv_out_grad);
 
     // softmax_out_data(x) * v_ptr(y) = qktv_out_grad_data
     CBLAS_TRANSPOSE transA = CblasTrans;
@@ -535,15 +529,48 @@ class FMHAGateRef {
                      qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
                      stride_a, stride_b);
 
-    // transpose bw
-    ndims = 6;
-    // std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
-    std::vector<int> perm_1 = {1, 2, 4, 0, 3, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qkv_transpose_out_grad,
-                                perm_1, qkv_input_grad);
+    ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
   }
 
  private:
+  // [batch_size, seq_len_m, seq_len_r, 3, num_head, c] ->
+  //         [3, batch_size, seq_len_m, num_head, seq_len_r, c]
+  void ComputeQKVTransposeForward(const Tensor& qkv_out,
+                                  Tensor* qkv_transpose_out) {
+    platform::RecordEvent event("qkv_transpose",
+                                platform::TracerEventType::UserDefined, 1);
+    int ndims = 6;
+    std::vector<int> perm = {3, 0, 1, 4, 2, 5};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_out, perm,
+                                qkv_transpose_out);
+  }
+
+  void ComputeQKVTransposeBackward(const Tensor& qkv_transpose_out_grad,
+                                   Tensor* qkv_out_grad) {
+    int ndims = 6;
+    std::vector<int> perm = {1, 2, 4, 0, 3, 5};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_transpose_out_grad, perm,
+                                qkv_out_grad);
+  }
+
+  // [batch_size, seq_len_m, num_head, seq_len_r, c] ->
+  //         [batch_size, seq_len_m, seq_len_r, num_head, c]
+  void ComputeQKTVTransposeForward(const Tensor& qktv_out, Tensor* fmha_out) {
+    platform::RecordEvent event("qktv_transpose",
+                                platform::TracerEventType::UserDefined, 1);
+    int ndims = 5;
+    std::vector<int> perm = {0, 1, 3, 2, 4};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qktv_out, perm, fmha_out);
+  }
+
+  void ComputeQKTVTransposeBackward(const Tensor& fmha_out_grad,
+                                    Tensor* qktv_out_grad) {
+    int ndims = 5;
+    std::vector<int> perm = {0, 1, 3, 2, 4};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad, perm,
+                                qktv_out_grad);
+  }
+
   // src_mask_out = qk_out + nonbatched_bias + src_mask
   // softmax_out = softmax(src_mask_out)
   void ComputeBiasMaskSoftmaxForward(const Tensor* qk_out,

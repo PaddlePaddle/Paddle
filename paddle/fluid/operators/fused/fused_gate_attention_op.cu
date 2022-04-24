@@ -300,15 +300,14 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     // fw output
     auto *qkv_transpose_out = ctx.Input<Tensor>("QKVTransposeOut");
     auto *qk_out = ctx.Input<Tensor>("QKOut");
-    auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
 
     // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
     auto *d_qktv_out = ctx.Output<Tensor>(framework::GradVarName("QKTVOut"));
-    auto *d_qkv_transpose_out =
-        ctx.Output<Tensor>(framework::GradVarName("QKVTransposeOut"));
+    // auto *d_qkv_transpose_out =
+    //     ctx.Output<Tensor>(framework::GradVarName("QKVTransposeOut"));
     auto *d_qk_out = ctx.Output<Tensor>(framework::GradVarName("QKOut"));
     auto *d_softmax_out =
         ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
@@ -316,7 +315,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(ctx.GetPlace());
     d_qkv_out->mutable_data<T>(ctx.GetPlace());
     d_qktv_out->mutable_data<T>(ctx.GetPlace());
-    d_qkv_transpose_out->mutable_data<T>(ctx.GetPlace());
+    // d_qkv_transpose_out->mutable_data<T>(ctx.GetPlace());
     d_qk_out->mutable_data<T>(ctx.GetPlace());
     d_softmax_out->mutable_data<T>(ctx.GetPlace());
 
@@ -365,7 +364,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     fmha_ref_compute.ComputeBackward(
         *qkv_transpose_out, src_mask, *softmax_out, *qk_out, *d_fmha_out,
         nonbatched_bias, d_nonbatched_bias, d_qktv_out, d_softmax_out, d_qk_out,
-        d_qkv_transpose_out, nullptr, d_qkv_out);
+        nullptr, d_qkv_out);
 
     // Gradient of Merged QKV Matmul
     m = batch_size * seq_len_m * seq_len_r;
