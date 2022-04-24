@@ -22,6 +22,7 @@ import warnings
 from ..fluid.layer_helper import LayerHelper
 from ..fluid import unique_name
 from ..fluid import layers
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -144,7 +145,11 @@ class SGD(Optimizer):
                          if find_master else None)
 
         lr = self._create_param_lr(param_and_grad)
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
+                                   master_weight, find_master)
+            return None
+        if _in_legacy_dygraph():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
                        param_and_grad[0], master_weight)
             return None

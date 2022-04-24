@@ -329,7 +329,9 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.final_state_concat(input, axis)
+        out = _varbase_creator()
+        _C_ops.concat(input, out, 'axis', axis)
+        return out
 
     if _in_legacy_dygraph():
         if isinstance(axis, Variable):
@@ -622,12 +624,15 @@ def assign(input, output=None):
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
         if _non_static_mode():
-            if output is None:
-                if _in_legacy_dygraph():
-                    output = core.VarBase()
-                else:
-                    output = core.eager.Tensor()
-            _C_ops.assign(input, output)
+            if in_dygraph_mode() and output is None:
+                output = _C_ops.final_state_assign(input)
+            else:
+                if output is None:
+                    if _in_legacy_dygraph():
+                        output = core.VarBase()
+                    else:
+                        output = core.eager.Tensor()
+                _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
@@ -675,8 +680,7 @@ def assign(input, output=None):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},

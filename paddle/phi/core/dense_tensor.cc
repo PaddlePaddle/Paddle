@@ -19,7 +19,24 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-// See Note [ Why still include the fluid headers? ]
+/**
+ * [ Why still include the fluid headers? ]
+ *
+ * We hope to organize the basic implementation of Tensor and the logic related
+ * to Tensor computation into an independent library, which we call
+ * [Tensor Operation Library, phi], so we extract or rewrite the original
+ * Kernels.
+ *
+ * In the future, the training library, inference library and custom operators
+ * will link to this Tensor Operation library.
+ *
+ * However, if we directly split the link relation, we need to make too many
+ * changes, which will affect the stability of the framework, so here we still
+ * rely on the implementation of the framework, which is a intermediate state.
+ *
+ * In the future, the necessary components will be moved to the this library,
+ * or the corresponding components will be re-implemented.
+ */
 #include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
@@ -40,6 +57,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
 #endif
 }
 
@@ -49,6 +67,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
 #endif
   return *this;
 }
@@ -57,6 +76,10 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
+#endif
   return *this;
 }
 

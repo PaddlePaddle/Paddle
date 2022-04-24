@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -41,8 +42,13 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
       data[i] = dist(*engine);
     }
 
-    tensor->set_layout(DataLayout::kMKLDNN);
-    tensor->set_format(dnnl::memory::format_tag::oihw);
+    dnnl::memory::desc out_mem_desc(
+        phi::vectorize(tensor->dims()),
+        framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(tensor->dtype())),
+        platform::GetPlainMKLDNNFormat(tensor->dims().size()));
+
+    tensor->set_mem_desc(out_mem_desc);
   }
 };
 }  // namespace operators

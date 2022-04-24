@@ -36,7 +36,6 @@ if (WITH_ASCEND_CL)
 else()
     math_library(beam_search DEPS math_function)
 endif()
-math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
 
 

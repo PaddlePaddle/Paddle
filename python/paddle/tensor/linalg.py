@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer
+from ..framework import LayerHelper
+from ..framework import _varbase_creator, _dygraph_tracer, in_dygraph_mode, _non_static_mode
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
-from ..fluid.layers import transpose, cast  # noqa: F401
-from ..fluid import layers
+from ..fluid.framework import _in_legacy_dygraph
+from .manipulation import cast
+from .math import multiply, add
+from .logic import logical_not
+from .creation import full
+
 import paddle
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
@@ -29,6 +32,95 @@ __all__ = []
 
 # Consistent with kDefaultDim from C++ Backend
 K_DEFAULT_DIM = 9
+
+
+def transpose(x, perm, name=None):
+    """
+    Permute the data dimensions of `input` according to `perm`.
+
+    The `i`-th dimension  of the returned tensor will correspond to the
+    perm[i]-th dimension of `input`.
+
+    Args:
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
+        perm (list|tuple): Permute the input according to the data of perm.
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
+
+    For Example:
+
+        .. code-block:: text
+
+         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
+             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
+         shape(x) =  [2,3,4]
+
+         # Example 1
+         perm0 = [1,0,2]
+         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
+                   [[ 5  6  7  8]  [17 18 19 20]]
+                   [[ 9 10 11 12]  [21 22 23 24]]]
+         shape(y_perm0) = [3,2,4]
+
+         # Example 2
+         perm1 = [2,1,0]
+         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
+                   [[ 2 14] [ 6 18] [10 22]]
+                   [[ 3 15]  [ 7 19]  [11 23]]
+                   [[ 4 16]  [ 8 20]  [12 24]]]
+         shape(y_perm1) = [4,3,2]
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn([2, 3, 4])
+            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
+            print(x_transposed.shape)
+            # [3L, 2L, 4L]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_transpose(x, perm)
+    else:
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(x, 'axis', perm)
+            return out
+
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], 'transpose')
+    check_type(perm, 'perm', (list, tuple), 'transpose')
+    if isinstance(perm, tuple):
+        perm = list(perm)
+    if len(perm) != len(x.shape):
+        raise ValueError(
+            "Input(perm) is the permutation of dimensions of Input(x), "
+            "its length should be equal to dimensions of Input(x), "
+            "but received dimension of Input(x) is %s, "
+            "the length of Input(perm) is %s." % (len(x.shape), len(perm)))
+    for idx, dim in enumerate(perm):
+        if dim >= len(x.shape):
+            raise ValueError(
+                "Each element in Input(perm) should be less than Input(x)'s dimension, "
+                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
+                "dimension %d." % (idx, perm[idx], len(x.shape)))
+
+    helper = LayerHelper('transpose', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='transpose2',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
+        attrs={'axis': perm})
+    return out
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -257,7 +349,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         if in_dygraph_mode():
             if dim is None:
-                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+                return _C_ops.final_state_frobenius_norm(input, [], keepdim,
+                                                         True)
             return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
@@ -665,10 +758,13 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
-                                        keepdim, 'reduce_all', reduce_all)
+            if in_dygraph_mode():
+                sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+            else:
+                sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                            keepdim, 'reduce_all', reduce_all)
             if porder == 1 or porder == np.inf:
                 return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                          keepdim, 'reduce_all', reduce_all)
@@ -722,7 +818,12 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            pow_out = _C_ops.pow(input, 'factor', porder)
+            sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
+            sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+        elif paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                           keepdim, 'reduce_all', reduce_all)
@@ -776,10 +877,13 @@ def cond(x, p=None, name=None):
 
         u, s, vh = svd(input, full_matrices=False)
 
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             if porder == "nuc":
-                return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
-                                         'reduce_all', reduce_all)
+                if in_dygraph_mode():
+                    return _C_ops.final_state_sum(s, axis, None, keepdim)
+                else:
+                    return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
+                                             'reduce_all', reduce_all)
             max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
                                         'reduce_all', reduce_all)
             min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
@@ -1062,47 +1166,52 @@ def t(input, name=None):
     the paddle.transpose function which perm dimensions set 0 and 1.
 
     Args:
-        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
 
-    For Example:
-
-        .. code-block:: text
-
-             # Example 1 (0-D tensor)
-             x = tensor([0.79])
-             paddle.t(x) = tensor([0.79])
-
-             # Example 2 (1-D tensor)
-             x = tensor([0.79, 0.84, 0.32])
-             paddle.t(x) = tensor([0.79, 0.84, 0.32])
-
-             # Example 3 (2-D tensor)
-             x = tensor([0.79, 0.84, 0.32],
-                        [0.64, 0.14, 0.57])
-             paddle.t(x) = tensor([0.79, 0.64],
-                                  [0.84, 0.14],
-                                  [0.32, 0.57])
-
-     Examples:
+    Examples:
 
         .. code-block:: python
+           :name: code-example
+             import paddle
+             
+             # Example 1 (0-D tensor)
+             x = paddle.to_tensor([0.79])
+             paddle.t(x) # [0.79]
+             
+             # Example 2 (1-D tensor)
+             x = paddle.to_tensor([0.79, 0.84, 0.32])
+             paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
+             paddle.t(x).shape # [3]
 
-            import paddle
-            x = paddle.ones(shape=[2, 3], dtype='int32')
-            x_transposed = paddle.t(x)
-            print(x_transposed.shape)
-            # [3, 2]
+             # Example 3 (2-D tensor)
+             x = paddle.to_tensor([[0.79, 0.84, 0.32],
+                                  [0.64, 0.14, 0.57]])
+             x.shape # [2, 3]
+             paddle.t(x)
+             # [[0.79000002, 0.63999999],
+             #  [0.83999997, 0.14000000],
+             #  [0.31999999, 0.56999999]]
+             paddle.t(x).shape # [3, 2]
+
     """
     if len(input.shape) > 2:
         raise ValueError(
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.final_state_transpose(input, perm)
+        return out
+
+    if _in_legacy_dygraph():
         if len(input.shape) == 1:
             return input
         # 2-D tensor
@@ -1332,7 +1441,6 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     if tol is None:
         attrs['use_default_tol'] = True
     elif isinstance(tol, Variable):
-        check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
         attrs['use_default_tol'] = False
         if tol.dtype != x.dtype:
             inputs['TolTensor'] = cast(tol, x.dtype)
@@ -2273,8 +2381,10 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):
@@ -2427,7 +2537,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # or              out * x * out = x ;
     """
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2439,11 +2549,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = paddle.to_tensor(y, dtype=x.dtype)
 
             condition = s > cutoff
-            cond_int = layers.cast(condition, s.dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
             st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2451,8 +2561,11 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             v, _ = _C_ops.transpose2(vt, 'axis', perm)
 
             out_1 = v * st
-            out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
+                                         True)
             return out_2
         else:
             # combine eigh and matmul op
@@ -2466,17 +2579,20 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = paddle.to_tensor(y, dtype=s.dtype)
 
             condition = s_abs > cutoff
-            cond_int = layers.cast(condition, s.dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s.dtype)
+            cond_not_int = cast(logical_not(condition), s.dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
             st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
 
             out_1 = u * st
             u_conj = _C_ops.conj(u)
-            out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False, 'trans_y',
-                                     True)
+            if in_dygraph_mode():
+                out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+            else:
+                out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
+                                         'trans_y', True)
             return out_2
     else:
         if not hermitian:
@@ -2504,17 +2620,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                        'keep_dim': True,
                        'reduce_all': False})
 
-            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=dtype)
+            rcond = full(shape=[1], fill_value=rcond, dtype=dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
-            y = layers.fill_constant(shape=[1], value=y, dtype=dtype)
+            y = full(shape=[1], fill_value=y, dtype=dtype)
 
             condition = s > cutoff
-            cond_int = layers.cast(condition, dtype)
-            cond_not_int = layers.cast(layers.logical_not(condition), dtype)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, dtype)
+            cond_not_int = cast(logical_not(condition), dtype)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2589,17 +2705,17 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                        'keep_dim': True,
                        'reduce_all': False})
 
-            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=s_type)
+            rcond = full(shape=[1], fill_value=rcond, dtype=s_type)
             cutoff = rcond * max_singular_val
             y = float('inf')
-            y = layers.fill_constant(shape=[1], value=y, dtype=s_type)
+            y = full(shape=[1], fill_value=y, dtype=s_type)
 
             condition = s_abs > cutoff
-            cond_int = layers.cast(condition, s_type)
-            cond_not_int = layers.cast(layers.logical_not(condition), s_type)
-            out1 = layers.elementwise_mul(1 / s, cond_int)
-            out2 = layers.elementwise_mul(1 / y, cond_not_int)
-            singular = layers.elementwise_add(out1, out2)
+            cond_int = cast(condition, s_type)
+            cond_not_int = cast(logical_not(condition), s_type)
+            out1 = multiply(1 / s, cond_int)
+            out2 = multiply(1 / y, cond_not_int)
+            singular = add(out1, out2)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)
@@ -2741,6 +2857,10 @@ def triangular_solve(x,
         print(out)
         # [7, -2, -5]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
+                                                   unitriangular)
+
     if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',
@@ -2973,7 +3093,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:
@@ -2982,8 +3102,11 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                           False)
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                          False, 'reduce_all', False)
+            if in_dygraph_mode():
+                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
+            else:
+                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
+                                              False, 'reduce_all', False)
         else:
             residuals = paddle.empty(shape=[0], dtype=x.dtype)
 
