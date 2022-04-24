@@ -23,6 +23,13 @@ namespace operators {
 class SizeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
+  }
 };
 
 class SizeOpMaker : public framework::OpProtoAndCheckerMaker {
