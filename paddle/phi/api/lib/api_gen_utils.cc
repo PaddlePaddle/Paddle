@@ -145,16 +145,11 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out) {
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
   if (!out->initialized()) {
     if (type == TensorType::SPARSE_COO) {
-      auto sparse_tensor = std::make_shared<phi::SparseCooTensor>(
-          phi::DenseTensor(), phi::DenseTensor(), phi::DDim{-1});
+      auto sparse_tensor = std::make_shared<phi::SparseCooTensor>();
       out->set_impl(sparse_tensor);
       return sparse_tensor.get();
     } else if (type == TensorType::SPARSE_CSR) {
-      auto sparse_tensor =
-          std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
-                                                 phi::DenseTensor(),
-                                                 phi::DenseTensor(),
-                                                 phi::DDim{-1});
+      auto sparse_tensor = std::make_shared<phi::SparseCsrTensor>();
       out->set_impl(sparse_tensor);
       return sparse_tensor.get();
     } else {
