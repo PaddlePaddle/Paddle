@@ -1159,7 +1159,7 @@ def broadcast_tensors(input, name=None):
                     last_index = output_shape_r_last_tensor_index[i]
                     raise TypeError(
                         "Input tensors to broadcast_tensors does not follow bcast semantics"
-                        "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                        f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                     )
                 if output_shape_r[i] <= shape[i]:
                     output_shape_r[i] = shape[i]
