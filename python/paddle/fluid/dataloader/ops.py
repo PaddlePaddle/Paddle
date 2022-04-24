@@ -76,6 +76,7 @@ def map(map_func, *args, **kwargs):
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import os
             import paddle
@@ -244,6 +245,7 @@ def data_reader(reader_func,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import os
             import paddle

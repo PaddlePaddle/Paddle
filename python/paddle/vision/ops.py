@@ -918,6 +918,7 @@ def image_decode(x,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import cv2
             import paddle
@@ -1022,8 +1023,10 @@ def image_decode_random_crop(x,
                 cropping boxes, this should be a value between 0 and 1.
                 Default 1.
         num_attempts (int, optional): The max attempt number to find
-                random cropping boxes, this should be a position integer.
-                Default 10.
+                random cropping boxes, If the number of attempts is
+                exceeded and the aspect ratio and area restrictions
+                are not met, no cropping will be made. This should be
+                a position integer.  Default 10.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1033,6 +1036,7 @@ def image_decode_random_crop(x,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import cv2
             import paddle
@@ -1111,7 +1115,9 @@ def random_flip(x, prob=0.5, name=None):
         x (Tensor): The input tensor in shape of [N, ...], N if the batch
             size to generate random flipping mirror flags.
         prob (float): The probability for flip the input samples, this
-            should be a float value between 0 and 1. Default 0.5
+            should be a float value between 0 and 1. If random value is
+            less than :attr:`prob`, output is True, otherwise output False.
+            Default 0.5
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1121,6 +1127,7 @@ def random_flip(x, prob=0.5, name=None):
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import paddle
             
@@ -1170,6 +1177,7 @@ def mirror_normalize(x,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import paddle
             
@@ -1715,7 +1723,8 @@ def random_crop_and_resize(x,
             - "bilinear"
         align_corners (bool, optional): If True, the centers of 4 corner pixels
             of the input and output tensors are aligned, preserving the values
-            at the corner pixels, If False, are not aligned. Default: True
+            at the corner pixels, If False, the corners of 4 corner pixels of
+            the input and output tensors are aligned. Default: True
         align_mode (int32, optional): Optional for bilinear interpolation,
             can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
             src_idx = scale*dst_index. Default: 1
@@ -1732,6 +1741,7 @@ def random_crop_and_resize(x,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import paddle
 
@@ -1814,7 +1824,8 @@ def image_resize(x,
             - "bilinear"
         align_corners (bool, optional): If True, the centers of 4 corner pixels
             of the input and output tensors are aligned, preserving the values
-            at the corner pixels, If False, are not aligned. Default: True
+            at the corner pixels, If False, the corners of 4 corner pixels of
+            the input and output tensors are aligned. Default: True
         align_mode (int32, optional): Optional for bilinear interpolation,
             can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
             src_idx = scale*dst_index. Default: 1
@@ -1831,6 +1842,7 @@ def image_resize(x,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import paddle
 

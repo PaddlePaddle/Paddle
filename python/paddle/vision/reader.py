@@ -105,6 +105,7 @@ def file_label_loader(data_root, indices, batch_size, name=None):
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import os
             import paddle
@@ -163,7 +164,8 @@ def file_label_reader(data_root,
                       batch_size=1,
                       shuffle=False,
                       drop_last=False,
-                      seed=None):
+                      seed=None,
+                      name=None):
     """
     Reads batches of data iterably, outputs the bytes contents of a file
     as a uint8 Tensor with one dimension.
@@ -192,6 +194,7 @@ def file_label_reader(data_root,
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
             import os
             import paddle
