@@ -146,12 +146,13 @@ const T* DenseTensor::data() const {
 
 template <typename T>
 T* DenseTensor::data() {
+  T* ret = static_cast<T*>(data());
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
-  return static_cast<T*>(data());
+  return ret;
 }
 
 void* DenseTensor::data() {
