@@ -16,6 +16,8 @@ import paddle
 from paddle.nn import Layer
 import numpy as np
 import unittest
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
 
 
 class Net(Layer):
