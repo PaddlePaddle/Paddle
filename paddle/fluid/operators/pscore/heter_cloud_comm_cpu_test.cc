@@ -242,6 +242,7 @@ TEST(HETERSENDANDRECV, CPU) {
   switch_server_ptr_b->WaitServerReady();
 
   // 获取 client 实例
+  // 开启单测时，请重新设置 HeterClient 端的 recv_switch_channels_
   std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
       distributed::HeterClient::GetInstance(
           {switch_a_endpoint, switch_b_endpoint}, {}, 0);
