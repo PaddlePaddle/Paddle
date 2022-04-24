@@ -12,4 +12,3 @@ add_subdirectory(custom_op)
 add_subdirectory(custom_kernel)
 
 set_tests_properties(test_beam_search_decoder PROPERTIES TIMEOUT 120)
-set_tests_properties(test_fused_gate_attention PROPERTIES TIMEOUT 120)
