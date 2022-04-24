@@ -225,10 +225,11 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=OFF
+set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
 set WITH_ONNXRUNTIME=ON
+set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -260,6 +261,7 @@ set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
 set WITH_ONNXRUNTIME=ON
+set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -275,6 +277,8 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set WITH_ONNXRUNTIME=ON
+set WITH_TPCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
