@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -32,9 +30,9 @@ class EinsumOp : public framework::OperatorWithKernel {
 class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Operands", "(Tensor), The input tensor of svd op.")
+    AddInput("Operands", "(TensorList), The input tensor of einsum op.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor), The output VH tensor of svd op.");
+    AddOutput("Out", "(Tensor), The output tensor of einsum op.");
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
@@ -51,10 +49,10 @@ class EinsumGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto in_x = "Operands";
-    auto out_x_g_n = framework::GradVarName(in_x);
-    ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
-    ctx->ShareAllLoD(in_x, out_x_g_n);
+    auto x_name = "Operands";
+    auto x_grad_name = framework::GradVarName(x_name);
+    ctx->SetOutputsDim(x_grad_name, ctx->GetInputsDim(x_name));
+    ctx->ShareAllLoD(x_name, x_grad_name);
   }
 
  protected:

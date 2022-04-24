@@ -29,10 +29,10 @@ namespace phi {
 // may be we can skip validation check in C++ and just put it in python.
 inline static void ValidationCheck(const std::string& equation) {
   auto n_part = paddle::string::split_string(equation, "->").size();
-  PADDLE_ENFORCE_EQ(
-      n_part,
-      2,
-      phi::errors::InvalidArgument("must have one `->` in equation."));
+  PADDLE_ENFORCE_EQ(n_part,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Required at least one `->` in equation of EinsumOp."));
   size_t pos;
   auto trimed_equ = equation;
   if ((pos = trimed_equ.find("->", 0)) != std::string::npos) {
@@ -46,7 +46,7 @@ inline static void ValidationCheck(const std::string& equation) {
   for (auto c : trimed_equ) {
     if (!is_valid_char(c))
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Invalide char in equation. einsum only accept `a`-`z` and `...`"
+          "Found invalid char in equation. Einsum only accept `a`-`z` and `...`"
           "but get:`%c`",
           c));
   }
@@ -88,15 +88,15 @@ class LabelMap {
   }
 };
 
-inline void print_label(const std::vector<char>& all_labels,
-                        const LabelMap& label2type) {
+inline std::string label_to_string(const std::vector<char>& all_labels,
+                                   const LabelMap& label2type) {
   std::string str;
   for (int a : all_labels) {
     std::stringstream ss;
     ss << label2type[a];
     str += ss.str();
   }
-  VLOG(5) << "Label: " + str;
+  return str;
 }
 
 inline static void ReplaceEllipsis(std::string& s) {  // NOLINT
@@ -115,7 +115,9 @@ inline std::vector<char> union_labels(const std::vector<char>& a,
   LabelMap counter(0);
   std::vector<char> res;
   auto f = [&](char c) {
-    if (counter[static_cast<int>(c)] == 0) res.push_back(c);
+    if (counter[static_cast<int>(c)] == 0) {
+      res.push_back(c);
+    }
     counter[static_cast<int>(c)] += 1;
   };
   std::for_each(a.begin(), a.end(), f);
@@ -140,7 +142,9 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
   for (auto& op : op_labels) {
     for (auto& ch : op) {  // char
       int c = ch;
-      if (counter.is_default(c)) all.push_back(ch);
+      if (counter.is_default(c)) {
+        all.push_back(ch);
+      }
       counter[c] += 1;
       if ((*label2type)[c] != LabelType::Free && counter[c] == 2)
         (*label2type)[c] = LabelType::Contraction;
@@ -201,8 +205,6 @@ inline static void InferLabelShape(const std::vector<std::string>& op_labels,
   for (size_t i = 0; i < op_labels.size(); ++i) {
     auto& op_str = op_labels[i];
     auto& op_dim = inputs[i];
-    // PADDLE_ENFORCE_EQ(op_str.size(), op_dim.size(),
-    // phi::errors::InvalidArgument(""));
     int dim_ptr = 0;
     for (int c : op_str) {
       if (c == '.') {
@@ -214,9 +216,11 @@ inline static void InferLabelShape(const std::vector<std::string>& op_labels,
         (*labelshape)[c] = op_dim[dim_ptr];
         dim_ptr++;
       } else {
-        PADDLE_ENFORCE_EQ((*labelshape)[c],
-                          op_dim[dim_ptr],
-                          phi::errors::InvalidArgument(""));
+        PADDLE_ENFORCE_EQ(
+            (*labelshape)[c],
+            op_dim[dim_ptr],
+            phi::errors::InvalidArgument(
+                "Same label have different shapes for label: `%c`", c));
         dim_ptr++;
       }
     }
@@ -226,10 +230,12 @@ inline static void InferLabelShape(const std::vector<std::string>& op_labels,
             << paddle::string::join_strings(ellipsis_dims->at(i), ",");
     int idx = n_broadcast_dims - ellipsis_dims->at(i).size();
     for (auto v : ellipsis_dims->at(i)) {
-      PADDLE_ENFORCE_EQ(v == 1 || broadcast_dims->at(idx) == 1 ||
-                            broadcast_dims->at(idx) == v,
-                        true,
-                        phi::errors::InvalidArgument("can't broad cast."));
+      PADDLE_ENFORCE_EQ(
+          v == 1 || broadcast_dims->at(idx) == 1 ||
+              broadcast_dims->at(idx) == v,
+          true,
+          phi::errors::InvalidArgument(
+              "Ellipsis dims can't broadcasts. Please Check you operands."));
       broadcast_dims->at(idx) = std::max(v, broadcast_dims->at(idx));
       idx += 1;
     }
@@ -257,11 +263,12 @@ inline static void InferOutputDims(const std::string& right,
                                    const LabelMap& labelshape,
                                    std::vector<int>* output_dims) {
   for (int c : right) {
-    if (c == '.')
+    if (c == '.') {
       output_dims->insert(
           output_dims->end(), broadcast_dims.begin(), broadcast_dims.end());
-    else
+    } else {
       output_dims->push_back(labelshape[c]);
+    }
   }
 }
 //
@@ -323,16 +330,15 @@ inline void EinsumInferShape(const std::vector<const MetaTensor*>& inputs,
                       &output_dims,
                       &right);
 
-  VLOG(5) << "Einsum Infershape: input dims:"
+  VLOG(3) << "Einsum Infershape: input dims:"
           << paddle::string::join_strings(input_dims, "\n");
-  VLOG(5) << "Einsum Infershape: equation:" << equation;
-  VLOG(5) << "Einsum Infershape: all_labels:"
+  VLOG(3) << "Einsum Infershape: equation:" << equation;
+  VLOG(3) << "Einsum Infershape: all_labels:"
           << paddle::string::join_strings(all_labels, ",");
-  VLOG(5) << "Einsum Infershape: output dims:"
+  VLOG(3) << "Einsum Infershape: output dims:"
           << paddle::string::join_strings(output_dims, ",");
-  print_label(all_labels, labeltype);
-  print_label(all_labels, labelshape);
-  out->set_dims(make_ddim(output_dims));
+  VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
+  VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
 }
 
 template <typename T>
@@ -526,8 +532,6 @@ void EinsumKernel(const Context& dev_ctx,
                       &broadcast_dims,
                       &output_dims,
                       &right);
-  // VLOG(5) << "Einsum: ParseEinsumEquation done. with dims: " <<
-  // broadcast_dims.size();
   out->Resize(make_ddim(output_dims));
   if (inputs.size() == 2) {
     auto& A = inputs[0];
