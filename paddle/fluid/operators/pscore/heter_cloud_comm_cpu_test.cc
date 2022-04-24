@@ -121,10 +121,7 @@ void TestShardSendRecv(
 void PressTestSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
   // long l = 0, m = 0;
-  std::ifstream file(
-      "/home/wangbin/the_one_ps/ziyoujiyi_Paddle/heter_rpc_Paddle/build/"
-      "send_20_34",
-      std::ios::in | std::ios::binary);
+  std::ifstream file("/send_20_34", std::ios::in | std::ios::binary);
   // l = file.tellg();
   // file.seekg(0, std::ios::end);
   // m = file.tellg();
@@ -168,10 +165,7 @@ void PressTestSendRecv(
   }
   delete[] values;
 
-  std::ofstream recv(
-      "/home/wangbin/the_one_ps/ziyoujiyi_Paddle/heter_rpc_Paddle/build/"
-      "recv_20_34",
-      std::ios::out | std::ios::binary);
+  std::ofstream recv("/recv_20_34", std::ios::out | std::ios::binary);
   recv.write((char*)values, data_size);
   recv.close();
   t.join();
