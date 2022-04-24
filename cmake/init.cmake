@@ -8,15 +8,15 @@
 # MINSIZEREL: default: "-O2 -g -DNDEBUG"
 
 if(NOT WIN32)
-    set(CMAKE_C_FLAGS_DEBUG "-g -fPIC -mcmodel=large")
-    set(CMAKE_C_FLAGS_RELEASE "-O3 -fPIC -DNDEBUG -mcmodel=large")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -fPIC -g -DNDEBUG -mcmodel=large")
-    set(CMAKE_C_FLAGS_MINSIZEREL "-Os -fPIC -DNDEBUG -mcmodel=large")
+    set(CMAKE_C_FLAGS_DEBUG "-g -mcmodel=large")
+    set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -mcmodel=large")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG -mcmodel=large")
+    set(CMAKE_C_FLAGS_MINSIZEREL "-Os -DNDEBUG -mcmodel=large")
 
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -fPIC -mcmodel=large")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -DNDEBUG -mcmodel=large")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2  -fPIC -g -DNDEBUG -mcmodel=large")
-    set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os  -fPIC -DNDEBUG -mcmodel=large")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -mcmodel=large")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -mcmodel=large")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG -mcmodel=large")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG -mcmodel=large")
     
     if(WITH_GPU)
         set(CMAKE_CUDA_FLAGS_DEBUG "-g --compiler-options -mcmodel=large")
