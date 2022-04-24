@@ -391,7 +391,7 @@ int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
     if (xpu_channels_.size() < 2) {
       LOG(ERROR) << "xpu_channels_ is null";
     }
-    recv_switch_channels_.push_back(xpu_channels_[1]);
+    recv_switch_channels_.push_back(xpu_channels_[0]);
   }
   brpc::Channel* channel = recv_switch_channels_[0].get();
   ::paddle::distributed::PsService_Stub stub(channel);

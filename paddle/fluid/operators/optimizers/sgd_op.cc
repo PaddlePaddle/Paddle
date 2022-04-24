@@ -126,7 +126,7 @@ $$param\_out = param - learning\_rate * grad$$
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(sgd, SGDInferShapeFunctor,
-                            PD_INFER_META(phi::SGDInferMeta));
+                            PD_INFER_META(phi::SgdInferMeta));
 REGISTER_OPERATOR(
     sgd, ops::SGDOp, ops::SGDOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

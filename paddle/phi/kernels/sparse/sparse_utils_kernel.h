@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -145,6 +147,17 @@ void CsrValuesKernel(const Context& dev_ctx,
                      const SparseCsrTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
+}
+
+template <typename T, typename Context>
+void SparseCooTensorKernel(const Context& dev_ctx,
+                           const DenseTensor& values,
+                           const DenseTensor& indices,
+                           const IntArray& dense_shape,
+                           SparseCooTensor* out) {
+  SparseCooTensor before_coalesced(
+      indices, values, phi::make_ddim(dense_shape.GetData()));
+  CoalescedKernel<T, Context>(dev_ctx, before_coalesced, out);
 }
 
 }  // namespace sparse

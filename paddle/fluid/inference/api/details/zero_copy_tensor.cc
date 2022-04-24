@@ -579,7 +579,8 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
-    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+    if (out_layout == paddle::framework::DataLayout::kNHWC ||
+        out_layout == paddle::framework::DataLayout::kNDHWC) {
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
@@ -692,10 +693,9 @@ void Tensor::ORTCopyToCpu(T *data) const {
   if (place_ == PlaceType::kCPU) {
     std::memcpy(static_cast<void *>(data), value.GetTensorData<void *>(), size);
   } else {
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         static_cast<void *>(data),
-                         paddle::platform::CUDAPlace(device_),
-                         value.GetTensorData<void>(), size, nullptr);
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "CopyToCpu error.The current ONNXRuntime backend doesn't support "
+        "GPU."));
   }
 }
 
@@ -712,5 +712,138 @@ template void Tensor::ORTCopyToCpu<uint8_t>(uint8_t *data) const;
 template void Tensor::ORTCopyToCpu<int8_t>(int8_t *data) const;
 template void Tensor::ORTCopyToCpu<float16>(float16 *data) const;
 #endif
+
+namespace experimental {
+template <typename T>
+void InternalUtils::CopyFromCpuWithIoStream(paddle_infer::Tensor *t,
+                                            const T *data,
+                                            cudaStream_t stream) {
+  if (t->tensor_ == nullptr) {
+    PADDLE_ENFORCE_EQ(
+        t->name_.empty(), false,
+        paddle::platform::errors::PreconditionNotMet(
+            "Need to SetName first, so that the corresponding tensor can "
+            "be retrieved."));
+    auto *scope = static_cast<paddle::framework::Scope *>(t->scope_);
+    auto *var = scope->FindVar(t->name_);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, paddle::platform::errors::PreconditionNotMet(
+                 "No tensor called [%s] in the runtime scope", t->name_));
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    t->tensor_ = tensor;
+  }
+
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(t->tensor_);
+  PADDLE_ENFORCE_GE(tensor->numel(), 0,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "You should call Tensor::Reshape(const "
+                        "std::vector<int> &shape)"
+                        "function before copying data from cpu."));
+  size_t ele_size = tensor->numel() * sizeof(T);
+  if (t->place_ == PlaceType::kCPU) {
+    auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
+    std::memcpy(static_cast<void *>(t_data), data, ele_size);
+  } else if (t->place_ == PlaceType::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::CUDAPlace gpu_place(t->device_);
+    auto *t_data = tensor->mutable_data<T>(gpu_place);
+    paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size, stream);
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "CopyFromCpuWithIoStream only supports CPU and GPU now."));
+  }
+}
+
+template <typename T>
+void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t, T *data,
+                                          cudaStream_t stream) {
+  if (t->tensor_ == nullptr) {
+    PADDLE_ENFORCE_EQ(
+        t->name_.empty(), false,
+        paddle::platform::errors::PreconditionNotMet(
+            "Need to SetName first, so that the corresponding tensor can "
+            "be retrieved."));
+    auto *scope = static_cast<paddle::framework::Scope *>(t->scope_);
+    auto *var = scope->FindVar(t->name_);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, paddle::platform::errors::PreconditionNotMet(
+                 "No tensor called [%s] in the runtime scope", t->name_));
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    t->tensor_ = tensor;
+  }
+
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(t->tensor_);
+  auto ele_num = tensor->numel();
+  auto *t_data = tensor->data<T>();
+  auto t_place = tensor->place();
+
+  paddle::framework::Tensor out;
+  auto mem_allocation =
+      std::make_shared<paddle::memory::allocation::Allocation>(
+          static_cast<void *>(data), ele_num * sizeof(T),
+          paddle::platform::CPUPlace());
+  out.ResetHolder(mem_allocation);
+
+  if (paddle::platform::is_cpu_place(t_place)) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+      paddle::framework::innerTransDataLayoutFromMKLDNN(
+          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
+                                .get_cur_paddle_data_layout(),
+          *tensor, &out, paddle::platform::CPUPlace(), true);
+    else
+      std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#else
+    std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#endif
+  } else if (t->place_ == PlaceType::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), t_place, t_data,
+                         ele_num * sizeof(T), stream);
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "CopyToCpuWithIoStream only supports CPU and GPU now."));
+  }
+}
+
+template void InternalUtils::CopyFromCpuWithIoStream<float>(
+    paddle_infer::Tensor *t, const float *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<int64_t>(
+    paddle_infer::Tensor *t, const int64_t *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<int32_t>(
+    paddle_infer::Tensor *t, const int32_t *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<uint8_t>(
+    paddle_infer::Tensor *t, const uint8_t *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<int8_t>(
+    paddle_infer::Tensor *t, const int8_t *data, cudaStream_t stream);
+template void InternalUtils::CopyFromCpuWithIoStream<float16>(
+    paddle_infer::Tensor *t, const float16 *data, cudaStream_t stream);
+
+template void InternalUtils::CopyToCpuWithIoStream<float>(
+    paddle_infer::Tensor *t, float *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<int64_t>(
+    paddle_infer::Tensor *t, int64_t *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<int32_t>(
+    paddle_infer::Tensor *t, int32_t *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<uint8_t>(
+    paddle_infer::Tensor *t, uint8_t *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<int8_t>(
+    paddle_infer::Tensor *t, int8_t *data, cudaStream_t stream);
+template void InternalUtils::CopyToCpuWithIoStream<float16>(
+    paddle_infer::Tensor *t, float16 *data, cudaStream_t stream);
+
+}  // namespace experimental
 
 }  // namespace paddle_infer

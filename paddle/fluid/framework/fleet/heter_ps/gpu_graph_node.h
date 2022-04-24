@@ -14,6 +14,12 @@
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+#include <iostream>
+#include <memory>
+#include <string>
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 namespace paddle {
 namespace framework {
 struct GpuPsGraphNode {
@@ -36,6 +42,24 @@ struct GpuPsCommGraph {
         node_list(node_list_),
         neighbor_size(neighbor_size_),
         node_size(node_size_) {}
+  void display_on_cpu() {
+    VLOG(0) << "neighbor_size = " << neighbor_size;
+    VLOG(0) << "node_size = " << node_size;
+    for (int i = 0; i < neighbor_size; i++) {
+      VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
+    }
+    for (int i = 0; i < node_size; i++) {
+      VLOG(0) << "node i " << node_list[i].node_id
+              << " neighbor_size = " << node_list[i].neighbor_size;
+      std::string str;
+      int offset = node_list[i].neighbor_offset;
+      for (int j = 0; j < node_list[i].neighbor_size; j++) {
+        if (j > 0) str += ",";
+        str += std::to_string(neighbor_list[j + offset]);
+      }
+      VLOG(0) << str;
+    }
+  }
 };
 
 /*
@@ -93,17 +117,28 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
-  int *offset;
-  NeighborSampleResult(int _sample_size, int _key_size)
-      : sample_size(_sample_size), key_size(_key_size) {
-    actual_sample_size = NULL;
-    val = NULL;
-    offset = NULL;
-  };
+  std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
+  int64_t *get_val() { return val; }
+  int *get_actual_sample_size() { return actual_sample_size; }
+  int get_sample_size() { return sample_size; }
+  int get_key_size() { return key_size; }
+  void initialize(int _sample_size, int _key_size, int dev_id) {
+    sample_size = _sample_size;
+    key_size = _key_size;
+    platform::CUDADeviceGuard guard(dev_id);
+    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    val_mem =
+        memory::AllocShared(place, _sample_size * _key_size * sizeof(int64_t));
+    val = (int64_t *)val_mem->ptr();
+    actual_sample_size_mem =
+        memory::AllocShared(place, _key_size * sizeof(int));
+    actual_sample_size = (int *)actual_sample_size_mem->ptr();
+  }
+  NeighborSampleResult(){};
   ~NeighborSampleResult() {
-    if (val != NULL) cudaFree(val);
-    if (actual_sample_size != NULL) cudaFree(actual_sample_size);
-    if (offset != NULL) cudaFree(offset);
+    // if (val != NULL) cudaFree(val);
+    // if (actual_sample_size != NULL) cudaFree(actual_sample_size);
+    // if (offset != NULL) cudaFree(offset);
   }
 };
 

@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
@@ -54,6 +53,10 @@ class Scope;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
+
+namespace phi {
+class KernelContext;
+}
 
 DECLARE_int32(inner_op_parallelism);
 
@@ -701,6 +704,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
