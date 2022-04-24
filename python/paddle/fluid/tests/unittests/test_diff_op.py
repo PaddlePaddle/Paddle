@@ -19,6 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
 
 
 class TestDiffOp(unittest.TestCase):

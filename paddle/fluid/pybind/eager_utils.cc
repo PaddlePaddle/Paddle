@@ -46,6 +46,7 @@ extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
@@ -377,10 +378,15 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   } else if (PyObject_IsInstance(
                  obj, reinterpret_cast<PyObject*>(g_cudapinnedplace_pytype))) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_customplace_pytype))) {
+    place = ::pybind11::handle(obj).cast<platform::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
+        "one "
+        "of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace,"
+        "CustomPlace), "
         "but got %s",
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -1058,7 +1064,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyLong_Check(obj)) {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
@@ -1101,7 +1107,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list" || type_name == "tuple") {
+  if (type_name == "list" || type_name == "tuple" ||
+      type_name == "numpy.ndarray") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
 
