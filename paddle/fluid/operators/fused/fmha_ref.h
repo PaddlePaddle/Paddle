@@ -387,12 +387,7 @@ class FMHAGateRef {
                       const Tensor* src_mask, Tensor* qkv_transpose_out,
                       Tensor* qk_out, Tensor* softmax_out, Tensor* qktv_out,
                       Tensor* fmha_out) {
-    // before transpose: [batch_size, seq_len_m, seq_len_r, 3, num_head, c]
-    // after transpose: [3, batch_size, seq_len_m, num_head, seq_len_r, c]
-    int ndims = 6;
-    std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input, perm_1,
-                                transpose_2_out);
+    ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
 
     T* qkv_data = qkv_transpose_out->data<T>();
     T* qk_out_data = qk_out->data<T>();
@@ -439,15 +434,7 @@ class FMHAGateRef {
                      softmax_out_data, v_ptr, beta, qktv_out_data,
                      gemm_batch_size, stride_a, stride_b);
 
-<<<<<<< HEAD
-    // before transpose: [batch_size, seq_len_m, num_head, seq_len_r, c]
-    // after transpose: [batch_size, seq_len_m, seq_len_r, num_head, c]
-    std::vector<int> perm_3 = {0, 1, 3, 2, 4};
-    ndims = 5;
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out, perm_3, fmha_out);
-=======
     ComputeQKTVTransposeForward(*qktv_out, fmha_out);
->>>>>>> a5d4be9716d4cf49fb64d418ddf64ab89e8e1cb6
   }
 
   void ComputeBackward(const Tensor& qkv_transpose_out, const Tensor* src_mask,
@@ -495,7 +482,7 @@ class FMHAGateRef {
                      softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
                      gemm_batch_size, stride_a, stride_b);
 
-    // bw: dx = dout * y^t
+    // // bw: dx = dout * y^t
     transA = CblasNoTrans;
     transB = CblasTrans;
     gemm_m = seq_len_r_;
@@ -540,13 +527,6 @@ class FMHAGateRef {
                      qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
                      stride_a, stride_b);
 
-<<<<<<< HEAD
-    // transpose bw
-    ndims = 6;
-    std::vector<int> perm_1 = {1, 2, 4, 0, 3, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *transpose_2_out_grad, perm_1,
-                                qkv_input_grad);
-=======
     ComputeQKVTransposeBackward(*qkv_transpose_out_grad, qkv_out_grad);
   }
 
@@ -586,7 +566,6 @@ class FMHAGateRef {
     std::vector<int> perm = {0, 1, 3, 2, 4};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad, perm,
                                 qktv_out_grad);
->>>>>>> a5d4be9716d4cf49fb64d418ddf64ab89e8e1cb6
   }
 
   // src_mask_out = qk_out + nonbatched_bias + src_mask
