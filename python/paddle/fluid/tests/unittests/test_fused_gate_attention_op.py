@@ -108,14 +108,10 @@ class TestFusedGateAttentionOp(OpTest):
     def GetBaselineOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         c = self.c**(-0.5)
-        # print(tensor_query.shape)
         tensor_query = self.tensor_query
         q = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.query_w) * c
         k = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.key_w)
         v = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.value_w)
-        # print(q.shape)
-        # print(k.shape)
-        # print(bias.shape)
         logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k) + self.bias
 
         if self.bias_attr:
