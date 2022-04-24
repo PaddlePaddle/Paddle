@@ -10,21 +10,21 @@ int Tinfo::Bits(const DType dtype){
 }
 
 float Tinfo::Eps(const DType dtype){
-    return std::numeric_limits<at::scalar_value_type<scalar_t>::type>::epsilon(dtype));
+    return std::numeric_limits<DType>::epsilon());
 }
 
 float Tinfo::Min(const DType dtype){
-    return std::numeric_limits<at::scalar_value_type<scalar_t>::type>::lowest(dtype));
+    return std::numeric_limits<DType>::lowest());
 }
 
 float Tinfo::Max(const DType dtype){
-    return std::numeric_limits<at::scalar_value_type<scalar_t>::type>::max(dtype));
+    return std::numeric_limits<DType>::max());
 }
 
 float Tinfo::Tiny(const DType dtype){
-    return std::numeric_limits<at::scalar_value_type<scalar_t>::type>::min(dtype));
+    return std::numeric_limits<DType>::min());
 }
 
 float Tinfo::Resolution(const DType dtype){
-    return std::numeric_limits<at::scalar_value_type<scalar_t>::type>::resolution(dtype));
+    return std::numeric_limits<DType>::resolution());
 }
