@@ -382,23 +382,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     m = batch_size * seq_len_m * seq_len_r;
     n = 3 * num_head * c;
     k = hidden_size;
-
-    bool use_addto = true;
-    if (use_addto) {
-      ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k, true);
-    } else {
-      Tensor d_residual;
-      d_residual.Resize(x_dims);
-      d_residual.mutable_data<T>(ctx.GetPlace());
-      ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, &d_residual, m, n, k,
-                                        false);
-
-      // Gradient accumulation
-      std::vector<const Tensor *> ins = {&d_residual, d_x};
-      std::vector<Tensor *> outs = {d_x};
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-          ctx.cuda_device_context(), ins, &outs, AddFunctor<T>());
-    }
+    ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k, true);
   }
 };
 
