@@ -379,28 +379,21 @@ class FMHAGateRef {
         num_head_(num_head),
         head_dim_(head_dim) {}
 
-  ~FMHAGateRef() {}
-
-  void ComputeForward(const Tensor* nonbatched_bias_tensor,
-                      const Tensor& qkv_input, const Tensor* src_mask_tensor,
-                      Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
-                      Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
-                      Tensor* qktv_out_tensor, Tensor* fmha_out_tensor) {
+  void ComputeForward(const Tensor* nonbatched_bias, const Tensor& qkv_input,
+                      const Tensor* src_mask, Tensor* transpose_2_out,
+                      Tensor* qk_out, Tensor* softmax_out, Tensor* qktv_out,
+                      Tensor* fmha_out) {
     // batch_size, seq_len_m, seq_len_r, 3, num_head, c
     // 3, batch_size, seq_len_m, num_head, seq_len_r, c
     int ndims = 6;
     std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
-    // LOG(INFO) << "qkv_input.shape=" << qkv_input.dims();
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input, perm_1,
-                                transpose_2_out_tensor);
-    // LOG(INFO) << "transpose_2_out.shape=[" << transpose_2_out_tensor->dims()
-    // << "]";
+                                transpose_2_out);
 
-    T* qkv_data = transpose_2_out_tensor->data<T>();
-    T* qk_out_data = qk_out_tensor->data<T>();
-    T* qktv_out_data = qktv_out_tensor->data<T>();
-    T* softmax_out_data = softmax_out_tensor->data<T>();
-    T* fmha_out_data = fmha_out_tensor->data<T>();
+    T* qkv_data = transpose_2_out->data<T>();
+    T* qk_out_data = qk_out->data<T>();
+    T* qktv_out_data = qktv_out->data<T>();
+    T* fmha_out_data = fmha_out->data<T>();
 
     int64_t q_size =
         batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
@@ -426,32 +419,8 @@ class FMHAGateRef {
                      k_ptr, beta, qk_out_data, gemm_batch_size, stride_a,
                      stride_b);
 
-    int softmax_axis = -1;
-    if (nonbatched_bias_tensor) {
-      std::vector<const Tensor*> ins;
-      std::vector<Tensor*> outs;
-      ins.emplace_back(qk_out_tensor);
-      ins.emplace_back(nonbatched_bias_tensor);
-      ins.emplace_back(src_mask_tensor);
-      outs.emplace_back(src_mask_out_tensor);
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
-                                                     T, T>(
-          dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
-
-    } else {
-      std::vector<const Tensor*> ins;
-      std::vector<Tensor*> outs;
-      ins.emplace_back(qk_out_tensor);
-      ins.emplace_back(src_mask_tensor);
-      outs.emplace_back(src_mask_out_tensor);
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(dev_ctx_, ins, &outs,
-                                                           -1, AddFunctor<T>());
-    }
-
-    phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
-                                           softmax_axis, softmax_out_tensor);
-    // std::cout << "softmax_out_tensor: " << *softmax_out_tensor << "\n";
+    ComputeBiasMaskSoftmaxForward(qk_out, nonbatched_bias, src_mask,
+                                  softmax_out);
 
     transB = CblasNoTrans;
     gemm_m = seq_len_r_;
@@ -461,58 +430,48 @@ class FMHAGateRef {
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
 
+    T* softmax_out_data = softmax_out->data<T>();
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                      softmax_out_data, v_ptr, beta, qktv_out_data,
                      gemm_batch_size, stride_a, stride_b);
-    // std::cout << "qktv_out_tensor: "<< qktv_out_tensor << "\n";
 
     // [batch_size, seq_len_m, num_head, seq_len_r, c]
     // [batch_size, seq_len_m, seq_len_r, num_head, c]
     std::vector<int> perm_3 = {0, 1, 3, 2, 4};
     ndims = 5;
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out_tensor, perm_3,
-                                fmha_out_tensor);
-
-    // std::cout << "fmha_out_tensor" << *fmha_out_tensor << "\n";
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out, perm_3, fmha_out);
   }
 
-  void ComputeBackward(
-      const Tensor& transpose_2_out_tensor, const Tensor* src_mask_tensor,
-      const Tensor& softmax_out_tensor, const Tensor& qk_out_tensor,
-      const Tensor& src_mask_out_tensor, const Tensor& fmha_out_grad_tensor,
-      const Tensor* nonbatched_bias, Tensor* nonbatched_bias_grad_tensor,
-      Tensor* qktv_out_grad_tensor, Tensor* softmax_out_grad_tensor,
-      Tensor* src_mask_out_grad_tensor, Tensor* qk_out_grad_tensor,
-      Tensor* transpose_2_out_grad_tensor, Tensor* src_mask_grad_tensor,
-      Tensor* qkv_input_grad_tensor) {
+  void ComputeBackward(const Tensor& transpose_2_out, const Tensor* src_mask,
+                       const Tensor& softmax_out, const Tensor& qk_out,
+                       const Tensor& fmha_out_grad,
+                       const Tensor* nonbatched_bias,
+                       Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
+                       Tensor* softmax_out_grad, Tensor* qk_out_grad,
+                       Tensor* transpose_2_out_grad, Tensor* src_mask_grad,
+                       Tensor* qkv_input_grad) {
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
     int k_size = q_size;
-    int softmax_axis = -1;
 
-    T* qkv_grad_data = transpose_2_out_grad_tensor->data<T>();
+    T* qkv_grad_data = transpose_2_out_grad->data<T>();
     T* q_grad_ptr = qkv_grad_data;
     T* k_grad_ptr = q_grad_ptr + q_size;
     T* v_grad_ptr = k_grad_ptr + k_size;
-    const T* qkv_data = transpose_2_out_tensor.data<T>();
+    const T* qkv_data = transpose_2_out.data<T>();
     const T* q_ptr = qkv_data;
     const T* k_ptr = q_ptr + q_size;
     const T* v_ptr = k_ptr + k_size;
 
-    const T* softmax_out_data = softmax_out_tensor.data<T>();
-    T* softmax_out_grad_data = softmax_out_grad_tensor->data<T>();
-    T* qktv_out_grad_data = qktv_out_grad_tensor->data<T>();
+    const T* softmax_out_data = softmax_out.data<T>();
+    T* softmax_out_grad_data = softmax_out_grad->data<T>();
+    T* qktv_out_grad_data = qktv_out_grad->data<T>();
 
     // transpose bw
     int ndims = 5;
     std::vector<int> perm_3 = {0, 1, 3, 2, 4};
-
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad_tensor, perm_3,
-                                qktv_out_grad_tensor);
-
-    // std::cout << "transpose_2_out_grad_tensor: " <<
-    // *transpose_2_out_grad_tensor << "\n";
-    // std::cout << "qktv_out_grad_tensor: " << *qktv_out_grad_tensor << "\n";
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, fmha_out_grad, perm_3,
+                                qktv_out_grad);
 
     // softmax_out_data(x) * v_ptr(y) = qktv_out_grad_data
     CBLAS_TRANSPOSE transA = CblasTrans;
@@ -544,47 +503,11 @@ class FMHAGateRef {
                      qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
                      gemm_batch_size, stride_a, stride_b);
 
-    // std::cout << "softmax_out_grad_tensor: " << *softmax_out_grad_tensor <<
-    // "\n";
-    // std::cout << "src_mask_out_tensor: " << *src_mask_out_tensor << "\n";
-    if (src_mask_tensor != nullptr) {
-      phi::SoftmaxBackwardCUDAKernelDriver<T>(
-          dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
-          src_mask_out_grad_tensor);
+    ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out, &qk_out,
+                                   src_mask, src_mask_grad, qk_out_grad,
+                                   nonbatched_bias_grad);
 
-      // std::cout << "src_mask_out_grad_tensor: " << *src_mask_out_grad_tensor
-      // << "\n";
-
-      // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
-      // src_mask
-      // Special case when dy is not needed and dx doesn't reduce
-      if (qk_out_grad_tensor != nullptr && src_mask_grad_tensor == nullptr &&
-          qk_out_tensor.dims() == src_mask_out_tensor.dims()) {
-        VLOG(4) << "Special case when dy is not needed and dx doesn't "
-                   "reduce";
-        framework::TensorCopy(*src_mask_out_grad_tensor, dev_ctx_.GetPlace(),
-                              dev_ctx_, qk_out_grad_tensor);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Only used for the backward elementwise_add op when"
-            "dy is not needed and dx is not reduce"));
-        return;
-      }
-    }
-
-    // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
-    if (nonbatched_bias != nullptr) {
-      gpuStream_t stream = dev_ctx_.stream();
-      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx_, *src_mask_out_grad_tensor, nonbatched_bias_grad_tensor,
-          kps::IdentityFunctor<T>(), {0, 1}, stream);
-    }
-
-    // std::cout << "nonbatched_bias_grad_tensor: " <<
-    // *nonbatched_bias_grad_tensor << "\n";
-    T* qk_out_grad_data = qk_out_grad_tensor->data<T>();
-    // NOTE(wangxi): For we scale Q with 1/sqrt(Dh) in forward, so we set
-    //   alpha = 1.0 in backward.
+    T* qk_out_grad_data = qk_out_grad->data<T>();
     alpha = static_cast<T>(1.0);
     // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
     // bw: dy (seq_len * head_dim) = (dout)^t * x
@@ -616,14 +539,76 @@ class FMHAGateRef {
     ndims = 6;
     // std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
     std::vector<int> perm_1 = {1, 2, 4, 0, 3, 5};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *transpose_2_out_grad_tensor,
-                                perm_1, qkv_input_grad_tensor);
-    // std::cout << "transpose_2_out_grad_tensor: " <<
-    // *transpose_2_out_grad_tensor << "\n";
-    // std::cout << "qkv_input_grad_tensor: " << *qkv_input_grad_tensor << "\n";
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *transpose_2_out_grad, perm_1,
+                                qkv_input_grad);
   }
 
  private:
+  // src_mask_out = qk_out + nonbatched_bias + src_mask
+  // softmax_out = softmax(src_mask_out)
+  void ComputeBiasMaskSoftmaxForward(const Tensor* qk_out,
+                                     const Tensor* nonbatched_bias,
+                                     const Tensor* src_mask,
+                                     Tensor* softmax_out) {
+    Tensor src_mask_out;
+    src_mask_out.Resize(qk_out->dims());
+    src_mask_out.mutable_data<T>(dev_ctx_.GetPlace());
+
+    if (nonbatched_bias) {
+      std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
+      std::vector<Tensor*> outs = {&src_mask_out};
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
+                                                     T, T>(
+          dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
+
+    } else {
+      std::vector<const Tensor*> ins = {qk_out, src_mask};
+      std::vector<Tensor*> outs = {&src_mask_out};
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(dev_ctx_, ins, &outs,
+                                                           -1, AddFunctor<T>());
+    }
+
+    phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, src_mask_out, -1,
+                                           softmax_out);
+  }
+
+  void ComputeBiasMaskSoftmaxBackward(
+      const Tensor* softmax_out_grad, const Tensor* softmax_out,
+      const Tensor* qk_out, const Tensor* src_mask, Tensor* src_mask_grad,
+      Tensor* qk_out_grad, Tensor* nonbatched_bias_grad) {
+    Tensor src_mask_out_grad;
+    src_mask_out_grad.Resize(softmax_out->dims());
+    src_mask_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+    phi::SoftmaxBackwardCUDAKernelDriver<T>(
+        dev_ctx_, *softmax_out, *softmax_out_grad, -1, &src_mask_out_grad);
+
+    if (src_mask) {
+      // src_mask_out = qk_out + src_mask
+      // Special case when dy is not needed and dx doesn't reduce
+      if (qk_out_grad && src_mask_grad == nullptr &&
+          qk_out->dims() == src_mask_out_grad.dims()) {
+        VLOG(4) << "Special case when dy is not needed and dx doesn't "
+                   "reduce";
+        framework::TensorCopy(src_mask_out_grad, dev_ctx_.GetPlace(), dev_ctx_,
+                              qk_out_grad);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only used for the backward elementwise_add op when"
+            "dy is not needed and dx is not reduce"));
+        return;
+      }
+    }
+
+    // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
+    if (nonbatched_bias_grad) {
+      gpuStream_t stream = dev_ctx_.stream();
+      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx_, src_mask_out_grad, nonbatched_bias_grad,
+          kps::IdentityFunctor<T>(), {0, 1}, stream);
+    }
+  }
+
   const platform::CUDADeviceContext& dev_ctx_;
 
   int64_t batch_size_;

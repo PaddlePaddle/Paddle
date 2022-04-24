@@ -77,7 +77,6 @@ struct SigmoidMultiplyGradFunctor {
 template <typename T>
 Tensor *ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                       const Tensor *x, int m, int n, int k) {
-  // LOG(INFO) << "Compute Merged QKV Matmul Forward";
   auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
   auto *qkv_out = ctx.Output<Tensor>("QKVOut");
   qkv_out->mutable_data<T>(ctx.GetPlace());
@@ -110,7 +109,6 @@ template <typename T>
 Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                    const Tensor *x, const Tensor *fmha_out,
                                    int m, int n, int k) {
-  // LOG(INFO) << "Compute Gating Linear Forward";
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
@@ -197,7 +195,6 @@ template <typename T>
 Tensor *ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
                                    const Tensor *gate_out, int m, int n,
                                    int k) {
-  // LOG(INFO) << "Compute Output Linear Forward";
   auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
   auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
 
@@ -258,14 +255,12 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *qk_out = ctx.Output<Tensor>("QKOut");
     auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
-    auto *src_mask_out = ctx.Output<Tensor>("SrcMaskOut");
     auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
 
     transpose_out_2->mutable_data<T>(ctx.GetPlace());
     qk_out->mutable_data<T>(ctx.GetPlace());
     qktv_out->mutable_data<T>(ctx.GetPlace());
     softmax_out->mutable_data<T>(ctx.GetPlace());
-    src_mask_out->mutable_data<T>(ctx.GetPlace());
     fmha_out->mutable_data<T>(ctx.GetPlace());
 
     const auto input_x_dims = input_x->dims();
@@ -294,8 +289,8 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
         FMHAGateRef<T>(ctx.cuda_device_context(), batch_size, seq_len_m,
                        seq_len_r, num_head, c);
     fmha_ref_compute.ComputeForward(nonbatched_bias, *qkv_out, src_mask,
-                                    transpose_out_2, qk_out, src_mask_out,
-                                    softmax_out, qktv_out, fmha_out);
+                                    transpose_out_2, qk_out, softmax_out,
+                                    qktv_out, fmha_out);
 
     // Gating Linear
     Tensor *gate_out = nullptr;
@@ -333,9 +328,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
 
-    auto *src_mask_out = ctx.Input<Tensor>("SrcMaskOut");
-    auto *src_mask_out_data = src_mask_out->data<T>();
-
     // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
@@ -345,8 +337,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_qk_out = ctx.Output<Tensor>(framework::GradVarName("QKOut"));
     auto *d_softmax_out =
         ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
-    auto *d_src_mask_out =
-        ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
 
     auto *d_qkv_out_data = d_qkv_out->mutable_data<T>(ctx.GetPlace());
     auto *d_qktv_out_data = d_qktv_out->mutable_data<T>(ctx.GetPlace());
@@ -355,7 +345,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_qk_out_data = d_qk_out->mutable_data<T>(ctx.GetPlace());
 
     auto *d_softmax_out_data = d_softmax_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_src_mask_out_data = d_src_mask_out->mutable_data<T>(ctx.GetPlace());
 
     // parameter grad
     auto *d_nonbatched_bias =
@@ -402,10 +391,9 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
                        seq_len_r, num_head, c);
 
     fmha_ref_compute.ComputeBackward(
-        *transpose_out_2, src_mask, *softmax_out, *qk_out, *src_mask_out,
-        *d_fmha_out, nonbatched_bias, d_nonbatched_bias, d_qktv_out,
-        d_softmax_out, d_src_mask_out, d_qk_out, d_transpose_out_2, nullptr,
-        d_qkv_out);
+        *transpose_out_2, src_mask, *softmax_out, *qk_out, *d_fmha_out,
+        nonbatched_bias, d_nonbatched_bias, d_qktv_out, d_softmax_out, d_qk_out,
+        d_transpose_out_2, nullptr, d_qkv_out);
 
     // Gradient of Merged QKV Matmul
     m = batch_size * seq_len_m * seq_len_r;
