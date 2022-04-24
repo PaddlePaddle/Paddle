@@ -124,12 +124,12 @@ class TestDistPPTraning(unittest.TestCase):
 
             with paddle.amp.auto_cast(enable=True, level='O2'):
                 loss_a = model_a(img, label)
-                scaler_a.scale(loss_a).backward()
-                with paddle.amp.auto_cast(enable=False):
-                    scaler_a.minimize(optimizer_a, loss_a)
-                optimizer_a.clear_grad()
-                scheduler_a.step()
+            scaler_a.scale(loss_a).backward()
+            scaler_a.minimize(optimizer_a, loss_a)
+            optimizer_a.clear_grad()
+            scheduler_a.step()
 
+            with paddle.amp.auto_cast(enable=True, level='O2'):
                 loss_b = model_b.train_batch(
                     [img, label], optimizer_b, scheduler_b, scaler=scaler_b)
 

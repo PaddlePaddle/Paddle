@@ -33,10 +33,11 @@ USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_cinn_auto_tune);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 #ifdef PADDLE_WITH_CUDA
-PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 
 namespace paddle::operators {
@@ -105,6 +106,14 @@ TEST_F(TestCinnLaunchOp, TestRunInstructionByCinnProgram) {
   RunAndCheck(platform::CUDAPlace());
   RunAndCheck(platform::CUDAPlace());
 #endif
+}
+
+TEST_F(TestCinnLaunchOp, TestRunWithAutoTuneEnabled) {
+  FLAGS_enable_cinn_auto_tune = true;
+
+  // currently only check on cpu, will add a test for gpu after CINN ready
+  RunAndCheck(platform::CPUPlace());
+  RunAndCheck(platform::CPUPlace());
 }
 
 namespace details {
