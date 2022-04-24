@@ -258,9 +258,10 @@ void GraphGpuWrapper::test() {
     }
   }
 }
-NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
+NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch) {
-  return ((GpuPsGraphTable *)graph_table)->graph_neighbor_sample(q, cpu_switch);
+  return ((GpuPsGraphTable *)graph_table)
+      ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int start,
