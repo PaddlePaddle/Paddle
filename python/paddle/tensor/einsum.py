@@ -663,6 +663,7 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
 
     return plan
 
+
 def einsum_v2(equation, *operands):
     if _in_legacy_dygraph():
         # dygraph
@@ -679,8 +680,9 @@ def einsum_v2(equation, *operands):
         type='einsum',
         inputs={'Operands': operands},
         outputs={'Out': out},
-        attrs=attrs,)
+        attrs=attrs, )
     return out
+
 
 def einsum(equation, *operands):
     r"""
@@ -840,9 +842,9 @@ def einsum(equation, *operands):
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
     import os
-    if int(os.environ.get('FLAGS_new_einsum',"0")): 
+    if int(os.environ.get('FLAGS_new_einsum', "0")):
         return einsum_v2(equation, *operands)
-        
+
     nop = len(operands)
     assert nop > 0, "At least one operand is expected."
 

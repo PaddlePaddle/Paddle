@@ -20,9 +20,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void EinsumKernel(const Context& dev_ctx,
-                const std::vector<const DenseTensor*>& inputs,
-                const std::string& equation,
-                DenseTensor* out);
+                  const std::vector<const DenseTensor*>& inputs,
+                  const std::string& equation,
+                  DenseTensor* out);
 
 }  // namespace phi
-
