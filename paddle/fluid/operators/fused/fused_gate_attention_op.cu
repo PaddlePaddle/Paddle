@@ -223,10 +223,9 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
     auto *input_x = ctx.Input<Tensor>("X");
-    // x: qkv's input [batch_size, seq_len, dim_embed]
-    // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+    // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
+    // y: qkv's weight: [3, num_head, c, qkv_dim]
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
-
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
 
     const auto is_gating = ctx.Attr<bool>("is_gating");
@@ -251,7 +250,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     int seq_len_r = input_x_dims[2];
     int hidden_size = input_x_dims[3];  // qkv_dim
 
-    // qkv_weight[3, n_head, c, qkv_dim]
+    // qkv_weight[3, num_head, c, qkv_dim]
     int num_head = qkv_w_dims[1];
     int c = qkv_w_dims[2];
 

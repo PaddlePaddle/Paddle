@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
-#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -383,8 +382,8 @@ class FMHAGateRef {
                       const Tensor* src_mask, Tensor* transpose_2_out,
                       Tensor* qk_out, Tensor* softmax_out, Tensor* qktv_out,
                       Tensor* fmha_out) {
-    // batch_size, seq_len_m, seq_len_r, 3, num_head, c
-    // 3, batch_size, seq_len_m, num_head, seq_len_r, c
+    // before transpose: [batch_size, seq_len_m, seq_len_r, 3, num_head, c]
+    // after transpose: [3, batch_size, seq_len_m, num_head, seq_len_r, c]
     int ndims = 6;
     std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input, perm_1,
@@ -435,8 +434,8 @@ class FMHAGateRef {
                      softmax_out_data, v_ptr, beta, qktv_out_data,
                      gemm_batch_size, stride_a, stride_b);
 
-    // [batch_size, seq_len_m, num_head, seq_len_r, c]
-    // [batch_size, seq_len_m, seq_len_r, num_head, c]
+    // before transpose: [batch_size, seq_len_m, num_head, seq_len_r, c]
+    // after transpose: [batch_size, seq_len_m, seq_len_r, num_head, c]
     std::vector<int> perm_3 = {0, 1, 3, 2, 4};
     ndims = 5;
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *qktv_out, perm_3, fmha_out);
@@ -490,7 +489,7 @@ class FMHAGateRef {
                      softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
                      gemm_batch_size, stride_a, stride_b);
 
-    // // bw: dx = dout * y^t
+    // bw: dx = dout * y^t
     transA = CblasNoTrans;
     transB = CblasTrans;
     gemm_m = seq_len_r_;
@@ -537,7 +536,6 @@ class FMHAGateRef {
 
     // transpose bw
     ndims = 6;
-    // std::vector<int> perm_1 = {3, 0, 1, 4, 2, 5};
     std::vector<int> perm_1 = {1, 2, 4, 0, 3, 5};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, *transpose_2_out_grad, perm_1,
                                 qkv_input_grad);

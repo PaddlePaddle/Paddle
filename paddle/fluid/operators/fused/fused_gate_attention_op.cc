@@ -50,8 +50,8 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
                    "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedGateAttention");
 
-    // x: qkv's input [batch_size, seq_len_m, seq_len_r, c]
-    // y: qkv's weight: [3, n_head, c, qkv_dim]
+    // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
+    // y: qkv's weight: [3, num_head, c, qkv_dim]
     auto input_x_dims = ctx->GetInputDim("X");
     auto qkv_w_dims = ctx->GetInputDim("QKVWeight");
 
@@ -59,7 +59,6 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     int seq_len_m = input_x_dims[1];
     int seq_len_r = input_x_dims[2];
 
-    // qkv_weight[3, n_head, c, qkv_dim]
     int num_head = qkv_w_dims[1];
     int c = qkv_w_dims[2];
 
@@ -81,8 +80,6 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("is_gating")) {
       ctx->SetOutputDim("GateBiasOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
-      // ctx->SetOutputDim("SigmoidOut",
-      //                   {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
     }
@@ -121,9 +118,6 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("GateBiasOut", "Result after add bias")
         .AsIntermediate()
         .AsDispensable();
-    // AddOutput("SigmoidOut", "Result after fmha.")
-    //     .AsIntermediate()
-    //     .AsDispensable();
     AddOutput("GateOut", "Result gate").AsIntermediate().AsDispensable();
     AddOutput("Y", "Result after attention.");
     AddAttr<bool>("is_gating",
@@ -137,11 +131,11 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w) 
     k = paddle.einsum('nbka,ahc->nbkhc', m_data, self.key_w)
     v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
+
     logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q * c , k) + bias
     weights = nn.functional.softmax(logits)
     weighted_avg = paddle.einsum('nbhqk,nbkhc->nbqhc', weights, v)
     if nonbatched_bias is not None:
-      nonbatched_bias = all_gather_opp(nonbatched_bias, axis=2, sync=self.comm_sync)
       logits += paddle.unsqueeze(nonbatched_bias, axis=1)
 
     if self.gating:
@@ -178,8 +172,6 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("GateBias"));
       ctx->SetOutputDim(framework::GradVarName("GateBiasOut"),
                         ctx->GetInputDim("GateBiasOut"));
-      // ctx->SetOutputDim(framework::GradVarName("SigmoidOut"),
-      //                   ctx->GetInputDim("SigmoidOut"));
       ctx->SetOutputDim(framework::GradVarName("GateOut"),
                         ctx->GetInputDim("GateOut"));
     }
@@ -236,7 +228,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("fused_gate_attention_grad");
 
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
-
     op->SetInput("X", this->Input("X"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
@@ -288,10 +279,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetInput("GateBiasOut", this->Output("GateBiasOut"));
       op->SetOutput(framework::GradVarName("GateBiasOut"),
                     this->OutputGrad("GateBiasOut"));
-
-      // op->SetInput("SigmoidOut", this->Output("SigmoidOut"));
-      // op->SetOutput(framework::GradVarName("SigmoidOut"),
-      //               this->OutputGrad("SigmoidOut"));
 
       op->SetInput("GateOut", this->Output("GateOut"));
       op->SetOutput(framework::GradVarName("GateOut"),

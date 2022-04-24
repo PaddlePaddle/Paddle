@@ -531,15 +531,15 @@ def fused_gate_attention(x,
                                self.output_w) + self.output_b
 
     Parameters:
-        x (Tensor): The input tensor of fused_multi_head_attention. The shape is
+        x (Tensor): The input tensor of fused_gate_head_attention. The shape is
             `[batch_size, seq_len_m, seq_len_r, qkv_dim]`.
         qkv_weight (Tensor): The qkv weight tensor. The shape is ` [num_head, c, qkv_dim] `.
         gate_weight (Tensor, optional): The gate weight tensor. The shape is [qkv_dim, num_head, c]
         linear_weight (Tensor): The linear weight tensor. The shape is `[num_head, c, out_dim]`.
         linear_bias (Tensor): The bias of linear. The shape is `[out_dim]`. Default None.
-        attn_mask (Tensor):  The mask tensor. The shape is `[]`. Default None.
+        attn_mask (Tensor):  The mask tensor. The shape is `[batch_size, seq_len_m, 1, 1, seq_len_r]`. Default None.
         gate_bias (Tensor, optional): The gate bias tensor. The shape is `[num_head, c]`. Default None.
-        nonbatched_bias (Tensor, optional): The bias of linear. The shape is `[]`. Default None.
+        nonbatched_bias (Tensor, optional): The bias of linear. The shape is `[batch_size, 1, num_head, seq_len_r, seq_len_r]`. Default None.
         is_gating (bool, optional): whether it is is_gating (True). Default True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -555,30 +555,37 @@ def fused_gate_attention(x,
             import paddle.incubate.nn.functional as F
 
             # input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
-            x = paddle.rand(shape=(2, 4, 3, 128), dtype="float32")
+            x = paddle.rand(shape=(2, 3, 2, 4), dtype="float32")
             # qkv_weight:  [3，n_head, c, qkv_dim]
-            qkv_weight = paddle.rand(shape=(3, 8, 32, 128), dtype="float32")
+            qkv_weight = paddle.rand(shape=(3, 8, 4, 4), dtype="float32")
             
-            # linear_weight: [embed_dim, embed_dim]
-            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            # linear_bias: [embed_dim]
-            linear_bias = paddle.rand(shape=[128], dtype="float32")
-            attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
-            gating_w = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
-            gating_b = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
-            nonbatched_bias = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            # linear_weight: [num_head, c, out_dim]
+            linear_weight = paddle.rand(shape=(8, 4, 4), dtype="float32")
+            # linear_bias: [out_dim]
+            linear_bias = paddle.rand(shape=[4], dtype="float32")
+
+            # attn_mask: [batch_size, seq_len_m, seq_len_r]
+            attn_mask = paddle.rand(shape=(1, 3, 2), dtype="float32")
+            attn_mask = paddle.unsqueeze(attn_mask, axis=[2, 3])
+            # gate_weight: [qkv_dim, num_head, c]
+            gate_weight = paddle.rand(shape=(4, 8, 4), dtype="float32")
+            # gate_bias: [num_head, c]
+            gate_bias = paddle.rand(shape=(8, 4), dtype="float32")
+            # nonbatched_bias: [batch_size, num_head, seq_len_r, seq_len_r]
+            nonbatched_bias = paddle.rand(shape=(2, 8, 2, 2), dtype="float32")
+            nonbatched_bias = paddle.unsqueeze(nonbatched_bias, axis=1)
 
             # output: [batch_size, seq_len_m, seq_len_r, qkv_dim]
             output = F.fused_gate_attention( x=q_data, 
                     qkv_weight = qkv_weight, 
-                    linear_weight=self.output_w, 
-                    gate_weight = self.gating_w, 
-                    linear_bias=self.output_b, 
-                    gate_bias=self.gating_b, 
+                    linear_weight = output_w, 
+                    gate_weight = gate_weight, 
+                    linear_bias = output_b, 
+                    gate_bias = gate_bias, 
                     nonbatched_bias=nonbatched_bias,
                     attn_mask=bias, 
-                    is_gating =self.gating)
-            # [2, 4, 3, 128]
+                    is_gating = True)
+            # [2, 3, 2, 4]
             print(output.shape)
     """
     if _non_static_mode():

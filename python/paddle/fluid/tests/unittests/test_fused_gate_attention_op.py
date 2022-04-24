@@ -75,7 +75,6 @@ class TestFusedGateAttentionOp(OpTest):
     def config(self):
         self.x_type = np.float32
         self.is_gating = True
-        self.has_attn_mask = True
         self.training = True
 
         self.batch_size = 1
