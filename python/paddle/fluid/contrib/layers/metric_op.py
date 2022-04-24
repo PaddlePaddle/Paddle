@@ -24,6 +24,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import nn
 from paddle.fluid.layers import tensor
+from paddle.fluid.layers import Print
 
 __all__ = ['ctr_metric_bundle']
 
@@ -155,25 +156,10 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         type="sigmoid",
         inputs={"X": [input]},
         outputs={"Out": [tmp_res_sigmoid]})
-
-    #if data is fake, return 0
-    axis = helper.kwargs.get('axis', 0)
-    helper.append_op(
-        type="elementwise_mul",
-        inputs={"X": [tmp_res_sigmoid],
-                "Y": [ins_tag_weight]},
-        outputs={"Out": [tmp_res_sigmoid]},
-        attrs={'axis': axis})
-
     helper.append_op(
         type="reduce_sum",
         inputs={"X": [tmp_res_sigmoid]},
         outputs={"Out": [batch_q]})
-    helper.append_op(
-        type="elementwise_add",
-        inputs={"X": [batch_q],
-                "Y": [local_q]},
-        outputs={"Out": [local_q]})
 
     helper.append_op(
         type="reduce_sum",
@@ -200,6 +186,16 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         outputs={"Out": [batch_ins_num]})
 
     #if data is fake, return 0
+    inputs_slice = {'Input': ins_tag_weight}
+    attrs = {'axes': [0]}
+    attrs['starts'] = [0]
+    attrs['ends'] = [1]
+    helper.append_op(
+        type="slice",
+        inputs=inputs_slice,
+        attrs=attrs,
+        outputs={"Out": ins_tag_weight})
+
     axis = helper.kwargs.get('axis', 0)
     helper.append_op(
         type="elementwise_mul",
@@ -213,5 +209,17 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         inputs={"X": [batch_ins_num],
                 "Y": [local_ins_num]},
         outputs={"Out": [local_ins_num]})
+
+    helper.append_op(
+        type="elementwise_mul",
+        inputs={"X": [batch_q],
+                "Y": [ins_tag_weight]},
+        outputs={"Out": [batch_q]},
+        attrs={'axis': axis})
+    helper.append_op(
+        type="elementwise_add",
+        inputs={"X": [batch_q],
+                "Y": [local_q]},
+        outputs={"Out": [local_q]})
 
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num
