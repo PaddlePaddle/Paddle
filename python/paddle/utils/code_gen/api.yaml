@@ -382,6 +382,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    use_gpudnn : true
   backward : conv2d_transpose_grad
 
 - api : conv3d_transpose
@@ -391,6 +392,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv3d_transpose
+    use_gpudnn : true
   backward : conv3d_transpose_grad
 
 - api : copy_to
@@ -1556,7 +1558,19 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
+    use_gpudnn : true
   backward : pool2d_grad
+
+# Used in adaptive_avg_pool2d API
+- api : pool2d_gpudnn_unused
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d
+    use_gpudnn : false
+  backward : pool2d_grad_gpudnn_unused
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1565,6 +1579,7 @@
     func : PoolInferMeta
   kernel :
     func : pool3d
+    use_gpudnn : true
   backward : pool3d_grad
 
 - api : pow
@@ -1923,6 +1938,7 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
+    use_gpudnn : true
   backward : softmax_grad
 
 - api : split

@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
@@ -2117,8 +2118,16 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   if (arg_map_fn_ == nullptr) {
-    arg_map_fn_.reset(new phi::ArgumentMappingFn(
-        phi::OpUtilsMap::Instance().GetArgumentMappingFn(Type())));
+    auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
+    if (arg_map_fn) {
+      arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
+    } else {
+      auto func =
+          [this](const phi::ArgumentMappingContext& ctx) -> KernelSignature {
+        return phi::DefaultKernelSignatureMap::Instance().Get(type_);
+      };
+      arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
+    }
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
