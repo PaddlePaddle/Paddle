@@ -24,7 +24,6 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import nn
 from paddle.fluid.layers import tensor
-from paddle.fluid.layers import Print
 
 __all__ = ['ctr_metric_bundle']
 
@@ -65,8 +64,8 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
 
             import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[1], dtype="int32")
-            ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[1], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="int32")
+            ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[-1, 1], dtype="float32")
             predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
             auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
     """
