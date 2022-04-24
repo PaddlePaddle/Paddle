@@ -86,6 +86,7 @@ void testSampleRate() {
   int start = 0;
   pthread_rwlock_t rwlock;
   pthread_rwlock_init(&rwlock, NULL);
+
   {
     ::paddle::distributed::GraphParameter table_proto;
     // table_proto.set_gpups_mode(false);
@@ -93,9 +94,9 @@ void testSampleRate() {
     table_proto.set_task_pool_size(24);
     std::cerr << "initializing begin";
     distributed::GraphTable graph_table;
-    graph_table.initialize(table_proto);
+    graph_table.Initialize(table_proto);
     std::cerr << "initializing done";
-    graph_table.load(input_file, std::string("e>"));
+    graph_table.Load(input_file, std::string("e>"));
     int sample_actual_size = -1;
     int step = fixed_key_size, cur = 0;
     while (sample_actual_size != 0) {

@@ -108,6 +108,9 @@ class TestFullAPI(unittest.TestCase):
                     shape=[1], dtype=np.float32, value=1.1)
                 out_7 = paddle.full(
                     shape=[1, 2], dtype=np.float32, fill_value=val)
+                # test for numpy.float64 as fill_value
+                out_8 = paddle.full_like(
+                    out_7, dtype=np.float32, fill_value=np.abs(1.1))
 
                 assert np.array_equal(
                     out_1, np.full(
@@ -129,6 +132,9 @@ class TestFullAPI(unittest.TestCase):
                         [1, 2], 1.1, dtype="float32"))
                 assert np.array_equal(
                     out_7, np.full(
+                        [1, 2], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_8, np.full(
                         [1, 2], 1.1, dtype="float32"))
 
 

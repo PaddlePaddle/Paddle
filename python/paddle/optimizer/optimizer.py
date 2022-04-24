@@ -987,7 +987,9 @@ class Optimizer(object):
 
         assert regularization_term is not None
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            return _C_ops.final_state_add_n([grad, regularization_term])
+        elif framework._in_legacy_dygraph():
             return _C_ops.sum([grad, regularization_term])
 
         new_grad = grad

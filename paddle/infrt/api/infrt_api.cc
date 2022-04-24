@@ -270,6 +270,12 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
         {::infrt::TargetType::CPU,
          ::infrt::PrecisionType::FLOAT32,
          ::infrt::LayoutType::NCHW}};
+    if (config.gpu_enabled()) {
+      valid_places.insert(valid_places.begin(),
+                          ::infrt::Place(::infrt::TargetType::GPU,
+                                         ::infrt::PrecisionType::FLOAT32,
+                                         ::infrt::LayoutType::NCHW));
+    }
     pass_manager.addPass(CreatePhiOpCvtPass(valid_places));
     pass_manager.addPass(CreateInfrtOpFusePass());
   }
@@ -300,12 +306,19 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   }
 
   // Load params
-  auto tensor_map = ::infrt::kernel::phi::LoadCombinedParameters(
-      config.model_dir(), config.param_dir());
+  if (config.gpu_enabled() && !config.tensorrt_enabled()) {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParamsToGpu(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
 
-  // Create PredictExecutor
-  impl_->executor.reset(
-      new PredictExecutor(module_op, registry, std::move(tensor_map)));
+  } else {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParameters(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
+  }
+
   return 0;
 }
 

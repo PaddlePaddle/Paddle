@@ -247,7 +247,7 @@ class KernelFactory {
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          const KernelKey& kernel_key,
-                                         bool use_cudnn = false) const;
+                                         bool use_gpudnn = false) const;
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,
                                          Backend backend,

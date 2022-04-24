@@ -20,6 +20,9 @@ from contextlib import ContextDecorator
 from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
 
+_is_profiler_used = False
+_has_optimizer_wrapped = False
+
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
     TracerEventType.UserDefined, TracerEventType.Forward,
@@ -91,6 +94,8 @@ class RecordEvent(ContextDecorator):
                 result = data1 - data2
                 record_event.end()
         """
+        if not _is_profiler_used:
+            return
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
                   can be recorded.".format(*_AllowedEventTypeList))
@@ -150,20 +155,31 @@ def load_profiler_result(filename: str):
     return core.load_profiler_result(filename)
 
 
+def in_profiler_mode():
+    return _is_profiler_used == True
+
+
 def wrap_optimizers():
     def optimizer_warpper(func):
         @functools.wraps(func)
         def warpper(*args, **kwargs):
-            with RecordEvent(
-                    'Optimization Step',
-                    event_type=TracerEventType.Optimization):
+            if in_profiler_mode():
+                with RecordEvent(
+                        'Optimization Step',
+                        event_type=TracerEventType.Optimization):
+                    return func(*args, **kwargs)
+            else:
                 return func(*args, **kwargs)
 
         return warpper
 
+    global _has_optimizer_wrapped
+    if _has_optimizer_wrapped == True:
+        return
     import paddle.optimizer as optimizer
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) != None:
                 classobject.step = optimizer_warpper(classobject.step)
+    _has_optimizer_wrapped = True

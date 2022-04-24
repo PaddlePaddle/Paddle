@@ -28,18 +28,22 @@ class TestExpandV2OneDNNOp(OpTest):
         self.op_type = "expand_v2"
         self.init_data()
         self.x = np.random.random(self.ori_shape).astype("float32")
-        self.set_inputs()
         self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.set_inputs()
+        self.set_additional_inputs()
         output = np.tile(self.x, self.expand_times)
         self.outputs = {'Out': output}
 
     def set_inputs(self):
         self.inputs = {'X': self.x}
 
+    def set_additional_inputs(self):
+        pass
+
     def init_data(self):
-        self.ori_shape = [1, 140]
-        self.shape = [12, 140]
-        self.expand_times = [12, 1]
+        self.ori_shape = [1, 1, 1, 140]
+        self.shape = [2, 3, 4, 140]
+        self.expand_times = [2, 3, 4, 1]
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -74,7 +78,7 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
         self.ori_shape = [100, 1]
         self.expand_times = [1, 2]
         self.expand_shape = [100, 2]
-        self.shape = [-1, -1]
+        self.shape = [100, 2]
 
     def calc_expand_shapes_tensor(self):
         self.expand_shapes_tensor = []
@@ -82,12 +86,9 @@ class TestExpandV2ExpandShapesTensor1OneDNNOp(TestExpandV2OneDNNOp):
             self.expand_shapes_tensor.append(("x" + str(index), np.ones(
                 (1)).astype('int32') * ele))
 
-    def set_inputs(self):
+    def set_additional_inputs(self):
         self.calc_expand_shapes_tensor()
-        self.inputs = {
-            'X': self.x,
-            'expand_shapes_tensor': self.expand_shapes_tensor
-        }
+        self.inputs['expand_shapes_tensor'] = self.expand_shapes_tensor
 
 
 class TestExpandV2ExpandShapesTensor2OneDNNOp(
@@ -104,13 +105,10 @@ class TestExpandV2ShapesTensorOneDNNOp(TestExpandV2OneDNNOp):
         self.ori_shape = [100]
         self.expand_times = [2, 1]
         self.expand_shape = [2, 100]
-        self.shape = [-1, -1]
+        self.shape = [2, 100]
 
-    def set_inputs(self):
-        self.inputs = {
-            'X': self.x,
-            'Shape': np.array(self.expand_shape).astype("int32")
-        }
+    def set_additional_inputs(self):
+        self.inputs['Shape'] = np.array(self.expand_shape).astype("int32")
 
 
 #   BF16 TESTS
@@ -118,6 +116,7 @@ def create_expand_v2_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestExpandV2BF16OneDNNOp(parent):
         def set_inputs(self):
+            self.attrs['mkldnn_data_type'] = 'bfloat16'
             self.inputs = {"X": convert_float_to_uint16(self.x)}
 
         def calculate_grads(self):
