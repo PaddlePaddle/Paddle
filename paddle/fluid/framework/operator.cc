@@ -1012,10 +1012,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
-  const phi::KernelArgsDef* GetPhiKernelArgsDefs() const override {
-    return nullptr;
-  }
-
  protected:
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(

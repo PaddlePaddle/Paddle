@@ -39,8 +39,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const framework::AttributeMap* default_attr, const std::string op_type,
       const framework::OpKernelType* op_kernel_type = nullptr,
       const phi::ArgumentMappingFn* arg_map_fn = nullptr,
-      const phi::KernelSignature* default_kernel_signature = nullptr,
-      const phi::KernelArgsDef* kernel_arg_defs = nullptr)
+      const phi::KernelSignature* default_kernel_signature = nullptr)
       : var_map_in_(in),
         var_map_out_(out),
         attrs_(attr),
@@ -48,8 +47,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         op_type_(op_type),
         op_kernel_type_(op_kernel_type),
         arg_map_fn_(arg_map_fn),
-        default_kernel_signature_(default_kernel_signature),
-        kernel_arg_defs_(kernel_arg_defs) {}
+        default_kernel_signature_(default_kernel_signature) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -388,20 +386,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   const phi::KernelSignature* GetPhiDefaultKernelSignature() const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        default_kernel_signature_,
-        platform::errors::NotFound(
-            "The Default Kernel signature defs of %s op is not found.",
-            op_type_));
     return default_kernel_signature_;
-  }
-
-  const phi::KernelArgsDef* GetPhiKernelArgsDefs() const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        kernel_arg_defs_,
-        platform::errors::NotFound(
-            "The Kernel attribute defs of %s op is not found.", op_type_));
-    return kernel_arg_defs_;
   }
 
  protected:
@@ -465,10 +450,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
   const framework::OpKernelType* op_kernel_type_;
-  // arg_map_fn_ may be nullptr
+  // arg_map_fn_ and default_kernel_signature_ may be nullptr
   const phi::ArgumentMappingFn* arg_map_fn_;
   const phi::KernelSignature* default_kernel_signature_;
-  const phi::KernelArgsDef* kernel_arg_defs_;
 };
 
 }  // namespace imperative

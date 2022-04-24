@@ -117,8 +117,6 @@ class InferShapeContext {
 
   virtual const phi::KernelSignature *GetPhiDefaultKernelSignature() const = 0;
 
-  virtual const phi::KernelArgsDef *GetPhiKernelArgsDefs() const = 0;
-
  protected:
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,

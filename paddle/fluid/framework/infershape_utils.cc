@@ -417,12 +417,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   const auto& attr_names = signature.attr_names;
   const auto& output_names = signature.output_names;
 
-  auto* kernel_arg_defs = ctx->GetPhiKernelArgsDefs();
-  if (kernel_arg_defs == nullptr) {
-    kernel_arg_defs =
-        &phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
-  }
-  const auto& attr_defs = kernel_arg_defs->attribute_defs();
+  const auto& args_def =
+      phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
+  const auto& attr_defs = args_def.attribute_defs();
 
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {

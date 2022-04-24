@@ -149,6 +149,8 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::OperatorWithKernel::OpKernelFunc& func,
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
              platform::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,

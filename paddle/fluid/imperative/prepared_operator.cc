@@ -107,12 +107,16 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
                        const framework::OperatorWithKernel::OpKernelFunc& func,
+                       const phi::ArgumentMappingFn* arg_map_fn,
+                       const phi::KernelSignature* default_kernel_signature,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_type_(kernel_type),
       func_(func),
       dev_ctx_(dev_ctx),
+      arg_map_fn_(arg_map_fn),
+      default_kernel_signature_(default_kernel_signature),
       phi_kernel_(empty_kernel) {}
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -395,7 +399,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   }
 
   return PreparedOp(op, empty_ctx, expected_kernel_key, kernel_iter->second,
-                    dev_ctx);
+                    arg_map_fn, default_kernel_signature, dev_ctx);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
@@ -501,7 +505,7 @@ static void PreparedOpRunPtImpl(
                                        1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type,
-        arg_map_fn, default_kernel_signature, &phi_kernel.args_def());
+        arg_map_fn, default_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 

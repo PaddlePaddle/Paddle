@@ -115,8 +115,6 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
-  const phi::KernelArgsDef* GetPhiKernelArgsDefs() const override;
-
   void SetSkipLoD(bool skip);
 
  protected:

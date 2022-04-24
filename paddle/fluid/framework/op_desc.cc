@@ -279,10 +279,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
-  const phi::KernelArgsDef *GetPhiKernelArgsDefs() const override {
-    return nullptr;
-  }
-
  protected:
   std::vector<proto::VarType::Type> GetVarTypes(
       const std::vector<std::string> &names) const {

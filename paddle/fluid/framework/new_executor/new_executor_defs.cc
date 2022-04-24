@@ -403,11 +403,6 @@ InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
   return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
 }
 
-const phi::KernelArgsDef*
-InterpretercoreInferShapeContext::GetPhiKernelArgsDefs() const {
-  return nullptr;
-}
-
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }
