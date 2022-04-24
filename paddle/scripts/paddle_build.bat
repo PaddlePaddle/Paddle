@@ -86,6 +86,9 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+rem ------initialize set git config------
+git config --global core.longpaths true
+
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
