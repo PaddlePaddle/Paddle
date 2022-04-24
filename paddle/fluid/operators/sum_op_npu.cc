@@ -49,6 +49,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
           inputs.push_back(*x[i]);
           names.push_back("x" + std::to_string(i));
         } else {
+          VLOG(0) << "x("  <<i << ") :" << x[i] << "  numel: " << x[i]->numel();
           continue;
         }
       }
@@ -56,7 +57,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      NpuOpRunner runner{"AddN", {inputs}, {*out}, {{"N", n}}};
+      NpuOpRunner runner{"AddN", {inputs}, {*out}, {{"N", static_cast<int>(inputs.size())}}};
       runner.AddInputNames(names);
       runner.Run(stream);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {

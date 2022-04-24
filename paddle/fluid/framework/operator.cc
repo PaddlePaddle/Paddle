@@ -221,13 +221,13 @@ void show_var(const std::string& var_name, VarBaseType* var_base) {
           auto* ctx =
               platform::DeviceContextPool::Instance().Get(tensor.place());
           auto type = tensor.type();
-          if (type == framework::proto::VarType::INT32) {
+          if (type == paddle::experimental::DataType::INT32) {
             framework::TensorToVector(tensor, *ctx, &vec_int);
-          } else if (type == framework::proto::VarType::INT64) {
+          } else if (type == paddle::experimental::DataType::INT64) {
             framework::TensorToVector(tensor, *ctx, &vec_int64);
-          } else if (type == framework::proto::VarType::FP32) {
+          } else if (type == paddle::experimental::DataType::FLOAT32) {
             framework::TensorToVector(tensor, *ctx, &vec_float);
-          } else if (type == framework::proto::VarType::FP16) {
+          } else if (type == paddle::experimental::DataType::FLOAT16) {
             framework::TensorToVector(tensor, *ctx, &vec_fp16);
           }
         }
@@ -237,13 +237,13 @@ void show_var(const std::string& var_name, VarBaseType* var_base) {
           auto* ctx =
               platform::DeviceContextPool::Instance().Get(tensor.place());
           auto type = tensor.type();
-          if (type == framework::proto::VarType::INT32) {
+          if (type == paddle::experimental::DataType::INT32) {
             framework::TensorToVector(tensor, *ctx, &vec_int);
-          } else if (type == framework::proto::VarType::INT64) {
+          } else if (type == paddle::experimental::DataType::INT64) {
             framework::TensorToVector(tensor, *ctx, &vec_int64);
-          } else if (type == framework::proto::VarType::FP32) {
+          } else if (type == paddle::experimental::DataType::FLOAT32) {
             framework::TensorToVector(tensor, *ctx, &vec_float);
-          } else if (type == framework::proto::VarType::FP16) {
+          } else if (type == paddle::experimental::DataType::FLOAT16) {
             framework::TensorToVector(tensor, *ctx, &vec_fp16);
           }
         }
@@ -1379,7 +1379,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
+    pt_kernel_signature_.reset(nullptr);
+    pt_kernel_.reset(nullptr);
+    VLOG(4) << "phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)";
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
+      VLOG(4) << "pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr";
       pt_kernel_signature_.reset(
           new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
@@ -1403,7 +1407,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << "` not found.";
       }
     } else {
+      VLOG(4) << "pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr : NOT";
       pt_kernel_name = pt_kernel_signature_->name;
+      VLOG(4) << "pt_kernel_name : " << pt_kernel_name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1456,7 +1462,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
         ) {
       run_phi_kernel_ = true;
+      VLOG(4) << "run_phi_kernel is set TRUE";
     } else {
+      VLOG(4) << "run_phi_kernel is set NOT TRUE";
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
 
@@ -1495,6 +1503,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 pt_kernel_name, pt_cpu_kernel_key)));
 
         dev_ctx = pool.Get(platform::CPUPlace());
+        VLOG(4) << "Got dev_ctx: " << reinterpret_cast<uint64_t>(dev_ctx);
         if (pt_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
@@ -1508,6 +1517,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
       dev_ctx = pool.Get(kernel_type_->place_);
+      VLOG(4) << "not run phi kernel: Got dev_ctx: " << reinterpret_cast<uint64_t>(dev_ctx);
     }
   }
 
@@ -1545,6 +1555,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
+
+    VLOG(4) << "run_phi_kernel_ : " << run_phi_kernel_;
+    VLOG(4) << "ExecutionContext dev place: " << dev_ctx->GetPlace();
     if (run_phi_kernel_) {
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
@@ -1555,6 +1568,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       (*pt_kernel_)(&pt_kernel_context);
     } else {
       (*kernel_func_)(
+          
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
     }
   }
@@ -1587,7 +1601,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
   }
-  if (true) {
+  if (FLAGS_benchmark) {
     for (auto& var_pair : outputs_) {
       int num = 0;
       for (const std::string& var : var_pair.second) {
@@ -2658,4 +2672,5 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
 }  // namespace framework
 }  // namespace paddle
+
 
