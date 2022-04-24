@@ -228,6 +228,7 @@ set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
+set WITH_ONNXRUNTIME=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -242,6 +243,7 @@ set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set ON_INFER=OFF
+set WITH_ONNXRUNTIME=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -258,6 +260,7 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_ONNXRUNTIME=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -273,6 +276,7 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set WITH_ONNXRUNTIME=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -284,6 +288,7 @@ rem ------Build windows no-avx whl package------
 set WITH_AVX=OFF
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set WITH_ONNXRUNTIME=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -295,6 +300,7 @@ rem ------Build windows inference library------
 set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
+set WITH_ONNXRUNTIME=ON
 python %work_dir%\tools\remove_grad_op_and_kernel.py
 if %errorlevel% NEQ 0 exit /b 1
 
