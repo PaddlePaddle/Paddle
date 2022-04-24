@@ -629,7 +629,7 @@ class OperatorWithKernel : public OperatorBase {
                              phi::KernelContext* pt_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
-    return pt_kernel_signature_.get();
+    return kernel_signature_.get();
   }
 
   phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
@@ -699,7 +699,7 @@ class OperatorWithKernel : public OperatorBase {
   // we may polish the implementation here
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
-  mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 };

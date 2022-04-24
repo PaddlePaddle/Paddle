@@ -404,9 +404,9 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   // 1. get kernel args
   auto* arg_map_fn = ctx->GetPhiArgumentMappingFn();
   InferShapeArgumentMappingContext arg_map_context(*ctx);
-  KernelSignature signature =
-      arg_map_fn ? (*arg_map_fn)(arg_map_context)
-                 : phi::DefaultKernelSignatureMap::Instance().Get(op_type);
+  phi::KernelSignature signature = arg_map_fn
+                                       ? (*arg_map_fn)(arg_map_context)
+                                       : *ctx->GetPhiDefaultKernelSignature();
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
@@ -417,12 +417,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   const auto& attr_names = signature.attr_names;
   const auto& output_names = signature.output_names;
 
-  auto* kernel_arg_defs = ctx->GetPhiKernelArgsDefs();
-  if (kernel_arg_defs == nullptr) {
-    kernel_arg_defs =
-        &phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
-  }
-  const auto& attr_defs = kernel_arg_defs->attribute_defs();
+  const auto& attr_defs = ctx->GetPhiKernelArgsDefs()->attribute_defs();
 
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {

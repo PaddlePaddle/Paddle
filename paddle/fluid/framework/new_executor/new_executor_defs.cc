@@ -398,6 +398,17 @@ InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
   return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
 }
 
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+}
+
+const phi::KernelArgsDef*
+InterpretercoreInferShapeContext::GetPhiKernelArgsDefs() const {
+  return &phi::KernelFactory::Instance().GetFirstKernelArgsDef(
+      phi::TransToPhiKernelName(op_.Type()));
+}
+
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }
