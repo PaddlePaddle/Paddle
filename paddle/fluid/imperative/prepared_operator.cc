@@ -294,7 +294,7 @@ PreparedOp PrepareImpl(
     if (has_phi_kernel) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto& pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
+      auto& pt_cpu_kernel = phi_kernel_factory.SelectKernel(
           pt_kernel_name, pt_cpu_kernel_key);
       if (pt_cpu_kernel.IsValid()) {
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
