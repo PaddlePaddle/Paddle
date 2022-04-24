@@ -2275,7 +2275,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             label = paddle.to_tensor([1], 'int64')
 
             output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
-            print(output) # output: [0.42310394]
+            print(output) # output: [0.42310387]
 
     """
     label_size = len(label.shape)
