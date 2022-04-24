@@ -35,7 +35,8 @@ class Optimizer {
 
   void initialize() {}
 
-  __device__ void update_lr(const OptimizerConfig& optimizer_config, float& w,
+  __device__ void update_lr(const OptimizerConfig& optimizer_config,
+                            float& w,               // NOLINT
                             float& g2sum, float g,  // NOLINT
                             float scale) {
     double add_g2sum = 0;
@@ -78,8 +79,8 @@ class Optimizer {
   }
 
   __device__ void update_value(const OptimizerConfig& optimizer_config,
-                               ValType& val,
-                               const GradType& grad) {  // NOLINT
+                               ValType& val,  // NOLINT
+                               const GradType& grad) {
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
