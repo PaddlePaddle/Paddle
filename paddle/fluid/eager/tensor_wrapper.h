@@ -55,6 +55,20 @@ class TensorWrapper {
     if (full_reserved_) {
       VLOG(6) << "Fully reserved tensor: " << tensor.name();
       intermidiate_tensor_ = tensor;
+      if (no_need_buffer_) {
+        if (phi::DenseTensor::classof(tensor.impl().get())) {
+          // Only Copy Meta
+          phi::DenseTensor* dense_tensor =
+              static_cast<phi::DenseTensor*>(tensor.impl().get());
+          auto tw_dense_tensor =
+              std::make_shared<phi::DenseTensor>(*dense_tensor);
+          tw_dense_tensor->clear();
+          intermidiate_tensor_.set_impl(tw_dense_tensor);
+        } else {
+          PADDLE_THROW(paddle::platform::errors::Fatal(
+              "Unrecognized tensor type for no_need_buffer feature"));
+        }
+      }
       return;
     }
 

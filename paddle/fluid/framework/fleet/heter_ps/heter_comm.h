@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
@@ -62,6 +63,11 @@ class HeterComm {
                    Sgd& sgd);  // NOLINT
 #elif defined(PADDLE_WITH_XPU_KP)
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 #endif
 
   int log2i(int x);
@@ -212,10 +218,10 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
-  int topo_aware_{0};
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
  private:
-  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
+  int topo_aware_{0};
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
   int multi_node_{0};

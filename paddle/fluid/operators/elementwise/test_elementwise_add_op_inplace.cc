@@ -26,6 +26,9 @@
 USE_OP_ITSELF(elementwise_add);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace operators {
