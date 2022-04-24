@@ -48,7 +48,7 @@ def main():
                     res = unittest.TextTestRunner(stream=buffer).run(tests)
 
                     if core.is_compiled_with_cuda():
-                        print("\n=========GPU Memory Use (Bytes)=========")
+                        print("\n========GPU Memory Usage (Bytes)========")
                         dev_count = core.get_cuda_device_count()
                         for dev_id in range(dev_count):
                             print(

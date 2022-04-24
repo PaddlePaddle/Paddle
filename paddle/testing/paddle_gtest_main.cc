@@ -97,10 +97,10 @@ int main(int argc, char** argv) {
 
 #ifdef PADDLE_WITH_CUDA
   std::cout << std::endl
-            << "=========GPU Memory Use (Bytes)=========" << std::endl;
+            << "========GPU Memory Usage (Bytes)========" << std::endl;
   for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
        ++dev_id) {
-    int64_t peak_value = MEMORY_STAT_PEAK_VALUE(Reserved, dev_id);
+    int64_t peak_value = paddle::memory::StatGetPeakValue("Reserved", dev_id);
     std::cout << "[max memory reserved] gpu " << dev_id << " : " << peak_value
               << std::endl;
   }
