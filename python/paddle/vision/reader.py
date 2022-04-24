@@ -87,10 +87,11 @@ def file_label_loader(data_root, indices, batch_size, name=None):
     Reads a batch of data, outputs the bytes contents of a file
     as a uint8 Tensor with one dimension.
 
-    This API can only be used in Paddle GPU version.
+    .. note::
+        This API can only be used in Paddle GPU version.
 
     Args:
-        data_root (str): root directory of ImageNet dataset.
+        data_root (str): root directory of ImageNet format dataset.
         indices (Tensor): A Tensor of batch indices of samples in shape of 
             [N], while N is the batch size.
         batch_size (int): The batch size, same as shape of indices.
@@ -170,13 +171,16 @@ def file_label_reader(data_root,
     This API will start a C++ thread to load data with
     :attr:`file_label_loader`, and yiled data iterably.
 
-    This API can only be used in Paddle GPU version.
+    .. note::
+        This API can only be used in Paddle GPU version.
 
     Args:
         data_root (str): root directory of ImageNet dataset.
-        batch_size (int): The batch size of a mini-batch. Default 1.
-        shuffle (bool): Whether to shuffle samples. Default False.
-        drop_last (bool): Whether to drop the last incomplete batch. Default False.
+        batch_size (int, optional): The batch size of a mini-batch.
+            Default 1.
+        shuffle (bool, optional): Whether to shuffle samples. Default False.
+        drop_last (bool, optional): Whether to drop the last incomplete
+            batch. Default False.
         seed (int, optional): The seed for sample shuffling. Default None.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please

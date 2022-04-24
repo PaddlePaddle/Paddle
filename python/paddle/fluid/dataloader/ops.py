@@ -23,8 +23,6 @@ from ...fluid.framework import _non_static_mode
 
 from collections.abc import Sequence, Mapping
 
-__all__ = ["map", "data_reader"]
-
 
 def _to_list(l):
     if isinstance(l, (list, tuple)):
@@ -64,12 +62,14 @@ def _generate_stream_id():
 
 def map(map_func, *args, **kwargs):
     """
-    This API used to split data loading stages of GPU DataLoader pipeline,
+    Data loading stages spliting function of GPU DataLoader pipeline,
     the map function will be run in independent C++ thread and stream.
 
     Args:
         map_func (callable): A callable function to do data preprocess
                              operations.
+        args: The arguments passed on to :attr:`map_func`.
+        kwargs: The keyword arguments passed on to :attr:`map_func`.
 
     Returns:
         The output of map function
@@ -224,15 +224,19 @@ def data_reader(reader_func,
                 drop_last=False,
                 seed=None):
     """
-    This API used to auto loading dataset in GPU DataLoader pipeline,
+    Dataset auto loading stage creating function in GPU DataLoader pipeline,
     the reader function will be run in independent C++ thread.
 
     Args:
         reader_func (callable): A callable function construct of a data
             loader OP.
-        batch_size (int): The batch size of a mini-batch. Default 1.
-        shuffle (bool): Whether to shuffle samples. Default False.
-        drop_last (bool): Whether to drop the last incomplete batch. Default False.
+        batch_size (int, optional): The batch size of a mini-batch.
+            Default 1.
+        num_samples(int, optional): Total reading sample number of dataset.
+            Default 1.
+        shuffle (bool, optional): Whether to shuffle samples. Default False.
+        drop_last (bool, optional): Whether to drop the last incomplete
+            batch. Default False.
         seed (int, optional): The seed for sample shuffling. Default None.
 
     Returns:
