@@ -46,8 +46,8 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"), "Output", "SoftmaxOut",
                    "FusedGateAttention");
-    OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
-                   "FusedGateAttention");
+    // OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
+    //                "FusedGateAttention");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedGateAttention");
 
     // x: qkv's input [batch_size, seq_len_m, seq_len_r, c]
@@ -75,8 +75,8 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("QKTVOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, c});
-    ctx->SetOutputDim("FMHAOut",
-                      {batch_size, seq_len_m, seq_len_r, num_head, c});
+    // ctx->SetOutputDim("FMHAOut",
+    //                   {batch_size, seq_len_m, seq_len_r, num_head, c});
 
     if (ctx->Attrs().Get<bool>("is_gating")) {
       ctx->SetOutputDim("GateBiasOut",
@@ -115,7 +115,7 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("QKOut", "Result in fmha.").AsIntermediate();
     AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
-    AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
+    // AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
     AddOutput("GateBiasOut", "Result after add bias")
         .AsIntermediate()
         .AsDispensable();
@@ -193,12 +193,12 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("QKVWeight"),
                       ctx->GetInputDim("QKVWeight"));
 
-    ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
-                      ctx->GetInputDim("FMHAOut"));
+    // ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
+    //                   ctx->GetInputDim("FMHAOut"));
     ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
                       ctx->GetInputDim("QKTVOut"));
-    // ctx->SetOutputDim(framework::GradVarName("QKVTransposeOut"),
-    //                   ctx->GetInputDim("QKVTransposeOut"));
+    ctx->SetOutputDim(framework::GradVarName("QKVTransposeOut"),
+                      ctx->GetInputDim("QKVTransposeOut"));
     ctx->SetOutputDim(framework::GradVarName("QKOut"),
                       ctx->GetInputDim("QKOut"));
     ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
@@ -238,8 +238,8 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
 
     op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
-    // op->SetOutput(framework::GradVarName("QKVTransposeOut"),
-    //               this->OutputGrad("QKVTransposeOut"));
+    op->SetOutput(framework::GradVarName("QKVTransposeOut"),
+                  this->OutputGrad("QKVTransposeOut"));
 
     op->SetInput("QKOut", this->Output("QKOut"));
     op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));
@@ -260,9 +260,9 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("SoftmaxOut"),
                   this->OutputGrad("SoftmaxOut"));
 
-    op->SetInput("FMHAOut", this->Output("FMHAOut"));
-    op->SetOutput(framework::GradVarName("FMHAOut"),
-                  this->OutputGrad("FMHAOut"));
+    // op->SetInput("FMHAOut", this->Output("FMHAOut"));
+    // op->SetOutput(framework::GradVarName("FMHAOut"),
+    //               this->OutputGrad("FMHAOut"));
 
     op->SetAttrMap(this->Attrs());
     bool is_gating = BOOST_GET_CONST(bool, op->GetAttr("is_gating"));

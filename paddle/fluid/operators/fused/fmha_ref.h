@@ -443,17 +443,15 @@ class FMHAGateRef {
                        const Tensor* nonbatched_bias,
                        Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
                        Tensor* softmax_out_grad, Tensor* qk_out_grad,
-                       Tensor* src_mask_grad, Tensor* qkv_out_grad) {
+                       Tensor* src_mask_grad, Tensor* qkv_transpose_out_grad,
+                       Tensor* qkv_out_grad) {
     ComputeQKTVTransposeBackward(fmha_out_grad, qktv_out_grad);
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
     int k_size = q_size;
 
-    Tensor qkv_transpose_out_grad;
-    qkv_transpose_out_grad.Resize(qkv_transpose_out.dims());
-    T* qkv_grad_ptr =
-        qkv_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+    T* qkv_grad_ptr = qkv_transpose_out_grad->data<T>();
     T* q_grad_ptr = qkv_grad_ptr;
     T* k_grad_ptr = q_grad_ptr + q_size;
     T* v_grad_ptr = k_grad_ptr + k_size;
@@ -529,10 +527,9 @@ class FMHAGateRef {
                      qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
                      stride_a, stride_b);
 
-    ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
+    ComputeQKVTransposeBackward(*qkv_transpose_out_grad, qkv_out_grad);
   }
 
- private:
   // [batch_size, seq_len_m, seq_len_r, 3, num_head, c] ->
   //         [3, batch_size, seq_len_m, num_head, seq_len_r, c]
   void ComputeQKVTransposeForward(const Tensor& qkv_out,
@@ -636,6 +633,7 @@ class FMHAGateRef {
     }
   }
 
+ private:
   const platform::CUDADeviceContext& dev_ctx_;
 
   int64_t batch_size_;

@@ -148,7 +148,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
                          "Ln2Variance",    "BiasDropoutResidualOut",
                          "CacheKVOut",     "Y"}},
     {"fused_gate_attention",
-     {"QKVOut", "QKVTransposeOut", "QKOut", "QKTVOut", "SoftmaxOut", "FMHAOut",
+     {"QKVOut", "QKVTransposeOut", "QKOut", "QKTVOut", "SoftmaxOut",
       "GateBiasOut", "GateOut", "Y"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
