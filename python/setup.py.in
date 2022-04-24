@@ -13,6 +13,8 @@ from contextlib import contextmanager
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
+from setuptools.command.sdist import sdist as SdistCommandBase
+from setuptools.command.egg_info import egg_info
 
 
 class BinaryDistribution(Distribution):
@@ -678,6 +680,68 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+class concat_license_files():
+    """Merge LICENSE and LICENSES_BUNDLED.txt as a context manager
+
+    LICENSE is the main PyTorch license, LICENSES_BUNDLED.txt is auto-generated
+    from all the licenses found in ./third_party/. We concatenate them so there
+    is a single license file in the sdist and wheels with all of the necessary
+    licensing info.
+    """
+    def __init__(self):
+        print("yoki51")
+        self.f1 = '${PADDLE_BINARY_DIR}/../LICENSE'
+
+    def __enter__(self):
+        """Concatenate files"""
+        with open(self.f1, 'r') as f1:
+            print("yoki52")
+            self.bsd_text = f1.read()
+        print("\n\nyoki53: \n\n", self.bsd_text)
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Restore content of f1"""
+        with open(self.f1, 'w') as f:
+            print("yoki54")
+            f.write(self.bsd_text)
+
+
+try:
+    from wheel.bdist_wheel import bdist_wheel
+except ImportError:
+    # This is useful when wheel is not installed and bdist_wheel is not
+    # specified on the command line. If it _is_ specified, parsing the command
+    # line will fail before wheel_concatenate is needed
+    wheel_concatenate = None
+else:
+    # Need to create the proper LICENSE.txt for the wheel
+    class wheel_concatenate(bdist_wheel):
+        """ check submodules on sdist to prevent incomplete tarballs """
+        def run(self):
+            print("yoki3")
+            with concat_license_files():
+                print("yoki4")
+                super().run()
+
+class sdist(SdistCommandBase):
+    def run(self):
+        print("yoki1")
+        with concat_license_files():
+            print("yoki2")
+            super().run()
+
+class egg_info_ex(egg_info):
+    """Includes license file into `.egg-info` folder."""
+
+    def run(self):
+        # don't duplicate license into `.egg-info` when building a distribution
+        if not self.distribution.have_run.get('install', True):
+            # `install` command is in progress, copy license
+            self.mkpath(self.egg_info)
+            self.copy_file("@PADDLE_BINARY_DIR@/../LICENSE", self.egg_info)
+
+        egg_info.run(self)
+
 # we redirect setuptools log for non-windows
 if sys.platform != 'win32':
     @contextmanager
@@ -722,6 +786,7 @@ with redirect_stdout():
             'Downloads': 'https://github.com/paddlepaddle/paddle'
         }, 
         license='Apache Software License',
+        license_files=("@PADDLE_BINARY_DIR@/../LICENSE",),
         packages=packages,
         install_requires=setup_requires,
         ext_modules=ext_modules,
@@ -733,6 +798,9 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+            'bdist_wheel': wheel_concatenate,
+            'sdist': sdist,
+            'egg_info': egg_info_ex
         },
         entry_points={
             'console_scripts': [
