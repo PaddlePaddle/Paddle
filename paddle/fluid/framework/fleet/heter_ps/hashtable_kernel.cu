@@ -129,6 +129,9 @@ __global__ void dy_mf_update_kernel(Table* table,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
+  cudaMalloc((void**)&device_optimizer_config_, sizeof(OptimizerConfig));
+  cudaMemcpy((void*)device_optimizer_config_, &host_optimizer_config_,
+             sizeof(OptimizerConfig), cudaMemcpyHostToDevice);
   rwlock_.reset(new phi::RWLock);
 }
 
