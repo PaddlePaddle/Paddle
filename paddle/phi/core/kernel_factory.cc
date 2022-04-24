@@ -158,43 +158,43 @@ std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
       os << "double";
       break;
     case AttributeType::STRING:
-      os << "std::string";
+      os << "string";
       break;
     case AttributeType::BOOLS:
-      os << "std::vector<bool>";
+      os << "vector<bool>";
       break;
     case AttributeType::INT32S:
-      os << "std::vector<int>";
+      os << "vector<int>";
       break;
     case AttributeType::INT64S:
-      os << "std::vector<int64_t>";
+      os << "vector<int64_t>";
       break;
     case AttributeType::FLOAT32S:
-      os << "std::vector<float>";
+      os << "vector<float>";
       break;
     case AttributeType::FLOAT64S:
-      os << "std::vector<double>";
+      os << "vector<double>";
       break;
     case AttributeType::STRINGS:
-      os << "std::vector<std::string>";
+      os << "vector<string>";
       break;
     case AttributeType::SCALAR:
-      os << "phi::Scalar";
+      os << "Scalar";
       break;
     case AttributeType::SCALARS:
-      os << "std::vector<phi::Scalar>";
+      os << "vector<Scalar>";
       break;
     case AttributeType::INT_ARRAY:
-      os << "phi::IntArray";
+      os << "IntArray";
       break;
     case AttributeType::DATA_TYPE:
-      os << "phi::DataType";
+      os << "DataType";
       break;
     case AttributeType::DATA_LAYOUT:
-      os << "phi::DataLayout";
+      os << "DataLayout";
       break;
     case AttributeType::PLACE:
-      os << "phi::Place";
+      os << "Place";
       break;
     default:
       os << "Undefined";
