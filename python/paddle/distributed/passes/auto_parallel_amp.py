@@ -487,6 +487,7 @@ class AMPPass(PassBase):
         self.set_attr("incr_ratio", 2.0)
         self.set_attr("decr_ratio", 0.8)
         self.set_attr("use_dynamic_loss_scaling", False)
+        self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
         self._loss_scaling = None
         self._num_good_steps = None

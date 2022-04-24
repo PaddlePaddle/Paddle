@@ -22,7 +22,8 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+_enable_legacy_dygraph()
 import os
 
 from paddle import _C_ops
@@ -951,6 +952,7 @@ class TestDropoutBackward(unittest.TestCase):
         return mask.astype("float32")
 
     def test_backward_downscale_in_infer(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
@@ -1032,9 +1034,6 @@ class TestRandomValue(unittest.TestCase):
 
         # Different GPU generate different random value. Only test V100 here.
         if not "V100" in paddle.device.cuda.get_device_name():
-            return
-
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
         print("Test Fixed Random number on V100 GPU------>")

@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
-
-import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
+
+paddle.enable_static()
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -108,8 +110,24 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     return out
 
 
+def deform_conv2d_wrapper(x,
+                          offset,
+                          weight,
+                          mask=None,
+                          stride=1,
+                          padding=0,
+                          dilation=1,
+                          deformable_groups=1,
+                          groups=1,
+                          im2col_step=1):
+    return paddle.vision.ops.deform_conv2d(x, offset, weight, None, stride,
+                                           padding, dilation, deformable_groups,
+                                           groups, mask)
+
+
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
+        self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv"
         self.init_type()
         self.init_group()
@@ -148,13 +166,14 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             {'Input', 'Offset', 'Mask', 'Filter'},
             'Output',
-            max_relative_error=0.05)
+            max_relative_error=0.05,
+            check_eager=True)
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -327,6 +346,10 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(ValueError, test_invalid_filter)
 
+    def test_error_with_eager_guard(self):
+        with _test_eager_guard():
+            self.test_error()
+
 
 class TestDeformConv2DAPI(unittest.TestCase):
     def test_api(self):
@@ -357,6 +380,10 @@ class TestDeformConv2DAPI(unittest.TestCase):
             assert (out.shape == (-1, 4, 32, 32))
 
         test_deform_conv2d_v2()
+
+    def test_api_with_eager_guard(self):
+        with _test_eager_guard():
+            self.test_api()
 
 
 if __name__ == '__main__':

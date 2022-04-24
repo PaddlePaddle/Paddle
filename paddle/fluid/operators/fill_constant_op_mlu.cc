@@ -51,6 +51,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
         }
       }
     }
+    const T *value_data = &value;
+    cnnlPointerMode_t pointer_mode = CNNL_POINTER_MODE_HOST;
     if (ctx.HasInput("ValueTensor")) {
       auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
@@ -59,22 +61,18 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
               "When use Tensor as value to set Tensor value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
               value_tensor->numel()));
-      const T *tensor_data = value_tensor->data<T>();
-      framework::Tensor mlu_tensor;
+      value_data = value_tensor->data<T>();
       auto tmp_place = value_tensor->place();
       if (platform::is_mlu_place(tmp_place)) {
-        framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
-                                  &mlu_tensor);
-        tensor_data = mlu_tensor.data<T>();
+        pointer_mode = CNNL_POINTER_MODE_DEVICE;
       }
-      value = tensor_data[0];
     }
 
     auto shape = GetShape(ctx);
     out_var->mutable_data<T>(shape, ctx.GetPlace());
-    MLUCnnlTensorDesc output_desc(*out_var, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(out_var->dtype()));
-    MLUCnnl::Fill(ctx, value, output_desc.get(), GetBasePtr(out_var));
+    MLUCnnlTensorDesc output_desc(*out_var);
+    MLUCnnl::Fill(ctx, pointer_mode, value_data, output_desc.get(),
+                  GetBasePtr(out_var));
   }
 };
 }  // namespace operators
