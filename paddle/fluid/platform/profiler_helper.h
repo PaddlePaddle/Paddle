@@ -861,9 +861,10 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
                sorted_by, &max_name_width, &overhead, merge_thread);
 
+  max_name_width = std::min(max_name_width + 8, (size_t)64);
   // Print report
   PrintProfiler(events_table, child_map, sorted_func, sorted_by, overhead,
-                sorted_domain, max_name_width + 8, 12, merge_thread, 0);
+                sorted_domain, max_name_width, 12, merge_thread, 0);
 }
 
 }  // namespace platform

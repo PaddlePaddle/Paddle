@@ -95,13 +95,17 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    (dest + i)->slot = slot_vector[x];
-    (dest + i)->show = *(src[x] + y * hidden);
-    (dest + i)->clk = *(src[x] + y * hidden + 1);
-    (dest + i)->lr_g = *(src[x] + y * hidden + 2) * -1. * bs;
+    FeaturePushValue val;
+    float* src_ptr = src[x];
+    int hidden_off = y * hidden;
+    val.slot = slot_vector[x];
+    val.show = *(src_ptr + hidden_off);
+    val.clk = *(src_ptr + hidden_off + 1);
+    val.lr_g = *(src_ptr + hidden_off + 2) * -1. * bs;
     for (int j = 0; j < hidden - 3; j++) {
-      (dest + i)->mf_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+      val.mf_g[j] = *(src_ptr + hidden_off + 3 + j) * -1. * bs;
     }
+    *(dest + i) = val;
   }
 }
 

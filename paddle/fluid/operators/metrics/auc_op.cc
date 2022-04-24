@@ -64,13 +64,17 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault((2 << 12) - 1);
     AddAttr<int>("slide_steps", "Use slide steps to calc batch auc.")
         .SetDefault(1);
+    AddAttr<bool>("ignore_illegal_label",
+        "If input label contains values other than 0 and 1, it will be ignored.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.
 
 This implementation computes the AUC according to forward output and label.
 It is used very widely in binary classification evaluation. As a note:
-If input label contains values other than 0 and 1, it will be cast
-to bool. You can find the relevant definitions here:
+If input label contains values other than 0 and 1, it will be cast to bool
+or be ignored when open ignore_illegal_label.
+You can find the relevant definitions here:
 https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
 
 There are two types of possible curves:

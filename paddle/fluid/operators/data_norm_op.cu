@@ -191,7 +191,6 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
           reinterpret_cast<void *>(d_batch_square_sum), C,
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype())),
           ncclSum, comm->comm(), stream));
-      platform::GpuStreamSync(stream);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "

@@ -80,7 +80,6 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

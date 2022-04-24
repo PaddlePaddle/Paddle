@@ -74,7 +74,7 @@ void SquaredL2Norm(const platform::CUDADeviceContext& ctx, const T1* x, T2* y,
     }
     PADDLE_ENFORCE_GPU_SUCCESS(
         cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_bytes, iter, y,
-                                  numel, cub::Sum(), static_cast<T2>(0)));
+                                  numel, cub::Sum(), static_cast<T2>(0), stream));
   }
 }
 #endif

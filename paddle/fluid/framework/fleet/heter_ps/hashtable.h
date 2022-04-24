@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
 namespace paddle {
 namespace framework {
