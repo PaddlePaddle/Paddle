@@ -33,8 +33,6 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
 ]
 
-_supported_div_op_ = ["elementwise_div", "final_state_divide"]
-
 # NOTE(chenweihang): We currently do not fully support the type promotion 
 # between tensors. Parting support here is because the interoperation of 
 # real and complex numbers in paddle quantum is very frequent, such as the 
@@ -224,7 +222,9 @@ def monkey_patch_math_varbase():
                 # so the calculation result here and the calculation result of numpy are 
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
-                if op_type in _supported_div_op_ and self.dtype in _supported_int_dtype_:
+                if (op_type == "final_state_divide" or
+                        op_type == "elementwise_div"
+                    ) and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -279,7 +279,8 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
-            if op_type in _supported_div_op_ and self.dtype in _supported_int_dtype_:
+            if (op_type == "final_state_divide" or op_type == "elementwise_div"
+                ) and self.dtype in _supported_int_dtype_:
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
