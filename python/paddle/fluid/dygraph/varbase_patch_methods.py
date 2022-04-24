@@ -30,6 +30,7 @@ from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops
 
 _grad_scalar = None
@@ -247,9 +248,10 @@ def monkey_patch_varbase():
 
         """
         if framework._non_static_mode():
-            record_event = profiler.RecordEvent(
-                "Gradient Backward", profiler.TracerEventType.Backward)
-            record_event.begin()
+            if in_profiler_mode():
+                record_event = profiler.RecordEvent(
+                    "Gradient Backward", profiler.TracerEventType.Backward)
+                record_event.begin()
             if grad_tensor is not None:
                 if framework._in_eager_mode_:
                     assert isinstance(
@@ -288,7 +290,8 @@ def monkey_patch_varbase():
                     core.dygraph_run_backward([self], [grad_tensor],
                                               retain_graph,
                                               framework._dygraph_tracer())
-            record_event.end()
+            if in_profiler_mode():
+                record_event.end()
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
