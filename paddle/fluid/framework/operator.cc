@@ -1379,14 +1379,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
-
     // bug fix(liupeng): in some case like the pre-op is Has NO CompatiblePhiKernel,
     // pt_kernel_signature_ and kernel_type_ of this op both are not null. If the op 
     // has no only-cpu-supported kernel on NPU platform, there will occurs an error:
     // the op will still pass an NPU DeviceContext while the recieving function accepts
-    // a CPU ctx.
+    // a CPU ctx. 
+    // Further searching for the reason of this bug is needed.
     pt_kernel_signature_.reset(nullptr);
-    
+
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       pt_kernel_signature_.reset(
           new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
