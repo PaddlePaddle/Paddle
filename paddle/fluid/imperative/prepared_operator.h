@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
