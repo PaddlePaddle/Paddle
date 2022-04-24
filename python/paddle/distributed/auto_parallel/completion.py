@@ -670,12 +670,6 @@ class Completer:
                 return True
             return False
 
-        def _get_forward_varname_from_grad_varname(grad_var_name):
-            assert _is_grad_var_name(
-                grad_var_name), "[{}] is not a grad varnme.".format(
-                    grad_var_name)
-            return grad_var_name[:grad_var_name.find("@GRAD")]
-
         def _get_op_by_id(ops, id):
             for op in ops:
                 if op.desc.id() == id:

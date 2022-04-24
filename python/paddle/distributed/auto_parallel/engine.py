@@ -30,7 +30,6 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
@@ -175,7 +174,6 @@ class Engine:
 
     def _initialize(self, mode):
         if self._nranks > 1:
-            fleet.init(is_collective=True, strategy=self.strategy)
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
