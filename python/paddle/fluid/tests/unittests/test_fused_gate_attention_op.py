@@ -16,10 +16,10 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
-import paddle.incubate.nn.functional as F
 from paddle import tensor
 import unittest
 from op_test import OpTest
+from paddle import _C_ops
 from paddle.fluid.framework import default_main_program
 
 default_main_program().random_seed = 42
@@ -150,16 +150,9 @@ class TestFusedGateAttentionOp(OpTest):
             gating_w = None
             gating_b = None
 
-        final_out = F.fused_gate_attention(
-            x=x,
-            qkv_weight=qkv_weight,
-            linear_weight=self.output_w,
-            gate_weight=gating_w,
-            linear_bias=self.output_b,
-            gate_bias=gating_b,
-            nonbatched_bias=nonbatched_bias,
-            attn_mask=self.bias,
-            is_gating=self.is_gating)
+        _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
+            x, qkv_weight, nonbatched_bias, self.bias, gating_w, gating_b,
+            self.output_w, self.output_b, 'is_gating', self.is_gating)
 
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
@@ -180,7 +173,7 @@ class TestFusedGateAttentionOpBiasIsNone(TestFusedGateAttentionOp):
         self.bias_attr = False
 
 
-class TestFusedGateAttentionOpPreLn(TestFusedGateAttentionOp):
+class TestFusedGateAttentionGatingIsFalse(TestFusedGateAttentionOp):
     def config(self):
         super().config()
         self.is_gating = False

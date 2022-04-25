@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"

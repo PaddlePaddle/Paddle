@@ -224,17 +224,11 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
 
-    // auto *qkv_transpose_out = ctx.Output<Tensor>("QKVTransposeOut");
-    // auto *qk_out = ctx.Output<Tensor>("QKOut");
     auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
     auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
-    // auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
 
-    // qkv_transpose_out->mutable_data<T>(ctx.GetPlace());
-    // qk_out->mutable_data<T>(ctx.GetPlace());
     qktv_out->mutable_data<T>(ctx.GetPlace());
     softmax_out->mutable_data<T>(ctx.GetPlace());
-    // fmha_out->mutable_data<T>(ctx.GetPlace());
 
     const auto is_gating = ctx.Attr<bool>("is_gating");
 
@@ -305,8 +299,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     // forward output, backward input
     auto *qkv_out = ctx.Input<Tensor>("QKVOut");
-    // auto *qkv_transpose_out = ctx.Input<Tensor>("QKVTransposeOut");
-    // auto *qk_out = ctx.Input<Tensor>("QKOut");
     auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
     auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
 
@@ -314,17 +306,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
     auto *d_qktv_out = ctx.Output<Tensor>(framework::GradVarName("QKTVOut"));
-    // auto *d_qkv_transpose_out =
-    //     ctx.Output<Tensor>(framework::GradVarName("QKVTransposeOut"));
-    // auto *d_qk_out = ctx.Output<Tensor>(framework::GradVarName("QKOut"));
     auto *d_softmax_out =
         ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
     d_qkv_out->mutable_data<T>(ctx.GetPlace());
     d_qktv_out->mutable_data<T>(ctx.GetPlace());
-    // d_qkv_transpose_out->mutable_data<T>(ctx.GetPlace());
-    // d_qk_out->mutable_data<T>(ctx.GetPlace());
     d_softmax_out->mutable_data<T>(ctx.GetPlace());
 
     // parameter grad
