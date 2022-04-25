@@ -12,31 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/where_kernel.h"
+#pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
+#include <string>
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
-                 const DenseTensor& condition,
-                 const DenseTensor& x,
-                 const DenseTensor& y,
-                 DenseTensor* out) {
-  const bool* cond_data = condition.data<bool>();
-  const T* x_data = x.data<T>();
-  const T* y_data = y.data<T>();
-  auto x_numel = x.numel();
-
-  T* out_data = ctx.template Alloc<T>(out);
-
-  for (int i = 0; i < x_numel; i++) {
-    out_data[i] = cond_data[i] ? x_data[i] : y_data[i];
-  }
-}
+void ChannelShuffleKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          int groups,
+                          const std::string& data_format,
+                          DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(
-    where, CPU, ALL_LAYOUT, phi::WhereKernel, float, double, int, int64_t) {}

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
-                     const DenseTensor& condition,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     const DenseTensor& out_grad,
-                     DenseTensor* x_grad,
-                     DenseTensor* y_grad);
+KernelSignature ChannelShuffleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("channel_shuffle_grad",
+                         {"Out@GRAD"},
+                         {"groups", "data_format"},
+                         {"X@GRAD"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(channel_shuffle_grad,
+                           phi::ChannelShuffleGradOpArgumentMapping);

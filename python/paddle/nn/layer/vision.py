@@ -87,3 +87,76 @@ class PixelShuffle(Layer):
         if self._name is not None:
             main_str += ', name={}'.format(self._name)
         return main_str
+
+
+class ChannelShuffle(Layer):
+    """
+    This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
+    getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
+    as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
+    operation can improve the interaction between channels, using features efficiently. Please 
+    refer to the paper: `ShuffleNet: An Extremely Efficient 
+    Convolutional Neural Network for Mobile Devices <https://arxiv.org/abs/1707.01083>`_ .
+    by Zhang et. al (2017) for more details. 
+
+    Parameters:
+        groups (int): Number of groups to divide channels in.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - **x**: 4-D tensor with shape of [N, C, H, W] or [N, H, W, C].
+        - **out**: 4-D tensor with shape and dtype same as x.
+
+    Examples:
+        .. code-block:: python
+            :name: ChannelShuffle-example
+
+            import paddle
+            import paddle.nn as nn
+            x = paddle.arange(0, 0.6, 0.1, 'float32')
+            x = paddle.reshape(x, [1, 6, 1, 1])
+            # [[[[0.        ]],
+            #   [[0.10000000]],
+            #   [[0.20000000]],
+            #   [[0.30000001]],
+            #   [[0.40000001]],
+            #   [[0.50000000]]]]
+            channel_shuffle = nn.ChannelShuffle(3)
+            y = channel_shuffle(x)
+            # [[[[0.        ]],
+            #   [[0.20000000]],
+            #   [[0.40000001]],
+            #   [[0.10000000]],
+            #   [[0.30000001]],
+            #   [[0.50000000]]]]
+    """
+
+    def __init__(self, groups, data_format="NCHW", name=None):
+        super(ChannelShuffle, self).__init__()
+
+        if not isinstance(groups, int):
+            raise TypeError("groups must be int type")
+
+        if groups <= 0:
+            raise ValueError("groups must be positive")
+
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
+                             "But recevie data format: {}".format(data_format))
+
+        self._groups = groups
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return functional.channel_shuffle(x, self._groups, self._data_format,
+                                          self._name)
+
+    def extra_repr(self):
+        main_str = 'groups={}'.format(self._groups)
+        if self._data_format != 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
