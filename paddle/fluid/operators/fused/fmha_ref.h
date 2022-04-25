@@ -385,12 +385,14 @@ class FMHAGateRef {
 
   void ComputeForward(const Tensor* nonbatched_bias, const Tensor& qkv_out,
                       const Tensor* src_mask, Tensor* qkv_transpose_out,
-                      Tensor* qk_out, Tensor* softmax_out, Tensor* qktv_out,
-                      Tensor* fmha_out) {
+                      Tensor* softmax_out, Tensor* qktv_out, Tensor* fmha_out) {
     ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
 
+    Tensor qk_out;
+    qk_out.Resize({batch_size_, seq_len_m_, num_head_, seq_len_r_, seq_len_r_});
+    T* qk_out_data = qk_out.mutable_data<T>(dev_ctx_.GetPlace());
+
     T* qkv_data = qkv_transpose_out->data<T>();
-    T* qk_out_data = qk_out->data<T>();
     T* qktv_out_data = qktv_out->data<T>();
     T* fmha_out_data = fmha_out->data<T>();
 
@@ -418,7 +420,7 @@ class FMHAGateRef {
                      k_ptr, beta, qk_out_data, gemm_batch_size, stride_a,
                      stride_b);
 
-    ComputeBiasMaskSoftmaxForward(qk_out, nonbatched_bias, src_mask,
+    ComputeBiasMaskSoftmaxForward(&qk_out, nonbatched_bias, src_mask,
                                   softmax_out);
 
     transB = CblasNoTrans;
@@ -438,13 +440,11 @@ class FMHAGateRef {
   }
 
   void ComputeBackward(const Tensor& qkv_transpose_out, const Tensor* src_mask,
-                       const Tensor& softmax_out, const Tensor& qk_out,
-                       const Tensor& fmha_out_grad,
+                       const Tensor& softmax_out, const Tensor& fmha_out_grad,
                        const Tensor* nonbatched_bias,
                        Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
-                       Tensor* softmax_out_grad, Tensor* qk_out_grad,
-                       Tensor* src_mask_grad, Tensor* qkv_transpose_out_grad,
-                       Tensor* qkv_out_grad) {
+                       Tensor* softmax_out_grad, Tensor* src_mask_grad,
+                       Tensor* qkv_transpose_out_grad, Tensor* qkv_out_grad) {
     ComputeQKTVTransposeBackward(fmha_out_grad, qktv_out_grad);
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
@@ -495,11 +495,15 @@ class FMHAGateRef {
                      qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
                      gemm_batch_size, stride_a, stride_b);
 
-    ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out, &qk_out,
-                                   src_mask, src_mask_grad, qk_out_grad,
+    Tensor qk_out_grad;
+    qk_out_grad.Resize(
+        {batch_size_, seq_len_m_, num_head_, seq_len_r_, seq_len_r_});
+    T* qk_out_grad_data = qk_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+
+    ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out, src_mask,
+                                   src_mask_grad, &qk_out_grad,
                                    nonbatched_bias_grad);
 
-    T* qk_out_grad_data = qk_out_grad->data<T>();
     alpha = static_cast<T>(1.0);
     // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
     // bw: dy (seq_len * head_dim) = (dout)^t * x
@@ -597,17 +601,19 @@ class FMHAGateRef {
                                            softmax_out);
   }
 
-  void ComputeBiasMaskSoftmaxBackward(
-      const Tensor* softmax_out_grad, const Tensor* softmax_out,
-      const Tensor* qk_out, const Tensor* src_mask, Tensor* src_mask_grad,
-      Tensor* qk_out_grad, Tensor* nonbatched_bias_grad) {
+  void ComputeBiasMaskSoftmaxBackward(const Tensor* softmax_out_grad,
+                                      const Tensor* softmax_out,
+                                      const Tensor* src_mask,
+                                      Tensor* src_mask_grad,
+                                      Tensor* qk_out_grad,
+                                      Tensor* nonbatched_bias_grad) {
     Tensor* softmax_x_grad = nullptr;
     Tensor src_mask_out_grad;
     if (src_mask) {
       // src_mask_out = qk_out + src_mask
       // Special case when dy is not needed and dx doesn't reduce
       if (qk_out_grad && src_mask_grad == nullptr &&
-          qk_out->dims() == softmax_out->dims()) {
+          qk_out_grad->dims() == softmax_out->dims()) {
         VLOG(4) << "Special case when dy is not needed and dx doesn't "
                    "reduce";
         softmax_x_grad = qk_out_grad;
