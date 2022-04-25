@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("gate_idx"), "Input", "gate_idx",
-                   "NumberCount");
+    OP_INOUT_CHECK(ctx->HasInput("numbers"), "Input", "numbers", "NumberCount");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "number_count",
                    "NumberCount");
   }
@@ -31,25 +30,24 @@ class NumberCountOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // the dtype of the gate_idx should be same as int64
-    auto gate_idx_dtype =
-        OperatorWithKernel::IndicateVarDataType(ctx, "gate_idx");
+    // the dtype of the numbers should be same as int64
+    auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
 
-    PADDLE_ENFORCE_EQ(gate_idx_dtype, framework::proto::VarType::INT64,
+    PADDLE_ENFORCE_EQ(number_dtype, framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
-                          "The dtype of the gate_idx_dtype should be int64"));
-    return framework::OpKernelType(gate_idx_dtype, ctx.GetPlace());
+                          "The dtype of the number_dtype should be int64"));
+    return framework::OpKernelType(number_dtype, ctx.GetPlace());
   }
 };
 
 class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("gate_idx", "(Tensor) The input gate index tensor.");
-    AddOutput("Out", "(Tensor) The output expert count tensor.");
-    AddAttr<int>("upper_range", "（int), The number of experts.");
+    AddInput("numbers", "(Tensor) The input gate index tensor.");
+    AddOutput("Out", "(Tensor) The output number count tensor.");
+    AddAttr<int>("upper_range", "（int), The number of different numbers.");
 
-    AddComment(R"DOC(number_count Operator.count gate indices.)DOC");
+    AddComment(R"DOC(number_count Operator.count numbers.)DOC");
   }
 };
 

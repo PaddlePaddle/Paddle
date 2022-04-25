@@ -190,6 +190,59 @@ template framework::proto::VarType::Type GetDataType<VarBase>(
 template framework::proto::VarType::Type GetDataType<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var);
 
+/* GetDataLayout */
+template <typename VarType>
+paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
+  return var->DataLayout();
+}
+template <>
+paddle::experimental::DataLayout GetDataLayout<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var) {
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    return var->Var().Get<framework::LoDTensor>().layout();
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Only support framework::LoDTensor, but got %s here, please checkout "
+        "var type of "
+        "tensor: %s",
+        paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
+        var->name()));
+  }
+}
+template paddle::experimental::DataLayout GetDataLayout<VarBase>(
+    std::shared_ptr<VarBase> var);
+template paddle::experimental::DataLayout GetDataLayout<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var);
+
+/* SetDataLayout */
+template <typename VarType>
+void SetDataLayout(std::shared_ptr<VarType> var,
+                   const paddle::experimental::DataLayout layout) {
+  var->SetDataLayout(layout);
+}
+template <>
+void SetDataLayout<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var,
+    const paddle::experimental::DataLayout layout) {
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    var->MutableVar()->GetMutable<paddle::framework::LoDTensor>()->set_layout(
+        layout);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "Only support framework::LoDTensor, but got %s here, please checkout "
+        "var type of "
+        "tensor: %s",
+        paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
+        var->name()));
+  }
+}
+template void SetDataLayout<VarBase>(
+    std::shared_ptr<VarBase> var,
+    const paddle::experimental::DataLayout layout);
+template void SetDataLayout<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::experimental::DataLayout layout);
+
 /* CheckCachedKey */
 template <typename VarType>
 bool CheckCachedKey(std::shared_ptr<VarType> var,

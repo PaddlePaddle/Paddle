@@ -18,8 +18,8 @@ def PHI_Dialect : Dialect {
 
 def PhiOpTrait : NativeOpTrait<"PhiOpTrait">;
 
-class PHI_Type<string type, list<Trait> traits = []>
-   : TypeDef<PHI_Dialect, type, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {}
+class PHI_Type<string type, list<Trait> traits = [], string baseCppClass = "::mlir::Type">
+   : TypeDef<PHI_Dialect, type, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove]), baseCppClass> {}
 
 def Allocator : PHI_Type<"Allocator"> {
    let mnemonic = "allocator";
@@ -36,5 +36,9 @@ def Allocator : PHI_Type<"Allocator"> {
    );
    let assemblyFormat = "`<` $target `>`";
  }
+
+def PD_DenseTensorMap : PHI_Type<"DenseTensorMap"> {
+  let mnemonic = "dense_tensor_map";
+}
 
 #endif

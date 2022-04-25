@@ -58,14 +58,14 @@ Node *less_than_handler(Graph *graph, Node *node) {
                       {GetOutputVarNode("Out", node)}, {});
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(equal, equal_handler);
 REGISTER_HANDLER(logical_not, logical_not_handler);
 REGISTER_HANDLER(logical_or, logical_or_handler);
 REGISTER_HANDLER(logical_and, logical_and_handler);
 REGISTER_HANDLER(greater_than, greater_than_handler);
 REGISTER_HANDLER(less_than, less_than_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

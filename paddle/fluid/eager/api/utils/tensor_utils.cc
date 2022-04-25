@@ -43,8 +43,7 @@ paddle::experimental::Tensor CreateTensorWithValue(
     const phi::DataType& dtype, const phi::DataLayout& layout, float value,
     bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::full(
-      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype,
-      phi::TransToPhiBackend(place));
+      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype, place);
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {

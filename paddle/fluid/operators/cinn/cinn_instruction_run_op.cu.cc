@@ -17,10 +17,7 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
+/* see [Why use single type kernel] */
 REGISTER_OP_CUDA_KERNEL(
     cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, bool>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, int>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, int64_t>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, float>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, double>);
+    ops::CinnInstructionRunOpKernel<CUDADeviceContext, float>);

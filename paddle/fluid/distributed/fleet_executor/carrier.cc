@@ -28,8 +28,10 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
+USE_INTERCEPTOR(Sink);
 
 void Carrier::Init(
     int64_t rank,
@@ -184,7 +186,13 @@ int64_t Carrier::GetRank(int64_t interceptor_id) const {
 }
 
 bool Carrier::Send(const InterceptorMessage& msg) {
-  int64_t src_id = (msg.src_id() == -1) ? msg.dst_id() : msg.src_id();
+  int64_t src_id = msg.src_id();
+  // TODO(liyurui): compatible solution, will be removed completely in the
+  // future
+  if (interceptor_id_to_rank_.find(src_id) == interceptor_id_to_rank_.end() &&
+      src_id == SOURCE_ID) {
+    src_id = msg.dst_id();
+  }
   int64_t dst_id = msg.dst_id();
   int64_t src_rank = GetRank(src_id);
   int64_t dst_rank = GetRank(dst_id);

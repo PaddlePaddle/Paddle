@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .spawn import spawn  # noqa: F401
-from .fleet.launch import launch  # noqa: F401
+from .launch.main import launch  # noqa: F401
 
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
@@ -25,6 +25,7 @@ from .parallel_with_gloo import gloo_release
 
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
+from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import broadcast  # noqa: F401
 from .collective import all_reduce  # noqa: F401
@@ -86,4 +87,5 @@ __all__ = [  # noqa
       "wait",
       "get_rank",
       "ProbabilityEntry",
+      "ParallelMode",
 ]

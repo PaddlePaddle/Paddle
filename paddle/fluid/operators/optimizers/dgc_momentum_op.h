@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
+#include "paddle/phi/kernels/momentum_kernel.h"
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 namespace paddle {
@@ -25,8 +26,7 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class DGCMomentumKernel : public framework::OpKernel<T> {
  public:
-  DGCMomentumKernel()
-      : _momentum_op_kernel(new MomentumOpKernel<DeviceContext, T>()) {}
+  DGCMomentumKernel() {}
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto rampup_begin_step = context.Attr<float>("rampup_begin_step");
@@ -60,15 +60,56 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     VLOG(10) << "current_step:" << *current_step
              << ", rampup_begin_step:" << rampup_begin_step;
 
+    const auto* grad_var = context.InputVar("Grad");
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
       VLOG(10) << " so use momentum optimizer";
-      return _momentum_op_kernel->Compute(context);
+      auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
+      bool multi_precision = context.Attr<bool>("multi_precision");
+
+      auto* param = context.Input<framework::Tensor>("Param");
+      auto* velocity = context.Input<framework::Tensor>("Velocity");
+      auto* param_out = context.Output<framework::Tensor>("ParamOut");
+      auto* velocity_out = context.Output<framework::Tensor>("VelocityOut");
+      auto* master_param_out =
+          context.Output<framework::Tensor>("MasterParamOut");
+      paddle::optional<const framework::Tensor&> master_param_opt =
+          paddle::none;
+      float mu = context.Attr<float>("mu");
+      bool use_nesterov = context.Attr<bool>("use_nesterov");
+      std::string regularization_method =
+          context.Attr<std::string>("regularization_method");
+      float regularization_coeff = context.Attr<float>("regularization_coeff");
+      float rescale_grad = context.Attr<float>("rescale_grad");
+
+      if (grad_var->IsType<framework::Tensor>()) {
+        // sgd_dense
+        auto* grad = context.Input<framework::Tensor>("Grad");
+        phi::MomentumDenseKernel<T>(
+            static_cast<const typename framework::ConvertToPhiContext<
+                DeviceContext>::TYPE&>(dev_ctx),
+            *param, *grad, *velocity, *learning_rate, master_param_opt, mu,
+            use_nesterov, regularization_method, regularization_coeff,
+            multi_precision, rescale_grad, param_out, velocity_out,
+            master_param_out);
+      } else {
+        // sgd dense param sparse grad
+        auto* grad = context.Input<phi::SelectedRows>("Grad");
+        phi::MomentumSparseKernel<T>(
+            static_cast<const typename framework::ConvertToPhiContext<
+                DeviceContext>::TYPE&>(dev_ctx),
+            *param, *grad, *velocity, *learning_rate, master_param_opt, mu,
+            use_nesterov, regularization_method, regularization_coeff,
+            multi_precision, rescale_grad, param_out, velocity_out,
+            master_param_out);
+      }
+
+      return;
     }
 
     VLOG(10) << " so use sgd optimizer";
 
     const auto* param_var = context.InputVar("Param");
-    const auto* grad_var = context.InputVar("Grad");
+
     auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
     bool multi_precision = context.Attr<bool>("multi_precision");
     if (param_var->IsType<framework::LoDTensor>()) {
@@ -125,9 +166,6 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       PADDLE_THROW("gdc not support yet");
     }
   }
-
- private:
-  std::unique_ptr<MomentumOpKernel<DeviceContext, T>> _momentum_op_kernel;
 };
 
 }  // namespace operators

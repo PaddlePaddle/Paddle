@@ -33,6 +33,7 @@ class TestMaskedSelectOp(OpTest):
     def setUp(self):
         self.init()
         self.op_type = "masked_select"
+        self.python_api = paddle.masked_select
         x = np.random.random(self.shape).astype("float64")
         mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
         out = np_masked_select(x, mask)
@@ -40,10 +41,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_eager=True)
 
     def init(self):
         self.shape = (50, 3)
@@ -121,4 +122,5 @@ class TestMaskedSelectError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

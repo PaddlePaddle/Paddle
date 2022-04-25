@@ -28,6 +28,7 @@ class TestElementwiseAddOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_add"
+        self.python_api = paddle.add
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
