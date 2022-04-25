@@ -584,6 +584,7 @@ def fused_multi_transformer(x,
                                2. downscale_in_infer, downscale the output at inference
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
