@@ -232,7 +232,8 @@ def init_parallel_env():
         master_addr, master_port = endpoints.split(":")
         master_port = int(master_port)
         is_master = rank == 0
-        default_store = core.TCPStore(master_addr, master_port, is_master, 1)
+        default_store = core.TCPStore(master_addr, master_port, is_master,
+                                      world_size)
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
