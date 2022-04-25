@@ -18,36 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/common/scalar.h"
-
-#include "paddle/utils/variant.h"
-
 namespace phi {
-
-class Place;
-
-// NOTE: Add needed type in the future
-using Attribute = paddle::variant<bool,
-                                  int,
-                                  int64_t,
-                                  float,
-                                  double,
-                                  std::string,
-                                  std::vector<bool>,
-                                  std::vector<int>,
-                                  std::vector<int64_t>,
-                                  std::vector<float>,
-                                  std::vector<double>,
-                                  std::vector<std::string>,
-                                  Scalar,
-                                  std::vector<Scalar>,
-                                  IntArray,
-                                  DataType,
-                                  DataLayout,
-                                  Place>;
 
 class Kernel;
 class KernelKey;

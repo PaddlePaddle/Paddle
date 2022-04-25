@@ -37,6 +37,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
