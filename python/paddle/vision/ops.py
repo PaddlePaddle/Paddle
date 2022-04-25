@@ -906,9 +906,17 @@ def image_decode(x,
         num_threads (int, optional): The parallel thread number for
                                      decoding. Default 2.
         host_memory_padding (int, optional): The CUDA pinned memory
-                allocation padding size of Nvjpeg decoding. Default 0.
+                allocation padding size of Nvjpeg decoding, if padding
+                size is greater than 0, a preallocated CUDA pinned memory
+                of the requested size will be used as buffer. If this
+                value is correctly set, no additional allocations will
+                ocur during operator running. Default 0.
         device_memory_padding(int, optional): The CUDA memory allocation
-                padding size of Nvjpeg decoding. Default 0.
+                padding size of Nvjpeg decoding, if padding size is greater
+                than 0, a preallocated CUDA pinned memory of the requested
+                size will be used as buffer. If this value is correctly
+                set, no additional allocations will ocur during operator
+                running. . Default 0.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -1003,9 +1011,17 @@ def image_decode_random_crop(x,
         num_threads (int, optional): The parallel thread number for
                 decoding. Default 2.
         host_memory_padding (int, optional): The CUDA pinned memory
-                allocation padding size of Nvjpeg decoding. Default 0.
-        host_memory_padding (int, optional): The CUDA memory allocation
-                padding size of Nvjpeg decoding. Default 0.
+                allocation padding size of Nvjpeg decoding, if padding
+                size is greater than 0, a preallocated CUDA pinned memory
+                of the requested size will be used as buffer. If this
+                value is correctly set, no additional allocations will
+                ocur during operator running. Default 0.
+        device_memory_padding(int, optional): The CUDA memory allocation
+                padding size of Nvjpeg decoding, if padding size is greater
+                than 0, a preallocated CUDA pinned memory of the requested
+                size will be used as buffer. If this value is correctly
+                set, no additional allocations will ocur during operator
+                running. . Default 0.
         data_format (string, optional): The output image format, if NCHW,
                 output images will be in shape of (channels, image_height,
                 image_width), if NHWC, output images will be in shape of
@@ -1151,9 +1167,10 @@ def mirror_normalize(x,
                      std=[58.395, 57.120, 57.375],
                      name=None):
     """
-    This API perform random flipping and normalize on input Tensor, it
-    treats the 1st dimension as batch size and perform random flipping
-    on each sample depending on input Tensor mirror.
+    This API perform horizontal flipping and normalize on input Tensor, it
+    treats the 1st dimension as batch size and perform horizontal flipping
+    according to mirror value on each sample, then perform normalization
+    on the channels.
 
     .. note::
         This api is only available for Paddle GPU version
