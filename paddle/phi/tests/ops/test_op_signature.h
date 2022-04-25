@@ -29,7 +29,7 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
   TestArgumentMappingContext(
       std::unordered_set<std::string> dense_tensor_ins,
       std::unordered_set<std::string> sr_ins,
-      std::unordered_map<std::string, paddle::any> op_attrs,
+      std::unordered_map<std::string, phi::Attribute> op_attrs,
       std::unordered_set<std::string> dense_tensor_outs,
       std::unordered_set<std::string> sr_outs = {})
       : dense_tensor_inputs(dense_tensor_ins),
@@ -52,7 +52,7 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return attrs.count(name) > 0;
   }
 
-  paddle::any Attr(const std::string& name) const override {
+  phi::Attribute Attr(const std::string& name) const override {
     return attrs.at(name);
   }
 
@@ -90,7 +90,7 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
  private:
   const std::unordered_set<std::string> dense_tensor_inputs;
   const std::unordered_set<std::string> selected_rows_inputs;
-  const std::unordered_map<std::string, paddle::any> attrs;
+  const std::unordered_map<std::string, phi::Attribute> attrs;
   const std::unordered_set<std::string> dense_tensor_outputs;
   const std::unordered_set<std::string> selected_rows_outputs;
 };

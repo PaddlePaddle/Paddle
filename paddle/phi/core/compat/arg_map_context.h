@@ -19,6 +19,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -83,9 +84,9 @@ class ArgumentMappingContext {
   virtual bool HasOutput(const std::string& name) const = 0;
   virtual bool HasAttr(const std::string& name) const = 0;
 
-  // now we can't use Attribute here, it will cause phi relay on
+  // now we can't use fluid Attribute here, it will cause phi relay on
   // boost::variant and BlockDesc
-  virtual paddle::any Attr(const std::string& name) const = 0;
+  virtual Attribute Attr(const std::string& name) const = 0;
 
   virtual size_t InputSize(const std::string& name) const = 0;
   virtual size_t OutputSize(const std::string& name) const = 0;

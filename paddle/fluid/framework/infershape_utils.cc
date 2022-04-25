@@ -50,9 +50,9 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return ctx_.HasAttr(name);
   }
 
-  paddle::any Attr(const std::string& name) const override {
+  phi::Attribute Attr(const std::string& name) const override {
     auto& attr = ctx_.Attrs().GetAttr(name);
-    return GetAttrValue(attr);
+    return GetAttrValueForPhi(attr);
   }
 
   size_t InputSize(const std::string& name) const override {

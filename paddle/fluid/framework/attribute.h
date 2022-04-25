@@ -27,12 +27,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
 
-paddle::any GetAttrValue(const Attribute& attr);
+phi::Attribute GetAttrValueForPhi(const Attribute& attr);
 
 Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
