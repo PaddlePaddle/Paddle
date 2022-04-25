@@ -157,7 +157,35 @@ if(WITH_PYTHON)
   else()
     set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   endif()
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
+
+  create_static_lib(glob_op_static ${GLOB_OP_LIB})
+
+  ADD_LIBRARY(glob_op_shared SHARED glob_op_shared_dummy.c)
+  # fc tensorrt_converter tensorrt_engine tensorrt_plugin
+  add_dependencies(glob_op_shared protobuf enforce device_context proto_desc imperative_flag fleet_executor 
+  op_registry layer sequence2batch string_array parallel_executor executor_cache op_version_registry while_op_helper 
+  tensor_formatter common_infer_shape_functions beam_search concat_and_split lod_rank_table sampler unpooling
+  tree2col sample_prob matrix_solve zero_copy_tensor paddle_inference_api paddle_pass_builder 
+  infer_io_utils reader_op_registry py_reader sequence_pooling mask_util gpc buffered_reader
+  fc_functor bert_encoder_functor cos_sim_functor)
+
+  ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib
+    message("glob_op_shared depends on glob_op_static")
+    DEPENDS glob_op_static)
+    
+  add_dependencies(glob_op_shared ${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib)
+  set_target_properties(glob_op_shared PROPERTIES LINK_FLAGS "/WHOLEARCHIVE:${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib")
+  target_link_libraries(glob_op_shared protobuf enforce device_context proto_desc imperative_flag fleet_executor 
+  op_registry layer sequence2batch string_array parallel_executor executor_cache op_version_registry while_op_helper 
+  tensor_formatter common_infer_shape_functions beam_search concat_and_split lod_rank_table sampler unpooling 
+  tree2col sample_prob matrix_solve zero_copy_tensor paddle_inference_api paddle_pass_builder infer_io_utils 
+  reader_op_registry py_reader sequence_pooling mask_util gpc buffered_reader fc_functor bert_encoder_functor cos_sim_functor
+  shlwapi.lib
+  )
+  set_property(TARGET glob_op_shared PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  SET(GLOB_OP_SHARED_LIB ${CMAKE_CURRENT_BINARY_DIR}/glob_op_shared.dll)
+
+  list(APPEND OP_FUNCTION_GENERETOR_DEPS glob_op_shared)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
   if (WITH_NCCL OR WITH_RCCL)

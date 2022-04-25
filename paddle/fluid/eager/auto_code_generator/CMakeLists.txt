@@ -1,6 +1,6 @@
 add_subdirectory(final_state_generator)
 
-set(EAGER_GENERETOR_DEPS ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+set(EAGER_GENERETOR_DEPS glob_op_shared ${GLOB_OPERATOR_DEPS} pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
 
 add_executable(eager_generator eager_generator.cc)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
@@ -56,6 +56,12 @@ if(WIN32)
         DEPENDS mkldnn)
         list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
     endif()
+
+    message("Copied glob_op_shared.dll for Eager AutoCodeGen")
+    ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/glob_op_shared.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${GLOB_OP_SHARED_LIB} ${eager_generator_path}
+      DEPENDS glob_op_shared)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/glob_op_shared.dll)
 
     add_custom_target(eager_codegen
       COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
