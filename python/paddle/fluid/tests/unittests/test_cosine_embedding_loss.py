@@ -22,23 +22,23 @@ import unittest
 
 def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):
     batch_size, hidden_size = input1.shape
-    scores = np.zeros(batch_size)
-    for i in range(batch_size):
-        z = np.matmul(input1[i], input2[i])
-        denom = np.linalg.norm(
-            input1[i], ord=2) * np.linalg.norm(
-                input2[i], ord=2)
-        score = z / denom
-        if label[i] == 1:
-            scores[i] = 1 - score
-        else:
-            scores[i] = max(0, score - margin)
+    z = (input1 * input2).sum(axis=-1)
+    mag_square1 = np.square(input1).sum(axis=-1) + 10e-6
+    mag_square2 = np.square(input2).sum(axis=-1) + 10e-6
+    denom = np.sqrt(mag_square1*mag_square2)
+    cos = z / denom
+    zeros = np.zeros_like(cos)
+    pos = 1 - cos
+    neg = np.clip(cos - margin, a_min=0, a_max=np.inf)
+    out_pos = np.where(label == 1, pos, zeros)
+    out_neg = np.where(label == -1, neg, zeros)
+    out = out_pos + out_neg
     if reduction == 'none':
-        return scores
+        return out
     if reduction == 'mean':
-        return np.mean(scores)
+        return np.mean(out)
     elif reduction == 'sum':
-        return np.sum(scores)
+        return np.sum(out)
 
 
 class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
@@ -233,7 +233,6 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
             self.label_np,
             margin=0.5,
             reduction='mean')
-
         self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 

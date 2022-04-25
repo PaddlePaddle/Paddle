@@ -2278,93 +2278,52 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             print(output) # output: [0.42310387]
 
     """
-    label_size = len(label.shape)
-    input_size = len(input1.shape)
-    if label_size != 1:
+    if len(label.shape) != 1:
         raise ValueError(
             "1D target tensor expected, multi-target not supported")
 
-    if input_size != len(input2.shape):
+    if len(input1.shape) != len(input2.shape):
         raise ValueError(
             "the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
             "different sizes")
 
-    if input_size > 2:
+    if len(input1.shape) > 2:
         raise ValueError(
             "1D target tensor expects 1D or 2D input tensors, but found inputs with different sizes"
         )
-
-    if input_size == 1:
-        input1 = paddle.unsqueeze(input1, axis=0)
-        input2 = paddle.unsqueeze(input2, axis=0)
-    batch_size, hidden_size = input1.shape
-    scores = paddle.zeros(
-        [batch_size], dtype=input1.dtype)
 
     if input1.shape[0] != label.shape[0]:
         raise ValueError(
             "the 0 axis size of input should be same as target size, but found mismatch size"
         )
 
-    if _non_static_mode():
-        if "{}".format(
-                input1.dtype) not in ["paddle.float32", "paddle.float64"]:
-            raise ValueError(
-                "The data type of input Variable must be 'float32' or 'float64'")
-        if "{}".format(label.dtype) not in [
-                "paddle.int32", "paddle.int64", "paddle.float32",
-                "paddle.float64"
-        ]:
-            raise ValueError(
-                "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
-            )
+    if "{}".format(
+            input1.dtype) not in ["paddle.float32", "paddle.float64"]:
+        raise ValueError(
+            "The data type of input Variable must be 'float32' or 'float64'")
+    if "{}".format(label.dtype) not in [
+            "paddle.int32", "paddle.int64", "paddle.float32",
+            "paddle.float64"
+    ]:
+        raise ValueError(
+            "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
+        )
 
-        for i in range(batch_size):
-            z = paddle.matmul(input1[i], input2[i])
-            denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
-            score = z / denom
-            if label[i].item() == 1:
-                scores[i] = 1 - score
-            elif label[i].item() == 0:
-                scores[i] = max(0, score - margin)
-            else:
-                raise ValueError(
-                    "value of label should be number between 0 and 1, but received {}".
-                    format(label[i].item()))
-
-        if reduction == 'none':
-            return scores
-        if reduction == 'mean':
-            return paddle.mean(scores)
-        elif reduction == 'sum':
-            return paddle.sum(scores)
-
-    check_variable_and_dtype(input1, 'input1', ['float32', 'float64'],
-                             'cosine_embedding_loss')
-    check_variable_and_dtype(input2, 'input2', ['float32', 'float64'],
-                             'cosine_embedding_loss')
-    check_variable_and_dtype(label, 'label',
-                             ['int32', 'int64', 'float32', 'float64'],
-                             'cosine_embedding_loss')
-
-    label_ones = paddle.ones(
-        shape=[label.shape[0]],
-        dtype=label.dtype)
-    check_zero = paddle.zeros(
-        shape=[1], dtype=input1.dtype)
-    conds_ones = paddle.equal(x=label, y=label_ones)
-
-    for i in range(batch_size):
-        z = paddle.matmul(input1[i], input2[i])
-        denom = paddle.norm(input1[i]) * paddle.norm(input2[i])
-        score = z / denom
-        temp = paddle.where(paddle.less_than(
-                x=score - margin, y=check_zero), check_zero, score-margin)
-        scores[i] = paddle.where(conds_ones[i] == True, 1 - score, temp)
+    prod_sum = (input1 * input2).sum(axis=-1)
+    mag_square1 = paddle.square(input1).sum(axis=-1) + 10e-6
+    mag_square2 = paddle.square(input2).sum(axis=-1) + 10e-6
+    denom = paddle.sqrt(mag_square1 * mag_square2)
+    cos = prod_sum / denom
+    zeros = paddle.zeros_like(cos)
+    pos = 1 - cos
+    neg = paddle.clip(cos - margin, min=0)
+    out_pos = paddle.where(label == 1, pos, zeros)
+    out_neg = paddle.where(label == -1, neg, zeros)
+    out = out_pos + out_neg
 
     if reduction == 'none':
-        return scores
+        return out
     if reduction == 'mean':
-        return paddle.mean(scores)
+        return paddle.mean(out)
     elif reduction == 'sum':
-        return paddle.sum(scores)
+        return paddle.sum(out)
