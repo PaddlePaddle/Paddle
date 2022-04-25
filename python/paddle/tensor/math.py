@@ -146,11 +146,11 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                             Out=scale*(X+bias)
 
     Args:
-        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
-        bias(float): The bias to be put on the input.
-        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
-        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        x (Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale (float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
+        bias (float): The bias to be put on the input.
+        bias_after_scale (bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act (str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
