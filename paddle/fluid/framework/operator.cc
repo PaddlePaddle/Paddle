@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -1266,6 +1263,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
+// TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
+// device,
+// it's ugly, and we will refactorin the future.
+#if defined(PADDLE_WITH_XPU)
+  bool use_phi_xpu_kp = false;
+#endif
+
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
@@ -1316,6 +1320,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             VLOG(3) << "modify XPU KP kernel in static graph: "
                     << pt_kernel_name << " is failed " << *kernel_type_.get();
           } else {
+            use_phi_xpu_kp = true;
             VLOG(3) << "modify XPU KP kernel in static graph: "
                     << pt_kernel_name << " is succeed " << *kernel_type_.get();
           }
@@ -1369,6 +1374,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             VLOG(3) << "modify XPU KP kernel in static graph: "
                     << pt_kernel_name << " is failed " << *kernel_type_.get();
           } else {
+            use_phi_xpu_kp = true;
             VLOG(3) << "modify XPU KP kernel in static graph: "
                     << pt_kernel_name << " is succeed " << *kernel_type_.get();
           }
@@ -1387,11 +1393,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
         paddle::platform::is_in_xpu_black_list(type_);
 #endif
+#ifdef PADDLE_WITH_XPU_KP
+    bool use_xpu_kp_kernel_rt =
+        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        paddle::platform::is_in_xpu_kpwhite_list(type_);
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+#endif
+
     if (pt_kernel_->IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
-        ) {
+#if defined(PADDLE_WITH_XPU_KP)
+        && (!is_xpu_unsupport || use_phi_xpu_kp)
+#endif
+            ) {
       run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1401,15 +1421,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // we need to select the heterogeneous kernel in fluid, but the kernel
 // registered in KP use library_type[KP], we need to modify it.
 #ifdef PADDLE_WITH_XPU_KP
-      bool use_xpu_kp_kernel_rt =
-          paddle::platform::is_xpu_place(kernel_type_->place_) &&
-          FLAGS_run_kp_kernel &&
-          paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
-      bool use_xpu_kp_kernel_debug =
-          paddle::platform::is_xpu_place(kernel_type_->place_) &&
-          paddle::platform::is_in_xpu_kpwhite_list(type_);
-      bool is_xpu_kp_support =
-          (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
       if (is_xpu_kp_support) {
         kernel_type_->library_type_ = LibraryType::kKP;
       }
