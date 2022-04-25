@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
-
 
 
 def call_TripletMarginLoss_layer(input,
@@ -168,8 +167,8 @@ def calc_triplet_margin_loss(input,
 class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
 
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -241,6 +240,88 @@ class TestTripletMarginLoss(unittest.TestCase):
             positive=positive,
             negative=negative,)
         paddle.enable_static()
+
+    def test_TripletMarginLoss_swap(self):
+        reduction = 'mean'
+        place = fluid.CPUPlace()
+        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        expected = calc_triplet_margin_loss(input=input, swap=True, positive=positive, negative=negative,
+                                            reduction=reduction)
+
+        dy_result = test_dygraph(place=place, swap=True,
+                                 input=input, positive=positive, negative=negative,
+                                 reduction=reduction, )
+
+        static_result = test_static(place=place, swap=True,
+                                    input_np=input, positive_np=positive, negative_np=negative,
+                                    reduction=reduction, )
+        self.assertTrue(np.allclose(static_result, expected))
+        self.assertTrue(np.allclose(static_result, dy_result))
+        self.assertTrue(np.allclose(dy_result, expected))
+        static_functional = test_static(place=place, swap=True,
+                                        input_np=input, positive_np=positive, negative_np=negative,
+                                        reduction=reduction,
+                                        functional=True)
+        dy_functional = test_dygraph(
+            place=place, swap=True,
+            input=input, positive=positive, negative=negative,
+            reduction=reduction,
+            functional=True)
+        self.assertTrue(np.allclose(static_functional, expected))
+        self.assertTrue(np.allclose(static_functional, dy_functional))
+        self.assertTrue(np.allclose(dy_functional, expected))
+
+    def test_TripletMarginLoss_margin(self):
+        paddle.disable_static()
+
+        input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
+        positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
+        negative = paddle.to_tensor([[0.2, 0.1]], dtype='float32')
+        margin = -0.5
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.triplet_margin_loss,
+            margin=margin,
+            input=input,
+            positive=positive,
+            negative=negative, )
+        paddle.enable_static()
+
+    def test_TripletMarginLoss_p(self):
+        p = 3
+        reduction = 'mean'
+        place = fluid.CPUPlace()
+        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        expected = calc_triplet_margin_loss(input=input, p=p, positive=positive, negative=negative,
+                                                     reduction=reduction)
+
+        dy_result = test_dygraph(place=place, p=p,
+                                 input=input, positive=positive, negative=negative,
+                                 reduction=reduction,)
+
+        static_result = test_static(place=place, p=p,
+                                    input_np=input, positive_np=positive, negative_np=negative,
+                                    reduction=reduction,)
+        self.assertTrue(np.allclose(static_result, expected))
+        self.assertTrue(np.allclose(static_result, dy_result))
+        self.assertTrue(np.allclose(dy_result, expected))
+        static_functional = test_static(place=place, p=p,
+                                        input_np=input, positive_np=positive, negative_np=negative,
+                                        reduction=reduction,
+                                        functional=True)
+        dy_functional = test_dygraph(
+            place=place, p=p,
+            input=input, positive=positive, negative=negative,
+            reduction=reduction,
+            functional=True)
+        self.assertTrue(np.allclose(static_functional, expected))
+        self.assertTrue(np.allclose(static_functional, dy_functional))
+        self.assertTrue(np.allclose(dy_functional, expected))
+
 
 if __name__ == "__main__":
     unittest.main()

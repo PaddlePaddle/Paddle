@@ -2245,10 +2245,6 @@ def triplet_margin_loss(input,
     examples` respectively). The shapes of all input tensors should be
     :math:`(N, D)`.
 
-    The distance swap is described in detail in the paper `Learning shallow
-    convolutional feature descriptors with triplet losses`_ by
-    V. Balntas, E. Riba et al.
-
     The loss function for each sample in the mini-batch is:
 
     .. math::
@@ -2262,14 +2258,15 @@ def triplet_margin_loss(input,
 
     :param input:Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
-    :param positive:Positive tensor containing 1 or -1, the data type is float32 or float64.
+    :param positive:Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param negative:Negative tensor containing 1 or -1, the data type is float32 or float64.
+    :param negative:Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param swap:The distance swap is described in detail in the paperT
-            `Learning shallow convolutional feature descriptors with triplet losses` by
-            V. Balntas, E. Riba et al. Default: ``False``.
+    :param swap:The distance swap change the negative distance to the distance between
+            positive sample and negative sample. Default: ``False``.
     :param p:The norm degree for pairwise distance. Default: :math:`2`.
+    :param eps:Add small value to avoid division by zero,
+            default value is 1e-6.
     :param margin:Default: :math:`1`.
     :param reduction:Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -2277,6 +2274,8 @@ def triplet_margin_loss(input,
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
+    :param name: Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
     :return:Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
 
      Examples:
@@ -2304,7 +2303,7 @@ def triplet_margin_loss(input,
             "but received {}.".format(reduction))
     if margin<0:
         raise ValueError(
-            "margin should not smaller than 0"
+            "The margin between positive samples and negative samples should be greater than 0."
         )
     if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -2314,10 +2313,6 @@ def triplet_margin_loss(input,
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_loss')
 
-    # reshape to [batch_size, N]
-    input = input.flatten(start_axis=1,stop_axis=-1)
-    positive = positive.flatten(start_axis=1,stop_axis=-1)
-    negative = negative.flatten(start_axis=1,stop_axis=-1)
     if not(input.shape==positive.shape==negative.shape):
         raise ValueError(
             "input's shape must equal to "
