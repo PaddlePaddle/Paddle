@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -417,7 +418,12 @@ void BasicEngine::Execute() {
     for (auto& cur_op : *shared_cur_node) {
       platform::RecordEvent op_type_record_event(
           cur_op.Type() + " grad_node", platform::TracerEventType::Operator, 1);
-
+      // start pylayer judge cur_op.type == py_layer
+      if ((cur_op.Type().find("py_layer", 0)) != std::string::npos) {
+        auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+        std::cout << "pylayer grad start: " << cur_op.Type()
+                  << " allocated = " << allocated << std::endl;
+      }
       ++op_num;
 
       // CheckBackWardInput
@@ -625,6 +631,12 @@ void BasicEngine::Execute() {
       if (!retain_graph_) {
         VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
         cur_op.ClearBackwardTrace();
+      }
+      // end pylayer judge name
+      if ((cur_op.Type().find("py_layer", 0)) != std::string::npos) {
+        auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+        std::cout << "pylayer grad end: " << cur_op.Type()
+                  << " allocated = " << allocated << std::endl;
       }
     }
 

@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -642,6 +643,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(6) << "Running GradNode:" << node->name();
+    // start pylayer  judge name
+    if ((node->name().find("GradNodePyLayer_", 0)) != std::string::npos) {
+      auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+      std::cout << "pylayer grad start: " << node->name()
+                << " allocated = " << allocated << std::endl;
+    }
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()) + " grad_node",
@@ -702,7 +709,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // TODO(jiabin): Should we erase it or find a more efficient way.
 
     node_input_buffers_dict.erase(node);
-
+    //  end pylayer
+    if ((node->name().find("GradNodePyLayer_", 0)) != std::string::npos) {
+      auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+      std::cout << "pylayer grad end: " << node->name()
+                << " allocated = " << allocated << std::endl;
+    }
     // Prepare GradTensorHolder for next node
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
