@@ -58,7 +58,9 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
     def test_static(self):
-        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
+        places = [
+            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
+        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
         paddle.enable_static()
         for place in places:
             with paddle.static.program_guard(paddle.static.Program(),
@@ -72,7 +74,9 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
 
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
     def test_dygraph(self):
-        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
+        places = [
+            paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
+        ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
         for place in places:
             with fluid.dygraph.base.guard(place=place):
                 out = paddle.tril_indices(4, 4, 2)
