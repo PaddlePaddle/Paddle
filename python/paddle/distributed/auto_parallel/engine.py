@@ -25,6 +25,7 @@ from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
 from paddle.fluid import program_guard
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
@@ -135,7 +136,7 @@ class Engine:
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
         self._fetch_vars[mode] = {
-            "outputs": outputs,
+            "outputs": flatten(outputs),
             "loss": losses,
             "metrics": metrics
         }
