@@ -45,7 +45,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
   const paddle::SmallVector<const char*>& GetOutputArgsNames() override;
   const paddle::SmallVector<const char*>& GetAttrsArgsNames() override;
 
-  KernelSignature GetKernelSignature();
+  phi::KernelSignature GetKernelSignature();
 
  private:
   DISABLE_COPY_AND_ASSIGN(KernelArgsNameMakerByOpProto);
@@ -223,10 +223,10 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   return attr_names_;
 }
 
-KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(phi::TransToPhiKernelName(op_proto_->type()).c_str(),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+phi::KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
+  return phi::KernelSignature(
+      phi::TransToPhiKernelName(op_proto_->type()).c_str(), GetInputArgsNames(),
+      GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;

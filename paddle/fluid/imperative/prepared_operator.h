@@ -150,13 +150,17 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::OperatorWithKernel::OpKernelFunc& func,
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
              platform::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             framework::KernelSignature&& kernel_signature,
-             const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
+             phi::KernelSignature&& kernel_signature,
+             const phi::Kernel& phi_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -206,8 +210,10 @@ class PreparedOp {
   // we may polish the implementation here
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
-  framework::KernelSignature pt_kernel_signature_;
-  const phi::Kernel& pt_kernel_;
+  const phi::ArgumentMappingFn* arg_map_fn_;
+  const phi::KernelSignature* default_kernel_signature_;
+  phi::KernelSignature kernel_signature_;
+  const phi::Kernel& phi_kernel_;
 
   static const phi::KernelFactory& phi_kernel_factory;
   static const phi::OpUtilsMap& phi_op_utils_map;
@@ -230,21 +236,23 @@ const inline framework::Attribute& GetAttr(
 }
 
 template <typename VarType>
-void BuildDygraphPhiKernelContext(
-    const framework::KernelSignature& pt_kernel_signature,
-    const phi::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs,
-    platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
+void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
+                                  const phi::Kernel& phi_kernel,
+                                  const NameVarMap<VarType>& ins,
+                                  const NameVarMap<VarType>& outs,
+                                  const framework::AttributeMap& attrs,
+                                  const framework::AttributeMap& default_attrs,
+                                  platform::DeviceContext* dev_ctx,
+                                  phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  const auto& input_names = pt_kernel_signature.input_names;
-  const auto& attr_names = pt_kernel_signature.attr_names;
-  const auto& output_names = pt_kernel_signature.output_names;
+  const auto& input_names = kernel_signature.input_names;
+  const auto& attr_names = kernel_signature.attr_names;
+  const auto& output_names = kernel_signature.output_names;
 
-  auto& input_defs = pt_kernel.args_def().input_defs();
-  auto& output_defs = pt_kernel.args_def().output_defs();
-  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+  auto& input_defs = phi_kernel.args_def().input_defs();
+  auto& output_defs = phi_kernel.args_def().output_defs();
+  auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -290,7 +298,7 @@ void BuildDygraphPhiKernelContext(
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
-            input_names[i], pt_kernel_signature.name));
+            input_names[i], kernel_signature.name));
       }
     }
 
@@ -572,11 +580,11 @@ void BuildDygraphPhiKernelContext(
 }
 
 template <typename VarType>
-void PreparePhiData(const phi::Kernel& pt_kernel,
-                    const framework::KernelSignature& pt_kernel_signature,
+void PreparePhiData(const phi::Kernel& phi_kernel,
+                    const phi::KernelSignature& kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  const auto& input_names = pt_kernel_signature.input_names;
-  auto& input_defs = pt_kernel.args_def().input_defs();
+  const auto& input_names = kernel_signature.input_names;
+  auto& input_defs = phi_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(

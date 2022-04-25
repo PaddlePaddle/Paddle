@@ -57,6 +57,18 @@ if(WIN32)
         list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
     endif()
 
+    if(WITH_ONNXRUNTIME)
+      message("Copied onnxruntime for Eager AutoCodeGen")
+      ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB} ${eager_generator_path}
+        DEPENDS onnxruntime)
+        list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/onnxruntime.dll)
+      ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/paddle2onnx.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB} ${eager_generator_path}
+        DEPENDS paddle2onnx)
+        list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/paddle2onnx.dll)
+    endif()
+
     add_custom_target(eager_codegen
       COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path} ${dygraph_forward_h_path}
