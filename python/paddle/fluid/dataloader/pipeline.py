@@ -24,8 +24,6 @@ from ..multiprocess_utils import CleanupFuncRegistrar
 
 from collections.abc import Sequence, Mapping
 
-__all__ = ["DataPipeline"]
-
 if sys.platform != 'win32':
     CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
 
