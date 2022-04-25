@@ -27,8 +27,9 @@ def max_pool3d(x,
                data_format="NDHWC",
                name=None):
     """
-    This API implements sparse max pooling 3d operation.
+    Implements sparse max pooling 3d operation.
     See more details in :ref:`api_sparse_pooling_MaxPool3d` .
+
     Args:
         x (Tensor): The input SparseCooTensor of pooling operator, which is a 5-D tensor with
                           shape [N, D, H, W, C]. The format of input tensor `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
@@ -56,11 +57,6 @@ def max_pool3d(x,
     
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
     
     Examples:
         .. code-block:: python
