@@ -92,6 +92,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
   try
   {{
     VLOG(6) << "Running Eager Final State API: {}";
+    print_mem_info_guard guard("{}");
 
     // Get EagerTensors from args
 {}
@@ -351,8 +352,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             "pythonc_record_event", forward_api_name, "pybind_imperative_func")
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name, pythonc_record_event_str, forward_api_name,
-            get_eager_tensor_str, parse_attributes_str, set_device_str,
-            fwd_function_name, dygraph_function_call_str, return_str)
+            forward_api_name, get_eager_tensor_str, parse_attributes_str,
+            set_device_str, fwd_function_name, dygraph_function_call_str,
+            return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -385,8 +387,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
             self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
-                inplaced_forward_api_name, get_eager_tensor_str,
-                parse_attributes_str, set_device_str,
+                inplaced_forward_api_name, inplaced_forward_api_name,
+                get_eager_tensor_str, parse_attributes_str, set_device_str,
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 return_str)
 
