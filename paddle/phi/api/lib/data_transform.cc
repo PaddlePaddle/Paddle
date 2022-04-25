@@ -253,7 +253,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     }
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 }  // namespace experimental
