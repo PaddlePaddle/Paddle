@@ -22,6 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -139,10 +140,11 @@ class KernelContext {
 
   paddle::SmallVector<const TensorBase*> inputs_;
   paddle::SmallVector<TensorBase*> outputs_;
-  paddle::SmallVector<Attribute> attrs_;
+  paddle::SmallVector<Attribute, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::SmallVector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
+  paddle::SmallVector<std::pair<int, int>, kOutputSmallVectorSize>
+      output_range_;
 };
 
 }  // namespace phi

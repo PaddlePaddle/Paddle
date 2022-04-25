@@ -2691,7 +2691,8 @@ inline constexpr bool all(std::initializer_list<bool> bs) {
 
 template <typename Visitor, typename... Vs>
 inline constexpr decltype(auto) visit(Visitor &&visitor, Vs &&... vs) {
-  return (detail::all({!vs.valueless_by_exception()...})
+  return (detail::all(
+              lib::array<bool, sizeof...(Vs)>{!vs.valueless_by_exception()...})
               ? (void)0
               : throw_bad_variant_access()),
          detail::visitation::variant::visit_value(
