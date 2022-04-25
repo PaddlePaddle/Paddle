@@ -393,6 +393,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
   SetDims(vars, dims);
 }
 
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+}
+
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }
