@@ -783,7 +783,7 @@ class TestModelFunction(unittest.TestCase):
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
                 np.testing.assert_allclose(
-                    results, ori_results, rtol=1e-5, atol=1e-7)
+                    results, ori_results, rtol=1e-5, atol=1e-6)
 
             paddle.enable_static()
 
