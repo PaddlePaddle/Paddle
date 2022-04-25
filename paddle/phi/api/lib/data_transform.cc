@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/backends/all_context.h"
@@ -37,11 +36,17 @@ inline bool NeedTransformDataType(const DataType& input,
 inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
-  bool ret =
-      input.GetType() == AllocationType::GPUPINNED ||
-      (transform_flag.need_trans_backend() && target != Backend::ALL_BACKEND &&
-       phi::TransToPhiBackend(input) !=
-           (target != Backend::GPUDNN ? target : Backend::GPU));
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as api.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = input.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(input) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
 
@@ -248,7 +253,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     }
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 }  // namespace experimental

@@ -37,6 +37,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
@@ -100,6 +105,8 @@ void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& out_grad,
                            MetaTensor* x_grad);
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -132,8 +139,6 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dk,
                                  MetaTensor* dl);
 
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
-
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
@@ -151,11 +156,11 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
-void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
-                           const std::vector<MetaTensor*>& outputs_grad,
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
-void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);
 

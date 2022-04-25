@@ -15,6 +15,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace phi {
 
@@ -22,7 +24,7 @@ class Kernel;
 class KernelKey;
 class KernelArgsDef;
 class KernelContext;
-class KernelSignature;
+struct KernelSignature;
 class ArgumentMappingContext;
 class InferMetaContext;
 
@@ -34,5 +36,10 @@ using KernelArgsParseFn = void (*)(const KernelKey& default_key,
 using ArgumentMappingFn =
     std::function<KernelSignature(const ArgumentMappingContext&)>;
 using InferMetaFn = void (*)(InferMetaContext* ctx);
+
+// Global SmallVector size setting
+constexpr size_t kInputSmallVectorSize = 10U;
+constexpr size_t kAttrSmallVectorSize = 10U;
+constexpr size_t kOutputSmallVectorSize = 5U;
 
 }  // namespace phi

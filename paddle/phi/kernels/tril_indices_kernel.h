@@ -18,12 +18,12 @@
 
 namespace phi {
 
-template <typename T,typename Context>
+template <typename T, typename Context>
 void TrilIndicesKernel(const Context& dev_ctx,
-                     int rows,
-                     int cols,
-                     int offset,
-                     DataType dtype,
-                    DenseTensor* out);
+                       int rows,
+                       int cols,
+                       int offset,
+                       DataType dtype,
+                       DenseTensor* out);
 
 }  // namespace phi

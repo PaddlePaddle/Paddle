@@ -17,10 +17,8 @@
 namespace phi {
 
 KernelSignature Atan2GradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("atan2_grad",
-                         {"X1", "X2", GradVarName("Out")},
-                         {},
-                         {GradVarName("X1"), GradVarName("X2")});
+  return KernelSignature(
+      "atan2_grad", {"X1", "X2", "Out@GRAD"}, {}, {"X1@GRAD", "X2@GRAD"});
 }
 
 }  // namespace phi
