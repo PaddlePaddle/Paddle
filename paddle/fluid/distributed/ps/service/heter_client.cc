@@ -266,7 +266,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
 }
 
 int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
-                      const std::vector<int>& vars_size, void* data_ptr,
+                      const std::vector<int64_t>& vars_size, void* data_ptr,
                       int64_t data_size) {
   OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
