@@ -40,8 +40,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using KernelSignature = phi::KernelSignature;
-
 /* Kernel Key translate */
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);

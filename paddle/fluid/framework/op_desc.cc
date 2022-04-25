@@ -271,6 +271,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     SetDims(names, dims);
   }
 
+  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature *GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+  }
+
  protected:
   std::vector<proto::VarType::Type> GetVarTypes(
       const std::vector<std::string> &names) const {
