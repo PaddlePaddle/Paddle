@@ -28,21 +28,10 @@ std::set<std::string> output_queue_holder_ops = {
     "map", "data_reader",
 };
 
-// std::set<std::string> input_array_ops = {
-//     "random_crop_and_resize",
-//     "batch_decode",
-//     "batch_decode_and_random_crop",
-//     "batch_resize",
-// };
-//
 static bool IsOutputQueueHolderOp(std::string op_type) {
   return output_queue_holder_ops.find(op_type) != output_queue_holder_ops.end();
 }
 
-// static bool IsInputArrayOp(std::string op_type) {
-//   return input_array_ops.find(op_type) != input_array_ops.end();
-// }
-//
 static void ProcessOutputQueueHolderOp(ir::Graph *graph) {
   std::set<std::string> var_names;
   for (const Node *n : graph->Nodes()) {
@@ -69,32 +58,6 @@ static void ProcessOutputQueueHolderOp(ir::Graph *graph) {
   }
 }
 
-// static void ProcessInputArrayOp(ir::Graph *graph) {
-//   std::set<std::string> var_names;
-//   for (const Node *n : graph->Nodes()) {
-//     if (n->IsOp() && n->Op()) {
-//       auto *op = n->Op();
-//       if (IsInputArrayOp(op->Type())) {
-//         auto &inputs = op->Inputs();
-//         for (auto iter = inputs.begin(); iter != inputs.end(); iter++) {
-//           for (auto var : iter->second) var_names.insert(var);
-//         }
-//       }
-//     }
-//   }
-//
-//   for (const Node *n : graph->Nodes()) {
-//     if (n->IsVar() && n->Var()) {
-//       auto *var = n->Var();
-//       if (var_names.find(var->Name()) != var_names.end()) {
-//         VLOG(3) << "Change output variable type of " << var->Name()
-//                 << " to queue holder";
-//         var->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
-//       }
-//     }
-//   }
-// }
-//
 class DataLoaderQueuePass : public Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
