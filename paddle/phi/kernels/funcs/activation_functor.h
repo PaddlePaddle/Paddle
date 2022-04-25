@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <memory>
@@ -33,7 +34,6 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 

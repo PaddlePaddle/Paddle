@@ -105,6 +105,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
+      } else if (arg_type == std::type_index(typeid(const StringTensor&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(const SparseCooTensor&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
@@ -149,6 +154,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_key.dtype(),
                                arg_type);
       } else if (arg_type == std::type_index(typeid(SparseCsrTensor*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(StringTensor*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
                                default_key.dtype(),
