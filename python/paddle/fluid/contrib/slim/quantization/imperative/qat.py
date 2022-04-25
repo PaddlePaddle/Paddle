@@ -20,6 +20,7 @@ import os
 import warnings
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
 from paddle.fluid.framework import IrGraph
@@ -52,6 +53,7 @@ class ImperativeQuantAware(object):
             weight_bits=8,
             activation_bits=8,
             moving_rate=0.9,
+            fuse_conv_bn=False,
             weight_preprocess_layer=None,
             act_preprocess_layer=None,
             weight_quantize_layer=None,
@@ -76,6 +78,7 @@ class ImperativeQuantAware(object):
             activation_bits(int): quantization bit number for activations.
             moving_rate(float): the parameter for 'moving_average_abs_max'
                 quantization.
+            fuse_conv_bn(bool): Whether to fuse conv and bn, default is False.
             weight_preprocess_layer(paddle.nn.Layer, optional): A paddle
                 Layer that defines how to preprocess weight before quantization.
                 Using this can quickly test if user's preprocess method works
@@ -188,6 +191,7 @@ class ImperativeQuantAware(object):
                 model_path="./imperative_model_qat")
         """
         super(ImperativeQuantAware, self).__init__()
+        self.fuse_conv_bn = fuse_conv_bn
 
         kwargs = {
             "quantizable_layer_type": quantizable_layer_type,
@@ -256,8 +260,30 @@ class ImperativeQuantAware(object):
         """
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
+
+        if self.fuse_conv_bn:
+            is_train = False
+            if model.training:
+                model.eval()
+                is_train = True
+            from . import fuse_utils
+            fuse_list = []
+            tmp_pair = []
+            for name, layer in model.named_sublayers():
+                if isinstance(layer, nn.Conv2D):
+                    tmp_pair = [name]
+                if isinstance(layer, nn.BatchNorm2D) and tmp_pair:
+                    tmp_pair.append(name)
+                if len(tmp_pair) == 2:
+                    fuse_list.append(tmp_pair)
+                    tmp_pair = []
+            model = fuse_utils.fuse_layers(model, fuse_list)
+            if is_train:
+                model.train()
+
         self._quantize_inputs.apply(model)
         self._quantize_outputs.apply(model)
+        return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         self._quantize_outputs.save_quantized_model(layer, path, input_spec,
