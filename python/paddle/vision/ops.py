@@ -1825,9 +1825,9 @@ def image_resize(x,
                  data_format='NCHW',
                  name=None):
     """
-    This operator implements the paddle.vision.transforms.Resize.
+    GPU OP implements the paddle.vision.transforms.Resize.
 
-    Please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/vision/transforms/Resized_cn.html#randomresizedcrop
+    Please refer to ref`../transforms/Resize_cn.html#resize` for details.
      for details.
 
     .. note::
