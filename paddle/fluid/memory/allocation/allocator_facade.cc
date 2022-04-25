@@ -819,6 +819,16 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
+        platform::CustomPlace p(dev_type, dev_id);
+        system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      }
+    }
+#endif
   }
 
   void InitZeroSizeAllocators() {
