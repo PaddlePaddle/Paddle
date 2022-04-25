@@ -26,6 +26,7 @@ from .activation import LeakyReLU  # noqa: F401
 from .activation import Sigmoid  # noqa: F401
 from .activation import Softmax  # noqa: F401
 from .activation import LogSoftmax  # noqa: F401
+from .activation import Softmax2D  # noqa: F401
 from .common import Bilinear  # noqa: F401
 from .common import Pad1D  # noqa: F401
 from .common import Pad2D  # noqa: F401
@@ -87,6 +88,7 @@ from .norm import SpectralNorm  # noqa: F401
 from .norm import LocalResponseNorm  # noqa: F401
 
 from .vision import PixelShuffle  # noqa: F401
+from .vision import ChannelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
 

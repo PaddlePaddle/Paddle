@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -121,12 +122,18 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -162,12 +169,18 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
 
   } else {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -416,8 +429,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
+
   // set runtime_ctx and infershape_ctx_
-  instr_node->ResetContext(ins_map, outs_map);
+  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
+                                                        // kernel
+    Scope* local_scope = create_local_scope_
+                             ? global_scope_->GetMutableLocalScope()
+                             : global_scope_->GetMutableScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+  } else {
+    instr_node->ResetContext(ins_map, outs_map);
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {

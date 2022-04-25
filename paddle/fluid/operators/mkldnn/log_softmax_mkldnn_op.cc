@@ -28,12 +28,8 @@ class LogSoftmaxMKLDNNHandler
                           const int axis)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
             mkldnn_engine, cpu_place) {
-    const auto logsoftmax_tz = phi::vectorize(x->dims());
-    const auto md = dnnl::memory::desc(
-        logsoftmax_tz, platform::MKLDNNGetDataType<T>(), x->format());
-
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
-                                            md, axis);
+                                            x->mem_desc(), axis);
   }
 };
 
@@ -63,8 +59,7 @@ class LogSoftmaxMKLDNNKernel : public framework::OpKernel<T> {
                                     {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(x->format());
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 }  // namespace operators
