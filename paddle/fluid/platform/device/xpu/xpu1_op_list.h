@@ -102,8 +102,6 @@ XPUOpMap& get_kl1_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_min_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"elementwise_mod",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_min",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_mul_grad",

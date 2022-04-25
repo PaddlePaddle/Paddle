@@ -89,7 +89,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):
-            with fluid.dygraph.guard(fluid.XPUPlace(0)):
+            with fluid.dygraph.guard():
                 np_x = np.random.rand(22, 128, 3).astype('int64')
                 np_y = np.random.rand(22, 128, 3).astype('int64')
                 x = paddle.to_tensor(np_x)
