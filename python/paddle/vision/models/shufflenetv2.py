@@ -18,35 +18,48 @@ from __future__ import print_function
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.param_attr import ParamAttr
-from paddle.nn import AdaptiveAvgPool2D, BatchNorm, Conv2D, Linear, MaxPool2D
+from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
+
+from ..ops import ConvNormActivation
 
 __all__ = []
 
 model_urls = {
     "shufflenet_v2_x0_25": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
-        "e753404cbd95027759c5f56ecd6c9c4b", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_25.pdparams",
+        "1e509b4c140eeb096bb16e214796d03b", ),
     "shufflenet_v2_x0_33": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
-        "776e3cf9a4923abdfce789c45b8fe1f2", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_33.pdparams",
+        "3d7b3ab0eaa5c0927ff1026d31b729bd", ),
     "shufflenet_v2_x0_5": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
-        "e3649cf531566917e2969487d2bc6b60", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x0_5.pdparams",
+        "5e5cee182a7793c4e4c73949b1a71bd4", ),
     "shufflenet_v2_x1_0": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
-        "7821c348ea34e58847c43a08a4ac0bdf", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x1_0.pdparams",
+        "122d42478b9e81eb49f8a9ede327b1a4", ),
     "shufflenet_v2_x1_5": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
-        "93a07fa557ab2d8803550f39e5b6c391", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x1_5.pdparams",
+        "faced5827380d73531d0ee027c67826d", ),
     "shufflenet_v2_x2_0": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
-        "4ab1f622fd0d341e0f84b4e057797563", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_x2_0.pdparams",
+        "cd3dddcd8305e7bcd8ad14d1c69a5784", ),
     "shufflenet_v2_swish": (
-        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams",
-        "daff38b3df1b3748fccbb13cfdf02519", ),
+        "https://paddle-hapi.bj.bcebos.com/models/shufflenet_v2_swish.pdparams",
+        "adde0aa3b023e5b0c94a68be1c394b84", ),
 }
+
+
+def create_activation_layer(act):
+    if act == "swish":
+        return nn.Swish
+    elif act == "relu":
+        return nn.ReLU
+    elif act is None:
+        return None
+    else:
+        raise RuntimeError(
+            "The activation function is not supported: {}".format(act))
 
 
 def channel_shuffle(x, groups):
@@ -65,61 +78,37 @@ def channel_shuffle(x, groups):
     return x
 
 
-class ConvBNLayer(nn.Layer):
+class InvertedResidual(nn.Layer):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 kernel_size,
                  stride,
-                 padding,
-                 groups=1,
-                 act=None):
-        super(ConvBNLayer, self).__init__()
-        self._conv = Conv2D(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=groups,
-            weight_attr=ParamAttr(initializer=nn.initializer.KaimingNormal()),
-            bias_attr=False, )
-
-        self._batch_norm = BatchNorm(out_channels, act=act)
-
-    def forward(self, inputs):
-        x = self._conv(inputs)
-        x = self._batch_norm(x)
-        return x
-
-
-class InvertedResidual(nn.Layer):
-    def __init__(self, in_channels, out_channels, stride, act="relu"):
+                 activation_layer=nn.ReLU):
         super(InvertedResidual, self).__init__()
-        self._conv_pw = ConvBNLayer(
+        self._conv_pw = ConvNormActivation(
             in_channels=in_channels // 2,
             out_channels=out_channels // 2,
             kernel_size=1,
             stride=1,
             padding=0,
             groups=1,
-            act=act)
-        self._conv_dw = ConvBNLayer(
+            activation_layer=activation_layer)
+        self._conv_dw = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
             kernel_size=3,
             stride=stride,
             padding=1,
             groups=out_channels // 2,
-            act=None)
-        self._conv_linear = ConvBNLayer(
+            activation_layer=None)
+        self._conv_linear = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
             kernel_size=1,
             stride=1,
             padding=0,
             groups=1,
-            act=act)
+            activation_layer=activation_layer)
 
     def forward(self, inputs):
         x1, x2 = paddle.split(
@@ -134,51 +123,55 @@ class InvertedResidual(nn.Layer):
 
 
 class InvertedResidualDS(nn.Layer):
-    def __init__(self, in_channels, out_channels, stride, act="relu"):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 stride,
+                 activation_layer=nn.ReLU):
         super(InvertedResidualDS, self).__init__()
 
         # branch1
-        self._conv_dw_1 = ConvBNLayer(
+        self._conv_dw_1 = ConvNormActivation(
             in_channels=in_channels,
             out_channels=in_channels,
             kernel_size=3,
             stride=stride,
             padding=1,
             groups=in_channels,
-            act=None)
-        self._conv_linear_1 = ConvBNLayer(
+            activation_layer=None)
+        self._conv_linear_1 = ConvNormActivation(
             in_channels=in_channels,
             out_channels=out_channels // 2,
             kernel_size=1,
             stride=1,
             padding=0,
             groups=1,
-            act=act)
+            activation_layer=activation_layer)
         # branch2
-        self._conv_pw_2 = ConvBNLayer(
+        self._conv_pw_2 = ConvNormActivation(
             in_channels=in_channels,
             out_channels=out_channels // 2,
             kernel_size=1,
             stride=1,
             padding=0,
             groups=1,
-            act=act)
-        self._conv_dw_2 = ConvBNLayer(
+            activation_layer=activation_layer)
+        self._conv_dw_2 = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
             kernel_size=3,
             stride=stride,
             padding=1,
             groups=out_channels // 2,
-            act=None)
-        self._conv_linear_2 = ConvBNLayer(
+            activation_layer=None)
+        self._conv_linear_2 = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
             kernel_size=1,
             stride=1,
             padding=0,
             groups=1,
-            act=act)
+            activation_layer=activation_layer)
 
     def forward(self, inputs):
         x1 = self._conv_dw_1(inputs)
@@ -221,6 +214,7 @@ class ShuffleNetV2(nn.Layer):
         self.num_classes = num_classes
         self.with_pool = with_pool
         stage_repeats = [4, 8, 4]
+        activation_layer = create_activation_layer(act)
 
         if scale == 0.25:
             stage_out_channels = [-1, 24, 24, 48, 96, 512]
@@ -238,13 +232,13 @@ class ShuffleNetV2(nn.Layer):
             raise NotImplementedError("This scale size:[" + str(scale) +
                                       "] is not implemented!")
         # 1. conv1
-        self._conv1 = ConvBNLayer(
+        self._conv1 = ConvNormActivation(
             in_channels=3,
             out_channels=stage_out_channels[1],
             kernel_size=3,
             stride=2,
             padding=1,
-            act=act)
+            activation_layer=activation_layer)
         self._max_pool = MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         # 2. bottleneck sequences
@@ -257,7 +251,7 @@ class ShuffleNetV2(nn.Layer):
                             in_channels=stage_out_channels[stage_id + 1],
                             out_channels=stage_out_channels[stage_id + 2],
                             stride=2,
-                            act=act),
+                            activation_layer=activation_layer),
                         name=str(stage_id + 2) + "_" + str(i + 1))
                 else:
                     block = self.add_sublayer(
@@ -265,17 +259,17 @@ class ShuffleNetV2(nn.Layer):
                             in_channels=stage_out_channels[stage_id + 2],
                             out_channels=stage_out_channels[stage_id + 2],
                             stride=1,
-                            act=act),
+                            activation_layer=activation_layer),
                         name=str(stage_id + 2) + "_" + str(i + 1))
                 self._block_list.append(block)
         # 3. last_conv
-        self._last_conv = ConvBNLayer(
+        self._last_conv = ConvNormActivation(
             in_channels=stage_out_channels[-2],
             out_channels=stage_out_channels[-1],
             kernel_size=1,
             stride=1,
             padding=0,
-            act=act)
+            activation_layer=activation_layer)
         # 4. pool
         if with_pool:
             self._pool2d_avg = AdaptiveAvgPool2D(1)
