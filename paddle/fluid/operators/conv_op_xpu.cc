@@ -72,7 +72,7 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(
         dev_ctx.x_context(), input_data, filter_data, output_data, batch_size,
         img_c, img_h, img_w, f, ksize, strides, paddings, dilations, groups,
-        nullptr, nullptr, nullptr, false);
+        nullptr, nullptr, nullptr, is_nchw);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU conv kernel return wrong value[%d %s]",
