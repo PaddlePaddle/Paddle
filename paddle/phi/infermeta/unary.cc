@@ -2257,6 +2257,7 @@ void SumRawInferMeta(const MetaTensor& x,
   DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
 
   DataType out_dtype;
+  VLOG(1) << "####### out_dtype: " << out_dtype;
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
   } else {
@@ -2266,6 +2267,7 @@ void SumRawInferMeta(const MetaTensor& x,
       out_dtype = x.dtype();
     }
   }
+  VLOG(1) << "####### out_dtype: " << out_dtype;
 
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);

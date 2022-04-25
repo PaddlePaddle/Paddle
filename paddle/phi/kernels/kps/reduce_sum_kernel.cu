@@ -27,6 +27,9 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }

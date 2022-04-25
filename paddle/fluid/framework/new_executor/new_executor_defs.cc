@@ -365,6 +365,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
   return GetDims(vars);
 }
 
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
+}
+
 std::vector<proto::VarType::Type>
 InterpretercoreInferShapeContext::GetInputsVarType(
     const std::string& name) const {
