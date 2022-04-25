@@ -23,6 +23,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 import paddle.nn.functional as F
+from paddle.fluid.framework import _test_eager_guard
 
 from decorator_helper import prog_scope
 
@@ -42,6 +43,7 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -64,6 +66,7 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -86,6 +89,7 @@ class TestTanhTripleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -108,6 +112,7 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -132,6 +137,7 @@ class TestReluDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -158,6 +164,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
@@ -184,6 +191,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -210,6 +218,7 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -234,6 +243,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
@@ -258,6 +268,7 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
@@ -282,6 +293,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -310,6 +322,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -318,6 +331,9 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
 
 class TestLogDoubleGradCheck(unittest.TestCase):
+    def log_wrapper(self, x):
+        return paddle.log(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -332,8 +348,11 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.log_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -342,5 +361,4 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
