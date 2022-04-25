@@ -490,6 +490,8 @@ class TestFusedMultiTransformerOp(OpTest):
                         cache_k_ref, cache_k, rtol=self.rtol, atol=self.atol)
                     np.testing.assert_allclose(
                         cache_v_ref, cache_v, rtol=self.rtol, atol=self.atol)
+                    if i == 0:
+                        break
 
         np.testing.assert_allclose(
             final_out_ref, final_out, rtol=self.rtol, atol=self.atol)

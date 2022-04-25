@@ -140,7 +140,7 @@ def create_model(data, rank):
 
     # fused_multi_transformer have no backward
     result.stop_gradient = True
-    predict = paddle.sum(result)
+    predict = paddle.mean(result)
     return predict
 
 
