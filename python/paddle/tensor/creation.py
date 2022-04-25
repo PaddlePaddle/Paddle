@@ -826,7 +826,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     if end is None:
         end = start
         start = 0
-    
+
     out_shape = None
     if not isinstance(start, Variable) and not isinstance(
             end, Variable) and not isinstance(step, Variable):
@@ -873,7 +873,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                 'Step': step},
         outputs={'Out': out})
     out.stop_gradient = True
-    out.desc.set_shape(out_shape)
+    if out_shape is not None:
+        out.desc.set_shape(out_shape)
     return out
 
 
