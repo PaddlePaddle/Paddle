@@ -402,21 +402,20 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
 CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type) {
   // 1. get kernel args
-  auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
-  PADDLE_ENFORCE_NOT_NULL(
-      arg_map_fn, platform::errors::NotFound(
-                      "The ArgumentMappingFn of %s op is not found.", op_type));
+  auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   InferShapeArgumentMappingContext arg_map_context(*ctx);
-  auto signature = arg_map_fn(arg_map_context);
+  KernelSignature signature =
+      arg_map_fn ? (*arg_map_fn)(arg_map_context)
+                 : phi::DefaultKernelSignatureMap::Instance().Get(op_type);
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
   CompatInferMetaContext infer_meta_context(
       {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
-  auto& input_names = std::get<0>(signature.args);
-  auto& attr_names = std::get<1>(signature.args);
-  auto& output_names = std::get<2>(signature.args);
+  const auto& input_names = signature.input_names;
+  const auto& attr_names = signature.attr_names;
+  const auto& output_names = signature.output_names;
 
   const auto& args_def =
       phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
