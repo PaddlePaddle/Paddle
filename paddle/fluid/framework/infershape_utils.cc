@@ -483,10 +483,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             }
 
             if (num_ele <= 0) {
-              PADDLE_THROW(platform::errors::Unimplemented(
-                  "Invalid number for construct phi::IntArray, expected "
-                  "number > 0, but actually is %d. ",
-                  num_ele));
+              num_ele = tensor_dims.size();
             }
 
           } else {
