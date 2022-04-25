@@ -749,6 +749,7 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
 static paddle::experimental::Tensor& GetTensorFromPyObject(
     const std::string& op_type, const std::string& arg_name, PyObject* obj,
     ssize_t arg_idx, bool dispensable) {
+  VLOG(6) << "Running in GetTensorFromPyObject.";
   if (PyTuple_Check(obj)) {
     obj = PyTuple_GET_ITEM(obj, 0);
   }
@@ -764,6 +765,16 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    if (reinterpret_cast<TensorObject*>(obj)->tensor.is_selected_rows()) {
+      VLOG(6) << op_type << "(): argument " << arg_name << " (position "
+              << arg_idx << ") is selected_rows.";
+      auto* selected_rows = static_cast<phi::SelectedRows*>(
+          reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
+      auto* dt = selected_rows->mutable_value();
+      auto shared_dense_tensor = std::make_shared<phi::DenseTensor>(*dt);
+      reinterpret_cast<TensorObject*>(obj)->tensor.set_impl(
+          shared_dense_tensor);
+    }
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else if (PyObject_IsInstance(
                  obj, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
