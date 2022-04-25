@@ -145,6 +145,11 @@ TEST(TEST_FLEET, test_cpu_cache) {
   //{1,9} or {9,1} is expected for key 0
   //{0,2} or {2,0} is expected for key 1
   //{1,3} or {3,1} is expected for key 2
-  auto node_query_res = g.query_node_list(0, 0, 2);
+  auto node_query_res = g.query_node_list(0, 0, 4);
   node_query_res.display();
+  NeighborSampleQuery query;
+  query.initialize(0, node_query_res.get_val(), 2, node_query_res.get_len());
+  query.display();
+  auto c = g.graph_neighbor_sample_v3(query, false);
+  c.display();
 }

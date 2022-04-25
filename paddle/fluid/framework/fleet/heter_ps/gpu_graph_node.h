@@ -64,11 +64,9 @@ struct GpuPsCommGraph {
 
 /*
 suppose we have a graph like this
-
 0----3-----5----7
  \   |\         |\
  17  8 9        1 2
-
 we save the nodes in arbitrary order,
 in this example,the order is
 [0,5,1,2,7,3,8,9,17]
@@ -83,7 +81,6 @@ we record each node's neighbors:
 8:3
 9:3
 17:0
-
 by concatenating each node's neighbor_list in the order we save the node id.
 we get [3,17,3,7,7,7,1,2,5,0,5,8,9,3,3,0]
 this is the neighbor_list of GpuPsCommGraph
@@ -119,9 +116,9 @@ struct NeighborSampleQuery {
   int64_t *key;
   int sample_size;
   int len;
-  void initialize(int gpu_id, int64_t *key, int sample_size, int len) {
+  void initialize(int gpu_id, int64_t key, int sample_size, int len) {
     this->gpu_id = gpu_id;
-    this->key = key;
+    this->key = (int64_t *)key;
     this->sample_size = sample_size;
     this->len = len;
   }
@@ -137,12 +134,17 @@ struct NeighborSampleQuery {
       key_str += std::to_string(sample_keys[i]);
     }
     VLOG(0) << key_str;
+    delete[] sample_keys;
   }
 };
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
+  int64_t *get_val() { return val; }
+  int *get_actual_sample_size() { return actual_sample_size; }
+  int get_sample_size() { return sample_size; }
+  int get_key_size() { return key_size; }
   void initialize(int _sample_size, int _key_size, int dev_id) {
     sample_size = _sample_size;
     key_size = _key_size;
@@ -156,6 +158,7 @@ struct NeighborSampleResult {
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
   }
   void display() {
+    VLOG(0) << "in node sample result display ------------------";
     int64_t *res = new int64_t[sample_size * key_size];
     cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
@@ -175,6 +178,7 @@ struct NeighborSampleResult {
     }
     delete[] res;
     delete[] ac_size;
+    VLOG(0) << " ------------------";
   }
   NeighborSampleResult(){};
   ~NeighborSampleResult() {
@@ -187,7 +191,7 @@ struct NeighborSampleResult {
 struct NodeQueryResult {
   int64_t *val;
   int actual_sample_size;
-  int64_t *get_val() { return val; }
+  int64_t get_val() { return (int64_t)val; }
   int get_len() { return actual_sample_size; }
   std::shared_ptr<memory::Allocation> val_mem;
   void initialize(int query_size, int dev_id) {
@@ -195,8 +199,12 @@ struct NodeQueryResult {
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
     val_mem = memory::AllocShared(place, query_size * sizeof(int64_t));
     val = (int64_t *)val_mem->ptr();
+
+    // cudaMalloc((void **)&val, query_size * sizeof(int64_t));
+    actual_sample_size = 0;
   }
   void display() {
+    VLOG(0) << "in node query result display ------------------";
     int64_t *res = new int64_t[actual_sample_size];
     cudaMemcpy(res, val, actual_sample_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
@@ -208,6 +216,8 @@ struct NodeQueryResult {
       str += std::to_string(res[i]);
     }
     VLOG(0) << str;
+    delete[] res;
+    VLOG(0) << " ------------------";
   }
   NodeQueryResult() {
     val = NULL;
