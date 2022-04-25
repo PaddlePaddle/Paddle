@@ -595,6 +595,28 @@ def rotate(img,
         return F_cv2.rotate(img, angle, interpolation, expand, center, fill)
 
 
+def erase(img, top, left, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image with given value.
+        The erase function only support Tensor input.
+    
+        Args:
+            img (paddle.Tensor): input Tensor image, which shape is (C, H, W).
+            top (int): y coordinate of the top-left point of erased region.
+            left (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor): value used to replace the pixcels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor: Erased image.
+    """
+    if not _is_tensor_image(img):
+        raise TypeError(f"img should be Tensor Image. Got {type(img)}")
+
+    return F_t.erase(img, top, left, h, w, v, inplace=inplace)
+
+
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
 
