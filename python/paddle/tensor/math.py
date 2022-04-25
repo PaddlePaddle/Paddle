@@ -1979,13 +1979,13 @@ def max(x, axis=None, keepdim=False, name=None):
 
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the maximum is computed.
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
@@ -2082,13 +2082,13 @@ def min(x, axis=None, keepdim=False, name=None):
         while min propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the minimum is computed.
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
@@ -2185,14 +2185,14 @@ def amax(x, axis=None, keepdim=False, name=None):
         while max propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64,
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64,
             the dimension is no more than 4.
-        axis(int|list|tuple, optional): The axis along which the maximum is computed.
+        axis (int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
@@ -2297,14 +2297,14 @@ def amin(x, axis=None, keepdim=False, name=None):
         while min propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64, 
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64, 
             the dimension is no more than 4.
-        axis(int|list|tuple, optional): The axis along which the minimum is computed.
+        axis (int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
@@ -2407,8 +2407,8 @@ def log1p(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name(str, optional): The default value is None.  Normally there is no need for 
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        
     Returns:
         Tensor, the natural log of the input Tensor computed element-wise.
 
@@ -2684,10 +2684,10 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
 
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
-        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2769,10 +2769,10 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset < 0, it is below the main diagonal.
     
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
-        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3137,16 +3137,16 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
+        x (Tensor): The input tensor, its data type should be float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
-        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
+        dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
             int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3234,7 +3234,7 @@ def sign(x, name=None):
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x(Tensor): The input tensor. The data type can be float16, float32 or float64.
+        x (Tensor): The input tensor. The data type can be float16, float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3318,7 +3318,7 @@ def increment(x, value=1.0, name=None):
 
     Args:
         x (Tensor): A tensor that must always contain only one element, its data type supports float32, float64, int32 and int64.
-        value(float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4177,14 +4177,14 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x(Tensor): The input tensor to compute the forward difference on
-        n(int, optional): The number of times to recursively compute the difference. 
+        x (Tensor): The input tensor to compute the forward difference on
+        n (int, optional): The number of times to recursively compute the difference. 
                           Only support n=1. Default:1
-        axis(int, optional): The axis to compute the difference along. Default:-1
-        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
+        axis (int, optional): The axis to compute the difference along. Default:-1
+        prepend (Tensor, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x, 
                                    and its shapes must match x's shape except on axis.
-        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
+        append (Tensor, optional): The tensor to append to input along axis before computing the difference, 
                                    It's dimensions must be equivalent to that of x, 
                                    and its shapes must match x's shape except on axis.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -4393,7 +4393,7 @@ def frac(x, name=None):
 
     Args:
         x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
-        name: (str, optional): Name for operation (optional, default is None). For more
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output Tensor of frac.
