@@ -14,8 +14,5 @@
 
 from .fused_transformer import fused_multi_head_attention
 from .fused_transformer import fused_feedforward
-from .fused_transformer import fused_gate_attention
 
-__all__ = [
-    'fused_multi_head_attention', 'fused_feedforward', 'fused_gate_attention'
-]
+__all__ = ['fused_multi_head_attention', 'fused_feedforward']
