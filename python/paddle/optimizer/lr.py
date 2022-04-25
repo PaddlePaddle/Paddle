@@ -1608,7 +1608,7 @@ class OneCycleLR(LRScheduler):
 
     Also note that you should update learning rate each step.
 
-    This implementation was adapted from PyTorch.
+    This implementation was adapted from `there <https://github.com/pytorch/pytorch/blob/e5ee6f5cf714812283ff4e49362fbdf37fbd8ea9/torch/optim/lr_scheduler.py#L1346>`_.
 
     Args:
         max_learning_rate (float): Upper boundary of learning rate during training.
