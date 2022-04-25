@@ -105,22 +105,40 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_num_offset_type_check)
 
-    def test_default(self):
-        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
-        paddle.enable_static()
-        for place in places:
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data = paddle.tril_indices(4, None, 2)
-                exe = paddle.static.Executor(place)
-                result = exe.run(feed={}, fetch_list=[data])
-            expected_result = np.tril_indices(4, 2)
-            self.assertTrue(np.allclose(result, expected_result))
 
-            with fluid.dygraph.base.guard(place=place):
-                out = paddle.tril_indices(4, None, 2)
-            expected_result = np.tril_indices(4, 2)
-            self.assertEqual((out.numpy() == expected_result).all(), True)
+class TestTrilIndicesAPICaseDefault(unittest.TestCase):
+    def test_default_GPU(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.tril_indices(4, None, 2)
+            exe = paddle.static.Executor(paddle.fluid.CUDAPlace(0))
+            result = exe.run(feed={}, fetch_list=[data])
+        expected_result = np.tril_indices(4, 2)
+        self.assertTrue(np.allclose(result, expected_result))
+
+        with fluid.dygraph.base.guard(paddle.fluid.CUDAPlace(0)):
+            out = paddle.tril_indices(4, None, 2)
+        expected_result = np.tril_indices(4, 2)
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+
+    def test_default_CPU(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data = paddle.tril_indices(4, None, 2)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            result = exe.run(feed={}, fetch_list=[data])
+        expected_result = np.tril_indices(4, 2)
+        self.assertTrue(np.allclose(result, expected_result))
+
+        with fluid.dygraph.base.guard(paddle.CPUPlace()):
+            out = paddle.tril_indices(4, None, 2)
+        expected_result = np.tril_indices(4, 2)
+        self.assertEqual((out.numpy() == expected_result).all(), True)
 
 
 if __name__ == "__main__":
