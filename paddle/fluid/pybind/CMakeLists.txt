@@ -83,10 +83,6 @@ set(PYBIND_SRCS
   communication.cc
   cuda_streams_py.cc)
 
-if (WITH_ONNXRUNTIME)
-  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
-endif()
-
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
@@ -164,10 +160,6 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
-
-  if (WITH_ONNXRUNTIME)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
