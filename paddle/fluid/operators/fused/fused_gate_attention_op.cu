@@ -298,19 +298,19 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto is_gating = ctx.Attr<bool>("is_gating");
 
-    // fw input
+    // forward input
     auto *x = ctx.Input<Tensor>("X");
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
 
-    // fw output
+    // forward output, backward input
+    auto *qkv_out = ctx.Input<Tensor>("QKVOut");
     // auto *qkv_transpose_out = ctx.Input<Tensor>("QKVTransposeOut");
     auto *qk_out = ctx.Input<Tensor>("QKOut");
     auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
-    auto *qkv_out = ctx.Input<Tensor>("QKVOut");
     auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
 
-    // output's grad
+    // backward output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
     auto *d_qktv_out = ctx.Output<Tensor>(framework::GradVarName("QKTVOut"));

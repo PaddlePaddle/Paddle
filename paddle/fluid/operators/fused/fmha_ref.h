@@ -601,34 +601,36 @@ class FMHAGateRef {
       const Tensor* softmax_out_grad, const Tensor* softmax_out,
       const Tensor* qk_out, const Tensor* src_mask, Tensor* src_mask_grad,
       Tensor* qk_out_grad, Tensor* nonbatched_bias_grad) {
+    Tensor* softmax_x_grad = nullptr;
     Tensor src_mask_out_grad;
-    src_mask_out_grad.Resize(softmax_out->dims());
-    src_mask_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-    phi::SoftmaxBackwardCUDAKernelDriver<T>(
-        dev_ctx_, *softmax_out, *softmax_out_grad, -1, &src_mask_out_grad);
-
     if (src_mask) {
       // src_mask_out = qk_out + src_mask
       // Special case when dy is not needed and dx doesn't reduce
       if (qk_out_grad && src_mask_grad == nullptr &&
-          qk_out->dims() == src_mask_out_grad.dims()) {
+          qk_out->dims() == softmax_out->dims()) {
         VLOG(4) << "Special case when dy is not needed and dx doesn't "
                    "reduce";
-        framework::TensorCopy(src_mask_out_grad, dev_ctx_.GetPlace(), dev_ctx_,
-                              qk_out_grad);
+        softmax_x_grad = qk_out_grad;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Only used for the backward elementwise_add op when"
             "dy is not needed and dx is not reduce"));
         return;
       }
+    } else {
+      src_mask_out_grad.Resize(softmax_out->dims());
+      src_mask_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+      softmax_x_grad = &src_mask_out_grad;
     }
+
+    phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, *softmax_out,
+                                            *softmax_out_grad, -1, qk_out_grad);
 
     // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
     if (nonbatched_bias_grad) {
       gpuStream_t stream = dev_ctx_.stream();
       TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx_, src_mask_out_grad, nonbatched_bias_grad,
+          dev_ctx_, *softmax_x_grad, nonbatched_bias_grad,
           kps::IdentityFunctor<T>(), {0, 1}, stream);
     }
   }
