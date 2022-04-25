@@ -1,15 +1,3 @@
-# - api : tril_indices
-#   args : (int rows, int cols, int offset, int dtype)
-#   output : Tensor(out)
-#   infer_meta :
-#     func : TrilIndicesInferMeta
-#     param : [rows, cols, offset, dtype]
-#   kernel :
-#     func : tril_indices
-#     param : [rows, cols, offset, dtype]
-#     data_type : dtype
-#     backend : place
-
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -2104,6 +2092,18 @@
   kernel :
     func : triangular_solve
   backward : triangular_solve_grad
+
+- api : tril_indices
+  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+    backend : place
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)

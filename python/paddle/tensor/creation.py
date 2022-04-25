@@ -1417,8 +1417,14 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_tril_indices('rows', rows, 'cols', cols,
-                                              'offset', offset, "dtype", dtype)
+        out = _C_ops.final_state_tril_indices(rows, cols, offset, dtype,
+                                              _current_expected_place())
+        return out
+
+    if _in_legacy_dygraph():
+        out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset,
+                                  "dtype", dtype)
+        return out
 
     else:
         helper = LayerHelper("tril_indices", **locals())

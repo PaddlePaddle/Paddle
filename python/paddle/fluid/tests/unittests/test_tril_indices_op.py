@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrilIndicesOp(OpTest):
@@ -55,71 +56,67 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
         self.target = np.array(self.target)
 
 
-class TestTrilIndicesAPICase(unittest.TestCase):
-    def test_cpu(self):
-        def test_static(self):
-            paddle.enable_static()
+class TestTrilIndicesAPICaseStatic(unittest.TestCase):
+    def test_static(self):
+        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
+        paddle.enable_static()
+        for place in places:
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
                 data = paddle.tril_indices(4, 4, 2)
-                place = paddle.CPUPlace()
                 exe = paddle.static.Executor(place)
                 result = exe.run(feed={}, fetch_list=[data])
             expected_result = np.tril_indices(4, 2, 4)
             self.assertTrue(np.allclose(result, expected_result))
 
-        def test_dygraph(self):
-            paddle.disable_static()
-            out = paddle.tril_indices(4, 4, 2)
+
+class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
+        for place in places:
+            with fluid.dygraph.base.guard(place=place):
+                out = paddle.tril_indices(4, 4, 2)
             expected_result = np.tril_indices(4, 2, 4)
-            paddle.enable_static()
             self.assertEqual((out.numpy() == expected_result).all(), True)
 
-        def test_case_error(self):
-            def test_num_rows_type_check():
-                out1 = paddle.tril_indices(1.0, 1, 2)
+    def test_dygraph_eager(self):
+        with _test_eager_guard():
+            self.test_dygraph()
 
-            self.assertRaises(TypeError, test_num_rows_type_check)
 
-            def test_num_columns_type_check():
-                out2 = paddle.tril_indices(4, -1, 2)
+class TestTrilIndicesAPICaseError(unittest.TestCase):
+    def test_case_error(self):
+        def test_num_rows_type_check():
+            out1 = paddle.tril_indices(1.0, 1, 2)
 
-            self.assertRaises(TypeError, test_num_columns_type_check)
+        self.assertRaises(TypeError, test_num_rows_type_check)
 
-            def test_num_offset_type_check():
-                out3 = paddle.tril_indices(4, 4, 2.0)
+        def test_num_columns_type_check():
+            out2 = paddle.tril_indices(4, -1, 2)
 
-            self.assertRaises(TypeError, test_num_offset_type_check)
+        self.assertRaises(TypeError, test_num_columns_type_check)
 
-        def test_case_default(self):
-            out = paddle.tril_indices(4, None, 2)
+        def test_num_offset_type_check():
+            out3 = paddle.tril_indices(4, 4, 2.0)
+
+        self.assertRaises(TypeError, test_num_offset_type_check)
+
+    def test_default(self):
+        places = [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
+        paddle.enable_static()
+        for place in places:
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                data = paddle.tril_indices(4, None, 2)
+                exe = paddle.static.Executor(place)
+                result = exe.run(feed={}, fetch_list=[data])
+            expected_result = np.tril_indices(4, 2)
+            self.assertTrue(np.allclose(result, expected_result))
+
+            with fluid.dygraph.base.guard(place=place):
+                out = paddle.tril_indices(4, None, 2)
             expected_result = np.tril_indices(4, 2)
             self.assertEqual((out.numpy() == expected_result).all(), True)
-
-
-class TestTrilIndicesAPICaseGpu(unittest.TestCase):
-    def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-
-        def test_gpu_dygraph(self):
-
-            paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
-            out = paddle.tril_indices(4, 4, 2)
-            expected_result = np.tril_indices(4, 2, 4)
-            paddle.enable_static()
-            self.assertEqual((out.numpy() == expected_result).all(), True)
-
-        def test_gpu_static(self):
-
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data = paddle.tril_indices(4, 4, 2)
-                place = paddle.fluid.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                result = exe.run(feed={}, fetch_list=[data])
-            expected_result = np.tril_indices(4, 2, 4)
-            self.assertTrue(np.allclose(result, expected_result))
 
 
 if __name__ == "__main__":
