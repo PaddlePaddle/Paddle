@@ -123,13 +123,6 @@ class BatchDecodeRandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
                      "(int64, default 0), device memory allocation padding "
                      "number for Nvjpeg decoding")
         .SetDefault(0);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "an optional string from: \"NHWC\", \"NCHW\". "
-        "Specify that the data format of the input and output data is "
-        "channel_first or channel_last.")
-        .SetDefault("NCHW");
     AddAttr<float>("aspect_ratio_min",
                    "(float) The minimum aspect ratio of random cropping boxes")
         .SetDefault(3. / 4.);

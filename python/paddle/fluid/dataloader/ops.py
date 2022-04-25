@@ -150,6 +150,7 @@ def map(map_func, *args, **kwargs):
                 name=unique_name.generate("map_sub"),
                 type=inputs.desc.type(),
                 dtype=inputs.desc.dtype(),
+                shape=inputs.desc.shape(),
                 persistable=False)
             input_vars.append(var)
             flat_inputs.append(inputs)
@@ -171,6 +172,7 @@ def map(map_func, *args, **kwargs):
                 name=unique_name.generate("map"),
                 type=outputs.desc.type(),
                 dtype=outputs.desc.dtype(),
+                shape=outputs.desc.shape(),
                 persistable=True)
             flat_outputs.append(var)
             output_vars.append(outputs)

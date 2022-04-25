@@ -102,12 +102,6 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
     int64_t img_c =
         data_format == DataLayout::kNCHW ? img->dims()[0] : img->dims()[2];
 
-    std::vector<int64_t> out_dim = {static_cast<int64_t>(x.size()), size[0],
-                                    size[1], img_c};
-    if (data_format == DataLayout::kNCHW) {
-      out_dim = {static_cast<int64_t>(x.size()), img_c, size[0], size[1]};
-    }
-    out->Resize(phi::make_ddim(out_dim));
     out->mutable_data<T>(ctx.GetPlace());
 
     int img_h, img_w, idx_h, idx_w, crop_h, crop_w;

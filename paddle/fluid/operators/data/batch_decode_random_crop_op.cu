@@ -54,15 +54,6 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto out_array = ctx.MultiOutput<framework::Tensor>("Out");
     auto dev = platform::CUDAPlace(local_rank);
 
-    const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_format =
-        framework::StringToDataLayout(data_format_str);
-
-    framework::LoDTensorArray temp_array;
-    if (data_format == DataLayout::kNCHW) {
-      temp_array.resize(batch_size);
-    }
-
     auto aspect_ratio_min = ctx.Attr<float>("aspect_ratio_min");
     auto aspect_ratio_max = ctx.Attr<float>("aspect_ratio_max");
     AspectRatioRange aspect_ratio_range{aspect_ratio_min, aspect_ratio_max};
@@ -83,29 +74,11 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       task.bit_stream = x_data;
       task.bit_len = x_numel;
       task.roi_generator = generators->at(i).get(), task.place = dev;
-      task.tensor =
-          data_format == DataLayout::kNCHW ? &temp_array[i] : out_array[i];
+      task.tensor = out_array[i];
       decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
     }
 
     decode_pool->RunAll(true);
-
-    if (data_format == DataLayout::kNCHW) {
-      const auto& dev_ctx = ctx.cuda_device_context();
-      phi::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
-      std::vector<int> axis = {2, 0, 1};
-      for (size_t i = 0; i < inputs.size(); i++) {
-        // Do transpose
-        const framework::DDim& in_sizes = temp_array[i].dims();
-        framework::DDim transposed_input_shape = in_sizes.transpose(axis);
-        std::vector<int64_t> transposed_input_shape_ =
-            phi::vectorize(transposed_input_shape);
-
-        out_array[i]->Resize(transposed_input_shape);
-        out_array[i]->mutable_data<T>(dev_ctx.GetPlace());
-        trans(dev_ctx, temp_array[i], out_array[i], axis);
-      }
-    }
   }
 };
 

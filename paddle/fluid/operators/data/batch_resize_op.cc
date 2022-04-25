@@ -18,6 +18,8 @@ namespace paddle {
 namespace operators {
 namespace data {
 
+using DataLayout = framework::DataLayout;
+
 class BatchResizeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -39,6 +41,18 @@ class BatchResizeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(size[1], 0, platform::errors::InvalidArgument(
                                       "w in Attr(size) of Op(BatchResize) "
                                       "should be greater than 0."));
+
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_format"));
+
+    auto batch_size = static_cast<int64_t>(ctx->Inputs("X").size());
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {batch_size, 3, size[0], size[1]};
+    } else {
+      dim_out = {batch_size, size[0], size[1], 3};
+    }
+    ctx->SetOutputDim("Out", dim_out);
   }
 
   framework::OpKernelType GetExpectedKernelType(

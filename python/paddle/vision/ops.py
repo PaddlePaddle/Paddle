@@ -979,7 +979,6 @@ def image_decode_random_crop(x,
                              num_threads=2,
                              host_memory_padding=0,
                              device_memory_padding=0,
-                             data_format='NCHW',
                              aspect_ratio_min=3. / 4.,
                              aspect_ratio_max=4. / 3.,
                              area_min=0.08,
@@ -1006,10 +1005,6 @@ def image_decode_random_crop(x,
                 allocation padding size of Nvjpeg decoding. Default 0.
         host_memory_padding (int, optional): The CUDA memory allocation
                 padding size of Nvjpeg decoding. Default 0.
-        data_format (string, optional): The output image format, if NCHW,
-                output images will be in shape of (channels, image_height,
-                image_width), if NHWC, output images will be in shape of
-                (image_height, image_width, channels). Default NCHW.
         aspect_ratio_min (float, optional): The minimum aspect ratio of
                 random cropping boxes, this should be a value between 0
                 and 1. Default :attr:`3. / 4.`.
@@ -1032,7 +1027,7 @@ def image_decode_random_crop(x,
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A list of decoded image tensors with shape of (imge_channels, image_height, image_width)
+        Tensor: A list of decoded image tensors with shape of (height, width, channels)
 
     Examples:
         .. code-block:: python
@@ -1067,19 +1062,18 @@ def image_decode_random_crop(x,
                            core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode_random_crop(
-            x, out, "num_threads", num_threads, "data_format", data_format,
-            "aspect_ratio_min", aspect_ratio_min, "aspect_ratio_max",
-            aspect_ratio_max, "area_min", area_min, "area_max", area_max,
-            "num_attempts", num_attempts, "local_rank", local_rank,
-            "program_id", program_id, "host_memory_padding",
-            host_memory_padding, "device_memory_padding", device_memory_padding)
+            x, out, "num_threads", num_threads, "aspect_ratio_min",
+            aspect_ratio_min, "aspect_ratio_max", aspect_ratio_max, "area_min",
+            area_min, "area_max", area_max, "num_attempts", num_attempts,
+            "local_rank", local_rank, "program_id", program_id,
+            "host_memory_padding", host_memory_padding, "device_memory_padding",
+            device_memory_padding)
 
     inputs = {'X': x}
     attrs = {
         "num_threads": num_threads,
         "host_memory_padding": host_memory_padding,
         "device_memory_padding": device_memory_padding,
-        "data_format": data_format,
         "aspect_ratio_min": aspect_ratio_min,
         "aspect_ratio_max": aspect_ratio_max,
         "area_min": area_min,
@@ -1686,7 +1680,7 @@ def random_crop_and_resize(x,
                            interp_method='bilinear',
                            align_corners=True,
                            align_mode=1,
-                           data_format='NCHW',
+                           data_format='NHWC',
                            name=None):
     """
     GPU OP implements the paddle.vision.transforms.RandomResizedCrop.
@@ -1752,7 +1746,7 @@ def random_crop_and_resize(x,
                 out = paddle.vision.ops.random_crop_and_resize([data], size=224)
 
                 print(out.shape)
-                # [3, 224, 224]
+                # [224, 224, 3]
     """
 
     assert paddle.is_compiled_with_cuda(), \
@@ -1802,7 +1796,7 @@ def image_resize(x,
                  interp_method='bilinear',
                  align_corners=True,
                  align_mode=1,
-                 data_format='NCHW',
+                 data_format='NHWC',
                  name=None):
     """
     This operator implements the paddle.vision.transforms.Resize.
@@ -1853,7 +1847,7 @@ def image_resize(x,
                 out = paddle.vision.ops.image_resize([data], size=224)
 
                 print(out.shape)
-                # [3, 224, 224]
+                # [224, 224, 3]
 
     """
     assert paddle.is_compiled_with_cuda(), \
@@ -1866,9 +1860,9 @@ def image_resize(x,
         size = (size, size)
 
     if in_dygraph_mode():
-        out = _C_ops.batch_resize(x, "size", size, "interp_method",
-                  interp_method, "align_corners", align_corners,
-                  "align_mode", align_mode, "data_format", data_format)
+        out = _C_ops.batch_resize(
+            x, "size", size, "interp_method", interp_method, "align_corners",
+            align_corners, "align_mode", align_mode, "data_format", data_format)
         return out
 
     helper = LayerHelper('batch_resize', **locals())
