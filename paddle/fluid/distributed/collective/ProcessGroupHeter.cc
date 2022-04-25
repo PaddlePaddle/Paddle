@@ -279,8 +279,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   // Send to switch
   HeterClient* client_ =
       HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
+  int tensor_size =
+      cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype());
   std::vector<int> send_size;
-  send_size.push_back(cpu_tensor.numel());
+  send_size.push_back(tensor_size);
   std::string file_name = std::string("send_") + std::to_string(gid_) +
                           std::string("_") + std::to_string(send_count);
   // file_name = std::string("/workspace/paddle_abnet/send_20_34");
@@ -293,9 +295,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   struct timeval _now;
   gettimeofday(&_now, NULL);
   std::cout << "Send time: " << _now.tv_sec << ":" << _now.tv_usec << std::endl;
-  int ret = client_->Send(
-      gid_, {tensor_name}, send_size, cpu_tensor.data(),
-      cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
+  int ret = client_->Send(gid_, {tensor_name}, send_size, cpu_tensor.data(),
+                          tensor_size);
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "Send to the switch module error."));
   return CreateTask(rank_, CommType::SEND, in_tensors);
