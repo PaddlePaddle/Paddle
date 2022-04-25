@@ -175,7 +175,6 @@ if(WITH_PYTHON)
     DEPENDS glob_op_static)
     
   add_dependencies(glob_op_shared glob_op_static_lib)
-  add_dependencies(glob_op_shared glob_op_shared_dummy)
 
   set_target_properties(glob_op_shared PROPERTIES LINK_FLAGS "/WHOLEARCHIVE:${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib")
   target_link_libraries(glob_op_shared protobuf enforce device_context proto_desc imperative_flag fleet_executor 
