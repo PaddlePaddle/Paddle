@@ -28,7 +28,7 @@ KernelSignature EmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature EmbeddingGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("W")) {
-    if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
+    if ((paddle::get<bool>(ctx.Attr("is_sparse"))) == true) {
       return KernelSignature("embedding_sparse_grad",
                              {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},
@@ -40,7 +40,7 @@ KernelSignature EmbeddingGradOpArgumentMapping(
                              {"W@GRAD"});
     }
   } else {
-    if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
+    if ((paddle::get<bool>(ctx.Attr("is_sparse"))) == true) {
       return KernelSignature("sparse_weight_embedding_sparse_grad",
                              {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},

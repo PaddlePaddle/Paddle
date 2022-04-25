@@ -66,7 +66,7 @@ TEST(Attribute, GetAttrValueToAny) {
 
   std::vector<bool> vec_bool_var(2, true);
   paddle::framework::Attribute x_vec_bool = vec_bool_var;
-  auto rlt_vec_bool = paddle::framework::GetAttrValue(x_vec_bool);
+  auto rlt_vec_bool = paddle::framework::GetAttrValueForPhi(x_vec_bool);
   auto vec_bool = paddle::get<std::vector<bool>>(rlt_vec_bool);
   EXPECT_EQ(vec_bool.size(), 2UL);
   EXPECT_EQ(vec_bool[0], true);

@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "sum_raw" KernelSignature.
     // And the InferMeta function(i.e. SumRawInferMeta) is accordance with
@@ -37,7 +37,7 @@ KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "mean_raw" KernelSignature.
     // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
@@ -53,7 +53,7 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "max_raw" KernelSignature.
     // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
@@ -69,7 +69,7 @@ KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "max_raw" KernelSignature.
     // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
@@ -85,7 +85,7 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "min_raw" KernelSignature.
     // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
@@ -101,7 +101,7 @@ KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceAnyOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "any_raw" KernelSignature.
     // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
@@ -117,7 +117,7 @@ KernelSignature ReduceAnyOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
-    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    bool reduce_all = paddle::get<bool>(ctx.Attr("reduce_all"));
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
           "all_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});

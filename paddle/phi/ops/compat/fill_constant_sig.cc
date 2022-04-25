@@ -25,8 +25,7 @@ KernelSignature FillConstantOpArgumentMapping(
         return KernelSignature(
             "full", {}, {"ShapeTensor", "ValueTensor", "dtype"}, {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full", {}, {"ShapeTensor", "value", "dtype"}, {"Out"});
@@ -40,8 +39,7 @@ KernelSignature FillConstantOpArgumentMapping(
         return KernelSignature(
             "full", {}, {"ShapeTensorList", "ValueTensor", "dtype"}, {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full", {}, {"ShapeTensorList", "value", "dtype"}, {"Out"});
@@ -55,8 +53,7 @@ KernelSignature FillConstantOpArgumentMapping(
         return KernelSignature(
             "full", {}, {"shape", "ValueTensor", "dtype"}, {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full", {}, {"shape", "value", "dtype"}, {"Out"});
@@ -72,8 +69,7 @@ KernelSignature FillConstantOpArgumentMapping(
         return KernelSignature(
             "full_sr", {}, {"ShapeTensor", "ValueTensor", "dtype"}, {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full_sr", {}, {"ShapeTensor", "value", "dtype"}, {"Out"});
@@ -89,8 +85,7 @@ KernelSignature FillConstantOpArgumentMapping(
                                {"ShapeTensorList", "ValueTensor", "dtype"},
                                {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full_sr", {}, {"ShapeTensorList", "value", "dtype"}, {"Out"});
@@ -106,8 +101,7 @@ KernelSignature FillConstantOpArgumentMapping(
         return KernelSignature(
             "full_sr", {}, {"shape", "ValueTensor", "dtype"}, {"Out"});
       } else {
-        const auto& str_value =
-            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
               "full_sr", {}, {"shape", "value", "dtype"}, {"Out"});

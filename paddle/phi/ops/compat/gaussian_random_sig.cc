@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature GaussianRandomOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  const auto& shape = paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+  const auto& shape = paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
   if (ctx.InputSize("ShapeTensorList") > 0) {
     // Infer output shape by Attr("shape") in CompileTime if it is specified.
     if (!ctx.IsRuntime() && !shape.empty()) {

@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature RandintOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  int seed = paddle::any_cast<int>(ctx.Attr("seed"));
+  int seed = paddle::get<int>(ctx.Attr("seed"));
   if (seed) {
     if (ctx.InputSize("ShapeTensorList") > 0) {
       return KernelSignature(
@@ -26,8 +26,7 @@ KernelSignature RandintOpArgumentMapping(const ArgumentMappingContext& ctx) {
           {"low", "high", "ShapeTensorList", "seed", "dtype"},
           {"Out"});
     } else {
-      const auto& shape =
-          paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+      const auto& shape = paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
       if (ctx.HasInput("ShapeTensor") && shape.empty()) {
         return KernelSignature("randint_raw",
                                {},
@@ -45,8 +44,7 @@ KernelSignature RandintOpArgumentMapping(const ArgumentMappingContext& ctx) {
       return KernelSignature(
           "randint", {}, {"low", "high", "ShapeTensorList", "dtype"}, {"Out"});
     } else {
-      const auto& shape =
-          paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+      const auto& shape = paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
       if (ctx.HasInput("ShapeTensor") && shape.empty()) {
         return KernelSignature(
             "randint", {}, {"low", "high", "ShapeTensor", "dtype"}, {"Out"});

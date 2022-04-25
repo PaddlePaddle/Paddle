@@ -20,7 +20,7 @@ KernelSignature AssignValueOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   // Here we must use `dtype` attr to determine which attr to use, we can't
   // judge by whether the attr is empty, some unittests will failed
-  int dtype = paddle::any_cast<int>(ctx.Attr("dtype"));
+  int dtype = paddle::get<int>(ctx.Attr("dtype"));
   // heer we can't depend on the fluid proto::VarType, so we use the dtype enum
   // value directly, If the enum value is updated, the code also needs to be
   // updated here, but the probability of updating the enum value is very low

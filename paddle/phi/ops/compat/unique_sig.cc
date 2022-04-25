@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature UniqueOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  bool is_sorted = paddle::any_cast<bool>(ctx.Attr("is_sorted"));
+  bool is_sorted = paddle::get<bool>(ctx.Attr("is_sorted"));
   if (is_sorted) {
     return KernelSignature(
         "unique",

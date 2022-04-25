@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature ElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("add", {"X", "Y"}, {}, {"Out"});
   }
@@ -27,7 +27,7 @@ KernelSignature ElementwiseAddOpArgumentMapping(
 
 KernelSignature ElementwiseSubOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("subtract", {"X", "Y"}, {}, {"Out"});
   }
@@ -36,7 +36,7 @@ KernelSignature ElementwiseSubOpArgumentMapping(
 
 KernelSignature ElementwiseMulOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (ctx.IsDenseTensorInput("X")) {
     if (axis == -1) {
       return KernelSignature("multiply", {"X", "Y"}, {}, {"Out"});
@@ -52,7 +52,7 @@ KernelSignature ElementwiseMulOpArgumentMapping(
 
 KernelSignature ElementwiseDivOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("divide", {"X", "Y"}, {}, {"Out"});
   }
@@ -61,7 +61,7 @@ KernelSignature ElementwiseDivOpArgumentMapping(
 
 KernelSignature ElementwiseMaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("maximum", {"X", "Y"}, {}, {"Out"});
   }
@@ -70,7 +70,7 @@ KernelSignature ElementwiseMaxOpArgumentMapping(
 
 KernelSignature ElementwiseMinOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("minimum", {"X", "Y"}, {}, {"Out"});
   }
@@ -79,7 +79,7 @@ KernelSignature ElementwiseMinOpArgumentMapping(
 
 KernelSignature ElementwiseModOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("modulo", {"X", "Y"}, {}, {"Out"});
   }
@@ -88,7 +88,7 @@ KernelSignature ElementwiseModOpArgumentMapping(
 
 KernelSignature ElementwiseFloorDivOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("floor_divide", {"X", "Y"}, {}, {"Out"});
   }
@@ -97,7 +97,7 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
 
 KernelSignature ElementwisePowOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  int axis = paddle::get<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("elementwise_pow", {"X", "Y"}, {}, {"Out"});
   }

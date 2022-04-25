@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature UniformRandomOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int diag_num = paddle::any_cast<int>(ctx.Attr("diag_num"));
+  int diag_num = paddle::get<int>(ctx.Attr("diag_num"));
   if (ctx.IsDenseTensorOutput("Out")) {
     if (diag_num) {
       if (ctx.InputSize("ShapeTensorList") > 0) {
@@ -35,7 +35,7 @@ KernelSignature UniformRandomOpArgumentMapping(
                                {"Out"});
       } else {
         const auto& shape =
-            paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+            paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
           return KernelSignature("uniform_random_raw",
                                  {},
@@ -71,7 +71,7 @@ KernelSignature UniformRandomOpArgumentMapping(
             {"Out"});
       } else {
         const auto& shape =
-            paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+            paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
           return KernelSignature("uniform_random",
                                  {},
@@ -101,7 +101,7 @@ KernelSignature UniformRandomOpArgumentMapping(
                                {"Out"});
       } else {
         const auto& shape =
-            paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+            paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
           return KernelSignature("uniform_random_raw_sr",
                                  {},
@@ -137,7 +137,7 @@ KernelSignature UniformRandomOpArgumentMapping(
             {"Out"});
       } else {
         const auto& shape =
-            paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
+            paddle::get<std::vector<int64_t>>(ctx.Attr("shape"));
         if (ctx.HasInput("ShapeTensor") && shape.empty()) {
           return KernelSignature("uniform_random_sr",
                                  {},

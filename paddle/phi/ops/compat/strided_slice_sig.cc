@@ -21,9 +21,9 @@ namespace phi {
 
 KernelSignature StridedSliceOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  const auto& starts = paddle::any_cast<std::vector<int>>(ctx.Attr("starts"));
-  const auto& ends = paddle::any_cast<std::vector<int>>(ctx.Attr("ends"));
-  const auto& strides = paddle::any_cast<std::vector<int>>(ctx.Attr("strides"));
+  const auto& starts = paddle::get<std::vector<int>>(ctx.Attr("starts"));
+  const auto& ends = paddle::get<std::vector<int>>(ctx.Attr("ends"));
+  const auto& strides = paddle::get<std::vector<int>>(ctx.Attr("strides"));
 
   bool use_attr_starts = !ctx.IsRuntime() && !starts.empty();
   bool use_attr_ends = !ctx.IsRuntime() && !ends.empty();
@@ -70,9 +70,9 @@ KernelSignature StridedSliceOpArgumentMapping(
 
 KernelSignature StridedSliceGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  const auto& starts = paddle::any_cast<std::vector<int>>(ctx.Attr("starts"));
-  const auto& ends = paddle::any_cast<std::vector<int>>(ctx.Attr("ends"));
-  const auto& strides = paddle::any_cast<std::vector<int>>(ctx.Attr("strides"));
+  const auto& starts = paddle::get<std::vector<int>>(ctx.Attr("starts"));
+  const auto& ends = paddle::get<std::vector<int>>(ctx.Attr("ends"));
+  const auto& strides = paddle::get<std::vector<int>>(ctx.Attr("strides"));
 
   bool use_attr_starts = !ctx.IsRuntime() && !starts.empty();
   bool use_attr_ends = !ctx.IsRuntime() && !ends.empty();

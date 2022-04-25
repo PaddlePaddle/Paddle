@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature SplitOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // priority:  num > SectionsTensorList > sections
   // priority: AxisTensor > axis
-  if (paddle::any_cast<int>(ctx.Attr("num")) > 0) {
+  if (paddle::get<int>(ctx.Attr("num")) > 0) {
     if (ctx.HasInput("AxisTensor")) {
       return KernelSignature("split", {"X"}, {"num", "AxisTensor"}, {"Out"});
     } else {

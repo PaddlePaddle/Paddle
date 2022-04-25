@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature FillConstantBatchSizeLikeOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  const auto& str_value = paddle::any_cast<std::string>(ctx.Attr("str_value"));
+  const auto& str_value = paddle::get<std::string>(ctx.Attr("str_value"));
   if (str_value.empty()) {
     return KernelSignature(
         "full_batch_size_like",
