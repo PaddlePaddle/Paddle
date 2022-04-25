@@ -25,7 +25,7 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestMkldnnConvInt8ScalesPass(PassAutoScanTest):
+class TestConvInt8ScalesPass(PassAutoScanTest):
     """
     x_var   f_var(persistable)   bias_var(persistable)
       \       /                     /
@@ -37,6 +37,7 @@ class TestMkldnnConvInt8ScalesPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.enable_mkldnn()
+        config.pass_builder().append_pass("conv_int8_scales_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
@@ -157,9 +158,7 @@ class TestMkldnnConvInt8ScalesPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False,
-            max_examples=350,
-            passes=["conv_int8_scales_pass"])
+            quant=False, max_examples=350, passes=["conv_int8_scales_pass"])
 
 
 if __name__ == "__main__":
