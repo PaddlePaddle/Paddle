@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/pad3d_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -378,7 +379,7 @@ void Pad3DNDHWC(const T* in_data,
 template <typename T, typename Context>
 void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& paddings,
+                 const IntArray& paddings,
                  const std::string& mode,
                  float pad_value,
                  const std::string& data_format,
@@ -574,5 +575,13 @@ void Pad3dKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d, CPU, ALL_LAYOUT, phi::Pad3dKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(pad3d,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -15,6 +15,7 @@ cc_test(test_split_dev_api SRCS test_split_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_sparse_utils_dev_api SRCS test_sparse_utils_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_sparse_conv3d_dev_api SRCS test_sparse_conv3d_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_sparse_pool_dev_api SRCS test_sparse_pool_dev_api.cc DEPS phi phi_api_utils)
+cc_test(test_sparse_activation_dev_api SRCS test_sparse_activation_dev_api.cc DEPS phi phi_api_utils)
 
 cc_test(test_math_function SRCS test_math_function.cc DEPS math_function)
 if(WITH_GPU)
@@ -25,3 +26,18 @@ if(WITH_ROCM)
 endif()
 
 cc_test(test_cpu_vec SRCS test_cpu_vec.cc DEPS blas cpu_info)
+
+# For String Kernels
+cc_test(test_strings_lower_upper_dev_api SRCS test_strings_lower_upper_dev_api.cc DEPS phi phi_api_utils)
+IF(WITH_GPU)
+  nv_test(test_strings_lower_upper_dev_gpu_api SRCS test_strings_lower_upper_dev_api.cu DEPS phi phi_api_utils)
+ELSEIF(WITH_ROCM)
+  hip_test(test_strings_lower_upper_dev_gpu_api SRCS test_strings_lower_upper_dev_api.cu DEPS phi phi_api_utils)
+ENDIF()
+
+cc_test(test_strings_copy_dev_api SRCS test_strings_copy_dev_api.cc DEPS phi phi_api_utils)
+IF(WITH_GPU)
+  nv_test(test_strings_copy_dev_gpu_api SRCS test_strings_copy_dev_api.cu DEPS phi phi_api_utils)
+ELSEIF(WITH_ROCM)
+  hip_test(test_strings_copy_dev_gpu_api SRCS test_strings_copy_dev_api.cu DEPS phi phi_api_utils)
+ENDIF()

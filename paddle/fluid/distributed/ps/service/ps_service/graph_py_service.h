@@ -49,21 +49,19 @@ class GraphPyService {
   std::vector<std::string> server_list, port_list, host_sign_list;
   int server_size, shard_num;
   int num_node_types;
-  std::unordered_map<std::string, uint32_t> table_id_map;
-  std::vector<std::string> table_feat_conf_table_name;
-  std::vector<std::string> table_feat_conf_feat_name;
-  std::vector<std::string> table_feat_conf_feat_dtype;
-  std::vector<int32_t> table_feat_conf_feat_shape;
+  std::unordered_map<std::string, int> edge_to_id, feature_to_id;
+  std::vector<std::string> id_to_feature, id_to_edge;
+  std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
+  std::vector<std::vector<std::string>> table_feat_conf_feat_name;
+  std::vector<std::vector<std::string>> table_feat_conf_feat_dtype;
+  std::vector<std::vector<int>> table_feat_conf_feat_shape;
 
  public:
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
-      ::paddle::distributed::TableParameter* sparse_table_proto,
-      uint32_t table_id, std::string table_name, std::string table_type,
-      std::vector<std::string> feat_name, std::vector<std::string> feat_dtype,
-      std::vector<int32_t> feat_shape) {
-    sparse_table_proto->set_table_id(table_id);
+      ::paddle::distributed::TableParameter* sparse_table_proto) {
+    sparse_table_proto->set_table_id(0);
     sparse_table_proto->set_table_class("GraphTable");
     sparse_table_proto->set_shard_num(shard_num);
     sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
@@ -76,14 +74,26 @@ class GraphPyService {
     ::paddle::distributed::GraphParameter* graph_proto =
         sparse_table_proto->mutable_graph_parameter();
 
-    ::paddle::distributed::GraphFeature* graph_feature =
-        graph_proto->mutable_graph_feature();
+    // ::paddle::distributed::GraphFeature* graph_feature =
+    //     graph_proto->mutable_graph_feature();
 
     graph_proto->set_task_pool_size(24);
 
-    graph_proto->set_table_name(table_name);
-    graph_proto->set_table_type(table_type);
+    graph_proto->set_table_name("cpu_graph_table");
     graph_proto->set_use_cache(false);
+    for (int i = 0; i < id_to_edge.size(); i++)
+      graph_proto->add_edge_types(id_to_edge[i]);
+    for (int i = 0; i < id_to_feature.size(); i++) {
+      graph_proto->add_node_types(id_to_feature[i]);
+      auto feat_node = id_to_feature[i];
+      ::paddle::distributed::GraphFeature* g_f =
+          graph_proto->add_graph_feature();
+      for (int x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
+        g_f->add_name(table_feat_conf_feat_name[i][x]);
+        g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
+        g_f->add_shape(table_feat_conf_feat_shape[i][x]);
+      }
+    }
     // Set GraphTable Parameter
     // common_proto->set_table_name(table_name);
     // common_proto->set_name(table_type);
@@ -93,11 +103,11 @@ class GraphPyService {
     //   common_proto->add_attributes(feat_name[i]);
     // }
 
-    for (size_t i = 0; i < feat_name.size(); i++) {
-      graph_feature->add_dtype(feat_dtype[i]);
-      graph_feature->add_shape(feat_shape[i]);
-      graph_feature->add_name(feat_name[i]);
-    }
+    // for (size_t i = 0; i < feat_name.size(); i++) {
+    //   graph_feature->add_dtype(feat_dtype[i]);
+    //   graph_feature->add_shape(feat_shape[i]);
+    //   graph_feature->add_name(feat_name[i]);
+    // }
     accessor_proto->set_accessor_class("CommMergeAccessor");
   }
 
@@ -123,7 +133,7 @@ class GraphPyServer : public GraphPyService {
     set_rank(rank);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
-  int get_rank() { return rank; }
+  int GetRank() { return rank; }
   void set_rank(int rank) { this->rank = rank; }
 
   void start_server(bool block = true);
@@ -154,8 +164,8 @@ class GraphPyClient : public GraphPyService {
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
-  void stop_server();
-  void finalize_worker();
+  void StopServer();
+  void FinalizeWorker();
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
@@ -172,10 +182,8 @@ class GraphPyClient : public GraphPyService {
   std::vector<int64_t> random_sample_nodes(std::string name, int server_index,
                                            int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(
-      std::string node_type, std::vector<int64_t> node_ids,
+      std::string name, std::vector<int64_t> node_ids,
       std::vector<std::string> feature_names);
-  void use_neighbors_sample_cache(std::string name, size_t total_size_limit,
-                                  size_t ttl);
   void set_node_feat(std::string node_type, std::vector<int64_t> node_ids,
                      std::vector<std::string> feature_names,
                      const std::vector<std::vector<std::string>> features);

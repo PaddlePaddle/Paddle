@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -279,6 +280,46 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   }
 };
 
+template <typename T>
+struct SelectedRowsAddToTensor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
+                  const phi::SelectedRows& input1, framework::Tensor* input2) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
+      LOG(WARNING) << "input selected rows is empty!";
+      return;
+    }
+    auto in1_height = input1.height();
+    auto in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But recieved first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* input2_data = input2->data<T>();
+
+    for (size_t i = 0; i < in1_rows.size(); i++) {
+      for (int64_t j = 0; j < in1_row_numel; j++) {
+        input2_data[in1_rows[i] * in1_row_numel + j] +=
+            in1_data[i * in1_row_numel + j];
+      }
+    }
+  }
+};
+
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, float>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
@@ -286,6 +327,11 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
                                         platform::bfloat16>;
 
+template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, platform::bfloat16>;
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //
@@ -294,30 +340,30 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
 // add or mul.
 namespace scatter {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
-    const T* in, T* out) {
+    phi::funcs::BlasT<DeviceContext, T>* blas, size_t data_len, const T* in,
+    T* out) {
   blas->AXPY(data_len, T(1.f), in, out);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
-    const T* in, T* out) {
+    phi::funcs::BlasT<DeviceContext, T>* blas, size_t data_len, const T* in,
+    T* out) {
   for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_same<T, platform::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
-                  int64_t input_width,
-                  const platform::CPUDeviceContext& context, T* out_data) {
+                  int64_t input_width, const DeviceContext& context,
+                  T* out_data) {
 #ifndef PADDLE_WITH_MKLDNN
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
@@ -336,22 +382,22 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 #else
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
-      elementwise_add_to<T>(&blas, static_cast<size_t>(input_width),
-                            &input_data[i * input_width],
-                            &out_data[out_i * input_width]);
+      elementwise_add_to<T, DeviceContext>(
+          &blas, static_cast<size_t>(input_width), &input_data[i * input_width],
+          &out_data[out_i * input_width]);
     }
 #endif
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 typename std::enable_if<!std::is_same<T, platform::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
-                  int64_t input_width,
-                  const platform::CPUDeviceContext& context, T* out_data) {
+                  int64_t input_width, const DeviceContext& context,
+                  T* out_data) {
   VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
       continue;
@@ -361,16 +407,16 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
-      elementwise_add_to<T>(&blas, static_cast<size_t>(input_width),
-                            &input_data[i * input_width],
-                            &out_data[out_i * input_width]);
+      elementwise_add_to<T, DeviceContext>(
+          &blas, static_cast<size_t>(input_width), &input_data[i * input_width],
+          &out_data[out_i * input_width]);
     }
   }
 }
 
-template <typename T>
-struct MergeAdd<platform::CPUDeviceContext, T> {
-  phi::SelectedRows operator()(const platform::CPUDeviceContext& context,
+template <typename DeviceContext, typename T>
+struct MergeAddImpl {
+  phi::SelectedRows operator()(const DeviceContext& context,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false) {
     phi::SelectedRows out;
@@ -378,15 +424,14 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     return out;
   }
 
-  void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output,
-                  const bool sorted_result = false) {
+  void operator()(const DeviceContext& context, const phi::SelectedRows& input,
+                  phi::SelectedRows* output, const bool sorted_result = false) {
     std::vector<const phi::SelectedRows*> inputs;
     inputs.push_back(&input);
     (*this)(context, inputs, output, sorted_result);
   }
 
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output, const bool sorted_result = false) {
     if (inputs.size() == 0) {
@@ -461,7 +506,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       out.set_rows(merge_rows);
 
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+      phi::funcs::SetConstant<DeviceContext, T> constant_functor;
       constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
 
       std::unordered_map<int64_t, size_t> rows_to_id;
@@ -469,10 +514,74 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
         rows_to_id[merge_rows[i]] = i;
       }
 
-      add_sparse_inputs<T>(inputs, rows_to_id, input_width, context, out_data);
+      add_sparse_inputs<T, DeviceContext>(inputs, rows_to_id, input_width,
+                                          context, out_data);
     }
   }
 };
+
+template <typename T>
+struct MergeAdd<platform::CPUDeviceContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const platform::CPUDeviceContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<platform::CPUDeviceContext, T>()(context, input,
+                                                         sorted_result);
+  }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<platform::CPUDeviceContext, T>()(context, input, output,
+                                                  sorted_result);
+  }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<platform::CPUDeviceContext, T>()(context, inputs, output,
+                                                  sorted_result);
+  }
+};
+
+template <typename T>
+struct MergeAdd<phi::CPUContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const phi::CPUContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<phi::CPUContext, T>()(context, input, sorted_result);
+  }
+
+  void operator()(const phi::CPUContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<phi::CPUContext, T>()(context, input, output, sorted_result);
+  }
+
+  void operator()(const phi::CPUContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<phi::CPUContext, T>()(context, inputs, output, sorted_result);
+  }
+};
+
+#define TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(dtype)               \
+  template struct MergeAddImpl<platform::CPUDeviceContext, dtype>; \
+  template struct MergeAddImpl<phi::CPUContext, dtype>;            \
+  template struct MergeAdd<platform::CPUDeviceContext, dtype>;     \
+  template struct MergeAdd<phi::CPUContext, dtype>;
+
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(float)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(double)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int64_t)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::complex<float>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::complex<double>)
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
@@ -713,17 +822,6 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
     }
   }
 };
-
-template struct MergeAdd<platform::CPUDeviceContext, int>;
-template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
-template struct MergeAdd<platform::CPUDeviceContext, float>;
-template struct MergeAdd<platform::CPUDeviceContext, double>;
-template struct MergeAdd<platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>;
-template struct MergeAdd<platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>;
-template struct MergeAdd<platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>;
 
 #ifdef PADDLE_WITH_XPU
 template struct MergeAdd<platform::XPUDeviceContext, float>;

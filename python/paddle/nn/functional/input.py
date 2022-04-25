@@ -19,8 +19,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle import _C_ops
 from paddle import in_dynamic_mode
-from paddle.framework import _in_eager_mode
-
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 __all__ = []
 
 
@@ -87,31 +86,34 @@ def one_hot(x, num_classes, name=None):
 
     """
 
-    if in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_one_hot(x, num_classes)
-        return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
-                                 False)
+    if in_dygraph_mode():
+        return _C_ops.final_state_one_hot(x, num_classes)
     else:
-        check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
-        helper = LayerHelper("one_hot_v2", **locals())
-
-        one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
-        if not isinstance(num_classes, Variable):
-            # user attribute
-            inputs = {'X': x}
-            attrs = {'depth': num_classes, 'allow_out_of_range': False}
+        if _in_legacy_dygraph():
+            return _C_ops.one_hot_v2(x, 'depth', num_classes,
+                                     'allow_out_of_range', False)
         else:
-            num_classes.stop_gradient = True
-            inputs = {'X': x, 'depth_tensor': num_classes}
-            attrs = {'allow_out_of_range': False}
-        helper.append_op(
-            type="one_hot_v2",
-            inputs=inputs,
-            attrs=attrs,
-            outputs={'Out': one_hot_out},
-            stop_gradient=True)
-        return one_hot_out
+            check_variable_and_dtype(x, 'input', ['int32', 'int64'],
+                                     'one_hot_v2')
+            helper = LayerHelper("one_hot_v2", **locals())
+
+            one_hot_out = helper.create_variable_for_type_inference(
+                dtype='float32')
+            if not isinstance(num_classes, Variable):
+                # user attribute
+                inputs = {'X': x}
+                attrs = {'depth': num_classes, 'allow_out_of_range': False}
+            else:
+                num_classes.stop_gradient = True
+                inputs = {'X': x, 'depth_tensor': num_classes}
+                attrs = {'allow_out_of_range': False}
+            helper.append_op(
+                type="one_hot_v2",
+                inputs=inputs,
+                attrs=attrs,
+                outputs={'Out': one_hot_out},
+                stop_gradient=True)
+            return one_hot_out
 
 
 def embedding(x, weight, padding_idx=None, sparse=False, name=None):

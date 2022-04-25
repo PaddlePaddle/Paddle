@@ -32,13 +32,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-
+DECLARE_int32(pserver_timeout_ms);
 namespace paddle {
 namespace distributed {
 
@@ -51,24 +52,80 @@ class OnHeterRpcDone : public google::protobuf::Closure {
  public:
   explicit OnHeterRpcDone(HeterRpcCallbackFunc func) : handler_(func) {}
   virtual ~OnHeterRpcDone() {}
-  void Run() {
-    std::unique_ptr<OnHeterRpcDone> self_guard(this);
-    handler_(this);
+  void Run() { handler_(this); }
+
+  void add_promise(std::shared_ptr<std::promise<int32_t>>& promise) {  // NOLINT
+    _promises.push_back(promise);
   }
 
+  void set_promise_value(int value) {
+    for (auto& promise : _promises) {
+      promise->set_value(value);
+    }
+  }
+  int CheckResponse() { return 0; }
+  std::vector<std::shared_ptr<std::promise<int32_t>>> _promises;
   HeterRpcCallbackFunc handler_;
+
+  MultiVariableMessage request;
   MultiVariableMessage response;
+
+  PsResponseMessage ps_response;
+
   brpc::Controller cntl;
+  // PsRequestMessage *request(size_t i) { return &_requests[i]; }
+  // PsResponseMessage *response(size_t i) { return &_responses[i]; }
+  // std::vector<PsRequestMessage> _requests;
+  // std::vector<PsResponseMessage> _responses;
+  // std::vector<std::shared_ptr<brpc::Controller>> _cntls;
 };
 
 class HeterClient {
  public:
   virtual ~HeterClient() {}
 
-  HeterClient() {
-    running_ = true;
-    main_thread_.reset(
-        new std::thread(std::bind(&HeterClient::MainThread, this)));
+  void InitClientChannels(bool need_encrypt,
+                          const std::vector<std::string>& node_list,
+                          int32_t peer_role) {
+    brpc::ChannelOptions options;
+    options.protocol = "baidu_std";
+    options.connection_type = "single";
+    options.timeout_ms = FLAGS_pserver_timeout_ms;
+    std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
+    if (peer_role == PEER_ROLE_IS_SWITCH) {
+#ifdef PADDLE_WITH_ARM_BRPC
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
+      options.connection_type = "";
+      VLOG(4) << "ssl enabled in arm";
+#else
+      options.ssl_options.enable = need_encrypt;
+#endif
+      client_channels = &peer_switch_channels_;
+    } else if (peer_role == PEER_ROLE_IS_WORKER) {
+      client_channels = &peer_worker_channels_;
+    } else {
+      LOG(ERROR) << "init switch client failed, peer_role not valid";
+    }
+    (*client_channels).resize(node_list.size());
+    for (size_t i = 0; i < node_list.size(); ++i) {
+      (*client_channels)[i].reset(new brpc::Channel());
+      if ((*client_channels)[i]->Init(node_list[i].c_str(), "", &options) !=
+          0) {
+        VLOG(0) << "client channel init failed! try again";
+        auto ip_port = paddle::string::Split(node_list[i], ':');
+        std::string ip = ip_port[0];
+        int port = std::stoi(ip_port[1]);
+        std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+        if ((*client_channels)[i]->Init(int_ip_port.c_str(), "", &options) !=
+            0) {
+          LOG(ERROR) << "client channel init failed! peer ip_port = "
+                     << int_ip_port;
+        }
+      }
+    }
+    VLOG(4) << "InitClientChannels success";
   }
 
   void CreateClient2XpuConnection();
@@ -80,14 +137,28 @@ class HeterClient {
                         const std::vector<std::string>& recv_var_name,
                         const std::string& mode = "forward");
 
+  int Send(int group_id, const std::vector<std::string>& var_names,
+           const std::vector<int>& vars_len, void* data_ptr, int64_t data_size);
+
+  int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
+           const std::string& message_name,
+           const std::vector<std::string>& send_var_names);
+
+  int Recv(int group_id, const std::vector<std::string>& var_names,
+           void* data_ptr, int64_t data_size);
+
+  int Recv(const platform::DeviceContext& ctx,
+           framework::Scope& recv_scope,  // NOLINT
+           const std::string& message_name,
+           const std::vector<std::string>& recv_var_names);
+
   // HeterClient singleton
   static std::shared_ptr<HeterClient> GetInstance(
       const std::vector<std::string>& endpoint,
       const std::vector<std::string>& previous_endpoint,
       const int& trainer_id) {
     if (NULL == s_instance_) {
-      is_initialized_ = true;
-      s_instance_.reset(new paddle::distributed::HeterClient());
+      s_instance_.reset(new HeterClient());
       s_instance_->SetXpuList(endpoint);
       s_instance_->SetPreviousXpuList(previous_endpoint);
       s_instance_->SetTrainerID(trainer_id);
@@ -96,13 +167,29 @@ class HeterClient {
     return s_instance_;
   }
 
+  // switch client singleton
+  static HeterClient& GetSwitchInstance(
+      const std::vector<std::string>& peer_endpoints, int32_t peer_role) {
+    static HeterClient switch_s_instance_;
+    if (peer_endpoints.empty()) {
+      VLOG(4) << "init switch client failed, null peer_endpoints";
+    }
+    VLOG(4) << "peer role is: " << peer_role
+            << ", addr is: " << peer_endpoints[0];
+    switch_s_instance_.SetPeerSwitchList(peer_endpoints);
+    switch_s_instance_.InitClientChannels(false, peer_endpoints, peer_role);
+    return switch_s_instance_;
+  }
+
+  void SetPeerSwitchList(const std::vector<std::string>& peer_endpoints) {
+    peer_switch_list_ = peer_endpoints;
+  }
+
+  void SetPeerWorkerList(const std::vector<std::string>& worker_endpoints) {
+    peer_worker_list_ = worker_endpoints;
+  }
+
   void Stop();
-
-  void FinalizeWorker();
-
-  void MainThread();
-
-  void RpcProfilerControl();
 
   std::future<int32_t> SendCmd(uint32_t table_id, int cmd_id,
                                const std::vector<std::string>& params);
@@ -124,20 +211,32 @@ class HeterClient {
 
   void SetTrainerID(const int& trainer_id) { trainer_id_ = trainer_id; }
 
+ public:
+  std::vector<std::string> send_switch_list_;
+  std::vector<std::string> recv_switch_list_;
+
+  std::vector<std::string> peer_switch_list_;
+  std::vector<std::string> peer_worker_list_;
+  std::vector<std::shared_ptr<brpc::Channel>> send_switch_channels_;
+  std::vector<std::shared_ptr<brpc::Channel>> recv_switch_channels_;
+
+  std::vector<std::shared_ptr<brpc::Channel>> peer_switch_channels_;
+  std::vector<std::shared_ptr<brpc::Channel>> peer_worker_channels_;
+
  private:
+  HeterClient() {}
+  HeterClient& operator=(const HeterClient&);
+  HeterClient(const HeterClient&);
+
   static std::shared_ptr<HeterClient> s_instance_;
-  static bool is_initialized_;
-  std::unique_ptr<std::thread> main_thread_{nullptr};
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   std::vector<std::shared_ptr<brpc::Channel>> previous_xpu_channels_;
 
-  DISABLE_COPY_AND_ASSIGN(HeterClient);
+  // DISABLE_COPY_AND_ASSIGN(HeterClient);
   std::vector<std::string> xpu_list_;
   std::vector<std::string> previous_xpu_list_;
 
-  bool running_ = false;
   int trainer_id_;
-  bool do_server_profiler_ = false;
 };
 
 }  // end namespace distributed

@@ -20,9 +20,9 @@
 namespace phi {
 template <typename T, typename Context>
 void KthvalueGradKernel(const Context& dev_ctx,
-                        const DenseTensor& d_out,
                         const DenseTensor& x,
                         const DenseTensor& indices,
+                        const DenseTensor& d_out,
                         int k,
                         int axis,
                         bool keepdim,

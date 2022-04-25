@@ -414,7 +414,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   // 1.2 alloc tmp data for CoutBlock
   const int size_count_block = need_grids + 1;
   std::vector<int> dims_vec = {size_count_block * 2};
-  ScalarArray dims_array(dims_vec);
+  IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
   // 1.3 launch CountKernl

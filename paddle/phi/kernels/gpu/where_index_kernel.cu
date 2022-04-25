@@ -29,33 +29,32 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-template <typename T1, typename T2, typename OutT>
+template <typename MaskT, typename IndexT, typename OutT>
 struct IndexFunctor {
-  T2 stride[phi::DDim::kMaxRank];
-  int dims;
+  IndexT strides[phi::DDim::kMaxRank];
+  int rank;
+
   explicit IndexFunctor(const phi::DDim &in_dims) {
-    dims = in_dims.size();
-    std::vector<T2> strides_in_tmp;
-    strides_in_tmp.resize(dims, 1);
-    // get strides according to in_dims
-    for (T2 i = 1; i < dims; i++) {
-      strides_in_tmp[i] = strides_in_tmp[i - 1] * in_dims[dims - i];
+    rank = in_dims.size();
+    // Get strides according to in_dims
+    strides[0] = 1;
+    for (IndexT i = 1; i < rank; i++) {
+      strides[i] = strides[i - 1] * in_dims[rank - i];
     }
-    memcpy(stride, strides_in_tmp.data(), dims * sizeof(T2));
   }
 
   HOSTDEVICE inline void operator()(OutT *out,
-                                    const T1 *mask,
-                                    const T2 *index,
+                                    const MaskT *mask,
+                                    const IndexT *index,
                                     const int num) {
     int store_fix = 0;
     for (int idx = 0; idx < num; idx++) {
       if (mask[idx]) {
-        T2 data_index = index[idx];
+        IndexT data_index = index[idx];
         // get index
-        for (int rank_id = dims - 1; rank_id >= 0; --rank_id) {
-          out[store_fix] = static_cast<OutT>(data_index / stride[rank_id]);
-          data_index = data_index % stride[rank_id];
+        for (int rank_id = rank - 1; rank_id >= 0; --rank_id) {
+          out[store_fix] = static_cast<OutT>(data_index / strides[rank_id]);
+          data_index = data_index % strides[rank_id];
           store_fix++;
         }
       }

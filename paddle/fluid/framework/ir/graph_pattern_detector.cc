@@ -2069,6 +2069,29 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
   return out_var;
 }
 
+PDNode *patterns::ResidualElementwise::operator()(
+    PDNode *op_var, PDNode *residual_var, const std::string elementwise_type,
+    bool as_x) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
+
+  if (as_x) {
+    op_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+    residual_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+  } else {
+    op_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+    residual_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+  }
+  auto out_var = pattern->NewNode(elementwise_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output(elementwise_type, "Out");
+
+  elementwise_op->LinksFrom({op_var, residual_var});
+  elementwise_op->LinksTo({out_var});
+
+  return out_var;
+}
+
 PDNode *patterns::Concat::operator()() {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
 
@@ -2949,6 +2972,84 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
   any_op2->LinksFrom({quant_dequant_out});
 }
 
+void patterns::DeleteWeightQuantDequantLinearOpPattern::operator()() {
+  auto weight_dequantize_linear_op_x =
+      pattern->NewNode(weight_dequantize_linear_op_x_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op_scale =
+      pattern->NewNode(weight_dequantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto weight_dequantize_linear_op =
+      pattern->NewNode(weight_dequantize_linear_op_repr())
+          ->assert_is_op("dequantize_linear");
+
+  auto weight_dequantize_linear_op_out =
+      pattern->NewNode(weight_dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  weight_dequantize_linear_op
+      ->LinksFrom(
+          {weight_dequantize_linear_op_x, weight_dequantize_linear_op_scale})
+      .LinksTo({weight_dequantize_linear_op_out});
+  any_op2->LinksFrom({weight_dequantize_linear_op_out});
+}
+
+void patterns::DeleteQuantDequantLinearOpPattern::operator()() {
+  auto quantize_linear_op_x = pattern->NewNode(quantize_linear_op_x_repr())
+                                  ->AsInput()
+                                  ->assert_is_op_input("quantize_linear", "X");
+
+  auto quantize_linear_op_scale =
+      pattern->NewNode(quantize_linear_op_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("quantize_linear", "Scale")
+          ->assert_is_persistable_var();
+
+  auto quantize_linear_op = pattern->NewNode(quantize_linear_op_repr())
+                                ->assert_is_op("quantize_linear");
+
+  auto quantize_linear_op_out =
+      pattern->NewNode(quantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("quantize_linear", "Y")
+          ->assert_is_op_input("dequantize_linear", "X")
+          ->assert_var_not_persistable();
+
+  // Can not add this node. Todo: Wangzheee
+  /*
+    auto dequantize_linear_op_scale =
+        pattern->NewNode(dequantize_linear_op_scale_repr())
+            ->assert_is_op_input("dequantize_linear", "Scale")
+            ->AsIntermediate();
+  */
+
+  auto dequantize_linear_op = pattern->NewNode(dequantize_linear_op_repr())
+                                  ->assert_is_op("dequantize_linear");
+
+  auto dequantize_linear_op_out =
+      pattern->NewNode(dequantize_linear_op_out_repr())
+          ->AsIntermediate()
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  quantize_linear_op
+      ->LinksFrom({quantize_linear_op_x, quantize_linear_op_scale})
+      .LinksTo({quantize_linear_op_out});
+  dequantize_linear_op->LinksFrom({quantize_linear_op_out})
+      .LinksTo({dequantize_linear_op_out});
+  any_op2->LinksFrom({dequantize_linear_op_out});
+}
+
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
     const std::string &op_name, bool with_reshape_xshape,
     bool with_transpose_xshape) {
@@ -3311,25 +3412,14 @@ PDNode *patterns::LayerNorm::operator()() {
   return shift_out;
 }
 
-// Add support int8 flag
+// Add support int8 flag and out_threshold
 PDNode *patterns::AddSupportInt8::operator()() {
-  auto prev_op =
-      pattern->NewNode(prev_op_repr())
-          ->assert_is_op()
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("out_threshold") ? true : false;
-          });
-  auto prev_out = pattern->NewNode(prev_out_repr())->assert_is_var();
-  auto quant_op =
-      pattern->NewNode(quant_op_repr())
-          ->assert_is_op()
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("out_threshold") ? true : false;
-          });
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op();
   auto quant_out =
-      pattern->NewNode(quant_out_repr())->assert_is_var()->AsOutput();
-  prev_op->LinksTo({prev_out});
-  prev_out->LinksTo({quant_op});
+      pattern->NewNode(quant_out_repr())
+          ->assert_is_var()
+          ->assert_more([&](Node *node) { return node->outputs.size() > 0; })
+          ->AsOutput();
   quant_op->LinksTo({quant_out});
   return quant_out;
 }
