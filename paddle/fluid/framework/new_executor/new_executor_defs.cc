@@ -755,6 +755,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
 }
 
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
+}
+
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
   return runtime_ctx_;
 }

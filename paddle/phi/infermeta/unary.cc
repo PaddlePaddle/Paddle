@@ -228,13 +228,6 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
-void CopyToInferMeta(const MetaTensor& x,
-                     Backend backend,
-                     bool blocking,
-                     MetaTensor* out) {
-  UnchangedInferMeta(x, out);
-}
-
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
@@ -3008,6 +3001,5 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);

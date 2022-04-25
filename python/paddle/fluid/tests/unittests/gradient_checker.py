@@ -20,11 +20,13 @@ import six
 import collections
 import numpy as np
 from itertools import product
+import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
+from paddle.fluid.framework import _test_eager_guard
 
 
 def _product(t):
@@ -510,3 +512,369 @@ def triple_grad_check(x,
         eps=eps,
         atol=atol,
         rtol=rtol)
+
+
+def get_static_double_grad(x,
+                           y,
+                           x_init=None,
+                           dy_init=None,
+                           place=None,
+                           program=None):
+    """
+    Get Double Grad result of static graph.
+
+    Args:
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        program (Program|None): a Program with forward pass.
+            If None, use fluid.default_main_program().
+    Returns:
+        A list of numpy array that stores second derivative result calulated by static graph.
+    """
+
+    if program is None:
+        program = fluid.default_main_program()
+    scope = fluid.executor.global_scope()
+    y_grads = []
+    for i in six.moves.xrange(len(y)):
+        yi = y[i]
+        dyi_name = _append_grad_suffix_(yi.name)
+        np_type = dtype_to_np_dtype(yi.dtype)
+        dy = program.global_block().create_var(
+            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy.stop_gradient = False
+        set_var_in_scope(scope, place, dyi_name, dy_init[i])
+        y_grads.append(dy)
+
+    # append first order grads
+    dx = fluid.gradients(y, x, y_grads)
+
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init += dy_init
+    y = dx
+
+    # check input arguments
+    x = _as_list(x)
+    y = _as_list(y)
+
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    if place is None:
+        place = fluid.CPUPlace()
+    if program is None:
+        program = fluid.default_main_program()
+
+    # init variable in strtup program
+    scope = fluid.executor.global_scope()
+    exe = fluid.Executor(place)
+    exe.run(fluid.default_startup_program())
+
+    x_init = _as_list(x_init)
+    # init inputs if x_init is not None
+    if x_init:
+        if len(x_init) != len(x):
+            raise ValueError('len(x_init) (=%d) is not the same'
+                             ' as len(x) (= %d)' % (len(x_init), len(x)))
+        # init variable in main program
+        for var, arr in zip(x, x_init):
+            assert var.shape == arr.shape
+        feeds = {k.name: v for k, v in zip(x, x_init)}
+        exe.run(program, feed=feeds, scope=scope)
+
+    dys = []
+    for yi in y:
+        np_type = dtype_to_np_dtype(yi.dtype)
+        dy_name = _append_grad_suffix_(yi.name)
+        # create dy Variable in Program
+        dy = program.global_block().create_var(
+            name=dy_name, shape=yi.shape, dtype=np_type, persistable=True)
+        # init dy tensor in scope
+        value = np.ones(yi.shape, dtype=np_type)
+        dy_t = set_var_in_scope(scope, place, dy_name, value)
+        dys.append(dy)
+
+    # append second order backward
+    ddx = fluid.gradients(y, x, dys)
+    exe = fluid.Executor(place)
+
+    # filter None in dx for DX/DY may be None in kernel
+    # only fetch not None dx in exe.run
+    filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
+    filted_idx, filted_ddx = zip(*filted)
+    ddx_res = exe.run(program, scope=scope, fetch_list=filted_ddx)
+
+    return ddx_res
+
+
+def get_eager_double_grad(func,
+                          x_init=None,
+                          dy_init=None,
+                          return_mid_result=False):
+    """
+    Get Double Grad result of dygraph.
+
+    Args:
+        func: A wrapped dygraph function that its logic is equal to static program
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
+        return_mid_result (bool): A flag that controls the return content.
+    Returns:
+        If 'return_mid_result' set True. 
+        the second order derivative and the inputs of second order derivative's calculation
+        will be returned for higher order derivative's calculation.
+        If 'return_mid_result' set False. 
+        A list of numpy array that stores second derivative result calulated by dygraph.
+    """
+    inputs = []
+    dys = []
+    for x in x_init:
+        input_tensor = paddle.to_tensor(x)
+        input_tensor.stop_gradient = False
+        inputs.append(input_tensor)
+    for dy in dy_init:
+        dy_tensor = paddle.to_tensor(dy)
+        dy_tensor.stop_gradient = False
+        dys.append(dy_tensor)
+    # calculate first derivative
+    outputs = func(inputs)
+    d_inputs = paddle.grad(
+        outputs=outputs, inputs=inputs, grad_outputs=dys, create_graph=True)
+
+    # calcluate second derivative
+    inputs = inputs + dys
+    ddys = []
+    if return_mid_result:
+        create_graph = True
+    else:
+        create_graph = False
+
+    for d_input in d_inputs:
+        d_input.stop_gradient = False
+        ddy = paddle.ones(shape=d_input.shape, dtype=d_input.dtype)
+        ddy.stop_gradient = False
+        ddys.append(ddy)
+    dd_inputs = paddle.grad(
+        outputs=d_inputs,
+        inputs=inputs,
+        grad_outputs=ddys,
+        create_graph=create_graph)
+    if return_mid_result:
+        return dd_inputs, inputs + ddys
+    else:
+        return [dd_input.numpy() for dd_input in dd_inputs]
+
+
+def double_grad_check_for_dygraph(func,
+                                  x,
+                                  y,
+                                  x_init=None,
+                                  place=None,
+                                  atol=1e-5,
+                                  rtol=1e-3,
+                                  raise_exception=True):
+    """
+    Check second order gradients of dygraph. This function will compare the 
+    second order gradients of dygraph and second order gradients of static graph 
+    to validate dygraph's correctness
+
+    Args:
+        func: A wrapped dygraph function that its logic is equal to static program
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        eps (float): perturbation for finite differences.
+        atol (float): absolute tolerance.
+        rtol (float): relative tolerance.
+        raise_exception (bool): whether to raise an exception if
+            the check fails. Default is True.
+    """
+
+    def fail_test(msg):
+        if raise_exception:
+            raise RuntimeError(msg)
+        return False
+
+    # check input arguments
+    x = _as_list(x)
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    y = _as_list(y)
+
+    y_grads_init = []
+    for yi in y:
+        np_type = dtype_to_np_dtype(yi.dtype)
+        v = np.random.random(size=yi.shape).astype(np_type)
+        y_grads_init.append(v)
+
+    x_init = _as_list(x_init)
+
+    paddle.disable_static()
+    with _test_eager_guard():
+        eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init)
+    paddle.enable_static()
+
+    static_double_grad = get_static_double_grad(x, y, x_init, y_grads_init,
+                                                place)
+
+    for i in six.moves.xrange(len(static_double_grad)):
+        if not np.allclose(static_double_grad[i], eager_double_grad[i], rtol,
+                           atol):
+            msg = 'Check eager double result fail. Mismatch between static_graph double grad %s ' \
+                'and eager double grad %s on %s,\n' \
+                'static:%s\n eager:%s\n' \
+                % (static_double_grad[i].name, eager_double_grad[i].name, str(place), static_double_grad[i], eager_double_grad[i])
+            return fail_test(msg)
+
+
+def get_static_triple_grad(x,
+                           y,
+                           x_init=None,
+                           dy_init=None,
+                           place=None,
+                           program=None):
+    """
+    Get Triple Grad result of static graph.
+
+    Args:
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        program (Program|None): a Program with forward pass.
+            If None, use fluid.default_main_program().
+    Returns:
+        A list of numpy array that stores third derivative result calulated by static graph.
+    """
+    if program is None:
+        program = fluid.default_main_program()
+    scope = fluid.executor.global_scope()
+    y_grads = []
+    for i in six.moves.xrange(len(y)):
+        yi = y[i]
+        dyi_name = _append_grad_suffix_(yi.name)
+        np_type = dtype_to_np_dtype(yi.dtype)
+        dy = program.global_block().create_var(
+            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+        dy.stop_gradient = False
+        set_var_in_scope(scope, place, dyi_name, dy_init[i])
+        y_grads.append(dy)
+
+    # append first order grads
+    dx = fluid.gradients(y, x, y_grads)
+
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init += dy_init
+    y = dx
+
+    x_grads_grads_init = []
+    for dxi in dx:
+        np_type = dtype_to_np_dtype(dxi.dtype)
+        value = np.ones(dxi.shape, dtype=np_type)
+        x_grads_grads_init.append(value)
+
+    return get_static_double_grad(
+        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program)
+
+
+def get_eager_triple_grad(func,
+                          x_init=None,
+                          dy_init=None,
+                          return_mid_result=False):
+    """
+    Get triple Grad result of dygraph.
+
+    Args:
+        func: A wrapped dygraph function that its logic is equal to static program
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
+        return_mid_result (list[Tensor], list[Tensor]): If set True, the 
+    Returns:
+        A list of numpy array that stores second derivative result calulated by dygraph
+    """
+    dd_y, dd_x = get_eager_double_grad(
+        func, x_init, dy_init, return_mid_result=True)
+
+    # calcluate third derivative
+    dddys = []
+    for dd_yi in dd_y:
+        dd_yi.stop_gradient = False
+        dddy = paddle.ones(shape=dd_yi.shape, dtype=dd_yi.dtype)
+        dddy.stop_gradient = False
+        dddys.append(dddy)
+    ddd_inputs = paddle.grad(outputs=dd_y, inputs=dd_x, grad_outputs=dddys)
+    return [ddd_input.numpy() for ddd_input in ddd_inputs]
+
+
+def triple_grad_check_for_dygraph(func,
+                                  x,
+                                  y,
+                                  x_init=None,
+                                  place=None,
+                                  atol=1e-5,
+                                  rtol=1e-3,
+                                  raise_exception=True):
+    """
+    Check third order gradients of dygraph. This function will compare the 
+    third order gradients of dygraph and third order gradients of static graph 
+    to validate dygraph's correctness
+
+    Args:
+        func: A wrapped dygraph function that its logic is equal to static program
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        eps (float): perturbation for finite differences.
+        atol (float): absolute tolerance.
+        rtol (float): relative tolerance.
+        raise_exception (bool): whether to raise an exception if
+            the check fails. Default is True.
+    """
+
+    def fail_test(msg):
+        if raise_exception:
+            raise RuntimeError(msg)
+        return False
+
+    # check input arguments
+    x = _as_list(x)
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    y = _as_list(y)
+
+    y_grads_init = []
+    for yi in y:
+        np_type = dtype_to_np_dtype(yi.dtype)
+        v = np.random.random(size=yi.shape).astype(np_type)
+        y_grads_init.append(v)
+
+    x_init = _as_list(x_init)
+
+    paddle.disable_static()
+    with _test_eager_guard():
+        eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init)
+    paddle.enable_static()
+
+    static_triple_grad = get_static_triple_grad(x, y, x_init, y_grads_init,
+                                                place)
+
+    for i in six.moves.xrange(len(static_triple_grad)):
+        if not np.allclose(static_triple_grad[i], eager_triple_grad[i], rtol,
+                           atol):
+            msg = 'Check eager double result fail. Mismatch between static_graph double grad %s ' \
+                'and eager double grad %s on %s,\n' \
+                'static:%s\n eager:%s\n' \
+                % (static_triple_grad[i].name, eager_triple_grad[i].name, str(place), static_triple_grad[i], eager_triple_grad[i])
+            return fail_test(msg)

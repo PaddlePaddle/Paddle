@@ -39,6 +39,8 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "http_proxy": "",
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
+            "SAVE_CACHE_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
             "LOG_PREFIX": self.__class__.__name__,
         }
 
