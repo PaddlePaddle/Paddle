@@ -68,6 +68,25 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
                 self.assertEqual(prim_out[k].shape, v.shape)
 
 
+class TestElementWiseMulOrig2Prim(TestElementWiseAddOrig2Prim):
+    def init_data(self):
+        self.op_type = 'elementwise_mul'
+        X = paddle.static.data(name='X', shape=[8, 8], dtype='float')
+        Y = paddle.static.data(name='Y', shape=[8, 8], dtype='float')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, Y)
+        self.all_ops = ['elementwise_mul', 'mul_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
 class TestMatmulV2Orig2Prim(TestElementWiseAddOrig2Prim):
     def init_data(self):
         self.op_type = 'matmul_v2'
@@ -201,7 +220,27 @@ class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
-class TestPNormOrig2Prim(TestElementWiseAddOrig2Prim):
+class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
+    def init_data(self):
+        self.op_type = 'p_norm'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+
+        self.input = {'X': X, }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {
+            'porder': 1,
+            'asvector': True,
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['p_norm', 'reshape_p', 'sqrt_p', 'reduce_p', 'mul_p']
+        self.out_map = {0: self.output['Out']}
+
+
+class TestPNormOrig2Prim2(TestElementWiseAddOrig2Prim):
     def init_data(self):
         self.op_type = 'p_norm'
         X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')

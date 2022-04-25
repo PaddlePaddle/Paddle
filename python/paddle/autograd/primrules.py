@@ -111,6 +111,7 @@ index_select
 elementwise_sub
 scale
 assign
+elementwise_mul
 
 These original ops are partially supported:
 
@@ -120,6 +121,24 @@ concat
 slice
 p_norm
 """
+
+
+@REGISTER_ORIG2PRIM('elementwise_mul')
+def elementwise_mul_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    if op.attr('Scale_x') - 1.0 > 1e-5:
+        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = mul(x, tmp)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = mul(y, tmp)
+    z = mul(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        tmp = fill_const(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = mul(z, tmp)
+    return z
 
 
 @REGISTER_ORIG2PRIM('matmul_v2')
@@ -223,12 +242,16 @@ def p_norm_orig2prim(op, x):
         return n
 
     assert op.attr(
-        'porder') - 2.0 < 1e-5, 'Only support lower l2 norm currently'
-    assert op.attr(
         'asvector'), 'Only support lower pnorm when asvector=True currently'
     if len(x.shape) > 1:
         x = reshape(x, shape=[num_el(x.shape)])
-    return sqrt(reduce(mul(x, x), axis=[0]))
+
+    if op.attr('porder') - 2.0 < 1e-5:
+        return sqrt(reduce(mul(x, x), axis=[0]))
+    elif op.attr('porder') - 1.0 < 1e-5:
+        return reduce(sqrt(mul(x, x)), axis=[0])
+    else:
+        raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
 @REGISTER_ORIG2PRIM('index_select')
