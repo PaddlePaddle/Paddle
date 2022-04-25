@@ -2238,35 +2238,30 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
     examples` respectively). The shapes of all input tensors should be
     :math:`(N, D)`.
 
-    The distance swap is described in detail in the paper `Learning shallow
-    convolutional feature descriptors with triplet losses`_ by
-    V. Balntas, E. Riba et al.
-
     The loss function for each sample in the mini-batch is:
 
     .. math::
         L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
 
 
-    where
+    where the default distance function
 
     .. math::
         d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
+    or user can defined their own distance functions.
+
     :param input:Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
-    :param positive:Positive tensor containing 1 or -1, the data type is float32 or float64.
+    :param positive:Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param negative:Negative tensor containing 1 or -1, the data type is float32 or float64.
+    :param negative:Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
     :param distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-    :param swap:The distance swap is described in detail in the paperT
-            `Learning shallow convolutional feature descriptors with triplet losses` by
-            V. Balntas, E. Riba et al. Default: ``False``.
+    :param swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
+                and negative samples) if swap distance smaller than negative distance. Default: ``False``.
     :param margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
-            between the positive and negative distances required for the loss to be 0. Larger
-            margins penalize cases where the negative examples are not distant enough from the
-            anchors, relative to the positives.
+            between the positive and negative distances required for the loss to be 0.
     :param reduction:Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -2299,9 +2294,9 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
             "'reduction' in 'triplet_margin_with_distance_loss' "
             "should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
-    if margin<0:
+    if margin < 0:
         raise ValueError(
-            "margin should not smaller than 0"
+            "The margin between positive samples and negative samples should be greater than 0."
         )
     if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -2311,16 +2306,11 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_loss')
 
-    # reshape to [batch_size, N]
-    input = input.flatten(start_axis=1,stop_axis=-1)
-    positive = positive.flatten(start_axis=1,stop_axis=-1)
-    negative = negative.flatten(start_axis=1,stop_axis=-1)
     if not(input.shape==positive.shape==negative.shape):
         raise ValueError(
             "input's shape must equal to "
             "positive's shape and  "
             "negative's shape")
-
 
     distance_function = distance_function if distance_function is not None \
         else paddle.nn.PairwiseDistance(2)
@@ -2331,6 +2321,11 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
     if swap:
         swap_dist = distance_function(positive, negative)
         negative_dist = paddle.minimum(negative_dist, swap_dist)
+
+    if not paddle.all(positive_dist > 0) or not paddle.all(negative_dist > 0):
+        raise ValueError(
+            "The positive distance or negative distance should be greater than 0, "
+            "The distance functions should be checked.")
 
     loss = paddle.clip(positive_dist-negative_dist+margin, min=0.0)
 

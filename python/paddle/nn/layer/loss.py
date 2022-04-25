@@ -1313,37 +1313,36 @@ class TripletMarginWithDistanceLoss(Layer):
     examples` respectively). The shapes of all input tensors should be
     :math:`(N, D)`.
 
-    The distance swap is described in detail in the paper `Learning shallow
-    convolutional feature descriptors with triplet losses`_ by
-    V. Balntas, E. Riba et al.
-
     The loss function for each sample in the mini-batch is:
 
     .. math::
         L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
 
+    Parameters:
+        distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+        swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
+                and negative samples) if swap distance smaller than negative distance. Default: ``False``.
+        margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
+                between the positive and negative distances required for the loss to be 0. Larger
+                margins penalize cases where the negative examples are not distant enough from the
+                anchors, relative to the positives.
+        reduction:Indicate how to average the loss by batch_size.
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
 
-    :param input:Input tensor, the data type is float32 or float64.
-            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
-    :param positive:Positive tensor containing 1 or -1, the data type is float32 or float64.
-            The shape of label is the same as the shape of input.
-    :param negative:Negative tensor containing 1 or -1, the data type is float32 or float64.
-            The shape of label is the same as the shape of input.
-    :param distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-    :param swap:The distance swap is described in detail in the paperT
-            `Learning shallow convolutional feature descriptors with triplet losses` by
-            V. Balntas, E. Riba et al. Default: ``False``.
-    :param margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
-            between the positive and negative distances required for the loss to be 0. Larger
-            margins penalize cases where the negative examples are not distant enough from the
-            anchors, relative to the positives.
-    :param reduction:Indicate how to average the loss by batch_size.
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-            Default: ``'mean'``
-    :return:Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+    Call Parameters:
+        input:Input tensor, the data type is float32 or float64.
+                the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+        positive:Positive tensor, the data type is float32 or float64.
+                The shape of label is the same as the shape of input.
+        negative:Negative tensor, the data type is float32 or float64.
+                The shape of label is the same as the shape of input.
+
+    Return：
+        Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Examples:
         .. code-block:: python
