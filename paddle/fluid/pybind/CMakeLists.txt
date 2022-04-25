@@ -160,6 +160,7 @@ if(WITH_PYTHON)
 
   create_static_lib(glob_op_static ${GLOB_OP_LIB})
 
+  configure_file(${PROJECT_SOURCE_DIR}/cmake/dummy.c.in ${CMAKE_CURRENT_BINARY_DIR}/glob_op_shared_dummy.c @ONLY)
   ADD_LIBRARY(glob_op_shared SHARED glob_op_shared_dummy.c)
   # fc tensorrt_converter tensorrt_engine tensorrt_plugin
   add_dependencies(glob_op_shared protobuf enforce device_context proto_desc imperative_flag fleet_executor 
@@ -169,11 +170,13 @@ if(WITH_PYTHON)
   infer_io_utils reader_op_registry py_reader sequence_pooling mask_util gpc buffered_reader
   fc_functor bert_encoder_functor cos_sim_functor)
 
-  ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib
+  ADD_CUSTOM_TARGET(glob_op_static_lib
     message("glob_op_shared depends on glob_op_static")
     DEPENDS glob_op_static)
     
-  add_dependencies(glob_op_shared ${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib)
+  add_dependencies(glob_op_shared glob_op_static_lib)
+  add_dependencies(glob_op_shared glob_op_shared_dummy)
+
   set_target_properties(glob_op_shared PROPERTIES LINK_FLAGS "/WHOLEARCHIVE:${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib")
   target_link_libraries(glob_op_shared protobuf enforce device_context proto_desc imperative_flag fleet_executor 
   op_registry layer sequence2batch string_array parallel_executor executor_cache op_version_registry while_op_helper 
