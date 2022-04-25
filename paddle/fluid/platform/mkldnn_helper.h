@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -102,20 +103,22 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
 
   switch (from) {
     case framework::DataLayout::kMKLDNN:
-      if (to == framework::DataLayout::kNHWC) {
+      if ((to == framework::DataLayout::kNHWC) ||
+          (to == framework::DataLayout::kNDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
+        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC/kNDHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
+    case framework::DataLayout::kNDHWC:
       if (to == framework::DataLayout::kMKLDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
+        VLOG(3) << "Rotating Shape from: kNHWC/kNDHWC to: kMKLDNN output_shape"
                 << print_dims(dims);
       }
       break;
@@ -279,7 +282,12 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
         return dnnl::memory::format_tag::acdeb;
       }
     } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
+      if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return dnnl::memory::format_tag::aBcde4b;
+        }
+      } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return dnnl::memory::format_tag::Acdeb8a;
@@ -563,6 +571,7 @@ inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
+    VLOG(4) << "RegisterModelLayout for mkldnn";
     auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
                            const std::string& attrib_name) -> bool {
       if (op->HasAttr(attrib_name)) {

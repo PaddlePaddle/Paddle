@@ -312,8 +312,8 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     phi::BatchNormGradRawKernel<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
-        mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,
+        *y, *scale, *bias, mean_opt, variance_opt, *saved_mean, *saved_variance,
+        space_opt, *d_y, momentum, epsilon, data_layout, is_test,
         use_global_stats, trainable_statistics, fuse_with_relu, true, d_x,
         scale_grad, bias_grad);
   }
@@ -324,10 +324,12 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INPLACE_OP_INFERER(InplaceAbnOpInplaceInferer, {"X", "Y"});
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
-                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>)
+                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
+                  InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
 REGISTER_OP_CPU_KERNEL(

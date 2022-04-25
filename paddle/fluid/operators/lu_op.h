@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
@@ -157,7 +158,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
 
     value_t.mutable_data<T>(value_dims, place);
     auto value_name = GetValueName(dtype);
-    CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+    CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
     value_t.Resize(value_dims);
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, &value_t, -1, SubFunctor<T>(), &slice_tensor);

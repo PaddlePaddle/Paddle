@@ -39,6 +39,10 @@ namespace contrib {
 class TensorUtils;
 }
 
+namespace experimental {
+class InternalUtils;
+};
+
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
@@ -198,6 +202,7 @@ class PD_INFER_DECL Tensor {
 #endif
 
   friend class paddle_infer::contrib::TensorUtils;
+  friend class paddle_infer::experimental::InternalUtils;
 #if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
   friend class paddle_infer::InferApiTesterUtils;
 #endif

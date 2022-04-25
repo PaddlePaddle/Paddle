@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 
-#include "paddle/phi/api/lib/ext_compat_utils.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
@@ -28,53 +27,54 @@ namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Place place, bool blocking);
+Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Place place, bool blocking) const {
+Tensor Tensor::copy_to(const Place &place, bool blocking) const {
   return experimental::copy_to(*this, place, blocking);
 }
 
 template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argument instead. "
-                  "reason: copying a Tensor to another device does not need "
-                  "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToInnerPlace(target_place), /*blocking=*/false);
+Tensor Tensor::copy_to(const Place &target_place) const {
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor's `copy_to` method is deprecated since version "
+         "2.3, and will be removed in version 2.4, please use "
+         "`copy_to` method without template argument instead. "
+         "reason: copying a Tensor to another device does not need "
+         "to specify the data type template argument.";
+  return copy_to(target_place, /*blocking=*/false);
 }
 
 template PADDLE_API Tensor
-Tensor::copy_to<float>(const PlaceType &target_place) const;
+Tensor::copy_to<float>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<double>(const PlaceType &target_place) const;
+Tensor::copy_to<double>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int64_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int32_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
+Tensor::copy_to<uint8_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int8_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
+Tensor::copy_to<int16_t>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<float>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<double>>(
-    const PlaceType &target_place) const;
+Tensor::copy_to<bool>(const Place &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
+Tensor::copy_to<phi::dtype::complex<float>>(const Place &target_place) const;
+template PADDLE_API Tensor
+Tensor::copy_to<phi::dtype::complex<double>>(const Place &target_place) const;
+template PADDLE_API Tensor
+Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,
                    bool blocking) {
-  if (!src.is_initialized()) {
+  if (!src.initialized()) {
     VLOG(8) << "Src is empty, skip copy";
     return;
   }
@@ -82,7 +82,7 @@ void Tensor::copy_(const Tensor &src,
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   KernelType kernel_type = ParseKernelTypeByInputArgs(src);
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
-  if (is_initialized()) {
+  if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
                       src.dtype(),
                       phi::errors::PreconditionNotMet(
@@ -98,16 +98,15 @@ void Tensor::copy_(const Tensor &src,
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
-                      inner_place(),
+                      place(),
                       phi::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
                           target_place,
-                          inner_place()));
-    kernel_key_set.backend_set =
-        kernel_key_set.backend_set |
-        BackendSet(phi::TransToPhiBackend(inner_place()));
+                          place()));
+    kernel_key_set.backend_set = kernel_key_set.backend_set |
+                                 BackendSet(phi::TransToPhiBackend(place()));
   } else {
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
@@ -177,6 +176,40 @@ void Tensor::copy_(const Tensor &src,
                  target_place,
                  blocking,
                  static_cast<phi::SelectedRows *>(impl_.get()));
+  } else if (kernel_type == KernelType::SPARSE_COO_KERNEL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy_sparse_coo", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::SparseCooTensor &,
+                                      phi::Place,
+                                      bool,
+                                      phi::SparseCooTensor *);
+    this->set_impl(std::make_shared<phi::SparseCooTensor>());
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::SparseCooTensor *>(impl_.get()));
+  } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy_sparse_csr", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::SparseCsrTensor &,
+                                      phi::Place,
+                                      bool,
+                                      phi::SparseCsrTensor *);
+    this->set_impl(std::make_shared<phi::SparseCsrTensor>());
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::SparseCsrTensor *>(impl_.get()));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "

@@ -36,6 +36,9 @@ void BindIndexNode(py::module* m);
 void BindTreeIndex(py::module* m);
 void BindIndexWrapper(py::module* m);
 void BindIndexSampler(py::module* m);
-void BindSparseShardingTools(py::module* m);
+#ifdef PADDLE_WITH_HETERPS
+void BindNeighborSampleResult(py::module* m);
+void BindGraphGpuWrapper(py::module* m);
+#endif
 }  // namespace pybind
 }  // namespace paddle

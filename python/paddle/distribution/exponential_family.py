@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import paddle
+from paddle.distribution import distribution
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
-from ..fluid.framework import _non_static_mode
-from .distribution import Distribution
 
-
-class ExponentialFamily(Distribution):
+class ExponentialFamily(distribution.Distribution):
     r""" 
     ExponentialFamily is the base class for probability distributions belonging 
     to exponential family, whose probability mass/density function has the 

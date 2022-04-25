@@ -32,7 +32,7 @@ from paddle.distributed.utils import get_logger
 
 from .mapper import mapping
 from .cluster import Cluster
-from .reshard import reshard
+from .reshard import Resharder
 from .planner import Planner
 from .completion import Completer
 from .partitioner import Partitioner
@@ -187,20 +187,25 @@ class Engine:
             # Do reshard process
             set_grad_var_shape(dist_main_prog, dist_context)
             make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            reshard(dist_main_prog, dist_startup_prog, rank, dist_context,
-                    dist_params_grads)
+            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
+                                  dist_context, dist_params_grads)
+            resharder.reshard()
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
         else:
+            # Apply pre optimization passes
+            self._apply_pre_optimization(serial_main_program,
+                                         serial_startup_program, None, None)
             # Do logical partition
             partitioner = Partitioner(dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
             make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            reshard(dist_main_prog, dist_startup_prog, rank, dist_context, [],
-                    1)
+            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
+                                  dist_context, [], 1)
+            resharder.reshard()
 
         # clone program for test
         if mode != 'train':
@@ -229,15 +234,24 @@ class Engine:
 
     def _apply_pre_optimization(self, main_program, startup_program, loss,
                                 params_grads):
+
         # apply amp pass
         if self.strategy.amp:
             config = copy.deepcopy(self.strategy.amp_configs)
             config["dist_context"] = self._dist_contexts[self.mode]
             config["params_grads"] = params_grads
             config["loss"] = loss
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-            auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_contexts[self.mode])
+            config["input_data"] = self._feed_vars[self.mode][
+                "inputs"] + self._feed_vars[self.mode]["labels"]
+            if config["use_pure_fp16"]:
+                config["base_opt"] = self._optimizer
+                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
+                auto_parallel_fp16_pass.apply(
+                    [main_program], [startup_program], self._pass_context)
+            else:
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                             self._pass_context)
 
         # apply recompute pass
         if self.strategy.recompute:

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"

@@ -37,7 +37,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter
+from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
@@ -921,7 +921,8 @@ def save(layer, path, input_spec=None, **configs):
                                     param_or_buffer.name]
                         extra_info_dict[
                             'stop_gradient'] = param_or_buffer.stop_gradient
-                        if isinstance(param_or_buffer, ParamBase):
+                        if isinstance(param_or_buffer,
+                                      (ParamBase, EagerParamBase)):
                             extra_info_dict[
                                 'trainable'] = param_or_buffer.trainable
                         extra_var_info[param_or_buffer.name] = extra_info_dict

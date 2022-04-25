@@ -39,6 +39,8 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "http_proxy": "",
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
+            "SAVE_CACHE_DIRNAME":
+            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
             "LOG_PREFIX": self.__class__.__name__,
         }
 
@@ -51,9 +53,8 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        #        self.check_with_place(
-        #            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
-        print('recover later')
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 class TestDistMnistAsync2x2(TestFleetBase):
@@ -86,9 +87,8 @@ class TestDistMnistAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        #        self.check_with_place(
-        #            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
-        print('recover later')
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 class TestDistCtrHalfAsync2x2(TestFleetBase):
@@ -124,9 +124,8 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        #        self.check_with_place(
-        #            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
-        print('recover later')
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 if __name__ == "__main__":

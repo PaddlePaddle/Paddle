@@ -28,7 +28,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import _varbase_creator
+from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 
 from ...fluid import dygraph_utils
 from ...fluid import layers
@@ -38,6 +38,7 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
 from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.static import default_main_program
 
 __all__ = []
@@ -894,9 +895,15 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        if in_dynamic_mode():
+        if _non_static_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
+
+            if in_dygraph_mode():
+                out, mask = _C_ops.final_state_dropout( x, None, p, not training, mode, \
+                    seed if seed is not None else 0, seed is not None)
+
+                return out
             out, mask = _C_ops.dropout(
                 x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
                 seed is not None, 'seed', seed
@@ -1349,26 +1356,31 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy()
-        out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                           "data_format", data_format, "name", name)
+            pad = pad.numpy().tolist()
+        out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
     else:
-        attrs = {'mode': mode, 'value': value, 'data_format': data_format}
-        inputs = {'X': [x]}
-        if isinstance(pad, Variable):
-            inputs['Paddings'] = [pad]
-            attrs['paddings'] = []
+        if _in_legacy_dygraph():
+            if isinstance(pad, Variable):
+                pad = pad.numpy().tolist()
+            out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                               "data_format", data_format, "name", name)
         else:
-            attrs['paddings'] = pad
+            attrs = {'mode': mode, 'value': value, 'data_format': data_format}
+            inputs = {'X': [x]}
+            if isinstance(pad, Variable):
+                inputs['Paddings'] = [pad]
+                attrs['paddings'] = []
+            else:
+                attrs['paddings'] = pad
 
-        helper = LayerHelper('pad3d', **locals())
+            helper = LayerHelper('pad3d', **locals())
 
-        dtype = helper.input_dtype(input_param_name='input')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
+            dtype = helper.input_dtype(input_param_name='input')
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axis=unsqueezed_dim)
@@ -1521,38 +1533,46 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dynamic_mode():
-        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
-                                    False)
-
-        if bias is None:
-            return pre_bias
-
-        return _C_ops.elementwise_add(pre_bias, bias)
+    if in_dygraph_mode():
+        #TODO(jiabin): using addmm for fast forward route 
+        return _C_ops.final_state_linear(x, weight, bias)
     else:
-        helper = LayerHelper('linear', **locals())
-        dtype = x.dtype
+        if _in_legacy_dygraph():
+            pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
+                                        False)
 
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'linear')
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+            if bias is None:
+                return pre_bias
 
-        inputs = {'X': [x], 'Y': [weight]}
-        attrs = {'trans_x': False, 'trans_y': False}
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
-        if bias is not None:
-            res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [tmp],
-                        'Y': [bias]},
-                outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1})
+            return _C_ops.elementwise_add(pre_bias, bias)
         else:
-            res = tmp
-        return res
+            helper = LayerHelper('linear', **locals())
+            dtype = x.dtype
+
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     'linear')
+            check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                        'linear')
+
+            inputs = {'X': [x], 'Y': [weight]}
+            attrs = {'trans_x': False, 'trans_y': False}
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs=inputs,
+                outputs={'Out': tmp},
+                attrs=attrs)
+            if bias is not None:
+                res = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [tmp],
+                            'Y': [bias]},
+                    outputs={'Out': [res]},
+                    attrs={'axis': len(x.shape) - 1})
+            else:
+                res = tmp
+            return res
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
@@ -1613,10 +1633,14 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],

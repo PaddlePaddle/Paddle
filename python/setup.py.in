@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
+from setuptools.command.egg_info import egg_info
 
 
 class BinaryDistribution(Distribution):
@@ -273,10 +274,12 @@ packages=['paddle',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
           'paddle.incubate',
+          'paddle.incubate.autograd',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
           'paddle.incubate.tensor',
+          'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
           'paddle.incubate.passes',
           'paddle.distribution',
@@ -362,6 +365,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.nn.functional',
           'paddle.incubate.nn.layer',
+          'paddle.incubate.optimizer.functional',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -381,7 +385,10 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
-          'paddle.profiler'
+          'paddle.profiler',
+          'paddle.sparse',
+          'paddle.sparse.layer',
+          'paddle.sparse.functional',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -544,10 +551,6 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
-if '${WITH_IPU}' == 'ON':
-    shutil.copy('${PADDLE_IPU_LIB}', libs_path)
-    package_data['paddle.libs'] += ['libpaddle_ipu' + ext_name]
-
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -676,6 +679,17 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+class EggInfo(egg_info):
+    """Copy license file into `.dist-info` folder."""
+
+    def run(self):
+        # don't duplicate license into `.dist-info` when building a distribution
+        if not self.distribution.have_run.get('install', True):
+            self.mkpath(self.egg_info)
+            self.copy_file("@PADDLE_SOURCE_DIR@/LICENSE", self.egg_info)
+
+        egg_info.run(self)
+
 # we redirect setuptools log for non-windows
 if sys.platform != 'win32':
     @contextmanager
@@ -731,6 +745,7 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+            'egg_info': EggInfo,
         },
         entry_points={
             'console_scripts': [

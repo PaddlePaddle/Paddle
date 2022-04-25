@@ -61,7 +61,6 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
     int bit_length =
         BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
     std::string input_scale_var_name =
@@ -76,7 +75,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / range;
+    float input_scale = input_scale_data[0];
 
     // Set input scale in attr, and relink nodes
     std::string input_name = input->Var()->Name();
@@ -85,12 +84,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     for (auto* quantized_node : outlinks) {
       auto op_desc = quantized_node->Op();
       std::string quantized_op_type = op_desc->Type();
-      if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
-          quantized_op_type == "matmul_v2") {
-        op_desc->SetAttr("X_scale", input_scale);
-      } else {
-        op_desc->SetAttr("Input_scale", input_scale);
-      }
+      op_desc->SetAttr("Input_scale", input_scale);
       op_desc->SetAttr("bit_length", bit_length);
       op_desc->RenameInput(quant_dequant_output_name, input_name);
       op_desc->Flush();

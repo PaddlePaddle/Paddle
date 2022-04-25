@@ -228,7 +228,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(strided_slice, StridedSliceInferShape,
-                            PD_INFER_META(phi::StridedSliceInferMeta));
+                            PD_INFER_META(phi::StridedSliceRawInferMeta));
 
 REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,

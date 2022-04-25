@@ -40,32 +40,8 @@ class PsProgramBuilder(object):
     def _build_trainer_desc(self):
         opt_info = self.loss.block.program._fleet_opt
         opt_info = {} if opt_info is None else opt_info
-        opt_info["trainer"] = opt_info.get("trainer", "DistMultiTrainer")
-        opt_info["device_worker"] = opt_info.get("device_worker",
-                                                 "DownpourLite")
-        pid = str(id(self.cloned_main))
-        program_configs = {
-            pid: {
-                'pull_dense': [],
-                'push_dense': [],
-                'pull_sparse': [],
-                'push_sparse': []
-            }
-        }
-        dense_table_config = {}
-        send_ctx = get_the_one_send_context(self.attrs)
-        recv_ctx = get_the_one_recv_context(self.attrs)
-        for name, ctx in send_ctx.items():
-            if ctx.program_id() != id(self.loss.block.program):
-                continue
-            if ctx.is_sparse():
-                continue
-            if not ctx.is_tensor_table():
-                program_configs[pid]['pull_dense'].append(ctx.table_id())
-                program_configs[pid]['push_dense'].append(ctx.table_id())
-            dense_table_config[ctx.table_id()] = recv_ctx[ctx.table_id()]
-        opt_info['program_configs'] = program_configs
-        opt_info['dense_table_config'] = dense_table_config
+        opt_info["trainer"] = opt_info.get("trainer", "MultiTrainer")
+        opt_info["device_worker"] = opt_info.get("device_worker", "Hogwild")
         self.cloned_main._fleet_opt = opt_info
 
     def _optimize_programs(self):
@@ -187,6 +163,37 @@ class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
     def __init__(self, pass_ctx):
         logger.info("start building cpu-async-ps program")
         super(CpuAsyncPsProgramBuilder, self).__init__(pass_ctx)
+
+    def _build_trainer_desc(self):
+        opt_info = self.loss.block.program._fleet_opt
+        opt_info = {} if opt_info is None else opt_info
+        opt_info["trainer"] = opt_info.get("trainer", "DistMultiTrainer")
+        opt_info["device_worker"] = opt_info.get("device_worker",
+                                                 "DownpourLite")
+        pid = str(id(self.cloned_main))
+        program_configs = {
+            pid: {
+                'pull_dense': [],
+                'push_dense': [],
+                'pull_sparse': [],
+                'push_sparse': []
+            }
+        }
+        dense_table_config = {}
+        send_ctx = get_the_one_send_context(self.attrs)
+        recv_ctx = get_the_one_recv_context(self.attrs)
+        for name, ctx in send_ctx.items():
+            if ctx.program_id() != id(self.loss.block.program):
+                continue
+            if ctx.is_sparse():
+                continue
+            if not ctx.is_tensor_table():
+                program_configs[pid]['pull_dense'].append(ctx.table_id())
+                program_configs[pid]['push_dense'].append(ctx.table_id())
+            dense_table_config[ctx.table_id()] = recv_ctx[ctx.table_id()]
+        opt_info['program_configs'] = program_configs
+        opt_info['dense_table_config'] = dense_table_config
+        self.cloned_main._fleet_opt = opt_info
 
 
 class GpuPsProgramBuilder(PsProgramBuilder):

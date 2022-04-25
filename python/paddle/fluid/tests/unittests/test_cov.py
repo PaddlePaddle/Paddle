@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import six
 import paddle
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):
@@ -32,7 +33,7 @@ class Cov_Test(unittest.TestCase):
         self.shape = [20, 10]
         self.weightshape = [10]
 
-    def test_tensor_cov_default(self):
+    def func_test_tensor_cov_default(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -56,7 +57,12 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=True, ddof=1, fweights=None, aweights=None)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
-    def test_tensor_cov_rowvar(self):
+    def test_tensor_cov_default(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_default()
+        self.func_test_tensor_cov_default()
+
+    def func_test_tensor_cov_rowvar(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -80,7 +86,12 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=False, ddof=1, fweights=None, aweights=None)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
-    def test_tensor_cov_ddof(self):
+    def test_tensor_cov_rowvar(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_rowvar()
+        self.func_test_tensor_cov_rowvar()
+
+    def func_test_tensor_cov_ddof(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -104,7 +115,12 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=True, ddof=0, fweights=None, aweights=None)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
-    def test_tensor_cov_fweights(self):
+    def test_tensor_cov_ddof(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_ddof()
+        self.func_test_tensor_cov_ddof()
+
+    def func_test_tensor_cov_fweights(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -131,7 +147,12 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=True, ddof=1, fweights=np_fw, aweights=None)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
-    def test_tensor_cov_aweights(self):
+    def test_tensor_cov_fweights(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_fweights()
+        self.func_test_tensor_cov_fweights()
+
+    def func_test_tensor_cov_aweights(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -158,7 +179,12 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=True, ddof=1, fweights=None, aweights=np_aw)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
-    def test_tensor_cov_weights(self):
+    def test_tensor_cov_aweights(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_aweights()
+        self.func_test_tensor_cov_aweights()
+
+    def func_test_tensor_cov_weights(self):
         typelist = ['float64']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -187,6 +213,11 @@ class Cov_Test(unittest.TestCase):
                     np_arr, rowvar=True, ddof=1, fweights=np_fw, aweights=np_aw)
                 self.assertTrue(np.allclose(np_cov, cov.numpy()))
 
+    def test_tensor_cov_weights(self):
+        with _test_eager_guard():
+            self.func_test_tensor_cov_weights()
+        self.func_test_tensor_cov_weights()
+
 
 class Cov_Test2(Cov_Test):
     def setUp(self):
@@ -203,7 +234,7 @@ class Cov_Test3(unittest.TestCase):
         self.fw_s = 1.
         self.aw_s = 1.
 
-    def test_errors(self):
+    def func_test_errors(self):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             np_fw = self.fw_s * np.random.rand(
@@ -220,6 +251,11 @@ class Cov_Test3(unittest.TestCase):
                                     aweights=aweights)
 
         self.assertRaises(ValueError, test_err)
+
+    def test_errors(self):
+        with _test_eager_guard():
+            self.func_test_errors()
+        self.func_test_errors()
 
 
 #Input(fweights) only support N-D (N<=1) tensor

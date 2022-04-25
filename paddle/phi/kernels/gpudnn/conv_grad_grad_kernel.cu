@@ -44,11 +44,11 @@ namespace phi {
 template <typename T, typename Context>
 void ConvCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    paddle::optional<const DenseTensor&> input_grad_grad,
+    paddle::optional<const DenseTensor&> filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -58,9 +58,9 @@ void ConvCudnnGradGradKernel(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search_t,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   auto X = &input;
   auto W = &filter;
   auto dO = &out_grad;
@@ -289,21 +289,17 @@ void ConvCudnnGradGradKernel(
                                     dtype};
 
 #ifdef PADDLE_WITH_HIP
-  miopenConvFwdAlgorithm_t fwd_algo1 = static_cast<miopenConvFwdAlgorithm_t>(0);
-  miopenConvFwdAlgorithm_t fwd_algo2 = static_cast<miopenConvFwdAlgorithm_t>(0);
-  miopenConvBwdDataAlgorithm_t data_algo =
-      static_cast<miopenConvBwdDataAlgorithm_t>(0);
-  miopenConvBwdWeightsAlgorithm_t filter_algo =
-      static_cast<miopenConvBwdWeightsAlgorithm_t>(0);
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result2;
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> data_result;
+  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
+      filter_result;
 #else
-  cudnnConvolutionFwdAlgo_t fwd_algo1 =
-      static_cast<cudnnConvolutionFwdAlgo_t>(0);
-  cudnnConvolutionFwdAlgo_t fwd_algo2 =
-      static_cast<cudnnConvolutionFwdAlgo_t>(0);
-  cudnnConvolutionBwdDataAlgo_t data_algo =
-      static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
-  cudnnConvolutionBwdFilterAlgo_t filter_algo =
-      static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> data_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
+      filter_result;
 #endif
 
   auto layout = paddle::platform::GetCudnnTensorFormat(
@@ -332,13 +328,13 @@ void ConvCudnnGradGradKernel(
       using search1 =
           paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size = search1::GetWorkspaceSize(args1);
-      fwd_algo1 = search1::Find<T>(
+      fwd_result1.algo = search1::Find<T>(
           args1, exhaustive_search, false, workspace_size, ctx);
 #else
       using search1 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
-      workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
+      fwd_result1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
+      workspace_size = search1::GetWorkspaceSize(args1, fwd_result1.algo);
 #endif
     }
 
@@ -360,14 +356,14 @@ void ConvCudnnGradGradKernel(
           paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search2::GetWorkspaceSize(args2));
-      fwd_algo2 = search2::Find<T>(
+      fwd_result2.algo = search2::Find<T>(
           args2, exhaustive_search, false, workspace_size, ctx);
 #else
       using search2 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_algo2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
-      workspace_size =
-          std::max(workspace_size, search2::GetWorkspaceSize(args2, fwd_algo2));
+      fwd_result2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
+      workspace_size = std::max(
+          workspace_size, search2::GetWorkspaceSize(args2, fwd_result2.algo));
 #endif
     }
   }
@@ -389,15 +385,15 @@ void ConvCudnnGradGradKernel(
     using search3 =
         paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
-    filter_algo = search3::Find<T>(
+    filter_result.algo = search3::Find<T>(
         args3, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search3 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-    filter_algo =
+    filter_result =
         search3::Find<T>(args3, exhaustive_search, deterministic, ctx);
-    workspace_size =
-        std::max(workspace_size, search3::GetWorkspaceSize(args3, filter_algo));
+    workspace_size = std::max(
+        workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
   }
 
@@ -419,14 +415,15 @@ void ConvCudnnGradGradKernel(
     using search4 =
         paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search4::GetWorkspaceSize(args4));
-    data_algo = search4::Find<T>(
+    data_result.algo = search4::Find<T>(
         args4, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search4 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    data_algo = search4::Find<T>(args4, exhaustive_search, deterministic, ctx);
-    workspace_size =
-        std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
+    data_result =
+        search4::Find<T>(args4, exhaustive_search, deterministic, ctx);
+    workspace_size = std::max(
+        workspace_size, search4::GetWorkspaceSize(args4, data_result.algo));
 #endif
   }
 
@@ -471,7 +468,7 @@ void ConvCudnnGradGradKernel(
                     args1.wdesc.desc(),
                     w,
                     args1.cdesc.desc(),
-                    fwd_algo1,
+                    fwd_result1.algo,
                     &beta,
                     args1.odesc.desc(),
                     transformed_ddy_channel,
@@ -492,7 +489,7 @@ void ConvCudnnGradGradKernel(
                       args1.wdesc.desc(),
                       w + i * group_offset_filter,
                       args1.cdesc.desc(),
-                      fwd_algo1,
+                      fwd_result1.algo,
                       workspace_ptr,
                       workspace_size,
                       &beta,
@@ -517,7 +514,7 @@ void ConvCudnnGradGradKernel(
                     args2.wdesc.desc(),
                     ddw,
                     args2.cdesc.desc(),
-                    fwd_algo2,
+                    fwd_result2.algo,
                     &beta,
                     args2.odesc.desc(),
                     transformed_ddy_channel,
@@ -538,7 +535,7 @@ void ConvCudnnGradGradKernel(
                       args2.wdesc.desc(),
                       ddw + i * group_offset_filter,
                       args2.cdesc.desc(),
-                      fwd_algo2,
+                      fwd_result2.algo,
                       workspace_ptr,
                       workspace_size,
                       &alpha,
@@ -568,7 +565,7 @@ void ConvCudnnGradGradKernel(
                   args3.idesc.desc(),
                   ddx,
                   args3.cdesc.desc(),
-                  filter_algo,
+                  filter_result.algo,
                   &beta,
                   args3.wdesc.desc(),
                   dw,
@@ -589,7 +586,7 @@ void ConvCudnnGradGradKernel(
                     args3.odesc.desc(),
                     transformed_dy_channel + i * group_offset_out,
                     args3.cdesc.desc(),
-                    filter_algo,
+                    filter_result.algo,
                     workspace_ptr,
                     workspace_size,
                     &beta,
@@ -615,7 +612,7 @@ void ConvCudnnGradGradKernel(
                   args4.wdesc.desc(),
                   ddw,
                   args4.cdesc.desc(),
-                  data_algo,
+                  data_result.algo,
                   &beta,
                   args4.idesc.desc(),
                   transformed_dx,
@@ -636,7 +633,7 @@ void ConvCudnnGradGradKernel(
                     args4.odesc.desc(),
                     transformed_dy_channel + i * group_offset_out,
                     args4.cdesc.desc(),
-                    data_algo,
+                    data_result.algo,
                     workspace_ptr,
                     workspace_size,
                     &beta,
@@ -692,11 +689,11 @@ void DepthwiseConvCudnnGradGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
-                             input_grad_grad,
-                             filter_grad_grad,
-                             out_grad,
                              input,
                              filter,
+                             out_grad,
+                             input_grad_grad,
+                             filter_grad_grad,
                              strides,
                              paddings_t,
                              padding_algorithm,
@@ -706,9 +703,9 @@ void DepthwiseConvCudnnGradGradKernel(
                              use_addto,
                              workspace_size_MB,
                              exhaustive_search_t,
-                             out_grad_grad,
                              input_grad,
-                             filter_grad);
+                             filter_grad,
+                             out_grad_grad);
 }
 
 template <typename T, typename Context>
@@ -732,11 +729,11 @@ void Conv3DCudnnGradGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
-                             input_grad_grad,
-                             filter_grad_grad,
-                             out_grad,
                              input,
                              filter,
+                             out_grad,
+                             input_grad_grad,
+                             filter_grad_grad,
                              strides,
                              paddings_t,
                              padding_algorithm,
@@ -746,9 +743,9 @@ void Conv3DCudnnGradGradKernel(
                              use_addto,
                              workspace_size_MB,
                              exhaustive_search_t,
-                             out_grad_grad,
                              input_grad,
-                             filter_grad);
+                             filter_grad,
+                             out_grad_grad);
 }
 
 }  // namespace phi

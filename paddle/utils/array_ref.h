@@ -96,10 +96,21 @@ class ArrayRef {
   template <size_t N>
   /*implicit*/ constexpr ArrayRef(const T (&Arr)[N]) : Data(Arr), Length(N) {}
 
-  /// Construct an ArrayRef from a std::initializer_list.
+/// Construct an ArrayRef from a std::initializer_list.
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+// Disable gcc's warning in this constructor as it generates an enormous
+// amount
+// of messages. Anyone using ArrayRef should already be aware of the fact that
+// it does not do lifetime extension.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winit-list-lifetime"
+#endif
   /*implicit*/ ArrayRef(const std::initializer_list<T> &Vec)
       : Data(Vec.begin() == Vec.end() ? (T *)nullptr : Vec.begin()),
         Length(Vec.size()) {}
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif
 
   /// Construct an ArrayRef<const T*> from ArrayRef<T*>. This uses SFINAE to
   /// ensure that only ArrayRefs of pointers can be converted.

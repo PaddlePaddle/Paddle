@@ -17,11 +17,12 @@
 #include <iterator>
 #include <utility>
 
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/utils/any.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -64,7 +65,7 @@ class KernelContext {
   void EmplaceBackOutputsWithoutSetRange(
       paddle::SmallVector<TensorBase*> outputs);
 
-  void EmplaceBackAttr(paddle::any attr);
+  void EmplaceBackAttr(Attribute attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 
@@ -98,6 +99,22 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  paddle::optional<const std::vector<const TensorType*>> OptionalInputsBetween(
+      size_t start, size_t end) {
+    const auto& first = inputs_.at(start);
+
+    if (first) {
+      std::vector<const TensorType*> v;
+      for (size_t i = start; i < end; ++i) {
+        auto* t = static_cast<const TensorType*>(inputs_.at(i));
+        v.emplace_back(t);
+      }
+      return paddle::optional<const std::vector<const TensorType*>>(v);
+    }
+    return paddle::optional<const std::vector<const TensorType*>>(paddle::none);
+  }
+
+  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx));
   }
@@ -112,14 +129,7 @@ class KernelContext {
   }
 
   template <typename AttrType>
-  AttrType AttrAt(size_t idx) const {
-    try {
-      return paddle::any_cast<AttrType>(attrs_.at(idx));
-    } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Attribute cast error in Op Kernel Context."));
-    }
-  }
+  const AttrType& AttrAt(size_t idx) const;
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
@@ -130,10 +140,11 @@ class KernelContext {
 
   paddle::SmallVector<const TensorBase*> inputs_;
   paddle::SmallVector<TensorBase*> outputs_;
-  paddle::SmallVector<paddle::any> attrs_;
+  paddle::SmallVector<Attribute, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::SmallVector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
+  paddle::SmallVector<std::pair<int, int>, kOutputSmallVectorSize>
+      output_range_;
 };
 
 }  // namespace phi

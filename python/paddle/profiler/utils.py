@@ -17,8 +17,11 @@ from warnings import warn
 import functools
 from contextlib import ContextDecorator
 
+from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
-import paddle.fluid.core as core
+
+_is_profiler_used = False
+_has_optimizer_wrapped = False
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -30,13 +33,15 @@ _AllowedEventTypeList = [
 
 class RecordEvent(ContextDecorator):
     r"""
-    Interface for recording a time range.
+    Interface for recording a time range by user defined.
 
-    Parameters:
+    Args:
         name(str): Name of the record event
+        event_type(TracerEventType, optional): Optional, default value is TracerEventType.UserDefined. It is reserved for internal purpose, and it is better not to specify this parameter. 
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             import paddle
             import paddle.profiler as profiler
@@ -53,8 +58,8 @@ class RecordEvent(ContextDecorator):
             result = data1 + data2
             record_event.end()
 
-    Note:
-        RecordEvent will take effect only when profiler is on and at the state of RECORD.
+    **Note**:
+        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -75,17 +80,22 @@ class RecordEvent(ContextDecorator):
         r"""
         Record the time of begining.
 
-        .. code-block:: python
+        Examples:
 
-            import paddle
-            import paddle.profiler as profiler
-            record_event = profiler.RecordEvent("record_sub")
-            record_event.begin()
-            data1 = paddle.randn(shape=[3])
-            data2 = paddle.randn(shape=[3])
-            result = data1 - data2
-            record_event.end()
+            .. code-block:: python
+                :name: code-example2
+
+                import paddle
+                import paddle.profiler as profiler
+                record_event = profiler.RecordEvent("record_sub")
+                record_event.begin()
+                data1 = paddle.randn(shape=[3])
+                data2 = paddle.randn(shape=[3])
+                result = data1 - data2
+                record_event.end()
         """
+        if not _is_profiler_used:
+            return
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
                   can be recorded.".format(*_AllowedEventTypeList))
@@ -99,16 +109,19 @@ class RecordEvent(ContextDecorator):
         r'''
         Record the time of ending.
 
-        .. code-block:: python
+        Examples:
 
-            import paddle
-            import paddle.profiler as profiler
-            record_event = profiler.RecordEvent("record_mul")
-            record_event.begin()
-            data1 = paddle.randn(shape=[3])
-            data2 = paddle.randn(shape=[3])
-            result = data1 * data2
-            record_event.end()
+            .. code-block:: python
+                :name: code-example3
+
+                import paddle
+                import paddle.profiler as profiler
+                record_event = profiler.RecordEvent("record_mul")
+                record_event.begin()
+                data1 = paddle.randn(shape=[3])
+                data2 = paddle.randn(shape=[3])
+                result = data1 * data2
+                record_event.end()
         '''
         if self.event:
             self.event.end()
@@ -118,14 +131,15 @@ def load_profiler_result(filename: str):
     r"""
     Load dumped profiler data back to memory.
 
-    Parameters:
+    Args:
         filename(str): Name of the exported protobuf file of profiler data.
 
     Returns:
-        ProfilerResult object.
+        ProfilerResult object, which stores profiling data.
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
@@ -141,20 +155,31 @@ def load_profiler_result(filename: str):
     return core.load_profiler_result(filename)
 
 
+def in_profiler_mode():
+    return _is_profiler_used == True
+
+
 def wrap_optimizers():
     def optimizer_warpper(func):
         @functools.wraps(func)
         def warpper(*args, **kwargs):
-            with RecordEvent(
-                    'Optimization Step',
-                    event_type=TracerEventType.Optimization):
+            if in_profiler_mode():
+                with RecordEvent(
+                        'Optimization Step',
+                        event_type=TracerEventType.Optimization):
+                    return func(*args, **kwargs)
+            else:
                 return func(*args, **kwargs)
 
         return warpper
 
+    global _has_optimizer_wrapped
+    if _has_optimizer_wrapped == True:
+        return
     import paddle.optimizer as optimizer
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) != None:
                 classobject.step = optimizer_warpper(classobject.step)
+    _has_optimizer_wrapped = True

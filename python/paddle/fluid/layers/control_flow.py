@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, _non_static_mode, static_only
+from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -897,7 +897,9 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
-        parameters = [parent_block.var(name) for name in set(params)]
+        parameters = [
+            parent_block._find_var_recursive(name) for name in set(params)
+        ]
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -972,6 +974,19 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
     :return: inner_inputs, inner_outputs
     """
 
+    def is_ignore_vars(op, var_name):
+        # NOTE(dev): There are some persistable var created in some non-standard API
+        # such as "contrib.layers.shuffle_batch". It create a "Seed" used both in
+        # Input and Output. This var shall not be considered as a loop_var in
+        # control_flow.
+        IGNORE_VAR_NAMES = {"shuffle_batch": ["shuffle_batch_seed"]}
+        if op.type in IGNORE_VAR_NAMES:
+            var_names = IGNORE_VAR_NAMES[op.type]
+            for name in var_names:
+                if name in var_name:
+                    return True
+        return False
+
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
     # but some variables are created without appendding a real op.
@@ -980,7 +995,8 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
         assert isinstance(op, Operator)
         for iname in op.input_names:
             for in_var_name in op.input(iname):
-                if in_var_name not in inner_outputs:
+                if in_var_name not in inner_outputs and not is_ignore_vars(
+                        op, in_var_name):
                     inner_inputs.add(in_var_name)
 
         for oname in op.output_names:
@@ -1780,13 +1796,16 @@ def greater_than(x, y, cond=None, name=None):
 
     attrs = dict()
 
-    helper.append_op(
-        type='greater_than',
-        inputs={'X': [x],
-                'Y': [y]},
-        outputs={'Out': [cond]},
-        attrs=attrs)
-    return cond
+    if in_dygraph_mode():
+        return _C_ops.final_state_greater_than(x, y, -1)
+    else:
+        helper.append_op(
+            type='greater_than',
+            inputs={'X': [x],
+                    'Y': [y]},
+            outputs={'Out': [cond]},
+            attrs=attrs)
+        return cond
 
 
 @templatedoc()
@@ -3851,7 +3870,9 @@ def is_empty(x, name=None):
             #    - data: [0])
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_is_empty(x)
+    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

@@ -26,7 +26,7 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
-set(CINN_GIT_TAG e11c5e672f9961e28cfa403d86f99808beb58817)
+set(CINN_GIT_TAG release/v0.2)
 set(CINN_OPTIONAL_ARGS -DPY_VERSION=${PY_VERSION}
                        -DWITH_CUDA=${WITH_GPU}
                        -DWITH_CUDNN=${WITH_GPU}
@@ -85,4 +85,3 @@ add_library(cinn SHARED IMPORTED GLOBAL)
 set_target_properties(cinn PROPERTIES IMPORTED_LOCATION "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 include_directories(${CINN_INCLUDE_DIR})
 add_dependencies(cinn external_cinn)
-

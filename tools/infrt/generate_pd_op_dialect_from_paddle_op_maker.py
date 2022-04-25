@@ -209,7 +209,6 @@ def get_constraint(op_type, op_proto):
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
-    custom_dialect_file = "custom_pdop.td"
 
     # 1. Head files
     comment_ = "/*===- TableGen'source file -----------------------------------------------===*\\\n\
@@ -372,18 +371,12 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(RESULTS)
             ops_mlir_file.write("}\n")
 
+    with open(dst_dialect_file, 'a') as ops_mlir_file:
+        ops_mlir_file.write("\n#endif  // PD_OPS")
+
     print("Skipped ops num: " + str(len(skipped_op_list)))
     print("Automatically generated op dialects num: " + str(
         len(automatically_generated_op_dialect)))
-
-    # 3. custom op dialect and end of file
-    with open(dst_dialect_file, 'a') as ops_mlir_file:
-        with open(custom_dialect_file, 'r') as custom_ops_file:
-            custom_ops = custom_ops_file.readlines()
-            ops_mlir_file.writelines(custom_ops)
-
-        end_ = "\n#endif  // PD_OPS"
-        ops_mlir_file.write(end_)
 
 
 if __name__ == "__main__":

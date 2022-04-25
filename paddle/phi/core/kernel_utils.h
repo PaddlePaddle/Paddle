@@ -18,8 +18,8 @@
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -126,6 +126,30 @@ namespace phi {
     }                                                                        \
   }
 
+#define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(tensor_type)  \
+  template <typename... Tail>                                                 \
+  struct KernelCallHelper<                                                    \
+      paddle::optional<const std::vector<const tensor_type*>>,                \
+      Tail...> {                                                              \
+    template <int dev_ctx_idx,                                                \
+              int in_idx,                                                     \
+              int attr_idx,                                                   \
+              int out_idx,                                                    \
+              typename... PreviousArgs>                                       \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
+      static_assert(attr_idx == 0,                                            \
+                    "Kernel's Input should appear before Attributes.");       \
+      static_assert(out_idx == 0,                                             \
+                    "Kernel's Input should appear before Outputs.");          \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);            \
+      paddle::optional<const std::vector<const tensor_type*>> arg =           \
+          ctx->OptionalInputsBetween<tensor_type>(range.first, range.second); \
+      KernelCallHelper<Tail...>::                                             \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(       \
+              ctx, pargs..., arg);                                            \
+    }                                                                         \
+  }
+
 #define PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                             \
   struct KernelCallHelper<attr_type, Tail...> {                           \
@@ -138,6 +162,24 @@ namespace phi {
       static_assert(out_idx == 0,                                         \
                     "Kernel's Attributes should appear before Outputs."); \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                   \
+      KernelCallHelper<Tail...>::                                         \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., arg);                                        \
+    }                                                                     \
+  }
+
+#define PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
+  template <typename... Tail>                                             \
+  struct KernelCallHelper<const attr_type&, Tail...> {                    \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      const attr_type& arg = ctx->AttrAt<attr_type>(attr_idx);            \
       KernelCallHelper<Tail...>::                                         \
           template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
               ctx, pargs..., arg);                                        \
@@ -224,6 +266,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(DenseTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -245,19 +288,20 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(phi::dtype::float16);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<std::string>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<Scalar>&);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<bool>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int64_t>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<float>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<double>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<std::string>);
+  PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<Scalar>);
 
   /* Output Helpers */
 
