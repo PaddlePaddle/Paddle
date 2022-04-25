@@ -341,7 +341,11 @@ bool Tensor::is_initialized() const {
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+  name_ = "";
+}
 
 /* Part 6: Operator overloading */
 
