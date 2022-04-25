@@ -12,19 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/channel_shuffle_kernel.h"
+#include "paddle/phi/kernels/impl/channel_shuffle_kernel_impl.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
-                     const DenseTensor& condition,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     const DenseTensor& out_grad,
-                     DenseTensor* x_grad,
-                     DenseTensor* y_grad);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(channel_shuffle,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ChannelShuffleKernel,
+                   float,
+                   double) {}
