@@ -68,6 +68,24 @@ class TestElementWiseAddOrig2Prim(unittest.TestCase):
                 self.assertEqual(prim_out[k].shape, v.shape)
 
 
+class TestSqrtOrig2Prim(TestElementWiseAddOrig2Prim):
+    def init_data(self):
+        self.op_type = 'sqrt'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['sqrt', 'sqrt_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
 class TestElementWiseMulOrig2Prim(TestElementWiseAddOrig2Prim):
     def init_data(self):
         self.op_type = 'elementwise_mul'

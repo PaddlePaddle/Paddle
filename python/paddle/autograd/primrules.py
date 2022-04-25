@@ -112,6 +112,7 @@ elementwise_sub
 scale
 assign
 elementwise_mul
+sqrt
 
 These original ops are partially supported:
 
@@ -121,6 +122,11 @@ concat
 slice
 p_norm
 """
+
+
+@REGISTER_ORIG2PRIM('sqrt')
+def sqrt_orig2prim(op, x):
+    return sqrt(x)
 
 
 @REGISTER_ORIG2PRIM('elementwise_mul')
