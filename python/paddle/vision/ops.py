@@ -1730,7 +1730,7 @@ def random_crop_and_resize(x,
         data_format (string): The input image format, if NCHW, input  
                 images will be in shape of (channels, image_height,
                 image_width), if NHWC, input images will be in shape of
-                (image_height, image_width, channels). Default NCHW.
+                (image_height, image_width, channels). Default NHWC.
         interp_method (str, optional): Interpolation method. Default: 'bilinear'.
             support method are as following:
             - "nearest",
@@ -1742,9 +1742,6 @@ def random_crop_and_resize(x,
         align_mode (int32, optional): Optional for bilinear interpolation,
             can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
             src_idx = scale*dst_index. Default: 1
-        data_format (str, optional): Only used in an optional string
-            from: NHWC, NCHW. Specify that the data format of the input
-            and output data is channel_first or channel_last. Default: NCHW
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
@@ -1845,7 +1842,7 @@ def image_resize(x,
             src_idx = scale*dst_index. Default: 1
         data_format (str, optional): Only used in an optional string
             from: NHWC, NCHW. Specify that the data format of the input
-            and output data is channel_first or channel_last. Default: NCHW
+            and output data is channel_first or channel_last. Default: NHWC
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
