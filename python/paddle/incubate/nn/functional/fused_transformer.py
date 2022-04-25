@@ -508,7 +508,7 @@ def fused_multi_transformer(x,
                             cache_kvs=None,
                             time_step=None,
                             attn_mask=None,
-                            dropout_rate=0.5,
+                            dropout_rate=0.0,
                             activation="gelu",
                             training=False,
                             mode='upscale_in_train',
@@ -574,7 +574,7 @@ def fused_multi_transformer(x,
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape `[batch_size, 1, sequence_length, sequence_length]`. Default None.
-        dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.5.
+        dropout_rate (float, optional): The dropout probability of setting units to zero. Default 0.0.
         activation (str, optional): The activation. Default "gelu".
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default False.
         mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
@@ -652,9 +652,9 @@ def fused_multi_transformer(x,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'attn_dropout_rate', dropout_rate, 'attn_dropout_is_test',
-            not training, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode, 'ring_id', ring_id)
+            'dropout_rate', dropout_rate, 'dropout_is_test', not training,
+            'dropout_implementation', mode, 'act_method', activation, 'ring_id',
+            ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -698,10 +698,10 @@ def fused_multi_transformer(x,
         attrs = {
             'pre_layer_norm': pre_layer_norm,
             'epsilon': epsilon,
-            'attn_dropout_rate': dropout_rate,
-            'attn_dropout_is_test': not training,
-            'attn_dropout_implementation': mode,
+            'dropout_rate': dropout_rate,
+            'dropout_is_test': not training,
             'dropout_implementation': mode,
+            'act_method': activation,
             'ring_id': ring_id
         }
 

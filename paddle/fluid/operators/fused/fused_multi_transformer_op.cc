@@ -213,44 +213,6 @@ class FusedMultiTransformerOpOpMaker
                                 epsilon));
         });
 
-    // for dropout in fmha.
-    AddAttr<float>("attn_dropout_rate", "Probability of setting units to zero.")
-        .SetDefault(.5f)
-        .AddCustomChecker([](const float &drop_p) {
-          PADDLE_ENFORCE_EQ(
-              drop_p >= 0.0f && drop_p <= 1.0f, true,
-              platform::errors::InvalidArgument(
-                  "'attn_dropout_rate' must be between 0.0 and 1.0."));
-        });
-    AddAttr<bool>("attn_dropout_is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "attn_dropout_implementation",
-        "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
-        "There are two kinds of ways to implement dropout"
-        "(the mask below is a tensor have the same shape with input"
-        "the value of mask is 0 or 1, the ratio of 0 is dropout_rate)"
-        "1. downgrade_in_infer(default), downgrade the outcome at inference "
-        "time"
-        "   train: out = input * mask"
-        "   inference: out = input * (1.0 - dropout_rate)"
-        "2. upscale_in_train, upscale the outcome at training time, do nothing "
-        "in inference"
-        "   train: out = input * mask / ( 1.0 - dropout_rate )"
-        "   inference: out = input"
-        "   dropout op can be removed from the program. the program will be "
-        "efficient")
-        .SetDefault("upscale_in_train")
-        .AddCustomChecker([](const std::string &type) {
-          PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
-              platform::errors::InvalidArgument(
-                  "dropout_implementation can only be downgrade_in_infer or "
-                  "upscale_in_train"));
-        });
-
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
