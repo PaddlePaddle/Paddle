@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ class ElementwiseModXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(elementwise_mod, ops::ElementwiseModXPUKernel<float>,
-                       ops::ElementwiseModXPUKernel<paddle::platform::float16>);
+                       ops::ElementwiseModXPUKernel<paddle::platform::float16>,
+                       ops::ElementwiseModXPUKernel<int>,
+                       ops::ElementwiseModXPUKernel<int64>);
 
 #endif

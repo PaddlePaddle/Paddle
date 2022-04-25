@@ -36,8 +36,8 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.use_mkldnn = False
 
         def init_input_output(self):
-            self.x = np.random.uniform(1, 100, [13, 17]).astype(self.dtype)
-            self.y = np.random.uniform(1, 100, [13, 17]).astype(self.dtype)
+            self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
+            self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
             self.out = np.mod(self.x, self.y)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -77,7 +77,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.attrs = {'axis': 1}
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
-    class TestElementwiseModOp_broadcast_1(ElementwiseModOp):
+    class TestElementwiseModOp_broadcast_2(ElementwiseModOp):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(22, 128, 3).astype(self.dtype),
@@ -86,6 +86,43 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
             self.attrs = {'axis': 1}
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
+
+    class TestRemainderOp(unittest.TestCase):
+        def test_dygraph(self):
+            with fluid.dygraph.guard(fluid.XPUPlace(0)):
+                np_x = np.random.rand(22, 128, 3).astype('int64')
+                np_y = np.random.rand(22, 128, 3).astype('int64')
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.remainder(x, y)
+                np_z = z.numpy()
+                z_expected = np.mod(np_x, np_y)
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                np_x = np.array([-3.3, 11.5, -2, 3.5])
+                np_y = np.array([-1.2, 2., 3.3, -2.3])
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = x % y
+                z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
+                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+
+                np_x = np.random.rand(22, 128, 3).astype('int32')
+                np_y = np.random.rand(22, 128, 3).astype('int32')
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.remainder(x, y)
+                np_z = z.numpy()
+                z_expected = np.mod(np_x, np_y)
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                np_x = np.array([-3, 11, -2, 3])
+                np_y = np.array([-1, 2, 3, -2])
+                x = paddle.to_tensor(np_x, dtype="float16")
+                y = paddle.to_tensor(np_y, dtype="float16")
+                z = x % y
+                z_expected = np.array([0, 1, 1, -1])
+                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
 
 
 support_types = get_xpu_op_support_types('elementwise_mod')
