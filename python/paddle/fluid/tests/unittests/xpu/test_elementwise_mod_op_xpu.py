@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-sys.path.append("")
+sys.path.append("..")
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -89,7 +89,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):
-            with fluid.dygraph.guard(fluid.XPUPlace(0)):
+            with fluid.dygraph.guard():
                 np_x = np.random.rand(22, 128, 3).astype('int64')
                 np_y = np.random.rand(22, 128, 3).astype('int64')
                 x = paddle.to_tensor(np_x)
