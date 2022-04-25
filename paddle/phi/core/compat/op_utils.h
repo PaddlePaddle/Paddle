@@ -26,6 +26,8 @@ limitations under the License. */
 
 namespace phi {
 
+const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
+
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
     "raw"  // fallback kernel of origfinal fluid op
@@ -42,20 +44,29 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "flatten_grad",
                                                            "isinf",
                                                            "isnan",
+                                                           "unsqueeze",
+                                                           "unsqueeze_grad",
+                                                           "squeeze",
+                                                           "squeeze_grad",
                                                            "isfinite",
                                                            "matmul",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
-                                                           "mean",
                                                            "max",
+                                                           "max_grad",
+                                                           "min",
+                                                           "min_grad",
+                                                           "prod",
+                                                           "prod_grad",
+                                                           "any",
+                                                           "all",
                                                            "reshape",
                                                            "reshape_grad",
                                                            "expand",
                                                            "expand_as",
                                                            "expand_grad",
                                                            "expand_as_grad",
-                                                           "sum",
-                                                           "sum_grad",
+                                                           "one_hot",
                                                            "top_k",
                                                            "top_k_grad"});
 
@@ -73,6 +84,14 @@ class DefaultKernelSignatureMap {
         phi::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
+  }
+
+  const KernelSignature* GetNullable(const std::string& op_type) const {
+    auto it = map_.find(op_type);
+    if (it != map_.end()) {
+      return &it->second;
+    }
+    return nullptr;
   }
 
   void Insert(std::string op_type, KernelSignature signature) {
@@ -111,6 +130,10 @@ class OpUtilsMap {
         {std::move(op_type), std::move(base_kernel_name)});
   }
 
+  bool HasArgumentMappingFn(const std::string& op_type) const {
+    return arg_mapping_fn_map_.count(op_type);
+  }
+
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
@@ -121,9 +144,9 @@ class OpUtilsMap {
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetBaseKernelName(const std::string& op_type) const {
+  const std::string& GetBaseKernelName(const std::string& op_type) const {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
-      return "deprecated";
+      return deprecated_kernel_name;
     }
     auto it = base_kernel_name_map_.find(op_type);
     if (it == base_kernel_name_map_.end()) {
@@ -133,16 +156,13 @@ class OpUtilsMap {
     }
   }
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
+  const ArgumentMappingFn* GetArgumentMappingFn(
+      const std::string& op_type) const {
     auto it = arg_mapping_fn_map_.find(op_type);
     if (it == arg_mapping_fn_map_.end()) {
-      auto func =
-          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
-        return DefaultKernelSignatureMap::Instance().Get(op_type);
-      };
-      return func;
+      return nullptr;
     } else {
-      return it->second;
+      return &it->second;
     }
   }
 

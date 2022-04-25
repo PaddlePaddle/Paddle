@@ -26,7 +26,7 @@ void ScatterNdAddKernel(const Context &ctx,
                         const DenseTensor &index,
                         const DenseTensor &updates,
                         DenseTensor *out) {
-  Copy(ctx, x, ctx.GetPlace(), true, out);
+  Copy(ctx, x, ctx.GetPlace(), false, out);
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;

@@ -1109,8 +1109,9 @@ void Reducer::FinalizeBackward() {
 
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||      \
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_ASCEND_CL) || \
+    defined(PADDLE_WITH_CNCL)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars

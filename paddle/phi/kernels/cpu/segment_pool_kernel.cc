@@ -18,5 +18,11 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(
-    segment_pool, CPU, ALL_LAYOUT, phi::SegmentPoolKernel, float, double) {}
+PD_REGISTER_KERNEL(segment_pool,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SegmentPoolKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

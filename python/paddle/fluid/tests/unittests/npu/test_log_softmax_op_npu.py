@@ -63,9 +63,13 @@ class TestLogSoftmaxNPUOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad])
+            self.check_grad_with_place(
+                self.place, ['X'], ['Out'],
+                user_defined_grads=[self.x_grad],
+                max_relative_error=0.02)
+        else:
+            self.check_grad_with_place(
+                self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 def test_class(op_type, typename):

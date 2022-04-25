@@ -68,8 +68,7 @@ class ConcatMKLDNNHandler
 
     // Create memory descriptors for each of inputs
     for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto dims = phi::vectorize<int64_t>(inputs[i]->dims());
-      srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
+      srcs_md.push_back(inputs[i]->mem_desc());
     }
 
     auto dst_dims = phi::vectorize<int64_t>(output->dims());
@@ -99,9 +98,6 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
     PADDLE_ENFORCE_EQ(
         input->layout(), DataLayout::kMKLDNN,
         platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
-    PADDLE_ENFORCE_NE(
-        input->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
   }
 }
 
@@ -147,8 +143,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     concat_p->execute(astream, args);
     astream.wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
+    output->set_mem_desc(dst_mem->get_desc());
   }
 };
 
@@ -192,7 +187,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dout_vec_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
         onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->format(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
 
     for (size_t i = 0; i < dx.size(); ++i) {
       if (out_var_names[i] != framework::kEmptyVarName &&
@@ -202,7 +197,8 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             dx_vec_dims, offset, reorder_src_memory_p);
 
         auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-            dx[i], dx_vec_dims, dout->format(), ctx.GetPlace());
+            dx[i], dx_vec_dims,
+            platform::GetPlainMKLDNNFormat(dx_vec_dims.size()), ctx.GetPlace());
         auto reorder_p =
             reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
@@ -210,8 +206,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         offset[axis] += dx[i]->dims()[axis];
 
-        dx[i]->set_layout(framework::DataLayout::kMKLDNN);
-        dx[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+        dx[i]->set_mem_desc(reorder_dst_memory_p->get_desc());
       }
     }
     astream.wait();

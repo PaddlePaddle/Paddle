@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
@@ -154,7 +155,7 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             const framework::KernelSignature& kernel_signature,
+             framework::KernelSignature&& kernel_signature,
              const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
@@ -206,7 +207,7 @@ class PreparedOp {
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
-  phi::Kernel pt_kernel_;
+  const phi::Kernel& pt_kernel_;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -233,9 +234,9 @@ void BuildDygraphPhiKernelContext(
     platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& attr_names = std::get<1>(pt_kernel_signature.args);
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
+  const auto& attr_names = pt_kernel_signature.attr_names;
+  const auto& output_names = pt_kernel_signature.output_names;
 
   auto& input_defs = pt_kernel.args_def().input_defs();
   auto& output_defs = pt_kernel.args_def().output_defs();
@@ -264,15 +265,32 @@ void BuildDygraphPhiKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
 
-    if ((it == ins.end()) &&
-        (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
-      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-      auto end_idx = start_idx + 1;
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-      continue;
+    if (it == ins.end()) {
+      if (LIKELY(input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
+      } else if (input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<
+                            const std::vector<const phi::DenseTensor*>>))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
+      } else {
+        PADDLE_THROW(phi::errors::NotFound(
+            "Can not find input variable '%s' for %s OP, please check whether "
+            "the name setting in OpArgumentMapping is consistent with that in "
+            "OpMaker.",
+            input_names[i], pt_kernel_signature.name));
+      }
     }
-    auto ins_vector = it->second;
+
+    auto& ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -280,14 +298,23 @@ void BuildDygraphPhiKernelContext(
       auto& var = ins_vector[offset]->Var();
       if (var.template IsType<phi::DenseTensor>()) {
         tensor_in = &(var.template Get<phi::DenseTensor>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var.template IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
+        for (auto& t : tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var.Type())));
       }
-      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -317,42 +344,52 @@ void BuildDygraphPhiKernelContext(
       if (var) {
         if (var->template IsType<phi::DenseTensor>()) {
           tensor_out = var->template GetMutable<phi::DenseTensor>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::LoDTensorArray>()) {
+          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          auto* tensor_array =
+              var->template GetMutable<framework::LoDTensorArray>();
+          for (auto& t : *tensor_array) {
+            tensor_vector.emplace_back(&t);
+          }
+          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+          end_idx += tensor_array->size() - 1;
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
-
-      kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
         auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
-              phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int64_t))) {
           kernel_ctx->EmplaceBackAttr(
-              std::move(phi::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+              std::move(phi::IntArray(&BOOST_GET_CONST(int64_t, attr), 1)));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int32_t))) {
           kernel_ctx->EmplaceBackAttr(
-              std::move(phi::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
+              std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else if (attr_defs[i].type_index ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
@@ -367,15 +404,15 @@ void BuildDygraphPhiKernelContext(
         auto& ins_vector = ins.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVar(ins_vector[0]->Var())));
+              experimental::MakePhiIntArrayFromVar(ins_vector[0]->Var())));
         } else {  // ShapeTensorList
           std::vector<framework::Variable*> variables;
           variables.reserve(ins_vector.size());
           for (const auto& var_base : ins_vector) {
             variables.push_back(var_base->MutableVar());
           }
-          kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVarList(variables)));
+          kernel_ctx->EmplaceBackAttr(
+              std::move(experimental::MakePhiIntArrayFromVarList(variables)));
         }
       }
     } else if (attr_defs[i].type_index ==
@@ -410,6 +447,17 @@ void BuildDygraphPhiKernelContext(
             experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
+    } else if (ins.find(attr_names[i]) != ins.end()) {
+      // deal tensor attr here
+      auto& ins_vector = ins.at(attr_names[i]);
+      auto tensor_attr =
+          experimental::MakePhiScalarFromVar(ins_vector[0]->Var());
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        int val = tensor_attr.template to<int>();
+        kernel_ctx->EmplaceBackAttr(val);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
+      }
     } else if (attr_defs[i].type_index ==
                std::type_index(typeid(std::vector<phi::Scalar>))) {
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
@@ -466,6 +514,7 @@ void BuildDygraphPhiKernelContext(
       }
     } else {
       // TODO(chenweihang): support other attrs later
+
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
@@ -501,6 +550,13 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<std::string>))) {
+        kernel_ctx->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
@@ -515,7 +571,7 @@ template <typename VarType>
 void PreparePhiData(const phi::Kernel& pt_kernel,
                     const framework::KernelSignature& pt_kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
   auto& input_defs = pt_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
@@ -526,22 +582,27 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    if (ins.find(input_names[i]) == ins.end()) {
+    auto iter = ins.find(input_names[i]);
+    if (iter == ins.end()) {
       continue;
     }
-    auto& ins_vector = ins.at(input_names[i]);
+    auto& ins_vector = iter->second;
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      auto var = ins_vector[offset];
+      auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
-        auto expected_place = phi::TransToPhiPlace(in_def.backend);
-        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+        if (in_def.backend == tensor_backend ||
+            (in_def.backend == phi::Backend::GPUDNN &&
+             tensor_backend == phi::Backend::GPU)) {
           continue;
         }
+
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
 
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;

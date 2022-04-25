@@ -23,7 +23,7 @@ limitations under the License. */
 PD_REGISTER_KERNEL(softmax,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SoftmaxRawKernel,
+                   phi::SoftmaxKernel,
                    float,
                    double,
                    phi::dtype::float16,

@@ -31,7 +31,6 @@ from paddle.distributed import fleet
 from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed.auto_parallel.utils import save_distributed_checkpoint, load_distributed_checkpoint, load_checkpoint_into_program
 from paddle.distributed.auto_parallel.utils import get_dist_attr, merge_and_slice_parameter, load_parameter_into_program
-from paddle.distributed.auto_parallel.reshard import HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
 
 paddle.enable_static()
@@ -258,9 +257,6 @@ class TestMLPAutoConvert2(unittest.TestCase):
         paddle.seed(2021)
         random.seed(2021)
         np.random.seed(2021)
-        HAS_SENT.clear()
-        HAS_RECV.clear()
-        HAS_ALLGATHER.clear()
 
     def tearDown(self):
         os.remove("./model_state_rank{}.pdmodel".format(

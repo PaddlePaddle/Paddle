@@ -59,13 +59,15 @@ class OpAttrTypeMap {
 extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
+extern PyTypeObject* p_tensor_type;
 
 bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
   }
 
@@ -151,7 +153,7 @@ void CastPyArg2AttrInt(PyObject* obj,
 int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
                        ssize_t arg_pos) {
   if (PyObject_CheckLongOrToLong(&obj)) {
-    return (int64_t)PyLong_AsLong(obj);  // NOLINT
+    return (int64_t)PyLong_AsLongLong(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -172,8 +174,13 @@ void CastPyArg2AttrLong(PyObject* obj,
 
 float CastPyArg2Float(PyObject* obj, const std::string& op_type,
                       ssize_t arg_pos) {
+  return static_cast<float>(CastPyArg2Double(obj, op_type, arg_pos));
+}
+
+double CastPyArg2Double(PyObject* obj, const std::string& op_type,
+                        ssize_t arg_pos) {
   if (PyObject_CheckFloatOrToFloat(&obj)) {
-    return (float)PyFloat_AsDouble(obj);  // NOLINT
+    return PyFloat_AsDouble(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -852,6 +859,31 @@ void InitOpsAttrTypeMap() {
       OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
     }
   }
+}
+
+ssize_t GetIdxFromCoreOpsInfoMap(
+    const std::unordered_map<std::string, std::vector<std::string>>&
+        core_ops_info_map,
+    const std::string& op_type, const std::string& name) {
+  // `core_ops_info_map` can be `core_ops_args_info` or `core_ops_returns_info`.
+  // `core_ops_args_info`: get index from core_ops_args_info[op_type] according
+  // to input name.
+  // `core_ops_returns_info`: get index from core_ops_returns_info[op_type]
+  // according to return name.
+  if (!core_ops_info_map.count(op_type)) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Op %s is not found in core_ops_*_info map.", op_type));
+  } else {
+    auto args_list = core_ops_info_map.at(op_type);
+    auto it = std::find(args_list.begin(), args_list.end(), name);
+    if (it == args_list.end()) {
+      PADDLE_THROW(platform::errors::Fatal("%s is not found in op %s's args.",
+                                           name, op_type));
+    } else {
+      return std::distance(args_list.begin(), it);
+    }
+  }
+  return -1;
 }
 
 }  // namespace pybind

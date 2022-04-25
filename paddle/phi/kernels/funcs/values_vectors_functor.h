@@ -20,7 +20,6 @@
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"

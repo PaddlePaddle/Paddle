@@ -16,7 +16,7 @@
 
 namespace infrt {
 
-phi::Backend cvtTarget2Phi(TargetType target) {
+phi::Backend ConvertTargetToPhi(TargetType target) {
   switch (target) {
     case TargetType::CPU:
       return phi::Backend::CPU;
@@ -27,7 +27,7 @@ phi::Backend cvtTarget2Phi(TargetType target) {
   }
 }
 
-TargetType cvtTargetFromPhi(phi::Backend backend) {
+TargetType ConvertTargetFromPhi(phi::Backend backend) {
   switch (backend) {
     case phi::Backend::CPU:
       return TargetType::CPU;
@@ -38,7 +38,7 @@ TargetType cvtTargetFromPhi(phi::Backend backend) {
   }
 }
 
-phi::DataType cvtPrecision2Phi(PrecisionType precision) {
+phi::DataType ConvertPrecisionToPhi(PrecisionType precision) {
 #define CONVERT_PRECISION_TO_PHI(Precision) \
   case PrecisionType::Precision:            \
     return phi::DataType::Precision;
@@ -61,7 +61,7 @@ phi::DataType cvtPrecision2Phi(PrecisionType precision) {
 #undef CONVERT_PRECISION_TO_PHI
 }
 
-PrecisionType cvtPrecisionFromPhi(phi::DataType datatype) {
+PrecisionType ConvertPrecisionFromPhi(phi::DataType datatype) {
 #define CONVERT_PRECISION_FROM_PHI(Precision) \
   case phi::DataType::Precision:              \
     return PrecisionType::Precision;
@@ -84,7 +84,7 @@ PrecisionType cvtPrecisionFromPhi(phi::DataType datatype) {
 #undef CONVERT_PRECISION_FROM_PHI
 }
 
-phi::DataLayout cvtLayout2Phi(LayoutType layout) {
+phi::DataLayout ConvertLayoutToPhi(LayoutType layout) {
   switch (layout) {
     case LayoutType::NCHW:
       return phi::DataLayout::NCHW;
@@ -97,7 +97,7 @@ phi::DataLayout cvtLayout2Phi(LayoutType layout) {
   }
 }
 
-LayoutType cvtLayoutFromPhi(phi::DataLayout layout) {
+LayoutType ConvertLayoutFromPhi(phi::DataLayout layout) {
   switch (layout) {
     case phi::DataLayout::NCHW:
       return LayoutType::NCHW;
@@ -110,16 +110,16 @@ LayoutType cvtLayoutFromPhi(phi::DataLayout layout) {
   }
 }
 
-phi::KernelKey cvtPlace2Phi(const Place& place) {
-  return phi::KernelKey(cvtTarget2Phi(place.target),
-                        cvtLayout2Phi(place.layout),
-                        cvtPrecision2Phi(place.precision));
+phi::KernelKey ConvertPlaceToPhi(const Place& place) {
+  return phi::KernelKey(ConvertTargetToPhi(place.target),
+                        ConvertLayoutToPhi(place.layout),
+                        ConvertPrecisionToPhi(place.precision));
 }
 
-Place cvtPlaceFromPhi(phi::TensorArgDef tensor_arg) {
-  return Place(cvtTargetFromPhi(tensor_arg.backend),
-               cvtPrecisionFromPhi(tensor_arg.dtype),
-               cvtLayoutFromPhi(tensor_arg.layout));
+Place ConvertPlaceFromPhi(phi::TensorArgDef tensor_arg) {
+  return Place(ConvertTargetFromPhi(tensor_arg.backend),
+               ConvertPrecisionFromPhi(tensor_arg.dtype),
+               ConvertLayoutFromPhi(tensor_arg.layout));
 }
 
 }  // namespace infrt

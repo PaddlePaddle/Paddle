@@ -50,9 +50,10 @@ class TestPadOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.6)
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True

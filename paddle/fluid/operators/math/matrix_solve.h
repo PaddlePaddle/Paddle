@@ -117,14 +117,6 @@ class MatrixSolveFunctor {
                   const framework::Tensor& b, framework::Tensor* out);
 };
 
-template <typename DeviceContext, typename T>
-class TriangularSolveFunctor {
- public:
-  void operator()(const DeviceContext& context, const framework::Tensor* a,
-                  framework::Tensor* b, bool left, bool upper, bool transpose,
-                  bool unitriangular);
-};
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

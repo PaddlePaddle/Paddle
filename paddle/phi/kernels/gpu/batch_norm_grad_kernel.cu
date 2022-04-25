@@ -306,15 +306,15 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context &ctx,
-                            const DenseTensor &y_grad,
                             const DenseTensor &x,
                             const DenseTensor &scale,
                             const DenseTensor &bias,
+                            paddle::optional<const DenseTensor &> mean,
+                            paddle::optional<const DenseTensor &> variance,
                             const DenseTensor &saved_mean,
                             const DenseTensor &saved_variance,
                             paddle::optional<const DenseTensor &> reserve_space,
-                            paddle::optional<const DenseTensor &> mean,
-                            paddle::optional<const DenseTensor &> variance,
+                            const DenseTensor &y_grad,
                             float momentum,
                             float epsilon_f,
                             const std::string &data_layout_str,
@@ -359,8 +359,8 @@ void BatchNormGradRawKernel(const Context &ctx,
   }
 
   if (d_scale && d_bias) {
-    d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+    ctx.template Alloc<BatchNormParamType<T>>(d_bias);
   }
 
   PADDLE_ENFORCE_EQ(
@@ -569,8 +569,9 @@ void BatchNormGradRawKernel(const Context &ctx,
                   /*activationDesc=*/nullptr,
                   /*sizeInBytes=*/&workspace_size));
 
-      workspace_ptr = workspace_tensor.mutable_data(
-          ctx.GetPlace(), transformed_x.type(), workspace_size);
+      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+      workspace_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationBackwardEx(
@@ -594,20 +595,17 @@ void BatchNormGradRawKernel(const Context &ctx,
               /*dBnScaleBiasDesc=*/bn_param_desc_,
               /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
               /*bnBiasData=*/nullptr,
-              /*dBnScaleData=*/d_scale
-                  ->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
-              /*dBnBiasData=*/d_bias
-                  ->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
+              /*dBnScaleData=*/ctx.template Alloc<BatchNormParamType<T>>(
+                  d_scale),
+              /*dBnBiasData=*/ctx.template Alloc<BatchNormParamType<T>>(d_bias),
               /*epsilon=*/epsilon,
               /*savedMean=*/saved_mean_data,
               /*savedInvVariance=*/saved_var_data,
               /*activationDesc=*/nullptr,
               /*workspace=*/workspace_ptr,
               /*workSpaceSizeInBytes=*/workspace_size,
-              /*reserveSpace=*/const_cast<T *>(
-                  reserve_space->template data<T>()),
+              /*reserveSpace=*/const_cast<uint8_t *>(
+                  reserve_space->template data<uint8_t>()),
               /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #endif  // CUDNN_VERSION_MIN(7, 4, 1)
       if (!called) {
@@ -626,10 +624,8 @@ void BatchNormGradRawKernel(const Context &ctx,
               H * W * D,
               epsilon,
               transformed_d_x.template data<T>(),
-              d_scale->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              d_bias->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()));
+              ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+              ctx.template Alloc<BatchNormParamType<T>>(d_bias));
         } else {
           BNBackward<T,
                      block,
@@ -644,10 +640,8 @@ void BatchNormGradRawKernel(const Context &ctx,
               H * W * D,
               epsilon,
               transformed_d_x.template data<T>(),
-              d_scale->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              d_bias->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()));
+              ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+              ctx.template Alloc<BatchNormParamType<T>>(d_bias));
         }
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
@@ -682,10 +676,8 @@ void BatchNormGradRawKernel(const Context &ctx,
                 ctx.template Alloc<T>(&transformed_d_x),
                 bn_param_desc_,
                 scale.template data<BatchNormParamType<T>>(),
-                d_scale->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
-                d_bias->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
+                ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                ctx.template Alloc<BatchNormParamType<T>>(d_bias),
                 epsilon,
                 saved_mean_data,
                 saved_var_data));
@@ -872,15 +864,15 @@ void BatchNormGradRawKernel(const Context &ctx,
 
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
-                         const DenseTensor &y_grad,
                          const DenseTensor &x,
                          const DenseTensor &scale,
                          const DenseTensor &bias,
+                         paddle::optional<const DenseTensor &> mean,
+                         paddle::optional<const DenseTensor &> variance,
                          const DenseTensor &saved_mean,
                          const DenseTensor &saved_variance,
                          paddle::optional<const DenseTensor &> reserve_space,
-                         paddle::optional<const DenseTensor &> mean,
-                         paddle::optional<const DenseTensor &> variance,
+                         const DenseTensor &y_grad,
                          float momentum,
                          float epsilon,
                          const std::string &data_layout,
@@ -892,15 +884,15 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
   BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     y_grad,
                                      x,
                                      scale,
                                      bias,
+                                     mean,
+                                     variance,
                                      saved_mean,
                                      saved_variance,
                                      reserve_space,
-                                     mean,
-                                     variance,
+                                     y_grad,
                                      momentum,
                                      epsilon,
                                      data_layout,

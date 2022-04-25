@@ -41,14 +41,14 @@ void ReduceGradFunctor(const Context& dev_ctx,
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
-  int broad_cats_times = 1;
+  int broad_cast_times = 1;
   for (size_t i = 0; i < dims_ref.size(); ++i) {
     if (dims_ref[i] < 0) {
       dims_ref[i] = x_rank + dims_ref[i];
     }
     reduced_dims_v[dims_ref[i]] = 1;
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
-    broad_cats_times *= x_dims[dims_ref[i]];
+    broad_cast_times *= x_dims[dims_ref[i]];
   }
   auto reduced_dims = phi::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
@@ -62,7 +62,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
           &x_grad,
           &x_reduce_grad,
           broadcast_dim,
-          broad_cats_times);
+          broad_cast_times);
 }
 
 inline void GetOriginDimFromShuffled(const DDim& src_dim,

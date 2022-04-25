@@ -35,6 +35,8 @@ PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -57,7 +59,7 @@ TEST(Generated, Sigmoid) {
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
   VLOG(6) << "Runing Backward";
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";
   eager_test::CompareGradTensorWithValue<float>(tensor, 0.25);
@@ -89,7 +91,7 @@ TEST(Generated, Matmul_v2) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 96);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(Y, 3.0 * 4);
@@ -120,7 +122,7 @@ TEST(Generated, ElementwiseAdd) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 5);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(Y, 1.0);
@@ -128,6 +130,6 @@ TEST(Generated, ElementwiseAdd) {
 
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);

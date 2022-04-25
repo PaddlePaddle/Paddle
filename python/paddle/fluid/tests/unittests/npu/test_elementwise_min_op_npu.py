@@ -64,32 +64,41 @@ class TestElementwiseMinOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['X', 'Y'],
-            'Out', )
+            self.check_grad_with_place(
+                self.place, ['X', 'Y'], 'Out', max_relative_error=0.5)
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['X', 'Y'],
+                'Out', )
 
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"), )
+            self.check_grad_with_place(
+                self.place, ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+                max_relative_error=0.9)
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"), )
 
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['X'],
-            'Out',
-            no_grad_set=set("Y"), )
+            self.check_grad_with_place(
+                self.place, ['X'],
+                'Out',
+                no_grad_set=set("Y"),
+                max_relative_error=0.1)
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['X'],
+                'Out',
+                no_grad_set=set("Y"), )
 
 
 class TestElementwiseMinOpFp16(TestElementwiseMinOp):

@@ -21,6 +21,8 @@ from op_test import OpTest
 import paddle
 from paddle.fluid import dygraph
 from paddle import static
+from paddle.fluid.framework import _test_eager_guard
+
 paddle.enable_static()
 
 
@@ -65,7 +67,7 @@ class TestComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         dout = self.out_grad
@@ -75,7 +77,8 @@ class TestComplexOp(OpTest):
             ['X', 'Y'],
             'Out',
             user_defined_grads=[dx, dy],
-            user_defined_grad_outputs=[dout])
+            user_defined_grad_outputs=[dout],
+            check_eager=True)
 
     def test_check_grad_ignore_x(self):
         dout = self.out_grad
@@ -88,7 +91,8 @@ class TestComplexOp(OpTest):
             'Out',
             no_grad_set=set('X'),
             user_defined_grads=[dy],
-            user_defined_grad_outputs=[dout])
+            user_defined_grad_outputs=[dout],
+            check_eager=True)
 
     def test_check_grad_ignore_y(self):
         dout = self.out_grad
@@ -99,7 +103,8 @@ class TestComplexOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             user_defined_grads=[dx],
-            user_defined_grad_outputs=[dout])
+            user_defined_grad_outputs=[dout],
+            check_eager=True)
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
@@ -150,6 +155,10 @@ class TestComplexAPI(unittest.TestCase):
                                  "y": self.y},
                            fetch_list=[out])
         self.assertTrue(np.allclose(self.out, out_np))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_dygraph()
 
 
 if __name__ == "__main__":

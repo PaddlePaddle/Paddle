@@ -20,8 +20,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
@@ -58,6 +58,7 @@ using Tensor = paddle::experimental::Tensor;
 
 constexpr char kGradTensorSuffix[] = "@GRAD";
 constexpr char kTensorVectorSuffix[] = "@VECTOR";
+constexpr char kDoubleGradNewOutSuffix[] = "@NEW";
 
 // Used for Construct Grad Tensor name
 inline std::string Grad(const std::string& t_name) {
@@ -77,6 +78,15 @@ inline std::string Vec(const std::string& t_name) {
   return result;
 }
 
+// Used for Construct double grad output name
+inline std::string New(const std::string& t_name) {
+  std::string result;
+  result.reserve(t_name.size() + 4U);
+  result += t_name;
+  result += kDoubleGradNewOutSuffix;
+  return result;
+}
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
@@ -86,19 +96,28 @@ class PADDLE_API CustomOpKernelContext {
   CustomOpKernelContext() = default;
 
   void EmplaceBackInput(Tensor&& input);
-  void EmplaceBackInputs(std::vector<Tensor>&& inputs);
+  void EmplaceBackInputs(const std::vector<Tensor>& inputs);
   void EmplaceBackOutput(Tensor&& output);
-  void EmplaceBackOutputs(std::vector<Tensor>&& outputs);
+  void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-
+  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs) {
+    attrs_ = std::move(attrs);
+  }
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
-
+  const std::vector<paddle::any>& Attrs() const { return attrs_; }
+  const std::vector<std::pair<size_t, size_t>>& InputRange() {
+    return input_range_;
+  }
+  const std::vector<std::pair<size_t, size_t>>& OutputRange() {
+    return output_range_;
+  }
   Tensor* MutableOutputAt(size_t idx);
   std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -552,7 +571,6 @@ class PADDLE_API OpMetaInfo {
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
-
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};

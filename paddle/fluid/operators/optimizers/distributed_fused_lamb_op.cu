@@ -381,8 +381,9 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
     const T *__restrict__ square_grad_norm_p,
     const T *__restrict__ global_scale, const T *__restrict__ beta1pow_p,
     const T *__restrict__ beta2pow_p, T *__restrict__ mom1_p,
-    T *__restrict__ mom2_p, T *__restrict__ trust_ratio_div_p, bool *found_inf,
-    T weight_decay, int weight_decay_end_numel, T beta1, T beta2, T epsilon,
+    T *__restrict__ mom2_p, T *__restrict__ trust_ratio_div_p,
+    bool *__restrict__ found_inf, int64_t *__restrict__ step, T weight_decay,
+    int weight_decay_end_numel, T beta1, T beta2, T epsilon,
     T max_global_grad_norm, int num, T rescale_grad) {
   T square_grad_norm = *square_grad_norm_p;
   bool need_update_found_inf =
@@ -392,6 +393,7 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
     return;
   } else if (need_update_found_inf) {
     *found_inf = false;
+    ++(*step);
   }
 
   T scale = rescale_grad / global_scale[0];
@@ -467,8 +469,8 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
     const platform::CUDADeviceContext &dev_ctx, const int *offsets, int n,
     const T *param_p, const GradT *grad_p, const T *square_grad_norm_p,
     const T *global_scale, const T *beta1pow_p, const T *beta2pow_p, T *mom1_p,
-    T *mom2_p, T *trust_ratio_div_p, bool *found_inf_p, T weight_decay,
-    int weight_decay_end_idx, T beta1, T beta2, T epsilon,
+    T *mom2_p, T *trust_ratio_div_p, bool *found_inf_p, int64_t *step,
+    T weight_decay, int weight_decay_end_idx, T beta1, T beta2, T epsilon,
     T max_global_grad_norm, T rescale_grad) {
   if (n <= 0) return;
   int numel = offsets[n] - offsets[0];
@@ -496,15 +498,24 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
 
   auto stream = dev_ctx.stream();
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+  if (found_inf_p == nullptr) {
+    PADDLE_ENFORCE_EQ(
+        step, nullptr,
+        platform::errors::InvalidArgument(
+            "Output(Step) cannot be updated twice in one mini-batch."));
+  } else {
+    PADDLE_ENFORCE_NOT_NULL(step, platform::errors::InvalidArgument(
+                                      "Output(Step) cannot be nullptr."));
+  }
 
-#define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                      \
-  do {                                                                 \
-    UpdateLambMomentAndTrustRatioDivCUDAKernel<T, GradT, kVecSize><<<  \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(  \
-        param_p, grad_p, square_grad_norm_p, global_scale, beta1pow_p, \
-        beta2pow_p, mom1_p, mom2_p, trust_ratio_div_p, found_inf_p,    \
-        weight_decay, weight_decay_end_numel, beta1, beta2, epsilon,   \
-        max_global_grad_norm, numel, rescale_grad);                    \
+#define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                         \
+  do {                                                                    \
+    UpdateLambMomentAndTrustRatioDivCUDAKernel<T, GradT, kVecSize><<<     \
+        config.block_per_grid, config.thread_per_block, 0, stream>>>(     \
+        param_p, grad_p, square_grad_norm_p, global_scale, beta1pow_p,    \
+        beta2pow_p, mom1_p, mom2_p, trust_ratio_div_p, found_inf_p, step, \
+        weight_decay, weight_decay_end_numel, beta1, beta2, epsilon,      \
+        max_global_grad_norm, numel, rescale_grad);                       \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL);
@@ -1315,6 +1326,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 
+    auto *step = ctx.Output<framework::Tensor>("Step")->data<int64_t>();
+
     VLOG(1) << "FusedParamOffsets: "
             << FlattenToString(fused_offsets, fused_offsets_t->numel(),
                                fused_offsets_t->place());
@@ -1337,8 +1350,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
           dev_ctx, fp32_partial_fused_offsets, fp32_local_param_num,
           fp32_param + fp32_offset, fp32_sum_grad, fp32_square_grad_norm,
           global_scale, beta1pow, beta2pow, moment1, moment2, trust_ratio_div,
-          found_inf, weight_decay, fp32_weight_decay_end_idx, beta1, beta2,
-          epsilon, max_global_grad_norm, rescale_grad);
+          found_inf, step, weight_decay, fp32_weight_decay_end_idx, beta1,
+          beta2, epsilon, max_global_grad_norm, rescale_grad);
       VLOG(10) << "Update FP32 Moment and TrustRatioDiv done";
     }
     float *master_param = nullptr;
@@ -1346,13 +1359,14 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       master_param = fp32_param + fp32_numel;
       VLOG(10) << "Update FP16 Moment and TrustRatioDiv starts";
       auto tmp_found_inf = has_fp32_param ? nullptr : found_inf;
+      auto tmp_step = has_fp32_param ? nullptr : step;
       MultiTensorUpdateLambMomentAndTrustRatioDiv(
           dev_ctx, fp16_partial_fused_offsets, fp16_local_param_num,
           master_param + fp16_offset, fp16_sum_grad, fp32_square_grad_norm,
           global_scale, beta1pow, beta2pow, moment1 + fp32_numel_each_device,
           moment2 + fp32_numel_each_device,
-          trust_ratio_div + fp32_numel_each_device, tmp_found_inf, weight_decay,
-          fp16_weight_decay_end_idx, beta1, beta2, epsilon,
+          trust_ratio_div + fp32_numel_each_device, tmp_found_inf, tmp_step,
+          weight_decay, fp16_weight_decay_end_idx, beta1, beta2, epsilon,
           max_global_grad_norm, rescale_grad);
       VLOG(10) << "Update FP16 Moment and TrustRatioDiv done";
     }

@@ -16,6 +16,15 @@ import os
 import re
 import json
 
+skip_list = ["adam_sig.cc", "adamw_sig.cc"]
+
+
+def is_grad_kernel(kernel_info):
+    kernel_name = kernel_info.split(",")[0]
+    if kernel_name.endswith("_grad"):
+        return True
+    return False
+
 
 def parse_compat_registry(kernel_info):
     name, inputs_str, attrs_str, outputs_str = kernel_info.split(",{")
@@ -42,6 +51,8 @@ def get_compat_kernels_info():
             compat_files.remove(file_)
 
     for file_ in compat_files:
+        if file_ in skip_list:
+            continue
         with open("../../paddle/phi/ops/compat/" + file_) as in_file:
             txt = in_file.readlines()
             content = ""
@@ -54,9 +65,12 @@ def get_compat_kernels_info():
                     content += line
                 if (registry and ";" in line):
                     data = content.replace("\n", "").replace(
-                        " ", "").strip("return").strip(
-                            "KernelSignature(").strip("\);").replace("\"", "")
+                        " ",
+                        "").strip("return").strip("KernelSignature(").strip(
+                            "\);").replace("\"", "").replace("\\", "")
                     registry = False
+                    if is_grad_kernel(data):
+                        continue
                     name, registry_info = parse_compat_registry(data)
 
                     if name in kernels_info:

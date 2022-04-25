@@ -124,9 +124,11 @@ def resize(img, size, interpolation='bilinear'):
 
             converted_img = F.resize(fake_img, 224)
             print(converted_img.size)
+            # (262, 224)
 
             converted_img = F.resize(fake_img, (200, 150))
             print(converted_img.size)
+            # (150, 200)
     """
     if not (_is_pil_image(img) or _is_numpy_image(img) or
             _is_tensor_image(img)):

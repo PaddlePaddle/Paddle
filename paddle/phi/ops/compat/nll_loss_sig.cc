@@ -27,11 +27,10 @@ KernelSignature NllLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature NllLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "nll_loss_grad",
-      {"X", "Label", "Total_weight", "Weight", GradVarName("Out")},
-      {"ignore_index", "reduction"},
-      {GradVarName("X")});
+  return KernelSignature("nll_loss_grad",
+                         {"X", "Label", "Weight", "Total_weight", "Out@GRAD"},
+                         {"ignore_index", "reduction"},
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

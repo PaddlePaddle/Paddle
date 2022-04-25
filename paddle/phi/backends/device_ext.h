@@ -523,6 +523,15 @@ struct CustomRuntimeParams {
   char reserved[32];
 };
 
+#define PADDLE_CUSTOM_RUNTIME_CHECK_VERSION(params)              \
+  if ((params)->size != sizeof(CustomRuntimeParams) &&           \
+      (params)->interface->size != sizeof(C_DeviceInterface)) {  \
+    return;                                                      \
+  }                                                              \
+  (params)->version.major = PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION; \
+  (params)->version.minor = PADDLE_CUSTOM_RUNTIME_MINOR_VERSION; \
+  (params)->version.patch = PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
+
 // Plugin implement it and fill CustomRuntimeParams
 void InitPlugin(CustomRuntimeParams*);
 

@@ -68,12 +68,6 @@ class TestCustomRawReluOp(unittest.TestCase):
         self.assertTrue(custom_raw_relu_op is not None)
         return custom_raw_relu_op(x)
 
-    def test_dygraph(self):
-        x = paddle.to_tensor(np.random.uniform(low=-1.0, high=1.0, size=[2, 3]))
-        y1 = self.custom_raw_relu(x)
-        y2 = paddle.nn.ReLU()(x)
-        self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
-
     def test_static(self):
         paddle.enable_static()
         shape = [2, 3]

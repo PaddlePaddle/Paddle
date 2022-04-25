@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -80,10 +81,10 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
       data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     MLUCnnlTensorDesc in_x_desc(*in_x, cnnl_layout, ToCnnlDataType<T>());
@@ -115,11 +116,16 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
         framework::Tensor extra_device_tensor =
             ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
                 {static_cast<int64_t>(extra_input_size)}, dev_ctx);
-        // TODO(fwg): use Async copy, and add a callback to stream that free
-        // host
-        // memory.
-        framework::TensorCopySync(extra_host_tensor, ctx.GetPlace(),
-                                  &extra_device_tensor);
+        framework::TensorCopy(extra_host_tensor, ctx.GetPlace(),
+                              &extra_device_tensor);
+        // Increase extra_host_tensor holder_ reference count until copy
+        // complete.
+        auto increase_ref_count = [extra_host_tensor]() {
+          VLOG(4) << "Finished copying extra_host_tensor["
+                  << GetBasePtr(&extra_host_tensor)
+                  << "] in mlu pooling kernel.";
+        };
+        dev_ctx.AddStreamCallback(increase_ref_count);
         MLUCnnl::PoolingForward(
             ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
             in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
@@ -191,10 +197,10 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
       data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     // inputs need with NHWC layout

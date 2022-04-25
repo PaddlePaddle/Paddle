@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {

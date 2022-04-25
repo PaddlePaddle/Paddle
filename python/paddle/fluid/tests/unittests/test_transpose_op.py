@@ -29,6 +29,7 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
+        self.python_api = paddle.transpose
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
@@ -44,10 +45,10 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.shape = (3, 40)

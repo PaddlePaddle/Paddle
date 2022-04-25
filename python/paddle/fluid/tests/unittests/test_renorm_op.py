@@ -54,7 +54,7 @@ class TestRenormAPI(unittest.TestCase):
     def test_dygraph_api(self):
         self.input_data()
         # case axis none
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             input = [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
             x = paddle.to_tensor(input, stop_gradient=False)
             y = paddle.renorm(x, 1.0, 2, 2.05)
@@ -94,4 +94,5 @@ class TestRenormAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

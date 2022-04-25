@@ -57,7 +57,8 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizeTranspose(Graph* graph) const;
   void QuantizeReshape(Graph* graph) const;
   void QuantizeMatmul(Graph* graph) const;
-  void QuantizeElementwiseAdd(Graph* graph) const;
+  void QuantizeElementwise(Graph* graph,
+                           const std::string elementwise_type) const;
   void QuantizeFusionGru(Graph* graph) const;
   void QuantizeMultiGru(Graph* graph) const;
   void QuantizeFusionLSTM(Graph* graph) const;
@@ -94,6 +95,12 @@ class CPUQuantizePass : public FusePassBase {
   bool IsOpQuantized(const Node* node) const;
 
   const std::string name_scope_{"quantize"};
+
+ private:
+  VarQuantScale string_pair_map = {};
+  VarQuantScale* const var_quant_scales_ = &string_pair_map;
+
+  void GetQuantInfo(Graph* graph) const;
 };
 
 }  // namespace ir

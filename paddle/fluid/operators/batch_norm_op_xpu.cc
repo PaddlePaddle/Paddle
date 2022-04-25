@@ -1,5 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -104,6 +103,12 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
                             "The batch_norm XPU API return wrong value[%d %s]",
                             r, XPUAPIErrorMsg[r]));
     } else {
+      PADDLE_ENFORCE_EQ(
+          data_layout_str == "NCHW", true,
+          platform::errors::InvalidArgument(
+              "The batch_norm_infer 'data_layout' attribute must be NCHW. "
+              "But recevived 'data_layout' is [%s].",
+              data_layout_str));
       const auto *mean = ctx.Input<Tensor>("Mean");
       const auto *variance = ctx.Input<Tensor>("Variance");
       const auto *mean_data = mean->data<float>();
@@ -260,7 +265,7 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
 
     // TODO(guozibin): hadle the situation case of N * H * W = 1
     if (is_inplace) {
-      float *global_inv_std_data;
+      float *global_inv_std_data = nullptr;
       if (use_global_stats) {
         global_inv_std_data =
             RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
