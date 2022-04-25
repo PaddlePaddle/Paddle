@@ -24,189 +24,189 @@ namespace ir {
 
 namespace {
 class Quanter {
-  public:
-    void AddQuantOps() {
-      if(IsNotPermittedOpType())
-        return;
+ public:
+  void AddQuantOps() {
+    if(IsNotPermittedOpType())
+      return;
 
-      std::vector<std::string> linked_xputs;
+    std::vector<std::string> linked_xputs;
 
-      for(const auto& logical_xput : op_xputs) {
-        std::vector<std::string> quant_xput_names;
-        quant_xput_names.reserve(xputs_map.size());
+    for(const auto& logical_xput : op_xputs) {
+      std::vector<std::string> quant_xput_names;
+      quant_xput_names.reserve(xputs_map.size());
 
-        const auto& logical_xput_name = logical_xput.first;
-        if(IsNotPermittedName(logical_xput_name))
+      const auto& logical_xput_name = logical_xput.first;
+      if(IsNotPermittedName(logical_xput_name))
+        continue;
+
+      const auto& physical_xputs_names = logical_xput.second;
+      for(const auto& physical_xput_name: physical_xputs_names) {
+        if(IsAlreadyLinked(linked_xputs, physical_xput_name))
           continue;
 
-        const auto& physical_xputs_names = logical_xput.second;
-        for(const auto& physical_xput_name: physical_xputs_names) {
-          if(IsAlreadyLinked(linked_xputs, physical_xput_name))
-            continue;
+        VarDesc quant_x_desc(patterns::PDNodeName(get_op_type(), get_op_edge()));
+        auto quant_x_node = graph.CreateVarNode(&quant_x_desc);
+        const auto xput_name = quant_x_node->Name();
+        quant_xput_names.emplace_back(xput_name);
 
-          VarDesc quant_x_desc(patterns::PDNodeName(get_op_type(), get_op_edge()));
-          auto quant_x_node = graph.CreateVarNode(&quant_x_desc);
-          const auto xput_name = quant_x_node->Name();
-          quant_xput_names.emplace_back(xput_name);
+        auto quant_op = create_quant_op(physical_xput_name, xput_name);
 
-          auto quant_op = create_quant_op(physical_xput_name, xput_name);
-
-          auto physical_xput_node = xputs_map[physical_xput_name];
-          link_nodes(physical_xput_node, quant_op, quant_x_node);
-          counter++;
-          linked_xputs.push_back(physical_xput_name);
-        }
-
-        set_edge(logical_xput_name, quant_xput_names);
+        auto physical_xput_node = xputs_map[physical_xput_name];
+        link_nodes(physical_xput_node, quant_op, quant_x_node);
+        counter++;
+        linked_xputs.push_back(physical_xput_name);
       }
+
+      set_edge(logical_xput_name, quant_xput_names);
     }
+  }
 
-    int get_counter() const {
-      return counter;
-    }
+  int get_counter() const {
+    return counter;
+  }
 
-    virtual ~Quanter() = default;
-  protected:
-    Graph& graph;
-    ir::Node* const op;
+  virtual ~Quanter() = default;
+ protected:
+  Graph& graph;
+  ir::Node* const op;
 
-    std::map<std::string, ir::Node*> xputs_map;
-    const VariableNameMap& op_xputs;
+  std::map<std::string, ir::Node*> xputs_map;
+  const VariableNameMap& op_xputs;
 
-    int counter = 0;
+  int counter = 0;
 
-    Quanter(Graph& graph, ir::Node* const op, const VariableNameMap& op_xputs) : graph(graph), op(op), op_xputs(op_xputs) {};
+  Quanter(Graph& graph, ir::Node* const op, const VariableNameMap& op_xputs) : graph(graph), op(op), op_xputs(op_xputs) {};
 
-    virtual bool IsNotPermittedOpType() const = 0;
-    virtual bool IsNotPermittedName(const std::string& input_name) const = 0;
-    virtual std::string get_op_type() const = 0;
-    virtual std::string get_op_edge() const = 0;
-    virtual void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) = 0;
-    virtual void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) = 0;
+  virtual bool IsNotPermittedOpType() const = 0;
+  virtual bool IsNotPermittedName(const std::string& input_name) const = 0;
+  virtual std::string get_op_type() const = 0;
+  virtual std::string get_op_edge() const = 0;
+  virtual void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) = 0;
+  virtual void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) = 0;
 
-    bool IsAlreadyLinked(const std::vector<std::string>& node_names, const std::string& node_name) const
-    {
-      return std::find(node_names.begin(), node_names.end(), node_name) != node_names.end();
-    }
+  bool IsAlreadyLinked(const std::vector<std::string>& node_names, const std::string& node_name) const
+  {
+    return std::find(node_names.begin(), node_names.end(), node_name) != node_names.end();
+  }
 
-    virtual ir::Node* create_quant_op(const std::string& input_name, const std::string& output_name) const {
-      OpDesc op_desc;
-      op_desc.SetType(get_op_type());
+  virtual ir::Node* create_quant_op(const std::string& input_name, const std::string& output_name) const {
+    OpDesc op_desc;
+    op_desc.SetType(get_op_type());
 
-      op_desc.SetInput("Input", std::vector<std::string>({input_name}));
-      op_desc.SetOutput("Output",
+    op_desc.SetInput("Input", std::vector<std::string>({input_name}));
+    op_desc.SetOutput("Output",
                       std::vector<std::string>({output_name}));
-      op_desc.SetAttr("Scale", 1.f);
-      op_desc.SetAttr("Shift", 0.0f);
-      op_desc.SetAttr("bfloat16", true);
-      op_desc.SetAttr("output_format", op->Op()->HasAttr("data_layout")
-                                          ? op->Op()->GetAttr("data_layout")
-                                          : std::string("NCHW"));
-      return graph.CreateOpNode(&op_desc);  // OpDesc will be copied.
-    }
+    op_desc.SetAttr("Scale", 1.f);
+    op_desc.SetAttr("Shift", 0.0f);
+    op_desc.SetAttr("bfloat16", true);
+    op_desc.SetAttr("output_format", op->Op()->HasAttr("data_layout")
+                                        ? op->Op()->GetAttr("data_layout")
+                                        : std::string("NCHW"));
+    return graph.CreateOpNode(&op_desc);  // OpDesc will be copied.
+  }
 
-    void UnlinkNodes(ir::Node* a, ir::Node* b) const {
-      a->outputs.erase(std::remove(a->outputs.begin(), a->outputs.end(), b),
-                      a->outputs.end());
-      b->inputs.erase(std::remove(b->inputs.begin(), b->inputs.end(), a),
-                      b->inputs.end());
-    }
+  void UnlinkNodes(ir::Node* a, ir::Node* b) const {
+    a->outputs.erase(std::remove(a->outputs.begin(), a->outputs.end(), b),
+                    a->outputs.end());
+    b->inputs.erase(std::remove(b->inputs.begin(), b->inputs.end(), a),
+                    b->inputs.end());
+  }
 };
 
 class Quantizer final : public Quanter{
-  public:
-    Quantizer(Graph* const graph, ir::Node* const op) : Quanter(*graph, op, op->Op()->Inputs()) {
-      auto inputs = op->inputs;
-      PADDLE_ENFORCE_GE(inputs.size(), 1,
-                    platform::errors::InvalidArgument(
-                        "OP(%s)'s inputs(%d) must be equal or greater than 1.",
-                        op->Name(), inputs.size()));
+ public:
+  Quantizer(Graph* const graph, ir::Node* const op) : Quanter(*graph, op, op->Op()->Inputs()) {
+    auto inputs = op->inputs;
+    PADDLE_ENFORCE_GE(inputs.size(), 1,
+                  platform::errors::InvalidArgument(
+                      "OP(%s)'s inputs(%d) must be equal or greater than 1.",
+                      op->Name(), inputs.size()));
 
-      for(auto input: inputs)
-        xputs_map[input->Name()] = input;
-    };
-  protected:
-    bool IsNotPermittedOpType() const override {
-      return false;
-    }
+    for(auto input: inputs)
+      xputs_map[input->Name()] = input;
+  };
+ protected:
+  bool IsNotPermittedOpType() const override {
+    return false;
+  }
 
-    // Checking whether a reorder from FP32 to BF16 should be added before the input
-    // to the operator
-    bool IsNotPermittedName(const std::string& input_name) const override {
-      // Only the inputs listed in \"permitted_names\" requires quanitization before
-      // the bfloat16 operator. Other inputs, such as Filter and Bias are reordered
-      // in the kernel.
-      const std::vector<std::string> permitted_names = {"X", "Y", "Input",
-                                                        "ResidualData"};
+  // Checking whether a reorder from FP32 to BF16 should be added before the input
+  // to the operator
+  bool IsNotPermittedName(const std::string& input_name) const override {
+    // Only the inputs listed in \"permitted_names\" requires quanitization before
+    // the bfloat16 operator. Other inputs, such as Filter and Bias are reordered
+    // in the kernel.
+    const std::vector<std::string> permitted_names = {"X", "Y", "Input",
+                                                      "ResidualData"};
 
-      return std::none_of(permitted_names.begin(),
-                          permitted_names.end(),
-                          [&input_name](const std::string& name) {
-                            return name == input_name;
-                          }
-                        );
-    }
+    return std::none_of(permitted_names.begin(),
+                        permitted_names.end(),
+                        [&input_name](const std::string& name) {
+                          return name == input_name;
+                        }
+                      );
+  }
 
-    std::string get_op_type() const override { return "quantize"; };
-    std::string get_op_edge() const override { return "out"; };
+  std::string get_op_type() const override { return "quantize"; };
+  std::string get_op_edge() const override { return "out"; };
 
-    void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) override {
-      UnlinkNodes(physical_xput_node, op);
-      IR_NODE_LINK_TO(physical_xput_node, quant_op);
-      IR_NODE_LINK_TO(quant_op, quant_x_node);
-      IR_NODE_LINK_TO(quant_x_node, op);
-    }
+  void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) override {
+    UnlinkNodes(physical_xput_node, op);
+    IR_NODE_LINK_TO(physical_xput_node, quant_op);
+    IR_NODE_LINK_TO(quant_op, quant_x_node);
+    IR_NODE_LINK_TO(quant_x_node, op);
+  }
 
-    void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) override
-    {
-      op->Op()->SetInput(logical_xput_name, quant_xput_names);
-    }
+  void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) override
+  {
+    op->Op()->SetInput(logical_xput_name, quant_xput_names);
+  }
 };
 
 class DeQuantizer final : public Quanter {
-  public:
-    DeQuantizer(Graph* const graph, ir::Node* const op) : Quanter(*graph, op, op->Op()->Outputs()) {
-      auto outputs = op->outputs;
-      PADDLE_ENFORCE_GE(outputs.size(), 1,
-                    platform::errors::InvalidArgument(
-                        "OP(%s)'s outputs(%d) must be equal or greater than 1.",
-                        op->Name(), outputs.size()));
+ public:
+  DeQuantizer(Graph* const graph, ir::Node* const op) : Quanter(*graph, op, op->Op()->Outputs()) {
+    auto outputs = op->outputs;
+    PADDLE_ENFORCE_GE(outputs.size(), 1,
+                  platform::errors::InvalidArgument(
+                      "OP(%s)'s outputs(%d) must be equal or greater than 1.",
+                      op->Name(), outputs.size()));
 
-      for(auto output: outputs)
-        xputs_map[output->Name()] = output;
-    };
-  protected:
-    bool IsNotPermittedOpType() const override {
-      // Prior_box operator output is always FP32 so no dequantization is needed.
-      return op->Op()->Type() == "prior_box";
-    }
+    for(auto output: outputs)
+      xputs_map[output->Name()] = output;
+  };
+ protected:
+  bool IsNotPermittedOpType() const override {
+    // Prior_box operator output is always FP32 so no dequantization is needed.
+    return op->Op()->Type() == "prior_box";
+  }
 
-    // Checking whether a reorder from BF16 to FP32 should be added after the output
-    // to the operator
-    bool IsNotPermittedName(const std::string& output_name) const override{
-      // XShape is output in transpose2 and reshape2 operators used to store the
-      // shape and lod of X. So this output do not need dequantize before.
-      return (output_name == "XShape");
-    }
+  // Checking whether a reorder from BF16 to FP32 should be added after the output
+  // to the operator
+  bool IsNotPermittedName(const std::string& output_name) const override{
+    // XShape is output in transpose2 and reshape2 operators used to store the
+    // shape and lod of X. So this output do not need dequantize before.
+    return (output_name == "XShape");
+  }
 
-    std::string get_op_type() const override {return "dequantize";};
-    std::string get_op_edge() const override {return "in";};
+  std::string get_op_type() const override {return "dequantize";};
+  std::string get_op_edge() const override {return "in";};
 
-    void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) override {
-      UnlinkNodes(op, physical_xput_node);
-      IR_NODE_LINK_TO(quant_op, physical_xput_node);
-      IR_NODE_LINK_TO(quant_x_node, quant_op);
-      IR_NODE_LINK_TO(op, quant_x_node);
-    }
+  void link_nodes(ir::Node* const physical_xput_node, ir::Node* const quant_op, ir::Node* const quant_x_node) override {
+    UnlinkNodes(op, physical_xput_node);
+    IR_NODE_LINK_TO(quant_op, physical_xput_node);
+    IR_NODE_LINK_TO(quant_x_node, quant_op);
+    IR_NODE_LINK_TO(op, quant_x_node);
+  }
 
-    void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) override
-    {
-      op->Op()->SetOutput(logical_xput_name, quant_xput_names);
-    }
+  void set_edge(const std::string& logical_xput_name, const std::vector<std::string>& quant_xput_names) override
+  {
+    op->Op()->SetOutput(logical_xput_name, quant_xput_names);
+  }
 
-    ir::Node* create_quant_op(const std::string& input_name, const std::string& output_name) const override {
-      return Quanter::create_quant_op(output_name, input_name);
-    }
+  ir::Node* create_quant_op(const std::string& input_name, const std::string& output_name) const override {
+    return Quanter::create_quant_op(output_name, input_name);
+  }
 };
 }
 using string::PrettyLogDetail;
