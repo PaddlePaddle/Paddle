@@ -39,12 +39,12 @@ __device__ void BlockReverse(
   int tx = threadIdx.x;
 
   int offset = tx;
+  T src_data = 0;
   int src_offset = BLOCK_SIZE - offset - 1;
   if (src_offset < valid_item) {
-    sh_mem[offset] = idata[src_base + src_offset];
-  } else {
-    sh_mem[offset] = 0;
+    src_data = idata[src_base + src_offset];
   }
+  sh_mem[offset] = src_data;
 
   __syncthreads();
   int out_index = dst_base - offset;
