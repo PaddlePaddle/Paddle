@@ -15,3 +15,4 @@
 from .gate import GShardGate, BaseGate, SwitchGate, NaiveGate
 from .moe_layer import MoELayer
 from .grad_clip import ClipGradForMOEByGlobalNorm
+ClipGradByGlobalNorm = ClipGradForMOEByGlobalNorm
