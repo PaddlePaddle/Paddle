@@ -19,6 +19,8 @@ import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
 import paddle.fluid.initializer as I
 import unittest
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
 
 
 class LabelSmoothTestCase(unittest.TestCase):

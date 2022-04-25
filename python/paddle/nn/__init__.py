@@ -138,6 +138,7 @@ from .layer.transformer import Transformer  # noqa: F401
 from .layer.distance import PairwiseDistance  # noqa: F401
 
 from .layer.vision import PixelShuffle  # noqa: F401
+from .layer.vision import ChannelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
 
 from .utils.spectral_norm_hook import spectral_norm
@@ -300,6 +301,7 @@ __all__ = [     #noqa
            'Swish',
            'Mish',
            'PixelShuffle',
+           'ChannelShuffle',
            'ELU',
            'ReLU6',
            'LayerDict',
