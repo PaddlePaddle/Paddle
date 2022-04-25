@@ -68,7 +68,7 @@ using InferMetaFn = void (*)(InferMetaContext* ctx);
 
 // Global SmallVector size setting
 constexpr size_t kInputSmallVectorSize = 15U;
-constexpr size_t kAttrSmallVectorSize = 30U;
-constexpr size_t kOutputSmallVectorSize = 20U;
+constexpr size_t kAttrSmallVectorSize = 15U;
+constexpr size_t kOutputSmallVectorSize = 15U;
 
 }  // namespace phi
