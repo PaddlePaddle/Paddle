@@ -20,6 +20,7 @@ limitations under the License. */
 
     Will be adjusted/removed/moved in the near future
 */
+
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
@@ -127,7 +128,14 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-inline dnnl::memory::format_tag format() const { return format_; }
+  dnnl::memory::desc mem_desc() const;
+
+inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  mem_desc_ = mem_desc;
+  meta_.layout = DataLayout::kMKLDNN;
+}
+
+dnnl::memory::format_tag format() const;
 
 inline void set_format(const dnnl::memory::format_tag format) {
   format_ = format;
