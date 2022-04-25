@@ -219,7 +219,7 @@ def init_parallel_env():
             "required to create a process group.")
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
-        endpoints = None
+        endpoints = master_addr + ":" + master_port
         if not master_addr or not master_port:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
