@@ -182,9 +182,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #endif
 
-  pt_kernel_name = pt_kernel_signature.name;
-  VLOG(3) << "The op_type is: " << op.Type()
-          << " and the pt_kernel_name is: " << pt_kernel_name;
   bool has_phi_kernel = false;
 
   const auto* arg_map_fn =
