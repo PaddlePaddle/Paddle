@@ -67,6 +67,22 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+  auto dx_dims = do_dims;
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,

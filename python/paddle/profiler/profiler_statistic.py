@@ -13,6 +13,7 @@
 # limitations under the License.
 import collections
 from enum import Enum
+import re
 
 from paddle.fluid.core import TracerEventType
 
@@ -1317,10 +1318,11 @@ def _build_table(statistic_data,
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
+        kernel_name_pattern = re.compile('(.+?)(<.*>)(\(.*\))')
         for row_values in all_row_values:
-            indx = row_values[0].find('(')
-            if indx != -1:
-                name = row_values[0][:indx]
+            match = kernel_name_pattern.match(row_values[0])
+            if match:
+                name = match.group(1) + match.group(2)
             else:
                 name = row_values[0]
             if len(name) > name_column_width:

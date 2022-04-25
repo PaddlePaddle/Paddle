@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
@@ -233,9 +234,9 @@ void BuildDygraphPhiKernelContext(
     platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& attr_names = std::get<1>(pt_kernel_signature.args);
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
+  const auto& attr_names = pt_kernel_signature.attr_names;
+  const auto& output_names = pt_kernel_signature.output_names;
 
   auto& input_defs = pt_kernel.args_def().input_defs();
   auto& output_defs = pt_kernel.args_def().output_defs();
@@ -570,7 +571,7 @@ template <typename VarType>
 void PreparePhiData(const phi::Kernel& pt_kernel,
                     const framework::KernelSignature& pt_kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  const auto& input_names = pt_kernel_signature.input_names;
   auto& input_defs = pt_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
