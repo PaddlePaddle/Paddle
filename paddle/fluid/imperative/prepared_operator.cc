@@ -435,6 +435,8 @@ static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
     const framework::OpKernelType& kernel_type,
     const framework::OperatorWithKernel::OpKernelFunc& func,
+    const phi::ArgumentMappingFn* arg_map_fn,
+    const phi::KernelSignature* default_kernel_signature,
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
@@ -446,7 +448,8 @@ static void PreparedOpRunImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
-        &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
+        &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type,
+        arg_map_fn, default_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
@@ -552,8 +555,9 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                                  phi_kernel_, dev_ctx_, ins, outs, attrs,
                                  default_attrs);
   } else {
-    PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
-                               outs, attrs, default_attrs);
+    PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, arg_map_fn_,
+                               default_kernel_signature_, dev_ctx_, ins, outs,
+                               attrs, default_attrs);
   }
 }
 
@@ -567,8 +571,9 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
         kernel_signature_, phi_kernel_, dev_ctx_, ins, outs, attrs,
         default_attrs);
   } else {
-    PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
-                                       ins, outs, attrs, default_attrs);
+    PreparedOpRunImpl<VariableWrapper>(
+        op_, ctx_, kernel_type_, func_, arg_map_fn_, default_kernel_signature_,
+        dev_ctx_, ins, outs, attrs, default_attrs);
   }
 }
 
@@ -582,9 +587,9 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
         kernel_signature_, phi_kernel_, dev_ctx_, ins, outs, attrs,
         default_attrs);
   } else {
-    PreparedOpRunImpl<egr::EagerVariable>(op_, ctx_, kernel_type_, func_,
-                                          dev_ctx_, ins, outs, attrs,
-                                          default_attrs);
+    PreparedOpRunImpl<egr::EagerVariable>(
+        op_, ctx_, kernel_type_, func_, arg_map_fn_, default_kernel_signature_,
+        dev_ctx_, ins, outs, attrs, default_attrs);
   }
 }
 
