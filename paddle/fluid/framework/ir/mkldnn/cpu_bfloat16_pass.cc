@@ -26,7 +26,7 @@ namespace {
 class Quanter {
  public:
   void AddQuantOps() {
-    if(IsNotPermittedOpType()) return;
+    if (IsNotPermittedOpType()) return;
 
     std::vector<std::string> linked_xputs;
 
@@ -38,7 +38,7 @@ class Quanter {
       if (IsNotPermittedName(logical_xput_name)) continue;
 
       const auto& physical_xputs_names = logical_xput.second;
-      for (const auto& physical_xput_name: physical_xputs_names) {
+      for (const auto& physical_xput_name : physical_xputs_names) {
         if (IsAlreadyLinked(linked_xputs, physical_xput_name)) continue;
 
         VarDesc quant_x_desc(
@@ -73,7 +73,7 @@ class Quanter {
   int counter = 0;
 
   Quanter(Graph& graph, ir::Node* const op, const VariableNameMap& op_xputs)
-      : graph(graph), op(op), op_xputs(op_xputs) {};
+      : graph(graph), op(op), op_xputs(op_xputs){};
 
   virtual bool IsNotPermittedOpType() const = 0;
   virtual bool IsNotPermittedName(const std::string& input_name) const = 0;
@@ -126,7 +126,7 @@ class Quantizer final : public Quanter {
             "OP(%s)'s inputs(%d) must be equal or greater than 1.", op->Name(),
             inputs.size()));
 
-    for(auto input: inputs) xputs_map[input->Name()] = input;
+    for (auto input: inputs) xputs_map[input->Name()] = input;
   };
 
  protected:
@@ -171,10 +171,10 @@ class DeQuantizer final : public Quanter {
     PADDLE_ENFORCE_GE(
         outputs.size(), 1,
         platform::errors::InvalidArgument(
-            "OP(%s)'s outputs(%d) must be equal or greater than 1.",
-            op->Name(), outputs.size()));
+            "OP(%s)'s outputs(%d) must be equal or greater than 1.", op->Name(),
+            outputs.size()));
 
-    for(auto output: outputs) xputs_map[output->Name()] = output;
+    for (auto output: outputs) xputs_map[output->Name()] = output;
   };
 
  protected:
