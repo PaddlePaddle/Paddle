@@ -1,11 +1,11 @@
-// This file copy from llvm/ADT/array_ref.h, version: 12.0.0
+// This file copy from llvm/ADT/ArrayRef.h, version: 12.0.0
 // Modified the following points
 // 1. remove hash_value functions
 // 2. replace with the llvm::NoneType with paddle::none_t
 // 3. remove drop_while, drop_until, take_while, take_until methods
 // 4. change ArrayRef to array_ref to unify naming style of utils
 
-//===- array_ref.h - Array Reference Wrapper ---------------------*- C++
+//===- ArrayRef.h - Array Reference Wrapper ---------------------*- C++
 //-*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
