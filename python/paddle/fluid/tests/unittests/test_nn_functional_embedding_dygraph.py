@@ -19,6 +19,8 @@ import unittest
 import paddle
 import paddle.nn as nn
 import numpy as np
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
 
 paddle.disable_static()
 
