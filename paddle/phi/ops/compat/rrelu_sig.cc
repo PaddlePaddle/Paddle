@@ -26,7 +26,7 @@ KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature RReluGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "rrelu_grad", {"X", "Noise", GradVarName("Out")}, {}, {GradVarName("X")});
+      "rrelu_grad", {"X", "Noise", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 }  // namespace phi
 
