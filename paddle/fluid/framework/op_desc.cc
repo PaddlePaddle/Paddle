@@ -245,6 +245,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override;
 
+  proto::VarType::Type GetInputVarType(const std::string &name) const override {
+    return GetVarType(Inputs(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
     return GetVarTypes(Inputs(name));

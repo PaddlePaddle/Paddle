@@ -979,6 +979,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return GetDims(vars);
   }
 
+  proto::VarType::Type GetInputVarType(const std::string& name) const override {
+    return GetVarType(InputVars(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override {
     return GetVarTypes(InputVars(name));
