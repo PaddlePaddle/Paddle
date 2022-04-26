@@ -21,12 +21,15 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-#define ELEMENTWISE_KERNEL_NAME(name, type) ElementWise##name##type##Kernel
-
 #define DEFINE_ELEMENTWISE_KERNEL_HEAD(name)          \
   DEFINE_ELEMENTWISE_KERNEL_HEAD_WITH_TYPE(name, Csr) \
                                                       \
   DEFINE_ELEMENTWISE_KERNEL_HEAD_WITH_TYPE(name, Coo)
+
+#define DEFINE_ELEMENTWISE_KERNEL_FUNC(name) \
+  DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(name)   \
+                                             \
+  DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)
 
 #define DEFINE_ELEMENTWISE_KERNEL_HEAD_WITH_TYPE(name, type)          \
   template <typename T, typename Context>                             \
@@ -35,47 +38,41 @@ namespace sparse {
                                        const Sparse##type##Tensor& y, \
                                        Sparse##type##Tensor* out);
 
-#define DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(name)                         \
-  template <typename T, typename Context>                                \
-  SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,         \
-                                         const SparseCsrTensor& x,       \
-                                         const SparseCsrTensor& y) {     \
-    DenseTensor non_zero_crows;                                          \
-    DenseTensor non_zero_cols;                                           \
-    DenseTensor non_zero_elements;                                       \
-    SparseCsrTensor out(                                                 \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());     \
-    ELEMENTWISE_KERNEL_NAME(name, Csr)<T, Context>(dev_ctx, x, y, &out); \
-    return out;                                                          \
+#define DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(name)                      \
+  template <typename T, typename Context>                             \
+  SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,      \
+                                         const SparseCsrTensor& x,    \
+                                         const SparseCsrTensor& y) {  \
+    DenseTensor non_zero_crows;                                       \
+    DenseTensor non_zero_cols;                                        \
+    DenseTensor non_zero_elements;                                    \
+    SparseCsrTensor out(                                              \
+        non_zero_crows, non_zero_cols, non_zero_elements, x.dims());  \
+    ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out); \
+    return out;                                                       \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                         \
-  template <typename T, typename Context>                                \
-  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,         \
-                                         const SparseCooTensor& x,       \
-                                         const SparseCooTensor& y) {     \
-    DenseTensor non_zero_indices;                                        \
-    DenseTensor non_zero_elements;                                       \
-    SparseCooTensor out(non_zero_indices, non_zero_elements, x.dims());  \
-    ELEMENTWISE_KERNEL_NAME(name, Coo)<T, Context>(dev_ctx, x, y, &out); \
-    return out;                                                          \
+#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                        \
+  template <typename T, typename Context>                               \
+  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,        \
+                                         const SparseCooTensor& x,      \
+                                         const SparseCooTensor& y) {    \
+    DenseTensor non_zero_indices;                                       \
+    DenseTensor non_zero_elements;                                      \
+    SparseCooTensor out(non_zero_indices, non_zero_elements, x.dims()); \
+    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
+    return out;                                                         \
   }
 
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Add)
-DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(Add)
-DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(Add)
-
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Subtract)
-DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(Subtract)
-DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(Subtract)
-
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Multiply)
-DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(Multiply)
-DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(Multiply)
-
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Divide)
-DEFINE_CSR_ELEMENTWISE_KERNEL_FUNC(Divide)
-DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(Divide)
+
+DEFINE_ELEMENTWISE_KERNEL_FUNC(Add)
+DEFINE_ELEMENTWISE_KERNEL_FUNC(Subtract)
+DEFINE_ELEMENTWISE_KERNEL_FUNC(Multiply)
+DEFINE_ELEMENTWISE_KERNEL_FUNC(Divide)
 
 }  // namespace sparse
 }  // namespace phi
