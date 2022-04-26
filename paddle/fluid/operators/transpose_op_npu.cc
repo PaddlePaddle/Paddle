@@ -17,14 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/expand_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
-#ifndef CANN_VERSION_CODE
-#define CANN_VERSION_CODE 503003
-#endif
-
-#ifndef CANN_VERSION_CODE
-#define CANN_VERSION_CODE 503003
-#endif
-
 namespace paddle {
 namespace operators {
 

@@ -30,11 +30,6 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   }
   return tensor_data[0];
 }
-#define SIM_INF 1e+38
-static bool _is_infinite(const float& num){
-    return num > SIM_INF;
-}
-
 
 template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {

@@ -49,7 +49,6 @@ class SumNPUKernel : public framework::OpKernel<T> {
           inputs.push_back(*x[i]);
           names.push_back("x" + std::to_string(i));
         } else {
-          //VLOG(0) << "x("  <<i << ") :" << x[i] << "  numel: " << x[i]->numel();
           continue;
         }
       }
