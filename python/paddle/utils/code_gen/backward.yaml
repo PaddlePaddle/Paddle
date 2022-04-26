@@ -1700,7 +1700,7 @@
     param : [x, y]
   kernel :
     func : subtract_grad
-  #no_need_buffer : x, y
+  no_need_buffer : x, y
   backward : subtract_double_grad
 
 - backward_api : sum_double_grad
