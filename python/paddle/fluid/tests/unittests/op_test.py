@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import unittest
 import warnings
 import numpy as np
@@ -37,20 +38,21 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
-from paddle.fluid.tests.unittests.testsuite import (
+from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+
+from testsuite import (
     create_op,
     set_input,
     append_input_output,
     append_loss_ops, )
-from paddle.fluid import unique_name
-from paddle.fluid.tests.unittests.white_list import (
+from white_list import (
     op_accuracy_white_list,
     check_shape_white_list,
     compile_vs_runtime_white_list,
     no_check_set_white_list,
     op_threshold_white_list,
     no_grad_set_white_list, )
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
 # For switch new eager mode globally
 g_is_in_eager = _in_eager_without_dygraph_check()
