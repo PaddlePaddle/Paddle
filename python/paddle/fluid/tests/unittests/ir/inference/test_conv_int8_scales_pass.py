@@ -36,7 +36,6 @@ class TestConvInt8ScalesPass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
         config.pass_builder().append_pass("conv_int8_scales_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
 
