@@ -51,6 +51,7 @@ from ..fluid.framework import mlu_places  # noqa: F401
 from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
+from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
 from ..fluid.layers.nn import py_func  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
@@ -78,6 +79,7 @@ __all__ = [     #noqa
            'BuildStrategy',
            'CompiledProgram',
            'ipu_shard_guard',
+           'set_ipu_shard',
            'IpuCompiledProgram',
            'IpuStrategy',
            'Print',
