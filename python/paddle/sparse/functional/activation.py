@@ -84,7 +84,7 @@ def tanh(x, name=None):
             with _test_eager_guard():
                 dense_x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
                 sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.functional.tanh(sparse_x) 
+                out = paddle.sparse.tanh(sparse_x)
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
