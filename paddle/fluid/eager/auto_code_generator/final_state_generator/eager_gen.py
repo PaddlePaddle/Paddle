@@ -119,7 +119,7 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false, bool is_new_grad = false) override;
   std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
@@ -149,7 +149,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = \
 """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph, bool is_new_grad) {{
     // Fill Zero For GradIn Tensors
 {}
 
