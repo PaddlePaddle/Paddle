@@ -1091,7 +1091,6 @@ def broadcast_tensors(input, name=None):
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
             float16, float32, float64, int32, int64. All the Tensors in ``input`` must have same data type.
             Currently we only support tensors with rank no greater than 5.
-
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
