@@ -984,7 +984,7 @@ class TheOnePSRuntime(RuntimeBase):
                             table_proto.accessor)
                 else:
                     table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
+                    table.table_class = "MemoryDenseTable"
                     table.shard_num = 256
                     common.table_name = "MergedDense"
 

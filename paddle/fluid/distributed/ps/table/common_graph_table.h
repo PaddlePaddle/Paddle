@@ -44,6 +44,7 @@
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #endif
 namespace paddle {
@@ -82,16 +83,20 @@ class GraphShard {
 enum LRUResponse { ok = 0, blocked = 1, err = 2 };
 
 struct SampleKey {
+  int idx;
   int64_t node_key;
   size_t sample_size;
   bool is_weighted;
-  SampleKey(int64_t _node_key, size_t _sample_size, bool _is_weighted)
-      : node_key(_node_key),
-        sample_size(_sample_size),
-        is_weighted(_is_weighted) {}
+  SampleKey(int _idx, int64_t _node_key, size_t _sample_size,
+            bool _is_weighted) {
+    idx = _idx;
+    node_key = _node_key;
+    sample_size = _sample_size;
+    is_weighted = _is_weighted;
+  }
   bool operator==(const SampleKey &s) const {
-    return node_key == s.node_key && sample_size == s.sample_size &&
-           is_weighted == s.is_weighted;
+    return idx == s.idx && node_key == s.node_key &&
+           sample_size == s.sample_size && is_weighted == s.is_weighted;
   }
 };
 
@@ -280,7 +285,7 @@ class ScaledLRU {
           }
         }
         auto status =
-            thread_pool->enqueue([this]() -> int { return shrink(); });
+            thread_pool->enqueue([this]() -> int { return Shrink(); });
         status.wait();
       }
     });
@@ -298,7 +303,7 @@ class ScaledLRU {
   LRUResponse insert(size_t index, K *keys, V *data, size_t length) {
     return lru_pool[index].insert(keys, data, length);
   }
-  int shrink() {
+  int Shrink() {
     int node_size = 0;
     for (size_t i = 0; i < lru_pool.size(); i++) {
       node_size += lru_pool[i].node_size - lru_pool[i].remove_count;
@@ -329,7 +334,7 @@ class ScaledLRU {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
       if (global_count > int(1.25 * size_limit)) {
-        thread_pool->enqueue([this]() -> int { return shrink(); });
+        thread_pool->enqueue([this]() -> int { return Shrink(); });
       }
     }
   }
@@ -351,6 +356,7 @@ class ScaledLRU {
   friend class RandomSampleLRU<K, V>;
 };
 
+/*
 #ifdef PADDLE_WITH_HETERPS
 enum GraphSamplerStatus { waiting = 0, running = 1, terminating = 2 };
 class GraphTable;
@@ -362,6 +368,9 @@ class GraphSampler {
     callback = [](std::vector<paddle::framework::GpuPsCommGraph> &res) {
       return;
     };
+  }
+  virtual int loadData(const std::string &path){
+    return 0;
   }
   virtual int run_graph_sampling() = 0;
   virtual int start_graph_sampling() {
@@ -403,75 +412,82 @@ class GraphSampler {
   std::vector<paddle::framework::GpuPsCommGraph> sample_res;
 };
 #endif
+*/
 
-class GraphTable : public SparseTable {
+class GraphTable : public Table {
  public:
   GraphTable() {
     use_cache = false;
     shard_num = 0;
-#ifdef PADDLE_WITH_HETERPS
-    gpups_mode = false;
-#endif
     rw_lock.reset(new pthread_rwlock_t());
   }
   virtual ~GraphTable();
-  virtual int32_t pull_graph_list(int start, int size,
+
+  virtual void *GetShard(size_t shard_idx) { return 0; }
+
+  static int32_t sparse_local_shard_num(uint32_t shard_num,
+                                        uint32_t server_num) {
+    if (shard_num % server_num == 0) {
+      return shard_num / server_num;
+    }
+    size_t local_shard_num = shard_num / server_num + 1;
+    return local_shard_num;
+  }
+
+  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+                                 uint64_t key) {
+    return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
+  }
+
+  virtual int32_t pull_graph_list(int type_id, int idx, int start, int size,
                                   std::unique_ptr<char[]> &buffer,
                                   int &actual_size, bool need_feature,
                                   int step);
 
   virtual int32_t random_sample_neighbors(
-      int64_t *node_ids, int sample_size,
+      int idx, int64_t *node_ids, int sample_size,
       std::vector<std::shared_ptr<char>> &buffers,
       std::vector<int> &actual_sizes, bool need_weight);
 
-  int32_t random_sample_nodes(int sample_size, std::unique_ptr<char[]> &buffers,
+  int32_t random_sample_nodes(int type_id, int idx, int sample_size,
+                              std::unique_ptr<char[]> &buffers,
                               int &actual_sizes);
 
   virtual int32_t get_nodes_ids_by_ranges(
-      std::vector<std::pair<int, int>> ranges, std::vector<int64_t> &res);
-  virtual int32_t initialize() { return 0; }
-  virtual int32_t initialize(const TableParameter &config,
+      int type_id, int idx, std::vector<std::pair<int, int>> ranges,
+      std::vector<int64_t> &res);
+  virtual int32_t Initialize() { return 0; }
+  virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
-  virtual int32_t initialize(const GraphParameter &config);
-  int32_t load(const std::string &path, const std::string &param);
-  int32_t load_graph_split_config(const std::string &path);
+  virtual int32_t Initialize(const GraphParameter &config);
+  int32_t Load(const std::string &path, const std::string &param);
 
-  int32_t load_edges(const std::string &path, bool reverse);
+  int32_t load_edges(const std::string &path, bool reverse,
+                     const std::string &edge_type);
 
   int32_t load_nodes(const std::string &path, std::string node_type);
 
-  int32_t add_graph_node(std::vector<int64_t> &id_list,
+  int32_t add_graph_node(int idx, std::vector<int64_t> &id_list,
                          std::vector<bool> &is_weight_list);
 
-  int32_t remove_graph_node(std::vector<int64_t> &id_list);
+  int32_t remove_graph_node(int idx, std::vector<int64_t> &id_list);
 
   int32_t get_server_index_by_id(int64_t id);
-  Node *find_node(int64_t id);
+  Node *find_node(int type_id, int idx, int64_t id);
 
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
 
-  virtual int32_t pull_sparse(float *values,
-                              const PullSparseValue &pull_value) {
-    return 0;
-  }
-
-  virtual int32_t push_sparse(const uint64_t *keys, const float *values,
-                              size_t num) {
-    return 0;
-  }
-
-  virtual int32_t clear_nodes();
-  virtual void clear() {}
-  virtual int32_t flush() { return 0; }
-  virtual int32_t shrink(const std::string &param) { return 0; }
+  virtual int32_t clear_nodes(int type, int idx);
+  virtual void Clear() {}
+  virtual int32_t Flush() { return 0; }
+  virtual int32_t Shrink(const std::string &param) { return 0; }
   //指定保存路径
-  virtual int32_t save(const std::string &path, const std::string &converter) {
+  virtual int32_t Save(const std::string &path, const std::string &converter) {
     return 0;
   }
-  virtual int32_t initialize_shard() { return 0; }
-  virtual int32_t set_shard(size_t shard_idx, size_t server_num) {
+  virtual int32_t InitializeShard() { return 0; }
+  virtual int32_t SetShard(size_t shard_idx, size_t server_num) {
     _shard_idx = shard_idx;
     /*
     _shard_num is not used in graph_table, this following operation is for the
@@ -484,14 +500,15 @@ class GraphTable : public SparseTable {
   }
   virtual uint32_t get_thread_pool_index_by_shard_index(int64_t shard_index);
   virtual uint32_t get_thread_pool_index(int64_t node_id);
-  virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
+  virtual std::pair<int32_t, std::string> parse_feature(int idx,
+                                                        std::string feat_str);
 
-  virtual int32_t get_node_feat(const std::vector<int64_t> &node_ids,
+  virtual int32_t get_node_feat(int idx, const std::vector<int64_t> &node_ids,
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
 
   virtual int32_t set_node_feat(
-      const std::vector<int64_t> &node_ids,
+      int idx, const std::vector<int64_t> &node_ids,
       const std::vector<std::string> &feature_names,
       const std::vector<std::vector<std::string>> &res);
 
@@ -509,30 +526,41 @@ class GraphTable : public SparseTable {
     return 0;
   }
 #ifdef PADDLE_WITH_HETERPS
-  virtual int32_t start_graph_sampling() {
-    return this->graph_sampler->start_graph_sampling();
-  }
-  virtual int32_t end_graph_sampling() {
-    return this->graph_sampler->end_graph_sampling();
-  }
-  virtual int32_t set_graph_sample_callback(
-      std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
-          callback) {
-    graph_sampler->set_graph_sample_callback(callback);
-    return 0;
-  }
-// virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
+  // virtual int32_t start_graph_sampling() {
+  //   return this->graph_sampler->start_graph_sampling();
+  // }
+  // virtual int32_t end_graph_sampling() {
+  //   return this->graph_sampler->end_graph_sampling();
+  // }
+  // virtual int32_t set_graph_sample_callback(
+  //     std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+  //         callback) {
+  //   graph_sampler->set_graph_sample_callback(callback);
+  //   return 0;
+  // }
+  virtual char *random_sample_neighbor_from_ssd(
+      int idx, int64_t id, int sample_size,
+      const std::shared_ptr<std::mt19937_64> rng, int &actual_size);
+  virtual int32_t add_node_to_ssd(int type_id, int idx, int64_t src_id,
+                                  char *data, int len);
+  virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
+      int idx, std::vector<int64_t> ids);
+  // virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
+  int search_level;
 #endif
- protected:
-  std::vector<GraphShard *> shards, extra_shards;
+  virtual int32_t add_comm_edge(int idx, int64_t src_id, int64_t dst_id);
+  virtual int32_t build_sampler(int idx, std::string sample_type = "random");
+  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
 
-  std::vector<std::string> feat_name;
-  std::vector<std::string> feat_dtype;
-  std::vector<int32_t> feat_shape;
-  std::unordered_map<std::string, int32_t> feat_id_map;
+  std::vector<std::vector<std::string>> feat_name;
+  std::vector<std::vector<std::string>> feat_dtype;
+  std::vector<std::vector<int32_t>> feat_shape;
+  std::vector<std::unordered_map<std::string, int32_t>> feat_id_map;
+  std::unordered_map<std::string, int> feature_to_id, edge_to_id;
+  std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;
   std::string table_type;
 
@@ -548,13 +576,14 @@ class GraphTable : public SparseTable {
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
-  bool gpups_mode;
-  // std::shared_ptr<::ThreadPool> graph_sample_pool;
-  std::shared_ptr<GraphSampler> graph_sampler;
-  REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
+  paddle::distributed::RocksDBHandler *_db;
+// std::shared_ptr<::ThreadPool> graph_sample_pool;
+// std::shared_ptr<GraphSampler> graph_sampler;
+// REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
 #endif
 };
 
+/*
 #ifdef PADDLE_WITH_HETERPS
 REGISTER_PSCORE_REGISTERER(GraphSampler);
 class CompleteGraphSampler : public GraphSampler {
@@ -596,6 +625,7 @@ class BasicBfsGraphSampler : public GraphSampler {
       sample_neighbors_map;
 };
 #endif
+*/
 }  // namespace distributed
 
 };  // namespace paddle
@@ -605,7 +635,7 @@ namespace std {
 template <>
 struct hash<paddle::distributed::SampleKey> {
   size_t operator()(const paddle::distributed::SampleKey &s) const {
-    return s.node_key ^ s.sample_size;
+    return s.idx ^ s.node_key ^ s.sample_size;
   }
 };
 }

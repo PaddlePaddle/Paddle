@@ -40,14 +40,9 @@ class GradNodeScale : public GradNodeBase {
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+      bool create_graph = false, bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   void SetTensorWrappers_X(
       const std::vector<paddle::experimental::Tensor>& tensors);
@@ -56,6 +51,12 @@ class GradNodeScale : public GradNodeBase {
   std::string name() override { return ""; }
   // Members: define fwd input tensors
   // For Scale there is no fwd input tensor needed
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::make_shared<GradNodeScale>(*this);
+    return copied_node;
+  }
+
  private:
   float scale_{1.0};
 };

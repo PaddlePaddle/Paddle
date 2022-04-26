@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode
+from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode, _in_legacy_dygraph
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -240,6 +240,18 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        if in_dygraph_mode() and self._l_type == "conv2d":
+            pre_bias = _C_ops.final_state_conv2d(
+                input, self.weight, self._stride, self._padding, "EXPLICIT",
+                self._groups if self._groups else 1, self._dilation, "NCHW",
+                False, -1, False)
+            if self.bias is not None:
+                pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
+            else:
+                pre_act = pre_bias
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
+
         if _non_static_mode() and (self._l_type == 'conv2d' or
                                    self._l_type == 'depthwise_conv2d'):
             attrs = ('strides', self._stride, 'paddings', self._padding,
@@ -1339,15 +1351,26 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if _non_static_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", self._use_mkldnn,
-                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
-                     self._use_global_stats, 'trainable_statistics',
-                     self._trainable_statistics)
-            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-                input, self.weight, self.bias, self._mean, self._variance,
-                mean_out, variance_out, *attrs)
+            if in_dygraph_mode():
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    self._momentum, self._epsilon, self._data_layout,
+                    not self.training, self._use_global_stats,
+                    self._trainable_statistics, False)
+                return dygraph_utils._append_activation_in_dygraph(
+                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
+
+            elif _in_legacy_dygraph():
+                attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                         "is_test", not self.training, "data_layout",
+                         self._data_layout, "use_mkldnn", self._use_mkldnn,
+                         "fuse_with_relu", self._fuse_with_relu,
+                         "use_global_stats", self._use_global_stats,
+                         'trainable_statistics', self._trainable_statistics)
+                batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    None, mean_out, variance_out, *attrs)
+
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
@@ -1804,11 +1827,18 @@ class LayerNorm(layers.Layer):
                     1:] + ', but got input shape ' + str(input_shape))
 
         if _non_static_mode():
-            pre_act, _, _ = _C_ops.layer_norm(
-                input, self.weight, self.bias, 'epsilon', self._epsilon,
-                'begin_norm_axis', self._begin_norm_axis)
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=self._act)
+            if in_dygraph_mode():
+                pre_act, _, _, = _C_ops.final_state_layer_norm(
+                    input, self.weight, self.bias, self._epsilon,
+                    self._begin_norm_axis, False)
+                return dygraph_utils._append_activation_in_dygraph(
+                    pre_act, act=self._act)
+            else:
+                pre_act, _, _ = _C_ops.layer_norm(
+                    input, self.weight, self.bias, 'epsilon', self._epsilon,
+                    'begin_norm_axis', self._begin_norm_axis)
+                return dygraph_utils._append_activation_in_dygraph(
+                    pre_act, act=self._act)
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'LayerNorm')

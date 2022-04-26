@@ -15,10 +15,12 @@
 import paddle
 import unittest
 import numpy as np
+from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestTensorCopyFrom(unittest.TestCase):
-    def test_main(self):
+    def func_main(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CPUPlace()
             np_value = np.random.random(size=[10, 30]).astype('float32')
@@ -26,9 +28,14 @@ class TestTensorCopyFrom(unittest.TestCase):
             tensor._uva()
             self.assertTrue(tensor.place.is_gpu_place())
 
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_main()
+        self.func_main()
+
 
 class TestUVATensorFromNumpy(unittest.TestCase):
-    def test_uva_tensor_creation(self):
+    def func_uva_tensor_creation(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             dtype_list = [
                 "int32", "int64", "float32", "float64", "float16", "int8",
@@ -36,9 +43,17 @@ class TestUVATensorFromNumpy(unittest.TestCase):
             ]
             for dtype in dtype_list:
                 data = np.random.randint(10, size=[4, 5]).astype(dtype)
-                tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                if _in_legacy_dygraph():
+                    tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                else:
+                    tensor = core.eager.to_uva_tensor(data, 0)
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(np.allclose(tensor.numpy(), data))
+
+    def test_uva_tensor_creation(self):
+        with _test_eager_guard():
+            self.func_uva_tensor_creation()
+        self.func_uva_tensor_creation()
 
 
 if __name__ == "__main__":

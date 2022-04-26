@@ -1,6 +1,22 @@
-IF(WITH_IPU)
-  FILE(GLOB POPART_CANONICALIZATION_SRC ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/device/ipu/popart_canonicalization/*.cc)
-  list(APPEND PADDLE_IPU_SRC ${POPART_CANONICALIZATION_SRC})
+if(WITH_IPU)
+  set(paddle_ipu_handler ${CMAKE_CURRENT_BINARY_DIR}/paddle_ipu_handler.h.tmp)
+  set(paddle_ipu_handler_final ${CMAKE_CURRENT_BINARY_DIR}/paddle_ipu_handler.h)
+  file(WRITE ${paddle_ipu_handler} "// Auto generated from CMake. DO NOT EDIT!\n\n")
+  file(APPEND ${paddle_ipu_handler} "\#pragma once\n")
+  file(APPEND ${paddle_ipu_handler} "\#include \"paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h\"\n\n")
+  file(GLOB POPART_CANONICALIZATION_SRC ${CMAKE_CURRENT_SOURCE_DIR}/popart_canonicalization/*.cc)
+  copy_if_different(${paddle_ipu_handler} ${paddle_ipu_handler_final})
+
+  foreach(file_path ${POPART_CANONICALIZATION_SRC})
+    file(READ ${file_path} file_content)
+    string(REGEX MATCHALL "(REGISTER_HANDLER)(\\()([A-Za-z0-9_]+)(,)" op_handlers ${file_content})
+    string(REPLACE "REGISTER_HANDLER(" "" op_handlers "${op_handlers}")
+    string(REPLACE "," "" op_handlers "${op_handlers}")
+    foreach(op_handler ${op_handlers})
+      file(APPEND ${paddle_ipu_handler} "USE_HANDLER(${op_handler});\n")
+    endforeach()
+  endforeach()
+  
   set(IPU_BACKEND_SRC
     "ipu_strategy.cc"
     "ipu_executor.cc"
@@ -13,10 +29,7 @@ IF(WITH_IPU)
     "ipu_device.cc"
   )
 
-  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart-only graph graph_helper popdist)
+  cc_library(popart_canonicalization SRCS ${POPART_CANONICALIZATION_SRC} DEPS graph)
+  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart-only graph graph_helper popdist popart_canonicalization)
   cc_library(ipu_info SRCS ${IPU_INFO_SRC} DEPS popart-only enforce)
-  add_library(paddle_ipu SHARED ${PADDLE_IPU_SRC})
-  add_dependencies(paddle_ipu ipu_backend)
-  set(PADDLE_IPU_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpaddle_ipu.so" CACHE STRING "")
-  set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")
-ENDIF()
+endif()

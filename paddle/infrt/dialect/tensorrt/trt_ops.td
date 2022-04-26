@@ -81,7 +81,9 @@ def TRT_ConvolutionOp : TRT_Op<"Convolution", [NoSideEffect]> {
     I32ArrayAttr:$kernel_size,
     I32ArrayAttr:$strides,
     I32ArrayAttr:$paddings,
-    StrAttr:$padding_mode,
+    I32ArrayAttr:$pre_paddings,
+    I32ArrayAttr:$post_paddings,
+    DefaultValuedAttr<SI32Attr, "0">:$padding_mode, //kEXPLICIT_ROUND_DOWN
     SI32Attr:$groups,
     I32ArrayAttr:$dilations
   );
@@ -97,11 +99,14 @@ def TRT_PoolingOp : TRT_Op<"Pooling", [NoSideEffect]> {
   }];
   let arguments = (ins
     DenseTensor:$input_tensor,
-    I32Attr:$pool_type,
+    SI32Attr:$pool_type,
     I32ArrayAttr:$window_size,
     I32ArrayAttr:$strides,
     I32ArrayAttr:$paddings,
-    StrAttr:$padding_mode
+    SI32Attr:$padding_mode,
+    BoolAttr:$exclusive,
+    BoolAttr:$adaptive,
+    StrAttr:$padding_algorithm
   );
   let results = (outs
     DenseTensor:$output_tensor
@@ -192,11 +197,9 @@ def TRT_ScaleNdOp : TRT_Op<"ScaleNd", [NoSideEffect]> {
   }];
   let arguments = (ins  
     DenseTensor:$input_tensor,
-    I32Attr:$mode,
     DenseTensor:$shift,
     DenseTensor:$scale,
-    DenseTensor:$power,
-    I32Attr:$axis
+    Optional<DenseTensor>:$power
   );
 
   let results = (outs DenseTensor:$Out);
@@ -211,7 +214,8 @@ def TRT_ShuffleOp : TRT_Op<"Shuffle", [NoSideEffect]> {
   }];
   let arguments = (ins  
     DenseTensor:$input_tensor,
-    I32ArrayAttr:$reshape
+    DefaultValuedAttr<SI32Attr, "1">:$start_axis,
+    DefaultValuedAttr<SI32Attr, "1">:$stop_axis
   );
 
   let results = (outs DenseTensor:$Out);

@@ -26,6 +26,10 @@ class InfRtConfig {
   std::string param_dir_;
   std::vector<std::string> shared_libs_;
 
+  // TODO(wilber): Design an easy-to-use interface.
+  bool gpu_enabled_{false};
+  bool tensorrt_enabled_{false};
+
  public:
   InfRtConfig() = default;
   void set_model_dir(const std::string& model_dir) { model_dir_ = model_dir; }
@@ -38,6 +42,14 @@ class InfRtConfig {
     shared_libs_ = shared_libs;
   }
   const std::vector<std::string>& shared_libs() const { return shared_libs_; }
+
+  void enable_gpu() { gpu_enabled_ = true; }
+  bool gpu_enabled() const { return gpu_enabled_; }
+
+  // TODO(wilber): Design an easy-to-use interface.
+  void enable_tensorrt() { tensorrt_enabled_ = true; }
+  void disable_tensorrt() { tensorrt_enabled_ = false; }
+  bool tensorrt_enabled() const { return tensorrt_enabled_; }
 
   virtual ~InfRtConfig() = default;
 };

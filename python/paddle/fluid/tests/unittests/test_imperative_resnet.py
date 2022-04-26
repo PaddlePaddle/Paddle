@@ -164,7 +164,7 @@ class BottleneckBlock(fluid.Layer):
 
 
 class ResNet(fluid.Layer):
-    def __init__(self, layers=50, class_dim=102, use_cudnn=False):
+    def __init__(self, layers=50, class_dim=102, use_cudnn=True):
         super(ResNet, self).__init__()
 
         self.layers = layers
@@ -438,4 +438,5 @@ class TestDygraphResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

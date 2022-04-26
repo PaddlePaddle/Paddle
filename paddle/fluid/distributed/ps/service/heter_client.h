@@ -93,7 +93,15 @@ class HeterClient {
     options.timeout_ms = FLAGS_pserver_timeout_ms;
     std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
     if (peer_role == PEER_ROLE_IS_SWITCH) {
+#ifdef PADDLE_WITH_ARM_BRPC
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
+      options.connection_type = "";
+      VLOG(4) << "ssl enabled in arm";
+#else
       options.ssl_options.enable = need_encrypt;
+#endif
       client_channels = &peer_switch_channels_;
     } else if (peer_role == PEER_ROLE_IS_WORKER) {
       client_channels = &peer_worker_channels_;
@@ -130,7 +138,8 @@ class HeterClient {
                         const std::string& mode = "forward");
 
   int Send(int group_id, const std::vector<std::string>& var_names,
-           const std::vector<int>& vars_len, void* data_ptr, int64_t data_size);
+           const std::vector<int64_t>& vars_len, void* data_ptr,
+           int64_t data_size);
 
   int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
            const std::string& message_name,

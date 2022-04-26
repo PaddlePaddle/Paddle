@@ -39,7 +39,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasInputs(const std::string &name) const override;
 
-  bool HasOutputs(const std::string &name) const override;
+  bool HasOutputs(const std::string &name,
+                  bool allow_null = false) const override;
 
   AttrReader Attrs() const override;
 
@@ -201,10 +202,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -213,10 +214,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) const override {
+  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -244,6 +245,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override;
 
+  proto::VarType::Type GetInputVarType(const std::string &name) const override {
+    return GetVarType(Inputs(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
     return GetVarTypes(Inputs(name));
@@ -268,6 +273,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                      const std::vector<DDim> &dims) override {
     auto names = Outputs(name);
     SetDims(names, dims);
+  }
+
+  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature *GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
  protected:
@@ -777,10 +790,17 @@ void OpDesc::CheckAttrs() {
   checker->Check(&attrs_);
 }
 
-void OpDesc::InferShape(const BlockDesc &block) const {
+void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
-    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    auto &op_info = OpInfoMap::Instance().Get(this->Type());
+    auto *checker = op_info.Checker();
+    if (checker != nullptr) {
+      // set dafault value here
+      VLOG(10) << "begin to check attribute of " << Type();
+      checker->Check(&attrs_);
+    }
+    auto &infer_shape = op_info.infer_shape_;
     PADDLE_ENFORCE_EQ(
         static_cast<bool>(infer_shape), true,
         platform::errors::NotFound(
@@ -875,7 +895,8 @@ bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   return true;
 }
 
-bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
+                                              bool allow_null) const {
   if (op_.Outputs().find(name) == op_.Outputs().end()) {
     return false;
   }
@@ -883,10 +904,17 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
   if (output_names.empty()) {
     return false;
   }
-  for (auto &output : output_names) {
-    if (!block_.HasVarRecursive(output)) return false;
+  if (allow_null) {
+    for (auto &output : output_names) {
+      if (block_.HasVarRecursive(output)) return true;
+    }
+    return false;
+  } else {
+    for (auto &output : output_names) {
+      if (!block_.HasVarRecursive(output)) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {

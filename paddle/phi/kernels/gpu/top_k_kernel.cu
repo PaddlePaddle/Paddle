@@ -98,7 +98,7 @@ void TopkKernel(const Context& dev_ctx,
     }
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
-    if (input_width >= 1024 && input_height == 1) {
+    if (input_width >= 1024 && in_dims.size() == 1) {
       // 1. Gather TopK, but without sorting
       constexpr int max_num_threads = 1024;
       if (largest) {

@@ -713,6 +713,20 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+  /// \brief Turn on MKLDNN int8.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Int8.
+  ///
+  /// \return bool Whether to use the MKLDNN Int8.
+  ///
+  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
+
+  ///
   /// \brief Turn on MKLDNN bfloat16.
   ///
   ///
@@ -874,7 +888,11 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_gpu_fp16_{false};
   std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion", "conv2d", "roll", "strided_slice"};
+      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
+      "unfold", "generate_proposals_v2", "nearest_interp_v2",
+      "bilinear_interp_v2"
+      "yolo_box",
+      "multiclass_nms3", "matrix_nms"};
 
   bool use_cudnn_{false};
 
@@ -981,6 +999,26 @@ struct PD_INFER_DECL AnalysisConfig {
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
+  bool use_mkldnn_int8_{false};
+  std::unordered_set<int> quantize_excluded_op_ids_{};
+  std::unordered_set<std::string> quantize_enabled_op_types_{
+      "concat",
+      "conv2d",
+      "depthwise_conv2d",
+      "elementwise_add",
+      "elementwise_mul",
+      "fc",
+      "matmul",
+      "nearest_interp",
+      "nearest_interp_v2",
+      "pool2d",
+      "prior_box",
+      "reshape2",
+      "transpose2",
+      "fusion_gru",
+      "fusion_lstm",
+      "multi_gru",
+      "slice"};
 
   // ipu related.
   bool use_ipu_{false};

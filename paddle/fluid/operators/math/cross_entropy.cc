@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -89,38 +90,38 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
   const int axis_dim_;
 };
 
-template <typename T>
-class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
- public:
-  void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
-                  const framework::Tensor* prob,
-                  const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index, const int axis_dim) {
-    if (softLabel) {
-      const int batch_size = prob->dims()[0];
-      const int num_classes = prob->dims()[1];
-      const int num_remain = num_classes / axis_dim;
+template <typename DeviceContext, typename T>
+void CrossEntropyFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& ctx, framework::Tensor* out,
+    const framework::Tensor* prob, const framework::Tensor* labels,
+    const bool softLabel, const int ignore_index, const int axis_dim) {
+  if (softLabel) {
+    const int batch_size = prob->dims()[0];
+    const int num_classes = prob->dims()[1];
+    const int num_remain = num_classes / axis_dim;
 
-      Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
-      auto in = EigenMatrix<T>::From(*prob);
-      auto lbl = EigenMatrix<T>::From(*labels);
-      auto loss = EigenMatrix<T>::From(*out);
+    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    auto in = EigenMatrix<T>::From(*prob);
+    auto lbl = EigenMatrix<T>::From(*labels);
+    auto loss = EigenMatrix<T>::From(*out);
 
-      loss.device(*ctx.eigen_device()) =
-          -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
-                .reshape(batch_axis_remain)
-                .sum(Eigen::DSizes<int, 1>(1)));
-    } else {
-      HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
-          out, prob, labels, ignore_index, axis_dim);
-      framework::VisitIntDataType(
-          framework::TransToProtoVarType(labels->dtype()), functor_impl);
-    }
+    loss.device(*ctx.eigen_device()) =
+        -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
+              .reshape(batch_axis_remain)
+              .sum(Eigen::DSizes<int, 1>(1)));
+  } else {
+    HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(out, prob, labels,
+                                                        ignore_index, axis_dim);
+    framework::VisitIntDataType(framework::TransToProtoVarType(labels->dtype()),
+                                functor_impl);
   }
-};
+}
 
 template class CrossEntropyFunctor<platform::CPUDeviceContext, float>;
 template class CrossEntropyFunctor<platform::CPUDeviceContext, double>;
+
+template class CrossEntropyFunctor<phi::CPUContext, float>;
+template class CrossEntropyFunctor<phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
