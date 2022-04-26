@@ -1816,6 +1816,48 @@ void RollInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    bool fix_seed,
+                    int seed,
+                    MetaTensor* out,
+                    MetaTensor* noise) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(lower,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The lower value should be greater than or equal to 0. "
+                        "But received lower value = %f.",
+                        lower));
+  PADDLE_ENFORCE_LE(upper,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The upper value should be less than or equal to 1. "
+                        "But received upper value = %f.",
+                        upper));
+  PADDLE_ENFORCE_GE(
+      upper,
+      lower,
+      phi::errors::InvalidArgument(
+          "The upper value should be greater than or equal to lower value "
+          "But received upper value = %f, lower value = %f.",
+          upper,
+          lower));
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+
+  if (noise != nullptr) {
+    noise->set_dims(x_dims);
+    noise->set_dtype(x.dtype());
+    noise->set_layout(x.layout());
+  }
+}
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
   auto in_dims = x.dims();
   PADDLE_ENFORCE_LT(
@@ -2998,38 +3040,6 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
-}
-
-void RReluInferMeta(const MetaTensor& x,
-                    float lower,
-                    float upper,
-                    MetaTensor* out,
-                    MetaTensor* noise) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_GE(lower,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The lower value should be greater than or equal to 0. "
-                        "But received lower value = %f.",
-                        lower));
-  PADDLE_ENFORCE_LE(upper,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The upper value should be less than or equal to 1. "
-                        "But received upper value = %f.",
-                        upper));
-  PADDLE_ENFORCE_GE(
-      upper,
-      lower,
-      phi::errors::InvalidArgument(
-          "The upper value should be greater than or equal to lower value "
-          "But received upper value = %f, lower value = %f.",
-          upper,
-          lower));
-  out->set_dims(x_dims);
-  out->set_dtype(x.dtype());
-  noise->set_dims(x_dims);
-  noise->set_dtype(x.dtype());
 }
 
 }  // namespace phi

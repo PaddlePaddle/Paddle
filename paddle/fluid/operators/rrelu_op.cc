@@ -43,6 +43,19 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Noise", "The random sampled RRelu noise.")
         .AsIntermediate()
         .AsExtra();
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
+    AddAttr<bool>("fix_seed",
+                  "A flag indicating whether to use a fixed seed to generate "
+                  "random mask. NOTE: DO NOT set this flag to true in "
+                  "training. Setting this flag to true is only useful in "
+                  "unittest or for debug that always the same output units "
+                  "will be dropped.")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<int>("seed", "Rrelu random seed.").SetDefault(0).AsExtra();
 
     float default_lower = 1. / 8.;
     AddAttr<float>("lower", "Lower bound of the uniform distribution.")
@@ -60,7 +73,6 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "'RRelu_upper' must be between 0.0 and 1.0."));
         });
-
     AddComment(R"DOC(
 RRelu Operator.
 
@@ -92,12 +104,15 @@ class RReluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Noise"), "Input", "Noise", "rrelu_grad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "rrelu");
+    OP_INOUT_CHECK(ctx->HasInput("Noise"), "Input", "Noise", "rrelu");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "rrelu_grad");
+                   framework::GradVarName("Out"), "rrelu");
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
+    ctx->ShareLoD(framework::GradVarName("Out"),
+                  /*->*/ framework::GradVarName("X"));
   }
 
  protected:
@@ -117,10 +132,10 @@ class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("rrelu_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Noise", this->Output("Noise"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    //    op->SetAttrMap(this->Attrs());
   }
 };
 

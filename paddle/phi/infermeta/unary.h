@@ -269,6 +269,15 @@ void RollInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    bool fix_seed,
+                    int seed,
+                    MetaTensor* out,
+                    MetaTensor* noise);
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
@@ -439,11 +448,4 @@ void OneHotRawInferMeta(const MetaTensor& x,
 void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
-
-void RReluInferMeta(const MetaTensor& x,
-                    float lower,
-                    float upper,
-                    MetaTensor* out,
-                    MetaTensor* noise);
-
 }  // namespace phi

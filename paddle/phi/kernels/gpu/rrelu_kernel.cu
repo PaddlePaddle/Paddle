@@ -25,6 +25,9 @@ void RReluKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const float lower,
                  const float upper,
+                 bool is_test,
+                 bool fix_seed,
+                 int seed,
                  DenseTensor* out,
                  DenseTensor* noise) {
   const T* x_ptr = x.data<T>();
@@ -34,8 +37,17 @@ void RReluKernel(const Context& dev_ctx,
   int numel = x.numel();
   auto dim = x.dims();
   RReluElementWiseDirectCUDAFunctor<T> rrelu_element_wise;
-  rrelu_element_wise(
-      dev_ctx.stream(), x_ptr, o_ptr, n_ptr, lower, upper, numel);
+
+  int seed_data = fix_seed ? seed : 0;
+  rrelu_element_wise(dev_ctx.stream(),
+                     x_ptr,
+                     o_ptr,
+                     n_ptr,
+                     lower,
+                     upper,
+                     is_test,
+                     seed_data,
+                     numel);
 }
 
 }  // namespace phi

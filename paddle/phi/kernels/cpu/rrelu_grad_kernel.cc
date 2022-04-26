@@ -29,12 +29,13 @@ void RReluGradKernel(const Context& dev_ctx,
   const T* x_ptr = x.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
   int numel = x.numel();
+  if (!x_grad) return;
+
   int i = 0;
   T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
   for (i = 0; i < numel; i++) {
     x_grad_ptr[i] = x_ptr[i] > 0 ? out_grad_ptr[i] : n_ptr[i] * out_grad_ptr[i];
   }
-
 }
 
 }  // namespace phi

@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
+from ...fluid.framework import convert_np_dtype_to_dtype_, default_main_program
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
@@ -545,7 +545,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
     return out
 
 
-def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
+def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
     """
     rrelu activation.
 
@@ -566,7 +566,7 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
         x (Tensor): The input Tensor with data type float 16 float32, float64.
         lower (float, optional): The lower bound of uniform distribution. Default: :math:`\frac{1}{8}`.
         upper (float, optional): The upper bound of uniform distribution. Default: :math:`\frac{1}{3}`.
-        training (bool, optional): Current is training mode or others.  Default is False.
+        training (bool, optional): Current is training mode or others.  Default is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -588,14 +588,17 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
                                [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
             x = paddle.to_tensor(data)
             out = F.rrelu(x, 0.1, 0.3)
-            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-            #    [ 3.  , -1.  ,  5.  , -1.5 ],
-            #    [-1.75, -2.  ,  8.  ,  9.  ]],
-            #   [[ 1.  , -0.5 , -0.75,  4.  ],
-            #    [-1.25,  6.  ,  7.  , -2.  ],
-            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            #[[[[-0.20000899  3.         -0.8810822   5.        ]
+            #   [ 3.         -0.55175185  5.         -1.0776101 ]
+            #   [-1.0680687  -1.9896201   8.          9.        ]]
+            #  [[ 1.         -0.5238267  -0.65515125  4.        ]
+            #   [-1.3766339   6.          7.         -2.3465784 ]
+            #   [ 6.          7.          8.          9.        ]]]]
     """
-    check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'rrelu')
+
+    if not in_dynamic_mode():
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
+                                 'rrelu')
 
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
@@ -617,23 +620,40 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=False, name=None):
             "The upper value must be no greater than one. Received: {}.".format(
                 upper))
 
-    if not training:
-        negative_slope = (lower + upper) / 2.0
-        return leaky_relu(x, negative_slope, name)
+    is_test = not training
+    seed = None
 
-    if in_dynamic_mode():
-        return _C_ops.rrelu(x, 'lower', lower, 'upper', upper)
+    if _in_legacy_dygraph():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+                                  is_test, 'fix_seed', seed is not None, 'seed',
+                                  seed if seed is not None else 0)
+        return out
+
+    def get_attrs(prog, lower, upper, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'lower': lower,
+            'upper': upper,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+        }
+        return attrs
 
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     noise = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
+
     helper.append_op(
-        type="rrelu",
+        type='rrelu',
         inputs={"X": x},
         outputs={"Out": out,
                  "Noise": noise},
-        attrs={"lower": lower,
-               "upper": upper})
+        attrs=attrs)
     return out
 
 

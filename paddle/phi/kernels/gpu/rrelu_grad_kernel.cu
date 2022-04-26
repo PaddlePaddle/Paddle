@@ -66,7 +66,6 @@ void RReluGradKernel(const Context& dev_ctx,
   const T* x_ptr = x.data<T>();
   const T* n_ptr = noise.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
-  if (!x_grad) return;
   T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
 
   int numel = x.numel();

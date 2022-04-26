@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/rrelu_kernel.h"
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -24,19 +25,38 @@ void RReluKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const float lower,
                  const float upper,
+                 bool is_test,
+                 bool fix_seed,
+                 int seed,
                  DenseTensor* out,
                  DenseTensor* noise) {
   const T* x_ptr = x.data<T>();
   T* o_ptr = dev_ctx.template Alloc<T>(out);
   T* n_ptr = dev_ctx.template Alloc<T>(noise);
   T zero = static_cast<T>(0);
-
-  std::uniform_real_distribution<float> dist(lower, upper);
-  auto gen_ptr = dev_ctx.GetGenerator();
-  auto engine = gen_ptr->GetCPUEngine();
-
   int numel = x.numel();
   int i = 0;
+
+  if (is_test) {
+    for (i = 0; i < numel; i++) {
+      T mid_val = static_cast<T>((lower + upper) / 2.0);
+      if (x_ptr[i] < zero) {
+        o_ptr[i] = mid_val * x_ptr[i];
+        n_ptr[i] = mid_val;
+      } else {
+        o_ptr[i] = x_ptr[i];
+        n_ptr[i] = 1.0;
+      }
+    }
+
+    return;
+  }
+
+  int seed_data = fix_seed ? seed : 0;
+  auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+
+  std::uniform_real_distribution<float> dist(lower, upper);
+
   for (i = 0; i < numel; i++) {
     if (x_ptr[i] < zero) {
       T scale = static_cast<T>(dist(*engine));
