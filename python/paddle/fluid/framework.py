@@ -2863,8 +2863,22 @@ class Operator(object):
                     attrs_str += ", "
                 continue
 
+            # it is bytes of serialized protobuf 
+            if self.type == 'cinn_launch' and name == 'compilation_key':
+                # value = core.get_readable_comile_key(self.desc)
+                v = self.desc.attr(name)
+                prog = Program()
+                prog = prog.parse_from_string(v)
+                s = prog._to_readable_code()
+                lines = s.split('\n')
+                value = '\n'.join(['      ' + line for line in lines])
+                value = '\n' + value
+            else:
+                value = self.desc.attr(name)
+
             a = "{name} = {value}".format(
-                name=name, type=attr_type, value=self.desc.attr(name))
+                name=name, type=attr_type, value=value)
+
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
