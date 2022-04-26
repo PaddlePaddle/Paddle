@@ -2418,18 +2418,16 @@ void OperatorWithKernel::BuildPhiKernelContext(
     if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
-        if (std::type_index(attr_iter->second.type()) ==
-            std::type_index(typeid(std::vector<int64_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-              BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
-        } else if (std::type_index(attr_iter->second.type()) ==
-                   std::type_index(typeid(std::vector<int32_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-              BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
-        } else if (std::type_index(attr_iter->second.type()) ==
-                   std::type_index(typeid(int32_t))) {
+        auto& attr = attr_iter->second;
+        if (AttrTypeID(attr) == proto::AttrType::LONGS) {
           pt_kernel_context->EmplaceBackAttr(std::move(
-              phi::IntArray(&BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+              phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (AttrTypeID(attr) == proto::AttrType::INTS) {
+          pt_kernel_context->EmplaceBackAttr(std::move(
+              phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to IntArray when "
@@ -2447,21 +2445,16 @@ void OperatorWithKernel::BuildPhiKernelContext(
         }
       }
     } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
-      // TODO(chenweihang): support other attrs later
-      // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
-      // attribtue type by attr_defs
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // scalar is in the attribute
-        auto& attr = Attrs().at(attr_names[i]);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        auto& attr = attr_iter->second;
+        if (AttrTypeID(attr) == proto::AttrType::FLOAT) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(float, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::string))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::STRING) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(std::string, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
@@ -2478,8 +2471,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
     } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = Attrs().at(attr_names[i]);
-      if (std::type_index(attr.type()) ==
-          std::type_index(typeid(std::vector<int32_t>))) {
+      if (AttrTypeID(attr) == proto::AttrType::INTS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -2487,8 +2479,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           scalar_list.emplace_back(val);
         }
         pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::LONGS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -2496,8 +2487,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           scalar_list.emplace_back(val);
         }
         pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::FLOATS) {
         const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -2505,8 +2495,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           scalar_list.emplace_back(val);
         }
         pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<double>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::FLOAT64S) {
         const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -2557,12 +2546,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 BOOST_GET_CONST(int, attr_it->second)));
         pt_kernel_context->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
-        if (std::type_index(attr_it->second.type()) ==
-            std::type_index(typeid(std::vector<int64_t>))) {
+        if (AttrTypeID(attr_it->second) == proto::AttrType::LONGS) {
           pt_kernel_context->EmplaceBackAttr(
               BOOST_GET_CONST(std::vector<int64_t>, attr_it->second));
-        } else if (std::type_index(attr_it->second.type()) ==
-                   std::type_index(typeid(std::vector<int>))) {
+        } else if (AttrTypeID(attr_it->second) == proto::AttrType::INTS) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr =
               BOOST_GET_CONST(std::vector<int>, attr_it->second);

@@ -499,16 +499,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         }
       } else if (ctx->HasAttr(attr_name)) {
         auto& attr = attr_reader.GetAttr(attr_name);
-        if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int32_t>))) {
+        if (AttrTypeID(attr) == proto::AttrType::INTS) {
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<int64_t>))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::LONGS) {
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
           infer_meta_context.EmplaceBackAttr(
               phi::IntArray({BOOST_GET_CONST(int, attr)}));
         } else {
@@ -522,15 +519,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       if (ctx->HasAttr(attr_name)) {
         // TODO(chentianyu03): support other attrs later
         auto& attr = attr_reader.GetAttr(attr_name);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        if (AttrTypeID(attr) == proto::AttrType::FLOAT) {
           infer_meta_context.EmplaceBackAttr(
               phi::Scalar(BOOST_GET_CONST(float, attr)));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::string))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::STRING) {
           infer_meta_context.EmplaceBackAttr(
               phi::Scalar(BOOST_GET_CONST(std::string, attr)));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int))) {
+        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
           infer_meta_context.EmplaceBackAttr(
               phi::Scalar(BOOST_GET_CONST(int, attr)));
         } else {
@@ -560,8 +555,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       }
     } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = attr_reader.GetAttr(attr_name);
-      if (std::type_index(attr.type()) ==
-          std::type_index(typeid(std::vector<int32_t>))) {
+      if (AttrTypeID(attr) == proto::AttrType::INTS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -569,8 +563,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           scalar_list.emplace_back(val);
         }
         infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::LONGS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -578,8 +571,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           scalar_list.emplace_back(val);
         }
         infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::FLOATS) {
         const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -587,8 +579,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           scalar_list.emplace_back(val);
         }
         infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<double>))) {
+      } else if (AttrTypeID(attr) == proto::AttrType::FLOAT64S) {
         const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -622,8 +613,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
       } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
-        if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+        if (AttrTypeID(attr) == proto::AttrType::INTS) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
