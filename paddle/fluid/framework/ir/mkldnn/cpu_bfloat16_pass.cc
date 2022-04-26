@@ -126,7 +126,7 @@ class Quantizer final : public Quanter {
             "OP(%s)'s inputs(%d) must be equal or greater than 1.", op->Name(),
             inputs.size()));
 
-    for (auto input: inputs) xputs_map[input->Name()] = input;
+    for (auto input : inputs) xputs_map[input->Name()] = input;
   };
 
  protected:
@@ -174,7 +174,7 @@ class DeQuantizer final : public Quanter {
             "OP(%s)'s outputs(%d) must be equal or greater than 1.", op->Name(),
             outputs.size()));
 
-    for (auto output: outputs) xputs_map[output->Name()] = output;
+    for (auto output : outputs) xputs_map[output->Name()] = output;
   };
 
  protected:
