@@ -368,7 +368,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-    for (auto j = 0; j < out_indices_vec.size(); ++j) {
+    for (IntT j = 0; j < static_cast<IntT>(out_indices_vec.size()); ++j) {
       auto* indices_ptr =
           out_indices.template data<IntT>() + j * out_indices_vec[j].size();
       std::copy(
