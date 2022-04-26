@@ -343,6 +343,65 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
         # we need insert gradient allreduce for the gradient of parameter in its output
+        if backward_op.type.endswith("_p"):
+            var_name = backward_op.output_arg_names[0]
+            if var_name in ctx.grads_params:
+                assert var_name not in ctx.synced_gradient, "in primtive mode, grad is already {} synced".format(
+                    var_name)
+                ctx.synced_gradient.add(var_name)
+
+                process_mesh = ctx.global_process_mesh
+                batch_size_axis = 0
+                group_ranks = _get_comm_group(process_mesh.processes,
+                                              process_mesh.topology,
+                                              batch_size_axis, rank_id)
+                dp_degree = len(group_ranks)
+                sync_group = new_process_group(group_ranks)
+
+                allreduce_op = main_block.append_op(
+                    type='c_allreduce_sum',
+                    inputs={'X': [var_name]},
+                    outputs={'Out': [var_name]},
+                    attrs={
+                        'ring_id': sync_group.id,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Backward
+                    })
+
+                scale_op = main_block.append_op(
+                    type='scale',
+                    inputs={'X': var_name},
+                    outputs={'Out': var_name},
+                    attrs={
+                        'scale': 1.0 / dp_degree,
+                        OP_ROLE_KEY: OpRole.Backward
+                    })
+
+                param = ctx.grads_params[var_name]
+                startup_block = dist_op_context.startup_block
+                new_op = startup_block.append_op(
+                    type='c_broadcast',
+                    inputs={'X': param},
+                    outputs={'Out': param},
+                    attrs={
+                        'ring_id': sync_group.id,
+                        'root': 0,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
+
+                grad_var = main_block.var(var_name)
+                dims_mapping = ctx.get_tensor_dist_attr_for_program(
+                    grad_var).dims_mapping
+                process_mesh = dist_attr.process_mesh
+                for op in [allreduce_op, scale_op]:
+                    op_attr = OperatorDistributedAttribute()
+                    op_attr.process_mesh = process_mesh
+                    op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
+                    op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
+                    ctx.set_op_dist_attr_for_program(op, op_attr)
+            return
+
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):

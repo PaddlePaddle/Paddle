@@ -246,6 +246,11 @@ class Partitioner(object):
                     op, self._dist_context, forward_op_id2forward_op)
                 dist_op_backward_impl.backward(self._dist_context, **kinputs,
                                                **koutputs)
+            elif int(op.attr('op_role')) == 2:
+                kinputs, koutputs = dist_op_context.prepare_context(op)
+                dist_op_impl = get_distributed_operator_impl_container(
+                    "default").get_impl(0)
+                dist_op_impl.backward(self._dist_context, **kinputs, **koutputs)
             else:
                 raise NotImplementedError(
                     "partitioner only support forward op and backward op, but got {}".
