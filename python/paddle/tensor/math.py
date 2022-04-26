@@ -1132,15 +1132,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    def get_dtype(x, dtype):
-        if dtype is not None:
-            return (True, dtype)
-        src_type = convert_dtype(x.dtype)
-        if src_type in ['bool','int32', 'int64']:
-            return (True, 'int64')
-        return (False, src_type)
-
-    dtype_flag, dtype = get_dtype(x, dtype)
+    dtype_flag = False
+    if dtype is not None:
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
         if reduce_all_flag:
@@ -1148,17 +1143,14 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             axis = axis if axis != None and axis != [] else [0]
 
-        out_dtype = convert_np_dtype_to_dtype_(dtype)
-        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
-        return out
+        return _C_ops.final_state_sum(x, axis, dtype, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag, 'in_dtype',
-                                       x.dtype, 'out_dtype',
-                                       convert_np_dtype_to_dtype_(dtype))
+                                       x.dtype, 'out_dtype', dtype)
         else:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
@@ -1172,7 +1164,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if dtype_flag:
         attrs.update({
             'in_dtype': x.dtype,
-            'out_dtype': convert_np_dtype_to_dtype_(dtype)
+            'out_dtype': dtype
         })
 
     check_variable_and_dtype(
@@ -1186,7 +1178,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
         out = helper.create_variable_for_type_inference(
-            dtype=convert_np_dtype_to_dtype_(dtype))
+            dtype=dtype)
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(

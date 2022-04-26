@@ -300,6 +300,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return vec_res;
   }
 
+  framework::proto::VarType::Type GetInputVarType(
+      const std::string& name) const override {
+    auto it = var_map_in_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in input", name));
+    return framework::ToVarType(it->second[0]->Var().Type());
+  }
+
   std::vector<framework::proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override {
     std::vector<framework::proto::VarType::Type> vec_res;
