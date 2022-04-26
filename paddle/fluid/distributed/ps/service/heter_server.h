@@ -146,8 +146,11 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
   void WaitForVarsConsumed(int32_t group_id, const std::string& var_name) {
     timeline_.Start();
     while (true) {
-      if (vars_ready_flag[group_id][var_name] == 0) {
-        break;
+      {
+        std::lock_guard<std::mutex> lock(scope_mutex_);
+        if (vars_ready_flag[group_id][var_name] == 0) {
+          break;
+        }
       }
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
@@ -161,8 +164,11 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
   void WaitForVarsProduced(int32_t group_id, const std::string& var_name) {
     timeline_.Start();
     while (true) {
-      if (vars_ready_flag[group_id][var_name] == 1) {
-        break;
+      {
+        std::lock_guard<std::mutex> lock(scope_mutex_);
+        if (vars_ready_flag[group_id][var_name] == 1) {
+          break;
+        }
       }
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
