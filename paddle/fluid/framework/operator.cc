@@ -1380,7 +1380,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     pt_kernel_signature_.reset(nullptr);
-    pt_kernel_.reset(nullptr);
     VLOG(4) << "phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)";
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       VLOG(4) << "pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr";
