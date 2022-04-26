@@ -28,6 +28,8 @@ from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
 import warnings
+from .incubate.ad_transform.primx import prim_enabled, _gradients
+
 __all__ = [
     'append_backward',
     'gradients',
@@ -2062,6 +2064,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
         framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
+
+    if prim_enabled():
+        return _gradients(targets, inputs, target_gradients)
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

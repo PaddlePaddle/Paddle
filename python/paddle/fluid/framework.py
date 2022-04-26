@@ -3179,6 +3179,7 @@ class Block(object):
         self.ops = list()  # operator list
         self.program = program
         self.removed_vars = collections.OrderedDict()
+        self.global_lower_update = collections.OrderedDict()
 
     def __str__(self):
         return self._to_readable_code()
@@ -3394,7 +3395,7 @@ class Block(object):
     def has_var(self, name):
         return name in self.vars
 
-    def _rename_var(self, name, new_name):
+    def _rename_var_without_sync(self, name, new_name):
         """
         Rename variable in vars and ops' inputs and outputs
 
@@ -3481,6 +3482,10 @@ class Block(object):
         # new vars/ops to python side.
         self.vars[new_name] = var
         del self.vars[name]
+        return var
+
+    def _rename_var(self, name, new_name):
+        var = self._rename_var_without_sync(name, new_name)
         self._sync_with_cpp()
         return var
 

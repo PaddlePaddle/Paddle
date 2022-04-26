@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd.primx import Transform, orig2prim, prim2orig
+from paddle.fluid.incubate.ad_transform.primx import Transform, orig2prim, prim2orig
 from paddle.fluid.layers.utils import flatten
 
 paddle.enable_static()

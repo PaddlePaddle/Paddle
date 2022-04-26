@@ -14,8 +14,7 @@
 
 import paddle
 from paddle.fluid import framework as framework
-from paddle.fluid.framework import default_main_program, default_startup_program
-from paddle.fluid import unique_name, core
+from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import Operator
 from paddle import compat as cpt
 from .primops import fill_const, add
@@ -24,8 +23,31 @@ from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, 
 from .primrules import get_input_var_list, get_output_var_list
 from collections import OrderedDict
 
-#TODO(lml): this is a bad and unsafe design used for get laplace2d program, please refactor it later
-global_lower_update = []
+
+class PrimOption(object):
+    def __init__(self):
+        self.enable_prim = False
+
+    def get_status(self):
+        return self.enable_prim
+
+    def set_status(self, flag):
+        self.enable_prim = flag
+
+
+prim_option = PrimOption()
+
+
+def prim_enabled():
+    return prim_option.get_status()
+
+
+def enable_prim():
+    prim_option.set_status(True)
+
+
+def disable_prim():
+    prim_option.set_status(False)
 
 
 def flatten(inp):
@@ -409,12 +431,9 @@ def _gradients(ys, xs, ys_bar=None):
     # is completely lowered to primitive ops, it's mandatory to run the lowering
     # pass once and again. This is obviously inefficient and needs to be 
     # optimized.
-    new_vars = xs + ys
-    orig2prim(block, new_vars)
+    orig2prim(block)
 
     ad = Transform(block)
-    xs = new_vars[:len(xs)]
-    ys = new_vars[len(xs):]
 
     xs_dot, ys_dot = ad.linearize(xs, ys)
     if any(var is None for var in ys_dot):
@@ -436,12 +455,12 @@ def _gradients(ys, xs, ys_bar=None):
     return xs_bar
 
 
-def orig2prim(block=None, update_var_list=[]):
-    _lower(block, reverse=False, update_var_list=update_var_list)
+def orig2prim(block=None):
+    _lower(block, reverse=False)
 
 
-def prim2orig(block=None, update_var_list=[]):
-    _lower(block, reverse=True, update_var_list=update_var_list)
+def prim2orig(block=None):
+    _lower(block, reverse=True)
 
 
 def to_tensors(xs):
@@ -469,7 +488,7 @@ def bind(args, to_bind, vlt):
             args[i] = vlt[to_bind[args[i].name]]
 
 
-def _lower(block, reverse, update_var_list):
+def _lower(block, reverse):
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
     if block is None:
@@ -479,6 +498,7 @@ def _lower(block, reverse, update_var_list):
 
     vlt = {}
     to_bind = {}
+    to_bind_rev = {}
     for var in block.desc.all_vars():
         vlt[var.name()] = block.var(var.name())
 
@@ -496,9 +516,10 @@ def _lower(block, reverse, update_var_list):
                     single_layer_list(to_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
-                vars_to_remove.add(orig_out.name)
+                vars_to_remove.add(new_out.name)
                 vlt[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
+                to_bind_rev[new_out.name] = orig_out.name
         else:
 
             def bind_name(names, to_bind):
@@ -534,19 +555,23 @@ def _lower(block, reverse, update_var_list):
                     attrs=attrs)
             block.ops.append(op)
 
-    for i in range(len(global_lower_update)):
-        if global_lower_update[i].name in to_bind:
-            global_lower_update[i] = vlt[to_bind[global_lower_update[i].name]]
-
-    for i in range(len(update_var_list)):
-        if update_var_list[i].name in to_bind:
-            update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
-
     for op_idx in reversed(ops_to_remove):
         block.desc._remove_op(op_idx, op_idx + 1)
         del block.ops[op_idx]
     block._sync_with_cpp()
+
+    for op_idx in range(len(block.ops)):
+        op = block.ops[op_idx]
+        for in_name in op.input_arg_names:
+            if in_name in to_bind_rev:
+                op._rename_input(in_name, to_bind_rev[in_name])
+
+        for out_name in op.output_arg_names:
+            if out_name in to_bind_rev:
+                op._rename_output(out_name, to_bind_rev[out_name])
+
     for var_name in sorted(vars_to_remove):
+        assert var_name in to_bind_rev
         block.desc._remove_var(cpt.to_bytes(var_name))
         del block.vars[var_name]
     block._sync_with_cpp()

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+
 from .primreg import REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG, REGISTER_JVP, REGISTER_TRANSPOSE
 from .primreg import (lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp,
                       lookup_transpose, op_position_inputs, op_position_output)
@@ -21,18 +22,17 @@ from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       slice_assign, gather, scatter_add, fill_const, set_value)
 
 INT_DTYPE_2_STRING = {
-    int(paddle.bool): 'bool',
-    int(paddle.float16): 'float16',
-    int(paddle.bfloat16): 'uint16',
-    int(paddle.float32): 'float32',
-    int(paddle.float64): 'float64',
-    int(paddle.int8): 'int8',
-    int(paddle.int16): 'int16',
-    int(paddle.int32): 'int32',
-    int(paddle.int64): 'int64',
-    int(paddle.uint8): 'uint8',
-    int(paddle.complex64): 'complex64',
-    int(paddle.complex128): 'complex128',
+    int(0): 'bool',
+    int(1): 'int16',
+    int(2): 'int32',
+    int(3): 'int64',
+    int(4): 'float16',
+    int(5): 'float32',
+    int(6): 'float64',
+    int(20): 'uint8',
+    int(21): 'int8',
+    int(23): 'complex64',
+    int(24): 'complex128',
 }
 
 

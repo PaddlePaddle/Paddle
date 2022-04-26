@@ -14,22 +14,17 @@
 
 import unittest
 import numpy as np
-import os
-os.environ['FLAGS_call_stack_level'] = "2"
-
 import paddle
-from paddle.autograd.primops import (
+from paddle.fluid.incubate.ad_transform.primops import (
     neg, set_value, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
     transpose, split, concat, reduce, matmul, slice_select, slice_assign,
     gather, scatter_add, fill_const)
-from paddle.autograd.primx import Transform, topo_path, orig2prim, prim2orig
-from paddle.autograd.primx import _gradients
-from paddle.autograd.new_adam_optimizer import AdamOptimizer
+from paddle.fluid.incubate.ad_transform.primx import Transform, topo_path, orig2prim, prim2orig
+from paddle.fluid.incubate.ad_transform.primx import _gradients, enable_prim
 
 
 def prog1(x, y):
     t = paddle.matmul(x, y)
-    # z = paddle.sum(paddle.sqrt(x))
     return t
 
 
@@ -294,6 +289,7 @@ class TestPyPrimOps(unittest.TestCase):
             print(x.block)
 
     def test_minimize(self):
+        enable_prim()
         place = paddle.CPUPlace()
         if paddle.device.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -309,7 +305,7 @@ class TestPyPrimOps(unittest.TestCase):
                 shape=[2], dtype='float32', is_bias=True)
             y = paddle.tanh(paddle.matmul(x, w) + bias)
             loss = paddle.norm(y, p=2)
-            opt = AdamOptimizer(0.01)
+            opt = paddle.fluid.optimizer.AdamOptimizer(0.01)
             opt.minimize(loss)
             # prim2orig(x.block, update_var_list=[loss])
 

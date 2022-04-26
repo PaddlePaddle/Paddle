@@ -12,41 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import unique_name, core
-from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
-
-
-def make_var(dtype,
-             varset=None,
-             shape=None,
-             block=None,
-             namekey='',
-             stop_gradient=False):
-    """ Create a type inferred variable. """
-
-    if block is None:
-        block = default_main_program().current_block()
-
-    name = unique_name.generate_with_ignorable_key(namekey + '%')
-
-    var = block.create_var(
-        name=name,
-        dtype=dtype,
-        shape=shape,
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        persistable=False,
-        stop_gradient=stop_gradient)
-
-    if varset is not None:
-        varset.add(var)
-
-
-def make_varlike(x, block=None, namekey='', stop_gradient=False):
-    """ Make a variable using the dtype and shape of the given input. """
-    return make_var(x.dtype, x.shape, block, namekey, stop_gradient)
 
 
 def _simple_unop(helper):
