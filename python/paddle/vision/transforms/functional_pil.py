@@ -469,3 +469,34 @@ def to_grayscale(img, num_output_channels=1):
         raise ValueError('num_output_channels should be either 1 or 3')
 
     return img
+
+
+def affine(img,
+           matrix,
+           interpolation="nearest",
+           fill=0):
+    """Affine the image by matrix.
+
+    Args:
+        img (PIL.Image): Image to be affined.
+        matrix (float or int): Affine parameters.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        PIL.Image: Affined image.
+
+    """
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    return img.affine(
+        matrix,
+        _pil_interp_from_str[interpolation],
+        fillcolor=fill)

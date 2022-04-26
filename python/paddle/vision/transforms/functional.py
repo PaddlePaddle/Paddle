@@ -677,3 +677,197 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             img = np.array(img).astype(np.float32)
 
         return F_cv2.normalize(img, mean, std, data_format, to_rgb)
+
+
+def _get_inverse_affine_matrix(center, angle, translate, scale, shear, inverted=True):
+    # Helper method to compute inverse matrix for affine transformation
+
+    # Pillow requires inverse affine transformation matrix:
+    # Affine matrix is : M = T * C * RotateScaleShear * C^-1
+    #
+    # where T is translation matrix: [1, 0, tx | 0, 1, ty | 0, 0, 1]
+    #       C is translation matrix to keep center: [1, 0, cx | 0, 1, cy | 0, 0, 1]
+    #       RotateScaleShear is rotation with scale and shear matrix
+    #
+    #       RotateScaleShear(a, s, (sx, sy)) =
+    #       = R(a) * S(s) * SHy(sy) * SHx(sx)
+    #       = [ s*cos(a - sy)/cos(sy), s*(-cos(a - sy)*tan(sx)/cos(sy) - sin(a)), 0 ]
+    #         [ s*sin(a + sy)/cos(sy), s*(-sin(a - sy)*tan(sx)/cos(sy) + cos(a)), 0 ]
+    #         [ 0                    , 0                                      , 1 ]
+    # where R is a rotation matrix, S is a scaling matrix, and SHx and SHy are the shears:
+    # SHx(s) = [1, -tan(s)] and SHy(s) = [1      , 0]
+    #          [0, 1      ]              [-tan(s), 1]
+    #
+    # Thus, the inverse is M^-1 = C * RotateScaleShear^-1 * C^-1 * T^-1
+
+    rot = math.radians(angle)
+    sx = math.radians(shear[0])
+    sy = math.radians(shear[1])
+
+    cx, cy = center
+    tx, ty = translate
+
+    # RSS without scaling
+    a = math.cos(rot - sy) / math.cos(sy)
+    b = -math.cos(rot - sy) * math.tan(sx) / math.cos(sy) - math.sin(rot)
+    c = math.sin(rot - sy) / math.cos(sy)
+    d = -math.sin(rot - sy) * math.tan(sx) / math.cos(sy) + math.cos(rot)
+
+    if inverted:
+        # Inverted rotation matrix with scale and shear
+        # det([[a, b], [c, d]]) == 1, since det(rotation) = 1 and det(shear) = 1
+        matrix = [d, -b, 0.0, -c, a, 0.0]
+        matrix = [x / scale for x in matrix]
+        # Apply inverse of translation and of center translation: RSS^-1 * C^-1 * T^-1
+        matrix[2] += matrix[0] * (-cx - tx) + matrix[1] * (-cy - ty)
+        matrix[5] += matrix[3] * (-cx - tx) + matrix[4] * (-cy - ty)
+        # Apply center translation: C * RSS^-1 * C^-1 * T^-1
+        matrix[2] += cx
+        matrix[5] += cy
+    else:
+        matrix = [a, b, 0.0, c, d, 0.0]
+        matrix = [x * scale for x in matrix]
+        # Apply inverse of center translation: RSS * C^-1
+        matrix[2] += matrix[0] * (-cx) + matrix[1] * (-cy)
+        matrix[5] += matrix[3] * (-cx) + matrix[4] * (-cy)
+        # Apply translation and center : T * C * RSS * C^-1
+        matrix[2] += cx + tx
+        matrix[5] += cy + ty
+
+    return matrix
+
+
+def affine(img,
+           angle, 
+           translate,
+           scale,
+           shear,
+           interpolation="nearest",
+           fill=0,
+           center=None):
+    """Apply affine transformation on the image keeping image center invariant.
+
+    Args:
+        img (PIL.Image|np.array): Image to be transform.
+        angle (float or int): In degrees degrees counter clockwise order.
+        translate (sequence or int): horizontal and vertical translations (post-rotation translation)
+        scale (float): overall scale
+        shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
+            If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
+            the second value corresponds to a shear parallel to the y axis.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. when use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (sequence or number, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
+
+            .. note::
+                In torchscript mode single int/float value is not supported, please use a sequence
+                of length 1: ``[value, ]``.
+        center (sequence, optional): Optional center of rotation. Origin is the upper left corner.
+            Default is the center of the image.
+
+    Returns:
+        PIL.Image or np.array: Affine Transformed image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            affined_img = F.affine(fake_img, [-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10])
+            print(affined_img.size)
+
+    """
+
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
+            format(type(img)))
+
+    if not isinstance(angle, (int, float)):
+        raise TypeError("Argument angle should be int or float")
+
+    if isinstance(angle, int):
+        angle = float(angle)
+
+    if not isinstance(translate, (list, tuple)):
+        raise TypeError("Argument translate should be a sequence")
+
+    if len(translate) != 2:
+        raise ValueError("Argument translate should be a sequence of length 2")
+
+    if not isinstance(scale, (int, float)):
+        raise TypeError("Argument scale should be int or float")
+
+    if scale <= 0.0:
+        raise ValueError("Argument scale should be positive")
+
+    if not isinstance(shear, (numbers.Number, (list, tuple))):
+        raise TypeError("Shear should be either a single value or a sequence of two values")
+
+    if isinstance(translate, tuple):
+        translate = list(translate)
+
+    if isinstance(shear, numbers.Number):
+        shear = [shear, 0.0]
+
+    if isinstance(shear, tuple):
+        shear = list(shear)
+
+    if len(shear) == 1:
+        shear = [shear[0], shear[0]]
+
+    if isinstance(fill, list):
+        fill = tuple(fill)
+
+    if isinstance(center, list):
+        center = tuple(center)
+
+    if center is not None and not isinstance(center, (list, tuple)):
+        raise TypeError("Argument center should be a sequence")
+
+    if _is_pil_image(img):
+        width, height = img.size
+        # center = (width * 0.5 + 0.5, height * 0.5 + 0.5)
+        # it is visually better to estimate the center without 0.5 offset
+        # otherwise image rotated by 90 degrees is shifted vs output image of torch.rot90 or F_t.affine
+        if center is None:
+            center = [width * 0.5, height * 0.5]
+        matrix = _get_inverse_affine_matrix(center, angle, translate, scale, shear)
+        return F_pil.affine(img, matrix, interpolation, fill)
+    
+    if _is_numpy_image(img):
+        height, width = img.shape[0:2]
+        # center = (width * 0.5 + 0.5, height * 0.5 + 0.5)
+        # it is visually better to estimate the center without 0.5 offset
+        # otherwise image rotated by 90 degrees is shifted vs output image of torch.rot90 or F_t.affine
+        if center is None:
+            center = [width * 0.5, height * 0.5]
+        matrix = _get_inverse_affine_matrix(center, angle, translate, scale, shear)
+        return F_cv2.affine(img, matrix, interpolation, fill)
+
+    if _is_tensor_image(img):
+        height, width = img.shape[-1], img.shape[-2]
+        center_f = [0.0, 0.0]
+        if center is not None:
+            # Center values should be in pixel coordinates but translated such that (0, 0) corresponds to image center.
+            center_f = [1.0 * (c - s * 0.5) for c, s in zip(center, [width, height])]
+
+        translate_f = [1.0 * t for t in translate]
+        matrix = _get_inverse_affine_matrix(center_f, angle, translate_f, scale, shear)
+        return F_t.affine(img, matrix, interpolation, fill)

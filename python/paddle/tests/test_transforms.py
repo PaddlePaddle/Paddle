@@ -134,6 +134,17 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_affine(self):
+        trans = transforms.Compose([
+            transforms.RandomAffine(90),
+            transforms.RandomAffine([-10, 10], translate=[0.2, 0.2]),
+            transforms.RandomAffine(
+                45, translate=[0.2, 0.2], scale=[0.5, 0.5]),
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
+        ])
+        self.do_transform(trans)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -689,6 +700,22 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+
+    def test_affine(self):
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np_affined_img = F.affine(np_img, 4)
+        pil_affined_img = F.affine(pil_img, 4)
+        tensor_affined_img = F.affine(tensor_img, 4)
+
+        np.testing.assert_almost_equal(np_affined_img,
+                                       np.array(pil_affined_img))
+        np.testing.assert_almost_equal(
+            np_affined_img,
+            tensor_affined_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
 
 
 if __name__ == '__main__':
