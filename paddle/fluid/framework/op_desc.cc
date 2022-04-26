@@ -245,6 +245,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override;
 
+  proto::VarType::Type GetInputVarType(const std::string &name) const override {
+    return GetVarType(Inputs(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
     return GetVarTypes(Inputs(name));
@@ -269,6 +273,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                      const std::vector<DDim> &dims) override {
     auto names = Outputs(name);
     SetDims(names, dims);
+  }
+
+  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature *GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
  protected:

@@ -18,5 +18,6 @@ from .math import sqrt  # noqa: F401
 from .math import sin  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
+from .pooling import max_pool3d  # noqa: F401
 
-__all__ = ['relu', 'tanh', 'conv3d', 'subm_conv3d', 'sqrt', 'sin']
+__all__ = ['relu', 'tanh', 'conv3d', 'subm_conv3d', 'max_pool3d', 'sqrt', 'sin']

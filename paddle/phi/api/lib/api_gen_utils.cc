@@ -41,7 +41,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
         *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
