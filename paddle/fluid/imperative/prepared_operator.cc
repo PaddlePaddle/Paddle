@@ -432,7 +432,7 @@ static void PreparedOpRunImpl(
   framework::Scope scope;
 
   {
-    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+    platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
@@ -441,7 +441,7 @@ static void PreparedOpRunImpl(
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + "::compute",
+    platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
 
