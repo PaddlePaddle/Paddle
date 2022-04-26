@@ -69,6 +69,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
+    auto var_type = ctx_.GetInputVarType(name);
+    return var_type == proto::VarType::LOD_TENSOR;
+  }
+
+  bool IsDenseTensorInputs(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
     return std::all_of(var_types.begin(), var_types.end(),
                        [](const proto::VarType::Type& type) {
@@ -77,11 +82,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    auto var_types = ctx_.GetInputsVarType(name);
-    return std::all_of(var_types.begin(), var_types.end(),
-                       [](const proto::VarType::Type& type) {
-                         return type == proto::VarType::SELECTED_ROWS;
-                       });
+    auto var_type = ctx_.GetInputVarType(name);
+    return var_type == proto::VarType::SELECTED_ROWS;
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {

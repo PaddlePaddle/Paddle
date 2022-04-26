@@ -479,6 +479,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::DenseTensor>();
+  }
+
+  bool IsDenseTensorInputs(const std::string& name) const override {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<phi::DenseTensor>();
@@ -486,10 +491,8 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    auto vars = ctx_.MultiInputVar(name);
-    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<phi::SelectedRows>();
-    });
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SelectedRows>();
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
