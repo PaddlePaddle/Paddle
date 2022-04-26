@@ -69,6 +69,24 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual(len(opts), 1)
         self.assertEqual([op.type for op in opts], ["sgd"])
 
+    def test_asgd_optimizer(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self):
+                super(MyLayer, self).__init__()
+                self._w = self.create_parameter([2, 3])
+                self._b = self.create_parameter([2, 3])
+
+            def forward(self, x):
+                return x * self._w + self._b
+
+        with paddle.fluid.dygraph.guard():
+            model = MyLayer()
+            x = paddle.rand([10, 2, 3])
+            loss = model(x)
+            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            loss.backward()
+            adam.step()
+
 
 class TestOptimizerBackwardApplygrad(unittest.TestCase):
     def test_sgd_optimizer(self):

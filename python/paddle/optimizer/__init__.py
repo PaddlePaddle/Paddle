@@ -17,6 +17,7 @@ from .adagrad import Adagrad  # noqa: F401
 from .adam import Adam  # noqa: F401
 from .adamw import AdamW  # noqa: F401
 from .adamax import Adamax  # noqa: F401
+from .asgd import ASGD  # noqa: F401
 from .rmsprop import RMSProp  # noqa: F401
 from .adadelta import Adadelta  # noqa: F401
 from .sgd import SGD  # noqa: F401
@@ -30,6 +31,7 @@ __all__ = [     #noqa
            'Adam',
            'AdamW',
            'Adamax',
+           'ASGD',
            'RMSProp',
            'Adadelta',
            'SGD',
