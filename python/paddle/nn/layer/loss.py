@@ -1306,14 +1306,18 @@ class HingeEmbeddingLoss(Layer):
 
 class SoftMarginLoss(Layer):
     r"""
-    Finally, this operator applies reduce operation on the loss.
+    This op measures the soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
+
+    .. math::
+        Out = log(1 + exp((-label * input)))
+
+    And this operator applies reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
-    Note that the target labels ``label`` should be numbers between 0 and 1.
-
-    Args:
+    Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -1323,7 +1327,7 @@ class SoftMarginLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shapes:
+    Call Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``logit``
             is usually the output of Linear layer. Available dtype is float32, float64.
@@ -1340,11 +1344,10 @@ class SoftMarginLoss(Layer):
 
         .. code-block:: python
             import paddle
-            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
-            bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
-            output = bce_logit_loss(logit, label)
-            print(output.numpy())  # [0.45618808]
+            soft_margin_loss = paddle.nn.SoftMarginLoss()
+            output = soft_margin_loss(input, label)
 
     """
 

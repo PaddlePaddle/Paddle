@@ -2234,7 +2234,7 @@ def soft_margin_loss(input, label,reduction='mean',
     and target labels ``label`` . It can be described as:
 
     .. math::
-        Out = log(1 + exp((-label * input)))/C
+        Out = log(1 + exp((-label * input)))
 
 
     If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
@@ -2248,9 +2248,6 @@ def soft_margin_loss(input, label,reduction='mean',
 
     .. math::
         Out = SUM(Out)
-
-    Note that the input predictions ``input`` always be the output of sigmoid, and the target labels ``label``
-    should be numbers between 0 and 1.
 
     Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
@@ -2280,8 +2277,7 @@ def soft_margin_loss(input, label,reduction='mean',
 
             input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
             label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
-            output = paddle.nn.functional.binary_cross_entropy(input, label)
-            print(output)  # [0.65537095]
+            output = paddle.nn.functional.soft_margin_loss(input, label)
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -2290,30 +2286,19 @@ def soft_margin_loss(input, label,reduction='mean',
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
     if _non_static_mode():
-        if in_dygraph_mode():
-            out = _C_ops.final_state_soft_margin_loss(input, label)
-
-            if reduction == 'sum':
-                return _C_ops.reduce_sum(out, "reduce_all", True)
-            elif reduction == 'mean':
-                return _C_ops.final_state_mean_all(out)
-            else:
-                return out
+        out = _C_ops.soft_margin_loss(input, label)
+        if reduction == 'sum':
+            return _C_ops.reduce_sum(out, "reduce_all", True)
+        elif reduction == 'mean':
+            return _C_ops.mean(out)
         else:
-            out = _C_ops.soft_margin_loss(input, label)
-            if reduction == 'sum':
-                return _C_ops.reduce_sum(out, "reduce_all", True)
-            elif reduction == 'mean':
-                return _C_ops.mean(out)
-            else:
-                return out
+            return out
     else:
 
-
         fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
+            input, 'input', ['float32', 'float64'], 'soft_margin_loss')
         fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
+            label, 'label', ['float32', 'float64'], 'soft_margin_loss')
 
         sub_name = name if reduction == 'none' else None
         helper = LayerHelper("soft_margin_loss", name=sub_name)

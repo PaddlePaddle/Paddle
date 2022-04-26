@@ -93,7 +93,7 @@ def test_dygraph_functional(place,
 
 def calc_softmarginloss(input_np, label_np, reduction='mean',):
 
-    expected = np.log(1+np.exp(-label_np *input_np))
+    expected = np.log(1+np.exp(-label_np * input_np))
     # expected = np.mean(expected, axis=-1)
 
     if reduction == 'mean':
@@ -111,8 +111,8 @@ class TestSoftMarginLoss(unittest.TestCase):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
         places = ['cpu']
-        # if fluid.core.is_compiled_with_cuda():
-            # places.append(fluid.CUDAPlace(0))
+        if fluid.core.is_compiled_with_cuda():
+            places.append('gpu')
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -132,11 +132,12 @@ class TestSoftMarginLoss(unittest.TestCase):
                 self.assertTrue(np.allclose(static_functional, dy_functional))
                 self.assertTrue(np.allclose(dy_functional, expected))
 
-
     def test_SoftMarginLoss_error(self):
         paddle.disable_static()
         self.assertRaises(
-            ValueError, paddle.nn.loss.SoftMarginLoss, reduction="unsupport reduction")
+            ValueError,
+            paddle.nn.loss.SoftMarginLoss,
+            reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         label = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
         self.assertRaises(
@@ -147,9 +148,9 @@ class TestSoftMarginLoss(unittest.TestCase):
             reduction="unsupport reduction")
         paddle.enable_static()
 
-"""
+
 def soft_margin_loss(input, label):
-    return -1 * (label * np.log(input) + (1. - label) * np.log(1. - input))
+    return np.log(1+np.exp(-label * input))
 
 
 class TestSoftMarginLossOp(OpTest):
@@ -181,7 +182,7 @@ class TestSoftMarginLossOpCase1(OpTest):
 class TestSoftMarginLossOpCase2(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 20]
-"""
+
 
 if __name__ == "__main__":
     unittest.main()
