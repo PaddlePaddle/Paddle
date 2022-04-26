@@ -1375,11 +1375,12 @@ class RandomErasing(BaseTransform):
             tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
         """
         if F._is_pil_image(img):
-            h, w, c = np.asarray(img).astype(np.uint8).shape
+            shape = np.asarray(img).astype(np.uint8).shape
+            h, w, c = shape[-3], shape[-2], shape[-1]
         elif F._is_numpy_image(img):
-            h, w, c = img.shape
+            h, w, c = img.shape[-3], img.shape[-2], img.shape[-1]
         elif F._is_tensor_image(img):
-            c, h, w = img.shape
+            c, h, w = img.shape[-3], img.shape[-2], img.shape[-1]
 
         img_area = h * w
         log_ratio = np.log(ratio)

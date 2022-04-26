@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
@@ -149,13 +150,17 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::OperatorWithKernel::OpKernelFunc& func,
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
              platform::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             framework::KernelSignature&& kernel_signature,
-             const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
+             phi::KernelSignature&& kernel_signature,
+             const phi::Kernel& phi_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -205,8 +210,10 @@ class PreparedOp {
   // we may polish the implementation here
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
-  framework::KernelSignature pt_kernel_signature_;
-  const phi::Kernel& pt_kernel_;
+  const phi::ArgumentMappingFn* arg_map_fn_;
+  const phi::KernelSignature* default_kernel_signature_;
+  phi::KernelSignature kernel_signature_;
+  const phi::Kernel& phi_kernel_;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -225,21 +232,23 @@ const inline framework::Attribute& GetAttr(
 }
 
 template <typename VarType>
-void BuildDygraphPhiKernelContext(
-    const framework::KernelSignature& pt_kernel_signature,
-    const phi::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs,
-    platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
+void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
+                                  const phi::Kernel& phi_kernel,
+                                  const NameVarMap<VarType>& ins,
+                                  const NameVarMap<VarType>& outs,
+                                  const framework::AttributeMap& attrs,
+                                  const framework::AttributeMap& default_attrs,
+                                  platform::DeviceContext* dev_ctx,
+                                  phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& attr_names = std::get<1>(pt_kernel_signature.args);
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
+  const auto& input_names = kernel_signature.input_names;
+  const auto& attr_names = kernel_signature.attr_names;
+  const auto& output_names = kernel_signature.output_names;
 
-  auto& input_defs = pt_kernel.args_def().input_defs();
-  auto& output_defs = pt_kernel.args_def().output_defs();
-  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+  auto& input_defs = phi_kernel.args_def().input_defs();
+  auto& output_defs = phi_kernel.args_def().output_defs();
+  auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -285,7 +294,7 @@ void BuildDygraphPhiKernelContext(
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
-            input_names[i], pt_kernel_signature.name));
+            input_names[i], kernel_signature.name));
       }
     }
 
@@ -369,7 +378,7 @@ void BuildDygraphPhiKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
+    if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
         auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
@@ -389,8 +398,7 @@ void BuildDygraphPhiKernelContext(
                    std::type_index(typeid(int32_t))) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
-        } else if (attr_defs[i].type_index ==
-                   std::type_index(typeid(std::vector<int32_t>))) {
+        } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           kernel_ctx->EmplaceBackAttr(vector_int_attr);
         } else {
@@ -414,9 +422,7 @@ void BuildDygraphPhiKernelContext(
               std::move(experimental::MakePhiIntArrayFromVarList(variables)));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(phi::Scalar))) {
-      // TODO(chenweihang): support other attrs later
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
       if (attrs.find(attr_names[i]) != attrs.end() ||
@@ -451,14 +457,13 @@ void BuildDygraphPhiKernelContext(
       auto& ins_vector = ins.at(attr_names[i]);
       auto tensor_attr =
           experimental::MakePhiScalarFromVar(ins_vector[0]->Var());
-      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         int val = tensor_attr.template to<int>();
         kernel_ctx->EmplaceBackAttr(val);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(std::vector<phi::Scalar>))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (std::type_index(attr.type()) ==
           std::type_index(typeid(std::vector<int32_t>))) {
@@ -512,28 +517,23 @@ void BuildDygraphPhiKernelContext(
             attr_names[i]));
       }
     } else {
-      // TODO(chenweihang): support other attrs later
-
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::BOOL) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::string))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRING) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(phi::DataType))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::DATA_TYPE) {
         auto data_type = framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           kernel_ctx->EmplaceBackAttr(
@@ -546,15 +546,12 @@ void BuildDygraphPhiKernelContext(
                                                        vector_int_attr.end());
           kernel_ctx->EmplaceBackAttr(vector_int64_attr);
         }
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<std::string>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRINGS) {
         kernel_ctx->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32S) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -567,11 +564,11 @@ void BuildDygraphPhiKernelContext(
 }
 
 template <typename VarType>
-void PreparePhiData(const phi::Kernel& pt_kernel,
-                    const framework::KernelSignature& pt_kernel_signature,
+void PreparePhiData(const phi::Kernel& phi_kernel,
+                    const phi::KernelSignature& kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& input_defs = pt_kernel.args_def().input_defs();
+  const auto& input_names = kernel_signature.input_names;
+  auto& input_defs = phi_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
