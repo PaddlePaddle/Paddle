@@ -281,24 +281,22 @@ def multiplex(inputs, index, name=None):
     Args:
         inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
         index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: Output of multiplex OP, with data type being float32, float64, int32, int64.
 
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             import paddle
-            import numpy as np
-            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
-            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
-            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
-            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            img1 = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
+            img2 = paddle.to_tensor([[5, 6], [7, 8]], dtype=paddle.float32)
+            inputs = [img1, img2]
+            index = paddle.to_tensor([[1], [0]], dtype=paddle.int32)
             res = paddle.multiplex(inputs, index)
-            print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
+            print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
 
     """
     if _non_static_mode():

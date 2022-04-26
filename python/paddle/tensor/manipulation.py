@@ -3147,16 +3147,15 @@ def reshape(x, shape, name=None):
         shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-                            For more information, please refer to :ref:`api_guide_Name` .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
+           :name: code-example1
 
-            import numpy as np
             import paddle
 
             x = paddle.rand([2, 4, 6], dtype="float32")
@@ -3170,9 +3169,9 @@ def reshape(x, shape, name=None):
             print(out)
             # the shape of out_2 is [4, 12].
 
-            shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
+            shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
             out = paddle.reshape(x, shape=shape_tensor)
-            print(out)
+            print(out.shape)
             # the shape is [8, 6].
             # out shares data with x in dygraph mode
             x[0, 0, 0] = 10.
@@ -4113,14 +4112,12 @@ def take_along_axis(arr, indices, axis):
     
     Examples:
         .. code-block:: python
+           :name: code-example1
 
             import paddle
-            import numpy as np
 
-            x_np = np.array([[1, 2, 3], [4, 5, 6], [7,8,9]])
-            index_np = np.array([[0]])
-            x = paddle.to_tensor(x_np)
-            index = paddle.to_tensor(index_np)
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7,8,9]])
+            index = paddle.to_tensor([[0]])
             axis = 0
             result = paddle.take_along_axis(x, index, axis)
             print(result)
@@ -4180,14 +4177,12 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
     
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             import paddle
-            import numpy as np
 
-            x_np = np.array([[10, 30, 20], [60, 40, 50]])
-            index_np = np.array([[0]])
-            x = paddle.to_tensor(x_np)
-            index = paddle.to_tensor(index_np)
+            x = paddle.to_tensor([[10, 30, 20], [60, 40, 50]])
+            index = paddle.to_tensor([[0]])
             value = 99
             axis = 0
             result = paddle.put_along_axis(x, index, value, axis)
