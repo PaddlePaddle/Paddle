@@ -2969,6 +2969,34 @@ def cumsum(x, axis=None, dtype=None, name=None):
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
 
+
+def logcumsumexp(x, axis=None, dtype=None, name=None):
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast(x, dtype)
+
+    if in_dygraph_mode():
+        if axis is None: axis = -1
+        return _C_ops.final_state_logcumsumexp(x, axis, flatten, False, False)
+    if _in_legacy_dygraph():
+        if axis is None:
+            return _C_ops.logcumsumexp(x, 'flatten', flatten)
+        else:
+            return _C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            kwargs[name] = val
+    _logcumsumexp_ = generate_layer_fn('logcumsumexp')
+    return _logcumsumexp_(**kwargs)
+
+
 def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.

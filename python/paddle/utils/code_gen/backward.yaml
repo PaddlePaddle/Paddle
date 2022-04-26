@@ -354,6 +354,16 @@
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
 
+- backward_api : logcumsumexp_grad
+  forward : logcumsumexp(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  args : (Tensor x, Tensor out, Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  kernel :
+    func : logcumsumexp_grad
+
 - backward_api : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
