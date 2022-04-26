@@ -47,6 +47,7 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
                             bool exclusive,
                             bool reverse,
                             DenseTensor* d_x) {
+  // Reference: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/math_grad.py
   reverse = !reverse;
   dev_ctx.template Alloc<T>(d_x);
 

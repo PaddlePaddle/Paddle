@@ -141,25 +141,12 @@ struct LogAddExp {
   }
 };
 
-struct Prod {
-  template <typename T>
-  __host__ __device__ __forceinline__ T operator()(const T& a,
-                                                   const T& b) const {
-    return a * b;
-  }
-};
-
 template <typename T, typename op>
 struct Identity;
 
 template <typename T>
 struct Identity<T, cub::Sum> {
   static constexpr T value = 0;
-};
-
-template <typename T>
-struct Identity<T, Prod> {
-  static constexpr T value = 1;
 };
 
 template <typename T>

@@ -48,14 +48,14 @@ void ComputeImp(Device d,
   }
 }
 
-template <typename T, typename Context, typename Op>
+template <typename T, typename Context, typename Reducer>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 bool flatten,
                 bool exclusive,
                 bool reverse,
-                Op op,
+                Reducer reducer,
                 DenseTensor* out) {
   auto out_dims = out->dims();
 
@@ -98,7 +98,7 @@ void ScanKernel(const Context& dev_ctx,
                  /* axis= */ 0,
                  reverse,
                  exclusive,
-                 op);
+                 reducer);
     } else {
       ComputeImp(place,
                  Eigen::DSizes<IndexT, 2>(mid, post),
@@ -107,7 +107,7 @@ void ScanKernel(const Context& dev_ctx,
                  /* axis= */ 0,
                  reverse,
                  exclusive,
-                 op);
+                 reducer);
     }
   } else {
     if (post == 1) {
@@ -118,7 +118,7 @@ void ScanKernel(const Context& dev_ctx,
                  /* axis= */ 1,
                  reverse,
                  exclusive,
-                 op);
+                 reducer);
     } else {
       ComputeImp(place,
                  Eigen::DSizes<IndexT, 3>(pre, mid, post),
@@ -127,7 +127,7 @@ void ScanKernel(const Context& dev_ctx,
                  /* axis= */ 1,
                  reverse,
                  exclusive,
-                 op);
+                 reducer);
     }
   }
 }
@@ -146,6 +146,7 @@ void CumsumKernel(const Context& dev_ctx,
       dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
 }
 
+// Copied from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/scan_ops.h
 template <typename T>
 struct LogSumExp {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T operator()(const T& a,
