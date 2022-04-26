@@ -38,6 +38,7 @@ ExternalProject_Add(
     INSTALL_COMMAND mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ 
         && cp ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
         && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include ${ROCKSDB_INSTALL_DIR}/
+    BYPRODUCTS ${ROCKSDB_LIBRARIES}
     BUILD_IN_SOURCE 1
 )
 
@@ -48,4 +49,3 @@ SET_PROPERTY(TARGET rocksdb PROPERTY IMPORTED_LOCATION ${ROCKSDB_LIBRARIES})
 ADD_DEPENDENCIES(rocksdb extern_rocksdb)
 
 LIST(APPEND external_project_dependencies rocksdb)
-

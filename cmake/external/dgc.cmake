@@ -29,7 +29,7 @@ ExternalProject_Add(
     URL_MD5         "94e6fa1bc97169d0e1aad44570fe3251"
     PREFIX          "${DGC_PREFIX_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND make -j $(nproc)
+    BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
         && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
         && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
@@ -40,4 +40,3 @@ ExternalProject_Add(
 ADD_LIBRARY(dgc STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET dgc PROPERTY IMPORTED_LOCATION ${DGC_LIBRARIES})
 ADD_DEPENDENCIES(dgc extern_dgc)
-

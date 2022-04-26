@@ -22,9 +22,17 @@ if(NOT WITH_PSCORE)
 endif()
 
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
-add_custom_command(TARGET ps_framework_proto POST_BUILD
-    COMMAND mv the_one_ps.pb.h ps.pb.h
-    COMMAND mv the_one_ps.pb.cc ps.pb.cc)
+add_custom_target(
+    ps.pb.h
+    COMMAND cp the_one_ps.pb.h ps.pb.h
+    DEPENDS ps_framework_proto
+)
+
+add_custom_target(
+    ps.pb.cc
+    COMMAND cp the_one_ps.pb.cc ps.pb.cc
+    DEPENDS ps_framework_proto
+)
 
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
 
