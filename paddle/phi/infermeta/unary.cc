@@ -228,13 +228,6 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
-void CopyToInferMeta(const MetaTensor& x,
-                     Backend backend,
-                     bool blocking,
-                     MetaTensor* out) {
-  UnchangedInferMeta(x, out);
-}
-
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
@@ -1284,24 +1277,33 @@ void Pad3dInferMeta(const MetaTensor& x,
                         "5, but received %d. ",
                         x_dim.size()));
 
-  std::vector<int64_t> out_dims(x_dim.size());
+  std::vector<int64_t> out_dims(x_dim.size(), -1);
   out_dims[0] = x_dim[0];
+  auto& paddings = paddings_int_array.GetData();
+  if (data_format == "NCDHW") {
+    out_dims[1] = x_dim[1];
+  } else {
+    out_dims[4] = x_dim[4];
+  }
   if (paddings_int_array.FromTensor()) {
     if (config.is_runtime) {
       PADDLE_ENFORCE_EQ(
-          paddings_int_array.GetData().size(),
+          paddings.size(),
           6,
           errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
                                   "[6], but received [%d].",
-                                  paddings_int_array.GetData().size()));
+                                  paddings.size()));
+      if (data_format == "NCDHW") {
+        out_dims[2] = x_dim[2] + paddings[4] + paddings[5];
+        out_dims[3] = x_dim[3] + paddings[2] + paddings[3];
+        out_dims[4] = x_dim[4] + paddings[0] + paddings[1];
+      } else {
+        out_dims[1] = x_dim[1] + paddings[4] + paddings[5];
+        out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
+        out_dims[3] = x_dim[3] + paddings[0] + paddings[1];
+      }
     }
-    out_dims[1] = x_dim[1];
-    out_dims[2] = x_dim[2];
-    out_dims[3] = x_dim[3];
-    out_dims[4] = x_dim[4];
   } else {
-    auto paddings = paddings_int_array.GetData();
-
     PADDLE_ENFORCE_EQ(
         paddings.size(),
         6,
@@ -1309,7 +1311,6 @@ void Pad3dInferMeta(const MetaTensor& x,
             "Size of paddings should be equal to 6, but received %d.",
             static_cast<int>(paddings.size())));
     if (data_format == "NCDHW") {
-      out_dims[1] = x_dim[1];  // channel
       out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
                         ? x_dim[2]
                         : (x_dim[2] + paddings[4] + paddings[5]);  // depth
@@ -1322,8 +1323,6 @@ void Pad3dInferMeta(const MetaTensor& x,
                         ? x_dim[4]
                         : (x_dim[4] + paddings[0] + paddings[1]);  // width
     } else {                                                       // NDHWC
-      out_dims[4] = x_dim[4];                                      // channel
-
       out_dims[1] = ((!config.is_runtime) && (x_dim[1] < 0))
                         ? x_dim[1]
                         : (x_dim[1] + paddings[4] + paddings[5]);  // depth
@@ -3042,8 +3041,53 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[1] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[3] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[3]));
+  }
+  auto output_dims = input_dims;
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);

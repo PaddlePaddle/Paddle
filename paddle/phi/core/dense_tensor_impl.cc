@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
+
 namespace phi {
 /* --------------------------- */
 /*   From framework::Tensor    */
@@ -353,6 +357,19 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
   int64_t split_size = (numel_size + chunks - 1) / chunks;
   return Split(split_size, axis);
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::desc DenseTensor::mem_desc() const {
+  return mem_desc_ ? mem_desc_
+                   : dnnl::memory::desc(phi::vectorize(meta_.dims),
+                                        phi::TransToMKLDNNDataType(meta_.dtype),
+                                        format_);
+}
+
+dnnl::memory::format_tag DenseTensor::format() const {
+  return mem_desc_ ? paddle::platform::GetMKLDNNFormat(mem_desc_) : format_;
+}
+#endif
 
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();

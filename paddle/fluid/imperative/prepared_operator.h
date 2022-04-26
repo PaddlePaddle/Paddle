@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
@@ -149,13 +150,17 @@ class PreparedOp {
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
              const framework::OperatorWithKernel::OpKernelFunc& func,
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
              platform::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              const framework::OpKernelType& kernel_type,
-             const framework::KernelSignature& kernel_signature,
-             const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx);
+             const phi::ArgumentMappingFn* arg_map_fn,
+             const phi::KernelSignature* default_kernel_signature,
+             phi::KernelSignature&& kernel_signature,
+             const phi::Kernel& phi_kernel, platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -205,8 +210,10 @@ class PreparedOp {
   // we may polish the implementation here
   bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
-  framework::KernelSignature pt_kernel_signature_;
-  phi::Kernel pt_kernel_;
+  const phi::ArgumentMappingFn* arg_map_fn_;
+  const phi::KernelSignature* default_kernel_signature_;
+  phi::KernelSignature kernel_signature_;
+  const phi::Kernel& phi_kernel_;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -225,21 +232,23 @@ const inline framework::Attribute& GetAttr(
 }
 
 template <typename VarType>
-void BuildDygraphPhiKernelContext(
-    const framework::KernelSignature& pt_kernel_signature,
-    const phi::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs,
-    platform::DeviceContext* dev_ctx, phi::KernelContext* kernel_ctx) {
+void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
+                                  const phi::Kernel& phi_kernel,
+                                  const NameVarMap<VarType>& ins,
+                                  const NameVarMap<VarType>& outs,
+                                  const framework::AttributeMap& attrs,
+                                  const framework::AttributeMap& default_attrs,
+                                  platform::DeviceContext* dev_ctx,
+                                  phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& attr_names = std::get<1>(pt_kernel_signature.args);
-  auto& output_names = std::get<2>(pt_kernel_signature.args);
+  const auto& input_names = kernel_signature.input_names;
+  const auto& attr_names = kernel_signature.attr_names;
+  const auto& output_names = kernel_signature.output_names;
 
-  auto& input_defs = pt_kernel.args_def().input_defs();
-  auto& output_defs = pt_kernel.args_def().output_defs();
-  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+  auto& input_defs = phi_kernel.args_def().input_defs();
+  auto& output_defs = phi_kernel.args_def().output_defs();
+  auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -285,11 +294,11 @@ void BuildDygraphPhiKernelContext(
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
-            input_names[i], pt_kernel_signature.name));
+            input_names[i], kernel_signature.name));
       }
     }
 
-    auto ins_vector = it->second;
+    auto& ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -567,11 +576,11 @@ void BuildDygraphPhiKernelContext(
 }
 
 template <typename VarType>
-void PreparePhiData(const phi::Kernel& pt_kernel,
-                    const framework::KernelSignature& pt_kernel_signature,
+void PreparePhiData(const phi::Kernel& phi_kernel,
+                    const phi::KernelSignature& kernel_signature,
                     const NameVarMap<VarType>& ins) {
-  auto& input_names = std::get<0>(pt_kernel_signature.args);
-  auto& input_defs = pt_kernel.args_def().input_defs();
+  const auto& input_names = kernel_signature.input_names;
+  auto& input_defs = phi_kernel.args_def().input_defs();
 
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
                     platform::errors::InvalidArgument(
@@ -581,22 +590,27 @@ void PreparePhiData(const phi::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    if (ins.find(input_names[i]) == ins.end()) {
+    auto iter = ins.find(input_names[i]);
+    if (iter == ins.end()) {
       continue;
     }
-    auto& ins_vector = ins.at(input_names[i]);
+    auto& ins_vector = iter->second;
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      auto var = ins_vector[offset];
+      auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
-        auto expected_place = phi::TransToPhiPlace(in_def.backend);
-        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+        if (in_def.backend == tensor_backend ||
+            (in_def.backend == phi::Backend::GPUDNN &&
+             tensor_backend == phi::Backend::GPU)) {
           continue;
         }
+
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
 
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
