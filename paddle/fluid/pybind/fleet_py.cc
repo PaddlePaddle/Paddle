@@ -57,11 +57,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("load_model", &FleetWrapper::LoadModel)
       .def("load_one_table", &FleetWrapper::LoadModelOneTable)
       .def("init_server", &FleetWrapper::InitServer)
-      .def("run_server",
-           (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
-      .def("run_server", (uint64_t (FleetWrapper::*)(          // NOLINT
-                             const std::string&, uint32_t)) &  // NOLINT
-                             FleetWrapper::RunServer)
+      .def("run_server", &FleetWrapper::RunServer)
       .def("init_worker", &FleetWrapper::InitWorker)
       .def("push_dense_params", &FleetWrapper::PushDenseParamSync)
       .def("pull_dense_params", &FleetWrapper::PullDenseVarsSync)
