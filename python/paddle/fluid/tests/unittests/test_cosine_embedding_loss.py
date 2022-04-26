@@ -25,7 +25,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):
     z = (input1 * input2).sum(axis=-1)
     mag_square1 = np.square(input1).sum(axis=-1) + 10e-6
     mag_square2 = np.square(input2).sum(axis=-1) + 10e-6
-    denom = np.sqrt(mag_square1*mag_square2)
+    denom = np.sqrt(mag_square1 * mag_square2)
     cos = z / denom
     zeros = np.zeros_like(cos)
     pos = 1 - cos
