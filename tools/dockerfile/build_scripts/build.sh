@@ -28,8 +28,8 @@ CPYTHON_VERSIONS="3.10.0 3.9.0 3.8.0 3.7.0 3.6.0"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
-OPENSSL_ROOT=openssl-1.1.1n
-OPENSSL_HASH=40dceb51a4f6a5275bde0e6bf20ef4b91bfc32ed57c0552e2e8e15463372b17a
+OPENSSL_ROOT=openssl-1.0.2g
+OPENSSL_HASH=b784b1b3907ce39abf4098702dade6365522a253ad1552e267a9a0e89594aa33
 PATCHELF_HASH=f2aa40a6148cb3b0ca807a1bf836b081793e55ec9e5540a5356d800132be7e0a
 AUTOCONF_ROOT=autoconf-2.69
 AUTOCONF_HASH=954bd69b391edc12d6a4a51a2dd1476543da5c6bbf05a95b59dc0dd6fd4c2969
@@ -138,11 +138,13 @@ for PYTHON in /opt/python/*/bin/python; do
     # Add matching directory of libpython shared library to library lookup path
     LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
 
-    # Smoke test to make sure that our Pythons work, and do indeed detect as
-    # being manylinux compatible:
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
-    # Make sure that SSL cert checking works
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    if [ "$(dirname $(dirname ${PYTHON}))" != "/opt/python/cp310-cp310" ]; then
+         # Smoke test to make sure that our Pythons work, and do indeed detect as
+         # being manylinux compatible:
+         LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
+         # Make sure that SSL cert checking works
+         LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+     fi
 done
 
 # Restore LD_LIBRARY_PATH
