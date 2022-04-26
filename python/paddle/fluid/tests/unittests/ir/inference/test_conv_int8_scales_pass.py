@@ -147,7 +147,7 @@ class TestConvInt8ScalesPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=250, passes=["conv_int8_scales_pass"])
+            quant=False, max_examples=100, passes=["conv_int8_scales_pass"])
 
 
 if __name__ == "__main__":
