@@ -42,7 +42,7 @@ __global__ void MaskKernel(const T* x_ptr,
     int64_t col_i = i - out_i * cols;
     int64_t index = 0;
     for (int j = 0; j < sparse_dim; j++) {
-      index += indices_ptr[j * non_zero_num + i] * sparse_offsets[j];
+      index += indices_ptr[j * non_zero_num + out_i] * sparse_offsets[j];
     }
     out_values_ptr[out_i * cols + col_i] = x_ptr[index * cols + col_i];
   }
@@ -60,16 +60,13 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.non_zero_indices();
   const DenseTensor& values = mask.non_zero_elements();
-  int sparse_dim = indices.dims().size();
+  int sparse_dim = indices.dims()[0];
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
       DenseTensorMeta(DataType::INT64, {sparse_dim}, DataLayout::NCHW));
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
-  int64_t offset = 1;
-  for (int i = sparse_dim - 1; i >= 0; i--) {
-    h_sparse_offsets[i] = offset;
-    offset *= dims[i];
-  }
+  phi::funcs::sparse::CalcOffsetsPerDim(
+      dims, sparse_dim, h_sparse_offsets.data());
 
   phi::backends::gpu::GpuMemcpyAsync(sparse_offsets.data<int64_t>(),
                                      &h_sparse_offsets[0],
