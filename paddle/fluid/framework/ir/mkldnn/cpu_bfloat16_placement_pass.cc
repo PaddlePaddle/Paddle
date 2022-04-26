@@ -59,8 +59,7 @@ int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
     if ((op->Op()->HasAttr("mkldnn_data_type") ||
          op->Op()->HasProtoAttr("mkldnn_data_type")) &&
         !platform::HasOpINT8DataType(op->Op())) {
-      PrettyLogDetail("---    marked %s operator to bfloat16 ",
-                      op->Op()->Type());
+      VLOG(4) << "---    marked " << op->Op()->Type() << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));
       detected_operators++;
     }
@@ -82,7 +81,7 @@ int CPUBfloat16PlacementPass::RemoveOrphanedOperators(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, orphaned_bfloat16_pattern);
 
     op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
-    PrettyLogDetail("---  demarked %s operator to bfloat16 ", op->Op()->Type());
+    VLOG(4) << "---  demarked " << op->Op()->Type() << " operator to bfloat16 ";
     detected_operators++;
   };
   gpd(graph, handler);
@@ -104,8 +103,7 @@ int CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
     GET_IR_NODE_FROM_SUBGRAPH(op, op, unsupported_bfloat16_pattern);
     if ((prev_out->Var()->GetDataType() != proto::VarType::FP32)) {
       op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
-      PrettyLogDetail("---  demarked %s operator to bfloat16 ",
-                      op->Op()->Type());
+      VLOG(4) << "---  demarked " << op->Op()->Type() << " operator to bfloat16 ";
       detected_operators++;
     }
   };
