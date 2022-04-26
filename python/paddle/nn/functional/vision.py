@@ -21,6 +21,7 @@ import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
+from paddle.framework import _non_static_mode
 
 __all__ = []
 
@@ -342,5 +343,73 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         inputs={"X": x},
         outputs={"Out": out},
         attrs={"upscale_factor": upscale_factor,
+               "data_format": data_format})
+    return out
+
+
+def channel_shuffle(x, groups, data_format="NCHW", name=None):
+    """
+    This API implements channel shuffle operation.
+    See more details in :ref:`api_nn_vision_ChannelShuffle` .
+
+    Parameters:
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+        groups (int): Number of groups to divide channels in.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Out (Tensor): Rearranged tensor keeping the original tensor shape.
+
+    Examples:
+        .. code-block:: python
+            :name: channel_shuffle-example
+
+            import paddle
+            import paddle.nn.functional as F
+            x = paddle.arange(0, 0.6, 0.1, 'float32')
+            x = paddle.reshape(x, [1, 6, 1, 1])
+            # [[[[0.        ]],
+            #   [[0.10000000]],
+            #   [[0.20000000]],
+            #   [[0.30000001]],
+            #   [[0.40000001]],
+            #   [[0.50000000]]]]
+            y = F.channel_shuffle(x, 3)
+            # [[[[0.        ]],
+            #   [[0.20000000]],
+            #   [[0.40000001]],
+            #   [[0.10000000]],
+            #   [[0.30000001]],
+            #   [[0.50000000]]]]
+    """
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
+
+    if not isinstance(groups, int):
+        raise TypeError("groups must be int type")
+
+    if groups <= 0:
+        raise ValueError("groups must be positive")
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
+                         "But recevie Attr(data_format): {} ".format(
+                             data_format))
+
+    if _non_static_mode():
+        return _C_ops.channel_shuffle(x, "groups", groups, "data_format",
+                                      data_format)
+
+    helper = LayerHelper("channel_shuffle", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="channel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"groups": groups,
                "data_format": data_format})
     return out
