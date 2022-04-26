@@ -215,6 +215,7 @@ following codes there.
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
+
 };
 
 }  // namespace phi
