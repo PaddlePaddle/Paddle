@@ -415,6 +415,7 @@ class StaticFunction(object):
         """
 
         with_hook = kwargs.get("with_hook", False)
+        if "with_hook" in kwargs: kwargs.pop("with_hook")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
