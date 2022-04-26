@@ -543,6 +543,10 @@ def _lower(block, reverse, update_var_list):
             update_var_list[i] = vlt[to_bind[update_var_list[i].name]]
 
     for op_idx in reversed(ops_to_remove):
-        block._remove_op(op_idx)
+        block.desc._remove_op(op_idx, op_idx + 1)
+        del block.ops[op_idx]
+    block._sync_with_cpp()
     for var_name in sorted(vars_to_remove):
-        block._remove_var(var_name)
+        block.desc._remove_var(cpt.to_bytes(var_name))
+        del block.vars[var_name]
+    block._sync_with_cpp()
