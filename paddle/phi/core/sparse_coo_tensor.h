@@ -150,6 +150,12 @@ class SparseCooTensor : public TensorBase,
   /// \brief set the dims of original dense tensor
   void set_dims(const DDim& dims) { this->dims_ = dims; }
 
+  /// \brief get the sparse dim
+  const int64_t sparse_dim();
+
+  /// \brief get the dnese dim
+  const int64_t dense_dim();
+
  private:
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;

@@ -115,4 +115,12 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
   this->coalesced_ = coalesced;
 }
 
+const int64_t SparseCooTensor::sparse_dim() {
+  return non_zero_indices_.dims()[0];
+}
+
+const int64_t SparseCooTensor::dense_dim() {
+  return dims_.size() - sparse_dim();
+}
+
 }  // namespace phi
