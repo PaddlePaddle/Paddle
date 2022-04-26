@@ -842,7 +842,7 @@ def save(layer, path, input_spec=None, **configs):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
                 concrete_program = static_func.concrete_program_specify_input_spec(
-                    inner_input_spec)
+                    inner_input_spec, with_hook=True)
             elif 'forward' == attr_func:
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
@@ -852,7 +852,8 @@ def save(layer, path, input_spec=None, **configs):
                                                         inner_input_spec)
                 static_forward = declarative(
                     inner_layer.forward, input_spec=inner_input_spec)
-                concrete_program = static_forward.concrete_program
+                concrete_program = static_forward.concrete_program_specify_input_spec(
+                    with_hook=True)
                 # the input_spec has been used in declarative, which is equal to
                 # @declarative with input_spec and jit.save without input_spec,
                 # avoid needless warning
