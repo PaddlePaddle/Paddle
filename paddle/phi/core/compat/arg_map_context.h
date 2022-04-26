@@ -64,7 +64,7 @@ struct KernelSignature {
         attr_names(other.attr_names),
         output_names(other.output_names) {}
 
-  KernelSignature(KernelSignature&& other)
+  KernelSignature(KernelSignature&& other) noexcept
       : name(other.name),
         input_names(std::move(other.input_names)),
         attr_names(std::move(other.attr_names)),
@@ -78,7 +78,7 @@ struct KernelSignature {
     return *this;
   }
 
-  KernelSignature& operator=(KernelSignature&& other) {
+  KernelSignature& operator=(KernelSignature&& other) noexcept {
     name = other.name;
     input_names.swap(other.input_names);
     attr_names.swap(other.attr_names);
