@@ -108,7 +108,7 @@ class TestImageReaderDecodeCase2(TestImageReaderDecodeCase1):
         self.device_memory_padding = 0
 
 
-class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
+class TestImageReaderDecodeRandomCrop(unittest.TestCase):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
@@ -123,9 +123,6 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         self.area_min = 0.08
         self.area_max = 1.0
         self.num_attempts = 10
-
-        self.data_format = "NCHW"
-        self.channel_dim = 0
 
     def test_static_output(self):
         # NOTE: only support cuda kernel currently
@@ -144,8 +141,7 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
             aspect_ratio_max=self.aspect_ratio_max,
             area_min=self.area_min,
             area_max=self.area_max,
-            num_attempts=self.num_attempts,
-            data_format=self.data_format)
+            num_attempts=self.num_attempts)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         rets = exe.run(paddle.static.default_main_program(),
                        fetch_list=image + [label])
@@ -156,7 +152,7 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         for i in range(self.batch_size):
             img = np.array(out_image[i])
             assert img.dtype == np.uint8
-            assert img.shape[self.channel_dim] == 3
+            assert img.shape[-1] == 3
             assert np.all(img >= 0)
             assert np.all(img <= 255)
 
@@ -183,14 +179,13 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
             aspect_ratio_max=self.aspect_ratio_max,
             area_min=self.area_min,
             area_max=self.area_max,
-            num_attempts=self.num_attempts,
-            data_format=self.data_format)
+            num_attempts=self.num_attempts)
 
         assert len(image) == self.batch_size
         for i in range(self.batch_size):
             img = image[i].numpy()
             assert img.dtype == np.uint8
-            assert img.shape[self.channel_dim] == 3
+            assert img.shape[-1] == 3
             assert np.all(img >= 0)
             assert np.all(img <= 255)
 
@@ -201,7 +196,7 @@ class TestImageReaderDecodeRandomCropNCHW(unittest.TestCase):
         assert np.all(label <= 1)
 
 
-class TestImageReaderDecodeRandomCropNHWC(TestImageReaderDecodeRandomCropNCHW):
+class TestImageReaderDecodeRandomCrop2(TestImageReaderDecodeRandomCrop):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
@@ -217,12 +212,8 @@ class TestImageReaderDecodeRandomCropNHWC(TestImageReaderDecodeRandomCropNCHW):
         self.area_max = 0.9
         self.num_attempts = 20
 
-        self.data_format = "NHWC"
-        self.channel_dim = 2
 
-
-class TestImageReaderDecodeRandomCropThread8(
-        TestImageReaderDecodeRandomCropNCHW):
+class TestImageReaderDecodeRandomCropThread8(TestImageReaderDecodeRandomCrop):
     def setUp(self):
         self.data_root = get_path_from_url(DATASET_URL, DATASET_HOME,
                                            DATASET_MD5)
@@ -237,9 +228,6 @@ class TestImageReaderDecodeRandomCropThread8(
         self.area_min = 0.01
         self.area_max = 0.99
         self.num_attempts = 50
-
-        self.data_format = "NCHW"
-        self.channel_dim = 0
 
 
 if __name__ == '__main__':

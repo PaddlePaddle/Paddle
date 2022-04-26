@@ -85,6 +85,7 @@ class TestDataPipelineStaticCase1(unittest.TestCase):
 
             def resize(image):
                 image = image_resize(image, size=self.target_size)
+                image = paddle.transpose(image, [0, 3, 1, 2])
                 return image
 
             def flip_normalize(image):
