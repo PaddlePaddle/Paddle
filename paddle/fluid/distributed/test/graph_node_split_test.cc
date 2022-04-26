@@ -215,60 +215,6 @@ void RunClient(
       (paddle::distributed::GraphBrpcService*)service);
 }
 
-void RunGraphSplit() {
-  setenv("http_proxy", "", 1);
-  setenv("https_proxy", "", 1);
-  prepare_file(edge_file_name, edges);
-  prepare_file(node_file_name, nodes);
-  prepare_file(graph_split_file_name, graph_split);
-  auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.SerializeToString());
-
-  // test-start
-  auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
-  host_sign_list_.push_back(ph_host2.SerializeToString());
-  // test-end
-  // Srart Server
-  std::thread* server_thread = new std::thread(RunServer);
-
-  std::thread* server_thread2 = new std::thread(RunServer2);
-
-  sleep(2);
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
-  dense_regions.insert(
-      std::pair<int64_t, std::vector<paddle::distributed::Region>>(0, {}));
-  auto regions = dense_regions[0];
-
-  RunClient(dense_regions, 0, pserver_ptr_->get_service());
-
-  /*-----------------------Test Server Init----------------------------------*/
-
-  auto pull_status = worker_ptr_->load_graph_split_config(
-      0, std::string(graph_split_file_name));
-  pull_status.wait();
-  pull_status =
-      worker_ptr_->Load(0, std::string(edge_file_name), std::string("e>"));
-  srand(time(0));
-  pull_status.wait();
-  std::vector<std::vector<int64_t>> _vs;
-  std::vector<std::vector<float>> vs;
-  pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<int64_t>(1, 10240001024), 4, _vs, vs, true);
-  pull_status.wait();
-  ASSERT_EQ(0, _vs[0].size());
-  _vs.clear();
-  vs.clear();
-  pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<int64_t>(1, 97), 4, _vs, vs, true);
-  pull_status.wait();
-  ASSERT_EQ(3, _vs[0].size());
-  std::remove(edge_file_name);
-  std::remove(node_file_name);
-  std::remove(graph_split_file_name);
-  LOG(INFO) << "Run stop_server";
-  worker_ptr_->StopServer();
-  LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->FinalizeWorker();
-}
+void RunGraphSplit() {}
 
 TEST(RunGraphSplit, Run) { RunGraphSplit(); }

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
@@ -169,16 +170,17 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   } else {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, out->nnz() * out_channels, 1);
-    ScatterKernel<T><<<config.block_per_grid.x,
-                       config.thread_per_block.x,
-                       0,
-                       dev_ctx.stream()>>>(out_features_ptr,
-                                           unique_value.data<int>(),
-                                           out_index.data<int>(),
-                                           out->nnz(),
-                                           n,
-                                           out_channels,
-                                           out_values_ptr);
+    phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid.x,
+                                           config.thread_per_block.x,
+                                           0,
+                                           dev_ctx.stream()>>>(
+        out_features_ptr,
+        unique_value.data<int>(),
+        out_index.data<int>(),
+        out->nnz(),
+        n,
+        out_channels,
+        out_values_ptr);
   }
 }
 /**

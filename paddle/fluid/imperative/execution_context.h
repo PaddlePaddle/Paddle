@@ -117,12 +117,12 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return it->second;
   }
 
-  std::vector<std::string> InNameList() const override {
-    std::vector<std::string> vec_temp;
+  paddle::SmallVector<const std::string*> InNameList() const override {
+    paddle::SmallVector<const std::string*> vec_temp;
     vec_temp.reserve(var_map_in_.size());
 
     for (auto& v : var_map_in_) {
-      vec_temp.push_back(v.first);
+      vec_temp.push_back(&v.first);
     }
 
     return vec_temp;
@@ -144,11 +144,19 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   size_t InputSize(const std::string& name) const override {
-    return InputNames(name).size();
+    auto it = var_map_in_.find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_map_in_.end(),
+        platform::errors::NotFound("Can not find [%s] in Input", name));
+    return it->second.size();
   }
 
   size_t OutputSize(const std::string& name) const override {
-    return OutputNames(name).size();
+    auto it = var_map_out_.find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_map_out_.end(),
+        platform::errors::NotFound("Can not find [%s] in Output", name));
+    return it->second.size();
   }
 
   const Variable* InputVar(const std::string& name) const override {

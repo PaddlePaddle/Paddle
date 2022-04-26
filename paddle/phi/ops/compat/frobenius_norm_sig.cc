@@ -25,9 +25,9 @@ KernelSignature FrobeniusNormOpArgumentMapping(
 KernelSignature FrobeniusNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("frobenius_norm_grad",
-                         {"X", "Out", GradVarName("Out")},
+                         {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

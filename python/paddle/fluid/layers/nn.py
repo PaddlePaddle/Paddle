@@ -196,6 +196,17 @@ __all__ = [
     'unbind',
 ]
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
+}
+
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -204,8 +215,21 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    def is_inplace(op_name):
+        return op_name[-1] == "_"
+
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name]
+                         if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -5093,9 +5117,12 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        out = [_varbase_creator() for n in range(num)]
-        _C_ops.split(input, out, *attrs)
-        return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(input, [num], dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
     check_variable_and_dtype(
         input, 'input',
@@ -7284,7 +7311,12 @@ def roi_align(input,
                                                sampling_ratio=-1,
                                                rois_num=rois_num)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(
+            input, rois, rois_num, pooled_height, pooled_width, spatial_scale,
+            sampling_ratio, False)
+    if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             input, rois, rois_num, "pooled_height", pooled_height,
@@ -11818,8 +11850,7 @@ def _elementwise_op(helper):
 
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    Scale operator.
-
+    
     Putting scale and bias to the input Tensor as following:
 
     ``bias_after_scale`` is True:
@@ -11844,6 +11875,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         Tensor: Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
+    
         .. code-block:: python
             
             # scale as a float32 number

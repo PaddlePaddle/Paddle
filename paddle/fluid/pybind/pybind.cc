@@ -167,6 +167,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/kernels/autotune/cache.h"
@@ -192,6 +193,7 @@ PyTypeObject *g_xpuplace_pytype = nullptr;
 PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
+PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
@@ -1919,7 +1921,7 @@ All parameter, weight, gradient are variables in Paddle.
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
               
-             Args:
+            Args:
                    program (ProgramDesc): The original program.
 
              Returns:
@@ -1928,6 +1930,17 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
+  m.def("get_readable_comile_key", [](const OpDesc &op_desc) {
+    auto compilation_key =
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("compilation_key"));
+    VLOG(4) << std::hash<std::string>{}(compilation_key) << " "
+            << compilation_key.size();
+    proto::ProgramDesc desc;
+    desc.ParseFromString(compilation_key);
+    auto s = desc.DebugString();
+    VLOG(4) << s;
+    return s;
+  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -2124,8 +2137,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
-  py::class_<platform::CustomPlace>(m, "CustomPlace",
-                                    R"DOC(
+  py::class_<platform::CustomPlace> customplace(m, "CustomPlace",
+                                                R"DOC(
     CustomPlace is a descriptor of a device.
     It represents a custom device on which a tensor will be allocated and a model will run.
 
@@ -2134,7 +2147,9 @@ All parameter, weight, gradient are variables in Paddle.
 
           import paddle
           fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC")
+                                             )DOC");
+  g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
+  customplace
       .def("__init__",
            [](platform::CustomPlace &self, const std::string &device_type,
               int dev_id) {
@@ -2941,6 +2956,8 @@ All parameter, weight, gradient are variables in Paddle.
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
   m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_default_kernel_signatures",
+        []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -4488,6 +4505,20 @@ All parameter, weight, gradient are variables in Paddle.
     return res;
   });
 
+  m.def("enable_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance()
+        .EnableLayoutAutoTune();
+  });
+
+  m.def("disable_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance()
+        .DisableLayoutAutoTune();
+  });
+
+  m.def("use_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
+  });
+
   BindFleetWrapper(&m);
   BindIO(&m);
 
@@ -4546,6 +4577,10 @@ All parameter, weight, gradient are variables in Paddle.
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
+#ifdef PADDLE_WITH_HETERPS
+  BindNeighborSampleResult(&m);
+  BindGraphGpuWrapper(&m);
+#endif
 #endif
 }
 }  // namespace pybind

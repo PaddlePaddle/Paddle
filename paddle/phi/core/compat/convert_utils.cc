@@ -40,6 +40,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
     return Backend::NPU;
   } else if (allocation_type == phi::AllocationType::IPU) {
     return Backend::IPU;
+  } else if (allocation_type == phi::AllocationType::MLU) {
+    return Backend::MLU;
   } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -102,7 +104,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPhiKernelName(const std::string& fluid_op_name) {
+const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
@@ -118,5 +120,25 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   }
   return phi_kernel_name;
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::data_type TransToMKLDNNDataType(
+    const paddle::experimental::DataType& dtype) {
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return dnnl::memory::data_type::f32;
+    case DataType::BFLOAT16:
+      return dnnl::memory::data_type::bf16;
+    case DataType::INT8:
+      return dnnl::memory::data_type::s8;
+    case DataType::UINT8:
+      return dnnl::memory::data_type::u8;
+    case DataType::INT32:
+      return dnnl::memory::data_type::s32;
+    default:
+      return dnnl::memory::data_type::undef;
+  }
+}
+#endif
 
 }  // namespace phi
