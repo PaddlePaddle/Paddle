@@ -1921,7 +1921,7 @@ All parameter, weight, gradient are variables in Paddle.
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
               
-             Args:
+            Args:
                    program (ProgramDesc): The original program.
 
              Returns:
@@ -1930,6 +1930,17 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
+  m.def("get_readable_comile_key", [](const OpDesc &op_desc) {
+    auto compilation_key =
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("compilation_key"));
+    VLOG(4) << std::hash<std::string>{}(compilation_key) << " "
+            << compilation_key.size();
+    proto::ProgramDesc desc;
+    desc.ParseFromString(compilation_key);
+    auto s = desc.DebugString();
+    VLOG(4) << s;
+    return s;
+  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
