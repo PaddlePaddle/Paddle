@@ -50,7 +50,7 @@ bool ProtoArgumentMappingContext::HasAttr(const std::string& name) const {
   }
 
   // ToDO: implementation in the ext PR.
-  return ::phi::Attribute();
+  return ::phi::Attribute(0);
 }
 
 size_t ProtoArgumentMappingContext::InputSize(const std::string& name) const {
