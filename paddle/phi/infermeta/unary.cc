@@ -2302,8 +2302,7 @@ void SumRawInferMeta(const MetaTensor& x,
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
   } else {
-    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32 ||
-        x.dtype() == DataType::INT64) {
+    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
       out_dtype = DataType::INT64;
     } else {
       out_dtype = x.dtype();
