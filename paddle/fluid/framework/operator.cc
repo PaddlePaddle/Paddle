@@ -979,6 +979,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return GetDims(vars);
   }
 
+  proto::VarType::Type GetInputVarType(const std::string& name) const override {
+    return GetVarType(InputVars(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override {
     return GetVarTypes(InputVars(name));
@@ -1003,6 +1007,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
                      const std::vector<DDim>& dims) override {
     auto& vars = OutputVars(name);
     SetDims(vars, dims);
+  }
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
  protected:
@@ -1277,16 +1289,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
-    if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(
-          new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
-      VLOG(6) << *pt_kernel_signature_.get();
+    if (kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
+      kernel_signature_.reset(new phi::KernelSignature(
+          std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+      VLOG(6) << *kernel_signature_.get();
 
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
 
-      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_name = kernel_signature_->name;
       pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
       pt_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
@@ -1301,7 +1313,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << "` not found.";
       }
     } else {
-      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1447,8 +1459,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
-      PreparePhiData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
-                     runtime_ctx);
+      PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
       BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
       (*pt_kernel_)(&pt_kernel_context);
     } else {
@@ -1543,14 +1554,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
-  pt_kernel_signature_.reset(
-      new KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
-  VLOG(6) << *pt_kernel_signature_.get();
+  kernel_signature_.reset(
+      new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+  VLOG(6) << *kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pt_kernel_signature_->name;
+  auto pt_kernel_name = kernel_signature_->name;
   auto pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   pt_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
       pt_kernel_name, pt_kernel_key)));
@@ -2151,7 +2162,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
+phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   if (arg_map_fn_ == nullptr) {
@@ -2159,8 +2170,8 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     if (arg_map_fn) {
       arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
     } else {
-      auto func =
-          [this](const phi::ArgumentMappingContext& ctx) -> KernelSignature {
+      auto func = [this](
+          const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
       arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
@@ -2171,7 +2182,8 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
 
 Scope* OperatorWithKernel::PreparePhiData(
     const Scope& scope, const phi::Kernel& pt_kernel,
-    const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
+    const phi::KernelSignature& pt_kernel_signature,
+    RuntimeContext* ctx) const {
   const auto& input_names = pt_kernel_signature.input_names;
   auto input_defs = pt_kernel.args_def().input_defs();
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
@@ -2269,9 +2281,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
 
-  auto& input_names = pt_kernel_signature_->input_names;
-  auto& attr_names = pt_kernel_signature_->attr_names;
-  auto& output_names = pt_kernel_signature_->output_names;
+  auto& input_names = kernel_signature_->input_names;
+  auto& attr_names = kernel_signature_->attr_names;
+  auto& output_names = kernel_signature_->output_names;
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
@@ -2405,7 +2417,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
+    if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
@@ -2436,8 +2448,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               std::move(experimental::MakePhiIntArrayFromVarList(ins_vector)));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(phi::Scalar))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
       // TODO(chenweihang): support other attrs later
       // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
       // attribtue type by attr_defs
@@ -2467,8 +2478,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
       }
 
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(std::vector<phi::Scalar>))) {
+    } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = Attrs().at(attr_names[i]);
       if (std::type_index(attr.type()) ==
           std::type_index(typeid(std::vector<int32_t>))) {
@@ -2513,9 +2523,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
             attr_names[i]));
       }
     } else {
-      // TODO(chenweihang): support other attrs later
       auto attr_it = attrs_.find(attr_names[i]);
-      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
         if (attr_it == attrs_.end()) {
           auto in_it = ctx.inputs.find(attr_names[i]);
           if (in_it != ctx.inputs.end()) {
@@ -2532,27 +2541,24 @@ void OperatorWithKernel::BuildPhiKernelContext(
           pt_kernel_context->EmplaceBackAttr(
               BOOST_GET_CONST(int, attr_it->second));
         }
-      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(float, attr_it->second));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::BOOL) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(bool, attr_it->second));
-      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(int64_t, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::string))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRING) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::string, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(phi::DataType))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::DATA_TYPE) {
         auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr_it->second)));
         pt_kernel_context->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
         if (std::type_index(attr_it->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           pt_kernel_context->EmplaceBackAttr(
@@ -2566,17 +2572,14 @@ void OperatorWithKernel::BuildPhiKernelContext(
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
         }
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int32_t>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
         const auto& vector_int_attr =
             BOOST_GET_CONST(std::vector<int>, attr_it->second);
         pt_kernel_context->EmplaceBackAttr(vector_int_attr);
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<std::string>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::STRINGS) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32S) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
