@@ -69,7 +69,8 @@ class ProcessGroup {
     bool is_completed_ = false;
   };
 
-  explicit ProcessGroup(int rank, int size, int gid);
+  explicit ProcessGroup(int rank, int size, const platform::Place& place,
+                        int gid);
   virtual ~ProcessGroup() {}
 
   int GetRank() const { return rank_; }
@@ -145,6 +146,7 @@ class ProcessGroup {
  protected:
   const int rank_;
   const int size_;
+  const platform::Place place_;
   const int gid_;
 };
 
