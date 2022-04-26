@@ -45,9 +45,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
           .AddInput(*table_t)
           .AddInput(*ids_t)
           .AddInput(std::vector<int32_t>{0})
-#if (CANN_VERSION_CODE >= 503003)
           .AddAttrs({{"batch_dims", 0}})
-#endif
           .AddOutput(*output_t);
       runner.Run();
     } else {
@@ -78,9 +76,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
           .AddInput(tmp_table_t)
           .AddInput(*ids_t)
           .AddInput(std::vector<int32_t>{0})
-#if (CANN_VERSION_CODE >= 503003)
           .AddAttrs({{"batch_dims", 0}})
-#endif
           .AddOutput(*output_t);
       runner.Run();
     }

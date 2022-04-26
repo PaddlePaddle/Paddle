@@ -1,20 +1,20 @@
 # A image for building paddle binaries
-# Use cann 5.0.2.alpha005 and aarch64 for A300t-9000
+# Use cann 5.0.4.alpha005 and aarch64 for A300t-9000
 # Update CANN_VERSION if using other versions
 #
-# Build: CANN 5.0.2.alpha005
+# Build: CANN 5.0.4.alpha005
 # Download pkgs from https://www.hiascend.com/software/cann/community 
 # and copy them to current dir first, then run build commands
 # cd Paddle/tools/dockerfile
 # docker build -f Dockerfile.npu_aarch64  \
-# --build-arg CANN_VERSION=5.0.2.alpha005 \
-# -t paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 .
+# --build-arg CANN_VERSION=5.0.4.alpha005 \
+# -t paddlepaddle/paddle:latest-dev-5.0.4.alpha005-gcc82-aarch64 .
 #
 # docker run -it --pids-limit 409600 \
 # -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
 # -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
 # -v /usr/local/dcmi:/usr/local/dcmi \
-# paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 /bin/bash
+# paddlepaddle/paddle:latest-dev-5.0.4.alpha005-gcc82-aarch64 /bin/bash
 
 FROM ubuntu:18.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -56,9 +56,9 @@ RUN wget -q https://cmake.org/files/v3.19/cmake-3.19.8-Linux-aarch64.tar.gz && \
     mv cmake-3.19.8-Linux-aarch64 cmake-3.19
 ENV PATH=/opt/cmake-3.19/bin:${PATH}
 
-# conda 4.9.2
+# conda 4.10.3
 WORKDIR /opt
-ARG CONDA_FILE=Miniconda3-py37_4.9.2-Linux-aarch64.sh
+ARG CONDA_FILE=Miniconda3-py37_4.10.3-Linux-aarch64.sh
 RUN cd /opt && wget -q https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmod +x ${CONDA_FILE}
 RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}
@@ -66,8 +66,9 @@ RUN conda init bash && conda install -n base jupyter jupyterlab
 
 # install pylint and pre-commit
 RUN /opt/conda/bin/pip install pre-commit pylint pylint pytest astroid isort coverage qtconsole 
-# install CANN 5.0.2 requirement
-RUN /opt/conda/bin/pip install 'numpy<1.20,>=1.13.3' 'decorator>=4.4.0' 'sympy>=1.4' 'cffi>=1.12.3' 'protobuf>=3.11.3'
+# install CANN 5.0.4 requirement
+# https://support.huaweicloud.com/instg-cli-cann504alpha5/atlasdeploy_03_0051.html
+RUN /opt/conda/bin/pip install 'numpy>=1.14.3' 'decorator>=4.4.0' 'sympy>=1.4' 'cffi>=1.12.3' 'protobuf>=3.11.3'
 RUN /opt/conda/bin/pip install attrs pyyaml pathlib2 scipy requests psutil
 
 # install Paddle requirement
@@ -133,7 +134,7 @@ COPY version.info /usr/local/Ascend/driver/version.info
 
 # Download packages from https://www.hiascend.com/software/cann/community and copy them to current dir first
 WORKDIR /usr/local/Ascend
-ARG CANN_VERSION=5.0.2.alpha005
+ARG CANN_VERSION=5.0.4.alpha005
 # update envs for driver
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64:$LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:$LD_LIBRARY_PATH
@@ -169,6 +170,13 @@ ENV ASCEND_OPP_PATH=/usr/local/Ascend/nnae/latest/opp
 # DEV image should open error level log
 # 0 debug; 1 info; 2 warning; 3 error; 4 null
 ENV ASCEND_GLOBAL_LOG_LEVEL=3
+
+# environment for HCCL
+ENV HCCL_CONNECT_TIMEOUT=7200
+ENV HCCL_WHITELIST_DISABLE=1
+ENV HCCL_SECURITY_MODE=1
+
+# map this foler in docker run
 RUN rm -rf /usr/local/Ascend/driver
 
 # Create /lib64/ld-linux-aarch64.so.1
