@@ -308,65 +308,149 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
   share_lod(meta_tensor);
 }
 
-phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                            const std::string& op_type) {
+void CompatInferMetaContext::EmplaceBackInput(CompatMetaTensor input) {
+  int index = compat_inputs_.size();
+  compat_inputs_.emplace_back(std::move(input));
+  input_range_.emplace_back(std::pair<int, int>(index, index + 1));
+}
+void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
+  int index = compat_outputs_.size();
+  compat_outputs_.emplace_back(std::move(output));
+  output_range_.emplace_back(std::pair<int, int>(index, index + 1));
+}
+
+void CompatInferMetaContext::EmplaceBackInputs(
+    paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
+  int index = compat_inputs_.size();
+  input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
+  compat_inputs_.insert(compat_inputs_.end(),
+                        std::make_move_iterator(inputs.begin()),
+                        std::make_move_iterator(inputs.end()));
+}
+
+void CompatInferMetaContext::EmplaceBackOutputs(
+    paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+        outputs) {
+  int index = compat_outputs_.size();
+  output_range_.emplace_back(
+      std::pair<int, int>(index, index + outputs.size()));
+  compat_outputs_.insert(compat_outputs_.end(),
+                         std::make_move_iterator(outputs.begin()),
+                         std::make_move_iterator(outputs.end()));
+}
+
+const phi::MetaTensor& CompatInferMetaContext::InputAt(size_t idx) const {
+  return compat_inputs_.at(idx);
+}
+
+paddle::optional<const phi::MetaTensor&>
+CompatInferMetaContext::OptionalInputAt(size_t idx) const {
+  const auto& input = compat_inputs_.at(idx);
+  return input.initialized()
+             ? paddle::optional<const phi::MetaTensor&>{input}
+             : paddle::optional<const phi::MetaTensor&>{paddle::none};
+}
+
+std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
+    size_t start, size_t end) const {
+  std::vector<const phi::MetaTensor*> result;
+  result.reserve(end - start);
+
+  for (size_t i = start; i < end; ++i) {
+    auto& in = compat_inputs_.at(i);
+    result.emplace_back(in.initialized() ? &in : nullptr);
+  }
+
+  return result;
+}
+
+paddle::optional<const std::vector<const phi::MetaTensor*>>
+CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
+  const auto& first = compat_inputs_.at(start);
+
+  if (first.initialized()) {
+    std::vector<const phi::MetaTensor*> result;
+    result.reserve(end - start);
+
+    for (size_t i = start; i < end; ++i) {
+      auto& in = compat_inputs_.at(i);
+      result.emplace_back(in.initialized() ? &in : nullptr);
+    }
+
+    return paddle::optional<const std::vector<const phi::MetaTensor*>>(result);
+  }
+  return paddle::optional<const std::vector<const phi::MetaTensor*>>(
+      paddle::none);
+}
+
+phi::MetaTensor* CompatInferMetaContext::MutableOutputAt(size_t idx) {
+  auto& out = compat_outputs_.at(idx);
+  return out.initialized() ? &out : nullptr;
+}
+
+std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
+    size_t start, size_t end) {
+  std::vector<phi::MetaTensor*> result;
+  result.reserve(end - start);
+  for (size_t i = start; i < end; ++i) {
+    auto& out = compat_outputs_.at(i);
+    result.emplace_back(out.initialized() ? &out : nullptr);
+  }
+  return result;
+}
+
+CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                             const std::string& op_type) {
   // 1. get kernel args
-  InitDefaultKernelSignatureMap();
-  auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
-  PADDLE_ENFORCE_NOT_NULL(
-      arg_map_fn, platform::errors::NotFound(
-                      "The ArgumentMappingFn of %s op is not found.", op_type));
+  auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   InferShapeArgumentMappingContext arg_map_context(*ctx);
-  auto signature = arg_map_fn(arg_map_context);
+  KernelSignature signature =
+      arg_map_fn ? (*arg_map_fn)(arg_map_context)
+                 : phi::DefaultKernelSignatureMap::Instance().Get(op_type);
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(
+  CompatInferMetaContext infer_meta_context(
       {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
-  auto& input_names = std::get<0>(signature.args);
-  auto& attr_names = std::get<1>(signature.args);
-  auto& output_names = std::get<2>(signature.args);
+  const auto& input_names = signature.input_names;
+  const auto& attr_names = signature.attr_names;
+  const auto& output_names = signature.output_names;
 
-  auto kernels_map =
-      phi::KernelFactory::Instance().SelectKernelMap(signature.name);
-  if (kernels_map.size() == 0) {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not find `%s` kernels when construct "
-                                        "InferMetaContext.",
-                                        signature.name));
-  }
-  auto attr_defs = kernels_map.cbegin()->second.args_def().attribute_defs();
+  const auto& args_def =
+      phi::KernelFactory::Instance().GetFirstKernelArgsDef(signature.name);
+  const auto& attr_defs = args_def.attribute_defs();
 
-  // TODO(chenweihang): support multiple inputs and outputs later
-  phi::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
-      auto input_var = ctx->GetInputVarPtrs(in_name);
+      auto input_var = std::move(ctx->GetInputVarPtrs(in_name));
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
-            std::make_shared<CompatMetaTensor>(input_var[0], ctx->IsRuntime()));
+            std::move(CompatMetaTensor(input_var[0], ctx->IsRuntime())));
       } else {
-        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs;
-        inputs.reserve(input_var.size());
+        paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+            inputs;
         for (const auto& in : input_var) {
-          inputs.push_back(
-              std::make_shared<CompatMetaTensor>(in, ctx->IsRuntime()));
+          inputs.emplace_back(
+              std::move(CompatMetaTensor(in, ctx->IsRuntime())));
         }
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
     } else {
-      infer_meta_context.EmplaceBackInput({nullptr});
+      infer_meta_context.EmplaceBackInput(
+          std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
   }
 
+  VLOG(6) << "BuildInferMetaContext: Done inputs";
+
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    auto attr_name = attr_names[i];
+    auto& attr_name = attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       // When attr is a vector_tensor or tensor, transform it to IntArray
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
-        const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+        auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
         if (ctx->IsRuntime()) {
           // If is in runtime, we will get tensor's value for IntArray
           // and push it into attrs
@@ -456,7 +540,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name));
         }
       } else if (ctx->HasInput(attr_name)) {
-        const auto& infershape_input = ctx->GetInputVarPtrs(attr_name);
+        auto infershape_input = std::move(ctx->GetInputVarPtrs(attr_name));
         if (infershape_input.size() == 1) {
           if (ctx->IsRuntime()) {
             Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
@@ -581,7 +665,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       // convert from data
       if (attr_defs[i].type_index == std::type_index(typeid(int32_t))) {
         if (ctx->IsRuntime()) {
-          const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+          auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
           auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);
           auto val = experimental::MakePhiScalarFromVar(*var_temp);
           int32_t val_int = val.template to<int32_t>();
@@ -596,35 +680,40 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
     }
   }
 
+  VLOG(6) << "BuildInferMetaContext: Done attrs";
+
   for (auto& out_name : output_names) {
     if (ctx->HasOutputs(out_name, true)) {
-      auto output_var = ctx->GetOutputVarPtrs(out_name);
+      auto output_var = std::move(ctx->GetOutputVarPtrs(out_name));
       if (output_var.size() == 1) {
-        infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-            output_var[0], ctx->IsRuntime()));
+        infer_meta_context.EmplaceBackOutput(
+            std::move(CompatMetaTensor(output_var[0], ctx->IsRuntime())));
       } else {
-        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
-        outputs.reserve(output_var.size());
+        paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+            outputs;
         for (const auto& out : output_var) {
           if (ctx->IsRuntime()) {
             if (BOOST_GET_CONST(Variable*, out)) {
               outputs.emplace_back(
-                  std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+                  std::move(CompatMetaTensor(out, ctx->IsRuntime())));
               continue;
             }
           } else if (BOOST_GET_CONST(VarDesc*, out)) {
             outputs.emplace_back(
-                std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+                std::move(CompatMetaTensor(out, ctx->IsRuntime())));
             continue;
           }
-          outputs.emplace_back(nullptr);
+          outputs.emplace_back(std::move(CompatMetaTensor(ctx->IsRuntime())));
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      infer_meta_context.EmplaceBackOutput({nullptr});
+      infer_meta_context.EmplaceBackOutput(
+          std::move(CompatMetaTensor(ctx->IsRuntime())));
     }
   }
+
+  VLOG(6) << "BuildInferMetaContext: Done outputs";
 
   return infer_meta_context;
 }

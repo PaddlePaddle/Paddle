@@ -249,13 +249,19 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
 copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
-        copy(inference_lib_dist
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h

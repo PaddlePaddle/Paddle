@@ -579,7 +579,8 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
-    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+    if (out_layout == paddle::framework::DataLayout::kNHWC ||
+        out_layout == paddle::framework::DataLayout::kNDHWC) {
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
@@ -692,10 +693,9 @@ void Tensor::ORTCopyToCpu(T *data) const {
   if (place_ == PlaceType::kCPU) {
     std::memcpy(static_cast<void *>(data), value.GetTensorData<void *>(), size);
   } else {
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         static_cast<void *>(data),
-                         paddle::platform::CUDAPlace(device_),
-                         value.GetTensorData<void>(), size, nullptr);
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "CopyToCpu error.The current ONNXRuntime backend doesn't support "
+        "GPU."));
   }
 }
 

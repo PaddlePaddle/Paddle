@@ -114,7 +114,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         egr_tensor = core.eager.Tensor()
         self.assertEqual(egr_tensor.persistable, False)
         self.assertTrue("generated" in egr_tensor.name)
-        self.assertEqual(egr_tensor.shape, [])
+        self.assertEqual(egr_tensor.shape, [0])
         self.assertEqual(egr_tensor.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor.stop_gradient, True)
 
@@ -677,7 +677,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             tensor2 = None
             tensor = paddle.to_tensor(arr, core.VarDesc.VarType.FP32,
                                       core.CPUPlace())
-            tensor3 = core.eager.Tensor()
+            tensor3 = core.eager.Tensor(value=tensor, place=core.CPUPlace())
             if core.is_compiled_with_cuda():
                 tensor2 = paddle.to_tensor(arr2, core.VarDesc.VarType.FP32,
                                            core.CUDAPlace(0))

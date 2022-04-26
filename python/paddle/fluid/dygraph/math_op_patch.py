@@ -226,7 +226,9 @@ def monkey_patch_math_varbase():
                 # so the calculation result here and the calculation result of numpy are 
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
-                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                if (op_type == "final_state_divide" or
+                        op_type == "elementwise_div"
+                    ) and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -281,7 +283,8 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
-            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+            if (op_type == "final_state_divide" or op_type == "elementwise_div"
+                ) and self.dtype in _supported_int_dtype_:
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
