@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/interpolate_v2_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/interpolate_function.h"
 
 namespace paddle {
 namespace operators {
@@ -401,7 +403,8 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
+    phi::funcs::ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h,
+                             &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
@@ -431,14 +434,15 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
       out_w = output_w[0];
     } else if (ctx.HasInput("OutSize")) {
       auto out_size = ctx.Input<Tensor>("OutSize");
-      auto out_size_data = get_new_data_from_tensor<int>(out_size);
+      auto out_size_data = phi::funcs::get_new_data_from_tensor<int>(out_size);
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     } else {
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
-        auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+        auto scale_data =
+            phi::funcs::get_new_data_from_tensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -538,7 +542,8 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+    phi::funcs::ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h,
+                             &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
@@ -567,14 +572,15 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
       out_w = output_w[0];
     } else if (ctx.HasInput("OutSize")) {
       auto out_size = ctx.Input<Tensor>("OutSize");
-      auto out_size_data = get_new_data_from_tensor<int>(out_size);
+      auto out_size_data = phi::funcs::get_new_data_from_tensor<int>(out_size);
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     } else {
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
-        auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+        auto scale_data =
+            phi::funcs::get_new_data_from_tensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];

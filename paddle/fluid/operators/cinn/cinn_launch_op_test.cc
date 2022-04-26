@@ -26,11 +26,17 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP(cinn_launch);
 USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
 DECLARE_double(eager_delete_tensor_gb);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle::operators {
 

@@ -1819,7 +1819,7 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
-    def test_group_norm(self):
+    def func_group_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -1873,7 +1873,6 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
             groupNorm = nn.GroupNorm(
                 channels=shape[1],
                 groups=2,
@@ -1885,6 +1884,11 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_group_norm(self):
+        with _test_eager_guard():
+            self.func_group_norm()
+        self.func_group_norm()
 
     def test_instance_norm(self):
         if core.is_compiled_with_cuda():
@@ -2348,7 +2352,7 @@ class TestLayer(LayerTest):
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3, batch_shape=[-1])
 
-    def test_while_loop(self):
+    def func_while_loop(self):
         with self.static_graph():
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
@@ -2363,7 +2367,6 @@ class TestLayer(LayerTest):
             static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
@@ -2383,6 +2386,11 @@ class TestLayer(LayerTest):
                 layers.while_loop(cond1, body2, [j])
 
         self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
+
+    def test_while_loop(self):
+        with _test_eager_guard():
+            self.func_while_loop()
+        self.func_while_loop()
 
     def test_compare(self):
         value_a = np.arange(3)
@@ -2811,7 +2819,7 @@ class TestBook(LayerTest):
         })
         self.all_close_compare = set({"make_spectral_norm"})
 
-    def test_all_layers(self):
+    def func_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
         methods = filter(inspect.ismethod, attrs)
         for method in methods:
@@ -2858,6 +2866,11 @@ class TestBook(LayerTest):
                 self.assertTrue(
                     np.array_equal(static_result[0], dy_result_value),
                     "Result of function [{}] not equal".format(method.__name__))
+
+    def test_all_layers(self):
+        with _test_eager_guard():
+            self.func_all_layers()
+        self.func_all_layers()
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
@@ -3648,8 +3661,9 @@ class TestBook(LayerTest):
                 shape=[1],
                 dtype='float32',
                 append_batch_size=False)
-
-            out = layers.scale(input, scale=scale_var)
+            _scale = scale_var.numpy().item(0) if isinstance(
+                scale_var, core.eager.Tensor) else scale_var
+            out = layers.scale(input, scale=_scale)
             return out
 
     def make_softshrink(self):

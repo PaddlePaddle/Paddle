@@ -1,5 +1,7 @@
 core_gather_headers()
 
+add_subdirectory(phi)
+
 gather_srcs(infrt_src SRCS
   tensor_map.cc
   tensor_metadata.cc

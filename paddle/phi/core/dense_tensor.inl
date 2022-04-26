@@ -21,20 +21,6 @@ limitations under the License. */
     Will be adjusted/removed/moved in the near future
 */
 public:
-/* Temporarily put InplaceVersion inside DenseTensor.
-Will move to AutogradMeta as soon as we switch to Eager Dygraph.
-*/
-class InplaceVersion {
-public:
-  bool IsUnique() const { return inplace_version_ == 0; }
-  void Bump() { ++inplace_version_; }
-  uint32_t CurrentVersion() const { return inplace_version_; }
-  void SetInplaceVersionToZero() { inplace_version_ = 0; }
-
-private:
-  uint32_t inplace_version_{0};
-};
-
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
 explicit DenseTensor(paddle::experimental::DataType dtype);
@@ -130,9 +116,6 @@ DenseTensor Slice(int64_t begin_idx, int64_t end_idx) const;
 std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
 
 std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
-
-protected:
-std::shared_ptr<InplaceVersion> inplace_version_counter_{std::make_shared<InplaceVersion>()};
 
 /* @jim19930609: This is a hack
 In general, it is badly designed to fuse MKLDNN-specific objects into a

@@ -32,7 +32,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 
 inline bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
-  return CUDAGraph::IsCapturing();
+  return CUDAGraph::IsThisThreadCapturing();
 #else
   return false;
 #endif
@@ -67,10 +67,14 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
-    void *new_host_mem = new uint8_t[nbytes];
+    void *new_host_mem = nullptr;
+    {
+      platform::CUDAGraphCaptureModeGuard guard;
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&new_host_mem, nbytes));
+    }
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddResetCallbackIfCapturingCUDAGraph(
-        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
+        [new_host_mem]  { PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(new_host_mem)); });
     return reinterpret_cast<T *>(new_host_mem);
   }
 #endif

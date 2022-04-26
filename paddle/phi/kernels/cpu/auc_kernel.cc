@@ -28,6 +28,7 @@ void statAuc(const DenseTensor &label,
              const DenseTensor &predict,
              const int num_thresholds,
              const int slide_steps,
+             const bool ignore_illegal_label,
              int64_t *origin_stat_pos,
              int64_t *origin_stat_neg) {
   size_t batch_size = predict.dims()[0];
@@ -39,6 +40,9 @@ void statAuc(const DenseTensor &label,
     for (size_t i = 0; i < batch_size; i++) {
       // if predict_data[i] has dim of 2, then predict_data[i][1] is pos prob
       // if predict_data[i] has dim of 1, then predict_data[i][0] is pos prob
+      if (ignore_illegal_label && label_data[i] != 0 && label_data[i] != 1) {
+        continue;
+      }
       auto predict_data =
           inference_data[i * inference_width + (inference_width - 1)];
       PADDLE_ENFORCE_LE(predict_data,
@@ -79,6 +83,9 @@ void statAuc(const DenseTensor &label,
   for (size_t i = 0; i < batch_size; i++) {
     // if predict_data[i] has dim of 2, then predict_data[i][1] is pos prob
     // if predict_data[i] has dim of 1, then predict_data[i][0] is pos prob
+    if (ignore_illegal_label && label_data[i] != 0 && label_data[i] != 1) {
+      continue;
+    }
     auto predict_data =
         inference_data[i * inference_width + (inference_width - 1)];
     PADDLE_ENFORCE_LE(predict_data,
@@ -139,6 +146,7 @@ void AucKernel(const Context &dev_ctx,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
+               bool ignore_illegal_label,
                DenseTensor *auc,
                DenseTensor *stat_pos_out,
                DenseTensor *stat_neg_out) {
@@ -171,6 +179,7 @@ void AucKernel(const Context &dev_ctx,
              input,
              num_thresholds,
              slide_steps,
+             ignore_illegal_label,
              origin_stat_pos,
              origin_stat_neg);
 

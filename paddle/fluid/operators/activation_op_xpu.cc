@@ -340,29 +340,56 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
     auto pow_factor = ctx.Attr<float>("factor");
     const T *x_data = x->data<T>();
     T *y_data = y->mutable_data<T>(ctx.GetPlace());
-    T *factor_data = nullptr;
+
+    // allocate temp memory for factor on xpu
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_context);
+    T *factor_data = RAII_GUARD.alloc_l3_or_gm<T>(1);
+    PADDLE_ENFORCE_NOT_NULL(
+        factor_data,
+        platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
+    memory::Copy(ctx.GetPlace(), static_cast<void *>(factor_data),
+                 platform::CPUPlace(), static_cast<void *>(&pow_factor),
+                 sizeof(T));
+
+    // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
+    // std::vector<int>& xshape, const std::vector<int>& yshape);
+    auto x_dims = phi::vectorize<int>(x->dims());
+    int r = xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims,
+                               {1});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
+  }
+};
+
+template <typename T>
+struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    const T *x_data = x->data<T>();
+    const T *y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+
+    // check dims: all dims should equal
+    auto x_dims = phi::vectorize<int>(x->dims());
+    auto dy_dims = phi::vectorize<int>(dOut->dims());
+    auto dx_dims = phi::vectorize<int>(dX->dims());
+    PADDLE_ENFORCE_EQ(x_dims, dy_dims, platform::errors::PreconditionNotMet(
+                                           "x_dims should match dy_dims."));
+    PADDLE_ENFORCE_EQ(x_dims, dx_dims, platform::errors::PreconditionNotMet(
+                                           "x_dims should match dx_dims."));
+    float pow_factor = ctx.Attr<float>("factor");
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
-                                 x->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
-    int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External("XPU constant op return"
-                                   " wrong value[%d %s] in pow op.",
-                                   r, XPUAPIErrorMsg[r]));
-    r = xpu::pow(xpu_context, x_data, factor_data, y_data, x->numel());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External("XPU pow op return wrong value[%d %s].", r,
-                                   XPUAPIErrorMsg[r]));
-    if (xpu_context->xpu_stream != nullptr) {
-      xpu_wait(xpu_context->xpu_stream);
-    }
-    xpu_free(factor_data);
+    // int pow_grad(Context* ctx, const T* x, const T* dy, T* dx, int len, float
+    // factor);
+    int r = xpu::pow_grad(xpu_context, x_data, y_grad, x_grad, x->numel(),
+                          pow_factor);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_grad");
   }
 };
 
@@ -410,6 +437,40 @@ struct XPUSoftPlusGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUSwishFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    // int swish(Context* ctx, const T* x, T* y, int len);
+    int r = xpu::swish(xpu_context, x_data, y_data, x->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+  }
+};
+
+template <typename T>
+struct XPUSwishGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    const T *x_data = x->data<T>();
+    const T *y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    // int swish_grad(Context* ctx, const T* x, const T* dy, T* dx, int len);
+    int r = xpu::swish_grad(xpu_context, x_data, y_grad, x_grad, dX->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -436,6 +497,8 @@ REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(softplus, XPUSoftPlusFunctor,
                                XPUSoftPlusGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(swish, XPUSwishFunctor, XPUSwishGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(pow, XPUPowFunctor, XPUPowGradFunctor)
 
 REGISTER_OP_XPU_KERNEL(
     tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
@@ -449,7 +512,5 @@ REGISTER_OP_XPU_KERNEL(exp,
                        ops::XPUActivationKernel<ops::XPUExpFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(log,
                        ops::XPUActivationKernel<ops::XPULogFunctor<float>>);
-REGISTER_OP_XPU_KERNEL(pow,
-                       ops::XPUActivationKernel<ops::XPUPowFunctor<float>>);
 
 #endif  // PADDLE_WITH_XPU

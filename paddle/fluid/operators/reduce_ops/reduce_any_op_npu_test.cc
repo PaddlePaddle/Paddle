@@ -35,7 +35,7 @@ namespace p = paddle::platform;
 
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(reduce_any);
+USE_OP_ITSELF(reduce_any);
 USE_OP_DEVICE_KERNEL(reduce_any, NPU);
 
 template <typename T>

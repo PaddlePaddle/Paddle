@@ -12,11 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <mutex>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -118,7 +122,90 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
+void PSGPUWorker::PrepareCudaGraph() {
+  std::string enable_cuda_graph_capture_attr_name = "enable_cuda_graph_capture";
+  op_or_cudagraphs_.reserve(ops_.size());
+
+  static const std::unordered_set<std::string> op_whitelist = {
+    "adam",
+    "coalesce_tensor",
+  };
+  // these op can not be captured
+  static const std::unordered_set<std::string> op_blacklist = {
+    "c_sync_calc_stream",
+    "c_allreduce_sum",
+    "c_sync_comm_stream",
+  };
+  // when op is captured, its inputs and outputs and their grads will be never changed
+  // so the capture attribute can infect another op whose all inputs and outputs nerver changed
+  std::unordered_set<std::string> var_whitelist;
+  for (auto& op : ops_) {
+    if (op_whitelist.find(op->Type()) != op_whitelist.end() ||
+        (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name))) {
+      for (auto& input : op->InputVars()) {
+        var_whitelist.emplace(input);
+        var_whitelist.emplace(framework::GradVarName(input));
+      }
+      for (auto& output : op->OutputVars(true)) {
+        var_whitelist.emplace(output);
+        var_whitelist.emplace(framework::GradVarName(output));
+      }
+    }
+  }
+
+  for (auto& op : ops_) {
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      bool need_capture = false;
+      if (op_blacklist.find(op->Type()) == op_blacklist.end()) {
+        if (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name)) {
+          need_capture = true;
+        }
+        if (!need_capture) {
+          need_capture = true;
+          for (auto& input : op->InputVars()) {
+            if (var_whitelist.find(input) == var_whitelist.end()) {
+              need_capture = false;
+              break;
+            }
+          }
+          if (need_capture) {
+            for (auto& output : op->OutputVars(true)) {
+              if (var_whitelist.find(output) == var_whitelist.end()) {
+                need_capture = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (op_or_cudagraphs_.empty() || op_or_cudagraphs_.back().need_capture != need_capture) {
+        op_or_cudagraphs_.emplace_back();
+        op_or_cudagraphs_.back().need_capture = need_capture;
+      }
+      auto& op_or_cuda_graph = op_or_cudagraphs_.back();
+      if (need_capture) {
+        if (op_or_cuda_graph.name.empty()) {
+          op_or_cuda_graph.name = "cuda_graph:";
+        } else {
+          op_or_cuda_graph.name += ":";
+        }
+        op_or_cuda_graph.name += op->Type();
+      }
+      op_or_cuda_graph.ops.emplace_back(op);
+    }
+  }
+}
+
 void PSGPUWorker::TrainFiles() {
+  VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
@@ -129,18 +216,65 @@ void PSGPUWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+
+  int graph_batch_size = 0;
+
+  platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
-    for (auto& op : ops_) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
+
+    if (op_or_cudagraphs_.empty()) {
+      // first batch we run original ops to check whethere the tensors has lod
+      for (auto& op : ops_) {
+        bool need_skip = false;
+        for (auto t = 0u; t < skip_ops_.size(); ++t) {
+          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+            need_skip = true;
+            break;
+          }
+        }
+        if (!need_skip) {
+          op->Run(*thread_scope_, place_);
         }
       }
-      if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+      graph_batch_size = cur_batch;
+      PrepareCudaGraph();
+    } else if (graph_batch_size != cur_batch || batch_cnt <= thread_id_) {
+      // when batch_size changed, run original ops
+      for (auto& op : ops_) {
+        bool need_skip = false;
+        for (auto t = 0u; t < skip_ops_.size(); ++t) {
+          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+            need_skip = true;
+            break;
+          }
+        }
+        if (!need_skip) {
+          op->Run(*thread_scope_, place_);
+        }
+      }
+    } else {
+      // secend batch we capture the cudagraph
+      for (auto& op_or_cuda_graph : op_or_cudagraphs_) {
+        if (op_or_cuda_graph.need_capture) {
+          if (op_or_cuda_graph.cudagraph == nullptr) {
+            static std::mutex _capture_mutex;
+            std::lock_guard<std::mutex> lock(_capture_mutex);
+            platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
+            for (auto& op : op_or_cuda_graph.ops) {
+              op->Run(*thread_scope_, place_);
+            }
+            op_or_cuda_graph.cudagraph = platform::EndCUDAGraphCapture();
+          }
+
+          platform::RecordEvent op_type_record_event(
+              op_or_cuda_graph.name, platform::TracerEventType::Operator, 1);
+          op_or_cuda_graph.cudagraph->Replay();
+        } else {
+          for (auto& op : op_or_cuda_graph.ops) {
+            op->Run(*thread_scope_, place_);
+          }
+        }
       }
     }
     if (need_dump_field_) {
@@ -190,14 +324,14 @@ void PSGPUWorker::TrainFiles() {
     writer_.Flush();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost "
           << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
   return;
 }
 
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
-  VLOG(1) << "Begin to train files with profiler";
+  VLOG(0) << "Begin to train files with profiler";
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
@@ -225,6 +359,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
+  platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     timeline.Pause();
@@ -260,13 +395,15 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     timeline.Start();
   }
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
           << " seconds, ins_num: " << total_ins_num;
   for (size_t i = 0; i < op_name.size(); ++i) {
-    VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+    VLOG(0) << "card:" << thread_id_ << ", op: " << op_name[i]
             << ", mean time: " << op_total_time[i] / total_ins_num
             << "s, totol time:" << op_total_time[i] << "sec";
   }
+  VLOG(0) << "card: " << thread_id_ << " read time: " << read_time
+          << ", percent: " << read_time / total_time * 100;
   return;
 }
 

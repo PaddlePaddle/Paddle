@@ -16,8 +16,8 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -26,14 +26,14 @@ namespace phi {
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& num_or_sections,
+                 const IntArray& num_or_sections,
                  const Scalar& axis,
                  std::vector<DenseTensor*> out);
 
 template <typename T, typename Context>
 std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const ScalarArray& num_or_sections,
+                               const IntArray& num_or_sections,
                                const Scalar& axis) {
   size_t out_number;
   if (num_or_sections.GetData().size() == 1) {

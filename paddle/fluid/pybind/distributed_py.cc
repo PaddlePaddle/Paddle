@@ -39,6 +39,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+#include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
+#endif
+
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
@@ -50,6 +55,18 @@ namespace paddle {
 namespace pybind {
 
 using Tensor = paddle::experimental::Tensor;
+
+std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
+    py::handle py_tensors,
+    const std::vector<std::vector<size_t>> &group_indices,
+    const std::vector<bool> &is_sparse_gradient,
+    std::shared_ptr<distributed::ProcessGroup> process_group,
+    const std::vector<size_t> &group_size_limits, bool find_unused_parameters) {
+  auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+  return std::make_shared<distributed::EagerReducer>(
+      params, group_indices, is_sparse_gradient, process_group,
+      group_size_limits, find_unused_parameters);
+}
 
 #if defined(PADDLE_WITH_GLOO)
 using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
@@ -201,16 +218,50 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
+                    int>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+  py::class_<distributed::ProcessGroupHeter,
+             std::shared_ptr<distributed::ProcessGroupHeter>>(
+      *m, "ProcessGroupHeter", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int, int,
+                    int, int, int, int, bool, std::string>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("gid") = 0, py::arg("local_rank") = 0,
+           py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
+           py::arg("gloo_size") = 1, py::arg("with_switch") = false,
+           py::arg("switch_endpoint") = "",
            py::call_guard<py::gil_scoped_release>());
+#endif
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
   py::class_<distributed::ProcessGroupHCCL,
              std::shared_ptr<distributed::ProcessGroupHCCL>>(
       *m, "ProcessGroupHCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
+                    int>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+  py::class_<distributed::ProcessGroupHeter,
+             std::shared_ptr<distributed::ProcessGroupHeter>>(
+      *m, "ProcessGroupHeter", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int, int,
+                    int, int, int, int, bool, std::string>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("gid") = 0, py::arg("local_rank") = 0,
+           py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
+           py::arg("gloo_rank") = 1, py::arg("with_switch") = false,
+           py::arg("switch_endpoint") = "",
            py::call_guard<py::gil_scoped_release>());
+#endif
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
@@ -223,25 +274,13 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_GLOO)
-  py::class_<GlooOptions>(*m, "GlooOptions")
-      .def(py::init<>())
-      .def_readwrite("_device", &GlooOptions::device)
-      .def_static("create", &GlooOptions::create);
-
-  py::class_<GlooStore, std::shared_ptr<GlooStore>>(*m, "GlooStore")
-      .def(py::init(
-               [](const std::shared_ptr<paddle::distributed::TCPStore> &store) {
-                 return std::make_shared<GlooStore>(store);
-               }),
-           py::call_guard<py::gil_scoped_release>());
-
   py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
       *m, "ProcessGroupGloo", ProcessGroup)
-      .def(py::init<const std::shared_ptr<GlooStore> &, int, int,
-                    std::shared_ptr<GlooOptions> &>(),
+      .def(py::init<const std::shared_ptr<paddle::distributed::Store> &, int,
+                    int, int, std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
-      .def(py::init([](const std::shared_ptr<GlooStore> &store, int rank,
-                       int world_size) {
+      .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
+                       int rank, int world_size, int gid) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
              if (ifname && strlen(ifname) > 1) {
@@ -251,10 +290,10 @@ void BindDistributed(py::module *m) {
                opts->device = ProcessGroupGloo::createDefaultDevice();
              }
              return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
-                                                       opts);
+                                                       gid, opts);
            }),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::call_guard<py::gil_scoped_release>())
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
 #endif
@@ -271,6 +310,17 @@ void BindDistributed(py::module *m) {
          py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
          py::arg("tensor_indices") = std::vector<int64_t>{},
          py::call_guard<py::gil_scoped_release>());
+
+  py::class_<distributed::EagerReducer,
+             std::shared_ptr<distributed::EagerReducer>>(*m, "EagerReducer",
+                                                         R"DOC()DOC")
+      .def(py::init(&CreateEagerReducer))
+      .def("prepare_for_backward",
+           [](distributed::EagerReducer &self, py::handle py_tensors) {
+             auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+             self.PrepareForBackward(params);
+           },
+           py::arg("tensors"), py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind

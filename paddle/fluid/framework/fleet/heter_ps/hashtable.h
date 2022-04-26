@@ -21,7 +21,7 @@ limitations under the License. */
 #include "common_value.h"  // NOLINT
 #endif
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
+#include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 #include "paddle/phi/core/utils/rw_lock.h"
 #include "thrust/pair.h"
@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
 namespace paddle {
 namespace framework {

@@ -31,10 +31,11 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel
-
+from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
@@ -541,7 +542,6 @@ class TestParallelDyGraphRunnerBase(object):
             return batch
 
     def run_trainer(self, args):
-
         seed = 90
         if args.update_method == 'gloo':
             place = fluid.CPUPlace()
@@ -573,6 +573,7 @@ class TestParallelDyGraphRunnerBase(object):
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
+                paddle.distributed.init_parallel_env()
                 print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
@@ -634,10 +635,8 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method in ["nccl2", "gloo"]:
-            if args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
+            model = paddle.DataParallel(
+                model, find_unused_parameters=args.find_unused_parameters)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -861,10 +860,10 @@ class TestDistBase(unittest.TestCase):
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
         else:
-            print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
+            self._dist_port = DIST_UT_PORT
 
         self._after_setup_config()
 
@@ -1159,6 +1158,7 @@ class TestDistBase(unittest.TestCase):
         })
 
         assert self._use_dgc == False, "gloo not support use dgc"
+
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
 
@@ -1460,7 +1460,34 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
+            with _test_eager_guard():
+                self.check_with_place_func(
+                    model_file=model_file,
+                    delta=delta,
+                    check_error_log=check_error_log,
+                    need_envs=need_envs,
+                    log_name=log_name)
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
+        else:
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
 
+    def check_with_place_func(self,
+                              model_file,
+                              delta=1e-3,
+                              check_error_log=False,
+                              need_envs={},
+                              log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         if self._gloo_mode:

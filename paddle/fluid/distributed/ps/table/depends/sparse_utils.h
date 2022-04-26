@@ -24,6 +24,7 @@ namespace paddle {
 namespace distributed {
 
 struct PullSparseValue {
+  PullSparseValue() {}
   explicit PullSparseValue(int numel, int dim)
       : numel_(numel),
         dim_(dim),
@@ -58,7 +59,7 @@ struct PullSparseValue {
                std::vector<int>* offset_shard) const {
     offset_shard->reserve(numel_ / shard_num + 1);
     for (int x = 0; x < numel_; ++x) {
-      if (feasigns_[x] % shard_num == shard_id) {
+      if (int(feasigns_[x] % shard_num) == shard_id) {
         offset_shard->push_back(x);
       }
     }

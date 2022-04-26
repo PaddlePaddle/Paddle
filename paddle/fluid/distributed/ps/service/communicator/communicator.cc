@@ -13,11 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
-
 #include <google/protobuf/text_format.h>
-
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -40,7 +39,7 @@ inline double GetCurrentUS() {
 
 Communicator::Communicator() {}
 
-void Communicator::init_gflag(const std::string &gflags) {
+void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
@@ -66,40 +65,15 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void Communicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  // not used, just for psclient's init
-  std::map<uint64_t, std::vector<paddle::distributed::Region>>
-      _dense_pull_regions;
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto tid = iter.first;
-    auto var_names = iter.second;
-
-    auto &regions = _dense_pull_regions[tid];
-    regions.reserve(var_names.size());
-    for (auto &t : var_names) {
-      Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      float *w = tensor->data<float>();
-      paddle::distributed::Region reg(w, tensor->numel());
-      regions.emplace_back(std::move(reg));
-    }
-  }
-
+  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
-    google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
-    init_gflag(_ps_param.init_gflags());
-    servers_ = host_sign_list.size();
-    _ps_env = paddle::distributed::PaddlePSEnvironment();
-    _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
-        paddle::distributed::PSClientFactory::create(_ps_param));
-    _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
-                           trainer_id_);
+    _worker_ptr = fleet->worker_ptr_;
   }
   return;
 }
 
 std::vector<uint64_t> Communicator::GetClientInfo() {
-  std::vector<uint64_t> res = _ps_env.get_client_info();
+  std::vector<uint64_t> res = _ps_env.GetClientInfo();
   for (auto rr : res) {
     VLOG(2) << "Communicator::GetClientInfo " << rr;
   }
@@ -108,7 +82,7 @@ std::vector<uint64_t> Communicator::GetClientInfo() {
 
 int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
   int node = host_sign_list.size();
-  return _ps_env.set_ps_clients(host_sign_list.data(), node);
+  return _ps_env.SetPsClients(host_sign_list.data(), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
@@ -140,17 +114,17 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     }
   }
   auto status =
-      _worker_ptr->pull_dense(regions.data(), regions.size(), table_id);
+      _worker_ptr->PullDense(regions.data(), regions.size(), table_id);
   status.wait();
 
   for (auto &t : varnames) {
     Variable *var = scope->FindVar(t);
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
-    VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
+    VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
     float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
-    VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
+    VLOG(3) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
@@ -203,7 +177,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
     }
   }
   auto status =
-      _worker_ptr->push_dense_param(regions.data(), regions.size(), table_id);
+      _worker_ptr->PushDenseParam(regions.data(), regions.size(), table_id);
   status.wait();
   VLOG(4) << "RPC Send Dense Param " << table_id << " done!";
   return;
@@ -216,9 +190,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   uint32_t num_per_shard =
-      dense_dim_per_shard(ctx.height_sections[0], request_call_num);
+      DenseDimPerShard(ctx.height_sections[0], request_call_num);
   dense_data->resize(num_per_shard *
                      request_call_num);  // accessor->update_dim() = 1
   float *data = dense_data->data();
@@ -248,8 +222,8 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_dense_raw_gradient(
-      table_id, data, dense_data->size(), closure);
+  auto status = _worker_ptr->PushDenseRawGradient(table_id, data,
+                                                  dense_data->size(), closure);
   status.wait();
   return;
 }
@@ -259,7 +233,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
   platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
                                      platform::TracerEventType::Communication,
                                      1);
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(varname);
@@ -286,9 +260,9 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
         }
         closure->set_promise_value(ret);
       });
-  auto status = _worker_ptr->push_sparse_param(
-      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
-      sparse_push_keys.size(), closure);
+  auto status = _worker_ptr->PushSparseParam(table_id, sparse_push_keys.data(),
+                                             (const float **)push_g_vec.data(),
+                                             sparse_push_keys.size(), closure);
   status.wait();
   return;
 }
@@ -298,7 +272,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   platform::RecordEvent record_event("Communicator->RpcSendSparse",
                                      platform::TracerEventType::Communication,
                                      1);
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
 
@@ -339,7 +313,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_sparse_raw_gradient(
+  auto status = _worker_ptr->PushSparseRawGradient(
       table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
       sparse_push_keys.size(), closure);
   status.wait();
@@ -366,7 +340,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
 
   bool training = true;
 
-  auto status = _worker_ptr->pull_sparse_param(
+  auto status = _worker_ptr->PullSparseParam(
       (float **)push_g_vec.data(), table_id,  // NOLINT
       sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
@@ -402,11 +376,11 @@ void Communicator::RpcProfilerControl() {
     if (!do_server_profiler_ && platform::IsProfileEnabled()) {
       // send profiler start flag
       do_server_profiler_ = true;
-      auto start_status = _worker_ptr->start_profiler();
+      auto start_status = _worker_ptr->StartProfiler();
       start_status.wait();
     } else if (do_server_profiler_ && !platform::IsProfileEnabled()) {
       // send profiler end flag
-      auto stop_status = _worker_ptr->stop_profiler();
+      auto stop_status = _worker_ptr->StopProfiler();
       stop_status.wait();
       do_server_profiler_ = false;
     }
@@ -422,7 +396,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
                                      platform::TracerEventType::Communication,
                                      1);
   auto &table_id = ctx.table_id;
-  size_t request_call_num = _worker_ptr->get_server_nums();
+  size_t request_call_num = _worker_ptr->GetServerNums();
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
@@ -442,7 +416,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
         }
         closure->set_promise_value(ret);
       });
-  auto status = _worker_ptr->push_global_step(table_id, data, closure);
+  auto status = _worker_ptr->PushGlobalStep(table_id, data, closure);
   status.wait();
   return;
 }
@@ -481,7 +455,7 @@ void AsyncCommunicator::RecvNoBarrier() {
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
       LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
+      VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
               << platform::is_gpu_place(tensor->place());
       if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -631,8 +605,8 @@ void AsyncCommunicator::PullSparseToTensorSync(
     }
   }
   auto status =
-      _worker_ptr->pull_sparse(pull_result_ptr.data(), table_id,
-                               fea_keys.data(), fea_keys.size(), is_training);
+      _worker_ptr->PullSparse(pull_result_ptr.data(), table_id, fea_keys.data(),
+                              fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -653,7 +627,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
-    } else {
+    } else if (batch_size != cur_batch_size) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -676,7 +650,8 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
 
-  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim;
+  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim << " batch_size: " << batch_size
+          << " batch_size_consist: " << batch_size_consist;
 
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
@@ -687,13 +662,14 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor *g_tensor = outputs->at(index);
     float *g = g_tensor->data<float>();
-    // no cvm
+
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
                                // scale_sparse_gradient_with_batch_size_
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
-      g_mat.rightCols(fea_dim) *= batch_size;
+      g_mat.rightCols(fea_dim - 2) *=
+          batch_size;  // hard code here, because of cvm_grad op
     }
 
     const framework::LoDTensor *tensor = inputs->at(index);
@@ -710,16 +686,16 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
             continue;
           }
           push_keys.emplace_back(real_id);
-          push_values.emplace_back(fea_dim + 3);
+          push_values.emplace_back(fea_dim + 1);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
           push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] =
-              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] =
-              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          // push_values.back()[1] =
+          //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          // push_values.back()[2] =
+          //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-          float *data = push_values.back().data() + 3;
+          float *data = push_values.back().data() + 1;  // hard code here
 
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -733,16 +709,16 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           continue;
         }
         push_keys.emplace_back(real_id);
-        push_values.emplace_back(fea_dim + 3);
+        push_values.emplace_back(fea_dim + 1);
         // slot show clk grad... consistent with CtrCommonPushValue defined in
         // ctr_accessor.h
         push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-        push_values.back()[1] =
-            (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-        push_values.back()[2] =
-            (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+        // push_values.back()[1] =
+        //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+        // push_values.back()[2] =
+        //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-        float *data = push_values.back().data() + 3;
+        float *data = push_values.back().data() + 1;
 
         memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -762,9 +738,9 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
       this->Check(table_id), true,
       platform::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
-  auto status = _worker_ptr->push_sparse(table_id, push_keys.data(),
-                                         (const float **)push_g_vec.data(),
-                                         push_keys.size());
+  auto status = _worker_ptr->PushSparse(table_id, push_keys.data(),
+                                        (const float **)push_g_vec.data(),
+                                        push_keys.size());
 }
 
 void HalfAsyncCommunicator::MainThread() {
@@ -837,7 +813,7 @@ void AsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    _worker_ptr->finalize_worker();
+    // _worker_ptr->FinalizeWorker();
     VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
@@ -1351,7 +1327,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
     closure->set_promise_value(ret);
     --_async_call_num;
   });
-  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+  auto status = _worker_ptr->PushSparseRawGradientPartial(
       table_id, (const uint64_t *)sparse_ids.data(),
       (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
   status.wait();
@@ -1369,7 +1345,7 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
-  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys, ep_idx);
+  auto status = _worker_ptr->PullGeoParam(table_id, &values, &keys, ep_idx);
   status.wait();
 
   std::string param = SplitedGradToParam(varname);

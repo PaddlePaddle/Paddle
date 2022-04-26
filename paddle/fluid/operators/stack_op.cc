@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/stack_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
@@ -25,52 +28,6 @@ namespace operators {
 class StackOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GT(ctx->Inputs("X").size(), 0,
-                      platform::errors::InvalidArgument(
-                          "Number of Inputs(X) must be larger than 0, but"
-                          " received value is:%d.",
-                          ctx->Inputs("X").size()));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Y) of stack_op should not be null."));
-
-    auto input_dims = ctx->GetInputsDim("X");
-    for (size_t i = 1; i < input_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(input_dims[i], input_dims[0],
-                        platform::errors::InvalidArgument(
-                            "Dims of all Inputs(X) must be the same, but"
-                            " received input %d dim is:%d not equal to input 0"
-                            " dim:%d.",
-                            i, input_dims[i], input_dims[0]));
-    }
-
-    // Only lod of X[0] would be shared with Y
-    ctx->ShareLoD("X", /*->*/ "Y");
-
-    int axis = ctx->Attrs().Get<int>("axis");
-    int rank = input_dims[0].size();
-    PADDLE_ENFORCE_GE(
-        axis, -(rank + 1),
-        platform::errors::InvalidArgument(
-            "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
-            "but received axis is:%d.",
-            rank, axis));
-
-    PADDLE_ENFORCE_LT(
-        axis, rank + 1,
-        platform::errors::InvalidArgument(
-            "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
-            "but received axis is:%d",
-            rank, axis));
-
-    if (axis < 0) axis += (rank + 1);
-
-    auto vec = phi::vectorize<int>(input_dims[0]);
-    vec.insert(vec.begin() + axis, input_dims.size());
-    ctx->SetOutputDim("Y", phi::make_ddim(vec));
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -168,21 +125,10 @@ class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(stack, StackInferMetaFunctor,
+                            PD_INFER_META(phi::StackInferMeta));
 REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
                   ops::StackGradOpMaker<paddle::framework::OpDesc>,
-                  ops::StackGradOpMaker<paddle::imperative::OpBase>);
+                  ops::StackGradOpMaker<paddle::imperative::OpBase>,
+                  StackInferMetaFunctor);
 REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    stack, ops::StackKernel<plat::CPUDeviceContext, float>,
-    ops::StackKernel<plat::CPUDeviceContext, double>,
-    ops::StackKernel<plat::CPUDeviceContext, int>,
-    ops::StackKernel<plat::CPUDeviceContext, int64_t>,
-    ops::StackKernel<plat::CPUDeviceContext, paddle::platform::bfloat16>);
-
-REGISTER_OP_CPU_KERNEL(
-    stack_grad, ops::StackGradKernel<plat::CPUDeviceContext, float>,
-    ops::StackGradKernel<plat::CPUDeviceContext, double>,
-    ops::StackGradKernel<plat::CPUDeviceContext, int>,
-    ops::StackGradKernel<plat::CPUDeviceContext, int64_t>,
-    ops::StackGradKernel<plat::CPUDeviceContext, paddle::platform::bfloat16>);

@@ -50,13 +50,8 @@ class PReluMKLDNNHandler
       if (weights->dims().size() != x->dims().size()) {
         auto new_weights_dims = std::vector<int64_t>(x->dims().size(), 1);
         if (mode == "channel") {
-          if (data_format == "NHWC") {
-            new_weights_dims[x->dims().size() - 1] =
-                *std::max_element(weights_dims.begin(), weights_dims.end());
-          } else {
-            new_weights_dims[1] =
-                *std::max_element(weights_dims.begin(), weights_dims.end());
-          }
+          new_weights_dims[1] =
+              *std::max_element(weights_dims.begin(), weights_dims.end());
         }
         weights_dims = std::move(new_weights_dims);
       }

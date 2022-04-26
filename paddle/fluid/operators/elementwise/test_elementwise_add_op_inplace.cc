@@ -21,8 +21,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {

@@ -57,4 +57,4 @@ TEST(DropoutOpConverter, main) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);

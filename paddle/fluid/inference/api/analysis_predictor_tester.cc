@@ -357,6 +357,37 @@ TEST(AnalysisPredictor, set_xpu_device_id) {
 }
 #endif
 
+TEST(AnalysisPredictor, enable_onnxruntime) {
+  AnalysisConfig config;
+  config.EnableONNXRuntime();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.use_onnxruntime());
+#else
+  ASSERT_TRUE(!config.use_onnxruntime());
+#endif
+  config.EnableORTOptimization();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.ort_optimization_enabled());
+#else
+  ASSERT_TRUE(!config.ort_optimization_enabled());
+#endif
+  config.DisableONNXRuntime();
+  ASSERT_TRUE(!config.use_onnxruntime());
+}
+
+TEST(AnalysisPredictor, exp_enable_use_gpu_fp16) {
+  AnalysisConfig config;
+  config.SwitchIrOptim();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  config.EnableUseGpu(100, 0);
+  config.Exp_EnableUseGpuFp16();
+  ASSERT_TRUE(config.gpu_fp16_enabled());
+#else
+  config.DisableGpu();
+#endif
+  LOG(INFO) << config.Summary();
+}
+
 }  // namespace paddle
 
 namespace paddle_infer {
@@ -406,6 +437,27 @@ TEST(Predictor, Run) {
   out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   predictor->TryShrinkMemory();
+}
+
+TEST(Predictor, EnableONNXRuntime) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableONNXRuntime();
+  config.EnableORTOptimization();
+  auto predictor = CreatePredictor(config);
+}
+
+TEST(Predictor, Exp_EnableUseGpuFp16) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  config.EnableUseGpu(100, 0);
+  config.Exp_EnableUseGpuFp16();
+#else
+  config.DisableGpu();
+#endif
+  auto predictor = CreatePredictor(config);
 }
 
 TEST(Tensor, CpuShareExternalData) {

@@ -126,6 +126,26 @@ PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
   return config->use_gpu();
 }
 
+void PD_ConfigEnableONNXRuntime(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableONNXRuntime();
+}
+
+void PD_ConfigDisableONNXRuntime(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->DisableONNXRuntime();
+}
+
+PD_Bool PD_ConfigONNXRuntimeEnabled(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_onnxruntime();
+}
+
+void PD_ConfigEnableORTOptimization(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableORTOptimization();
+}
+
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                         int32_t l3_workspace_size, PD_Bool locked,
                         PD_Bool autotune, const char* autotune_file,

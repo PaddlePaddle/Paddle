@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 namespace plat = paddle::platform;
 
@@ -195,10 +196,11 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     if (!sr_in_out_data.empty()) {
       auto tmp_sr_in_out_array =
           memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
-
+      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+        sr_in_out_data.data(), sr_in_out_data.size());
       memory::Copy(dev_ctx.GetPlace(), tmp_sr_in_out_array->ptr(),
                    platform::CPUPlace(),
-                   reinterpret_cast<void *>(sr_in_out_data.data()),
+                   reinterpret_cast<void *>(restored),
                    sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
 
       T **sr_in_out_array_data =
@@ -214,9 +216,11 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   if (!in_data.empty()) {
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
+    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      in_data.data(), in_data.size());
     memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
-                 reinterpret_cast<void *>(in_data.data()),
-                 in_data.size() * sizeof(T *), dev_ctx.stream());
+                  reinterpret_cast<void *>(restored),
+                  in_data.size() * sizeof(T *), dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);

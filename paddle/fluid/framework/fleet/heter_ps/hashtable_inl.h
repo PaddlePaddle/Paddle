@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/framework/heter_util.h"
 
 namespace paddle {
 namespace framework {
@@ -143,6 +144,82 @@ __global__ void dy_mf_search_kernel(Table* table,
         cur->mf[j] = 0;
       }
       
+    }
+  }
+}
+
+__global__ void  curand_init_kernel(curandState* p_value, int len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    curand_init(clock64(), i, 0, p_value + i);
+  }
+}
+
+class CuRandState {
+public:
+  CuRandState() = default;
+  CuRandState(const CuRandState&) = delete;
+  CuRandState(CuRandState&&) = delete;
+  ~CuRandState() {
+    CHECK(cudaFree(states_) == cudaSuccess);
+  }
+  curandState* get(size_t size, gpuStream_t stream) {
+    if (size > size_) {
+      size_t new_size = size * 2;
+      curandState* new_state = nullptr;
+      CHECK(cudaMalloc(reinterpret_cast<void**>(&new_state), new_size * sizeof(curandState)) == cudaSuccess);
+      if (size_ > 0) {
+        CHECK(cudaMemcpyAsync(new_state, states_,
+                      size_ * sizeof(curandState), cudaMemcpyDeviceToDevice, stream) == cudaSuccess);
+      }
+      int init_len = new_size - size_;
+      const int BLOCK_SIZE_{256};
+      const int init_kernel_grid = (init_len - 1) / BLOCK_SIZE_ + 1;
+      curand_init_kernel<<<init_kernel_grid, BLOCK_SIZE_, 0, stream>>>(new_state + size_, init_len);
+      if (size_ != 0) {
+        CHECK(cudaStreamSynchronize(stream) == cudaSuccess);
+        CHECK(cudaFree(states_) == cudaSuccess);
+      }
+      states_ = new_state;
+      size_ = new_size;
+    }
+    return states_;
+  }
+
+  static HeterObjectPool<CuRandState>& pool() {
+    static HeterObjectPool<CuRandState> p;
+    return p;
+  }
+
+  static std::shared_ptr<CuRandState> get() {
+    return pool().Get();
+  }
+
+  static void CUDART_CB pushback_cu_rand_state(void *data) {
+    auto state = static_cast<std::shared_ptr<CuRandState>*>(data);
+    pool().Push(std::move(*state));
+    delete state;
+  }
+
+  static void push(std::shared_ptr<CuRandState> state, gpuStream_t stream) {
+    CHECK(cudaLaunchHostFunc(stream, pushback_cu_rand_state,
+      new std::shared_ptr<CuRandState>(std::move(state))) == cudaSuccess); 
+  }
+private:
+  size_t size_ = 0;
+  curandState* states_ = nullptr;
+};
+
+template <typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const GradType* const grads, curandState* p_state, size_t len,
+                              Sgd sgd) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      sgd.update_value((it.getter())->second, grads[i], p_state[i]);
     }
   }
 }
@@ -286,10 +363,24 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
       }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      auto* downpour_value = (paddle::distributed::VALUE*)(gpu_val.cpu_ptr);
-      downpour_value->count_ = gpu_val.show;
-      for (int x = 0; x < gpu_val.mf_size; x++) {
-        downpour_value->data_[x] = gpu_val.mf[x];
+      auto* downpour_value =
+          (paddle::distributed::FixedFeatureValue*)(gpu_val.cpu_ptr);
+      int downpour_value_size = downpour_value->size();
+      if (gpu_val.mf_size > 0 && downpour_value_size == 7) {
+        downpour_value->resize(gpu_val.mf_size + downpour_value_size);
+      }
+      float* cpu_val = downpour_value->data();
+      // cpu_val[0] = 0;
+      cpu_val[2] = gpu_val.delta_score;
+      cpu_val[3] = gpu_val.show;
+      cpu_val[4] = gpu_val.clk;
+      cpu_val[5] = gpu_val.lr;
+      cpu_val[6] = gpu_val.lr_g2sum;
+      cpu_val[0] = gpu_val.slot;
+      if (gpu_val.mf_size > 0) {
+        for (int x = 0; x < gpu_val.mf_size; x++) {
+          cpu_val[x + 7] = gpu_val.mf[x];
+        }
       }
 #endif
     }
@@ -315,9 +406,11 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
+  auto state = CuRandState::get();
+  auto d_state = state->get(len, stream);
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
-                                                       d_grads, len, sgd);
+  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, d_grads, d_state, len, sgd);
+  CuRandState::push(state, stream);
 }
 
 template <typename KeyType, typename ValType>

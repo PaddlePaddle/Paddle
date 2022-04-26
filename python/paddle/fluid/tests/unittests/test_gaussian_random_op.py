@@ -342,9 +342,6 @@ class TestRandomValue(unittest.TestCase):
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
         def _check_random_value(dtype, expect, expect_mean, expect_std):
             x = paddle.randn([32, 3, 1024, 1024], dtype=dtype)
             actual = x.numpy()

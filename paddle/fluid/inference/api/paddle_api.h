@@ -36,6 +36,7 @@ namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
+using PaddleDataLayout = paddle_infer::DataLayout;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -192,6 +193,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
 
  private:
   friend class AnalysisPredictor;
+  friend class ONNXRuntimePredictor;
   explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
 };
 
@@ -381,6 +383,7 @@ enum class PaddleEngineKind {
   kNative = 0,         ///< Use the native Fluid facility.
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
   kAnalysis,           ///< More optimization.
+  kONNXRuntime,        ///< Use ONNXRuntime
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
@@ -394,6 +397,11 @@ PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
+    const AnalysisConfig& config);
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 

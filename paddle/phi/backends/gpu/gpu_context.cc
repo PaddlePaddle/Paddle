@@ -12,6 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include <algorithm>
 #include <array>
@@ -155,6 +156,39 @@ static void StreamCallbackFunc(gpuStream_t stream,
 
 }  // namespace internal
 
+void DnnWorkspaceHandle::RunFuncSync(
+    const std::function<void(void*)>& cudnn_func,
+    size_t required_workspace_bytes,
+    bool use_cached_allocation) {
+  bool need_realloc = required_workspace_bytes > WorkspaceSize();
+  if (need_realloc && !use_cached_allocation) {
+    void* workspace_ptr = nullptr;
+    size_t size = ((required_workspace_bytes + 255) >> 8) << 8;
+    std::lock_guard<std::mutex> guard(*mtx_);
+#ifdef PADDLE_WITH_HIP
+    auto status = hipMalloc(&workspace_ptr, size);
+#else
+    auto status = cudaMalloc(&workspace_ptr, size);
+#endif
+    if (status == gpuSuccess) {
+      cudnn_func(workspace_ptr);
+      phi::backends::gpu::GpuStreamSync(stream_);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipFree(workspace_ptr));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(workspace_ptr));
+#endif
+      return;
+    }
+  }
+
+  RunFunc(cudnn_func, required_workspace_bytes);
+  if (need_realloc) {
+    // Release the workspace allocated in this running.
+    ResetWorkspace();
+  }
+}
+
 void DnnWorkspaceHandle::ResetWorkspace() { allocation_ = nullptr; }
 
 void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
@@ -295,13 +329,13 @@ struct GPUContext::Impl {
   void InitDnnWorkspace() {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
-    workspace_ = new DnnWorkspaceHandle(allocator_);
+    workspace_ = new DnnWorkspaceHandle(allocator_, stream_);
   }
 
   void DestoryInternalWorkspace() {
     if (owned_ && workspace_ != nullptr) {
       delete workspace_;
-      stream_ = nullptr;
+      workspace_ = nullptr;
     }
   }
 
@@ -313,7 +347,7 @@ struct GPUContext::Impl {
   DnnWorkspaceHandle GetDnnWorkspace() {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
-    return DnnWorkspaceHandle(allocator_);
+    return DnnWorkspaceHandle(allocator_, stream_);
   }
 
   void InitStream() {
@@ -654,10 +688,17 @@ struct GPUContext::Impl {
   }
 
   void AddStreamCallback(const std::function<void()>& callback) const {
-    // TODO(wilber): Do we need ThreadPool?
-    auto* func = new std::function<void()>([this, callback] {
+    // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
+    // launch too
+    // many threads and result in thread oversubscription.
+    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
-      last_future_ = std::async(std::launch::deferred, [&]() { callback(); });
+      VLOG(4) << "Stream callback";
+      last_future_ = std::async(std::launch::async, [callback_func]() {
+        std::unique_ptr<std::function<void()>> releaser(callback_func);
+        (*callback_func)();
+      });
     });
 
 #ifdef PADDLE_WITH_HIP
@@ -733,6 +774,10 @@ struct GPUContext::Impl {
 };
 
 GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
+
+GPUContext::GPUContext(GPUContext&&) = default;
+
+GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
 GPUContext::GPUContext(const GPUPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}

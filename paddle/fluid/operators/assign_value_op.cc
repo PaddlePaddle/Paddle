@@ -16,6 +16,10 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/nullary.h"
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -38,14 +42,6 @@ class AssignValueOp : public framework::OperatorWithKernel {
                 const framework::VariableNameMap &outputs,
                 const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of assign_op is not found."));
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -89,11 +85,10 @@ $$Out = values$$
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(assign_value, AssignValueInferShapeFunctor,
+                            PD_INFER_META(phi::AssignValueInferMeta));
 REGISTER_OPERATOR(
     assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<bool>,
-                       ops::AssignValueKernel<int>,
-                       ops::AssignValueKernel<float>,
-                       ops::AssignValueKernel<int64_t>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AssignValueInferShapeFunctor);
