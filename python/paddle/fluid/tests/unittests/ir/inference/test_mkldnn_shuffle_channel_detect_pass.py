@@ -15,16 +15,21 @@
 from auto_scan_test import PassAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import math
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
 from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
-from functools import reduce
+
+
+def product(input):
+    result = 1
+
+    for value in input:
+        result = result * value
+
+    return result
+
 
 class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -33,28 +38,34 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
         transpose2_axis = program_config.ops[1].attrs['axis']
         second_reshape2_shape = program_config.ops[2].attrs['shape']
 
-        shape_prod = math.prod(input_shape)
+        shape_prod = product(input_shape)
         img_h = input_shape[-2]
         img_w = input_shape[-1]
 
-        if shape_prod != math.prod(first_reshape2_shape) or shape_prod != math.prod(second_reshape2_shape):    
+        if shape_prod != product(first_reshape2_shape) or shape_prod != product(
+                second_reshape2_shape):
             return False
-        if len(input_shape) != 4 or len(first_reshape2_shape) != 5 or len(second_reshape2_shape) != 4:
+        if len(input_shape) != 4 or len(first_reshape2_shape) != 5 or len(
+                second_reshape2_shape) != 4:
             return False
         if transpose2_axis != [0, 2, 1, 3, 4]:
             return False
-        if first_reshape2_shape[-1] != img_w or first_reshape2_shape[-2] != img_h:
+        if first_reshape2_shape[-1] != img_w or first_reshape2_shape[
+                -2] != img_h:
             return False
-        if second_reshape2_shape[-1] != img_w or second_reshape2_shape[-2] != img_h:
-            return False        
+        if second_reshape2_shape[-1] != img_w or second_reshape2_shape[
+                -2] != img_h:
+            return False
 
         return True
 
     def sample_program_config(self, draw):
         input_shape = draw(st.sampled_from([[128, 32, 32]]))
-        first_reshape2_shape = draw(st.sampled_from([[2, 64, 32, 32], [8, 16, 32, 32]]))
+        first_reshape2_shape = draw(
+            st.sampled_from([[2, 64, 32, 32], [8, 16, 32, 32]]))
         transpose2_axis = draw(st.sampled_from([[0, 2, 1, 3, 4], [0, 2, 1, 3]]))
-        second_reshape2_shape = draw(st.sampled_from([[128, 32, 32], [128, 31, 32]]))
+        second_reshape2_shape = draw(
+            st.sampled_from([[128, 32, 32], [128, 31, 32]]))
         batch_size = draw(st.integers(min_value=1, max_value=10))
 
         input_shape.insert(0, batch_size)
@@ -108,8 +119,7 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input))
+                "input_data": TensorConfig(data_gen=partial(generate_input))
             },
             outputs=["output_data"])
 
