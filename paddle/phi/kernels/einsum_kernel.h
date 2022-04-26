@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInputs("X")) {
-    return KernelSignature("add_n", {"X"}, {}, {"Out"});
-  }
-  return KernelSignature("unregistered", {}, {}, {});
-}
+template <typename T, typename Context>
+void EinsumKernel(const Context& dev_ctx,
+                  const std::vector<const DenseTensor*>& inputs,
+                  const std::string& equation,
+                  DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(sum, add_n);
-
-PD_REGISTER_ARG_MAPPING_FN(sum, phi::SumOpArgumentMapping);

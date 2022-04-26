@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/einsum_kernel.h"
 
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
 
-KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInputs("X")) {
-    return KernelSignature("add_n", {"X"}, {}, {"Out"});
-  }
-  return KernelSignature("unregistered", {}, {}, {});
-}
-
-}  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(sum, add_n);
-
-PD_REGISTER_ARG_MAPPING_FN(sum, phi::SumOpArgumentMapping);
+PD_REGISTER_KERNEL(
+    einsum_grad, GPU, ALL_LAYOUT, phi::EinsumGradKernel, float, double) {}
