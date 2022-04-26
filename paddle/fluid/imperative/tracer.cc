@@ -220,34 +220,30 @@ void Tracer::TraceOpImpl(const std::string& type,
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
-  std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
+  NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
       const auto& tracer = imperative::GetCurrentTracer();
+      new_ins =
+          imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs, tracer);
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
-      ins_amp = std::make_unique<NameVarMap<VarType>>(
-          AutoCastInputs<VarType>(type, imperative::AutoTuneLayout<VarType>(
-                                            type, ins, outs, &attrs, tracer)));
+      new_ins = AutoCastInputs<VarType>(type, new_ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
-      ins_amp = std::make_unique<NameVarMap<VarType>>(
-          AutoCastBF16Inputs<VarType>(type, ins));
+      new_ins = AutoCastBF16Inputs<VarType>(type, ins);
     }
   } else if (amp_level_ == AmpLevel::O2) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
       const auto& tracer = imperative::GetCurrentTracer();
+      new_ins =
+          imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs, tracer);
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
-      ins_amp =
-          std::make_unique<NameVarMap<VarType>>(CastPureFp16Inputs<VarType>(
-              type, imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs,
-                                                        tracer)));
+      new_ins = CastPureFp16Inputs<VarType>(type, new_ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
-      ins_amp = std::make_unique<NameVarMap<VarType>>(
-          CastPureBf16Inputs<VarType>(type, ins));
+      new_ins = CastPureBf16Inputs<VarType>(type, ins);
     }
   }
-  const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {
     if (platform::is_gpu_place(place)) {
@@ -324,7 +320,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   {
     platform::RecordEvent node_creation_record_event(
-        "node_creation", platform::TracerEventType::OperatorInner, 1);
+        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(
