@@ -309,7 +309,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
       ++b;
     }
     // coordinate x[a] < coordinate y[b]
-    else if (cle(x_indices, y_indices, a, b) || (a != nnz_x || b == nnz_y)) {
+    else if ((a < nnz_x && b >= nnz_y) || cle(x_indices, y_indices, a, b)) {
       std::vector<T> result;
       result.reserve(element_size);
       for (int j = 0; j < element_size; ++j) {
@@ -327,7 +327,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
       ++a;
     }
     // coordinate x[a] > coordinate y[b]
-    else if (cle(y_indices, x_indices, b, a) || (a == nnz_x || b != nnz_y)) {
+    else if ((a >= nnz_x && b < nnz_y) || cle(y_indices, x_indices, b, a)) {
       std::vector<T> result;
       result.reserve(element_size);
       for (int j = 0; j < element_size; ++j) {
