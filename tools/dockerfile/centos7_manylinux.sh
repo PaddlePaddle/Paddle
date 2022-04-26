@@ -37,6 +37,13 @@ function make_cuda101cudnn7() {
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
 }
 
+function make_cuda101cudnn7trt6() {
+  sed 's/<baseimg>/10.1-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "/install_trt.sh/d" Dockerfile.tmp
+  sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
+}
+
 function make_cuda102cudnn7() {
   sed 's/<baseimg>/10.2-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
@@ -137,6 +144,9 @@ function main() {
       ;;
     cuda101cudnn7)
       make_cuda101cudnn7
+      ;;
+    cuda101cudnn7trt6)
+      make_cuda101cudnn7trt6
       ;;
     cuda102cudnn7)
       make_cuda102cudnn7
