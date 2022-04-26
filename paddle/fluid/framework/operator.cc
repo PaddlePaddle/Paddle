@@ -1276,7 +1276,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
 // device, it's ugly, and we will refactorin the future.
-#if defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU_KP)
   bool use_phi_xpu_kp = false;
 #endif
 
