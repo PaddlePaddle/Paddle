@@ -36,21 +36,21 @@ bool ProtoArgumentMappingContext::HasAttr(const std::string& name) const {
   return op_->hasAttr(name);
 }
 
-phi::Attribute ProtoArgumentMappingContext::Attr(
+::phi::Attribute ProtoArgumentMappingContext::Attr(
     const std::string& name) const {
   if (name == "is_test") {
     return true;
   }
   mlir::Attribute attr = op_->getAttr(name);
   if (!attr) {
-    return phi::Attribute();
+    return ::phi::Attribute();
   }
   if (mlir::StringAttr str_attr = attr.dyn_cast<mlir::StringAttr>()) {
     return str_attr.str();
   }
 
   // ToDO: implementation in the ext PR.
-  return phi::Attribute();
+  return ::phi::Attribute();
 }
 
 size_t ProtoArgumentMappingContext::InputSize(const std::string& name) const {

@@ -33,9 +33,9 @@ class ProtoArgumentMappingContext : public ::phi::ArgumentMappingContext {
   bool HasOutput(const std::string& name) const override;
   bool HasAttr(const std::string& name) const override;
 
-  // now we can't use Attribute here, it will cause phi relay on
+  // now we can't use fluid Attribute here, it will cause phi relay on
   // boost::variant and BlockDesc
-  phi::Attribute Attr(const std::string& name) const override;
+  ::phi::Attribute Attr(const std::string& name) const override;
 
   size_t InputSize(const std::string& name) const override;
   size_t OutputSize(const std::string& name) const override;
