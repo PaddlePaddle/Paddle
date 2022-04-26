@@ -1823,6 +1823,20 @@ struct dtor {
 template <typename Traits, Trait = Traits::destructible_trait>
 class destructor;
 
+// gcc >= 9 has a bug that creates a false positive warning
+// Reference:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92145
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89381
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#define USING_SUPER_ASSIGNMENT_OPERATOR                 \
+_Pragma("GCC diagnostic push")                          \
+_Pragma("GCC diagnostic ignored \"-Wdeprecated-copy\"") \
+using super::operator=;                                 \
+_Pragma("GCC diagnostic pop")  
+#else
+#define USING_SUPER_ASSIGNMENT_OPERATOR using super::operator=;
+#endif
+
 #define MPARK_VARIANT_DESTRUCTOR(destructible_trait, definition, destroy) \
   template <typename... Ts>                                               \
   class destructor<traits<Ts...>, destructible_trait>                     \
@@ -1831,7 +1845,7 @@ class destructor;
                                                                           \
    public:                                                                \
     MPARK_INHERITING_CTOR(destructor, super)                              \
-    using super::operator=;                                               \
+    USING_SUPER_ASSIGNMENT_OPERATOR                                       \
                                                                           \
     destructor(const destructor &) = default;                             \
     destructor(destructor &&) = default;                                  \
@@ -1867,7 +1881,7 @@ class constructor : public destructor<Traits> {
 
  public:
   MPARK_INHERITING_CTOR(constructor, super)
-  using super::operator=;
+  USING_SUPER_ASSIGNMENT_OPERATOR
 
  protected:
 #ifndef MPARK_GENERIC_LAMBDAS
@@ -1919,7 +1933,7 @@ class move_constructor;
                                                                              \
    public:                                                                   \
     MPARK_INHERITING_CTOR(move_constructor, super)                           \
-    using super::operator=;                                                  \
+    USING_SUPER_ASSIGNMENT_OPERATOR                                          \
                                                                              \
     move_constructor(const move_constructor &) = default;                    \
     definition ~move_constructor() = default;                                \
@@ -1955,7 +1969,7 @@ class copy_constructor;
                                                                              \
    public:                                                                   \
     MPARK_INHERITING_CTOR(copy_constructor, super)                           \
-    using super::operator=;                                                  \
+    USING_SUPER_ASSIGNMENT_OPERATOR                                          \
                                                                              \
     definition copy_constructor(copy_constructor &&) = default;              \
     ~copy_constructor() = default;                                           \
@@ -1984,7 +1998,7 @@ class assignment : public copy_constructor<Traits> {
 
  public:
   MPARK_INHERITING_CTOR(assignment, super)
-  using super::operator=;
+  USING_SUPER_ASSIGNMENT_OPERATOR
 
   template <std::size_t I, typename... Args>
   inline /* auto & */ auto emplace(Args &&... args)
@@ -2071,7 +2085,7 @@ class move_assignment;
                                                                          \
    public:                                                               \
     MPARK_INHERITING_CTOR(move_assignment, super)                        \
-    using super::operator=;                                              \
+    USING_SUPER_ASSIGNMENT_OPERATOR                                      \
                                                                          \
     move_assignment(const move_assignment &) = default;                  \
     move_assignment(move_assignment &&) = default;                       \
@@ -2111,7 +2125,7 @@ class copy_assignment;
                                                                          \
    public:                                                               \
     MPARK_INHERITING_CTOR(copy_assignment, super)                        \
-    using super::operator=;                                              \
+    USING_SUPER_ASSIGNMENT_OPERATOR                                      \
                                                                          \
     copy_assignment(const copy_assignment &) = default;                  \
     copy_assignment(copy_assignment &&) = default;                       \
@@ -2141,7 +2155,7 @@ class impl : public copy_assignment<traits<Ts...>> {
 
  public:
   MPARK_INHERITING_CTOR(impl, super)
-  using super::operator=;
+  USING_SUPER_ASSIGNMENT_OPERATOR
 
   template <std::size_t I, typename Arg>
   inline void assign(Arg &&arg) {
