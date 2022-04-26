@@ -191,7 +191,7 @@ struct ColEqual {
   inline bool operator()(const IntT* a,
                          const IntT* b,
                          IntT idx_a,
-                         IntT idx_b) const {
+                         IntT idx_b) {
     for (int i = 0; i < row; ++i) {
       if (a[idx_a + i * col_A] != b[idx_b + i * col_B]) {
         return false;
@@ -212,7 +212,7 @@ struct ColLess {
   inline bool operator()(const IntT* a,
                          const IntT* b,
                          IntT idx_a,
-                         IntT idx_b) const {
+                         IntT idx_b) {
     for (int i = 0; i < row; ++i) {
       if (a[idx_a + i * col_A] == b[idx_b + i * col_B]) {
         continue;
@@ -266,10 +266,10 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
   const auto nnz_x = x.non_zero_elements().dims()[0];
   const auto nnz_y = y.non_zero_elements().dims()[0];
-  const auto x_indices = x.non_zero_indices().template data<IntT>();
-  const auto y_indices = y.non_zero_indices().template data<IntT>();
-  const auto x_values = x.non_zero_elements().template data<T>();
-  const auto y_values = y.non_zero_elements().template data<T>();
+  const auto x_indices = x.non_zero_indices().data<IntT>();
+  const auto y_indices = y.non_zero_indices().data<IntT>();
+  const auto x_values = x.non_zero_elements().data<T>();
+  const auto y_values = y.non_zero_elements().data<T>();
   const auto indices_dim = x.non_zero_indices().dims()[0];
   ColEqual<IntT> ceq = ColEqual<IntT>(indices_dim, nnz_x, nnz_y);
   ColLess<IntT> cle = ColLess<IntT>(indices_dim, nnz_x, nnz_y);
