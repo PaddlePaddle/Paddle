@@ -690,7 +690,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
-        (*node)(node_input_buffer->Buffers(), create_graph);
+        (*node)(node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     // retain_grad or not
     if (!retain_graph) {
