@@ -146,12 +146,12 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                             Out=scale*(X+bias)
 
     Args:
-        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
-        bias(float): The bias to be put on the input.
-        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
-        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        x (Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale (float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
+        bias (float): The bias to be put on the input.
+        bias_after_scale (bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act (str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Output tensor of scale operator, with shape and data type same as input.
@@ -281,9 +281,8 @@ def multiplex(inputs, index, name=None):
     Args:
         inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
         index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
     Returns:
         Tensor: Output of multiplex OP, with data type being float32, float64, int32, int64.
 
@@ -1077,8 +1076,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
@@ -1216,8 +1214,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
@@ -1368,8 +1365,7 @@ def add_n(inputs, name=None):
     Args:
         inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
             Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
-        name(str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the sum of input :math:`inputs` , its shape and data types are consistent with :math:`inputs`.
@@ -1480,8 +1476,7 @@ def mm(input, mat2, name=None):
     Args:
         input (Tensor): The input tensor which is a Tensor.
         mat2 (Tensor): The input tensor which is a Tensor.
-        name(str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The product Tensor.
@@ -1599,7 +1594,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         y (Tensor): The second input Tensor for matrix multiplication.
         beta (float): Coefficient of $input$.
         alpha (float): Coefficient of $x*y$.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output Tensor of addmm op.
@@ -1727,8 +1722,7 @@ def inner(x, y, name=None):
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match y's.
         y (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match x's.
-        name(str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The inner-product Tensor, the output shape is x.shape[:-1] + y.shape[:-1].
@@ -1799,8 +1793,7 @@ def outer(x, y, name=None):
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor. 
         y (Tensor): An N-D Tensor or a Scalar Tensor. 
-        name(str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The outer-product Tensor.
@@ -1923,9 +1916,7 @@ def inverse(x, name=None):
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
             type can be float32 and float64.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information,
-            please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor holds the inverse of x. The shape and data type
@@ -1989,18 +1980,17 @@ def max(x, axis=None, keepdim=False, name=None):
 
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the maximum is computed.
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
@@ -2093,18 +2083,17 @@ def min(x, axis=None, keepdim=False, name=None):
         while min propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the minimum is computed.
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for 
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of minimum on the specified axis of input tensor,
@@ -2197,19 +2186,18 @@ def amax(x, axis=None, keepdim=False, name=None):
         while max propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64,
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64,
             the dimension is no more than 4.
-        axis(int|list|tuple, optional): The axis along which the maximum is computed.
+        axis (int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
@@ -2310,19 +2298,18 @@ def amin(x, axis=None, keepdim=False, name=None):
         while min propagates gradient to all of them.
 
     Args:
-        x(Tensor): A tensor, the data type is float32, float64, int32, int64, 
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64, 
             the dimension is no more than 4.
-        axis(int|list|tuple, optional): The axis along which the minimum is computed.
+        axis (int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for 
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of minimum on the specified axis of input tensor,
@@ -2421,8 +2408,8 @@ def log1p(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name(str, optional): The default value is None.  Normally there is no need for 
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        
     Returns:
         Tensor, the natural log of the input Tensor computed element-wise.
 
@@ -2459,7 +2446,7 @@ def log2(x, name=None):
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
     Returns:
@@ -2511,7 +2498,7 @@ def log10(x, name=None):
 
     Args:
         x (Tensor): Input tensor must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
     Returns:
@@ -2568,9 +2555,7 @@ def clip(x, min=None, max=None, name=None):
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
@@ -2700,11 +2685,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
 
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
-        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: the output data type is the same as input data type.
@@ -2785,11 +2770,11 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset < 0, it is below the main diagonal.
     
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
-        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
@@ -2893,9 +2878,7 @@ ${comment}
         y (Tensor): the second operand of kron op, data type: float16,
             float32, float64, int32 or int64. Its data type should be the same
             with x.
-        name(str, optional): The default value is None.  Normally there is no
-            need for user to set this property.  For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
@@ -3155,19 +3138,18 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
+        x (Tensor): The input tensor, its data type should be float32, float64, int32, int64.
+        axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
-        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
+        dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
             int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
-        name(string, optional): The default value is None. Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
@@ -3253,9 +3235,8 @@ def sign(x, name=None):
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x(Tensor): The input tensor. The data type can be float16, float32 or float64.
-        name (str, optional): The default value is None. Normally there is no need for user to
-            set this property. For more information, please refer to :ref:`api_guide_Name`
+        x (Tensor): The input tensor. The data type can be float16, float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
@@ -3338,7 +3319,7 @@ def increment(x, value=1.0, name=None):
 
     Args:
         x (Tensor): A tensor that must always contain only one element, its data type supports float32, float64, int32 and int64.
-        value(float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3386,8 +3367,7 @@ def all(x, axis=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
@@ -3483,8 +3463,7 @@ def any(x, axis=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
@@ -3599,8 +3578,7 @@ def conj(x, name=None):
     Args:
         x (Tensor): The input tensor which hold the complex numbers. 
             Optional data types are: complex64, complex128, float32, float64, int32 or int64.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The conjugate of input. The shape and data type is the same with input.
@@ -3645,8 +3623,7 @@ def digamma(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name(str, optional): The default value is None.  Normally there is no need for 
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
 
@@ -4201,18 +4178,17 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x(Tensor): The input tensor to compute the forward difference on
-        n(int, optional): The number of times to recursively compute the difference. 
+        x (Tensor): The input tensor to compute the forward difference on
+        n (int, optional): The number of times to recursively compute the difference. 
                           Only support n=1. Default:1
-        axis(int, optional): The axis to compute the difference along. Default:-1
-        prepend(Tensor, optional): The tensor to prepend to input along axis before computing the difference.
+        axis (int, optional): The axis to compute the difference along. Default:-1
+        prepend (Tensor, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x, 
                                    and its shapes must match x's shape except on axis.
-        append(Tensor, optional): The tensor to append to input along axis before computing the difference, 
+        append (Tensor, optional): The tensor to append to input along axis before computing the difference, 
                                    It's dimensions must be equivalent to that of x, 
                                    and its shapes must match x's shape except on axis.
-        name(str|None): A name for this layer(optional). If set None, 
-                        the layer will be named automatically.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
         Tensor: The output tensor with same dtype with x.
@@ -4418,7 +4394,7 @@ def frac(x, name=None):
 
     Args:
         x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
-        name: (str, optional): Name for operation (optional, default is None). For more
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output Tensor of frac.
