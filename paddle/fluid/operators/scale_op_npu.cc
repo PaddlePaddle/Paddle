@@ -51,9 +51,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     float power = 1.0;
     VLOG(4) << "scale:" << scale << ", bias:" << bias
             << " ,bias_after_scale:" << bias_after_scale;
-    if (_is_infinite(-bias)){
-        bias = -SIM_INF;
-    }
+    
     if (ctx.HasInput("ScaleTensor")) {
       auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
       scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
@@ -69,6 +67,16 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       bias *= scale;
     }
     out->mutable_data<T>(ctx.GetPlace());
+
+    // On NPU the power op cannot accept shift as inf/-inf,
+    // so here we change inf to SIM_INF
+    if (isinf(bias)) {
+      if (signbit(bias)) {
+        bias = -std::numeric_limits<float>::max();
+      } else {
+        bias = std::numeric_limits<float>::max();
+      }
+    }
 
     framework::NPUAttributeMap attrs = {
         {"power", power}, {"scale", scale}, {"shift", bias}};
