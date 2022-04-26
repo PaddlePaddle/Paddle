@@ -163,7 +163,6 @@ if(NOT APPLE)
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2
-                -Wno-error=cast-function-type # Warning in boost gcc 8.2
                 -Wno-error=parentheses # Warning in boost gcc 8.2
                 -Wno-error=catch-value # Warning in boost gcc 8.2
                 -Wno-error=nonnull-compare # Warning in boost gcc 8.2
