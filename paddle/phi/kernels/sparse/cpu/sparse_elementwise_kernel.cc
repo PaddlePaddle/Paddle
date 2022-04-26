@@ -70,81 +70,73 @@ void ElementWiseKernelImpl(const Context& dev_ctx,
   IntT x_prev_batch_nnz = 0;
   IntT y_prev_batch_nnz = 0;
 
-  //  out_crows_vec[0] = 0;
-//  out_crows_vec.push_back(0);
-
   IntT nnz = 0;
-  for (int b = 0; b < n_batch; b++) {
+  //  merge two batches
+  for (IntT b = 0; b < n_batch; b++) {
     out_batch_crows_vec.push_back(0);
     IntT x_batch_nnz = 0;
     IntT y_batch_nnz = 0;
     for (IntT i = 0; i < n_row; i++) {
-      IntT A_pos = x_crows_data[i + b * (n_row + 1)];
-      IntT B_pos = y_crows_data[i + b * (n_row + 1)];
+      IntT x_idx = x_crows_data[i + b * (n_row + 1)];
+      IntT y_idx = y_crows_data[i + b * (n_row + 1)];
 
-      IntT A_end = x_crows_data[i + b * (n_row + 1) + 1];
-      IntT B_end = y_crows_data[i + b * (n_row + 1) + 1];
-      x_batch_nnz += (A_end - A_pos);
-      y_batch_nnz += (B_end - B_pos);
+      IntT x_end = x_crows_data[i + b * (n_row + 1) + 1];
+      IntT y_end = y_crows_data[i + b * (n_row + 1) + 1];
+      x_batch_nnz += (x_end - x_idx);
+      y_batch_nnz += (y_end - y_idx);
 
-      // while not finished with either row
-      while (A_pos < A_end && B_pos < B_end) {
-        IntT A_j = x_cols_data[A_pos + x_prev_batch_nnz];
-        IntT B_j = y_cols_data[B_pos + y_prev_batch_nnz];
+      while (x_idx < x_end && y_idx < y_end) {
+        IntT A_j = x_cols_data[x_idx + x_prev_batch_nnz];
+        IntT B_j = y_cols_data[y_idx + y_prev_batch_nnz];
 
         if (A_j == B_j) {
-          T result = functor(x_values_data[A_pos+ x_prev_batch_nnz], y_values_data[B_pos+ y_prev_batch_nnz]);
+          T result = functor(x_values_data[x_idx + x_prev_batch_nnz],
+                             y_values_data[y_idx + y_prev_batch_nnz]);
           if (result != 0) {
-            //            out_cols_vec[nnz] = A_j;
             out_batch_cols_vec.push_back(A_j);
-            //            out_values_vec[nnz] = result;
             out_batch_values_vec.push_back(result);
             nnz++;
           }
-          A_pos++;
-          B_pos++;
+          x_idx++;
+          y_idx++;
         } else if (A_j < B_j) {
-          T result = functor(x_values_data[A_pos+ x_prev_batch_nnz], 0);
+          T result = functor(x_values_data[x_idx + x_prev_batch_nnz], 0);
           if (result != 0) {
             out_batch_cols_vec.push_back(A_j);
             out_batch_values_vec.push_back(result);
             nnz++;
           }
-          A_pos++;
+          x_idx++;
         } else {
-          // B_j < A_j
-          T result = functor(0, y_values_data[B_pos+ y_prev_batch_nnz]);
+          T result = functor(0, y_values_data[y_idx + y_prev_batch_nnz]);
           if (result != 0) {
             out_batch_cols_vec.push_back(B_j);
             out_batch_values_vec.push_back(result);
             nnz++;
           }
-          B_pos++;
+          y_idx++;
         }
       }
 
-      // tail
-      while (A_pos < A_end) {
-        T result = functor(x_values_data[A_pos+ x_prev_batch_nnz], 0);
+      while (x_idx < x_end) {
+        T result = functor(x_values_data[x_idx + x_prev_batch_nnz], 0);
         if (result != 0) {
-          out_batch_cols_vec.push_back(x_cols_data[A_pos+ x_prev_batch_nnz]);
+          out_batch_cols_vec.push_back(x_cols_data[x_idx + x_prev_batch_nnz]);
           out_batch_values_vec.push_back(result);
           nnz++;
         }
-        A_pos++;
+        x_idx++;
       }
-      while (B_pos < B_end) {
-        T result = functor(0, y_values_data[B_pos+ y_prev_batch_nnz]);
+      while (y_idx < y_end) {
+        T result = functor(0, y_values_data[y_idx + y_prev_batch_nnz]);
         if (result != 0) {
-          out_batch_cols_vec.push_back(y_cols_data[B_pos+ y_prev_batch_nnz]);
+          out_batch_cols_vec.push_back(y_cols_data[y_idx + y_prev_batch_nnz]);
           out_batch_values_vec.push_back(result);
           nnz++;
         }
-        B_pos++;
+        y_idx++;
       }
-//      2.9	0.1	0.9	3.6	0	1	4	  4	  6	  6	  0.2	3.6	0	0	0	0	0	0	0	0	2.9	1.1	7.7	0
-//      0	  1	  4	  4	  6	6	0.2	3.6	2.9	1.1	7.7	2.8	3.6	0.3	0	3.2	5.4	2.2	1.8	0.8	3.3	4.6	0	9
-          out_batch_crows_vec.push_back(nnz);
+      out_batch_crows_vec.push_back(nnz);
     }
     nnz = 0;
     x_prev_batch_nnz += x_batch_nnz;
@@ -163,7 +155,7 @@ void ElementWiseKernelImpl(const Context& dev_ctx,
     out_batch_values_vec.clear();
   }
 
-//  out_crows_vec.resize(out_crows_vec.size() - 1);
+  //  out_crows_vec.resize(out_crows_vec.size() - 1);
   DenseTensorMeta crows_meta(
       DataType::INT64,
       phi::make_ddim({static_cast<int64_t>(out_crows_vec.size())}),
@@ -268,7 +260,6 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         "dim = [%s], Y's dim = [%s].",
                         x.dims().size(),
                         y.dims().size()));
-  //  const auto element_size = x.non_zero_elements().dims()[1];
   int64_t element_size = 1;
   for (int j = 1; j < x.non_zero_elements().dims().size(); ++j) {
     element_size *= x.non_zero_elements().dims()[j];
@@ -280,8 +271,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   const auto x_values = x.non_zero_elements().template data<T>();
   const auto y_values = y.non_zero_elements().template data<T>();
   const auto indices_dim = x.non_zero_indices().dims()[0];
-  ColEqual<IntT> ceq(indices_dim, nnz_x, nnz_y);
-  ColLess<IntT> cle(indices_dim, nnz_x, nnz_y);
+  ColEqual<IntT> ceq = ColEqual<IntT>(indices_dim, nnz_x, nnz_y);
+  ColLess<IntT> cle = ColLess<IntT>(indices_dim, nnz_x, nnz_y);
 
   std::vector<std::vector<IntT>> out_indices_vec;
   std::vector<T> out_values_vec;
@@ -372,15 +363,12 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     indeces_dim.insert(indeces_dim.begin(), nnz);
     DenseTensorMeta values_meta(
         paddle::experimental::CppTypeToDataType<T>::Type(),
-        phi::make_ddim(indeces_dim
-                       //            {static_cast<int64_t>(nnz),
-                       //            static_cast<int64_t>(element_size)}
-                       ),
+        phi::make_ddim(indeces_dim),
         DataLayout::NCHW);
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-    for (int j = 0; j < out_indices_vec.size(); ++j) {
+    for (auto j = 0; j < out_indices_vec.size(); ++j) {
       auto* indices_ptr =
           out_indices.template data<IntT>() + j * out_indices_vec[j].size();
       std::copy(
