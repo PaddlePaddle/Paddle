@@ -53,7 +53,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_0 = 0.25
         self.upper_1 = 0.33
 
-        self.places = [fluid.CUDAPlace(0)]
+        self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
