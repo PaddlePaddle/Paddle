@@ -22,8 +22,14 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_grad_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_elementwise_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_elementwise_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
@@ -36,107 +42,29 @@ namespace tests {
                                            \
   TEST_ELEMENTWISE_OP_WITH_TYPE(name, Coo)
 
-#define TEST_ELEMENTWISE_OP_WITH_TYPE(name, type)                              \
-  template <typename T, typename Context>                                      \
-  void TestElementWise##name##type(const Context& dev_ctx_cpu,                 \
-                                   const Sparse##type##Tensor& x,              \
-                                   const Sparse##type##Tensor& y,              \
-                                   const DDim& dense_dims) {                   \
-    auto out = sparse::ElementWise##name##type<T>(dev_ctx_cpu, x, y);          \
-    const DenseTensor denseX =                                                 \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, x);                      \
-    const DenseTensor denseY =                                                 \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, y);                      \
-    const DenseTensor denseOut =                                               \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, out);                    \
-                                                                               \
-    auto expectResult = name<T>(dev_ctx_cpu, denseX, denseY);                  \
-                                                                               \
-    std::vector<T> actual_vec(denseOut.template data<T>(),                     \
-                              denseOut.template data<T>() + denseOut.numel()); \
-    std::vector<T> expect_vec(                                                 \
-        expectResult.template data<T>(),                                       \
-        expectResult.template data<T>() + expectResult.numel());               \
-    for (const auto& item : actual_vec) {                                      \
-      std::cout << item << "\t";                                               \
-    }                                                                          \
-    std::cout << std::endl;                                                    \
-    for (const auto& item : expect_vec) {                                      \
-      std::cout << item << "\t";                                               \
-    }                                                                          \
-    std::cout << std::endl;                                                    \
-                                                                               \
-    for (int j = 0; j < denseOut.numel(); ++j) {                               \
-      auto actualResultRow = denseOut.template data<T>()[j];                   \
-      auto expectResultRow = expectResult.template data<T>()[j];               \
-      if (!std::isnan(expectResultRow)) {                                      \
-        ASSERT_DOUBLE_EQ(expectResultRow, actualResultRow);                    \
-      }                                                                        \
-    }                                                                          \
+#define TEST_ELEMENTWISE_OP_WITH_TYPE(name, type)                     \
+  template <typename T, typename Context>                             \
+  void TestElementWise##name##type(const Context& dev_ctx_cpu,        \
+                                   const Sparse##type##Tensor& x,     \
+                                   const Sparse##type##Tensor& y,     \
+                                   const DDim& dense_dims) {          \
+    auto out = sparse::ElementWise##name##type<T>(dev_ctx_cpu, x, y); \
+    const DenseTensor denseX =                                        \
+        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, x);             \
+    const DenseTensor denseY =                                        \
+        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, y);             \
+    const DenseTensor denseOut =                                      \
+        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, out);           \
+                                                                      \
+    auto expectResult = name<T>(dev_ctx_cpu, denseX, denseY);         \
+    for (int j = 0; j < denseOut.numel(); ++j) {                      \
+      auto actualResultRow = denseOut.template data<T>()[j];          \
+      auto expectResultRow = expectResult.template data<T>()[j];      \
+      if (!std::isnan(expectResultRow)) {                             \
+        ASSERT_DOUBLE_EQ(expectResultRow, actualResultRow);           \
+      }                                                               \
+    }                                                                 \
   }
-
-// template <typename T, typename Context>
-// void TestElementWiseAddCsr(const Context& dev_ctx_cpu,
-//                            const SparseCsrTensor& x,
-//                            const SparseCsrTensor& y,
-//                            const DDim& dense_dims) {
-//   auto out = sparse::ElementWiseAddCsr<T>(dev_ctx_cpu, x, y);
-//   const DenseTensor denseX = sparse::SparseCsrToDense<T>(dev_ctx_cpu, x);
-//   const DenseTensor denseY = sparse::SparseCsrToDense<T>(dev_ctx_cpu, y);
-//   const DenseTensor denseOut = sparse::SparseCsrToDense<T>(dev_ctx_cpu, out);
-//   auto expectResult = Add<T>(dev_ctx_cpu, denseX, denseY);
-//
-//   std::vector<T> actual_vec(denseOut.template data<T>(),
-//                             denseOut.template data<T>() + denseOut.numel());
-//   std::vector<T> expect_vec(
-//       expectResult.template data<T>(),
-//       expectResult.template data<T>() + expectResult.numel());
-//
-//   for (int j = 0; j < denseOut.numel(); ++j) {
-//     auto actualResultRow = denseOut.template data<T>()[j];
-//     auto expectResultRow = expectResult.template data<T>()[j];
-//   }
-// }
-//
-// template <typename T, typename Context>
-// void TestElementWiseAddCoo(const Context& dev_ctx_cpu,
-//                            const SparseCooTensor& x,
-//                            const SparseCooTensor& y,
-//                            const DDim& dense_dims) {
-//   auto out = sparse::ElementWiseAddCoo<T>(dev_ctx_cpu, x, y);
-//   const DenseTensor denseX = sparse::SparseCooToDense<T>(dev_ctx_cpu, x);
-//   const DenseTensor denseY = sparse::SparseCooToDense<T>(dev_ctx_cpu, y);
-//   const DenseTensor denseOut = sparse::SparseCooToDense<T>(dev_ctx_cpu, out);
-//   auto expectResult = Add<T>(dev_ctx_cpu, denseX, denseY);
-//   auto expectResult_coo =
-//       sparse::DenseToSparseCoo<T>(dev_ctx_cpu, expectResult, 2);
-//   std::vector<T> actual_vec(denseOut.template data<T>(),
-//                             denseOut.template data<T>() + denseOut.numel());
-//   std::vector<T> expect_vec(
-//       expectResult.template data<T>(),
-//       expectResult.template data<T>() + expectResult.numel());
-//   //  std::vector<T> expect_ind_vec(
-//   //      expectResult_coo.non_zero_indices().template data<T>(),
-//   //      expectResult_coo.non_zero_indices().template data<T>() +
-//   //      expectResult_coo.non_zero_indices().numel());
-//   //  std::vector<T> expect_nze_vec(
-//   //      expectResult_coo.non_zero_elements().template data<T>(),
-//   //      expectResult_coo.non_zero_elements().template data<T>() +
-//   //      expectResult_coo.non_zero_elements().numel());
-//   for (const auto& item : actual_vec) {
-//     std::cout << item << "\t";
-//   }
-//   std::cout << std::endl;
-//   for (const auto& item : expect_vec) {
-//     std::cout << item << "\t";
-//   }
-//   std::cout << std::endl;
-//
-//   for (int j = 0; j < denseOut.numel(); ++j) {
-//     auto actualResultRow = denseOut.template data<T>()[j];
-//     auto expectResultRow = expectResult.template data<T>()[j];
-//   }
-// }
 
 TEST_ELEMENTWISE_OP(Add)
 TEST_ELEMENTWISE_OP(Subtract)
@@ -151,10 +79,6 @@ TEST(DEV_API, sparse_elementwise_coo_kernel_double) {
                                  0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,
                                  0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 3.0, 0.0,
                                  0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0};
-  //  std::vector<T> x_dense_data = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-  //                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-  //                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-  //                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   std::vector<T> y_dense_data = {0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,
                                  0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
