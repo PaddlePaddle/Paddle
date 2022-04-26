@@ -60,7 +60,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.non_zero_indices();
   const DenseTensor& values = mask.non_zero_elements();
-  int sparse_dim = indices.dims()[0];
+  cosnt int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
       DenseTensorMeta(DataType::INT64, {sparse_dim}, DataLayout::NCHW));
@@ -148,7 +148,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
       2,
       phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
-  const int64_t sparse_dim = x.non_zero_indices().dims()[0];
+  const int32_t sparse_dim = x.sparse_dim();
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
 
   std::vector<IntT> sparse_offsets(sparse_dim);
