@@ -175,6 +175,12 @@ class TestTransformsCV2(unittest.TestCase):
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
 
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(), transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
+
     def test_grayscale(self):
         trans = transforms.Compose([transforms.Grayscale()])
         self.do_transform(trans)
@@ -299,6 +305,24 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             transform = transforms.BrightnessTransform('0.1', keys='a')
 
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=0.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=0.8)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=(10, 0.4))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=(3.3, 0.3))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(prob=1.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(value="0")
+
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
         str(transforms.Compose([transforms.Resize((224, 224))]))
@@ -397,6 +421,13 @@ class TestTransformsTensor(TestTransformsCV2):
 
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
+
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(value=(0.5, )),
+            transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -689,6 +720,16 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+
+    def test_erase(self):
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+
+        F.erase(np_img, 10, 10, 5, 5, 0, inplace=True)
+        np.testing.assert_equal(np_img[12, 12, 0], 0)
+
+        pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
+        np.testing.assert_equal(np.array(pil_result)[12, 12, 0], 0)
 
 
 if __name__ == '__main__':

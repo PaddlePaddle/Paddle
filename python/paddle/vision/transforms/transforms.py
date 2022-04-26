@@ -1304,18 +1304,21 @@ class RandomErasing(BaseTransform):
 
     Args:
         prob (float, optional): Probability of the input data being erased. Default: 0.5.
-        scale (sequence, optional): The proportional range of the erased area to the input image. Default: (0.02, 0.33).
+        scale (sequence, optional): The proportional range of the erased area to the input image. 
+                                    Default: (0.02, 0.33).
         ratio (sequence, optional): Aspect ratio range of the erased area. Default: (0.3, 3.3).
         value (int|float|sequence|str, optional): The value each pixel in erased area will be replaced with.
-                               If value is a single number, all pixels will be erased with this value. If value is 
-                               a sequence with length 3, the R, G, B channels will be ereased respectively. If value
-                               is set to "random", each pixel will be erased with random values. Default: 0.
+                               If value is a single number, all pixels will be erased with this value. 
+                               If value is a sequence with length 3, the R, G, B channels will be ereased 
+                               respectively. If value is set to "random", each pixel will be erased with 
+                               random values. Default: 0.
         inplace (bool, optional): Whether this transform is inplace. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shape:
-        - img(paddle.Tensor): The input image with shape (C x H x W).
-        - output(paddle.Tensor): A random erased image.
+        - img(paddle.Tensor | np.array | PIL.Image): The input image. For Tensor input, the shape should be (C, H, W). 
+                 For np.array input, the shape should be (H, W, C).
+        - output(paddle.Tensor | np.array | PIL.Image): A random erased image.
 
     Returns:
         A callable object of RandomErasing.
@@ -1371,7 +1374,13 @@ class RandomErasing(BaseTransform):
         Returns:
             tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
         """
-        c, h, w = img.shape
+        if F._is_pil_image(img):
+            h, w, c = np.asarray(img).astype(np.uint8).shape
+        elif F._is_numpy_image(img):
+            h, w, c = img.shape
+        elif F._is_tensor_image(img):
+            c, h, w = img.shape
+
         img_area = h * w
         log_ratio = np.log(ratio)
         for _ in range(10):
@@ -1381,10 +1390,17 @@ class RandomErasing(BaseTransform):
             erase_w = int(round(np.sqrt(erase_area / aspect_ratio)))
             if erase_h >= h or erase_w >= w:
                 continue
-            if value is None:
-                v = paddle.normal(shape=[c, erase_h, erase_w]).astype(img.dtype)
+            if F._is_tensor_image(img):
+                if value is None:
+                    v = paddle.normal(
+                        shape=[c, erase_h, erase_w]).astype(img.dtype)
+                else:
+                    v = paddle.to_tensor(value, dtype=img.dtype)[:, None, None]
             else:
-                v = paddle.to_tensor(value, dtype=img.dtype)[:, None, None]
+                if value is None:
+                    v = np.random.normal(size=[erase_h, erase_w, c]) * 255
+                else:
+                    v = np.array(value)[None, None, :]
             top = np.random.randint(0, h - erase_h + 1)
             left = np.random.randint(0, w - erase_w + 1)
 
@@ -1395,10 +1411,10 @@ class RandomErasing(BaseTransform):
     def _apply_image(self, img):
         """
         Args:
-            img (paddle.Tensor): Image to be Erased.
+            img (paddle.Tensor | np.array | PIL.Image): Image to be Erased.
 
         Returns:
-            output(paddle.Tensor): A random erased image.
+            output (paddle.Tensor np.array | PIL.Image): A random erased image.
         """
 
         if random.random() < self.prob:

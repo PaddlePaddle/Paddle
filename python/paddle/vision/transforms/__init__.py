@@ -45,6 +45,7 @@ from .functional import adjust_brightness  # noqa: F401
 from .functional import adjust_contrast  # noqa: F401
 from .functional import adjust_hue  # noqa: F401
 from .functional import normalize  # noqa: F401
+from .functional import erase  # noqa: F401
 
 __all__ = [ #noqa
     'BaseTransform',
@@ -79,5 +80,6 @@ __all__ = [ #noqa
     'adjust_brightness',
     'adjust_contrast',
     'adjust_hue',
-    'normalize'
+    'normalize',
+    'erase',
 ]
