@@ -15,11 +15,12 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-
+import tempfile
+import warnings
+import json
 import paddle
 import paddle.nn as nn
 from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
-from paddle.fluid.reader import set_autotune_config
 import sys
 
 
@@ -51,12 +52,20 @@ class TestAutoTune(unittest.TestCase):
         self.dataset = RandomDataset(10)
 
     def test_dataloader_use_autotune(self):
-        set_autotune_config(True, 1)
+        paddle.incubate.autotune.set_config(
+            config={"dataloader": {
+                "enable": True,
+                "tuning_steps": 1,
+            }})
         loader = DataLoader(
             self.dataset, batch_size=self.batch_size, num_workers=0)
 
     def test_dataloader_disable_autotune(self):
-        set_autotune_config(False)
+        config = {"dataloader": {"enable": False, "tuning_steps": 1}}
+        tfile = tempfile.NamedTemporaryFile(mode="w+")
+        json.dump(config, tfile)
+        tfile.flush()
+        paddle.incubate.autotune.set_config(tfile.name)
         loader = DataLoader(
             self.dataset, batch_size=self.batch_size, num_workers=2)
         if (sys.platform == 'darwin' or sys.platform == 'win32'):
@@ -65,11 +74,26 @@ class TestAutoTune(unittest.TestCase):
             self.assertEqual(loader.num_workers, 2)
 
     def test_distributer_batch_sampler_autotune(self):
-        set_autotune_config(True, 1)
+        paddle.incubate.autotune.set_config(
+            config={"dataloader": {
+                "enable": True,
+                "tuning_steps": 1,
+            }})
         batch_sampler = paddle.io.DistributedBatchSampler(
             self.dataset, batch_size=self.batch_size)
         loader = DataLoader(
             self.dataset, batch_sampler=batch_sampler, num_workers=2)
+
+
+class TestAutoTuneAPI(unittest.TestCase):
+    def test_set_config_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            config = {"kernel": {"enable": 1, "tuning_range": True}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            json.dump(config, tfile)
+            tfile.flush()
+            paddle.incubate.autotune.set_config(tfile.name)
+            self.assertTrue(len(w) == 2)
 
 
 if __name__ == '__main__':
