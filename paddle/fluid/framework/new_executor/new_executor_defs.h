@@ -90,10 +90,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
   bool IsRunMKLDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
-  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string& name) const override;
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;

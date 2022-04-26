@@ -320,7 +320,7 @@ void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
 }
 
 void CompatInferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
+    paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
   int index = compat_inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   compat_inputs_.insert(compat_inputs_.end(),
@@ -329,7 +329,7 @@ void CompatInferMetaContext::EmplaceBackInputs(
 }
 
 void CompatInferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+    paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
         outputs) {
   int index = compat_outputs_.size();
   output_range_.emplace_back(
@@ -428,7 +428,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackInput(
             std::move(CompatMetaTensor(input_var[0], ctx->IsRuntime())));
       } else {
-        paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+        paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
             inputs;
         for (const auto& in : input_var) {
           inputs.emplace_back(
@@ -689,7 +689,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackOutput(
             std::move(CompatMetaTensor(output_var[0], ctx->IsRuntime())));
       } else {
-        paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+        paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
             outputs;
         for (const auto& out : output_var) {
           if (ctx->IsRuntime()) {

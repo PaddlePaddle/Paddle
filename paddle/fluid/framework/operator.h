@@ -333,8 +333,8 @@ class ExecutionContext {
     return it->second;
   }
 
-  virtual paddle::SmallVector<const std::string*> InNameList() const {
-    paddle::SmallVector<const std::string*> vec_temp;
+  virtual paddle::small_vector<const std::string*> InNameList() const {
+    paddle::small_vector<const std::string*> vec_temp;
     vec_temp.reserve(ctx_.inputs.size());
 
     for (auto& input : ctx_.inputs) {
