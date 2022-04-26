@@ -203,10 +203,15 @@ struct ExtractAttribute<std::vector<double>> {
 
   const std::string& attr_name_;
 };
+
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
   return static_cast<proto::AttrType>(tmp.which() - 1);
+}
+
+inline proto::AttrType AttrTypeID(const Attribute& attr) {
+  return static_cast<proto::AttrType>(attr.which() - 1);
 }
 
 class AttrReader {
