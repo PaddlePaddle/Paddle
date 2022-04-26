@@ -279,7 +279,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
 
   int *actual_sample_size = new int[key.size()];
-  cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
+  cudaMemcpy(actual_sample_size, neighbor_sample_res->actual_sample_size,
              key.size() * sizeof(int),
              cudaMemcpyDeviceToHost);  // 3, 1, 3
   int cumsum = 0;
@@ -288,18 +288,18 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   }
   /* VLOG(0) << "cumsum " << cumsum; */
 
-  std::vector<int64_t> res;
-  res.resize(cumsum * 2);
-  int count = 0;
+  std::vector<int64_t> cpu_key, res;
+  cpu_key.resize(key.size() * sample_size);
+
+  cudaMemcpy(cpu_key.data(), neighbor_sample_res->val,
+             key.size() * sample_size * sizeof(int64_t),
+             cudaMemcpyDeviceToHost);
   for (int i = 0; i < key.size(); i++) {
     for (int j = 0; j < actual_sample_size[i]; j++) {
-      res[count] = key[i];
-      count += 1;
+      res.push_back(key[i]);
+      res.push_back(cpu_key[i * sample_size + j]);
     }
   }
-
-  cudaMemcpy(res.data() + cumsum, neighbor_sample_res.val,
-             cumsum * sizeof(int64_t), cudaMemcpyDeviceToHost);
   /* for(int i = 0;i < res.size();i ++) { */
   /*     VLOG(0) << i << " " << res[i]; */
   /* } */
