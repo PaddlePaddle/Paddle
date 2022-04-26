@@ -1000,6 +1000,20 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   argument_.PartiallyRelease();
   config_.PartiallyRelease();
   LOG(INFO) << "======= optimize end =======";
+  // debuggggggg
+  framework::ProgramDesc *prog = inference_program_.get();
+  VLOG(3) << "inference_program_ has blocks number: " << prog->Size();
+  for (size_t i=0; i<prog->Size(); i++) {
+    VLOG(3) << "------------block id: " << i<<"---------------";
+    framework::BlockDesc* block = prog->MutableBlock(i);
+    for (auto* op : block->AllOps()) {
+      VLOG(3) << "block_id: "<< i << "; op type: " << op->Type();
+      if (op->Type()=="while") {
+        op->SetBlockAttr("sub_block", prog->MutableBlock(4));
+        VLOG(3) << "update sub block of while to block-" << prog->MutableBlock(4)->ID();
+      }
+    }
+  } 
 }
 
 template <>
@@ -1764,6 +1778,7 @@ USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
+USE_TRT_CONVERTER(transformer_decoder)
 #endif
 
 namespace paddle_infer {

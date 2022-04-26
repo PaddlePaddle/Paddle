@@ -27,6 +27,7 @@ nv_library(tensorrt_converter
                 preln_skip_layernorm.cc
                 preln_residual_bias.cc
                 c_allreduce_op.cc
+                transformer_decoder_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS

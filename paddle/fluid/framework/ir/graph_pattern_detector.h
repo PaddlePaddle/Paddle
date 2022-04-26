@@ -69,9 +69,19 @@ struct PDNode {
   PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
+    bool print = false;
+    if (node->Name()=="fill_constant_batch_size_like_0.tmp_0" && name_ == "transformer_decoder_fuse_v2/transformer_decoder/2/k_cache") {
+      VLOG(3) << "tell fill_constant_batch_size_like_2.tmp_0 vs transformer_decoder_fuse_v2/transformer_decoder/2/k_cache";
+      print = true;
+    }
     if (teller_) return teller_(node);
 
+    int i = 0;
     for (auto& asrt : asserts_) {
+      if (print) {
+        VLOG(3) << "assert: " << i;
+      }
+      i++;
       if (!asrt(node)) return false;
     }
     return true;
@@ -115,9 +125,11 @@ struct PDNode {
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
   PDNode* assert_is_op_output(const std::string& op_type);
+  PDNode* assert_is_op_output_debug(const std::string& op_type);
   PDNode* assert_is_op_output(const std::string& op_type,
                               const std::string& argument);
   PDNode* assert_is_op_input(const std::string& op_type);
+  PDNode* assert_is_op_input_debug(const std::string& op_type);
   PDNode* assert_is_op_input(const std::string& op_type,
                              const std::string& argument);
   PDNode* assert_is_op_nth_input(const std::string& op_type,

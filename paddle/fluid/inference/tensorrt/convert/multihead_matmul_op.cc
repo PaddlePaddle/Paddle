@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -366,8 +367,54 @@ class MultiheadMatMulOpConverter : public OpConverter {
         fc_layer->setName(
             ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+        if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+          with_fp16 = true;
+        }
+
         // no need to add shuffle after fc, just change it in
         // QkvToContextPluginDynamic
+
+        // ################write kv cache############################
+        // FC output: (B, S, 3 * N * H, 1, 1)
+        auto* fc_out = fc_layer->getOutput(0);
+
+        auto fc_out_dims = fc_out->getDimensions();
+        VLOG(4) << "fc_out_dims: ";
+        for (int i=0; i<fc_out_dims.nbDims; i++) {
+          VLOG(4) << fc_out_dims.d[i];
+        }
+        
+        int n_h = fc_out_dims.d[2] / 3;
+        int axis = 2;
+        std::vector<int> output_lengths= {n_h, 2*n_h};
+        VLOG(4) << "step1";
+        plugin::SplitPluginDynamic* slice = new plugin::SplitPluginDynamic(
+          axis, output_lengths, with_fp16, true);
+        auto* slice_layer = engine_->AddDynamicPlugin(&fc_out, 1, slice);
+        VLOG(4) << "step2";
+        auto out_name = op_desc.Output("KVCache")[0];
+        VLOG(4) << "out_name: " << out_name;
+        slice_layer->getOutput(1)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, slice_layer->getOutput(1));
+        VLOG(3) << "
+        : " << out_name;
+        // out_name = op_desc.Output("VCache")[0];
+        // VLOG(4) << "out_name: " << out_name;
+        // slice_layer->getOutput(2)->setName(out_name.c_str());
+        // engine_->SetITensor(out_name, slice_layer->getOutput(2));
+
+        
+        auto kv_dims = slice_layer->getOutput(1)->getDimensions();
+        VLOG(4) << "kv cache: ";
+        for (int i=0; i<kv_dims.nbDims; i++) {
+          VLOG(4) << kv_dims.d[i];
+        }
+        // reshpe [B, seq, 2*head_number*head_size, 1] to [B, head_number, max_seq_length, 2*head_size]
+        
+        // ##############write kv cache end ########################     
 
         // add qkv to context
         int head_size = hidden_out / head_number;
@@ -376,12 +423,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-
-        if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
-          with_fp16 = true;
-        }
+        
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(hidden_in, head_number,
                                                   head_size, scale, with_fp16);

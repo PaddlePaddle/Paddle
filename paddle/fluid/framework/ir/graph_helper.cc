@@ -540,6 +540,7 @@ static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
   GetGraphOpDesc(nodes, &ops);
   for (auto &op : ops) {
     block->add_ops()->MergeFrom(*op.Proto());
+//    VLOG(3) << "Add op: " << op.Type();
   }
 }
 
@@ -553,7 +554,7 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
       program,
       platform::errors::InvalidArgument(
           "program must not be nullptr when converting graph to program"));
-
+  VLOG(3) << "before convert, program has blocks number: " << program->Size();
   proto::ProgramDesc program_pb(*(program->Proto()));
   auto block = program_pb.mutable_blocks(kRootBlockIndex);
   block->set_idx(kRootBlockIndex);
@@ -566,17 +567,24 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
     for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
       // avoid kRootBlockIndex not 0
       if (idx == kRootBlockIndex) continue;
-
+      
+      // block = program_pb.mutable_blocks(idx);
       block = program_pb.add_blocks();
-      block->set_idx(idx);
+      int block_id = program_pb.blocks_size()-1;
+      block->set_idx(block_id);
       block->set_parent_idx(kRootBlockIndex);
+      
       GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+      VLOG(3) << "convert subgraph: " << idx << "; block id: " << block_id;
     }
   } else {
     GraphToBlock(graph, block, sort_kind);
   }
-
+  
   program->CopyFrom(program_pb);
+  VLOG(3) << "after convert, program has blocks number: " << program->Size();
+  //global_block->Flush();
+  //VLOG(3) << "flushed";
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

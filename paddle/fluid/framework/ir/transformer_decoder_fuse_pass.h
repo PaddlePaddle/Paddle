@@ -24,9 +24,9 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct MultiHeadMatmulPattern : public PatternBase {
-  MultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "multihead_matmul") {}
+struct TransformerDecoderPattern : public PatternBase {
+  TransformerDecoderPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transformer_decoder") {}
 
   PDNode* operator()();
 
@@ -80,113 +80,40 @@ struct MultiHeadMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_qkv);
   PATTERN_DECL_NODE(matmul_qkv_out);
 
+
   // KVCache
-  PATTERN_DECL_NODE(fill1_in);
-  //PATTERN_DECL_NODE(fill2_in);
-  PATTERN_DECL_NODE(fill1);
-  PATTERN_DECL_NODE(fill2);
-  PATTERN_DECL_NODE(fill1_out);
-  PATTERN_DECL_NODE(fill2_out);
   PATTERN_DECL_NODE(concat1);
   PATTERN_DECL_NODE(concat2);
   PATTERN_DECL_NODE(concat1_out);
   PATTERN_DECL_NODE(concat2_out);
   PATTERN_DECL_NODE(assign1);
   PATTERN_DECL_NODE(assign2);
+  PATTERN_DECL_NODE(k_cache_w);
+  PATTERN_DECL_NODE(v_cache_w);
+  PATTERN_DECL_NODE(k_cache_r);
+  PATTERN_DECL_NODE(v_cache_r);
+  PATTERN_DECL_NODE(gather1);
+  PATTERN_DECL_NODE(gather2);
+  PATTERN_DECL_NODE(gather1_out);
+  PATTERN_DECL_NODE(gather2_out);
+  PATTERN_DECL_NODE(gather_index);
   
-};
-
-struct MultiHeadMatmulV3Pattern : public PatternBase {
-  MultiHeadMatmulV3Pattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "multihead_matmul_v3") {}
-
-  PDNode* operator()();
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(input0);
-  PATTERN_DECL_NODE(mul0);
-  PATTERN_DECL_NODE(mul1);
-  PATTERN_DECL_NODE(mul2);
-  PATTERN_DECL_NODE(mul0_w);
-  PATTERN_DECL_NODE(mul1_w);
-  PATTERN_DECL_NODE(mul2_w);
-  PATTERN_DECL_NODE(mul0_out);
-  PATTERN_DECL_NODE(mul1_out);
-  PATTERN_DECL_NODE(mul2_out);
-  PATTERN_DECL_NODE(eltadd0);    // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd1);    // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd2);    // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd0_b);  // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd1_b);  // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd2_b);  // ELEMENTWISE_ADD
-  PATTERN_DECL_NODE(eltadd0_out);
-  PATTERN_DECL_NODE(eltadd1_out);
-  PATTERN_DECL_NODE(eltadd2_out);
-  PATTERN_DECL_NODE(reshape2_0);
-  PATTERN_DECL_NODE(reshape2_1);
-  PATTERN_DECL_NODE(reshape2_2);
-  PATTERN_DECL_NODE(reshape2_qkv);
-  PATTERN_DECL_NODE(reshape2_0_out);
-  PATTERN_DECL_NODE(reshape2_1_out);
-  PATTERN_DECL_NODE(reshape2_2_out);
-  PATTERN_DECL_NODE(reshape2_qkv_out);
-  PATTERN_DECL_NODE(transpose2_0);
-  PATTERN_DECL_NODE(transpose2_1);
-  PATTERN_DECL_NODE(transpose2_2);
-  PATTERN_DECL_NODE(transpose2_qkv);
-  PATTERN_DECL_NODE(transpose2_0_out);
-  PATTERN_DECL_NODE(transpose2_1_out);
-  PATTERN_DECL_NODE(transpose2_2_out);
-  PATTERN_DECL_NODE(transpose2_qkv_out);
-  PATTERN_DECL_NODE(matmul_qk);
-  PATTERN_DECL_NODE(matmul_qk_out);
-  PATTERN_DECL_NODE(eltadd_qk);
-  PATTERN_DECL_NODE(eltadd_qk_b);
-  PATTERN_DECL_NODE(eltadd_qk_out);
-  PATTERN_DECL_NODE(softmax_qk);
-  PATTERN_DECL_NODE(softmax_qk_out);
-
-  PATTERN_DECL_NODE(matmul_qkv);
-  PATTERN_DECL_NODE(matmul_qkv_out);
 };
 
 }  // namespace patterns
 
-class MultiHeadMatmulFusePass : public FusePassBase {
+
+class TransformerDecoderV2FusePass : public FusePassBase {
  public:
-  virtual ~MultiHeadMatmulFusePass() {}
+  TransformerDecoderV2FusePass();
 
  protected:
   void ApplyImpl(Graph* graph) const;
 
-  const std::string name_scope_{"multihead_matmul_fuse"};
-};
-
-class MultiHeadMatmulV2FusePass : public FusePassBase {
- public:
-  MultiHeadMatmulV2FusePass();
-
- protected:
-  void ApplyImpl(Graph* graph) const;
-
-  const std::string name_scope_{"multihead_matmul_fuse_v2"};
+  const std::string name_scope_{"transformer_decoder_fuse_v2"};
 
  private:
   int BuildFusionV2(Graph* graph, const std::string& name_scope,
-                    Scope* scope) const;
-};
-
-class MultiHeadMatmulV3FusePass : public FusePassBase {
- public:
-  MultiHeadMatmulV3FusePass();
-
- protected:
-  void ApplyImpl(Graph* graph) const;
-
-  const std::string name_scope_{"multihead_matmul_fuse_v3"};
-
- private:
-  int BuildFusionV3(Graph* graph, const std::string& name_scope,
                     Scope* scope) const;
 };
 

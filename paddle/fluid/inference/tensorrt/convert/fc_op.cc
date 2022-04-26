@@ -97,7 +97,7 @@ class FcOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(
         Y_v, platform::errors::NotFound(
-                 "Can not find %s presistale var of fc in scope.", w_name));
+                 "Can not find %s presistale var of fc in scope.", op_desc.Input(w_name).front()));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")

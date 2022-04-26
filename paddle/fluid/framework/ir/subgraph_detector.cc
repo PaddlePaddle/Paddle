@@ -35,7 +35,6 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     }
     return false;
   };
-
   for (auto &node : graph) {
     for (auto *in : node->inputs) {
       // The Value that is written by nodes inside a sub-graph shouldn't be the
@@ -50,6 +49,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
   }
+  VLOG(3) << "extract outputs: " << outputs.size();
   return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
@@ -389,7 +389,13 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
 
   for (auto *output : *outputs) {
     int num_used = 0;
+    VLOG(3) << "check output: " << output->Name();
+    if (output->outputs.size() == 0 && output->Name().rfind("fill_constant_batch_size_like", 0) == 0) {
+      VLOG(3) << "output size == 0";
+      valid_output.insert(output); // debuggggg
+    }
     for (auto *node : output->outputs) {
+      VLOG(10) << "next node: " << node->Name() << "; in subgraph: " << subgraph_set.count(node);
       if (!subgraph_set.count(node)) ++num_used;
       if (num_used > 0) valid_output.insert(output);
     }
@@ -412,6 +418,28 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= (size_t)min_subgraph_size_) continue;
+
+  VLOG(3) << "check graph_";
+    for(auto* node : graph_->Nodes()) {
+      if (node->IsVar() && node->Name()=="fill_constant_batch_size_like_8.tmp_0") {
+        VLOG(3) << "meet fill_constant_batch_size_like_8.tmp_0";
+        for (auto* out : node->outputs) {
+          VLOG(3) << "fill contant var's next op: " << out->Name();
+        }
+      }
+    }
+
+    VLOG(3) << "check sbgraph";
+    for(auto* node : subgraph) {
+      VLOG(3) << "node: " << node->Name();
+      if (node->IsVar() && node->Name()=="fill_constant_batch_size_like_8.tmp_0") {
+        VLOG(3) << "meet fill_constant_batch_size_like_8.tmp_0";
+        for (auto* out : node->outputs) {
+          VLOG(3) << "fill contant var's next op: " << out->Name();
+        }
+      }
+    }
+
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
@@ -424,8 +452,10 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 
-    RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
+  
 
+    RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
+    VLOG(3) << "outputs number after RemoveIntermediateOutputInSubgraph: " << block_node->outputs.size();
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
       // pass.

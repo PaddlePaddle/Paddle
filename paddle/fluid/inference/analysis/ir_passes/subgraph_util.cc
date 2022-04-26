@@ -48,11 +48,11 @@ std::vector<std::string> ExtractParameters(
                 std::back_inserter(feed_outputs));
     }
   }
-
+  VLOG(3) << "feed_outputs size: " << feed_outputs.size();
   std::vector<std::string> parameters;
   for (const auto &node : nodes) {
     if (!node->IsVar()) continue;
-    if (node->Var()->Persistable() &&
+    if (node->Var() && node->Var()->Persistable() &&
         std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
             feed_outputs.end()) {
       parameters.push_back(node->Name());
@@ -63,6 +63,7 @@ std::vector<std::string> ExtractParameters(
     parameters.erase(std::unique(parameters.begin(), parameters.end()),
                      parameters.end());
   }
+  VLOG(3) << "parameters size: " << parameters.size();
   return parameters;
 }
 

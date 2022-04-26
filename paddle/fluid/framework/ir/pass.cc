@@ -50,6 +50,14 @@ Graph *Pass::Apply(Graph *graph) const {
                           "Required atrribute %s for graph is not set.", attr));
   }
   ApplyImpl(graph);
+  VLOG(3) << "applied pass: " << Type();
+  for(auto* node : graph->Nodes()) {
+    if (node->IsVar() && node->Name()=="fill_constant_batch_size_like_8.tmp_0") {
+       for (auto* out : node->outputs) {
+         VLOG(3) << "fill contant var's next op: " << out->Name();
+       }
+    }
+  }
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE_EQ(
       HasCircle(*graph), false,
@@ -63,12 +71,11 @@ Graph *Pass::Apply(Graph *graph) const {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
-
-  if(graph->IsMainGraph() and "graph_viz_pass"!=Type()) {
-    VLOG(5) << "find sub_graphs: " << graph->SubGraphsSize() << " in pass: " << Type();
-    for(size_t i=0; i<graph->SubGraphsSize(); i++) {
+  if(graph->IsMainGraph() and "graph_viz_pass"!=Type() and "graph_to_program_pass"!=Type()) {
+    VLOG(3) << "find sub_graphs: " << graph->SubGraphsSize() << " in pass: " << Type();
+    for(size_t i=1; i<graph->SubGraphsSize(); i++) {
       auto* sub_graph = graph->GetSubGraph(i);
-      VLOG(5) << "process graph: " << i;
+      VLOG(3) << "process graph: " << i;
       if(!sub_graph->Has(framework::ir::kParamScopeAttr)) { 
         sub_graph->SetNotOwned<Scope>(framework::ir::kParamScopeAttr, &graph->Get<Scope>(framework::ir::kParamScopeAttr));
       }

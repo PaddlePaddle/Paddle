@@ -229,6 +229,7 @@ GraphPatternDetector::DetectPatterns() {
     for (Node *source : pdnodes2nodes_[edge.first]) {
       for (Node *target : pdnodes2nodes_[edge.second]) {
         VLOG(8) << "check " << source->id() << " -- " << target->id();
+        VLOG(8) << "check " << source->Name() << " -- " << target->Name();
         // TODO(Superjomn) add some prune strategies.
         for (const auto &group : pre_groups) {
           if (IsNodesLink(source, target)) {
@@ -518,6 +519,24 @@ PDNode *PDNode::assert_is_op_output(const std::string &op_type) {
   return this;
 }
 
+PDNode *PDNode::assert_is_op_output_debug(const std::string &op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->inputs) {
+      if (op && op->IsOp() && op->Op()) {
+        VLOG(3) <<"inputs op type: "<<op->Op()->Type() << "; except: " << op_type;
+      } else {
+        VLOG(3) <<"inputs is not op";
+      }
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
 PDNode *PDNode::assert_is_op_output(const std::string &op_type,
                                     const std::string &argument) {
   assert_is_var();
@@ -529,6 +548,24 @@ PDNode *PDNode::assert_is_op_input(const std::string &op_type) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
     for (auto *op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_op_input_debug(const std::string &op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->outputs) {
+      if (op && op->IsOp() && op->Op()) {
+        VLOG(3) <<"outputs op type: "<<op->Op()->Type() << "; except: " << op_type;
+      } else {
+        VLOG(3) <<"outputs: is not op";
+      }
       if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type) {
         return true;
       }

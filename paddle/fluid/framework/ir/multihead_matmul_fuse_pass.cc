@@ -233,22 +233,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   return fusion_count;
 }
 
+// debuggggg
 PDNode* MultiHeadMatmulPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
-  input0->assert_is_op_input("c_identity");
-
-  auto* c_identity0 =
-      pattern->NewNode(c_identity0_repr())->assert_is_op("c_identity");
-  auto* c_identity0_out_var = pattern->NewNode(c_identity0_out_repr())
-                                  ->assert_is_op_output("c_identity");
-  auto* c_identity1 =
-      pattern->NewNode(c_identity1_repr())->assert_is_op("c_identity");
-  auto* c_identity1_out_var = pattern->NewNode(c_identity1_out_repr())
-                                  ->assert_is_op_output("c_identity");
-  auto* c_identity2 =
-      pattern->NewNode(c_identity2_repr())->assert_is_op("c_identity");
-  auto* c_identity2_out_var = pattern->NewNode(c_identity2_out_repr())
-                                  ->assert_is_op_output("c_identity");
 
   // First path with scale
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_op("mul");
@@ -363,7 +350,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                    ->assert_is_op_output("transpose2");
   transpose2_1_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul");  // link to matmul qk
+      "concat");  // link to matmul qk
 
   // Third path to matmul
   auto* mul2 = pattern->NewNode(mul2_repr())->assert_is_op("mul");
@@ -399,42 +386,76 @@ PDNode* MultiHeadMatmulPattern::operator()() {
   auto* transpose2_2_out_var = pattern->NewNode(transpose2_2_out_repr())
                                    ->assert_is_op_output("transpose2");
   transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul");  // link to matmul qkv
+      "concat");  // link to matmul qkv
 
-  c_identity0->LinksFrom({input0}).LinksTo({c_identity0_out_var});
-  c_identity1->LinksFrom({input0}).LinksTo({c_identity1_out_var});
-  c_identity2->LinksFrom({input0}).LinksTo({c_identity2_out_var});
+  auto* fill1_in_var = pattern->NewNode(fill1_in_repr())
+                                   ->assert_is_op_input("fill_constant_batch_size_like");
+  auto* fill1 =
+      pattern->NewNode(fill1_repr());//->assert_is_op("fill_constant_batch_size_like");
+  auto* fill1_out_var = pattern->NewNode(fill1_out_repr())
+                                   ->assert_is_op_output("fill_constant_batch_size_like")
+                                   ->assert_is_op_input("concat");
+  auto* concat1 =
+      pattern->NewNode(concat1_repr())->assert_is_op("concat"); 
+  auto* concat1_out_var = pattern->NewNode(concat1_out_repr())
+                                   ->assert_is_op_output("concat")
+                                   ->assert_is_op_input("matmul");
+  auto* assign1 = pattern->NewNode(assign1_repr())->assert_is_op("assign");                             
+
+  //auto* fill2_in_var = pattern->NewNode(fill2_in_repr())
+  //                                 ->assert_is_op_input("fill_constant_batch_size_like");
+  auto* fill2 =
+      pattern->NewNode(fill2_repr());//->assert_is_op("fill_constant_batch_size_like");
+  auto* fill2_out_var = pattern->NewNode(fill2_out_repr())
+                                   ->assert_is_op_output("fill_constant_batch_size_like")
+                                   ->assert_is_op_input("concat");
+  auto* concat2 =
+      pattern->NewNode(concat2_repr())->assert_is_op("concat"); 
+  auto* concat2_out_var = pattern->NewNode(concat2_out_repr())
+                                   ->assert_is_op_output("concat")
+                                   ->assert_is_op_input("matmul");
+  auto* assign2 = pattern->NewNode(assign2_repr())->assert_is_op("assign");
 
   // Q path
-  mul0->LinksFrom({c_identity0_out_var, mul0_w_var}).LinksTo({mul0_out_var});
+  mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
   eltadd0->LinksFrom({mul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
 
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
   scale->LinksFrom({transpose2_0_out_var}).LinksTo({scale_out_var});
   // K path
-  mul1->LinksFrom({c_identity1_out_var, mul1_w_var}).LinksTo({mul1_out_var});
+  mul1->LinksFrom({input0, mul1_w_var}).LinksTo({mul1_out_var});
   eltadd1->LinksFrom({mul1_out_var, eltadd1_b_var}).LinksTo({eltadd1_out_var});
   reshape2_1->LinksFrom({eltadd1_out_var}).LinksTo({reshape2_1_out_var});
   transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
   // compute q*k
-  matmul_qk->LinksFrom({scale_out_var, transpose2_1_out_var})
+  matmul_qk->LinksFrom({scale_out_var, concat1_out_var})
       .LinksTo({matmul_qk_out_var});
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
   // V  path
-  mul2->LinksFrom({c_identity2_out_var, mul2_w_var}).LinksTo({mul2_out_var});
+  mul2->LinksFrom({input0, mul2_w_var}).LinksTo({mul2_out_var});
   eltadd2->LinksFrom({mul2_out_var, eltadd2_b_var}).LinksTo({eltadd2_out_var});
   reshape2_2->LinksFrom({eltadd2_out_var}).LinksTo({reshape2_2_out_var});
   transpose2_2->LinksFrom({reshape2_2_out_var}).LinksTo({transpose2_2_out_var});
   // compute q*k*v
-  matmul_qkv->LinksFrom({softmax_qk_out_var, transpose2_2_out_var})
+  matmul_qkv->LinksFrom({softmax_qk_out_var, concat2_out_var})
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
   reshape2_qkv->LinksFrom({transpose2_qkv_out_var})
       .LinksTo({reshape2_qkv_out_var});
+
+  fill1->LinksFrom({fill1_in_var}).LinksTo({fill1_out_var});
+  concat1->LinksFrom({transpose2_1_out_var, fill1_out_var})
+      .LinksTo({concat1_out_var});
+  assign1->LinksFrom({concat1_out_var});
+
+  fill2->LinksFrom({fill1_in_var}).LinksTo({fill2_out_var});
+  concat2->LinksFrom({transpose2_2_out_var, fill2_out_var})
+      .LinksTo({concat2_out_var});
+  assign2->LinksFrom({concat2_out_var});
 
   return transpose2_2_out_var;
 }
@@ -760,6 +781,35 @@ MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
       .AddAttr("axis")
       .IsIntIn({-1, 3})  // shape is (B, H, S, S), so axis is -1 or 3
       .End();
+
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")  // Input("X"): vector<tensors>
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End();
+//   AddOpCompat(OpCompat("fill_constant_batch_size_like"))
+//       .AddInput("Input")  // Input("X"): vector<tensors>
+//       .End()
+//       .AddOutput("Out")
+//       .IsTensor()
+//       .End()
+//       .AddAttr("value")
+//       .End()
+//       .AddAttr("shape")
+//       .End()
+//       .AddAttr("force_cpu")
+//       .End()
+//       .AddAttr("str_value")
+//       .End()
+//       .AddAttr("input_dim_idx")
+//       .End();
 }
 
 int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
@@ -779,7 +829,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
       Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk, Node* reshape2_qkv) {
+      Node* matmul_qk, Node* reshape2_qkv, Node* fill1_out, Node* fill2_out) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -873,6 +923,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetInput("W", {mul0_w->Name()});
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
+    multihead_op_desc.SetOutput("KVCache", {fill1_out->Name()});
+    // multihead_op_desc.SetOutput("VCache", {fill2_out->Name()});
+    VLOG(3) << "Set KVCache to fill1_out: " << fill1_out->Name();
+    VLOG(3) << "fill2_out: " << fill2_out->Name();
+
 
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("alpha", scale_attr);
@@ -922,28 +977,20 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     IR_NODE_LINK_TO(eltadd_qk_b, multihead);
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
+    IR_NODE_LINK_TO(multihead,fill1_out);
+    // IR_NODE_LINK_TO(multihead, fill2_out);
   };
 
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING)
-          << "Op compat check in multihead_matmul_fuse_pass_v2 failed.";
-      return;
-    }
+    // if (!IsCompat(subgraph, g)) {
+    //   LOG(WARNING)
+    //       << "Op compat check in multihead_matmul_fuse_pass_v2 failed.";
+    //   return;
+    // }
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input0, input0, multihead_pattern);
-
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity0, c_identity0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity0_out, c_identity0_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity1, c_identity1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity1_out, c_identity1_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity2, c_identity2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity2_out, c_identity2_out,
-                              multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul0, mul0, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
@@ -1012,21 +1059,34 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                               multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
                               multihead_pattern);
+    // KVCache
+    GET_IR_NODE_FROM_SUBGRAPH(fill1_in, fill1_in, multihead_pattern);
+    //GET_IR_NODE_FROM_SUBGRAPH(fill2_in, fill2_in, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fill1, fill1, multihead_pattern); 
+    GET_IR_NODE_FROM_SUBGRAPH(fill2, fill2, multihead_pattern); 
+    GET_IR_NODE_FROM_SUBGRAPH(fill1_out, fill1_out, multihead_pattern); 
+    GET_IR_NODE_FROM_SUBGRAPH(fill2_out, fill2_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat1, concat1, multihead_pattern); 
+    GET_IR_NODE_FROM_SUBGRAPH(concat2, concat2, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat1_out, concat1_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat2_out, concat2_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(assign1, assign1, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(assign2, assign2, multihead_pattern); 
 
     // If weights or biases in qkv's fc are shared by multiple multihead_matmul
     // patterns, we do not support this kind of fusion, this pass will not take
     // effect.
-    bool is_fc_params_shared =
-        mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
-        mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
-        eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
-    if (is_fc_params_shared) {
-      return;
-    }
+    // bool is_fc_params_shared =
+    //     mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
+    //     mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
+    //     eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
+    // if (is_fc_params_shared) {
+    //   return;
+    // }
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv);
+                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv, fill1_out, fill2_out);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
@@ -1058,12 +1118,6 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                                                   transpose2_qkv_out,
                                                   matmul_qkv,
                                                   matmul_qkv_out,
-                                                  c_identity0,
-                                                  c_identity1,
-                                                  c_identity2,
-                                                  c_identity0_out,
-                                                  c_identity1_out,
-                                                  c_identity2_out,
                                                   mul0,
                                                   mul1,
                                                   mul2,
@@ -1073,7 +1127,12 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                                                   mul1_w,
                                                   mul2_w,
                                                   reshape2_qkv,
-                                                  scale});
+                                                  scale,
+                                                  //fill1_in,
+                                                  //fill2_in,
+                                                  fill1, fill2, concat1, concat2, concat1_out, concat2_out, assign1, assign2,
+                                                  fill2_out
+                                                  });
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;

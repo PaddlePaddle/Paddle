@@ -121,7 +121,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "preln_residual_bias",
-      "c_allreduce_sum"};
+      "c_allreduce_sum",
+      "transformer_decoder"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -186,12 +187,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "preln_residual_bias",
-      "c_allreduce_sum"};
+      "c_allreduce_sum",
+      "transformer_decoder"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
+  VLOG(3) << "tell op: " << op_type;
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
@@ -1014,13 +1017,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
+      auto* y_var_desc = block->FindVarRecursive(desc.Input("Y")[0]);
+      VLOG(3) << "x_name" << desc.Input("X")[0];
       const auto x_shape = x_var_desc->GetShape();
+      VLOG(3) << "Y_name" << desc.Input("Y")[0];
+      // if (y_var_desc==nullptr) {
+      //   VLOG(3) << desc.Input("Y")[0] << " is null";
+      // } else {
+      //   auto v_type = y_var_desc->GetType();
+      //   VLOG(3) << "v_type: " << v_type;
+      //   // auto t_desc = y_var_desc->tensor_desc();
+      //   // if (t_desc==nullptr) {
+      //   //     VLOG(3) << "t_desc is null";
+      //   // }
+        
+      // }
       const auto y_shape = y_var_desc->GetShape();
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
+      }
+      if (op_type == "elementwise_add") {
+        if ((!x_var_desc->Persistable()) && (!y_var_desc->Persistable())) {
+          if(x_shape.size() != y_shape.size()) {
+            VLOG(3) << "The dimensions' number of x and y should be same when they are not persistable.";
+            return false;
+          }
+        }
       }
       if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
         if (x_var_desc->Persistable()) {
