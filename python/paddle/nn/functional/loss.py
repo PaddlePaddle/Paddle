@@ -2297,13 +2297,11 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             "the 0 axis size of input should be same as target size, but found mismatch size"
         )
 
-    if "{}".format(
-            input1.dtype) not in ["paddle.float32", "paddle.float64"]:
+    if "{}".format(input1.dtype) not in ["paddle.float32", "paddle.float64"]:
         raise ValueError(
             "The data type of input Variable must be 'float32' or 'float64'")
     if "{}".format(label.dtype) not in [
-            "paddle.int32", "paddle.int64", "paddle.float32",
-            "paddle.float64"
+            "paddle.int32", "paddle.int64", "paddle.float32", "paddle.float64"
     ]:
         raise ValueError(
             "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
