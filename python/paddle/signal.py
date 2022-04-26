@@ -383,7 +383,7 @@ def stft(x,
     out = out.transpose(perm=[0, 2, 1])  # (batch, n_fft, num_frames)
 
     if x_rank == 1:
-        out.squeeze_(0)
+        out = out.squeeze(0)
 
     return out
 
@@ -574,6 +574,6 @@ def istft(x,
     out = out / window_envelop
 
     if x_rank == 2:
-        out.squeeze_(0)
+        out = out.squeeze(0)
 
     return out
