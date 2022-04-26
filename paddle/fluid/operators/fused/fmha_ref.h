@@ -536,8 +536,6 @@ class FMHAGateRef {
   //         [3, batch_size, seq_len_m, num_head, seq_len_r, c]
   void ComputeQKVTransposeForward(const Tensor& qkv_out,
                                   Tensor* qkv_transpose_out) {
-    platform::RecordEvent event("qkv_transpose",
-                                platform::TracerEventType::UserDefined, 1);
     int ndims = 6;
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_out, perm,
@@ -555,8 +553,6 @@ class FMHAGateRef {
   // [batch_size, seq_len_m, num_head, seq_len_r, c] ->
   //         [batch_size, seq_len_m, seq_len_r, num_head, c]
   void ComputeQKTVTransposeForward(const Tensor& qktv_out, Tensor* fmha_out) {
-    platform::RecordEvent event("qktv_transpose",
-                                platform::TracerEventType::UserDefined, 1);
     int ndims = 5;
     std::vector<int> perm = {0, 1, 3, 2, 4};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qktv_out, perm, fmha_out);

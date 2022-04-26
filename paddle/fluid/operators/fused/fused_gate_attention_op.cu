@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -25,11 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {

@@ -33,18 +33,12 @@ class TestFusedGateAttentionOp(OpTest):
         self.__class__.op_type = "fused_gate_attention"
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = True
-        self.query_w = paddle.create_parameter(
-            [self.qkv_dim, self.num_heads, self.c],
+
+        self.qkv_weight = paddle.create_parameter(
+            [3, self.num_heads, self.c, self.qkv_dim],
             paddle.get_default_dtype(),
             default_initializer=nn.initializer.XavierUniform())
-        self.key_w = paddle.create_parameter(
-            [self.qkv_dim, self.num_heads, self.c],
-            paddle.get_default_dtype(),
-            default_initializer=nn.initializer.XavierUniform())
-        self.value_w = paddle.create_parameter(
-            [self.qkv_dim, self.num_heads, self.c],
-            paddle.get_default_dtype(),
-            default_initializer=nn.initializer.XavierUniform())
+
         if self.bias_attr:
             self.nonbatched_bias = paddle.create_parameter(
                 [
@@ -108,17 +102,22 @@ class TestFusedGateAttentionOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         c = self.c**(-0.5)
         tensor_query = self.tensor_query
-        q = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.query_w) * c
-        k = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.key_w)
-        v = paddle.einsum('nbqa,ahc->nbqhc', tensor_query, self.value_w)
-        logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k) + self.bias
+        qkv_out = paddle.einsum('nbqa,khca->nbqkhc', tensor_query,
+                                self.qkv_weight)
+        qkv_out = paddle.transpose(qkv_out, perm=[3, 0, 1, 4, 2, 5])
+        q = paddle.squeeze(qkv_out[0:1, ::] * c, axis=0)
+        k = paddle.squeeze(qkv_out[1:2, ::], axis=0)
+        v = paddle.squeeze(qkv_out[2:3, ::], axis=0)
+
+        logits = paddle.einsum('nbqhc,nbqkc->nbqhk', q, k) + self.bias
 
         if self.bias_attr:
             logits += paddle.unsqueeze(self.nonbatched_bias, axis=1)
 
         weights = nn.functional.softmax(logits)
-        weighted_avg = paddle.einsum('nbhqk,nbkhc->nbqhc', weights, v)
+        weighted_avg = paddle.einsum('nbqhk,nbqkc->nbqhc', weights, v)
 
+        weighted_avg = paddle.transpose(weighted_avg, perm=[0, 1, 3, 2, 4])
         if self.is_gating:
             gate_values = paddle.einsum('nbqc,chv->nbqhv', tensor_query,
                                         self.gating_w) + self.gating_b
@@ -134,9 +133,6 @@ class TestFusedGateAttentionOp(OpTest):
     def GetFusedGateAttentionOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         x = self.tensor_query
-        qkv_weight = paddle.stack(
-            [self.query_w, self.key_w, self.value_w], axis=0)
-        qkv_weight = paddle.transpose(qkv_weight, perm=[0, 2, 3, 1])
 
         if self.bias_attr:
             nonbatched_bias = self.nonbatched_bias
@@ -151,7 +147,7 @@ class TestFusedGateAttentionOp(OpTest):
             gating_b = None
 
         _, _, _, _, _, final_out = _C_ops.fused_gate_attention(
-            x, qkv_weight, nonbatched_bias, self.bias, gating_w, gating_b,
+            x, self.qkv_weight, nonbatched_bias, self.bias, gating_w, gating_b,
             self.output_w, self.output_b, 'is_gating', self.is_gating)
 
         paddle.autograd.backward(
