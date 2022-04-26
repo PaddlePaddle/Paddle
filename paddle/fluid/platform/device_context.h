@@ -916,6 +916,11 @@ class DeviceContextPool {
 
   size_t size() const { return device_contexts_.size(); }
 
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+  device_contexts() const {
+    return device_contexts_;
+  }
+
  private:
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>

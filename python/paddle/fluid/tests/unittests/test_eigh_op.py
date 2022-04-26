@@ -19,6 +19,55 @@ import numpy as np
 import paddle
 from op_test import OpTest
 from gradient_checker import grad_check
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
+
+
+def valid_eigh_result(A, eigh_value, eigh_vector, uplo):
+    assert A.ndim == 2 or A.ndim == 3
+
+    if A.ndim == 2:
+        valid_single_eigh_result(A, eigh_value, eigh_vector, uplo)
+        return
+
+    for batch_A, batch_w, batch_v in zip(A, eigh_value, eigh_vector):
+        valid_single_eigh_result(batch_A, batch_w, batch_v, uplo)
+
+
+def valid_single_eigh_result(A, eigh_value, eigh_vector, uplo):
+    FP32_MAX_RELATIVE_ERR = 5e-5
+    FP64_MAX_RELATIVE_ERR = 1e-14
+
+    if A.dtype == np.single or A.dtype == np.csingle:
+        rtol = FP32_MAX_RELATIVE_ERR
+    else:
+        rtol = FP64_MAX_RELATIVE_ERR
+
+    M, N = A.shape
+
+    triangular_func = np.tril if uplo == 'L' else np.triu
+
+    if not np.iscomplexobj(A):
+        # Reconstruct A by filling triangular part
+        A = triangular_func(A) + triangular_func(A, -1).T
+    else:
+        # Reconstruct A to Hermitian matrix
+        A = triangular_func(A) + np.matrix(triangular_func(A, -1)).H
+
+    # Diagonal matrix of eigen value
+    T = np.diag(eigh_value)
+
+    # A = Q*T*Q'
+    residual = A - (eigh_vector @T @np.linalg.inv(eigh_vector))
+
+    # ||A - Q*T*Q'|| / (N*||A||) < rtol
+    np.testing.assert_array_less(
+        np.linalg.norm(residual, np.inf) / (N * np.linalg.norm(A, np.inf)),
+        rtol)
+
+    # ||I - Q*Q'|| / M < rtol
+    residual = np.eye(M) - eigh_vector @np.linalg.inv(eigh_vector)
+    np.testing.assert_array_less(np.linalg.norm(residual, np.inf) / M, rtol)
 
 
 class TestEighOp(OpTest):
@@ -57,46 +106,34 @@ class TestEighGPUCase(unittest.TestCase):
     def setUp(self):
         self.x_shape = [32, 32]
         self.dtype = "float32"
+        self.UPLO = "L"
         np.random.seed(123)
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
-        if (paddle.version.cuda() >= "11.6"):
-            self.rtol = 5e-6
-            self.atol = 6e-5
-        else:
-            self.rtol = 1e-5
-            self.atol = 1e-5
 
     def test_check_output_gpu(self):
         if paddle.is_compiled_with_cuda():
             paddle.disable_static(place=paddle.CUDAPlace(0))
             input_real_data = paddle.to_tensor(self.x_np)
-            expected_w, expected_v = np.linalg.eigh(self.x_np)
-            actual_w, actual_v = paddle.linalg.eigh(input_real_data)
-            np.testing.assert_allclose(
-                actual_w, expected_w, rtol=self.rtol, atol=self.atol)
-            np.testing.assert_allclose(
-                abs(actual_v.numpy()),
-                abs(expected_v),
-                rtol=self.rtol,
-                atol=self.atol)
+            actual_w, actual_v = paddle.linalg.eigh(input_real_data, self.UPLO)
+            valid_eigh_result(self.x_np,
+                              actual_w.numpy(), actual_v.numpy(), self.UPLO)
 
 
 class TestEighAPI(unittest.TestCase):
     def setUp(self):
         self.init_input_data()
         self.UPLO = 'L'
-        if (paddle.version.cuda() >= "11.6"):
-            self.rtol = 5e-6
-            self.atol = 6e-5
-        else:
-            self.rtol = 1e-5
-            self.atol = 1e-5
+        self.rtol = 1e-5  # for test_eigh_grad
+        self.atol = 1e-5  # for test_eigh_grad
         self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         np.random.seed(123)
 
-    def init_input_data(self):
+    def init_input_shape(self):
         self.x_shape = [5, 5]
+
+    def init_input_data(self):
+        self.init_input_shape()
         self.dtype = "float32"
         self.real_data = np.random.random(self.x_shape).astype(self.dtype)
         complex_data = np.random.random(self.x_shape).astype(
@@ -108,12 +145,6 @@ class TestEighAPI(unittest.TestCase):
         self.complex_symm = np.divide(
             complex_data + np.conj(complex_data.transpose(self.trans_dims)), 2)
 
-    def compare_result(self, actual_w, actual_v, expected_w, expected_v):
-        np.testing.assert_allclose(
-            actual_w, expected_w, rtol=self.rtol, atol=self.atol)
-        np.testing.assert_allclose(
-            abs(actual_v), abs(expected_v), rtol=self.rtol, atol=self.atol)
-
     def check_static_float_result(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -122,12 +153,10 @@ class TestEighAPI(unittest.TestCase):
                 'input_x', shape=self.x_shape, dtype=self.dtype)
             output_w, output_v = paddle.linalg.eigh(input_x)
             exe = paddle.static.Executor(self.place)
-            expected_w, expected_v = exe.run(main_prog,
-                                             feed={"input_x": self.real_data},
-                                             fetch_list=[output_w, output_v])
-
-            actual_w, actual_v = np.linalg.eigh(self.real_data)
-            self.compare_result(actual_w, actual_v, expected_w, expected_v)
+            actual_w, actual_v = exe.run(main_prog,
+                                         feed={"input_x": self.real_data},
+                                         fetch_list=[output_w, output_v])
+            valid_eigh_result(self.real_data, actual_w, actual_v, self.UPLO)
 
     def check_static_complex_result(self):
         main_prog = paddle.static.Program()
@@ -138,12 +167,10 @@ class TestEighAPI(unittest.TestCase):
                 'input_x', shape=self.x_shape, dtype=x_dtype)
             output_w, output_v = paddle.linalg.eigh(input_x)
             exe = paddle.static.Executor(self.place)
-            expected_w, expected_v = exe.run(
-                main_prog,
-                feed={"input_x": self.complex_symm},
-                fetch_list=[output_w, output_v])
-            actual_w, actual_v = np.linalg.eigh(self.complex_symm)
-            self.compare_result(actual_w, actual_v, expected_w, expected_v)
+            actual_w, actual_v = exe.run(main_prog,
+                                         feed={"input_x": self.complex_symm},
+                                         fetch_list=[output_w, output_v])
+            valid_eigh_result(self.complex_symm, actual_w, actual_v, self.UPLO)
 
     def test_in_static_mode(self):
         paddle.enable_static()
@@ -153,14 +180,14 @@ class TestEighAPI(unittest.TestCase):
     def test_in_dynamic_mode(self):
         paddle.disable_static()
         input_real_data = paddle.to_tensor(self.real_data)
-        expected_w, expected_v = np.linalg.eigh(self.real_data)
         actual_w, actual_v = paddle.linalg.eigh(input_real_data)
-        self.compare_result(actual_w, actual_v.numpy(), expected_w, expected_v)
+        valid_eigh_result(self.real_data,
+                          actual_w.numpy(), actual_v.numpy(), self.UPLO)
 
         input_complex_data = paddle.to_tensor(self.complex_symm)
-        expected_w, expected_v = np.linalg.eigh(self.complex_symm)
         actual_w, actual_v = paddle.linalg.eigh(input_complex_data)
-        self.compare_result(actual_w, actual_v.numpy(), expected_w, expected_v)
+        valid_eigh_result(self.complex_symm,
+                          actual_w.numpy(), actual_v.numpy(), self.UPLO)
 
     def test_eigh_grad(self):
         paddle.disable_static()

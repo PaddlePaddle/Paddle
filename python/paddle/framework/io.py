@@ -30,7 +30,7 @@ from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, EagerParamBase, _current_expected_place, Program
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, _non_static_mode, ParamBase, EagerParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -46,6 +46,10 @@ def _build_saved_state_dict(state_dict):
             if value.type == core.VarDesc.VarType.VOCAB:
                 save_dict[key] = value.value().get_map_tensor()
             else:
+                if not value.value().get_tensor()._is_initialized():
+                    raise ValueError(
+                        "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
+                    )
                 save_dict[key] = value.numpy()
             name_table[key] = value.name
         else:
@@ -374,7 +378,7 @@ def _to_LodTensor(ndarray):
 def _tuple_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj[1]
-    if in_dygraph_mode():
+    if _non_static_mode():
         t = paddle.to_tensor(obj[1])
         # This function does modify the name of return value.
         # Loading the same variable multiple times may cause the same name.
@@ -387,7 +391,7 @@ def _tuple_to_tensor(obj, return_numpy):
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj
-    if in_dygraph_mode():
+    if _non_static_mode():
         return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
@@ -439,7 +443,7 @@ def _parse_load_result(obj, return_numpy):
         return obj
 
     if _contain_x(obj, is_layer):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             raise ValueError(
                 "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
             )
@@ -466,7 +470,9 @@ def _parse_load_result(obj, return_numpy):
 
 def _save_lod_tensor(tensor, file_name):
     if not tensor._is_initialized():
-        raise ValueError("The saved tensor is not initialized.")
+        raise ValueError(
+            "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model firstly."
+        )
     if _is_file_path(file_name):
         _seek = core.save_lod_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.
@@ -718,7 +724,7 @@ def save(obj, path, protocol=4, **configs):
                 f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
-            if in_dygraph_mode():
+            if _non_static_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
@@ -975,7 +981,7 @@ def load(path, **configs):
                     if config.return_numpy:
                         return np.array(tensor)
                     else:
-                        if in_dygraph_mode():
+                        if _non_static_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:

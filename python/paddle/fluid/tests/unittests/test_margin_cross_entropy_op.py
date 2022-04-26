@@ -400,8 +400,31 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
                         return_softmax=True,
                         reduction=None)
 
+        def test_group_value():
+            for place in self.places:
+                with paddle.fluid.dygraph.guard(place):
+                    labels_np = np.random.randint(
+                        0, self.num_class, (self.batch_dim, ), dtype="int64")
+                    logits_np = np.random.uniform(
+                        -0.99, 0.99,
+                        [self.batch_dim, self.num_class]).astype(self.dtype)
+                    labels = paddle.to_tensor(labels_np)
+                    logits = paddle.to_tensor(logits_np)
+
+                    loss, softmax = paddle.nn.functional.margin_cross_entropy(
+                        logits,
+                        labels,
+                        margin1=self.margin1,
+                        margin2=self.margin2,
+                        margin3=self.margin3,
+                        scale=self.scale,
+                        return_softmax=True,
+                        reduction=None,
+                        group=True)
+
         self.assertRaises(ValueError, test_dim)
         self.assertRaises(NotImplementedError, test_label_type)
+        self.assertRaises(ValueError, test_group_value)
 
 
 if __name__ == '__main__':

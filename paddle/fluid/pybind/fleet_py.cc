@@ -28,7 +28,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
@@ -38,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
@@ -49,7 +49,6 @@ using paddle::distributed::GraphNode;
 using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
-using paddle::distributed::ShardingMerge;
 
 namespace paddle {
 namespace pybind {
@@ -61,11 +60,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("load_model", &FleetWrapper::LoadModel)
       .def("load_one_table", &FleetWrapper::LoadModelOneTable)
       .def("init_server", &FleetWrapper::InitServer)
-      .def("run_server",
-           (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
-      .def("run_server", (uint64_t (FleetWrapper::*)(          // NOLINT
-                             const std::string&, uint32_t)) &  // NOLINT
-                             FleetWrapper::RunServer)
+      .def("run_server", &FleetWrapper::RunServer)
       .def("init_worker", &FleetWrapper::InitWorker)
       .def("push_dense_params", &FleetWrapper::PushDenseParamSync)
       .def("pull_dense_params", &FleetWrapper::PullDenseVarsSync)
@@ -77,24 +72,24 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
       .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("set_clients", &FleetWrapper::SetClients)
+      .def("get_client_info", &FleetWrapper::GetClientsInfo)
       .def("create_client2client_connection",
-           &FleetWrapper::CreateClient2ClientConnection);
+           &FleetWrapper::CreateClient2ClientConnection)
+      .def("client_flush", &FleetWrapper::ClientFlush)
+      .def("get_cache_threshold", &FleetWrapper::GetCacheThreshold)
+      .def("cache_shuffle", &FleetWrapper::CacheShuffle)
+      .def("save_cache", &FleetWrapper::SaveCache);
 }
 
 void BindPSHost(py::module* m) {
   py::class_<distributed::PSHost>(*m, "PSHost")
       .def(py::init<const std::string&, uint32_t, uint32_t>())
-      .def("serialize_to_string", &distributed::PSHost::serialize_to_string)
-      .def("parse_from_string", &distributed::PSHost::parse_from_string)
-      .def("to_uint64", &distributed::PSHost::serialize_to_uint64)
-      .def("from_uint64", &distributed::PSHost::parse_from_uint64)
-      .def("to_string", &distributed::PSHost::to_string);
-}
-
-void BindSparseShardingTools(py::module* m) {
-  py::class_<ShardingMerge>(*m, "ShardingMerge")
-      .def(py::init<>())
-      .def("merge", &ShardingMerge::Merge);
+      .def("serialize_to_string", &distributed::PSHost::SerializeToString)
+      .def("parse_from_string", &distributed::PSHost::ParseFromString)
+      .def("to_uint64", &distributed::PSHost::SerializeToUint64)
+      .def("from_uint64", &distributed::PSHost::ParseFromUint64)
+      .def("to_string", &distributed::PSHost::ToString);
 }
 
 void BindCommunicatorContext(py::module* m) {
@@ -218,14 +213,14 @@ void BindGraphPyClient(py::module* m) {
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
       .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
-      .def("use_neighbors_sample_cache",
-           &GraphPyClient::use_neighbors_sample_cache)
+      // .def("use_neighbors_sample_cache",
+      //      &GraphPyClient::use_neighbors_sample_cache)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
-      .def("stop_server", &GraphPyClient::stop_server)
+      .def("stop_server", &GraphPyClient::StopServer)
       .def("get_node_feat",
            [](GraphPyClient& self, std::string node_type,
-              std::vector<uint64_t> node_ids,
+              std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
@@ -239,7 +234,7 @@ void BindGraphPyClient(py::module* m) {
            })
       .def("set_node_feat",
            [](GraphPyClient& self, std::string node_type,
-              std::vector<uint64_t> node_ids,
+              std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
@@ -257,6 +252,10 @@ void BindGraphPyClient(py::module* m) {
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+#ifdef PADDLE_WITH_HETERPS
+using paddle::framework::GraphGpuWrapper;
+using paddle::framework::NeighborSampleResult;
+#endif
 
 void BindIndexNode(py::module* m) {
   py::class_<IndexNode>(*m, "IndexNode")
@@ -306,6 +305,29 @@ void BindIndexWrapper(py::module* m) {
       .def("get_tree_index", &IndexWrapper::get_tree_index)
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
+
+#ifdef PADDLE_WITH_HETERPS
+void BindNeighborSampleResult(py::module* m) {
+  py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
+      .def(py::init<>())
+      .def("initialize", &NeighborSampleResult::initialize);
+}
+
+void BindGraphGpuWrapper(py::module* m) {
+  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
+      .def(py::init<>())
+      .def("test", &GraphGpuWrapper::test)
+      .def("initialize", &GraphGpuWrapper::initialize)
+      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("set_device", &GraphGpuWrapper::set_device)
+      .def("init_service", &GraphGpuWrapper::init_service)
+      .def("set_up_types", &GraphGpuWrapper::set_up_types)
+      .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
+      .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
+      .def("upload_batch", &GraphGpuWrapper::upload_batch)
+      .def("load_node_file", &GraphGpuWrapper::load_node_file);
+}
+#endif
 
 using paddle::distributed::IndexSampler;
 using paddle::distributed::LayerWiseSampler;

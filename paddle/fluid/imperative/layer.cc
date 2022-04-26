@@ -573,6 +573,8 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       auto& old_tensor = var.Get<framework::LoDTensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
+      new_tensor->set_type(old_tensor.dtype());
+      new_tensor->set_layout(old_tensor.layout());
       each_var.reset(new_var);
     }
   }

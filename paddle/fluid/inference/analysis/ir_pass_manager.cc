@@ -43,6 +43,7 @@ IRPassManager::IRPassManager(Argument *argument) {
                                 "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
+  disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   CreatePasses(argument, argument->ir_analysis_passes());
@@ -106,6 +107,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
+      if (argument->quantize_enabled_op_types().count("conv2d") ||
+          argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
+        pass->Set("data_layout", new std::string("NHWC"));
+      }
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "cpu_bfloat16_placement_pass") {
@@ -189,6 +194,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->dlnne_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+    } else if (pass_name == "mixed_precision_configure_pass") {
+      pass->Set("gpu_fp16_disabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->gpu_fp16_disabled_op_types()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =

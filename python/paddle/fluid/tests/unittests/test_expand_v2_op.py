@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 # Situation 1: shape is a list(without tensor)
@@ -27,6 +28,7 @@ class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
         self.init_data()
+        self.python_api = paddle.expand
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
@@ -39,10 +41,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -228,6 +230,42 @@ class TestExpandV2API(unittest.TestCase):
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))
+
+
+class TestExpandInferShape(unittest.TestCase):
+    def test_shape_with_var(self):
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(shape=[-1, 1, 3], name='x')
+            fake_var = paddle.randn([2, 3])
+            target_shape = [
+                -1, paddle.shape(fake_var)[0], paddle.shape(fake_var)[1]
+            ]
+            out = paddle.expand(x, shape=target_shape)
+            self.assertListEqual(list(out.shape), [-1, -1, -1])
+
+
+# Test python Dygraph API 
+class TestExpandV2DygraphAPI(unittest.TestCase):
+    def test_expand_times_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                paddle.seed(1)
+                a = paddle.rand([2, 5])
+                egr_expand_1 = paddle.expand(a, shape=[2, 5])
+                np_array = np.array([2, 5])
+                egr_expand_2 = paddle.expand(a, shape=np_array)
+
+            paddle.seed(1)
+            a = paddle.rand([2, 5])
+            expand_1 = paddle.expand(a, shape=[2, 5])
+            np_array = np.array([2, 5])
+            expand_2 = paddle.expand(a, shape=np_array)
+
+            self.assertTrue(
+                np.array_equal(egr_expand_1.numpy(), egr_expand_2.numpy()))
+            self.assertTrue(np.array_equal(expand_1.numpy(), expand_2.numpy()))
+            self.assertTrue(
+                np.array_equal(expand_1.numpy(), egr_expand_1.numpy()))
 
 
 if __name__ == "__main__":

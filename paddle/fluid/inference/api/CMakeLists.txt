@@ -49,8 +49,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
-          zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
+if (WITH_ONNXRUNTIME)
+    cc_library(analysis_predictor SRCS analysis_predictor.cc onnxruntime_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+              zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils onnxruntime paddle2onnx)
+else (WITH_ONNXRUNTIME)
+    cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+              zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
+endif (WITH_ONNXRUNTIME)
+
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 

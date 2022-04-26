@@ -37,13 +37,17 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const NameVarMap<VarType>* in, const NameVarMap<VarType>* out,
       const framework::AttributeMap* attr,
       const framework::AttributeMap* default_attr, const std::string op_type,
-      const framework::OpKernelType* op_kernel_type = nullptr)
+      const framework::OpKernelType* op_kernel_type = nullptr,
+      const phi::ArgumentMappingFn* arg_map_fn = nullptr,
+      const phi::KernelSignature* default_kernel_signature = nullptr)
       : var_map_in_(in),
         var_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
         op_type_(op_type),
-        op_kernel_type_(op_kernel_type) {}
+        op_kernel_type_(op_kernel_type),
+        arg_map_fn_(arg_map_fn),
+        default_kernel_signature_(default_kernel_signature) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -95,17 +99,27 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return true;
   }
 
-  bool HasOutputs(const std::string& name) const override {
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override {
     auto it = var_map_out_->find(name);
     if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
+    if (allow_null) {
+      for (auto& output : it->second) {
+        if (output != nullptr) {
+          return true;
+        }
       }
+      return false;
+    } else {
+      for (auto& output : it->second) {
+        if (output == nullptr) {
+          return false;
+        }
+      }
+      return true;
     }
-    return true;
   }
 
   framework::AttrReader Attrs() const override {
@@ -225,9 +239,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
             (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
   }
 
-  std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) const override {
-    std::vector<framework::InferShapeVarPtr> res;
+  paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override {
+    paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+        res;
     auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
         it, var_map_in_->end(),
@@ -238,9 +253,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return res;
   }
 
-  std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) const override {
-    std::vector<framework::InferShapeVarPtr> res;
+  paddle::SmallVector<framework::InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override {
+    paddle::SmallVector<framework::InferShapeVarPtr,
+                        phi::kOutputSmallVectorSize>
+        res;
     auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
         it, var_map_out_->end(),
@@ -281,6 +298,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
 
     return vec_res;
+  }
+
+  framework::proto::VarType::Type GetInputVarType(
+      const std::string& name) const override {
+    auto it = var_map_in_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in input", name));
+    return framework::ToVarType(it->second[0]->Var().Type());
   }
 
   std::vector<framework::proto::VarType::Type> GetInputsVarType(
@@ -364,6 +390,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         "SetLoDLevel function not support in dygraph mode"));
   }
 
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
+    return arg_map_fn_;
+  }
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override {
+    return default_kernel_signature_;
+  }
+
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
@@ -425,6 +459,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
   const framework::OpKernelType* op_kernel_type_;
+  // arg_map_fn_ and default_kernel_signature_ may be nullptr
+  const phi::ArgumentMappingFn* arg_map_fn_;
+  const phi::KernelSignature* default_kernel_signature_;
 };
 
 }  // namespace imperative

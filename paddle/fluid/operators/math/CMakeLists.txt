@@ -20,12 +20,11 @@ math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
-math_library(pooling)
 
 if(WITH_MKLDNN)
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler mixed_vector)
 else()
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mixed_vector)
 endif()
 
 math_library(sequence_padding)
@@ -37,7 +36,6 @@ if (WITH_ASCEND_CL)
 else()
     math_library(beam_search DEPS math_function)
 endif()
-math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
 
 
@@ -46,7 +44,6 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
-math_library(segment_pooling)
 math_library(matrix_solve)
 
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)

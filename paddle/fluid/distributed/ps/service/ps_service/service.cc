@@ -46,7 +46,7 @@ paddle::distributed::PSParameter load_from_prototxt(
   return param;
 }
 
-void PSCore::init_gflag(const std::string& gflags) {
+void PSCore::InitGFlag(const std::string& gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
@@ -65,67 +65,67 @@ void PSCore::init_gflag(const std::string& gflags) {
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
-int PSCore::init_server(
+int PSCore::InitServer(
     const std::string& dist_desc,
     const std::vector<std::string>* host_sign_list, int node_num, int index,
     int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
-  init_gflag(_ps_param.init_gflags());
+  InitGFlag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(host_sign_list, node_num);
-  _ps_env.set_trainers(trainers);
+  _ps_env.SetPsServers(host_sign_list, node_num);
+  _ps_env.SetTrainers(trainers);
   int ret = 0;
   _server_ptr = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(_ps_param));
-  ret = _server_ptr->configure(_ps_param, _ps_env, index, server_sub_program);
+      paddle::distributed::PSServerFactory::Create(_ps_param));
+  ret = _server_ptr->Configure(_ps_param, _ps_env, index, server_sub_program);
   CHECK(ret == 0) << "failed to configure server";
   return ret;
 }
 
-int PSCore::init_worker(
+int PSCore::InitWorker(
     const std::string& dist_desc,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>>& regions,
     const std::vector<std::string>* host_sign_list, int node_num, int index) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
-  init_gflag(_ps_param.init_gflags());
+  InitGFlag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(host_sign_list, node_num);
+  _ps_env.SetPsServers(host_sign_list, node_num);
   int ret = 0;
-  VLOG(1) << "PSCore::init_worker";
+  VLOG(1) << "PSCore::InitWorker";
   auto* communicator = Communicator::GetInstance();
-  ret = communicator->GetPsClient()->configure(_ps_param, regions, _ps_env,
+  ret = communicator->GetPsClient()->Configure(_ps_param, regions, _ps_env,
                                                index);
   communicator->Start();
   return ret;
 }
 
-std::vector<uint64_t> PSCore::get_client_info() {
-  return _ps_env.get_client_info();
+std::vector<uint64_t> PSCore::GetClientInfo() {
+  return _ps_env.GetClientInfo();
 }
 
-int PSCore::create_client2client_connection(int pserver_timeout_ms,
-                                            int pserver_connect_timeout_ms,
-                                            int max_retry) {
-  int ret = _worker_ptr->create_client2client_connection(
+int PSCore::CreateClient2ClientConnection(int pserver_timeout_ms,
+                                          int pserver_connect_timeout_ms,
+                                          int max_retry) {
+  int ret = _worker_ptr->CreateClient2ClientConnection(
       pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   return ret;
 }
 
-uint64_t PSCore::run_server(const std::string& ip, uint32_t port) {
-  return _server_ptr->start(ip, port);
+uint64_t PSCore::RunServer(const std::string& ip, uint32_t port) {
+  return _server_ptr->Start(ip, port);
 }
 
-int PSCore::finalize_worker() {
-  _worker_ptr->finalize_worker();
+int PSCore::FinalizeWorker() {
+  _worker_ptr->FinalizeWorker();
   return 0;
 }
 
-int PSCore::stop_server() {
-  auto stop_status = _worker_ptr->stop_server();
+int PSCore::StopServer() {
+  auto stop_status = _worker_ptr->StopServer();
   stop_status.wait();
   return 0;
 }
-paddle::distributed::PSParameter* PSCore::get_param() { return &_ps_param; }
+paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
 }  // namespace distributed
 }  // namespace paddle

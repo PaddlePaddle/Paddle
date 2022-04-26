@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
 import numpy as np
 import argparse
+import tempfile
 import ast
 import time
 import paddle
@@ -23,6 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
@@ -88,7 +92,8 @@ def train_mlp(model,
               batch_size=100,
               use_pure_fp16=False,
               accumulate_grad=False,
-              opt_group=False):
+              opt_group=False,
+              save_model=False):
     if sharding_stage == "dp":
         hcg = fleet.get_hybrid_communicate_group()
         group = hcg.get_check_parallel_group()
@@ -147,6 +152,9 @@ def train_mlp(model,
         if accumulate_grad:
             optimizer.step()
             optimizer.clear_grad()
+
+    if save_model:
+        return model, optimizer
     return model.parameters()
 
 
@@ -158,11 +166,13 @@ def test_dp_stage2():
     mlp3 = MLP()
     mlp4 = MLP()
     mlp5 = MLP()
+    mlp6 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
     mlp5.set_state_dict(state_dict)
+    mlp6.set_state_dict(state_dict)
 
     # DP VS stage2
     dp_params = train_mlp(
@@ -186,12 +196,33 @@ def test_dp_stage2():
 
     # stage2 param list VS param group
     stage2_params = train_mlp(
-        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
+        mlp5, sharding_stage=2, use_pure_fp16=False, opt_group=True)
     for i in range(len(dp_params)):
         np.testing.assert_allclose(
             dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
+
+    # save/load model
+    output_dir = tempfile.mkdtemp()
+    model_file = os.path.join(output_dir, "model.pdmodel")
+    optimizer_file = os.path.join(output_dir, "model.pdopt")
+    model_stage2, optimizer_stage2 = train_mlp(
+        mlp6,
+        sharding_stage=2,
+        use_pure_fp16=False,
+        opt_group=False,
+        save_model=True)
+    paddle.save(model_stage2.state_dict(), model_file)
+    paddle.save(optimizer_stage2.state_dict(), optimizer_file)
+    m_state_dict = paddle.load(model_file)
+    opt_state_dict = paddle.load(optimizer_file)
+    model_stage2.set_state_dict(m_state_dict)
+    optimizer_stage2.set_state_dict(opt_state_dict)
+    shutil.rmtree(output_dir)
+
     return
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
     test_dp_stage2()

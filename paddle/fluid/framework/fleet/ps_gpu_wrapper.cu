@@ -187,6 +187,7 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src,
     }
   }
 }
+PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                uint64_t** gpu_keys,

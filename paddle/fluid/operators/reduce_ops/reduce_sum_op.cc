@@ -89,6 +89,12 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
         BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
       ctx->SetOutputDataType("Out", data_type);
+    } else {
+      auto x_type = ctx->GetInputDataType("X");
+      if (x_type == framework::proto::VarType::BOOL ||
+          x_type == framework::proto::VarType::INT32) {
+        ctx->SetOutputDataType("Out", framework::proto::VarType::INT64);
+      }
     }
   }
 };
@@ -114,16 +120,3 @@ REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
-
-template <typename T>
-using CPUReduceSumGradKernel =
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
-                             ops::SumGradFunctor, true>;
-
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum_grad, CPUReduceSumGradKernel<bool>,
-    CPUReduceSumGradKernel<float>, CPUReduceSumGradKernel<double>,
-    CPUReduceSumGradKernel<paddle::platform::float16>,
-    CPUReduceSumGradKernel<int>, CPUReduceSumGradKernel<int64_t>,
-    CPUReduceSumGradKernel<paddle::platform::complex<float>>,
-    CPUReduceSumGradKernel<paddle::platform::complex<double>>);

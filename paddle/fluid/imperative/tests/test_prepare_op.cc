@@ -24,6 +24,13 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(relu, GPU, ALL_LAYOUT);
+#endif
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;

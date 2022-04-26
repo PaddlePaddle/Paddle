@@ -18,14 +18,23 @@ namespace phi {
 
 KernelSignature GaussianRandomOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  const auto& shape = paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
   if (ctx.InputSize("ShapeTensorList") > 0) {
-    return KernelSignature("gaussian_random",
-                           {},
-                           {"ShapeTensorList", "mean", "std", "seed", "dtype"},
-                           {"Out"});
+    // Infer output shape by Attr("shape") in CompileTime if it is specified.
+    if (!ctx.IsRuntime() && !shape.empty()) {
+      return KernelSignature("gaussian_random",
+                             {},
+                             {"shape", "mean", "std", "seed", "dtype"},
+                             {"Out"});
+    } else {
+      return KernelSignature(
+          "gaussian_random",
+          {},
+          {"ShapeTensorList", "mean", "std", "seed", "dtype"},
+          {"Out"});
+    }
   }
 
-  const auto& shape = paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
   if (ctx.HasInput("ShapeTensor") && shape.empty()) {
     return KernelSignature("gaussian_random",
                            {},

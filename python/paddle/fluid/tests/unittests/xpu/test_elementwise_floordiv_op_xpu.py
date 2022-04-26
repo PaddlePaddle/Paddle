@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,68 +20,66 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 paddle.enable_static()
 import random
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseModOp(XPUOpTest):
-    def init_kernel_type(self):
-        self.use_mkldnn = False
+class XPUTestElementwiseModOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'elementwise_floordiv'
+        self.use_dynamic_create_class = False
 
-    def setUp(self):
-        self.op_type = "elementwise_floordiv"
-        self.dtype = np.float32
-        self.axis = -1
-        self.init_dtype()
-        self.init_input_output()
-        self.init_kernel_type()
-        self.init_axis()
+    class TestElementwiseModOp(XPUOpTest):
+        def init_kernel_type(self):
+            self.use_mkldnn = False
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
-        }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.out}
+        def setUp(self):
+            self.op_type = "elementwise_floordiv"
+            self.dtype = self.in_type
+            self.axis = -1
+            self.init_input_output()
+            self.init_kernel_type()
+            self.init_axis()
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+            self.inputs = {
+                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            }
+            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+            self.outputs = {'Out': self.out}
 
-    def init_input_output(self):
-        self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
-        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
-        self.out = np.floor_divide(self.x, self.y)
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
 
-    def init_dtype(self):
-        pass
+        def init_input_output(self):
+            self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
+            self.y = np.random.uniform(1, 1000, [10, 10]).astype(self.dtype)
+            self.out = np.floor_divide(self.x, self.y)
 
-    def init_axis(self):
-        pass
+        def init_axis(self):
+            pass
+
+    class TestElementwiseModOp_scalar(TestElementwiseModOp):
+        def init_input_output(self):
+            scale_x = random.randint(0, 100000)
+            scale_y = random.randint(1, 100000)
+            self.x = (np.random.rand(2, 3, 4) * scale_x).astype(self.dtype)
+            self.y = (np.random.rand(1) * scale_y + 1).astype(self.dtype)
+            self.out = np.floor_divide(self.x, self.y)
+
+    class TestElementwiseModOpInverse(TestElementwiseModOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
+            self.y = np.random.uniform(1, 1000, [10, 10]).astype(self.dtype)
+            self.out = np.floor_divide(self.x, self.y)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseModOp_scalar(TestElementwiseModOp):
-    def init_input_output(self):
-        scale_x = random.randint(0, 100000000)
-        scale_y = random.randint(1, 100000000)
-        self.x = (np.random.rand(2, 3, 4) * scale_x).astype(self.dtype)
-        self.y = (np.random.rand(1) * scale_y + 1).astype(self.dtype)
-        self.out = np.floor_divide(self.x, self.y)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseModOpInverse(TestElementwiseModOp):
-    def init_input_output(self):
-        self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
-        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
-        self.out = np.floor_divide(self.x, self.y)
-
+support_types = get_xpu_op_support_types('elementwise_floordiv')
+for stype in support_types:
+    create_test_class(globals(), XPUTestElementwiseModOp, stype)
 
 if __name__ == '__main__':
     unittest.main()

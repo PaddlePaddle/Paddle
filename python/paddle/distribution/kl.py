@@ -15,15 +15,14 @@ import functools
 import warnings
 
 import paddle
-
-from ..fluid.framework import in_dygraph_mode
-from .beta import Beta
-from .categorical import Categorical
-from .dirichlet import Dirichlet
-from .distribution import Distribution
-from .exponential_family import ExponentialFamily
-from .normal import Normal
-from .uniform import Uniform
+from paddle.distribution.beta import Beta
+from paddle.distribution.categorical import Categorical
+from paddle.distribution.dirichlet import Dirichlet
+from paddle.distribution.distribution import Distribution
+from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.normal import Normal
+from paddle.distribution.uniform import Uniform
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -186,7 +185,7 @@ def _kl_expfamily_expfamily(p, q):
     p_log_norm = p._log_normalizer(*p_natural_params)
 
     try:
-        if in_dygraph_mode():
+        if _non_static_mode():
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True)
         else:
@@ -207,5 +206,4 @@ def _kl_expfamily_expfamily(p, q):
 
 
 def _sum_rightmost(value, n):
-    """Sum elements along rightmost n dim"""
     return value.sum(list(range(-n, 0))) if n > 0 else value

@@ -144,12 +144,17 @@ class Scope : public ScopeBase {
   void Rename(const std::string& origin_name,
               const std::string& new_name) const;
 
+  // Return the number of variables in scope
+  size_t Size() { return vars_.size(); }
+
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
   void AddListener(const std::shared_ptr<ScopeListener>& listener);
 
   void DelListener(const std::shared_ptr<ScopeListener>& listener);
+
+  bool HasListener(const std::shared_ptr<ScopeListener>& listener);
 
  protected:
   struct KeyHasher {

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -29,7 +30,7 @@ def segment_sum(data, segment_ids, name=None):
     where sum is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (Tensor): A tensor, available data type float32, float64.
+        data (Tensor): A tensor, available data type float32, float64, int32, int64.
         segment_ids (Tensor): A 1-D tensor, which have the same size
                             with the first dimension of input data. 
                             Available data type is int32, int64.
@@ -51,10 +52,13 @@ def segment_sum(data, segment_ids, name=None):
 
     """
     if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "SUM")[0]
+    if _in_legacy_dygraph():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "SUM")
         return out
 
-    check_variable_and_dtype(data, "X", ("float32", "float64"), "segment_pool")
+    check_variable_and_dtype(data, "X", ("float32", "float64", "int32",
+                                         "int64"), "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -82,7 +86,7 @@ def segment_mean(data, segment_ids, name=None):
     of all index 'segment_ids[j] == i'.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64.
         segment_ids (tensor): a 1-d tensor, which have the same size 
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -103,11 +107,15 @@ def segment_mean(data, segment_ids, name=None):
             #Outputs: [[2., 2., 2.], [4., 5., 6.]]
 
     """
+
     if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "MEAN")[0]
+    if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MEAN")
         return out
 
-    check_variable_and_dtype(data, "X", ("float32", "float64"), "segment_pool")
+    check_variable_and_dtype(data, "X", ("float32", "float64", "int32",
+                                         "int64"), "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -134,7 +142,7 @@ def segment_min(data, segment_ids, name=None):
     where min is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64.
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -155,11 +163,16 @@ def segment_min(data, segment_ids, name=None):
             #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
 
     """
+
     if in_dygraph_mode():
+        return _C_ops.final_state_segment_pool(data, segment_ids, "MIN")[0]
+
+    if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MIN")
         return out
 
-    check_variable_and_dtype(data, "X", ("float32", "float64"), "segment_pool")
+    check_variable_and_dtype(data, "X", ("float32", "float64", "int32",
+                                         "int64"), "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 
@@ -186,7 +199,7 @@ def segment_max(data, segment_ids, name=None):
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
-        data (tensor): a tensor, available data type float32, float64.
+        data (tensor): a tensor, available data type float32, float64, int32, int64.
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
@@ -207,11 +220,17 @@ def segment_max(data, segment_ids, name=None):
             #Outputs: [[3., 2., 3.], [4., 5., 6.]]
 
     """
+
     if in_dygraph_mode():
+        out, tmp = _C_ops.final_state_segment_pool(data, segment_ids, "MAX")
+        return out
+
+    if _non_static_mode():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MAX")
         return out
 
-    check_variable_and_dtype(data, "X", ("float32", "float64"), "segment_pool")
+    check_variable_and_dtype(data, "X", ("float32", "float64", "int32",
+                                         "int64"), "segment_pool")
     check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
                              "segment_pool")
 

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -40,11 +41,11 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
 
   ~KernelArgsNameMakerByOpProto() {}
 
-  const paddle::SmallVector<std::string>& GetInputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetOutputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetAttrsArgsNames() override;
+  const paddle::SmallVector<const char*>& GetInputArgsNames() override;
+  const paddle::SmallVector<const char*>& GetOutputArgsNames() override;
+  const paddle::SmallVector<const char*>& GetAttrsArgsNames() override;
 
-  KernelSignature GetKernelSignature();
+  phi::KernelSignature GetKernelSignature();
 
  private:
   DISABLE_COPY_AND_ASSIGN(KernelArgsNameMakerByOpProto);
@@ -52,9 +53,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  private:
   const framework::proto::OpProto* op_proto_;
 
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
-  paddle::SmallVector<std::string> attr_names_;
+  paddle::SmallVector<const char*> input_names_;
+  paddle::SmallVector<const char*> output_names_;
+  paddle::SmallVector<const char*> attr_names_;
 };
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
@@ -87,7 +88,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
   } else if (kernel_type.library_type_ == LibraryType::kKP) {
     backend = phi::Backend::KPS;
   } else {
-    // do
+    // do nothing
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
@@ -102,7 +103,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -111,7 +112,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "phi missing NPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -120,7 +121,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #ifdef PADDLE_WITH_MLU
   if (platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
+            << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -128,7 +129,17 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_IPU
   if (platform::is_ipu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "pten missing IPU kernel: " << op.Type()
+    VLOG(3) << "phi missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
@@ -138,45 +149,52 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   return phi::KernelKey();
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::SmallVector<const char*>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
     auto& in = op_proto_->inputs()[i];
     auto& in_name = in.name();
     if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(6) << "Parse PhiKernel input: skip extra & quant input - "
-              << in_name;
       continue;
     }
     // If contains dispensable input, we should override the
     // OpArgumentMapping method self in phi/ops/compat dir
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(6) << "Parse PhiKernel input: skip dispensable input - " << in_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel input: " << in_name;
-    input_names_.emplace_back(in_name);
+    input_names_.emplace_back(in_name.c_str());
+  }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel inputs: ";
+    std::copy(input_names_.begin(), input_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
   }
   return input_names_;
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::SmallVector<const char*>&
 KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   for (int i = 0; i < op_proto_->outputs_size(); ++i) {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
     if ((out.has_extra() && out.extra()) || (out.has_quant() && out.quant())) {
-      VLOG(6) << "Parse PhiKernel output: skip extra & quant output - "
-              << out_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel output: " << out_name;
-    output_names_.emplace_back(out_name);
+    output_names_.emplace_back(out_name.c_str());
+  }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel outputs: ";
+    std::copy(output_names_.begin(), output_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
   }
   return output_names_;
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::SmallVector<const char*>&
 KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
@@ -185,27 +203,28 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
         attr_name == "op_role" || attr_name == "op_role_var" ||
         attr_name == "op_namescope" || attr_name == "op_callstack" ||
         attr_name == "op_device") {
-      VLOG(6) << "Parse PhiKernel attribute: skip needless attr - "
-              << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(6) << "Parse PhiKernel attribute: skip extra & quant attr - "
-              << attr_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel attribute: " << attr_name;
-    attr_names_.emplace_back(attr_name);
+    attr_names_.emplace_back(attr_name.c_str());
   }
-
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel attributes: ";
+    std::copy(attr_names_.begin(), attr_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
+  }
   return attr_names_;
 }
 
-KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(phi::TransToPhiKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+phi::KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
+  return phi::KernelSignature(
+      phi::TransToPhiKernelName(op_proto_->type()).c_str(), GetInputArgsNames(),
+      GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;
@@ -218,7 +237,7 @@ void InitDefaultKernelSignatureMap() {
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
-        VLOG(10) << "Register kernel signature for " << op_type;
+        VLOG(10) << "Register `" << op_type << "` kernel signature:";
         phi::DefaultKernelSignatureMap::Instance().Insert(
             op_type, std::move(maker.GetKernelSignature()));
       }

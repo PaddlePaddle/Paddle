@@ -7,6 +7,9 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+  if (WITH_HETERPS)
+    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
+  endif()
 endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -44,6 +47,9 @@ endif()
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
+  if (WITH_GPU)
+    set(PYBIND_DEPS ${PYBIND_DEPS} cuda_ipc_allocator)
+  endif()
   if (WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
@@ -84,12 +90,18 @@ if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+    if (WITH_PSCORE)
+      set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
   endif()
   if (WITH_GLOO)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
-  if(WITH_ASCEND)
+  if(WITH_ASCEND_CL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
+    if (WITH_PSCORE)
+      set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
@@ -120,7 +132,11 @@ if (WITH_PSLIB)
   set_source_files_properties(heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endif(WITH_PSLIB)
 if (WITH_PSCORE)
-  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  if (WITH_ARM_BRPC)
+    set(DISTRIBUTE_COMPILE_FLAGS "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  else()
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  endif()
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS fleet_py.cc)
@@ -160,10 +176,9 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
   target_link_libraries(eager_op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
-  add_executable(kernel_signature_generator kernel_signature_generator.cc)
-  target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
-  if(WIN32)
-    target_link_libraries(kernel_signature_generator shlwapi.lib)
+  if(NOT WIN32)
+    add_executable(kernel_signature_generator kernel_signature_generator.cc)
+    target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
@@ -242,6 +257,19 @@ if(WITH_PYTHON)
         list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
         list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
+    if(WITH_ONNXRUNTIME)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+    endif()
 
     add_custom_command(OUTPUT ${impl_file}
       COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
@@ -260,6 +288,28 @@ if(WITH_PYTHON)
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
+    if(WITH_ONNXRUNTIME)
+      if (APPLE)
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
+      else()
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+      endif()
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+      list(APPEND EAGER_OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${ONNXRUNTIME_PYBIND_OUT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime)
+      list(APPEND OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+      list(APPEND EAGER_OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+    endif()
+
     if(WITH_MKLML)
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
@@ -298,14 +348,14 @@ if(WITH_PYTHON)
     add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS interpretercore standalone_executor)
+  list(APPEND PYBIND_DEPS interpretercore standalone_executor staticgraph_executor_statistics)
   cc_library(op_function_common SRCS op_function_common.cc DEPS ${PYBIND_DEPS})
   list(APPEND PYBIND_DEPS op_function_common)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(paddle_eager
-    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
+    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc eager_py_layer.cc
+    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node py_layer_node global_utils utils python custom_operator custom_operator_node)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
@@ -321,10 +371,6 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
-  endif()
-
-  if(WITH_IPU)
-    target_link_libraries(paddle_pybind paddle_ipu)
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

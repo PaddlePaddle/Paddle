@@ -15,7 +15,7 @@
 import unittest
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard, _non_static_mode
 
 
 class TestLayerPrint(unittest.TestCase):

@@ -191,7 +191,7 @@ def is_api_in_module(node, module_prefix):
 
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
-    except NameError:
+    except Exception:
         return False
 
 
@@ -227,7 +227,7 @@ def is_numpy_api(node):
         # TODO: find a better way
         if not module_result:
             return func_str.startswith("numpy.") or func_str.startswith("np.")
-    except NameError:
+    except Exception:
         return False
 
 

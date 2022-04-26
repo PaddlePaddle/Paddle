@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline void GetSeedDataAndIncrement(const platform::CUDADeviceContext& dev_ctx,
+inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const framework::Tensor* seed,
                                     const bool is_fix_seed, const int seed_val,
                                     const int offset, uint64_t* seed_data,
