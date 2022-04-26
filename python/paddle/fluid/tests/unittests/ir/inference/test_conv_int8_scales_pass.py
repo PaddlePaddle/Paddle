@@ -86,25 +86,15 @@ class TestConvInt8ScalesPass(PassAutoScanTest):
         else:
             f_shape[1] = x_shape[3]
 
-        strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+        strides = [2, 2]
 
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
-        padding = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=4, max_size=4))
+        padding = [1, 1, 1, 1]
 
         groups = draw(st.integers(min_value=1, max_value=3))
 
-        dilations = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
-
+        dilations = [1, 1]
         bias_shape = [f_shape[0]]
         conv_bias_shape = []
         inputs = dict()
@@ -157,7 +147,7 @@ class TestConvInt8ScalesPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=350, passes=["conv_int8_scales_pass"])
+            quant=False, max_examples=250, passes=["conv_int8_scales_pass"])
 
 
 if __name__ == "__main__":
