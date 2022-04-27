@@ -41,6 +41,7 @@ from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_ex
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from testsuite import (
     create_op,
     set_input,
