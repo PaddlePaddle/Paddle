@@ -923,10 +923,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetInput("W", {mul0_w->Name()});
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
-    multihead_op_desc.SetOutput("KVCache", {fill1_out->Name()});
-    // multihead_op_desc.SetOutput("VCache", {fill2_out->Name()});
-    VLOG(3) << "Set KVCache to fill1_out: " << fill1_out->Name();
-    VLOG(3) << "fill2_out: " << fill2_out->Name();
+    multihead_op_desc.SetOutput("KCache", {fill1_out->Name()});
+    multihead_op_desc.SetOutput("VCache", {fill2_out->Name()});
+    
+    VLOG(3) << "Set KCache to fill1_out: " << fill1_out->Name();
+    VLOG(3) << "Set VCache to fill2_out: " << fill2_out->Name();
 
 
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
@@ -978,7 +979,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
     IR_NODE_LINK_TO(multihead,fill1_out);
-    // IR_NODE_LINK_TO(multihead, fill2_out);
+    IR_NODE_LINK_TO(multihead, fill2_out);
   };
 
   int fusion_count{0};
@@ -1131,7 +1132,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                                                   //fill1_in,
                                                   //fill2_in,
                                                   fill1, fill2, concat1, concat2, concat1_out, concat2_out, assign1, assign2,
-                                                  fill2_out
+                                                  //fill2_out
                                                   });
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);

@@ -571,9 +571,9 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
 
-    //ultihead_op_desc.SetInput("KCache", {k_cache->Name()});
-    //multihead_op_desc.SetInput("VCache", {v_cache->Name()});
-    multihead_op_desc.SetInput("KVCache", {k_cache->Name()});
+    multihead_op_desc.SetInput("KCache", {k_cache->Name()});
+    multihead_op_desc.SetInput("VCache", {v_cache->Name()});
+    //multihead_op_desc.SetInput("KVCache", {k_cache->Name()});
     multihead_op_desc.SetInput("GatherIndex", {gather_index->Name()});
 
 
@@ -626,7 +626,7 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
 
     IR_NODE_LINK_TO(gather_index, multihead);
     IR_NODE_LINK_TO(k_cache, multihead);
-    // IR_NODE_LINK_TO(v_cache, multihead);
+    IR_NODE_LINK_TO(v_cache, multihead);
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
     
@@ -783,7 +783,9 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
                                                   mul2_w,
                                                   reshape2_qkv,
                                                   scale,
-                                                  concat1, concat2, concat1_out, concat2_out, assign1, assign2, gather1, gather2, gather1_out, gather2_out,k_cache_w, v_cache_w,v_cache_r
+                                                  concat1, concat2, concat1_out, concat2_out, 
+                                                  assign1, assign2, gather1, gather2, 
+                                                  gather1_out, gather2_out, k_cache_w, v_cache_w // , v_cache_r
                                                   });
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);

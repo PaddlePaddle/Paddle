@@ -171,8 +171,12 @@ class TransformerDecoderOpConverter : public OpConverter {
         float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
         auto* bias_qk =
               engine_->GetITensor(op_desc.Input("BiasQK").front());
-        auto* kv_cache =
-              engine_->GetITensor(op_desc.Input("KVCache").front());
+        // auto* kv_cache =
+        //       engine_->GetITensor(op_desc.Input("KVCache").front());
+        auto* k_cache =
+              engine_->GetITensor(op_desc.Input("KCache").front());
+        auto* v_cache =
+              engine_->GetITensor(op_desc.Input("VCache").front());
         auto* gather_index =
               engine_->GetITensor(op_desc.Input("GatherIndex").front());
 
@@ -206,24 +210,48 @@ class TransformerDecoderOpConverter : public OpConverter {
           VLOG(4) << bias_qk_dims.d[i];
         }
 
-        // convert kv_cache from [B, N, S', 2*H] to [2, B, N, S', H]
-        reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle, *kv_cache);
-        reshape_dim.nbDims = 5;
-        reshape_dim.d[0] = 0;
-        reshape_dim.d[1] = 0;
-        reshape_dim.d[2] = 0;
-        reshape_dim.d[3] = 2;
-        reshape_dim.d[4] = head_size;
-        reshape_transpose_layer->setReshapeDimensions(reshape_dim); // [B, N, S', 2, H]
-        reshape_transpose_layer->setSecondTranspose({3,0,1,2,4}); // [2, B, N, S', H]
-        kv_cache = reshape_transpose_layer->getOutput(0);
-        
-        auto kv_cache_dims = kv_cache->getDimensions();
-        VLOG(4) << "After reshape, kv_cache dims: ";
-        for (int i=0; i<kv_cache_dims.nbDims; i++) {
-          VLOG(4) << kv_cache_dims.d[i];
+        // concat k_cache and v_cache from [B, N, S', H] to [2, B, N, S', H]
+        {
+          auto dims_ = k_cache->getDimensions();
+          VLOG(4) << "Before concat, k_cache dims: ";
+          for (int i=0; i<dims_.nbDims; i++) {
+            VLOG(4) << dims_.d[i];
+          }
         }
+        {
+          auto dims_ = v_cache->getDimensions();
+          VLOG(4) << "Before concat, v_cache dims: ";
+          for (int i=0; i<dims_.nbDims; i++) {
+            VLOG(4) << dims_.d[i];
+          }
+        }
+        std::vector<nvinfer1::ITensor*> inputs;
+        inputs.push_back(k_cache);
+        inputs.push_back(v_cache);
+        auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(), inputs.size());
+        layer->setAxis(0);
+        auto* kv_cache = layer->getOutput(0); // [2*B, N, S', H]
+        auto dims_ = kv_cache->getDimensions();
+        VLOG(4) << "Before reshape, kv_cache dims: ";
+        for (int i=0; i<dims_.nbDims; i++) {
+          VLOG(4) << dims_.d[i];
+        }
+        // reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+        //       engine_, Shuffle, *k_cache);
+        // reshape_dim.nbDims = 5;
+        // reshape_dim.d[0] = 2;
+        // reshape_dim.d[1] = -1;
+        // reshape_dim.d[2] = dims_.d[1];
+        // reshape_dim.d[3] = dims_.d[2];
+        // reshape_dim.d[4] = dims_.d[3];
+        // reshape_transpose_layer->setReshapeDimensions(reshape_dim); // [2, B, N, S', H]
+        // kv_cache = reshape_transpose_layer->getOutput(0);
+        
+        // auto kv_cache_dims = kv_cache->getDimensions();
+        // VLOG(4) << "After reshape, kv_cache dims: ";
+        // for (int i=0; i<kv_cache_dims.nbDims; i++) {
+        //   VLOG(4) << kv_cache_dims.d[i];
+        // }
 
         auto gather_index_dims = gather_index->getDimensions();
         VLOG(4) << "gather_index dims: ";
@@ -245,15 +273,16 @@ class TransformerDecoderOpConverter : public OpConverter {
 
         plugin::DynamicPluginTensorRT* decoder_plugin = new plugin::TransformerDecoderPluginDynamic<half>(half_bias_data, bias_t->numel(), head_number,
                                                   head_size, scale, with_fp16);
-        layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, decoder_plugin);
+        auto* decoder_layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, decoder_plugin);
 
-        auto* decoder_out = layer->getOutput(0);
+        auto* decoder_out = decoder_layer->getOutput(0);
         auto decoder_out_dims = decoder_out->getDimensions();
         VLOG(4) << "decoder_out_dims: ";
         for (int i=0; i<decoder_out_dims.nbDims; i++) {
           VLOG(4) << decoder_out_dims.d[i];
         }
-
+        RreplenishLayerAndOutput(decoder_layer, "transformer_decoder", {output_name},
+                             test_mode);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -262,8 +291,8 @@ class TransformerDecoderOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(layer, "transformer_decoder", {output_name},
-                             test_mode);
+    // RreplenishLayerAndOutput(decoder_layer, "transformer_decoder", {output_name},
+    //                         test_mode);
   }
 };
 

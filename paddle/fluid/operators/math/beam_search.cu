@@ -410,6 +410,14 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     }
     
     VLOG(3) << "selected lod level size: " << selected_lod.size();
+    int i=0;
+    for (auto level : selected_lod) {
+      VLOG(3) << "level: " << i;
+      for (auto n: level) {
+        VLOG(3) << n;
+      }
+      i++;
+    }
     selected_ids->set_lod(selected_lod);
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {

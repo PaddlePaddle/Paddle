@@ -389,54 +389,65 @@ class MultiheadMatMulOpConverter : public OpConverter {
         
         int n_h = fc_out_dims.d[2] / 3;
         int axis = 2;
-        std::vector<int> output_lengths= {n_h, 2*n_h};
-        VLOG(4) << "step1";
+        std::vector<int> output_lengths= {n_h, n_h, n_h};
         plugin::SplitPluginDynamic* slice = new plugin::SplitPluginDynamic(
           axis, output_lengths, with_fp16, true);
         auto* slice_layer = engine_->AddDynamicPlugin(&fc_out, 1, slice);
-        VLOG(4) << "step2";
         
         
-        auto kv_dims = slice_layer->getOutput(1)->getDimensions();
-        VLOG(4) << "kv cache before reshape: ";
-        for (int i=0; i<kv_dims.nbDims; i++) {
-          VLOG(4) << kv_dims.d[i];
+        auto k_dims = slice_layer->getOutput(1)->getDimensions();
+        VLOG(4) << "k cache before reshape: ";
+        for (int i=0; i<k_dims.nbDims; i++) {
+          VLOG(4) << k_dims.d[i];
         }
-        // reshpe [B, seq, 2*head_number*head_size, 1] to [B, head_number, seq, 2*head_size]
+        // reshpe [B, seq, head_number*head_size, 1] to [B, head_number, seq, head_size]
+        
         int head_size = hidden_out / head_number;
-        auto kv_cache = slice_layer->getOutput(1);
-        auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle, *kv_cache);
-
         nvinfer1::Dims reshape_dim_0;
-        reshape_dim_0.nbDims = 5;
-        reshape_dim_0.d[0] = -1;
-        reshape_dim_0.d[1] = kv_dims.d[1];
-        reshape_dim_0.d[2] = 2;
-        reshape_dim_0.d[3] = head_number;
-        reshape_dim_0.d[4] = head_size;
-        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, 2, head_number, head_size]
-        reshape_transpose_layer->setSecondTranspose({0,3,1,2,4}); // [B, head_number, seq, 2, head_size]
-        auto* reshape_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle, *(reshape_transpose_layer->getOutput(0)));
-        nvinfer1::Dims reshape_dim_1;
-        reshape_dim_1.nbDims = 4;
-        reshape_dim_1.d[0] = -1;
-        reshape_dim_1.d[1] = head_number;
-        reshape_dim_1.d[2] = 0;
-        reshape_dim_1.d[3] = 2*head_size;
-        reshape_layer->setReshapeDimensions(reshape_dim_1);
+        reshape_dim_0.nbDims = 4;
+        reshape_dim_0.d[0] = 0;
+        reshape_dim_0.d[1] = 0;
+        reshape_dim_0.d[2] = head_number;
+        reshape_dim_0.d[3] = head_size;
 
-        auto out_name = op_desc.Output("KVCache")[0];
-        reshape_layer->getOutput(0)->setName(out_name.c_str());
-        engine_->SetITensor(out_name, reshape_layer->getOutput(0));
+        auto k_cache = slice_layer->getOutput(1);
+        auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *k_cache);
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
+        reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
+        auto out_name = op_desc.Output("KCache")[0];
+        reshape_transpose_layer->getOutput(0)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, reshape_transpose_layer->getOutput(0));
         VLOG(3) << "SetITensor for output: " << out_name;
-
-        kv_dims = reshape_layer->getOutput(0)->getDimensions();
-        VLOG(4) << "kv cache after reshape: ";
-        for (int i=0; i<kv_dims.nbDims; i++) {
-          VLOG(4) << kv_dims.d[i];
+ 
+        k_dims = reshape_transpose_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "k cache after reshape: ";
+        for (int i=0; i<k_dims.nbDims; i++) {
+          VLOG(4) << k_dims.d[i];
         }
+
+        auto v_dims = slice_layer->getOutput(2)->getDimensions();
+        VLOG(4) << "v cache before reshape: ";
+        for (int i=0; i<v_dims.nbDims; i++) {
+          VLOG(4) << v_dims.d[i];
+        }
+
+        auto v_cache = slice_layer->getOutput(2);
+        reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *v_cache);
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
+        reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
+        out_name = op_desc.Output("VCache")[0];
+        reshape_transpose_layer->getOutput(0)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, reshape_transpose_layer->getOutput(0));
+        VLOG(3) << "SetITensor for output: " << out_name;
+        
+        v_dims = reshape_transpose_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "v cache after reshape: ";
+        for (int i=0; i<v_dims.nbDims; i++) {
+          VLOG(4) << v_dims.d[i];
+        }
+        
         // ##############write kv cache end ########################     
 
         // add qkv to context
