@@ -341,6 +341,10 @@ class OpTest(unittest.TestCase):
         def is_mlu_op_test():
             return hasattr(cls, "use_mlu") and cls.use_mlu == True
 
+        def is_custom_device_op_test():
+            return hasattr(
+                cls, "use_custom_device") and cls.use_custom_device == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -364,7 +368,8 @@ class OpTest(unittest.TestCase):
                 and not is_mkldnn_op_test() \
                 and not is_rocm_op_test() \
                 and not is_npu_op_test() \
-                and not is_mlu_op_test():
+                and not is_mlu_op_test() \
+                and not is_custom_device_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
