@@ -112,6 +112,10 @@ int32_t MemorySparseTable::Load(const std::string& path,
     return -1;
   }
 
+  if (load_param == 5) {
+    return LoadPatch(file_list, load_param);
+  }
+
   size_t file_start_idx = _shard_idx * _avg_local_shard_num;
 
   size_t feature_value_size =

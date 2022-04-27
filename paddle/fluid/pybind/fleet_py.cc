@@ -83,7 +83,9 @@ void BindDistFleetWrapper(py::module* m) {
       .def("client_flush", &FleetWrapper::ClientFlush)
       .def("get_cache_threshold", &FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
-      .def("save_cache", &FleetWrapper::SaveCache);
+      .def("save_cache", &FleetWrapper::SaveCache)
+      .def("revert", &FleetWrapper::Revert)
+      .def("revert", &FleetWrapper::CheckSavePrePatchDone);
 }
 
 void BindPSHost(py::module* m) {

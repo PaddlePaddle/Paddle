@@ -203,12 +203,14 @@ int32_t BrpcPsService::Initialize() {
   _service_handler_map[PS_STOP_PROFILER] = &BrpcPsService::StopProfiler;
   _service_handler_map[PS_PUSH_GLOBAL_STEP] = &BrpcPsService::PushGlobalStep;
   // for save cache
-
   _service_handler_map[PS_SAVE_ONE_CACHE_TABLE] =
       &BrpcPsService::SaveCacheTable;
   _service_handler_map[PS_GET_CACHE_THRESHOLD] =
       &BrpcPsService::GetCacheThreshold;
   _service_handler_map[PS_CACHE_SHUFFLE] = &BrpcPsService::CacheShuffle;
+
+  _service_handler_map[PS_REVERT] = &BrpcPsService::Revert;
+  _service_handler_map[PS_CHECK_SAVE_PRE_PATCH_DONE] = &BrpcPsService::CheckSavePrePatchDone;
 
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_server_pull_dense");
@@ -748,6 +750,25 @@ int32_t BrpcPsService::GetCacheThreshold(Table *table,
   return 0;
 }
 
+int32_t BrpcPsService::Revert(Table* table,
+            const PsRequestMessage& request, PsResponseMessage& response, brpc::Controller* cntl) {
+        auto& table_map = *(_server->GetTable());
+        for (auto& itr : table_map) {
+            itr.second->Flush();
+            itr.second->Revert();
+        }
+        return 0;
+    }
+
+int32_t DownpourPsService::CheckSavePrePatchDone(Table* table,
+            const PsRequestMessage& request, PsResponseMessage& response, brpc::Controller* cntl) {
+        auto& table_map = *(_server->GetTable());
+        for (auto& itr : table_map) {
+            itr.second->CheckSavePrePatchDone();
+        }
+        return 0;
+    }
+ 
 int32_t BrpcPsService::ShrinkTable(Table *table,
                                    const PsRequestMessage &request,
                                    PsResponseMessage &response,

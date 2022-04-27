@@ -1339,6 +1339,15 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         return feasign_num
 
+    def _revert(self):
+        """  
+        revert all the updated params in current pass
+        """
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.revert()
+        fleet.util.barrier()
+
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
                                                      True)
