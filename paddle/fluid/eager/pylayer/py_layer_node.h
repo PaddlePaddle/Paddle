@@ -36,7 +36,7 @@ class GradNodePyLayer : public GradNodeBase {
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+      bool create_graph = false, bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
