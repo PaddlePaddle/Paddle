@@ -19,6 +19,7 @@ import paddle.nn.functional as F
 import tempfile
 import warnings
 import json
+import os
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -50,11 +51,12 @@ class LayoutAutoTune(unittest.TestCase):
                 }})
             return paddle.fluid.core.use_layout_autotune()
         else:
-            config = {"layout": {"enable": True}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            config = {"layout": {"enable": False}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
             json.dump(config, tfile)
-            tfile.flush()
+            tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
             return paddle.fluid.core.use_layout_autotune()
 
     def train(self, data_format):
@@ -132,10 +134,14 @@ class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"layout": {"enable": 1}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            # On linux, we can open the file again to read the content
+            # without closing the file, but on windows system, there is
+            # no permission to open it again without closing it.
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
             json.dump(config, tfile)
-            tfile.flush()
+            tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
             self.assertTrue(len(w) == 1)
 
     def test_set_config_attr(self):
