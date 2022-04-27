@@ -395,29 +395,52 @@ class MultiheadMatMulOpConverter : public OpConverter {
           axis, output_lengths, with_fp16, true);
         auto* slice_layer = engine_->AddDynamicPlugin(&fc_out, 1, slice);
         VLOG(4) << "step2";
-        auto out_name = op_desc.Output("KVCache")[0];
-        VLOG(4) << "out_name: " << out_name;
-        slice_layer->getOutput(1)->setName(out_name.c_str());
-        engine_->SetITensor(out_name, slice_layer->getOutput(1));
-        VLOG(3) << "
-        : " << out_name;
-        // out_name = op_desc.Output("VCache")[0];
-        // VLOG(4) << "out_name: " << out_name;
-        // slice_layer->getOutput(2)->setName(out_name.c_str());
-        // engine_->SetITensor(out_name, slice_layer->getOutput(2));
-
+        
         
         auto kv_dims = slice_layer->getOutput(1)->getDimensions();
-        VLOG(4) << "kv cache: ";
+        VLOG(4) << "kv cache before reshape: ";
         for (int i=0; i<kv_dims.nbDims; i++) {
           VLOG(4) << kv_dims.d[i];
         }
-        // reshpe [B, seq, 2*head_number*head_size, 1] to [B, head_number, max_seq_length, 2*head_size]
-        
+        // reshpe [B, seq, 2*head_number*head_size, 1] to [B, head_number, seq, 2*head_size]
+        int head_size = hidden_out / head_number;
+        auto kv_cache = slice_layer->getOutput(1);
+        auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *kv_cache);
+
+        nvinfer1::Dims reshape_dim_0;
+        reshape_dim_0.nbDims = 5;
+        reshape_dim_0.d[0] = -1;
+        reshape_dim_0.d[1] = kv_dims.d[1];
+        reshape_dim_0.d[2] = 2;
+        reshape_dim_0.d[3] = head_number;
+        reshape_dim_0.d[4] = head_size;
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, 2, head_number, head_size]
+        reshape_transpose_layer->setSecondTranspose({0,3,1,2,4}); // [B, head_number, seq, 2, head_size]
+        auto* reshape_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *(reshape_transpose_layer->getOutput(0)));
+        nvinfer1::Dims reshape_dim_1;
+        reshape_dim_1.nbDims = 4;
+        reshape_dim_1.d[0] = -1;
+        reshape_dim_1.d[1] = head_number;
+        reshape_dim_1.d[2] = 0;
+        reshape_dim_1.d[3] = 2*head_size;
+        reshape_layer->setReshapeDimensions(reshape_dim_1);
+
+        auto out_name = op_desc.Output("KVCache")[0];
+        reshape_layer->getOutput(0)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, reshape_layer->getOutput(0));
+        VLOG(3) << "SetITensor for output: " << out_name;
+
+        kv_dims = reshape_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "kv cache after reshape: ";
+        for (int i=0; i<kv_dims.nbDims; i++) {
+          VLOG(4) << kv_dims.d[i];
+        }
         // ##############write kv cache end ########################     
 
         // add qkv to context
-        int head_size = hidden_out / head_number;
+        
         float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
 
         std::vector<nvinfer1::ITensor*> plugin_inputs;

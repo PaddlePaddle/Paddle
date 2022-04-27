@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_decoder_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -161,7 +162,7 @@ class TransformerDecoderOpConverter : public OpConverter {
         auto* fc_out = fc_layer->getOutput(0);
 
         auto fc_out_dims = fc_out->getDimensions();
-        VLOG(4) << "fc_out_dims: ";
+        VLOG(4) << "Before reshape, fc_out dims: ";
         for (int i=0; i<fc_out_dims.nbDims; i++) {
           VLOG(4) << fc_out_dims.d[i];
         }
@@ -174,15 +175,70 @@ class TransformerDecoderOpConverter : public OpConverter {
               engine_->GetITensor(op_desc.Input("KVCache").front());
         auto* gather_index =
               engine_->GetITensor(op_desc.Input("GatherIndex").front());
+
+        // convert fc from (B, S, 3 * N * H, 1, 1) to [3, B, S, N * H]
+        auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *fc_out);
+        nvinfer1::Dims reshape_dim;
+        reshape_dim.nbDims = 4;
+        reshape_dim.d[0] = 0;
+        reshape_dim.d[1] = 0;
+        reshape_dim.d[2] = 3;
+        reshape_dim.d[3] = head_number * head_size;
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim); // (B, S, 3, N * H)
+        reshape_transpose_layer->setSecondTranspose({2,0,1,3}); // [3, B, S, N * H]
+        fc_out = reshape_transpose_layer->getOutput(0);
+        
+        fc_out_dims = fc_out->getDimensions();
+        VLOG(4) << "After reshape, fc_out dims: ";
+        for (int i=0; i<fc_out_dims.nbDims; i++) {
+          VLOG(4) << fc_out_dims.d[i];
+        }
+
+        // convert bias_qk from [B, N, 1, S'] to [B, 1, 1, S']
+        plugin::SlicePluginDynamic* slice_plugin =
+            new plugin::SlicePluginDynamic({0}, {1}, {1}, with_fp16);
+        layer = engine_->AddDynamicPlugin(&bias_qk, 1, slice_plugin);
+        bias_qk = layer->getOutput(0);
+        auto bias_qk_dims = bias_qk->getDimensions();
+        VLOG(4) << "After reshape, bias_qk dims: ";
+        for (int i=0; i<bias_qk_dims.nbDims; i++) {
+          VLOG(4) << bias_qk_dims.d[i];
+        }
+
+        // convert kv_cache from [B, N, S', 2*H] to [2, B, N, S', H]
+        reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *kv_cache);
+        reshape_dim.nbDims = 5;
+        reshape_dim.d[0] = 0;
+        reshape_dim.d[1] = 0;
+        reshape_dim.d[2] = 0;
+        reshape_dim.d[3] = 2;
+        reshape_dim.d[4] = head_size;
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim); // [B, N, S', 2, H]
+        reshape_transpose_layer->setSecondTranspose({3,0,1,2,4}); // [2, B, N, S', H]
+        kv_cache = reshape_transpose_layer->getOutput(0);
+        
+        auto kv_cache_dims = kv_cache->getDimensions();
+        VLOG(4) << "After reshape, kv_cache dims: ";
+        for (int i=0; i<kv_cache_dims.nbDims; i++) {
+          VLOG(4) << kv_cache_dims.d[i];
+        }
+
+        auto gather_index_dims = gather_index->getDimensions();
+        VLOG(4) << "gather_index dims: ";
+        for (int i=0; i<gather_index_dims.nbDims; i++) {
+          VLOG(4) << gather_index_dims.d[i];
+        }
+        
         std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.push_back(fc_out); // [3, B, 1(seq_len), num_head * dim_head]
+        plugin_inputs.push_back(fc_out); // [3, B, S, N * H]
         plugin_inputs.push_back(bias_qk);// [bsz, 1, 1, time_step(cache_seq_length)+1] 
         plugin_inputs.push_back(kv_cache); // [2, B, num_head, cache_seq_len(padding max_seq_len), dim_head]
         plugin_inputs.push_back(gather_index); //[]
-        
+        // qkv bias: [3, num_head, dim_head]
         
         auto half_bias_data = new half[bias_t->numel()];
-
         for (int i = 0; i < bias_t->numel(); i++) {
             half_bias_data[i] = static_cast<half>(bias_data[i]);
         }

@@ -32,10 +32,12 @@ class LoDResetKernel : public framework::OpKernel<T> {
     bool append = ctx.Attr<bool>("append");
 
     framework::TensorCopy(*in, in->place(), out);
-
-    std::vector<int> level0;
+    VLOG(3) << "lod reset:";
+    std::vector<int64_t> level0;
     if (lod_t) {
+      VLOG(3) << "hit lod tensor";
       if (lod_t->lod().size() > 0) {
+        VLOG(3) << "get from lod";
         auto y_lod = lod_t->lod();
         auto last_level = y_lod[y_lod.size() - 1];
         PADDLE_ENFORCE_EQ(
@@ -49,16 +51,24 @@ class LoDResetKernel : public framework::OpKernel<T> {
         out->set_lod(y_lod);
         return;  // early return, since lod already set
       } else {
-        auto* lod = lod_t->data<int>();
+        VLOG(3) << "get from data";
+        auto* lod = lod_t->data<int64_t>();
         framework::Tensor lod_cpu;
         if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
-          lod = lod_cpu.data<int>();
+          lod = lod_cpu.data<int64_t>();
         }
-        level0 = std::vector<int>(lod, lod + lod_t->numel());
+        level0 = std::vector<int64_t>(lod, lod + lod_t->numel());
+        level0.push_back(1); // debugggggggg
+        level0[0] = 0;
+        VLOG(3) << "reset lod:";
+        for (int64_t i : level0) {
+          VLOG(3) << "lod: " << i;
+        }
       }
     } else {
-      level0 = ctx.Attr<std::vector<int>>("target_lod");
+      VLOG(3) << "get from target_lod";
+      level0 = ctx.Attr<std::vector<int64_t>>("target_lod");
     }
 
     PADDLE_ENFORCE_GT(
@@ -90,7 +100,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
     // cast level0 to size_t
     std::vector<size_t> ulevel0(level0.size(), 0);
     std::transform(level0.begin(), level0.end(), ulevel0.begin(),
-                   [](int a) { return static_cast<size_t>(a); });
+                   [](int64_t a) { return static_cast<size_t>(a); });
     if (append) {
       auto* out_lod = out->mutable_lod();
       out_lod->push_back(ulevel0);

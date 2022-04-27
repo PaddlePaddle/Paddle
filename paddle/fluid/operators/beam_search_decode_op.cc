@@ -47,6 +47,18 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     tensor_on_npu_ = false;
+    
+    VLOG(3) << "step_ids_origin_.size(): " << step_ids_origin_.size();
+    VLOG(3) << "step_scores_origin_.size(): " << step_scores_origin_.size();
+
+    PADDLE_ENFORCE_GT(
+          step_ids_origin_.size(), 0,
+          platform::errors::InvalidArgument(
+              "For the i step in beam search steps,"
+              "The size of Input(step_ids) of beam_search_decoder should larger than 0,"
+              "but received %d. ",
+              step_ids_origin_.size()));
+
     // First make a copy of GPU data on CPU
     if (platform::is_gpu_place(step_ids_origin_[0].place()) ||
         platform::is_npu_place(step_ids_origin_[0].place())) {
@@ -73,6 +85,14 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
+    PADDLE_ENFORCE_GT(
+          step_scores_origin_.size(), 0,
+          platform::errors::InvalidArgument(
+              "For the i step in beam search steps,"
+              "The size of Input(step_scores) of beam_search_decoder should larger than 0,"
+              "but received %d. ",
+              step_scores_origin_.size()));
+
     if (platform::is_gpu_place(step_scores_origin_[0].place()) ||
         platform::is_npu_place(step_scores_origin_[0].place())) {
       if (platform::is_gpu_place(step_scores_origin_[0].place())) {
@@ -99,6 +119,7 @@ struct BeamSearchDecodeFunctor {
         step_scores_.push_back(out);
       }
     }
+    VLOG(3) << "beam search decode end";
   }
 
   template <typename T>
@@ -158,6 +179,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
     const size_t step_num = ids->size();
+    VLOG(3) << "step_num: " << step_num;
     PADDLE_ENFORCE_GT(
         step_num, 0UL,
         platform::errors::InvalidArgument(
@@ -165,6 +187,11 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
             "size of Input(Ids) LoDTensorArray. beam search steps should "
             "be larger than 0, but received %d. ",
             step_num));
+    auto lod_ = ids->at(0).lod();
+    VLOG(3) << "lod level size: " << lod_.size();
+    for (auto level : lod_) {
+      VLOG(3) << "size: " << level.size();
+    }
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;
     PADDLE_ENFORCE_GT(
         source_num, 0UL,

@@ -1038,7 +1038,7 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
                                 const void *const *inputs, void *const *outputs,
                                 void *workspace,
                                 cudaStream_t stream) TRT_NOEXCEPT {
-  return true;
+  return 0;
   auto input_dims = input_desc[0].dims;
   auto input_type = input_desc[0].type;
   int bsz = input_dims.d[1];

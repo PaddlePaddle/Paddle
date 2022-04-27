@@ -408,7 +408,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
           " beam_search, please check your code.",
           framework::LoDToString(selected_lod)));
     }
-
+    
+    VLOG(3) << "selected lod level size: " << selected_lod.size();
     selected_ids->set_lod(selected_lod);
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {

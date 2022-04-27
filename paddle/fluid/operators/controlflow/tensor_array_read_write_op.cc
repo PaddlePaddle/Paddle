@@ -38,9 +38,16 @@ class WriteToArrayOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
-    if (x == nullptr) return;
+    VLOG(3) << "WriteToArrayOp, x: " << Input("X");
+    if (x == nullptr) {
+      VLOG(3) << "x==null!!!";
+      return;
+    }
     auto &x_tensor = x->Get<framework::LoDTensor>();
+    auto lod_ = x_tensor.lod();
+    VLOG(3) << "write x, level size: " << lod_.size();
     size_t offset = GetOffset(scope, place);
+    VLOG(3) << "offset=" << offset;
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
