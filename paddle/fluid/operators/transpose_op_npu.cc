@@ -28,11 +28,16 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     out->mutable_data<T>(ctx.device_context().GetPlace());
+#if (CANN_VERSION_CODE >= 503003)
+    framework::NPUAttributeMap attr_input = {{ "perm", axis }};
+    const auto& runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
+#else
     NpuOpRunner runner;
     runner.SetType("Transpose")
         .AddInput(*x)
         .AddInput(std::move(axis))
         .AddOutput(*out);
+#endif
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -54,11 +59,17 @@ class TransposeGradNPUKernel : public framework::OpKernel<T> {
       reversed_axis[axis[i]] = i;
     }
     x_grad->mutable_data<T>(ctx.GetPlace());
+#if (CANN_VERSION_CODE >= 503003)
+    framework::NPUAttributeMap attr_input = {{ "perm", reversed_axis }};
+    const auto& runner =
+        NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
+#else
     NpuOpRunner runner;
     runner.SetType("Transpose")
         .AddInput(*out_grad)
         .AddInput(std::move(reversed_axis))
         .AddOutput(*x_grad);
+#endif
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

@@ -56,7 +56,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      NpuOpRunner runner{"AddN", {inputs}, {*out}, {{"N", n}}};
+      NpuOpRunner runner{"AddN", {inputs}, {*out}, {{"N", static_cast<int>(inputs.size())}}};
       runner.AddInputNames(names);
       runner.Run(stream);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
