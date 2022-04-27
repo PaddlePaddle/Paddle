@@ -2021,7 +2021,6 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 @framework.static_only
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    :api_attr: Static Graph
 
     Backpropagate the gradients of targets to inputs.
 
@@ -2042,8 +2041,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
+    
         .. code-block:: python
-
+          :name: code-example
             import paddle
             import paddle.nn.functional as F
 
