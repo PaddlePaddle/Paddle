@@ -18,32 +18,35 @@ namespace paddle {
 namespace framework {
 
 phi::Attribute GetAttrValueForPhi(const Attribute& attr) {
-  if (attr.type() == typeid(int)) {
-    return BOOST_GET_CONST(int, attr);
-  } else if (attr.type() == typeid(float)) {
-    return BOOST_GET_CONST(float, attr);
-  } else if (attr.type() == typeid(std::string)) {
-    return BOOST_GET_CONST(std::string, attr);
-  } else if (attr.type() == typeid(std::vector<int>)) {
-    return BOOST_GET_CONST(std::vector<int>, attr);
-  } else if (attr.type() == typeid(std::vector<float>)) {
-    return BOOST_GET_CONST(std::vector<float>, attr);
-  } else if (attr.type() == typeid(std::vector<std::string>)) {
-    return BOOST_GET_CONST(std::vector<std::string>, attr);
-  } else if (attr.type() == typeid(bool)) {
-    return BOOST_GET_CONST(bool, attr);
-  } else if (attr.type() == typeid(std::vector<bool>)) {
-    return BOOST_GET_CONST(std::vector<bool>, attr);
-  } else if (attr.type() == typeid(int64_t)) {
-    return BOOST_GET_CONST(int64_t, attr);
-  } else if (attr.type() == typeid(std::vector<int64_t>)) {
-    return BOOST_GET_CONST(std::vector<int64_t>, attr);
-  } else if (attr.type() == typeid(std::vector<double>)) {
-    return BOOST_GET_CONST(std::vector<double>, attr);
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported Attribute value type for phi."));
+  switch (AttrTypeID(attr)) {
+    case proto::AttrType::INT:
+      return BOOST_GET_CONST(int, attr);
+    case proto::AttrType::FLOAT:
+      return BOOST_GET_CONST(float, attr);
+    case proto::AttrType::STRING:
+      return BOOST_GET_CONST(std::string, attr);
+    case proto::AttrType::INTS:
+      return BOOST_GET_CONST(std::vector<int>, attr);
+    case proto::AttrType::FLOATS:
+      return BOOST_GET_CONST(std::vector<float>, attr);
+    case proto::AttrType::STRINGS:
+      return BOOST_GET_CONST(std::vector<std::string>, attr);
+    case proto::AttrType::BOOLEAN:
+      return BOOST_GET_CONST(bool, attr);
+    case proto::AttrType::BOOLEANS:
+      return BOOST_GET_CONST(std::vector<bool>, attr);
+    case proto::AttrType::LONG:
+      return BOOST_GET_CONST(int64_t, attr);
+    case proto::AttrType::LONGS:
+      return BOOST_GET_CONST(std::vector<int64_t>, attr);
+    case proto::AttrType::FLOAT64S:
+      return BOOST_GET_CONST(std::vector<double>, attr);
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported Attribute value type `%s` for phi.",
+          platform::demangle(attr.type().name())));
   }
+  return phi::Attribute();
 }
 
 Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {

@@ -21,7 +21,7 @@
 #include "gtest/gtest.h"
 #include "paddle/utils/any.h"
 
-TEST(Attribute, GetAttrValueToAny) {
+TEST(Attribute, GetAttrValueForPhi) {
   paddle::framework::Attribute x_int(100);
   auto rlt_int = paddle::framework::GetAttrValueForPhi(x_int);
   EXPECT_EQ(paddle::get<int>(rlt_int), 100);
