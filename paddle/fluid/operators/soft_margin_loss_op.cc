@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -94,8 +94,7 @@ class SoftMarginLossOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>), the input is a tensor of logits"
-             "computed by the previous operator, which is always the result of"
-             "a sigmoid operator. Input must between in 0 and 1.");
+             "computed by the previous operator. ");
     AddInput("Label",
              "(Tensor, default Tensor<float>), have same shape with input"
              "label should between in 0 and 1.");
@@ -109,7 +108,7 @@ This measures the element-wise probability error in classification tasks
 in which each class is independent.
 
 The logitstic loss is given as follows:
-      $$loss = -Label * \log(X) - (1 - Label) * \log(1 - X)$$
+      $$loss = log(1+exp(-Label * X))$$
 )DOC");
   }
 };
@@ -126,6 +125,7 @@ class SoftMarginLossGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Label", this->Input("Label"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 

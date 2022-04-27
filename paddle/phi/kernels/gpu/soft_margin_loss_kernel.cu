@@ -28,7 +28,6 @@ namespace phi {
 template <typename T>
 struct SoftMarginLossFunctor {
   T one;
-  T neg_100;
 
   HOSTDEVICE inline SoftMarginLossFunctor() {
     one = static_cast<T>(1.0f);
