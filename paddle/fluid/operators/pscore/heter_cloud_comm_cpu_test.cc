@@ -136,7 +136,7 @@ void PressTestSendRecv(
   file.read((char*)data_ptr, 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
-  int loopCnt = 600;
+  int loopCnt = 10000;
   auto send_async = [&]() -> void {
     int i = 0;
     while (i++ < loopCnt) {
@@ -255,7 +255,7 @@ TEST(HETERSENDANDRECV, CPU) {
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
   // TestScopeSendRecv(heter_client_ptr_);
-  //TestShardSendRecv(heter_client_ptr_);
+  // TestShardSendRecv(heter_client_ptr_);
   PressTestSendRecv(heter_client_ptr_);
 
   switch_server_ptr_a->Stop();

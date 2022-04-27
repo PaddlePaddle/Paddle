@@ -144,7 +144,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
                             brpc::Controller* cntl);
 
   void WaitForVarsConsumed(int32_t group_id, const std::string& var_name) {
-    //timeline_.Start();
+    // timeline_.Start();
     while (true) {
       {
         std::lock_guard<std::mutex> lock(scope_mutex_);
@@ -164,7 +164,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
   }
 
   void WaitForVarsProduced(int32_t group_id, const std::string& var_name) {
-    //timeline_.Start();
+    // timeline_.Start();
     while (true) {
       {
         std::lock_guard<std::mutex> lock(scope_mutex_);
