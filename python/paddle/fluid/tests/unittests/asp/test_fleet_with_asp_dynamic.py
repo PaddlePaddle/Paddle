@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
-from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
@@ -61,8 +60,8 @@ class TestFleetWithASPDynamic(unittest.TestCase):
     def test_with_asp(self):
         fleet.init(is_collective=True)
 
-        self.optimizer = sparsity.decorate(self.optimizer)
-        sparsity.prune_model(self.layer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
+        paddle.asp.prune_model(self.layer)
 
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
@@ -115,8 +114,8 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
     def test_with_asp(self):
         fleet.init(is_collective=True)
 
-        self.optimizer = sparsity.decorate(self.optimizer)
-        sparsity.prune_model(self.layer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
+        paddle.asp.prune_model(self.layer)
 
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)

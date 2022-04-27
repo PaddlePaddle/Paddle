@@ -19,7 +19,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
@@ -54,8 +53,8 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
         self.optimizer = paddle.optimizer.SGD(
             learning_rate=0.01, parameters=self.layer.parameters())
-        self.optimizer = sparsity.decorate(self.optimizer)
-        sparsity.prune_model(self.layer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
+        paddle.asp.prune_model(self.layer)
 
     def test_save_and_load(self):
         path = "/tmp/paddle_asp_save_dy/"
@@ -132,7 +131,7 @@ class TestASPStaticOptimize(unittest.TestCase):
                 fluid.layers.cross_entropy(
                     input=predict, label=self.label))
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
-            self.optimizer = sparsity.decorate(self.optimizer)
+            self.optimizer = paddle.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
 
         self.place = paddle.CPUPlace()
@@ -141,7 +140,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         self.exe = fluid.Executor(self.place)
         self.exe.run(self.startup_program)
 
-        sparsity.prune_model(self.main_program)
+        paddle.asp.prune_model(self.main_program)
 
     def test_save_and_load(self):
         path = "/tmp/paddle_asp_save_st/"

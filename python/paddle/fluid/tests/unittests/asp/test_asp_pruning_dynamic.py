@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 
 
@@ -68,13 +67,13 @@ class TestASPDynamicPruningBase(unittest.TestCase):
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.01,
                                          parameters=self.layer.parameters())
-        optimizer = sparsity.decorate(optimizer)
+        optimizer = paddle.asp.decorate(optimizer)
 
         self.__pruning_and_checking(True)
 
     def __pruning_and_checking(self, with_mask):
 
-        sparsity.prune_model(
+        paddle.asp.prune_model(
             self.layer, mask_algo=self.mask_gen_func, with_mask=with_mask)
 
         for param in self.layer.parameters():

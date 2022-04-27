@@ -51,7 +51,6 @@ def set_excluded_layers(param_names, main_program=None):
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
@@ -71,16 +70,15 @@ def set_excluded_layers(param_names, main_program=None):
                     learning_rate=0.01, parameters=my_layer.parameters())
 
                 # Need to set excluded layers before calling decorate
-                sparsity.set_excluded_layers(["linear_0"])
+                paddle.asp.set_excluded_layers(["linear_0"])
 
-                optimizer = sparsity.decorate(optimizer)
+                optimizer = paddle.asp.decorate(optimizer)
 
         2. Usage of Static Graph
 
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 paddle.enable_static()
 
@@ -109,13 +107,13 @@ def set_excluded_layers(param_names, main_program=None):
 
                     # Setup exluded layers out from ASP workflow.
                     # Please note, excluded_layers must be set before calling optimizer.minimize().
-                    sparsity.set_excluded_layers(["linear_0"], main_program)
+                    paddle.asp.set_excluded_layers(["linear_0"], main_program)
 
                     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                     optimizer = paddle.static.amp.decorate(optimizer )
-                    # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                    # Calling paddle.asp.decorate() to wrap minimize() in optimizer, which 
                     # will insert necessary masking operations for ASP workflow.
-                    optimizer = sparsity.decorate(optimizer)
+                    optimizer = paddle.asp.decorate(optimizer)
                     optimizer.minimize(loss, startup_program)
     """
     if main_program is None:
@@ -139,7 +137,6 @@ def reset_excluded_layers(main_program=None):
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
@@ -159,19 +156,18 @@ def reset_excluded_layers(main_program=None):
                     learning_rate=0.01, parameters=my_layer.parameters())
 
                 # Need to set excluded layers before calling decorate
-                sparsity.set_excluded_layers(["linear_0"])
+                paddle.asp.set_excluded_layers(["linear_0"])
                 # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
                 # Please note, reset_excluded_layers also must be called before calling sparsity.decorate().
-                sparsity.reset_excluded_layers()
+                paddle.asp.reset_excluded_layers()
 
-                optimizer = sparsity.decorate(optimizer)
+                optimizer = paddle.asp.decorate(optimizer)
 
         2. Usage of Static Graph
 
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 paddle.enable_static()
 
@@ -200,16 +196,16 @@ def reset_excluded_layers(main_program=None):
 
                     # Setup exluded layers out from ASP workflow.
                     # Please note, excluded_layers must be set before calling optimizer.minimize().
-                    sparsity.set_excluded_layers(["linear_0"], main_program)
+                    paddle.asp.set_excluded_layers(["linear_0"], main_program)
                     # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
                     # Please note, reset_excluded_layers also must be called before calling optimizer.minimize().
-                    sparsity.reset_excluded_layers(main_program)
+                    paddle.asp.reset_excluded_layers(main_program)
 
                     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                     optimizer = paddle.static.amp.decorate(optimizer )
-                    # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                    # Calling paddle.asp.decorate() to wrap minimize() in optimizer, which 
                     # will insert necessary masking operations for ASP workflow.
-                    optimizer = sparsity.decorate(optimizer)
+                    optimizer = paddle.asp.decorate(optimizer)
                     optimizer.minimize(loss, startup_program)
     """
     ASPHelper.reset_excluded_layers(main_program=main_program)
@@ -232,7 +228,6 @@ def decorate(optimizer):
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
@@ -255,17 +250,16 @@ def decorate(optimizer):
                 optimizer = paddle.optimizer.SGD(
                     learning_rate=0.01, parameters=my_layer.parameters())
 
-                # Calling sparsity.decorate() to wrap step() in optimizer, which 
+                # Calling paddle.asp.decorate() to wrap step() in optimizer, which 
                 # will apply necessary masking operations for ASP workflow.
                 # In dynamic graph mode, ASP would create related mask variables during decoration.
-                optimizer = sparsity.decorate(optimizer)
+                optimizer = paddle.asp.decorate(optimizer)
 
         2. Usage of Static Graph
 
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
 
                 paddle.enable_static()
 
@@ -293,11 +287,11 @@ def decorate(optimizer):
                     loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-                    # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                    # Calling paddle.asp.decorate() to wrap minimize() in optimizer, which 
                     # will insert necessary masking operations for ASP workflow.
                     # In static graph mode, ASP creates related mask variables 
                     # during minimize().
-                    optimizer = sparsity.decorate(optimizer)
+                    optimizer = paddle.asp.decorate(optimizer)
                     optimizer.minimize(loss, startup_program)
     """
     return ASPHelper.decorate(optimizer)
@@ -314,7 +308,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     *Note*: (Static graph mode) If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize` 
     and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable). 
     Typically set `with_mask` as true for training (have called `OptimizerWithSparsityGuarantee.minimize`) and false for 
-    inference only. To obtain OptimizerWithSparsityGuarantee, please see `sparsity.decoreate()`.
+    inference only. To obtain OptimizerWithSparsityGuarantee, please see `paddle.asp.decoreate()`.
 
     Args:
         model (Program|nn.Layer): Program with model definition and its parameters, or a object of `paddle.nn.Layer`.
@@ -331,7 +325,6 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
                 import numpy as np
 
                 class MyLayer(paddle.nn.Layer):
@@ -357,13 +350,13 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                 optimizer = paddle.optimizer.SGD(
                     learning_rate=0.01, parameters=my_layer.parameters())
 
-                # Calling sparsity.decorate() to wrap step() in optimizer, which 
+                # Calling paddle.asp.decorate() to wrap step() in optimizer, which 
                 # will apply necessary masking operations for ASP workflow.
                 # In dynamic graph mode, ASP would create related mask variables during decoration.
-                optimizer = sparsity.decorate(optimizer)
+                optimizer = paddle.asp.decorate(optimizer)
 
-                # Must call sparsity.decorate() first before calling sparsity.prune_model()
-                sparsity.prune_model(my_layer, mask_algo='mask_2d_best')
+                # Must call paddle.asp.decorate() first before calling paddle.asp.prune_model()
+                paddle.asp.prune_model(my_layer, mask_algo='mask_2d_best')
 
                 for i in range(10):
                     imgs = paddle.to_tensor(
@@ -383,7 +376,6 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
             .. code-block:: python
 
                 import paddle
-                from paddle.static import sparsity
                 import numpy as np
 
                 paddle.enable_static()
@@ -416,11 +408,11 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                     loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-                    # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                    # Calling paddle.asp.decorate() to wrap minimize() in optimizer, which 
                     # will insert necessary masking operations for ASP workflow.
                     # In static graph mode, ASP creates related mask variables 
                     # during minimize().
-                    optimizer = sparsity.decorate(optimizer)
+                    optimizer = paddle.asp.decorate(optimizer)
                     optimizer.minimize(loss, startup_program)
 
                 device = paddle.device.get_device()
@@ -429,10 +421,10 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
                 exe = paddle.static.Executor(place)
                 exe.run(startup_program)
 
-                # Must call exe.run(startup_program) first before calling sparsity.prune_model()
-                sparsity.prune_model(my_layer, mask_algo='mask_2d_best')
+                # Must call exe.run(startup_program) first before calling paddle.asp.prune_model()
+                paddle.asp.prune_model(my_layer, mask_algo='mask_2d_best')
                 # it also be accepted to call 
-                # sparsity.prune_model(main_program, mask_algo='mask_2d_best')
+                # paddle.asp.prune_model(main_program, mask_algo='mask_2d_best')
 
                 for i in range(10):
                     imgs = np.random.randn(64, 3, 32, 32).astype('float32')

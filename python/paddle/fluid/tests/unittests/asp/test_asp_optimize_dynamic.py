@@ -19,7 +19,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
@@ -70,7 +69,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.set_excluded_layers(['fc_1', 'conv2d_0'])
+        paddle.asp.set_excluded_layers(['fc_1', 'conv2d_0'])
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False
@@ -79,7 +78,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.reset_excluded_layers()
+        paddle.asp.reset_excluded_layers()
         ref = [
             False, False, True, False, True, False, True, False, True, False,
             True, False
@@ -90,7 +89,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
     def test_decorate(self):
         param_names = [param.name for param in self.layer.parameters()]
-        self.optimizer = sparsity.decorate(self.optimizer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
 
         program = paddle.static.default_main_program()
 
@@ -103,9 +102,9 @@ class TestASPDynamicOptimize(unittest.TestCase):
                 self.assertTrue(mask_var is None)
 
     def test_asp_training(self):
-        self.optimizer = sparsity.decorate(self.optimizer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
 
-        sparsity.prune_model(self.layer)
+        paddle.asp.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
             np.random.randn(32, 3, 24, 24),
@@ -136,9 +135,9 @@ class TestASPDynamicOptimize(unittest.TestCase):
                         mat.T, n=2, m=4))
 
     def test_asp_training_with_amp(self):
-        self.optimizer = sparsity.decorate(self.optimizer)
+        self.optimizer = paddle.asp.decorate(self.optimizer)
 
-        sparsity.prune_model(self.layer)
+        paddle.asp.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
             np.random.randn(32, 3, 24, 24),
