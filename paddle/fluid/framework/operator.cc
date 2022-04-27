@@ -946,19 +946,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   // TODO(paddle-dev): Can this be template?
-  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
-    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
   }
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string& name) const override {
     const std::vector<Variable*>& vars = OutputVars(name);
-    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(vars.size());
     res.insert(res.begin(), vars.begin(), vars.end());
     return res;
@@ -2344,7 +2344,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         tensor_in = &(var->Get<phi::SelectedRows>());
         pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::LoDTensorArray>()) {
-        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        paddle::small_vector<const phi::TensorBase*> tensor_vector;
         auto& tensor_array = var->Get<framework::LoDTensorArray>();
         for (auto& t : tensor_array) {
           tensor_vector.emplace_back(&t);
@@ -2393,7 +2393,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          paddle::small_vector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
           // Note: If the input LoDTensorArray size is 0, the output

@@ -41,9 +41,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
 
   ~KernelArgsNameMakerByOpProto() {}
 
-  const paddle::SmallVector<const char*>& GetInputArgsNames() override;
-  const paddle::SmallVector<const char*>& GetOutputArgsNames() override;
-  const paddle::SmallVector<const char*>& GetAttrsArgsNames() override;
+  const paddle::small_vector<const char*>& GetInputArgsNames() override;
+  const paddle::small_vector<const char*>& GetOutputArgsNames() override;
+  const paddle::small_vector<const char*>& GetAttrsArgsNames() override;
 
   phi::KernelSignature GetKernelSignature();
 
@@ -53,9 +53,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  private:
   const framework::proto::OpProto* op_proto_;
 
-  paddle::SmallVector<const char*> input_names_;
-  paddle::SmallVector<const char*> output_names_;
-  paddle::SmallVector<const char*> attr_names_;
+  paddle::small_vector<const char*> input_names_;
+  paddle::small_vector<const char*> output_names_;
+  paddle::small_vector<const char*> attr_names_;
 };
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
@@ -149,7 +149,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   return phi::KernelKey();
 }
 
-const paddle::SmallVector<const char*>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
     auto& in = op_proto_->inputs()[i];
@@ -174,7 +174,7 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   return input_names_;
 }
 
-const paddle::SmallVector<const char*>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   for (int i = 0; i < op_proto_->outputs_size(); ++i) {
     auto& out = op_proto_->outputs()[i];
@@ -194,7 +194,7 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   return output_names_;
 }
 
-const paddle::SmallVector<const char*>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
