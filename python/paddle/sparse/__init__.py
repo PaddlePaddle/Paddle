@@ -22,7 +22,11 @@ from .layer.conv import SubmConv3D
 
 from .layer.pooling import MaxPool3D
 
+from .functional import sqrt
+from .functional import sin
+from .functional import tanh
+
 __all__ = [
     'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D', 'SubmConv3D',
-    'BatchNorm', 'MaxPool3D'
+    'BatchNorm', 'MaxPool3D', 'sqrt', 'sin', 'tanh'
 ]

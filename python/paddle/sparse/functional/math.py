@@ -19,7 +19,7 @@ from paddle import _C_ops, in_dynamic_mode
 
 def sqrt(x, name=None):
     """
-    sparse sqrt.
+    Calculate square root of x, requiring x to be a sparse coo or sparse csr tensor.
 
     .. math::
 
@@ -37,11 +37,10 @@ def sqrt(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([4, 0, 1]).astype('float32'))
+                dense_x = paddle.to_tensor([4, 0, 1])
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.sqrt(sparse_x)
     """
@@ -60,7 +59,7 @@ def sqrt(x, name=None):
 
 def sin(x, name=None):
     """
-    sparse sin.
+    Calculate sin of x, requiring x to be a sparse coo or sparse csr tensor.
 
     .. math::
 
@@ -78,11 +77,10 @@ def sin(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([-2, 0, 3]).astype('float32'))
+                dense_x = paddle.to_tensor([-2, 0, 3])
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.sin(sparse_x)
     """

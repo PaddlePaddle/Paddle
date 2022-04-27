@@ -19,7 +19,7 @@ from paddle import _C_ops, in_dynamic_mode
 
 def relu(x, name=None):
     """
-    sparse relu activation.
+    sparse relu activation, requiring x to be a sparse coo or sparse csr tensor.
 
     .. math::
 
@@ -37,11 +37,10 @@ def relu(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+                dense_x = paddle.to_tensor([-2, 0, 1])
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.functional.relu(sparse_x) 
     """
@@ -60,7 +59,7 @@ def relu(x, name=None):
 
 def tanh(x, name=None):
     """
-    sparse tanh activation.
+    sparse tanh activation, requiring x to be a sparse coo or sparse csr tensor.
 
     .. math::
 
@@ -78,11 +77,10 @@ def tanh(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+                dense_x = paddle.to_tensor([-2, 0, 1])
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.tanh(sparse_x)
     """
