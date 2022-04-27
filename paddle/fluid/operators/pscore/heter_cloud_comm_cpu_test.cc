@@ -87,7 +87,8 @@ void StartSwitchInterServer(
 void TestShardSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
   auto send_async = [&]() -> void {
-    std::vector<int> vars_len{2 * sizeof(float), 4 * sizeof(float)};  // 字节数
+    std::vector<int64_t> vars_len{2 * sizeof(float),
+                                  4 * sizeof(float)};  // 字节数
     std::vector<float> values{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int64_t data_size = 6 * sizeof(float);
     std::vector<std::string> send_var_names{"w", "x"};
