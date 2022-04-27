@@ -117,8 +117,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return it->second;
   }
 
-  paddle::SmallVector<const std::string*> InNameList() const override {
-    paddle::SmallVector<const std::string*> vec_temp;
+  paddle::small_vector<const std::string*> InNameList() const override {
+    paddle::small_vector<const std::string*> vec_temp;
     vec_temp.reserve(var_map_in_.size());
 
     for (auto& v : var_map_in_) {
