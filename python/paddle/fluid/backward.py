@@ -28,6 +28,10 @@ from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
 import warnings
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 __all__ = [
     'append_backward',
     'gradients',
@@ -1722,7 +1726,7 @@ def append_backward(loss,
 def _as_list(x):
     if x is None:
         return []
-    return list(x) if isinstance(x, collections.Sequence) else [x]
+    return list(x) if isinstance(x, Sequence) else [x]
 
 
 def _is_ancestor_block(ancestor_block, block):
