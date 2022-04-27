@@ -394,6 +394,13 @@ DenseTensor PerformReduction(const Context& dev_ctx,
   return Sum<T, Context>(dev_ctx, tensor, indices, tensor.dtype(), true);
 }
 
+inline bool is_no_need_transpose(const std::vector<int>& axis) {
+  for (size_t i = 0; i < axis.size(); ++i) {
+    if (i != size_t(axis[i])) return false;
+  }
+  return true;
+}
+
 template <typename T, typename Context>
 DenseTensor PerformTranspose(const Context& dev_ctx,
                              const DenseTensor& tensor,
@@ -401,12 +408,6 @@ DenseTensor PerformTranspose(const Context& dev_ctx,
                              const std::vector<char>& all_labels,
                              const std::vector<int>& ellipsis,
                              const LabelMap& label2type) {
-  auto is_no_need_transpose = [](std::vector<int>& axis) {
-    for (size_t i = 0; i < axis.size(); ++i) {
-      if (i != size_t(axis[i])) return false;
-    }
-    return true;
-  };
   auto axis = GetLabelIndexByType<int>(
       all_labels, label2type, label2perm, ellipsis, LabelType::ALL_TYPE);
   VLOG(5) << "PerformTranspose: " << paddle::string::join_strings(axis, ",");
@@ -496,9 +497,9 @@ void TransposeToOutput(const Context& dev_ctx,
       axis.push_back(it - all_labels.begin() + offset);
     }
   }
+  if (is_no_need_transpose(axis)) return output->ShareBufferWith(to_trans);
   VLOG(5) << "call TransposeToOutput: with axis: "
           << paddle::string::join_strings(axis, ",");
-  if (axis.size() == 0) return output->ShareBufferWith(to_trans);
   return TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
 }
 
