@@ -70,18 +70,8 @@ class Engine:
         self._saver = DistributedSaver()
         self._logger = get_logger(logging.INFO)
 
-        # Default dist strategy is data parallel when user is not 
-        from .dist_context import _g_default_distributed_context
-        self._default_strategy = None
-        if _g_default_distributed_context is None:
-            if self._nranks > 1:
-                self._default_strategy = "dp"
-                processes = list(range(self._nranks))
-                self._default_process_mesh = auto.ProcessMesh(processes)
-            else:
-                self._default_strategy = "serial"
-                self._default_process_mesh = auto.ProcessMesh([0])
-
+        # init auto_parallel context
+        self._default_ctx = get_default_distributed_context()
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
         self._serial_main_progs = {}
@@ -121,17 +111,16 @@ class Engine:
         with fluid.program_guard(serial_main_prog, serial_startup_prog):
             inputs_spec = self.inputs_spec
             labels_spec = self.labels_spec if self.labels_spec else []
-            inputs = [
-                self._set_data_parallel(s._create_feed_layer())
-                for s in inputs_spec
-            ]
-            labels = [
-                self._set_data_parallel(s._create_feed_layer())
-                for s in labels_spec
-            ]
+            inputs = [s._create_feed_layer() for s in inputs_spec]
+            labels = [s._create_feed_layer() for s in labels_spec]
             outputs = to_list(self.model(*inputs))
             if mode != "predict" and self._loss:
                 losses = to_list(self._loss(*(outputs + labels)))
+
+        default_ctx = get_default_distributed_context()
+        if not default_ctx.is_annotation:
+            inputs = [self._set_data_parallel(var) for var in inputs]
+            labels = [self._set_data_parallel(var) for var in labels]
 
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
@@ -416,7 +405,7 @@ class Engine:
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         fetch_var = self._fetch_vars[self.mode]["loss"][0]
 
-        if fetch_var is []:
+        if fetch_var.name not in dist_main_prog.global_block().vars:
             outs = self._executor.run(dist_main_prog,
                                       use_program_cache=use_program_cache)
             logs["loss"] = outs
@@ -515,20 +504,18 @@ class Engine:
         return specs
 
     def _set_data_parallel(self, var):
-        if not self._default_strategy:
-            return var
         if self._nranks == 1:
             auto.shard_tensor(
                 var,
                 dist_attr={
-                    "process_mesh": self._default_process_mesh,
+                    "process_mesh": [0],
                     "dims_mapping": [-1 for _ in range(len(var.shape))]
                 })
         else:
             auto.shard_tensor(
                 var,
                 dist_attr={
-                    "process_mesh": self._default_process_mesh,
+                    "process_mesh": list(range(self._nranks)),
                     "dims_mapping":
                     [0] + [-1 for _ in range(len(var.shape) - 1)]
                 })

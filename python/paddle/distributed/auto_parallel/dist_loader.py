@@ -92,10 +92,6 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             )
         return steps_per_epoch
 
-    @property
-    def steps(self):
-        return self._steps
-
     def _create_inner_dataloader(self):
         def sample_data_generator():
             batch_data = None

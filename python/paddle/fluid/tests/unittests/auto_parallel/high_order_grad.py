@@ -71,18 +71,6 @@ class LaplaceModel(paddle.nn.Layer):
             hidden_size=hidden_size)
 
     def forward(self, inputs, bc_index):
-        auto.shard_tensor(
-            inputs,
-            dist_attr={
-                "process_mesh": auto.ProcessMesh([0, 1]),
-                "dims_mapping": [0, -1]
-            })
-        auto.shard_tensor(
-            bc_index,
-            dist_attr={
-                "process_mesh": auto.ProcessMesh([0, 1]),
-                "dims_mapping": [0]
-            })
         inputs.stop_gradient = False
         outputs = self.net.nn_func(inputs)
         # eq_loss

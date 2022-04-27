@@ -120,6 +120,11 @@ class DistributedContext:
     def dist_startup_programs(self):
         return self._dist_startup_programs
 
+    @property
+    def is_annotation(self):
+        return len(self._dist_tensors_for_program) or len(
+            self._dist_ops_for_program)
+
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
             'The type of dim_mapping must be ProcessMesh.'

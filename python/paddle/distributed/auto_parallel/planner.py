@@ -35,6 +35,7 @@ from .utils import get_all_distributed_main_program
 from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
+paddle.enable_static()
 paddle.seed(123)
 random.seed(123)
 np.random.seed(123)
@@ -202,7 +203,7 @@ class PlanSpace:
         # compose dims mapping
         composed_dims_mapping_list = list(
             product(
-                * [dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
+                *[dims_mapping_dict[key] for key in dims_mapping_dict.keys()]))
         for composed_dims_mapping in composed_dims_mapping_list:
             op_dist_attr = OperatorDistributedAttribute()
             op_dist_attr.process_mesh = process_mesh
