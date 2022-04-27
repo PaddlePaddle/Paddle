@@ -70,10 +70,9 @@ class Engine:
         self._saver = DistributedSaver()
         self._logger = get_logger(logging.INFO)
 
-        # init auto_parallel context
-        self._default_ctx = get_default_distributed_context()
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
+        self._orig_dist_context = get_default_distributed_context()
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
         self._dist_main_progs = defaultdict(dict)  # dist main programs
