@@ -28,6 +28,7 @@ from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -41,7 +42,6 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -196,6 +196,17 @@ __all__ = [
     'unbind',
 ]
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
+}
+
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -204,8 +215,21 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    def is_inplace(op_name):
+        return op_name[-1] == "_"
+
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name]
+                         if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -2948,6 +2972,38 @@ def batch_norm(input,
     mean_out = mean
     # variance and variance_out share the same memory
     variance_out = variance
+
+    if in_dygraph_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs_ = ()
+        if attrs_has_momentum:
+            attrs_ = ('momentum', momentum, 'epsilon', epsilon, 'is_test',
+                      is_test, 'data_layout', data_layout, 'use_mkldnn', False,
+                      'fuse_with_relu', False, 'use_global_stats',
+                      use_global_stats)
+        else:
+            attrs_ = ('epsilon', epsilon, 'is_test', is_test, 'data_layout',
+                      data_layout, 'use_mkldnn', False, 'fuse_with_relu', False,
+                      'use_global_stats', use_global_stats)
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                input, scale, bias, mean, variance, momentum, mean_out,
+                variance_out, *attrs_)
+        else:
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                input, scale, bias, mean, variance, None, mean_out,
+                variance_out, *attrs_)
+
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=act, use_mkldnn=False)
+
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
@@ -2965,7 +3021,9 @@ def batch_norm(input,
         "Scale": scale,
         "Bias": bias,
         "Mean": mean,
-        "Variance": variance
+        "Variance": variance,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out
     }
     attrs = {
         "epsilon": epsilon,
@@ -3143,13 +3201,46 @@ def inplace_abn(input,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
+    # batch_norm_out and input share the same memory
+    batch_norm_out = input
+
+    if in_dygraph_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs__ = ()
+        if attrs_has_momentum:
+            attrs__ = ('momentum', momentum, 'epsilon', epsilon, 'is_test',
+                       is_test, 'data_layout', data_layout, 'use_mkldnn', False,
+                       'fuse_with_relu', False, 'use_global_stats',
+                       use_global_stats, 'activation', act, 'alpha', act_alpha)
+        else:
+            attrs__ = ('epsilon', epsilon, 'is_test', is_test, 'data_layout',
+                       data_layout, 'use_mkldnn', False, 'fuse_with_relu',
+                       False, 'use_global_stats', use_global_stats,
+                       'activation', act, 'alpha', act_alpha)
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+                input, scale, bias, mean, variance, momentum, mean_out,
+                variance_out, *attrs__)
+            return batch_norm_out
+        else:
+            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+                input, scale, bias, mean, variance, None, mean_out,
+                variance_out, *attrs__)
+            return batch_norm_out
+
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     reserve_space = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
-    batch_norm_out = input
 
     inputs = {
         "X": input,
@@ -5026,7 +5117,12 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        return _C_ops.split(input, num, *attrs)
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(input, [num], dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
     check_variable_and_dtype(
         input, 'input',
@@ -5141,7 +5237,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         #  [-0.33972208 -0.43014923  0.31772556  0.76617881 -0.10761525]]
 
     """
-
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
@@ -5903,8 +5998,11 @@ def multiplex(inputs, index, name=None):
             print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
-    if _non_static_mode():
+
+    if _in_legacy_dygraph():
         return _C_ops.multiplex(index, inputs)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -7028,6 +7126,10 @@ def label_smooth(label,
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_label_smooth(label, prior_dist,
+                                               float(epsilon))
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
@@ -7209,7 +7311,12 @@ def roi_align(input,
                                                sampling_ratio=-1,
                                                rois_num=rois_num)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(
+            input, rois, rois_num, pooled_height, pooled_width, spatial_scale,
+            sampling_ratio, False)
+    if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             input, rois, rois_num, "pooled_height", pooled_height,
@@ -8772,8 +8879,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(ref, index, updates)
+        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -8963,7 +9069,10 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu(x)
+    if _in_legacy_dygraph():
         return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
@@ -10310,7 +10419,10 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_stack(x, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
@@ -10891,7 +11003,15 @@ def gaussian_random(shape,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',
@@ -11199,18 +11319,15 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
 
         tmp_tensor_type = core.eager.Tensor
-
         if isinstance(starts, (list, tuple)):
             starts = [
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
-            attrs += ('starts', starts)
         elif isinstance(starts, tmp_tensor_type):
-            starts_tensor = starts
-            starts.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = starts.numpy()
+            starts = [ele for ele in tensor_t]
 
         if isinstance(ends, (list, tuple)):
             ends = [
@@ -11219,12 +11336,11 @@ def slice(input, axes, starts, ends):
             ]
             attrs += ('ends', ends)
         elif isinstance(ends, tmp_tensor_type):
-            ends_tensor = ends
-            ends_tensor.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = ends.numpy()
+            ends = [ele for ele in tensor_t]
 
-        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                            'axes', axes, 'infer_flags', infer_flags, *attrs)
+        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
+                                        [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -11734,8 +11850,7 @@ def _elementwise_op(helper):
 
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    Scale operator.
-
+    
     Putting scale and bias to the input Tensor as following:
 
     ``bias_after_scale`` is True:
@@ -11760,6 +11875,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         Tensor: Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
+    
         .. code-block:: python
             
             # scale as a float32 number
@@ -11779,6 +11895,9 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
+    if in_dygraph_mode():
+        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -12805,8 +12924,10 @@ def mean(x, name=None):
             mean = fluid.layers.mean(input)
     """
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         return _C_ops.mean(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_mean_all(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')

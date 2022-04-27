@@ -190,6 +190,28 @@ class DenseTensor : public TensorBase,
   std::shared_ptr<InplaceVersion> inplace_version_counter_{
       std::make_shared<InplaceVersion>()};
 
+/* @jim19930609: This is a hack
+In general, it is badly designed to fuse MKLDNN-specific objects into a
+generic Tensor.
+We temporarily leave them here to unblock Tensor Unification progress.
+In the final state, we should come up with a MKLDNN_Tensor and move the
+following codes there.
+*/
+#ifdef PADDLE_WITH_MKLDNN
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
+
+  /// \brief memory descriptor of tensor which have layout set as kMKLDNN
+  dnnl::memory::desc mem_desc_;
+#endif
+
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif

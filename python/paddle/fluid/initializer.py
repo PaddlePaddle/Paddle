@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import _non_static_mode, default_main_program
+from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -331,22 +331,55 @@ class NormalInitializer(Initializer):
                                  ["uint16", "float16", "float32", "float64"],
                                  "guassian_random")
 
+        # to be compatible of fp16 initalizers
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+            out_dtype = VarDesc.VarType.FP32
+            out_var = block.create_var(
+                name=unique_name.generate(".".join(
+                    ['normal_init', var.name, 'tmp'])),
+                shape=var.shape,
+                dtype=out_dtype,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False)
+        else:
+            out_dtype = var.dtype
+            out_var = var
+
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            place = _current_expected_place()
+            out_var = _C_ops.final_state_gaussian_random(
+                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
+                place)
+
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
+            return None
+
+        if _in_legacy_dygraph():
             out_var = _C_ops.gaussian_random(
-                'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
+                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
-            out_var._share_underline_tensor_to(var)
+
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                      'out_dtype', var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
                 type="gaussian_random",
-                outputs={"Out": var},
+                outputs={"Out": out_var},
                 attrs={
                     "shape": var.shape,
-                    "dtype": var.dtype,
+                    "dtype": out_dtype,
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
@@ -354,6 +387,13 @@ class NormalInitializer(Initializer):
                 },
                 stop_gradient=True)
 
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                block.append_op(
+                    type="cast",
+                    inputs={"X": out_var},
+                    outputs={"Out": var},
+                    attrs={"in_dtype": out_var.dtype,
+                           "out_dtype": var.dtype})
             var.op = op
             return op
 
@@ -417,7 +457,18 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            out_var = _C_ops.final_state_truncated_gaussian_random(
+                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
+                _current_expected_place())
+            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
+            return None
+
+        if _in_legacy_dygraph():
             out_var = _C_ops.truncated_gaussian_random(
                 'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed)
@@ -550,15 +601,21 @@ class XavierInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype', out_dtype)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
-                out_var = _C_ops.gaussian_random(
-                    'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
-                    'std', std, 'seed', self._seed)
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
+
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    out_var = _C_ops.final_state_gaussian_random(
+                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                else:
+                    out_var = _C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
+                        'std', std, 'seed', self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
@@ -570,7 +627,7 @@ class XavierInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in + fan_out))
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -584,7 +641,7 @@ class XavierInitializer(Initializer):
                     },
                     stop_gradient=True)
             else:
-                std = np.sqrt(2.0 / float(fan_in + fan_out))
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -702,16 +759,22 @@ class MSRAInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype',
                                                 int(out_dtype))
             else:
-                std = np.sqrt(2.0 / float(fan_in))
-                out_var = _C_ops.gaussian_random(
-                    'shape', out_var.shape, 'dtype',
-                    int(out_dtype), 'mean', 0.0, 'std', std, 'seed', self._seed)
+                std = math.sqrt(2.0 / float(fan_in))
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    out_var = _C_ops.final_state_gaussian_random(
+                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                else:
+                    out_var = _C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype',
+                        int(out_dtype), 'mean', 0.0, 'std', std, 'seed',
+                        self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
@@ -723,7 +786,7 @@ class MSRAInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = np.sqrt(6.0 / float(fan_in))
+                limit = math.sqrt(6.0 / float(fan_in))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -738,7 +801,7 @@ class MSRAInitializer(Initializer):
                     stop_gradient=True)
 
             else:
-                std = np.sqrt(2.0 / float(fan_in))
+                std = math.sqrt(2.0 / float(fan_in))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -876,9 +939,9 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(shape), 'dtype', out_dtype,
-                                          value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(shape), 'dtype', out_dtype, value_name,
+                                values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
@@ -985,9 +1048,9 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            out_var = _C_ops.assign_value('shape',
-                                          list(self._value.shape), 'dtype',
-                                          out_dtype, value_name, values)
+            _C_ops.assign_value(out_var, 'shape',
+                                list(self._value.shape), 'dtype', out_dtype,
+                                value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
                                       'out_dtype', var.dtype)

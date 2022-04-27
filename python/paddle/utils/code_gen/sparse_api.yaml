@@ -7,6 +7,42 @@
   intermediate : rulebook
   backward : conv3d_grad
 
+- api : coo_to_dense
+  args : (Tensor x)
+  output : Tensor(out@DenseTensor)
+  invoke : to_dense_impl(x)
+  backward : coo_to_dense_grad
+
+- api : coo_values
+  args : (Tensor x)
+  output : Tensor(out@DenseTensor)
+  kernel :
+    func : coo_values
+    layout : x
+  backward : coo_values_grad
+
+- api : create_sparse_coo_tensor
+  args : (Tensor values, Tensor indices, IntArray dense_shape)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_coo_tensor
+    layout : values
+    data_type : values
+  backward : create_sparse_coo_tensor_grad
+
+- api : csr_values
+  args : (Tensor x)
+  output : Tensor(out@DenseTensor)
+  kernel :
+    func : csr_values
+    layout : x
+
+- api : dense_to_coo
+  args : (Tensor x, int64_t sparse_dim)
+  output : Tensor(out@SparseCooTensor)
+  invoke : to_sparse_coo_impl(x, sparse_dim)
+  backward : dense_to_coo_grad
+
 - api : relu
   args : (Tensor x)
   output : Tensor(out@SparseCooTensor)
@@ -29,3 +65,12 @@
   args : (Tensor x)
   output : Tensor(out@SparseCsrTensor)
   invoke : to_sparse_csr_impl(x)
+
+- api: maxpool
+  args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
+  output : Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
+  kernel :
+    func : sparse_maxpool
+    layout : x
+  intermediate : rulebook
+  backward : sparse_maxpool_grad

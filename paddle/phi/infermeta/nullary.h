@@ -55,11 +55,21 @@ void GaussianRandomInferMeta(const IntArray& shape,
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
+void RandintInferMeta(
+    int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
                                       int seed,
                                       DataType dtype,
                                       MetaTensor* out);
+
+void UniformRandomInferMeta(const IntArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            MetaTensor* out);
 
 }  // namespace phi

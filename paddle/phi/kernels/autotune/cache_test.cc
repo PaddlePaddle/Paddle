@@ -22,7 +22,7 @@ enum ConvAlgos { GEMMKernel = 0, CuDNNKernel_1 = 1, CuDNNKernel_2 = 2 };
 
 TEST(AlgosCache, AlgosCache) {
   auto autotune_cache = phi::autotune::AutoTuneCache::Instance();
-  auto& cache = autotune_cache.RegisterOrGet("conv_fw");
+  auto& cache = autotune_cache.GetConvForward();
 
   std::vector<int64_t> x_shape = {4, 224, 224, 3};
   std::vector<int64_t> w_shape = {32, 3, 3, 3};
@@ -46,8 +46,15 @@ TEST(AlgosCache, AlgosCache) {
   EXPECT_EQ(cache.Find(key), false);
   cache.Set(key, ConvAlgos::CuDNNKernel_1);
   EXPECT_EQ(cache.Size(), 2);
-  EXPECT_EQ(autotune_cache.Size(), 2);
+  EXPECT_EQ(cache.CacheHits(), 1);
+  EXPECT_EQ(cache.CacheMisses(), 2);
 
   float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
   EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);
+
+  autotune_cache.UpdateStatus();
+  EXPECT_EQ(autotune_cache.Size(), 2);
+  EXPECT_EQ(autotune_cache.CacheHits(), 1);
+  EXPECT_EQ(autotune_cache.CacheMisses(), 2);
+  EXPECT_LT(std::abs(cache_hit_rate - autotune_cache.CacheHitRate()), 1e-5);
 }

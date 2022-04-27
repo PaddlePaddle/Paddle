@@ -29,6 +29,8 @@ from paddle import get_flags
 from paddle import in_dynamic_mode
 from paddle.device import is_compiled_with_cuda
 from paddle.device import is_compiled_with_npu
+from paddle import in_dynamic_mode
+from paddle import get_flags
 from paddle.device import is_compiled_with_rocm
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.framework import _in_legacy_dygraph
@@ -120,6 +122,19 @@ def _conv_nd(x,
              name=None):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    if in_dygraph_mode() and op_type == "conv2d":
+        pre_bias = _C_ops.final_state_conv2d(
+            x, weight, stride, padding, padding_algorithm, groups, dilation,
+            data_format, False, -1, False)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.final_state_reshape(
+                bias, bias.shape +
+                [1 for i in range(len(x.shape) - channel_dim - 1)])
+            return _C_ops.final_state_add(pre_bias, tmp_bias)
+        else:
+            return pre_bias
     if in_dynamic_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
@@ -562,8 +577,6 @@ def conv2d(x,
     use_cudnn = True if (is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
-    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
     stride = convert_to_list(stride, 2, 'stride')
@@ -577,6 +590,18 @@ def conv2d(x,
             use_cudnn = True
         else:
             use_cudnn = False
+    else:
+        if in_dygraph_mode():
+            pre_bias = _C_ops.final_state_conv2d(
+                x, weight, stride, padding, padding_algorithm, groups, dilation,
+                data_format, False, -1, False)
+            if bias is not None:
+                out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+                return out
+            else:
+                return pre_bias
+
+    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
     if is_compiled_with_npu():

@@ -32,7 +32,7 @@ namespace egr {
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodePyLayer::
 operator()(
     std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-    bool create_graph) {
+    bool create_graph, bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: " << name();
 
   std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
@@ -152,6 +152,12 @@ operator()(
               name(), i));
       grad_out.push_back({});
     }
+  }
+
+  Py_XDECREF(backward_fn);
+  Py_XDECREF(backward_args);
+  if (!PyTuple_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
   }
 
   return grad_out;

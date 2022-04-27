@@ -20,6 +20,10 @@ from .linalg import dot, matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
+from ..fluid.framework import _in_legacy_dygraph
+from paddle import _C_ops
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layer_helper import LayerHelper
 
 from paddle.common_ops_import import dygraph_only
 
@@ -660,6 +664,26 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
+def einsum_v2(equation, *operands):
+    if _in_legacy_dygraph():
+        # dygraph
+        return _C_ops.einsum(operands, 'equation', equation)
+    # static graph 
+    for inp in operands:
+        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
+    check_type(equation, 'equation', str, 'einsum')
+    helper = LayerHelper('einsum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+    attrs = dict()
+    attrs['equation'] = equation
+    helper.append_op(
+        type='einsum',
+        inputs={'Operands': operands},
+        outputs={'Out': out},
+        attrs=attrs, )
+    return out
+
+
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -817,6 +841,9 @@ def einsum(equation, *operands):
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
+    import os
+    if int(os.environ.get('FLAGS_new_einsum', "0")):
+        return einsum_v2(equation, *operands)
 
     nop = len(operands)
     assert nop > 0, "At least one operand is expected."

@@ -76,7 +76,15 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
     auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     platform::MLUStreamSync(dev_ctx->stream());
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on xpu place only for now."));
 
+    auto dev_ctx = static_cast<platform::XPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -97,3 +105,5 @@ REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
 
 REGISTER_OP_MLU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
+
+REGISTER_OP_XPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);

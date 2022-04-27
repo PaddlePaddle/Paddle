@@ -22,7 +22,11 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+_enable_legacy_dygraph()
 import os
+
+from paddle import _C_ops
 
 
 class TestDropoutOp(OpTest):
@@ -948,6 +952,7 @@ class TestDropoutBackward(unittest.TestCase):
         return mask.astype("float32")
 
     def test_backward_downscale_in_infer(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
@@ -959,6 +964,19 @@ class TestDropoutBackward(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(input.gradient(
                     ), self.cal_grad_downscale_in_infer(mask.numpy())))
+
+    def test_backward_downscale_in_infer_eager(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                with _test_eager_guard():
+                    input = paddle.uniform([40, 40], dtype="float32")
+                    input.stop_gradient = False
+                    out, mask = _C_ops.final_state_dropout(
+                        input, None, 0.5, False, "downgrade_in_infer", 0, False)
+                    out.backward()
+                    self.assertTrue(
+                        np.array_equal(input.gradient(
+                        ), self.cal_grad_downscale_in_infer(mask.numpy())))
 
     def test_backward_upscale_train(self):
         for place in self.places:
@@ -975,6 +993,21 @@ class TestDropoutBackward(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(input.gradient(
                     ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+    def test_backward_upscale_train_eager(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                with _test_eager_guard():
+                    prob = 0.5
+                    input = paddle.uniform([40, 40], dtype="float32")
+                    input.stop_gradient = False
+                    out, mask = _C_ops.final_state_dropout(
+                        input, None, 0.5, False, "upscale_in_train", 0, False)
+                    out.backward()
+
+                    self.assertTrue(
+                        np.allclose(input.gradient(
+                        ), self.cal_grad_upscale_train(mask.numpy(), prob)))
 
     def test_backward_upscale_train_2(self):
         for place in self.places:
@@ -1001,9 +1034,6 @@ class TestRandomValue(unittest.TestCase):
 
         # Different GPU generate different random value. Only test V100 here.
         if not "V100" in paddle.device.cuda.get_device_name():
-            return
-
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
         print("Test Fixed Random number on V100 GPU------>")

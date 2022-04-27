@@ -21,7 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors) {
   std::vector<DDim> dims;
   dims.reserve(tensors.size());
   for (const MetaTensor* tensor : tensors) {
@@ -277,6 +278,78 @@ void AdamwInferMeta(const MetaTensor& param,
                 beta1_pow_out,
                 beta2_pow_out,
                 master_param_outs);
+}
+
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
+                   MetaTensor* out,
+                   MetaConfig config) {
+  auto N = x.size();
+  PADDLE_ENFORCE_GT(
+      N,
+      0,
+      phi::errors::InvalidArgument(
+          "The input tensor X's dimensions of SumOp "
+          "should be larger than 0. But received X's dimensions %d.",
+          N));
+  if (N == 1) {
+    VLOG(3) << "Warning: SumOp have only one input, may waste memory";
+  }
+
+  phi::DDim in_dim({0});
+  for (size_t i = 0; i < x.size(); ++i) {
+    auto x_dim = x[i]->dims();
+    if (phi::product(x_dim) == 0) {
+      continue;
+    }
+    if (phi::product(in_dim) == 0) {
+      in_dim = x_dim;
+    } else {
+      if (config.is_runtime) {
+        PADDLE_ENFORCE_EQ(in_dim,
+                          x_dim,
+                          phi::errors::InvalidArgument(
+                              "The input tensor X of SumOp must"
+                              " have same shape. But received X[0]'s shape = "
+                              "[%s], X[%d]'s shape = [%s].",
+                              in_dim,
+                              i,
+                              x_dim));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            in_dim.size(),
+            x_dim.size(),
+            phi::errors::InvalidArgument(
+                "The input tensor X of SumOp must have same "
+                "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
+                "shape = "
+                "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
+                in_dim.size(),
+                in_dim,
+                i,
+                x_dim.size(),
+                i,
+                x_dim));
+        // if in_dim or x_dim has -1, not check equal
+        for (int j = 0; j < x_dim.size(); ++j) {
+          if (x_dim[j] == -1 || in_dim[j] == -1) {
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(
+              in_dim[j],
+              x_dim[j],
+              phi::errors::InvalidArgument(
+                  "The input tensor X of SumOp must have same shape "
+                  "if not -1."
+                  "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
+                  in_dim,
+                  i,
+                  x_dim));
+        }
+      }
+    }
+  }
+  out->set_dims(in_dim);
+  out->share_lod(*x[0]);
 }
 
 void AucInferMeta(const MetaTensor& input,
@@ -570,7 +643,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
   const auto& input_dims = GetMetaTensorsDim(x);
@@ -624,7 +697,7 @@ void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
   }
 }
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -1416,7 +1489,44 @@ void InterpolateInferMeta(
   }
 }
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto num_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (num_dims.size() == 1) && (num_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   num_dims));
+  auto b_dims = base.dims();
+  PADDLE_ENFORCE_EQ(
+      (b_dims.size() == 1) && (b_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Base) must be [1],"
+                                   "but received input shape is [%s].",
+                                   b_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 
@@ -1432,7 +1542,55 @@ void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
   }
 }
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+void MomentumInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& velocity,
+                       const MetaTensor& learning_rate,
+                       paddle::optional<const MetaTensor&> master_param,
+                       float mu,
+                       bool use_nesterov,
+                       const std::string& regularization_method,
+                       float regularization_coeff,
+                       bool multi_precision,
+                       float rescale_grad,
+                       MetaTensor* param_out,
+                       MetaTensor* velocity_out,
+                       MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NE(
+      param_out,
+      nullptr,
+      errors::NotFound("Output(ParamOut) of Momentum should not be null."));
+  PADDLE_ENFORCE_NE(
+      velocity_out,
+      nullptr,
+      errors::NotFound("Output(VelocityOut) of Momentum should not be null."));
+
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      phi::product(lr_dims),
+      0,
+      errors::InvalidArgument("Maybe the Input variable LearningRate has not "
+                              "been initialized. You may need to confirm "
+                              "if you put exe.run(startup_program) "
+                              "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      errors::InvalidArgument("Learning_rate should be a scalar. But Received "
+                              "LearningRate's dim [%s]",
+                              phi::product(lr_dims)));
+
+  auto param_dim = param.dims();
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+
+  if (master_param_out) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
   const size_t inputs_num = inputs_dims.size();
@@ -1505,7 +1663,7 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -1684,8 +1842,8 @@ void RmspropInferMeta(const MetaTensor& param,
 }
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
                   paddle::optional<const MetaTensor&> sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
@@ -1768,7 +1926,7 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
-void SGDInferMeta(const MetaTensor& param,
+void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
                   paddle::optional<const MetaTensor&> master_param,
@@ -1791,7 +1949,7 @@ void SGDInferMeta(const MetaTensor& param,
   param_out->set_dtype(param.dtype());
 }
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out) {
   PADDLE_ENFORCE_GT(x.size(),
@@ -1835,6 +1993,13 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
   out->share_lod(*x.at(0));
+}
+
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
+                             std::vector<MetaTensor*> out) {
+  for (size_t i = 0; i < x.size(); ++i) {
+    out[i]->share_meta(*x[i]);
+  }
 }
 
 void WarpctcInferMeta(const MetaTensor& logits,

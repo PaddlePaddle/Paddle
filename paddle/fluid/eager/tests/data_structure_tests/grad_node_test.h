@@ -32,8 +32,8 @@ class GradTestNode : public egr::GradNodeBase {
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
   std::string name() override { return "GradTestNode"; }
   std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-      bool create_graph = false) override {
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+      bool create_graph = false, bool is_new_grad = false) override {
     val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
     phi::DenseTensorMeta meta =
@@ -50,10 +50,14 @@ class GradTestNode : public egr::GradNodeBase {
     return res;
   }
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node = std::shared_ptr<GradTestNode>(new GradTestNode(*this));
+      return copied_node;
+    }
   }
+
   float val_;
 };
 }  // namespace eager_test

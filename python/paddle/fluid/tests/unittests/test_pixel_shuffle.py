@@ -52,6 +52,7 @@ def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
 class TestPixelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
+        self.python_api = paddle.nn.functional.pixel_shuffle
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
 
@@ -73,10 +74,10 @@ class TestPixelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestChannelLast(TestPixelShuffleOp):
@@ -220,4 +221,5 @@ class TestPixelShuffleError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

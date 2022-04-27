@@ -24,6 +24,7 @@
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -35,25 +36,30 @@ namespace distributed {
 
 enum ValueType { Sparse = 0, Dense = 1 };
 
-struct PullContext {
-  const uint64_t *keys;
+struct TablePullContext {
+  const uint64_t *keys = nullptr;
   PullSparseValue pull_value;
-  float *values;
-  char **ptr_values;
+  float *values = nullptr;
+  char **ptr_values = nullptr;
+  std::vector<uint64_t> *geo_pull_keys = nullptr;  // for GEO
+  std::vector<float> *geo_pull_values = nullptr;   // for GEO
 };
 
 struct TablePushContext {
-  const uint64_t *keys;
-  const float *values;
-  const float **ptr_values;
+  const uint64_t *keys = nullptr;
+  const float *values = nullptr;
+  const float **ptr_values = nullptr;
+  const int64_t *push_steps = nullptr;  // for global step
+  bool is_param = false;  // true: push param, false: push gradient
 };
 
 struct TableContext {
   ValueType value_type;
-  PullContext pull_context;
+  TablePullContext pull_context;
   TablePushContext push_context;
   size_t num;
   bool use_ptr = false;
+  uint32_t trainer_id;  // for GEO and global step
 };
 
 class Table {
@@ -65,38 +71,6 @@ class Table {
 
   virtual int32_t Pull(TableContext &context) = 0;
   virtual int32_t Push(TableContext &context) = 0;
-  virtual int32_t PullDense(float *values, size_t num) = 0;
-  virtual int32_t PushDense(const float *values, size_t num) = 0;
-  // for push global_step
-  virtual int32_t PushDense(const int64_t *values, const int32_t trainer_id) {
-    return 0;
-  }
-  virtual int32_t PushDenseParam(const float *values, size_t num) { return 0; }
-
-  virtual int32_t PullSparsePtr(char **pull_values, const uint64_t *keys,
-                                size_t num) {
-    VLOG(0) << "NOT IMPLEMENT";
-    return 0;
-  }
-  virtual int32_t PullSparse(float *values,
-                             const PullSparseValue &pull_value) = 0;
-  virtual int32_t PushSparse(const uint64_t *keys, const float *values,
-                             size_t num) = 0;
-  virtual int32_t PushSparse(const uint64_t *keys, const float **values,
-                             size_t num) {
-    return 0;
-  }
-  virtual int32_t PushSparseParam(const uint64_t *keys, const float *values,
-                                  size_t num) {
-    return 0;
-  }
-
-  // only for sparse geo table
-  virtual int32_t PullGeoParam(const uint32_t trainer_id,
-                               std::vector<float> *values,
-                               std::vector<uint64_t> *keys) {
-    return 0;
-  }
 
   // only for barrier
   virtual int32_t Barrier(const uint32_t trainer_id,
@@ -134,6 +108,26 @@ class Table {
   // 指定保存路径
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
+  // for cache
+  virtual int32_t SaveCache(
+      const std::string &path, const std::string &param,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+          &shuffled_channel) {
+    return 0;
+  }
+
+  virtual int64_t CacheShuffle(
+      const std::string &path, const std::string &param, double cache_threshold,
+      std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
+                                         std::string &msg)>
+          send_msg_func,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+          &shuffled_channel,
+      const std::vector<Table *> &table_ptrs) {
+    return 0;
+  }
+
+  virtual double GetCacheThreshold() { return 0.0; }
 
   virtual int32_t SetShard(size_t shard_idx, size_t shard_num) {
     _shard_idx = shard_idx;
