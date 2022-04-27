@@ -62,10 +62,10 @@ class TestMaxPool3DFunc(unittest.TestCase):
                 stride=self.strides,
                 padding=self.paddings,
                 data_format='NDHWC')
+            dense_out.backward(dense_out)
+
             #compare with dense
             assert np.allclose(dense_out.numpy(), out.numpy())
-
-            dense_out.backward(dense_out)
             assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
 
 

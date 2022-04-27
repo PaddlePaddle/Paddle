@@ -365,6 +365,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
   return GetDims(vars);
 }
 
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
+}
+
 std::vector<proto::VarType::Type>
 InterpretercoreInferShapeContext::GetInputsVarType(
     const std::string& name) const {
@@ -391,6 +396,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
     const std::string& name, const std::vector<DDim>& dims) {
   auto& vars = OutputVars(name);
   SetDims(vars, dims);
+}
+
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
 }
 
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
