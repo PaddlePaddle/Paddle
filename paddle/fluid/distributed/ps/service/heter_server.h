@@ -389,12 +389,12 @@ class HeterService : public PsService {
                             ::google::protobuf::Closure* done) {
     VLOG(4) << "entering SendToSwitch";
     brpc::ClosureGuard done_guard(done);
-    auto& switch_client_ptr_ =
+    std::shared_ptr<HeterClient> switch_client_ptr_ =
         HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_SWITCH);
-    if (switch_client_ptr_.peer_switch_channels_.empty()) {
-      LOG(ERROR) << "switch_client_ptr_.peer_switch_channels_ null";
+    if (switch_client_ptr_->peer_switch_channels_.empty()) {
+      LOG(ERROR) << "switch_client_ptr_->peer_switch_channels_ null";
     }
-    brpc::Channel* channel = switch_client_ptr_.peer_switch_channels_[0].get();
+    brpc::Channel* channel = switch_client_ptr_->peer_switch_channels_[0].get();
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     // proxy: 定义新的 OnHeterRpcDone 对象（或者在类 OnHeterRpcDone 中 reset）
     OnHeterRpcDone* closure2 = new OnHeterRpcDone([](void* done) {
@@ -457,11 +457,11 @@ class HeterService : public PsService {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     VLOG(4) << "SendToWorker(client addr) =" << cntl->remote_side();
-    auto& switch_client_ptr_ =
+    std::shared_ptr<distributed::HeterClient> switch_client_ptr_ =
         HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_WORKER);
     VLOG(4) << "in switch client, peer worker 0: "
-            << switch_client_ptr_.peer_worker_list_[0];
-    brpc::Channel* channel = switch_client_ptr_.peer_worker_channels_[0].get();
+            << switch_client_ptr_->peer_worker_list_[0];
+    brpc::Channel* channel = switch_client_ptr_->peer_worker_channels_[0].get();
 
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     PsService_Stub stub(channel);

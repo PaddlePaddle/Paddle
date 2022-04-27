@@ -23,6 +23,8 @@ DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 namespace paddle {
 namespace distributed {
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
+std::mutex HeterClient::mtx_;
+std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
