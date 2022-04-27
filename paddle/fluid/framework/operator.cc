@@ -1007,6 +1007,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
     SetDims(vars, dims);
   }
 
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+  }
+
  protected:
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -1279,16 +1287,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
-    if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(
-          new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
-      VLOG(6) << *pt_kernel_signature_.get();
+    if (kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
+      kernel_signature_.reset(new phi::KernelSignature(
+          std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+      VLOG(6) << *kernel_signature_.get();
 
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
 
-      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_name = kernel_signature_->name;
       pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
       pt_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
@@ -1303,7 +1311,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << "` not found.";
       }
     } else {
-      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1449,8 +1457,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
-      PreparePhiData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
-                     runtime_ctx);
+      PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
       BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
       (*pt_kernel_)(&pt_kernel_context);
     } else {
@@ -1545,14 +1552,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
-  pt_kernel_signature_.reset(
-      new KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
-  VLOG(6) << *pt_kernel_signature_.get();
+  kernel_signature_.reset(
+      new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+  VLOG(6) << *kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto pt_kernel_name = pt_kernel_signature_->name;
+  auto pt_kernel_name = kernel_signature_->name;
   auto pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   pt_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
       pt_kernel_name, pt_kernel_key)));
@@ -2153,7 +2160,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
+phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     const ExecutionContext& ctx) const {
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
   if (arg_map_fn_ == nullptr) {
@@ -2161,8 +2168,8 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     if (arg_map_fn) {
       arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
     } else {
-      auto func =
-          [this](const phi::ArgumentMappingContext& ctx) -> KernelSignature {
+      auto func = [this](
+          const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
       arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
@@ -2173,7 +2180,8 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
 
 Scope* OperatorWithKernel::PreparePhiData(
     const Scope& scope, const phi::Kernel& pt_kernel,
-    const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
+    const phi::KernelSignature& pt_kernel_signature,
+    RuntimeContext* ctx) const {
   const auto& input_names = pt_kernel_signature.input_names;
   auto input_defs = pt_kernel.args_def().input_defs();
   PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
@@ -2271,9 +2279,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
 
-  auto& input_names = pt_kernel_signature_->input_names;
-  auto& attr_names = pt_kernel_signature_->attr_names;
-  auto& output_names = pt_kernel_signature_->output_names;
+  auto& input_names = kernel_signature_->input_names;
+  auto& attr_names = kernel_signature_->attr_names;
+  auto& output_names = kernel_signature_->output_names;
 
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
