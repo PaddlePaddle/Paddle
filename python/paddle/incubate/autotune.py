@@ -15,6 +15,7 @@
 import paddle
 import json
 import warnings
+from paddle.fluid import core
 
 __all__ = ['set_config']
 
@@ -80,8 +81,8 @@ def set_config(config=None):
 
     """
     if config is None:
-        paddle.fluid.core.disable_autotune()
-        paddle.fluid.core.disable_layout_autotune()
+        core.disable_autotune()
+        core.disable_layout_autotune()
         paddle.fluid.reader.set_autotune_config(use_autotune=False)
         return
 
@@ -101,9 +102,9 @@ def set_config(config=None):
         if "enable" in kernel_config:
             if isinstance(kernel_config['enable'], bool):
                 if kernel_config['enable']:
-                    paddle.fluid.core.enable_autotune()
+                    core.enable_autotune()
                 else:
-                    paddle.fluid.core.disable_autotune()
+                    core.disable_autotune()
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the kernel is incorrect."
@@ -113,8 +114,7 @@ def set_config(config=None):
             if isinstance(kernel_config['tuning_range'], list):
                 tuning_range = kernel_config['tuning_range']
                 assert len(tuning_range) == 2
-                paddle.fluid.core.set_autotune_range(tuning_range[0],
-                                                     tuning_range[1])
+                core.set_autotune_range(tuning_range[0], tuning_range[1])
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the kernel is incorrect."
@@ -125,9 +125,9 @@ def set_config(config=None):
         if "enable" in layout_config:
             if isinstance(layout_config['enable'], bool):
                 if layout_config['enable']:
-                    paddle.fluid.core.enable_layout_autotune()
+                    core.enable_layout_autotune()
                 else:
-                    paddle.fluid.core.disable_layout_autotune()
+                    core.disable_layout_autotune()
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the layout is incorrect."

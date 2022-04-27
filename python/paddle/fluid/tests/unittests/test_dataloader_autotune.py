@@ -22,6 +22,7 @@ import paddle
 import paddle.nn as nn
 from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
 import sys
+import os
 
 
 class RandomDataset(Dataset):
@@ -62,10 +63,11 @@ class TestAutoTune(unittest.TestCase):
 
     def test_dataloader_disable_autotune(self):
         config = {"dataloader": {"enable": False, "tuning_steps": 1}}
-        tfile = tempfile.NamedTemporaryFile(mode="w+")
+        tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         json.dump(config, tfile)
-        tfile.flush()
+        tfile.close()
         paddle.incubate.autotune.set_config(tfile.name)
+        os.remove(tfile.name)
         loader = DataLoader(
             self.dataset, batch_size=self.batch_size, num_workers=2)
         if (sys.platform == 'darwin' or sys.platform == 'win32'):
@@ -89,10 +91,11 @@ class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"kernel": {"enable": 1, "tuning_range": True}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
             json.dump(config, tfile)
-            tfile.flush()
+            tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
             self.assertTrue(len(w) == 2)
 
 

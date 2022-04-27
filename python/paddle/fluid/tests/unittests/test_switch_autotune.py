@@ -18,6 +18,7 @@ import numpy as np
 import tempfile
 import warnings
 import json
+import os
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -154,10 +155,11 @@ class TestStaticAutoTuneStatus(TestAutoTune):
         self.set_flags(enable_autotune)
         if enable_autotune:
             config = {"kernel": {"enable": True, "tuning_range": [1, 2]}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
             json.dump(config, tfile)
-            tfile.flush()
+            tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
         else:
             paddle.incubate.autotune.set_config(
                 config={"kernel": {
@@ -189,10 +191,11 @@ class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"kernel": {"enable": 1, "tuning_range": 1}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+")
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
             json.dump(config, tfile)
-            tfile.flush()
+            tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
             self.assertTrue(len(w) == 2)
 
     def test_set_config_attr(self):
