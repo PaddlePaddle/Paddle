@@ -320,7 +320,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   {
     platform::RecordEvent node_creation_record_event(
-        type + " node_creation", platform::TracerEventType::OperatorInner, 1);
+        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(
