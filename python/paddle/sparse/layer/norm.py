@@ -157,4 +157,5 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             input.indices(),
             batch_norm_out,
             shape=input.shape,
+            coalesced=False,
             stop_gradient=input.stop_gradient)

@@ -71,6 +71,7 @@ def _conv3d(x,
             pre_bias.indices(),
             add_bias,
             shape=pre_bias.shape,
+            coalesced=False,
             stop_gradient=pre_bias.stop_gradient)
     else:
         return pre_bias
