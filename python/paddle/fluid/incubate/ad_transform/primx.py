@@ -572,6 +572,7 @@ def _lower(block, reverse):
 
     for var_name in sorted(vars_to_remove):
         assert var_name in to_bind_rev
-        block.desc._remove_var(cpt.to_bytes(var_name))
-        del block.vars[var_name]
+        if var_name != to_bind_rev[var_name]:
+            block.desc._remove_var(cpt.to_bytes(var_name))
+            del block.vars[var_name]
     block._sync_with_cpp()
