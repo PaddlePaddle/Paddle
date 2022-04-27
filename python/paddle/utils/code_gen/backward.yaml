@@ -1758,6 +1758,17 @@
   kernel :
     func : tan_grad
 
+- backward_api : tanh_double_grad
+  forward : tanh_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : tanh_double_grad
+  backward : tanh_triple_grad
+
 - backward_api : tanh_grad
   forward : tanh (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1767,6 +1778,7 @@
     param : [out]
   kernel :
     func : tanh_grad
+  backward : tanh_double_grad
 
 - backward_api : tanh_shrink_grad
   forward : tanh_shrink (Tensor x) -> Tensor(out)
@@ -1777,6 +1789,16 @@
     param : [x]
   kernel :
     func : tanh_shrink_grad
+
+- backward_api : tanh_triple_grad
+  forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
+  args : (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_out_new_grad, Tensor grad_out_grad_grad)
+  output : Tensor(out_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [out, out, grad_x_grad_forward]
+  kernel :
+    func : tanh_triple_grad
 
 - backward_api : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)

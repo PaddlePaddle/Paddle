@@ -808,6 +808,7 @@ def get_static_triple_grad(x,
 def get_eager_triple_grad(func,
                           x_init=None,
                           dy_init=None,
+                          place=None,
                           return_mid_result=False):
     """
     Get triple Grad result of dygraph.
@@ -816,6 +817,7 @@ def get_eager_triple_grad(func,
         func: A wrapped dygraph function that its logic is equal to static program
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (list[Tensor], list[Tensor]): If set True, the 
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
@@ -881,7 +883,8 @@ def triple_grad_check_for_dygraph(func,
 
     paddle.disable_static()
     with _test_eager_guard():
-        eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init)
+        eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init,
+                                                  place)
     paddle.enable_static()
 
     static_triple_grad = get_static_triple_grad(x, y, x_init, y_grads_init,

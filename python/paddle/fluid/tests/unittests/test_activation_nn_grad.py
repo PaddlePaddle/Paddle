@@ -75,6 +75,9 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
 
 
 class TestTanhTripleGradCheck(unittest.TestCase):
+    def tanh_wrapper(self, x):
+        return paddle.tanh(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -87,6 +90,8 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -98,6 +103,9 @@ class TestTanhTripleGradCheck(unittest.TestCase):
 
 
 class TestTanhDoubleGradCheck(unittest.TestCase):
+    def tanh_wrapper(self, x):
+        return paddle.tanh(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -110,6 +118,8 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
