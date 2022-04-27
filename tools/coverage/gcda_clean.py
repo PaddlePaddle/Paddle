@@ -32,8 +32,7 @@ def get_pull(pull_id):
     Returns:
         github.PullRequest.PullRequest
     """
-    token = os.getenv('GITHUB_API_TOKEN')
-    github = Github(token, timeout=60)
+    github = Github('', timeout=60)
     idx = 1
     while idx < 4:
         try:
