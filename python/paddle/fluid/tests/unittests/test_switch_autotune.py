@@ -201,7 +201,7 @@ class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_attr(self):
         paddle.incubate.autotune.set_config(config=None)
         self.assertEqual(
-            paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], False)
+            paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], True)
 
 
 if __name__ == '__main__':

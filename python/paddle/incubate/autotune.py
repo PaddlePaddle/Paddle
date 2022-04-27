@@ -28,7 +28,7 @@ def set_config(config=None):
     and cache the best algorithm for the operator in the tuning iteration. Tuning
     parameters are as follows:
 
-    - enable(bool): Whether to enable kernel tuning. Defaut: False.
+    - enable(bool): Whether to enable kernel tuning.
     - tuning_range(list): Start and end iteration for auto-tuning. Default: [1, 10].
 
     2. layout: When it is enabled, the best data layout such as NCHW or NHWC will be
@@ -36,20 +36,20 @@ def set_config(config=None):
     not best, layout transformation will be automaticly performed to improve model
     performance. Tuning parameters are as follows:
 
-    - enable(bool): Whether to enable layout tuning. Defaut: False.
+    - enable(bool): Whether to enable layout tuning.
 
     3. dataloader: When it is enabled, the best num_workers will be selected to replace
     the origin dataloader setting. Tuning parameters are as follows:
 
-    - enable(bool): Whether to enable dataloader tuning. Defaut: False.
+    - enable(bool): Whether to enable dataloader tuning.
 
     Args:
         config (dict|str|None, optional): Configuration for auto-tuning. If it is a
             dictionary, the key is the tuning type, and the value is a dictionary
             of the corresponding tuning parameters. If it is a string, the path of
             a json file will be specified and the tuning configuration will be set
-            by the the json file. Default: None, use default configuration for
-            auto-tuning.
+            by the the json file. Default: None, auto-tuning for kernel, layout and
+            dataloader will be enabled.
 
     Examples:
         .. code-block:: python
@@ -81,9 +81,9 @@ def set_config(config=None):
 
     """
     if config is None:
-        core.disable_autotune()
-        core.disable_layout_autotune()
-        paddle.fluid.reader.set_autotune_config(use_autotune=False)
+        core.enable_autotune()
+        core.enable_layout_autotune()
+        paddle.fluid.reader.set_autotune_config(use_autotune=True)
         return
 
     config_dict = {}
