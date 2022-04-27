@@ -132,6 +132,7 @@ endif()
 if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
+    -faligned-new
     -fno-omit-frame-pointer
     -Werror
     -Wall

@@ -391,7 +391,7 @@ int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
     if (xpu_channels_.size() < 2) {
       LOG(ERROR) << "xpu_channels_ is null";
     }
-    recv_switch_channels_.push_back(xpu_channels_[0]);
+    recv_switch_channels_.push_back(xpu_channels_[1]);
   }
   brpc::Channel* channel = recv_switch_channels_[0].get();
   ::paddle::distributed::PsService_Stub stub(channel);
@@ -402,7 +402,7 @@ int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
   auto& res_io_buffer = closure->cntl.response_attachment();
   butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
   io_buffer_itr.copy_and_forward(reinterpret_cast<void*>(data_ptr), data_size);
-  delete closure;
+  // delete closure;
   VLOG(4) << "Recv done";
   return 0;
 }
