@@ -128,7 +128,7 @@ void PressTestSendRecv(
   // file.close();
   // VLOG(0) << "size of file " << "20_34" << " is " << (m - l) << " bytes.\n";
   int vars_len = 2359296 * sizeof(float);
-  int64_t data_size = vars_len * sizeof(float);
+  int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
   file.read((char*)data_ptr, 9437184);
@@ -253,8 +253,8 @@ TEST(HETERSENDANDRECV, CPU) {
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
   // TestScopeSendRecv(heter_client_ptr_);
-  TestShardSendRecv(heter_client_ptr_);
-  // PressTestSendRecv(heter_client_ptr_);
+  // TestShardSendRecv(heter_client_ptr_);
+  PressTestSendRecv(heter_client_ptr_);
 
   switch_server_ptr_a->Stop();
   LOG(INFO) << "switch server A stopped";
