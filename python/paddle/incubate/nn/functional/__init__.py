@@ -14,5 +14,10 @@
 
 from .fused_transformer import fused_multi_head_attention
 from .fused_transformer import fused_feedforward
+from .fused_transformer import fused_multi_transformer
 
-__all__ = ['fused_multi_head_attention', 'fused_feedforward']
+__all__ = [
+    'fused_multi_head_attention',
+    'fused_feedforward',
+    'fused_multi_transformer',
+]

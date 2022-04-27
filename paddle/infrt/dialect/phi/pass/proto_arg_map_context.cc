@@ -64,6 +64,12 @@ bool ProtoArgumentMappingContext::IsDenseTensorInput(
     const std::string& name) const {
   return true;
 }
+
+bool ProtoArgumentMappingContext::IsDenseTensorInputs(
+    const std::string& name) const {
+  return true;
+}
+
 bool ProtoArgumentMappingContext::IsSelectedRowsInput(
     const std::string& name) const {
   return false;

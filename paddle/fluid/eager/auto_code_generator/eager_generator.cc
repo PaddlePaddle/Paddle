@@ -2444,7 +2444,7 @@ static std::string GenerateGradNodeCCContents(
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()("
       "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
-      "create_graph) {\n"
+      "create_graph, bool is_new_grad) {\n"
       "%s"
       "%s"
       "\n}";
@@ -2490,7 +2490,7 @@ static std::string GenerateGradNodeHeaderContents(
       "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
       "operator()("
       "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
-      "create_graph = false) "
+      "create_graph = false, bool is_new_grad = false) "
       "override;\n"
       "\n"
       "  void ClearTensorWrappers() override { \n"
