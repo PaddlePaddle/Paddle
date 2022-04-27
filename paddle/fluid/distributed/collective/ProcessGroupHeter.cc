@@ -120,7 +120,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
         HeterClient* client_ =
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
         auto dense_cpu_tensor = cpu_tensors[0];
-        std::vector<int> send_size;
+        std::vector<int64_t> send_size;
         send_size.push_back(dense_cpu_tensor.numel());
         int ret = client_->Send(
             gid_, {dense_cpu_tensor.name()}, send_size, dense_cpu_tensor.data(),
@@ -216,7 +216,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
         auto dense_cpu_tensor = cpu_tensors[0];
         if (gloo_rank_ == 0) {
-          std::vector<int> send_size;
+          std::vector<int64_t> send_size;
           send_size.push_back(dense_cpu_tensor.numel());
           int ret = client_->Send(
               gid_, {dense_cpu_tensor.name()}, send_size,
@@ -279,9 +279,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   // Send to switch
   HeterClient* client_ =
       HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
-  int tensor_size =
+  int64_t tensor_size =
       cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype());
-  std::vector<int> send_size;
+  std::vector<int64_t> send_size;
   send_size.push_back(tensor_size);
   std::string file_name = std::string("send_") + std::to_string(gid_) +
                           std::string("_") + std::to_string(send_count);

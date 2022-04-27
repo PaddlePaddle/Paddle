@@ -37,6 +37,8 @@ namespace paddle {
 namespace imperative {
 
 static const phi::Kernel empty_kernel;
+static const framework::RuntimeContext empty_ctx({}, {});
+static const framework::Scope empty_scope;
 
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
     const std::shared_ptr<paddle::imperative::VarBase>& var) {
@@ -138,8 +140,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  framework::RuntimeContext ctx({}, {});
-
 #ifdef PADDLE_WITH_MKLDNN
   // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
@@ -158,7 +158,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
-      op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs, default_attrs);
+      op, empty_scope, *dev_ctx, empty_ctx, ins, outs, attrs, default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
 
   framework::KernelSignature pt_kernel_signature;
@@ -172,11 +172,26 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       paddle::platform::is_in_xpu_black_list(op.Type());
 
 #endif
-  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
-    pt_kernel_signature =
-        std::move(op.GetExpectedPhiKernelArgs(dygraph_exe_ctx));
-    VLOG(6) << pt_kernel_signature;
 
+  bool has_phi_kernel = false;
+
+  const auto* arg_map_fn =
+      phi::OpUtilsMap::Instance().GetArgumentMappingFn(op.Type());
+  if (arg_map_fn) {
+    has_phi_kernel = true;
+    pt_kernel_signature = (*arg_map_fn)(
+        framework::ExecutionArgumentMappingContext(dygraph_exe_ctx));
+  } else {
+    const auto* kernel_sig =
+        phi::DefaultKernelSignatureMap::Instance().GetNullable(op.Type());
+    if (kernel_sig) {
+      has_phi_kernel = true;
+      pt_kernel_signature = *kernel_sig;
+    }
+  }
+
+  if (has_phi_kernel) {
+    VLOG(6) << pt_kernel_signature;
     pt_kernel_name = pt_kernel_signature.name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -231,7 +246,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
-      return PreparedOp(op, ctx, expected_kernel_key,
+      return PreparedOp(op, empty_ctx, expected_kernel_key,
                         std::move(pt_kernel_signature), pt_kernel, dev_ctx);
     } else {
       VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
@@ -280,7 +295,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key,
+        return PreparedOp(op, empty_ctx, expected_kernel_key,
                           std::move(pt_kernel_signature), pt_cpu_kernel,
                           cpu_ctx);
       }
@@ -373,7 +388,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second, dev_ctx);
+  return PreparedOp(op, empty_ctx, expected_kernel_key, kernel_iter->second,
+                    dev_ctx);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
