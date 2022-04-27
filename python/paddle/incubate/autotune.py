@@ -16,8 +16,10 @@ import paddle
 import json
 import warnings
 
+__all__ = ['set_config']
 
-def set_config(config):
+
+def set_config(config=None):
     r"""
     Set the configuration for kernel, layout and dataloader auto-tuning.
 
@@ -41,11 +43,12 @@ def set_config(config):
     - enable(bool): Whether to enable dataloader tuning. Defaut: False.
 
     Args:
-        config (dict, string): Configuration for auto-tuning. If it is a dictionary,
-            the key is the tuning type, and the value is a dictionary of the
-            corresponding tuning parameters. If it is a string, the path of a json
-            file will be specified and the tuning configuration will be set by the
-            the json file.
+        config (dict|str|None, optional): Configuration for auto-tuning. If it is a
+            dictionary, the key is the tuning type, and the value is a dictionary
+            of the corresponding tuning parameters. If it is a string, the path of
+            a json file will be specified and the tuning configuration will be set
+            by the the json file. Default: None, use default configuration for
+            auto-tuning.
 
     Examples:
         .. code-block:: python
@@ -54,7 +57,7 @@ def set_config(config):
             import paddle
             import json
 
-            # config is a dist.
+            # config is a dict.
             config = {
                 "kernel": {
                     "enable": True,
@@ -76,6 +79,12 @@ def set_config(config):
             paddle.incubate.autotune.set_config('config.json')
 
     """
+    if config is None:
+        paddle.fluid.core.disable_autotune()
+        paddle.fluid.core.disable_layout_autotune()
+        paddle.fluid.reader.set_autotune_config(use_autotune=False)
+        return
+
     config_dict = {}
     if isinstance(config, dict):
         config_dict = config

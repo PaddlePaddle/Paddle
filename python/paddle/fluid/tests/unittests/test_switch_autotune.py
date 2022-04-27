@@ -195,6 +195,11 @@ class TestAutoTuneAPI(unittest.TestCase):
             paddle.incubate.autotune.set_config(tfile.name)
             self.assertTrue(len(w) == 2)
 
+    def test_set_config_attr(self):
+        paddle.incubate.autotune.set_config(config=None)
+        self.assertEqual(
+            paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], False)
+
 
 if __name__ == '__main__':
     unittest.main()
