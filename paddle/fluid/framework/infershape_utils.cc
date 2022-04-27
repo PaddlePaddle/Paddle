@@ -52,8 +52,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   paddle::any Attr(const std::string& name) const override {
-    auto& attr = ctx_.Attrs().GetAttr(name);
-    return GetAttrValue(attr);
+    auto* attr = ctx_.Attrs().GetAttr(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        attr, platform::errors::NotFound(
+                  "Attribute (%s) should be in AttributeMap.", name));
+    return GetAttrValue(*attr);
   }
 
   size_t InputSize(const std::string& name) const override {
@@ -450,11 +453,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr_name = attr_names[i];
-    VLOG(1) << attr_name << ": " << attr_defs[i].type_index;
+    VLOG(6) << "BuildInferMetaContext: " << attr_name << ": "
+            << attr_defs[i].type_index;
+    auto* attr_ptr = attr_reader.GetAttr(attr_name);
     switch (attr_defs[i].type_index) {
       case phi::AttributeType::SCALAR:
-        if (ctx->HasAttr(attr_name)) {
-          auto& attr = attr_reader.GetAttr(attr_name);
+        if (attr_ptr) {
+          auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               infer_meta_context.EmplaceBackAttr(
@@ -498,7 +503,28 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         break;
       case phi::AttributeType::INT_ARRAY:
         // When attr is a vector_tensor or tensor, transform it to IntArray
-        if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
+        if (attr_ptr) {
+          auto& attr = *attr_ptr;
+          switch (AttrTypeID(attr)) {
+            case framework::proto::AttrType::INTS:
+              infer_meta_context.EmplaceBackAttr(std::move(
+                  phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+              break;
+            case framework::proto::AttrType::LONGS:
+              infer_meta_context.EmplaceBackAttr(std::move(
+                  phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+              break;
+            case framework::proto::AttrType::INT:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::IntArray({BOOST_GET_CONST(int, attr)}));
+              break;
+            default:
+              PADDLE_THROW(platform::errors::Unimplemented(
+                  "Unsupported cast op attribute `%s` to IntArray when "
+                  "construct InferMetaContext.",
+                  attr_name));
+          }
+        } else if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
           auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
           if (ctx->IsRuntime()) {
             // If is in runtime, we will get tensor's value for IntArray
@@ -545,34 +571,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             tensor_attr.SetFromTensor(true);
             infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
           }
-        } else if (ctx->HasAttr(attr_name)) {
-          auto& attr = attr_reader.GetAttr(attr_name);
-          switch (AttrTypeID(attr)) {
-            case framework::proto::AttrType::INTS:
-              infer_meta_context.EmplaceBackAttr(std::move(
-                  phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
-              break;
-            case framework::proto::AttrType::LONGS:
-              infer_meta_context.EmplaceBackAttr(std::move(
-                  phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
-              break;
-            case framework::proto::AttrType::INT:
-              infer_meta_context.EmplaceBackAttr(
-                  phi::IntArray({BOOST_GET_CONST(int, attr)}));
-              break;
-            default:
-              PADDLE_THROW(platform::errors::Unimplemented(
-                  "Unsupported cast op attribute `%s` to IntArray when "
-                  "construct InferMetaContext.",
-                  attr_name));
-          }
         } else {
           // do nothing, skip current attr
         }
         break;
       case phi::AttributeType::SCALARS:
-        if (ctx->HasAttr(attr_name)) {
-          auto& attr = attr_reader.GetAttr(attr_name);
+        if (attr_ptr) {
+          auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS: {
               const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
@@ -621,8 +626,8 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         }
         break;
       default:
-        if (ctx->HasAttr(attr_name)) {
-          auto& attr = attr_reader.GetAttr(attr_name);
+        if (attr_ptr) {
+          auto& attr = *attr_ptr;
           switch (attr_defs[i].type_index) {
             case phi::AttributeType::FLOAT32:
               infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
