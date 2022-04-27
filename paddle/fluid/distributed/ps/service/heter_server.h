@@ -144,7 +144,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
                             brpc::Controller* cntl);
 
   void WaitForVarsConsumed(int32_t group_id, const std::string& var_name) {
-    timeline_.Start();
+    //timeline_.Start();
     while (true) {
       {
         std::lock_guard<std::mutex> lock(scope_mutex_);
@@ -152,17 +152,19 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
           break;
         }
       }
+      /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
         VLOG(0) << "vars not consumed exceed 10 miniutes";
         break;
       }
+      */
     }
     return;
   }
 
   void WaitForVarsProduced(int32_t group_id, const std::string& var_name) {
-    timeline_.Start();
+    //timeline_.Start();
     while (true) {
       {
         std::lock_guard<std::mutex> lock(scope_mutex_);
@@ -170,11 +172,13 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
           break;
         }
       }
+      /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
         VLOG(0) << "vars not produced exceed 10 miniutes";
         break;
       }
+      */
     }
     return;
   }
@@ -420,6 +424,7 @@ class HeterService : public PsService {
         std_cntl.response_attachment().movable());
     fut.wait();
     VLOG(4) << "SendToSwitch done";
+    delete closure2;
   }
 
   void SendS2S(::google::protobuf::RpcController* controller,
