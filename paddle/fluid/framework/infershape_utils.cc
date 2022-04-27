@@ -450,6 +450,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto& attr_name = attr_names[i];
+    VLOG(1) << attr_name << ": " << attr_defs[i].type_index;
     switch (attr_defs[i].type_index) {
       case phi::AttributeType::SCALAR:
         if (ctx->HasAttr(attr_name)) {

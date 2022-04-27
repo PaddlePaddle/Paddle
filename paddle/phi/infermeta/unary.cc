@@ -3011,7 +3011,7 @@ void UnStackInferMeta(const MetaTensor& x,
 }
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out) {
@@ -3021,7 +3021,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
   auto out_dims_vec = phi::vectorize(x_dims);
-  out_dims_vec.push_back(depth);
+  out_dims_vec.push_back(depth.to<int>());
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
