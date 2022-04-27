@@ -146,7 +146,7 @@ class TestAutoTuneAPI(unittest.TestCase):
 
     def test_set_config_attr(self):
         paddle.incubate.autotune.set_config()
-        self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+        self.assertEqual(paddle.fluid.core.use_layout_autotune(), True)
 
 
 if __name__ == '__main__':
