@@ -252,9 +252,9 @@ def p_norm_orig2prim(op, x):
     if len(x.shape) > 1:
         x = reshape(x, shape=[num_el(x.shape)])
 
-    if op.attr('porder') - 2.0 < 1e-5:
+    if abs(op.attr('porder') - 2.0) < 1e-5:
         return sqrt(reduce(mul(x, x), axis=[0]))
-    elif op.attr('porder') - 1.0 < 1e-5:
+    elif abs(op.attr('porder') - 1.0) < 1e-5:
         return reduce(sqrt(mul(x, x)), axis=[0])
     else:
         raise RuntimeError('Only support lower l2/l1 norm currently')
