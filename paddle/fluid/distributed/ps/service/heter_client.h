@@ -138,7 +138,8 @@ class HeterClient {
                         const std::string& mode = "forward");
 
   int Send(int group_id, const std::vector<std::string>& var_names,
-           const std::vector<int>& vars_len, void* data_ptr, int64_t data_size);
+           const std::vector<int64_t>& vars_len, void* data_ptr,
+           int64_t data_size);
 
   int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
            const std::string& message_name,

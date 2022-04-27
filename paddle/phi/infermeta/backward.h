@@ -178,6 +178,11 @@ void NllLossGradInferMeta(const MetaTensor& input,
                           MetaTensor* intput_grad,
                           MetaConfig config = MetaConfig());
 
+void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int downscale_factor,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             paddle::optional<const MetaTensor&> rois_num,
