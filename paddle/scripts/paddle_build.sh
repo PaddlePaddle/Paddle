@@ -727,7 +727,6 @@ function run_linux_cpu_test() {
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    export PYTHONPATH=${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests
     ut_total_startTime_s=`date +%s`
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -2379,7 +2378,6 @@ function parallel_test() {
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    export PYTHONPATH=${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
