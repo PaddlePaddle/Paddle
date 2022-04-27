@@ -58,6 +58,11 @@ struct KernelSignature {
 
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
+  KernelSignature(const KernelSignature& other)
+      : name(other.name),
+        input_names(other.input_names),
+        attr_names(other.attr_names),
+        output_names(other.output_names) {}
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
     input_names = other.input_names;
@@ -86,6 +91,7 @@ class ArgumentMappingContext {
   virtual size_t OutputSize(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
+  virtual bool IsDenseTensorInputs(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
