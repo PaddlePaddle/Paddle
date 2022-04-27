@@ -54,6 +54,7 @@ if (WITH_GPU OR WITH_ROCM)
     op_library(multihead_matmul_op)
     op_library(skip_layernorm_op)
     op_library(fused_embedding_eltwise_layernorm_op)
+    op_library(fused_gate_attention_op)
     # fusion_group
     if(NOT APPLE AND NOT WIN32)
         op_library(fusion_group_op DEPS device_code)
@@ -74,7 +75,6 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(fused_feedforward_op)
         # fused_attention_op
         op_library(fused_attention_op)
-        op_library(fused_gate_attention_op)
     endif()
     # resnet_unit needs cudnn 8.0 above
     if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))

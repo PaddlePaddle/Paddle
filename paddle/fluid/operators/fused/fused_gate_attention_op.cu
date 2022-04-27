@@ -12,8 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_fp16.h>
-#include <cub/cub.cuh>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
@@ -21,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 
@@ -213,7 +223,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
     // y: qkv's weight: [3, num_head, c, qkv_dim]
-    using U = LayerNormParamType<T>;
     auto *x = ctx.Input<Tensor>("X");
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");

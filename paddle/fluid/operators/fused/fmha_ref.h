@@ -21,7 +21,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/kernels/softmax_grad_kernel.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -160,12 +166,15 @@ class FMHARef {
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
                                                      T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
-
+#ifdef PADDLE_WITH_CUDA
       phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
                                              softmax_axis, softmax_out_tensor);
+#endif
     } else {
+#ifdef PADDLE_WITH_CUDA
       phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor,
                                              softmax_axis, softmax_out_tensor);
+#endif
     }
 
     transB = CblasNoTrans;
@@ -290,10 +299,11 @@ class FMHARef {
     }
 
     if (src_mask_tensor != nullptr) {
+#ifdef PADDLE_WITH_CUDA
       phi::SoftmaxBackwardCUDAKernelDriver<T>(
           dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
           src_mask_out_grad_tensor);
-
+#endif
       // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
       // src_mask
       // Special case when dy is not needed and dx doesn't reduce
@@ -311,9 +321,11 @@ class FMHARef {
       }
 
     } else {
+#ifdef PADDLE_WITH_CUDA
       phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
                                               *softmax_out_grad_tensor,
                                               softmax_axis, qk_out_grad_tensor);
+#endif
     }
 
     T* qk_out_grad_data = qk_out_grad_tensor->data<T>();
@@ -590,9 +602,15 @@ class FMHAGateRef {
                                                      T, T>(dev_ctx_, ins, &outs,
                                                            -1, AddFunctor<T>());
     }
-
+#ifdef PADDLE_WITH_CUDA
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, src_mask_out, -1,
                                            softmax_out);
+#endif
+#ifdef PADDLE_WITH_HIP
+    phi::SoftmaxKernel<T, phi::GPUContext>(
+        static_cast<const phi::GPUContext&>(dev_ctx_), src_mask_out, -1,
+        softmax_out);
+#endif
   }
 
   void ComputeBiasMaskSoftmaxBackward(const Tensor* softmax_out_grad,
@@ -622,9 +640,15 @@ class FMHAGateRef {
       src_mask_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
       softmax_x_grad = &src_mask_out_grad;
     }
-
+#ifdef PADDLE_WITH_CUDA
     phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, *softmax_out,
                                             *softmax_out_grad, -1, qk_out_grad);
+#endif
+#ifdef PADDLE_WITH_HIP
+    phi::SoftmaxGradKernel<T, phi::GPUContext>(
+        static_cast<const phi::GPUContext&>(dev_ctx_), *softmax_out,
+        *softmax_out_grad, -1, qk_out_grad);
+#endif
 
     // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
     if (nonbatched_bias_grad) {
