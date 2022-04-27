@@ -1,7 +1,3 @@
-//
-// Created by linxu on 2022/4/21.
-//
-
 #include "tinfo.h"
 
 void BindFInfoVarDsec(pybind11::module *m){

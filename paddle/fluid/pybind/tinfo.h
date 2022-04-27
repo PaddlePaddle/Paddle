@@ -1,7 +1,3 @@
-//
-// Created by linxu on 2022/4/21.
-//
-
 #ifndef PADDLE_TINFO_H
 #define PADDLE_TINFO_H
 
