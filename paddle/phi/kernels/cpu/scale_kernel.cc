@@ -34,6 +34,9 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   // calc
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    return;
+  }
   auto eigen_out = phi::EigenVector<T>::Flatten(*out);
   auto eigen_x = phi::EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
