@@ -68,9 +68,20 @@ class MemorySparseTable : public Table {
   virtual int32_t Save(const std::string& path,
                        const std::string& param) override;
 
-  int32_t LoadLocalFS(const std::string& path, const std::string& param);
-  int32_t SaveLocalFS(const std::string& path, const std::string& param,
-                      const std::string& prefix);
+  virtual int32_t SaveCache(const std::string& path, const std::string& param,
+                    paddle::framework::Channel<std::pair<uint64_t, std::string>>& shuffled_channel) override;
+            virtual double GetCacheThreshold() {
+                return _local_show_threshold;
+            }
+            virtual int64_t CacheShuffle(
+                    const std::string& path, const std::string& param, double cache_threshold,
+                    std::function<std::future<int32_t>(int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
+                    paddle::framework::Channel<std::pair<uint64_t, std::string>>& shuffled_channel, const std::vector<Table*>& table_ptrs) override;
+
+
+//  int32_t LoadLocalFS(const std::string& path, const std::string& param);
+//  int32_t SaveLocalFS(const std::string& path, const std::string& param,
+//                      const std::string& prefix);
 
   int64_t LocalSize();
   int64_t LocalMFSize();
@@ -92,13 +103,30 @@ class MemorySparseTable : public Table {
     return &_local_shards[shard_idx];
   }
 
+  virtual void Revert();
+  virtual void CheckSavePrePatchDone();
+
  protected:
+  virtual int32_t SavePatch(const std::string& path, int save_param);
+  virtual int32_t LoadPatch(const std::vector<std::string>& file_list, int save_param);
+
   const int _task_pool_size = 24;
   size_t _avg_local_shard_num;
   size_t _real_local_shard_num;
   size_t _sparse_table_shard_num;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::unique_ptr<shard_type[]> _local_shards;
+
+  // for patch model
+  int _m_avg_local_shard_num;
+  int _m_real_local_shard_num;
+  int _m_sparse_table_shard_num;
+  float _shard_merge_rate { 1.0f };
+  double _local_show_threshold { 0.0 };
+
+  std::unique_ptr<shard_type[]> _local_shards_new;
+  std::unique_ptr<shard_type[]> _local_shards_patch_model;
+  std::thread _save_patch_model_thread;
 };
 
 }  // namespace distributed

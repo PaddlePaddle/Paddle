@@ -142,6 +142,10 @@ class Table {
   virtual void *GetShard(size_t shard_idx) = 0;
   virtual std::pair<int64_t, int64_t> PrintTableStat() { return {0, 0}; }
 
+  // for patch model
+  virtual void Revert() {}
+  virtual void CheckSavePrePatchDone() {}
+
  protected:
   virtual int32_t Initialize() = 0;
   virtual int32_t InitializeAccessor();
