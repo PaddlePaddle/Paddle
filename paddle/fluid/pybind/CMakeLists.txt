@@ -170,10 +170,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
 
-  if (WITH_ONNXRUNTIME)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  endif()
-
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif(WITH_CNCL)

@@ -2260,8 +2260,7 @@ void SumRawInferMeta(const MetaTensor& x,
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
   } else {
-    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32 ||
-        x.dtype() == DataType::INT64) {
+    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
       out_dtype = DataType::INT64;
     } else {
       out_dtype = x.dtype();
@@ -2997,6 +2996,52 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
+}
+
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[1] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[3] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[3]));
+  }
+  auto output_dims = input_dims;
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
 }
 
 }  // namespace phi
