@@ -50,7 +50,8 @@ struct Embedding2Eltwise1Pattern : public PatternBase {
       : PatternBase(pattern, name_scope, "embedding2_eltwise1") {}
 
   void operator()();
-
+  PATTERN_DECL_NODE(feed1);
+  PATTERN_DECL_NODE(feed2);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table2_x);
   PATTERN_DECL_NODE(lookup_table1_w);
@@ -79,6 +80,7 @@ struct Embedding1Eltwise1Pattern : public PatternBase {
   Embedding1Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "embedding1_eltwise1") {}
   void operator()();
+  PATTERN_DECL_NODE(feed1);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table1_w);
   PATTERN_DECL_NODE(lookup_table1);
