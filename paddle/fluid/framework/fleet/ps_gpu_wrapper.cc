@@ -307,6 +307,17 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       }
     }
   }
+
+#ifdef PADDLE_WITH_XPU_KP
+  // TODO(added by dingjie02): build_sign2fids
+
+  // TODO(added by dingjie02): convert_ins_sign2fid
+
+#ifdef PADDLE_WITH_XPU_CACHE_BFID
+  // TODO(added by dingjie02): build_batch_thread, build_batch_fid_seq
+#endif
+
+#endif
 }
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {

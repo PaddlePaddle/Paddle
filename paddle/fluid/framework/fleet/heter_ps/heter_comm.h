@@ -29,6 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
@@ -232,6 +235,12 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inter_comms_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+  //TODO(dingjie02): define CacheManager object
+  std::shared_ptr<CacheManager> cache_mgr_;
+#endif
+
 };
 
 }  // end namespace framework

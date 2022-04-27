@@ -561,6 +561,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                         XPUAPIErrorMsg[r2]));
 #endif
 
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  // TODO(dingjie02): gather emb with bfids
+  (void)stream;
+  (void)h_left;
+  (void)h_right;
+#else
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
@@ -634,6 +640,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   for (int i = 0; i < total_device; ++i) {
     destroy_storage(num, i);
   }
+#endif
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -663,26 +670,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-#if defined(PADDLE_WITH_CUDA)
   cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
-
-#elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto xpu_context = xpu_dev_ctx.x_context();
-
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]", r,
-                        XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]", r2,
-                        XPUAPIErrorMsg[r2]));
-#endif
 
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -778,14 +767,20 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-#if defined(PADDLE_WITH_CUDA)
-  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
-  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
-
-#elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  // TODO(dingjie02): gather grad and update params with bfids
+  (void)stream;
+  (void)h_left;
+  (void)h_right;
+  (void)d_left_ptr;
+  (void)d_right_ptr;
+  (void)xpu_context;
+
+#else
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
@@ -797,7 +792,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
                         XPUAPIErrorMsg[r2]));
-#endif
 
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -866,6 +860,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   for (int i = 0; i < total_device; ++i) {
     destroy_storage(dev_num, i);
   }
+#endif
 }
 
 #endif
