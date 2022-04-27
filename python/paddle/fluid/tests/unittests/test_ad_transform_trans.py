@@ -99,15 +99,12 @@ class TestAutoGradTransform1(unittest.TestCase):
             self.assertEqual(sorted(orig_ops), sorted(self.orig_ops))
 
             # Test orig2prim
-            new_vars = self.orig_xs + self.orig_ys
-            orig2prim(
-                block=self.main_program.block(0), update_var_list=new_vars)
+            orig2prim(block=self.main_program.block(0))
             orig2prim_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(orig2prim_ops), sorted(self.orig2prim_ops))
 
             # Test linearize
-            xs_dot, ys_dot = ad.linearize(new_vars[:len(self.orig_xs)],
-                                          new_vars[len(self.orig_xs):])
+            xs_dot, ys_dot = ad.linearize(self.orig_xs, self.orig_ys)
             linearize_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(linearize_ops), sorted(self.linearize_ops))
             flatten_xs_dot = flatten(xs_dot)
