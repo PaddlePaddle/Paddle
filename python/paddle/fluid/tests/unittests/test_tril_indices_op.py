@@ -35,7 +35,7 @@ class TestTrilIndicesOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.attrs = {'rows': 4, 'cols': 4, 'offset': 0}
+        self.attrs = {'rows': 4, 'cols': 4, 'offset': -1}
         self.target = np.tril_indices(self.attrs['rows'], self.attrs['offset'],
                                       self.attrs['cols'])
         self.target = np.array(self.target)
@@ -65,11 +65,16 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
         for place in places:
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
-                data = paddle.tril_indices(4, 4, 2)
-                exe = paddle.static.Executor(place)
-                result = exe.run(feed={}, fetch_list=[data])
-            expected_result = np.tril_indices(4, 2, 4)
-            self.assertTrue(np.allclose(result, expected_result))
+                data1 = paddle.tril_indices(4, 4, -1)
+                exe1 = paddle.static.Executor(place)
+                result1 = exe1.run(feed={}, fetch_list=[data1])
+                data2 = paddle.tril_indices(4, 4, 2)
+                exe2 = paddle.static.Executor(place)
+                result2 = exe2.run(feed={}, fetch_list=[data2])
+            expected_result1 = np.tril_indices(4, -1, 4)
+            expected_result2 = np.tril_indices(4, 2, 4)
+            self.assertTrue(np.allclose(result1, expected_result1))
+            self.assertTrue(np.allclose(result2, expected_result2))
 
 
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
@@ -79,9 +84,12 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
         ] if fluid.core.is_compiled_with_cuda() else [paddle.CPUPlace()]
         for place in places:
             with fluid.dygraph.base.guard(place=place):
-                out = paddle.tril_indices(4, 4, 2)
-            expected_result = np.tril_indices(4, 2, 4)
-            self.assertEqual((out.numpy() == expected_result).all(), True)
+                out1 = paddle.tril_indices(4, 4, 2)
+                out2 = paddle.tril_indices(4, 4, -1)
+            expected_result1 = np.tril_indices(4, 2, 4)
+            expected_result2 = np.tril_indices(4, -1, 4)
+            self.assertEqual((out1.numpy() == expected_result1).all(), True)
+            self.assertEqual((out2.numpy() == expected_result2).all(), True)
 
     def test_dygraph_eager(self):
         with _test_eager_guard():
