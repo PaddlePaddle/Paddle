@@ -30,7 +30,7 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
-enum class DataType {
+enum class DataType : int8_t {
   UNDEFINED = 0,
   BOOL,
   INT8,   // Char

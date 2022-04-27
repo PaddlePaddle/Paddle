@@ -23,7 +23,7 @@ limitations under the License. */
 /* @jim19930609: Move to MKLDNN_Tensor in the future
     */
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #endif
 
 namespace phi {
@@ -168,8 +168,8 @@ class DenseTensor : public TensorBase,
   friend class DenseTensorUtils;
 
  protected:
-  DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
+  DenseTensorMeta meta_;
 
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.

@@ -20,7 +20,7 @@ namespace experimental {
 
 // Note: Here the DataLayout is public api for external users, the prefix `k`
 // maybe confuse users, so we use all uppercase names
-enum class DataLayout {
+enum class DataLayout : int8_t {
   UNDEFINED = 0,
   // TODO(chenweihang): keep ANY for compatibility, remove it later
   ANY = UNDEFINED,

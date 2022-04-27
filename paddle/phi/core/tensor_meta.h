@@ -50,8 +50,8 @@ struct DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  bool is_scalar{false};
   DDim dims;
+  bool is_scalar{false};
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
   LoD lod;
