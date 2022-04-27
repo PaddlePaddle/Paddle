@@ -214,6 +214,10 @@ class PreparedOp {
   const phi::KernelSignature* default_kernel_signature_;
   phi::KernelSignature kernel_signature_;
   const phi::Kernel& phi_kernel_;
+
+  static const phi::KernelFactory& phi_kernel_factory;
+  static const phi::OpUtilsMap& phi_op_utils_map;
+  static const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map;
 };
 
 const inline framework::Attribute& GetAttr(

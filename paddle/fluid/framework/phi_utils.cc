@@ -81,19 +81,21 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     const OpKernelType& kernel_type) {
   phi::Backend backend = phi::TransToPhiBackend(kernel_type.place_);
-  if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
-    backend = phi::Backend::MKLDNN;
-  } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = phi::Backend::GPUDNN;
-  } else if (kernel_type.library_type_ == LibraryType::kKP) {
-    backend = phi::Backend::KPS;
-  } else {
-    // do nothing
+  switch (kernel_type.library_type_) {
+    case LibraryType::kCUDNN:
+      backend = phi::Backend::GPUDNN;
+      break;
+    case LibraryType::kMKLDNN:
+      backend = phi::Backend::MKLDNN;
+      break;
+    case LibraryType::kKP:
+      backend = phi::Backend::KPS;
+      break;
+    default:
+      break;
   }
-  paddle::experimental::DataLayout layout = kernel_type.data_layout_;
-  paddle::experimental::DataType dtype =
-      paddle::framework::TransToPhiDataType(kernel_type.data_type_);
-  return phi::KernelKey(backend, layout, dtype);
+  return phi::KernelKey(backend, kernel_type.data_layout_,
+                        framework::TransToPhiDataType(kernel_type.data_type_));
 }
 
 phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
