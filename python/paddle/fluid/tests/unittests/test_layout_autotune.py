@@ -138,6 +138,10 @@ class TestAutoTuneAPI(unittest.TestCase):
             paddle.incubate.autotune.set_config(tfile.name)
             self.assertTrue(len(w) == 1)
 
+    def test_set_config_attr(self):
+        paddle.incubate.autotune.set_config()
+        self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+
 
 if __name__ == '__main__':
     unittest.main()
