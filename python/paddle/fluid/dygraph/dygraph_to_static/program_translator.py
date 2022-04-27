@@ -708,12 +708,13 @@ class ConcreteProgram(object):
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
-                inputs = func_spec.to_static_inputs_with_spec(input_spec,
-                                                              main_program)
+                static_inputs = func_spec.to_static_inputs_with_spec(
+                    input_spec, main_program)
                 _kwargs = func_spec.to_static_inputs_with_spec(
                     input_kwargs_spec, main_program)
                 if class_instance:
-                    inputs = tuple([class_instance] + list(inputs))
+                    static_inputs = tuple([class_instance] + list(
+                        static_inputs))
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = _extract_indeed_params_buffers(
@@ -725,13 +726,12 @@ class ConcreteProgram(object):
                             get_buffers(class_instance, False)):
                     try:
                         # only for jit.save, do nothing while train and eval process
-                        new_inputs = hook_helper.apply_pre_hooks(inputs)
+                        inputs = hook_helper.apply_pre_hooks(static_inputs)
                         if _kwargs:
-                            outputs = static_func(*new_inputs, **_kwargs)
+                            outputs = static_func(*inputs, **_kwargs)
                         else:
-                            outputs = static_func(*new_inputs)
-                        outputs = hook_helper.apply_post_hooks(new_inputs,
-                                                               outputs)
+                            outputs = static_func(*inputs)
+                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         error.attach_error_data(e)
@@ -749,7 +749,7 @@ class ConcreteProgram(object):
         main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
-            inputs=inputs,
+            inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
