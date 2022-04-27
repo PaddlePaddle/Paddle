@@ -1743,35 +1743,30 @@ def complex(real, imag, name=None):
 
 def tril_indices(rows, cols, offset=0, dtype='int64'):
     """
-    This op returns the indices of the lower triangular part of the 2-D matrix 
+    Return the indices of the lower triangular part of the 2-D matrix 
     whose rows and cols is knowed.Indices are ordered based on rows and then columns. 
     The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
     
     Args:
         rows (int): The input x which is a int number describe the number of row of the matrix.
-        cols (int): The input x which is a int number describe the number of col of the matrix.    
-        offset (int, optional): The offset to consider, default value is 0.
-            If :attr:``offset`` = 0, all elements on and below the main diagonal are
-            retained. A positive value includes just as many diagonals above the main
-            diagonal, and similarly a negative value excludes just as many diagonals below
-            the main diagonal. The main diagonal are the set of indices
-            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
-            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        dtype (int, optional): The default value is None.It describe the type of the out tensor
+        cols (int): The input x which is a int number describe the number of col of the matrix.
+        offset (int,optional): The offset to consider, default value is 0.
+
+            - If offset = 0, all elements on and below the main diagonal are retained.  
+            - If offset > 0, include just as many diagonals above the main diagonal.  
+            - If offset < 0, excludes just as many diagonals below the main diagonal.  
+ 
+        dtype (int,optional): the data type of the output tensor, can be int32, int64.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a rows * cols matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
 
-    Raises:
-        TypeError: rows,cols,or offset is not a int type.
-        ValueError: rows,cols is a negative number.
-
     Examples:
         .. code-block:: python
+            :name: tril_indices-example
 
-            import numpy as np
             import paddle
             
             # example 1, default offset value
