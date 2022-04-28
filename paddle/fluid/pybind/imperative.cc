@@ -2029,35 +2029,35 @@ void BindImperative(py::module *m_ptr) {
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
            })
-      .def(
-          "_get_kernel_signature",
-          [](imperative::Tracer &self, const std::string &type,
-             const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
-             framework::AttributeMap attrs) {
-            // TODO(xiongkun): move this function outside of tracer.
-            auto ins_map = ConvertToNameTensorMap(ins);
-            auto outs_map = ConvertToNameTensorMap(outs);
-            {
-              auto input_to_vector =
-                  [](paddle::SmallVector<const char *> &vec) {
-                    return std::vector<std::string>(vec.begin(), vec.end());
-                  };
-              auto output_to_vector =
-                  [](paddle::SmallVector<const char *> &vec) {
-                    return std::vector<std::string>(vec.begin(), vec.end());
-                  };
-              auto attr_to_vector = [](paddle::SmallVector<const char *> &vec) {
-                return std::vector<std::string>(vec.begin(), vec.end());
-              };
-              auto ret = self.GetExpectedKernelSignature(type, ins_map,
-                                                         outs_map, attrs);
-              auto kernelsig_ins = input_to_vector(std::get<0>(ret.args));
-              auto kernelsig_attrs = attr_to_vector(std::get<1>(ret.args));
-              auto kernelsig_outs = output_to_vector(std::get<2>(ret.args));
-              return std::make_tuple(kernelsig_ins, kernelsig_attrs,
-                                     kernelsig_outs);
-            }
-          })
+      .def("_get_kernel_signature",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs) {
+             // TODO(xiongkun): move this function outside of tracer.
+             auto ins_map = ConvertToNameTensorMap(ins);
+             auto outs_map = ConvertToNameTensorMap(outs);
+             {
+               auto input_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto output_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto attr_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto ret = self.GetExpectedKernelSignature(type, ins_map,
+                                                          outs_map, attrs);
+               auto kernelsig_ins = input_to_vector(ret.input_names);
+               auto kernelsig_attrs = attr_to_vector(ret.attr_names);
+               auto kernelsig_outs = output_to_vector(ret.output_names);
+               return std::make_tuple(kernelsig_ins, kernelsig_attrs,
+                                      kernelsig_outs);
+             }
+           })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
