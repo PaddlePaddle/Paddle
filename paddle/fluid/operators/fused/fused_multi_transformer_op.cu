@@ -534,6 +534,8 @@ template <typename T, int Dh, int THREADS_PER_KEY, int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK>
 __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+
   static_assert(Dh % THREADS_PER_KEY == 0, "");
   static_assert(Dh % THREADS_PER_VALUE == 0, "");
 
@@ -820,6 +822,9 @@ __global__ void masked_multihead_attention_kernel(
       printf("%f ", static_cast<float>(params.out[i]));
     printf("\n");
   }
+#endif
+#else
+  assert(false);
 #endif
 }
 
