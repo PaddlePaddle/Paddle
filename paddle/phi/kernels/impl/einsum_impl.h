@@ -357,7 +357,7 @@ DenseTensor PerformReduction(const Context& dev_ctx,
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {
   for (size_t i = 0; i < axis.size(); ++i) {
-    if (i != size_t(axis[i])) return false;
+    if (i != static_cast<size_t>(axis[i])) return false;
   }
   return true;
 }

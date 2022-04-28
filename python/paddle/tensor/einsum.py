@@ -25,7 +25,9 @@ from paddle import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from collections import Counter
+import collections
+import string
+import opt_einsum
 
 from paddle.common_ops_import import dygraph_only
 
@@ -672,30 +674,30 @@ def preprocess(equation, *operands):
     """
     equation = equation.replace(" ", "")
     nop = len(operands)
-    assert nop > 0, "At least one operand is expected."
+    assert nop > 0, "Required at least one operand in Einsum API, but received %s " % nop
 
     # Part the equation to left hand side and right hand side
-    lhs, *rhs = equation.lower().replace(' ', '').split('->')
+    lhs, *rhs = equation.lower().split('->')
     assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
 
     labels = parse_labels(lhs, operands)
     # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
     rhs = rhs[0] if rhs else None
     if rhs is None:
-        rhs = rhs_inference(lhs, rhs)
+        rhs = rhs_inference(lhs)
 
     assert len(lhs.split(',')) == len(operands), (
         f"Invalid equation: the number of operands is {len(operands)}, "
         f"but found {len(lhs.split(','))} segments in the label equation.")
 
-    if '...' in lhs and '...' not in rhs:
-        assert False, f'Invalid equation: missing ellipsis in output labels.'
+    assert not ('...' in lhs and '...' not in rhs
+                ), f'Invalid equation: missing ellipsis in output labels.'
 
-    if len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0:
-        assert False, f'Duplicate labels are not supported.'
+    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
+                ), f'Duplicate labels are not supported.'
 
-    if has_duplicated_labels(rhs) > 0:
-        assert False, f'Invalid equation: duplicate output labels are found.'
+    assert not has_duplicated_labels(
+        rhs), f'Invalid equation: duplicate output labels are found.'
 
     return lhs, rhs, labels
 
@@ -710,12 +712,13 @@ def parse_fake_shape(equation, operands, labels):
     -------
     list of shape
     """
-    import collections
     shaped = collections.namedtuple('shaped', ['shape'])
 
     def fake_shape(label, op):
         assert len(op.shape) == len(
-            label), "length of shape and length of label must be the same."
+            label
+        ), "length of shape and length of label must be the same, but received %d != %d" % (
+            len(op.shape), len(label))
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in label:
@@ -726,14 +729,13 @@ def parse_fake_shape(equation, operands, labels):
     return out
 
 
-def rhs_inference(lhs, rhs):
+def rhs_inference(lhs):
     def is_free(key):
         return cnt.get(key) == 1 and key not in ['.', ',']
 
-    cnt = Counter(lhs)
-    if rhs is None:
-        rhs = "..." if '...' in lhs else ""
-        rhs = rhs + "".join(filter(is_free, sorted(cnt.elements())))
+    cnt = collections.Counter(lhs)
+    rhs = "..." if '...' in lhs else ""
+    rhs = rhs + "".join(filter(is_free, sorted(cnt.elements())))
     return rhs
 
 
@@ -744,7 +746,6 @@ def gen_equation_for_opteinsum(lhs, rhs):
     """
 
     def get_used_label(counter):
-        import string
         used = set(counter.elements())
         for c in string.ascii_lowercase:
             if c not in used: return c
@@ -752,10 +753,10 @@ def gen_equation_for_opteinsum(lhs, rhs):
             "You have used all `a` - `z`, there can't find a unused for einsum optimization"
         )
 
-    cnt = Counter(lhs)
+    cnt = collections.Counter(lhs)
     broadcast_label = get_used_label(cnt)
     if rhs is None:
-        rhs = rhs_inference(lhs, rhs)
+        rhs = rhs_inference(lhs)
     lhs = lhs.replace("...", broadcast_label)
     rhs = rhs.replace("...", broadcast_label)
     return lhs + "->" + rhs, broadcast_label
@@ -769,7 +770,6 @@ def einsum_v2(equation, *operands):
     3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
     """
     n_op = len(operands)
-    import opt_einsum
     lhs, rhs, labels = preprocess(equation, *operands)
 
     if n_op <= 2:
@@ -787,8 +787,9 @@ def einsum_v2(equation, *operands):
         var_list.append(gen_einsum_op(eq, *var_s))
     assert len(
         var_list
-    ) == 1, "There must be one elements in list. Bugs here, please contact @xiongkun."
-    return var_list.pop()
+    ) == 1, "There must be one elements in list, but received %d." % len(
+        var_list)
+    return var_list[0]
 
 
 def gen_einsum_op(equation, *operands):
@@ -976,7 +977,7 @@ def einsum(equation, *operands):
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
     import os
-    if int(os.environ.get('FLAGS_new_einsum', "1")):
+    if int(os.environ.get('FLAGS_new_einsum', "0")):
         return einsum_v2(equation, *operands)
 
     nop = len(operands)
