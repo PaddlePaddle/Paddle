@@ -914,6 +914,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_distributed_fused_lamb_op_with_clip
         test_distributed_fused_lamb_op_without_clip
+        test_distributed_fused_lamb_op_with_gradient_merge
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -1047,6 +1048,7 @@ set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
