@@ -627,6 +627,7 @@ def get_eager_double_grad(func,
         func: A wrapped dygraph function that its logic is equal to static program
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (bool): A flag that controls the return content.
     Returns:
         If 'return_mid_result' set True. 
@@ -741,6 +742,11 @@ def double_grad_check_for_dygraph(func,
 
     static_double_grad = get_static_double_grad(x, y, x_init, y_grads_init,
                                                 place)
+
+    if len(static_double_grad) != len(eager_double_grad):
+        msg = "The output grad tensor's number of static graph is different with dygraph, " \
+            "please check the python api unit test used."
+        raise RuntimeError(msg)
 
     for i in six.moves.xrange(len(static_double_grad)):
         if not np.allclose(static_double_grad[i], eager_double_grad[i], rtol,
@@ -889,6 +895,11 @@ def triple_grad_check_for_dygraph(func,
 
     static_triple_grad = get_static_triple_grad(x, y, x_init, y_grads_init,
                                                 place)
+
+    if len(static_triple_grad) != len(eager_triple_grad):
+        msg = "The output grad tensor's number of static graph is different with dygraph, " \
+            "please check the python api unit test used."
+        raise RuntimeError(msg)
 
     for i in six.moves.xrange(len(static_triple_grad)):
         if not np.allclose(static_triple_grad[i], eager_triple_grad[i], rtol,

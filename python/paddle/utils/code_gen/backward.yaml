@@ -480,6 +480,16 @@
   kernel :
     func : elementwise_pow_grad
 
+- backward_api : elu_double_grad
+  forward : elu_grad (Tensor x, Tensor out, Tensor grad_out, float alpha)-> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float alpha)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : elu_double_grad
+
 - backward_api : elu_grad
   forward : elu (Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, float alpha)
@@ -489,6 +499,7 @@
     param : [x]
   kernel :
     func : elu_grad
+  backward : elu_double_grad
 
 - backward_api : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
