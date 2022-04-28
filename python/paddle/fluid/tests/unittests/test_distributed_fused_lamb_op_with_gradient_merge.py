@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .gate import GShardGate, BaseGate, SwitchGate, NaiveGate
-from .moe_layer import MoELayer
-from .grad_clip import ClipGradForMOEByGlobalNorm
-ClipGradByGlobalNorm = ClipGradForMOEByGlobalNorm
+from test_distributed_fused_lamb_op_with_clip import run_test
+import unittest
+
+
+class TestDistributedFusedLambGradientMerge(unittest.TestCase):
+    def test_gm(self):
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=-1.0,
+            gradient_merge_steps=2)
+
+
+if __name__ == "__main__":
+    unittest.main()

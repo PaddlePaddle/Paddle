@@ -214,6 +214,10 @@ class PreparedOp {
   const phi::KernelSignature* default_kernel_signature_;
   phi::KernelSignature kernel_signature_;
   const phi::Kernel& phi_kernel_;
+
+  static const phi::KernelFactory& phi_kernel_factory;
+  static const phi::OpUtilsMap& phi_op_utils_map;
+  static const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -311,7 +315,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<framework::LoDTensorArray>()) {
-        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        paddle::small_vector<const phi::TensorBase*> tensor_vector;
         auto& tensor_array = var.template Get<framework::LoDTensorArray>();
         for (auto& t : tensor_array) {
           tensor_vector.emplace_back(&t);
@@ -357,7 +361,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          paddle::small_vector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
           for (auto& t : *tensor_array) {

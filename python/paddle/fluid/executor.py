@@ -1386,7 +1386,8 @@ class Executor(object):
 
         def _can_use_interpreter_core(program, place):
             if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
-            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu():
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
+            ) or isinstance(place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
