@@ -187,7 +187,6 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   out_indexs.reserve(max_len);
   out_values_vec.reserve(max_len * element_size);
 
-
   //  merge x and y
   Merge<T, IntT, Functor>(element_size,
                           x_indexs.data(),

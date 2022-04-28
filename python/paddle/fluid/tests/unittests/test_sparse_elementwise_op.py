@@ -50,8 +50,10 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     def func_support_dtypes_csr(self):
         for op in self.op_list:
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
+                x = np.random.randint(
+                    -255, 255, size=self.csr_shape).astype(dtype)
+                y = np.random.randint(
+                    -255, 255, size=self.csr_shape).astype(dtype)
                 dense_x = paddle.to_tensor(x).astype(dtype)
                 dense_y = paddle.to_tensor(y).astype(dtype)
                 csr_x = dense_x.to_sparse_csr()
@@ -67,8 +69,10 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     def func_support_dtypes_coo(self):
         for op in self.op_list:
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(
+                    -255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(
+                    -255, 255, size=self.coo_shape).astype(dtype)
                 dense_x = paddle.to_tensor(x).astype(dtype)
                 dense_y = paddle.to_tensor(y).astype(dtype)
                 coo_x = dense_x.to_sparse_coo(2)
