@@ -633,14 +633,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.pp_group_endpoints[pair[1]],
         ]
         pp_rank = 0 if self.pp_rank == pair[0] else 1
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            pp_group_endpoints,
-            pp_rank,
-            ring_id,
-            False,
-            sync=False)
+        #self._collective_helper._init_communicator(
+        #    self._startup_program,
+        #    self.current_endpoint,
+        #    pp_group_endpoints,
+        #    pp_rank,
+        #    ring_id,
+        #    False,
+        #    sync=False)
 
     def _init_npu_pipeline_comm(self, startup_block):
         # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
@@ -714,14 +714,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _init_pipeline_comm(self, startup_block):
         # TODO (JZ-LIANG) to unify pp_rank_ and pp_rank
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            self.pp_group_endpoints,
-            self.pp_rank,
-            self.pp_ring_id,
-            False,
-            sync=False)
+        #self._collective_helper._init_communicator(
+        #    self._startup_program,
+        #    self.current_endpoint,
+        #    self.pp_group_endpoints,
+        #    self.pp_rank,
+        #    self.pp_ring_id,
+        #    False,
+        #    sync=False)
 
         if core.is_compiled_with_npu():
             self._init_npu_pipeline_comm(startup_block)
