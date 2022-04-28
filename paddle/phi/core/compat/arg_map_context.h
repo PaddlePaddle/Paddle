@@ -28,30 +28,30 @@ limitations under the License. */
 namespace phi {
 
 // tuple(input_names, attr_names, output_names)
-using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
-                                   paddle::SmallVector<const char*>,
-                                   paddle::SmallVector<const char*>>;
+using KernelArgsTuple = std::tuple<paddle::small_vector<const char*>,
+                                   paddle::small_vector<const char*>,
+                                   paddle::small_vector<const char*>>;
 
 struct KernelSignature {
   const char* name;
-  paddle::SmallVector<const char*> input_names;
-  paddle::SmallVector<const char*> attr_names;
-  paddle::SmallVector<const char*> output_names;
+  paddle::small_vector<const char*> input_names;
+  paddle::small_vector<const char*> attr_names;
+  paddle::small_vector<const char*> output_names;
 
   KernelSignature() = default;
 
   KernelSignature(const char* kernel_name,
-                  paddle::SmallVector<const char*>&& inputs,
-                  paddle::SmallVector<const char*>&& attrs,
-                  paddle::SmallVector<const char*>&& outputs)
+                  paddle::small_vector<const char*>&& inputs,
+                  paddle::small_vector<const char*>&& attrs,
+                  paddle::small_vector<const char*>&& outputs)
       : name(kernel_name),
         input_names(std::move(inputs)),
         attr_names(std::move(attrs)),
         output_names(std::move(outputs)) {}
   KernelSignature(const char* kernel_name,
-                  const paddle::SmallVector<const char*>& inputs,
-                  const paddle::SmallVector<const char*>& attrs,
-                  const paddle::SmallVector<const char*>& outputs)
+                  const paddle::small_vector<const char*>& inputs,
+                  const paddle::small_vector<const char*>& attrs,
+                  const paddle::small_vector<const char*>& outputs)
       : name(kernel_name),
         input_names(inputs),
         attr_names(attrs),
