@@ -683,10 +683,60 @@ class Fleet(object):
                 # build net
                 # fleet.distributed_optimizer(...)
 
-                fleet.load_model("path", "mode")
+                fleet.load_model("path", mode=0)
 
         """
-        self._runtime_handle.load_model(path, mode)
+        self._runtime_handle._load_persistables(path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_one_table(self, table_id, path, mode):
+        """
+        load fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._load_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def load_inference_model(self, path, mode):
+        """
+        load fleet inference model from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_inference_model("path", mode=1)
+
+        """
+        self._runtime_handle._load_inference_model(path, mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -873,6 +923,62 @@ class Fleet(object):
     @inited_runtime_handler
     def save_cache_model(self, dirname, **configs):
         return self._runtime_handle._save_cache_model(dirname, **configs)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_one_table(self, table_id, path, mode):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_one_table(0, "path", mode=0)
+
+        """
+        self._runtime_handle._save_one_table(table_id, path, mode)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_dense_params(self,
+                          executor,
+                          dirname,
+                          scope,
+                          program,
+                          var_names=None):
+        """
+        save fleet one table from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.save_dense_params(exe, "path", scope, program)
+
+        """
+        self._runtime_handle._save_dense_params(table_id, path, mode)
+>>>>>>> 475fa028d545af43a8e253e47b931ad76caf4544
 
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
@@ -1789,13 +1895,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
