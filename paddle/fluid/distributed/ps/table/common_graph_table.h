@@ -471,7 +471,8 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
-  std::vector<int64_t> get_all_id(int type, int idx);
+  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
+                                               int slice_num);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx, std::vector<int64_t> &id_list,

@@ -1061,8 +1061,9 @@ std::pair<int32_t, std::string> GraphTable::parse_feature(
   return std::make_pair<int32_t, std::string>(-1, "");
 }
 
-std::vector<int64_t> GraphTable::get_all_id(int type_id, int idx) {
-  std::vector<int64_t> res;
+std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
+                                                         int slice_num) {
+  std::vector<std::vector<int64_t>> res(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<int64_t>>> tasks;
   for (int i = 0; i < search_shards.size(); i++) {
@@ -1076,7 +1077,7 @@ std::vector<int64_t> GraphTable::get_all_id(int type_id, int idx) {
   }
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
-    for (auto &id : ids) res.push_back(id);
+    for (auto &id : ids) res[id % slice_num].push_back(id);
   }
   return res;
 }

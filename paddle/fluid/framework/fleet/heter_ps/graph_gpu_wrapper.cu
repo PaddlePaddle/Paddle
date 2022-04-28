@@ -58,7 +58,8 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
     device_id_mapping.push_back(device_id);
   }
 }
-std::vector<int64_t> GraphGpuWrapper::get_all_id(int type, int idx) {
+std::vector<std::vector<int64_t>> GraphGpuWrapper::get_all_id(int type,
+                                                              int idx) {
   return ((GpuPsGraphTable *)graph_table)
       ->cpu_graph_table->get_all_id(type, idx);
 }
