@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,105 +23,71 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
 
 
-# test with attr(num)
-class TestSplitOp(XPUOpTest):
-    def initDefaultParameters(self):
-        self.dtype = 'float32'
-        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
-        self.axis = 2
-        self.sections = []
-        self.num = 3
-        self.indices_or_sections = 3
+class XPUTestSplitOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'split'
+        self.use_dynamic_create_class = False
 
-    def setUp(self):
-        self.__class__.op_type = 'split'
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.initDefaultParameters()
-        self.inputs = {'X': self.x}
-        self.attrs = {
-            'axis': self.axis,
-            'sections': self.sections,
-            'num': self.num
-        }
+    # test with attr(num)
+    class TestSplitOp(XPUOpTest):
+        def setUp(self):
+            self.init_dtype()
+            self.__class__.use_xpu = True
+            self.__class__.op_type = 'split'
+            self.use_mkldnn = False
+            self.initParameters()
+            self.inputs = {'X': self.x}
+            self.attrs = {
+                'axis': self.axis,
+                'sections': self.sections,
+                'num': self.num
+            }
 
-        out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+            out = np.split(self.x, self.indices_or_sections, self.axis)
+            self.outputs = {'Out': [('out%d' % i, out[i]) \
+                                    for i in range(len(out))]}
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def init_dtype(self):
+            self.dtype = self.in_type
 
+        def initParameters(self):
+            self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+            self.axis = 2
+            self.sections = []
+            self.num = 3
+            self.indices_or_sections = 3
 
-# unknown sections
-class TestSplitOp_2(XPUOpTest):
-    def initDefaultParameters(self):
-        self.dtype = 'float32'
-        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
-        self.axis = 2
-        self.sections = [2, 1, -1]
-        self.num = 0
-        self.indices_or_sections = [2, 3]
+        def test_check_output(self):
+            self.check_output_with_place(paddle.XPUPlace(0))
 
-    def setUp(self):
-        self.__class__.op_type = 'split'
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.initDefaultParameters()
-        self.inputs = {'X': self.x}
-        self.attrs = {
-            'axis': self.axis,
-            'sections': self.sections,
-            'num': self.num
-        }
-        out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+    # unknown sections
+    class TestSplitOp1(TestSplitOp):
+        def initParameters(self):
+            self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+            self.axis = 2
+            self.sections = [2, 1, -1]
+            self.num = 0
+            self.indices_or_sections = [2, 3]
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+    # test with int32
+    class TestSplitOp2(TestSplitOp):
+        def initParameters(self):
+            self.x = np.random.random((4, 5, 6)).astype(np.int32)
+            self.axis = 2
+            self.sections = []
+            self.num = 3
+            self.indices_or_sections = 3
 
 
-# test with int32
-class TestSplitOp_5(XPUOpTest):
-    def initDefaultParameters(self):
-        self.dtype = 'int32'
-        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
-        self.axis = 2
-        self.sections = []
-        self.num = 3
-        self.indices_or_sections = 3
-
-    def setUp(self):
-        self.__class__.op_type = 'split'
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.initDefaultParameters()
-        self.inputs = {'X': self.x}
-        self.attrs = {
-            'axis': self.axis,
-            'sections': self.sections,
-            'num': self.num
-        }
-
-        out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
+support_types = get_xpu_op_support_types('split')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSplitOp, stype)
 
 if __name__ == '__main__':
     unittest.main()

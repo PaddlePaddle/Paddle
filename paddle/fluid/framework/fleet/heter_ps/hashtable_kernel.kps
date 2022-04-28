@@ -1,0 +1,361 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+
+namespace paddle {
+namespace framework {
+
+#if defined(PADDLE_WITH_XPU_KP)
+
+__device__ void update_lr(OptimizerConfig& optimizer_config, float& w,
+                          float& g2sum,
+                          float g,  // NOLINT
+                          float scale) {
+  float local_learning_rate = optimizer_config.learning_rate;
+  float local_initial_g2sum = optimizer_config.initial_g2sum;
+  float local_min_bound = optimizer_config.min_bound;
+  float local_max_bound = optimizer_config.max_bound;
+
+  double add_g2sum = 0;
+  double ratio = local_learning_rate *
+                 sqrt(local_initial_g2sum / (local_initial_g2sum + g2sum));
+  double scaled_grad = g / scale;
+
+  w += scaled_grad * ratio;
+
+  if (w < local_min_bound) w = local_min_bound;
+  if (w > local_max_bound) w = local_max_bound;
+
+  add_g2sum += scaled_grad * scaled_grad;
+
+  g2sum += add_g2sum;
+}
+
+__device__ void update_mf(OptimizerConfig& optimizer_config, int n, float* w,
+                          float& g2sum, const float* g, float scale) {
+  float local_mf_learning_rate = optimizer_config.mf_learning_rate;
+  float local_mf_initial_g2sum = optimizer_config.mf_initial_g2sum;
+  float local_mf_min_bound = optimizer_config.mf_min_bound;
+  float local_mf_max_bound = optimizer_config.mf_max_bound;
+
+  double add_g2sum = 0;
+  double ratio =
+      local_mf_learning_rate *
+      sqrt(local_mf_initial_g2sum / (local_mf_initial_g2sum + g2sum));
+  for (int i = 0; i < n; ++i) {
+    double scaled_grad = g[i] / scale;
+    w[i] += scaled_grad * ratio;
+
+    if (w[i] < local_mf_min_bound) w[i] = local_mf_min_bound;
+    if (w[i] > local_mf_max_bound) w[i] = local_mf_max_bound;
+    add_g2sum += scaled_grad * scaled_grad;
+  }
+
+  g2sum += add_g2sum / n;
+}
+
+__device__ float xpu_rand_uniform() { return 0.1; }
+
+template <typename ValType, typename GradType>
+__device__ void update_value(OptimizerConfig& optimizer_config, ValType& val,
+                             const GradType& grad) {  // NOLINT
+  val.slot = grad.slot;
+  val.show += grad.show;
+  val.clk += grad.clk;
+
+  float local_nonclk_coeff = optimizer_config.nonclk_coeff;
+  float local_clk_coeff = optimizer_config.clk_coeff;
+
+  float local_mf_create_thresholds = optimizer_config.mf_create_thresholds;
+  float local_mf_initial_range = optimizer_config.mf_initial_range;
+
+  val.delta_score +=
+      local_nonclk_coeff * (grad.show - grad.clk) + local_clk_coeff * grad.clk;
+
+  update_lr(optimizer_config, val.lr, val.lr_g2sum, grad.lr_g, grad.show);
+
+  if (val.mf_size == 0) {
+    if (local_mf_create_thresholds <=
+        local_nonclk_coeff * (val.show - val.clk) + local_clk_coeff * val.clk) {
+      val.mf_size = MF_DIM + 1;
+      val.mf[0] = 0;
+
+      for (int i = 0; i < MF_DIM; ++i) {
+        val.mf[i + 1] = (xpu_rand_uniform()) * local_mf_initial_range;
+      }
+    }
+  } else {
+    update_mf(optimizer_config, MF_DIM, &val.mf[1], val.mf[0], grad.mf_g,
+              grad.show);
+  }
+}
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void insert_kernel(Table& table, const KeyType* const keys,
+                              const ValType* const vals, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 150;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(vals, local_vals, read_len * sizeof(ValType));
+    for (int k = 0; k < read_len; k++) {
+      auto status = table.insert(local_keys[k], local_vals[k]);
+      assert(status != false && "error: insert fails: table is full");
+    }
+  }
+}
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void search_kernel(Table& table, const KeyType* const keys,
+                              ValType* const vals, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 150;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table.find(local_keys[k]);
+      if (val != NULL) {
+        local_vals[k] = *val;
+      }
+    }
+    LM2GM(local_vals, vals + i, read_len * sizeof(ValType));
+  }
+}
+
+template <typename KeyType, typename ValType, typename Table, typename GradType>
+__global__ void update_kernel(OptimizerConfig& optimizer_config, Table& table,
+                              const KeyType* const keys,
+                              const GradType* const grads, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 250;
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(grads, local_grads, read_len * sizeof(GradType));
+
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table.find(local_keys[k]);
+      if (val != NULL) {
+        update_value(optimizer_config, *val, local_grads[i]);
+      }
+    }
+  }
+}
+
+template <typename KeyType, typename ValType>
+HashTable<KeyType, ValType>::HashTable(size_t capacity) {
+  auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
+  xpu_malloc(reinterpret_cast<void**>(&container_),
+             sizeof(XPUCacheArray<KeyType, ValType>));
+  xpu_memcpy((void*)container_, &tmp_container,
+             sizeof(XPUCacheArray<KeyType, ValType>), XPU_HOST_TO_DEVICE);
+
+  OptimizerConfig tmp_opt_config;
+  xpu_malloc(reinterpret_cast<void**>(&xpu_optimizer_config_),
+             sizeof(OptimizerConfig));
+
+  xpu_memcpy((void*)xpu_optimizer_config_, &tmp_opt_config,
+             sizeof(OptimizerConfig), XPU_HOST_TO_DEVICE);
+
+  rwlock_.reset(new phi::RWLock);
+}
+
+template <typename KeyType, typename ValType>
+HashTable<KeyType, ValType>::~HashTable() {
+  xpu_free((void*)container_);
+  xpu_free((void*)xpu_optimizer_config_);
+}
+
+template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::show() {
+  container_->print();
+}
+
+template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::set_sparse_sgd(
+    const OptimizerConfig& optimizer_config) {
+  cpu_optimizer_config_.nonclk_coeff = optimizer_config.nonclk_coeff;
+  cpu_optimizer_config_.clk_coeff = optimizer_config.clk_coeff;
+  cpu_optimizer_config_.min_bound = optimizer_config.min_bound;
+  cpu_optimizer_config_.max_bound = optimizer_config.max_bound;
+  cpu_optimizer_config_.learning_rate = optimizer_config.learning_rate;
+  cpu_optimizer_config_.initial_g2sum = optimizer_config.initial_g2sum;
+  cpu_optimizer_config_.initial_range = optimizer_config.initial_range;
+  xpu_memcpy((void*)xpu_optimizer_config_, &cpu_optimizer_config_,
+             sizeof(OptimizerConfig), XPU_HOST_TO_DEVICE);
+}
+
+template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::set_embedx_sgd(
+    const OptimizerConfig& optimizer_config) {
+  cpu_optimizer_config_.mf_create_thresholds =
+      optimizer_config.mf_create_thresholds;
+  cpu_optimizer_config_.mf_learning_rate = optimizer_config.mf_learning_rate;
+  cpu_optimizer_config_.mf_initial_g2sum = optimizer_config.mf_initial_g2sum;
+  cpu_optimizer_config_.mf_initial_range = optimizer_config.mf_initial_range;
+  cpu_optimizer_config_.mf_min_bound = optimizer_config.mf_min_bound;
+  cpu_optimizer_config_.mf_max_bound = optimizer_config.mf_max_bound;
+  xpu_memcpy((void*)xpu_optimizer_config_, &cpu_optimizer_config_,
+             sizeof(OptimizerConfig), XPU_HOST_TO_DEVICE);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
+                                      size_t len, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  long long c_len = (long long)len;
+  search_kernel<KeyType, ValType,
+                XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(
+      *container_, d_keys, d_vals, c_len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
+                                      size_t len, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         const ValType* d_vals, size_t len,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  long long c_len = (long long)len;
+  insert_kernel<KeyType, ValType,
+                XPUCacheArray<KeyType, ValType>><<<4, 64, stream>>>(
+      *container_, d_keys, d_vals, c_len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
+  // TODO(zhangminxu): to be implemented
+}
+
+template <typename KeyType, typename ValType>
+template <typename GradType, typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const GradType* d_grads, size_t len,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  long long c_len = (long long)len;
+  update_kernel<KeyType, ValType, XPUCacheArray<KeyType, ValType>,
+                GradType><<<4, 64, stream>>>(
+      *xpu_optimizer_config_, *container_, d_keys, d_grads, c_len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const char* d_grads, size_t len,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
+
+template class HashTable<unsigned long, paddle::framework::FeatureValue>;
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
+    XPUStream>(const unsigned long* d_keys,
+               paddle::framework::FeatureValue* d_vals, size_t len,
+               XPUStream stream);
+
+// template void
+// HashTable<unsigned long, paddle::framework::FeatureValue>::get<XPUStream>(
+//    const unsigned long* d_keys, char* d_vals, size_t len, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+    XPUStream>(const unsigned long* d_keys,
+               const paddle::framework::FeatureValue* d_vals, size_t len,
+               XPUStream stream);
+
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::insert<
+//    XPUStream>(const unsigned long* d_keys, size_t len, char* pool,
+//               size_t start_index, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::
+    dump_to_cpu<XPUStream>(int devid, XPUStream stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
+    paddle::framework::FeaturePushValue, XPUStream>(
+    const unsigned long* d_keys,
+    const paddle::framework::FeaturePushValue* d_grads, size_t len,
+    XPUStream stream);
+
+// template void HashTable<unsigned long,
+// paddle::framework::FeatureValue>::update<
+//    XPUStream>(const unsigned long* d_keys, const char* d_grads,
+//                          size_t len, XPUStream stream);
+
+#endif
+}  // end namespace framework
+}  // end namespace paddle
+#endif

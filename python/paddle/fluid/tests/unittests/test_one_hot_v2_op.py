@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.framework import _in_eager_mode
 from paddle.fluid.framework import Program, program_guard, _test_eager_guard
 
 
@@ -112,24 +111,6 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
         self.inputs = {'X': (x, x_lod)}
         self.attrs = {'depth': depth}
-        self.outputs = {'Out': (out, x_lod)}
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TestOneHotOp_out_of_range(OpTest):
-    def setUp(self):
-        self.op_type = 'one_hot_v2'
-        depth = 10
-        x_lod = [[4, 1, 3, 3]]
-        x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
-        x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
-
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
-
-        self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth, 'allow_out_of_range': True}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):

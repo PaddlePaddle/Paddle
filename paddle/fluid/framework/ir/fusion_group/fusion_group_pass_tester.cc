@@ -63,11 +63,7 @@ std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
@@ -125,11 +121,7 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {

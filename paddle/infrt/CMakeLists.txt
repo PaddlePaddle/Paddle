@@ -3,12 +3,26 @@ if (NOT WITH_INFRT)
 endif()
 
 option(INFRT_WITH_PHI  "Compile INFRT with PHI"    ON)
+option(INFRT_WITH_GPU  "Compile INFRT with GPU"    OFF)
+option(INFRT_WITH_TRT  "Compile INFRT with TensorRT"    OFF)
 
 #TODO(xiaowei) remove fluid
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
+if(WITH_GPU)
+  set(INFRT_WITH_GPU ON)
+endif()
+
 if (INFRT_WITH_PHI)
-    add_definitions("-DINFRT_WITH_PHI")
+  add_definitions("-DINFRT_WITH_PHI")
+
+  # TODO(wilber): Now Infrt gpu/trt depends on phi's components, Modify compile dependency options later.
+  if (INFRT_WITH_GPU)
+    add_definitions("-DINFRT_WITH_GPU")
+    if (INFRT_WITH_TRT)
+      add_definitions("-DINFRT_WITH_TRT")
+    endif()
+  endif()
 endif()
 
 # compile flags
@@ -92,7 +106,6 @@ set(infrt_mlir_incs
         test_kernels_inc
         tensor_shape_inc
         dense_tensor_inc
-        pd_ops_inc
         pd_extra_ops_inc
         trt_ops_inc
         )

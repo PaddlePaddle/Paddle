@@ -57,7 +57,7 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   size_t InputSize(const std::string& name) const override {
-    return dense_tensor_inputs.size() + selected_rows_inputs.size();
+    return dense_tensor_inputs.count(name) + selected_rows_inputs.count(name);
   }
 
   size_t OutputSize(const std::string& name) const override {
@@ -68,8 +68,17 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return dense_tensor_inputs.count(name) > 0;
   }
 
+  bool IsDenseTensorInputs(const std::string& name) const override {
+    return dense_tensor_inputs.count(name) > 0;
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     return selected_rows_inputs.count(name) > 0;
+  }
+
+  // add member if needed
+  bool IsDenseTensorVectorInput(const std::string& name) const override {
+    return false;
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {

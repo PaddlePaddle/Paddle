@@ -46,7 +46,7 @@ class ProcessGroupHCCL : public ProcessGroup {
                    public std::enable_shared_from_this<HCCLTask> {
    public:
     HCCLTask(const std::vector<Place>& places, int rank, CommType CommType,
-             const std::vector<Tensor>& inputs);
+             const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
 
@@ -56,7 +56,7 @@ class ProcessGroupHCCL : public ProcessGroup {
 
     void Synchronize();
 
-    void SetOutputs(std::vector<Tensor>& outputs);  // NOLINT
+    void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
 
     virtual ~HCCLTask();
 
@@ -65,29 +65,32 @@ class ProcessGroupHCCL : public ProcessGroup {
    protected:
     std::vector<Place> places_;
     std::vector<std::shared_ptr<HCCLCommManager>> hcclComms_;
-    std::shared_ptr<std::vector<Tensor>> outputs_;
+    std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
 
    private:
   };
 
-  ProcessGroupHCCL(const std::shared_ptr<Store>& store, int rank, int size);
+  ProcessGroupHCCL(const std::shared_ptr<Store>& store, int rank, int size,
+                   const platform::Place& place, int gid);
 
   const std::string GetBackendName() const override {
     return std::string(HCCL_BACKEND_NAME);
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<Tensor>& tensors,
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
       const AllreduceOptions& = AllreduceOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<Tensor>& tensors,
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupHCCL::HCCLTask> CreateTask(
       std::vector<Place> places, int rank, CommType opType,
-      const std::vector<Tensor>& inputs);
+      const std::vector<phi::DenseTensor>& inputs);
 
   std::shared_ptr<Store> store_;
   std::shared_ptr<HCCLCommManager> hccl_comm_;
@@ -112,14 +115,9 @@ class ProcessGroupHCCL : public ProcessGroup {
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> Collective(
-      std::vector<Tensor>& inputs,   // NOLINT
-      std::vector<Tensor>& outputs,  // NOLINT
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn, CommType op_type);
-
-  template <typename Fn>
-  std::shared_ptr<ProcessGroup::Task> PointToPoint(
-      std::vector<Tensor>& tensors,  // NOLINT
-      Fn fn, int dst_rank, CommType op_type);
 
   void CreateHCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);

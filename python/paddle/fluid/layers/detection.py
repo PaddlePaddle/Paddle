@@ -20,7 +20,7 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -1072,7 +1072,6 @@ def yolov3_loss(x,
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
-    helper = LayerHelper('yolov3_loss', **locals())
 
     if not isinstance(x, Variable):
         raise TypeError("Input x of yolov3_loss must be Variable")
@@ -1095,8 +1094,16 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if _non_static_mode():
+        attrs = ("anchors", anchors, "anchor_mask", anchor_mask, "class_num",
+                 class_num, "ignore_thresh", ignore_thresh, "downsample_ratio",
+                 downsample_ratio, "use_label_smooth", use_label_smooth,
+                 "scale_x_y", scale_x_y)
+        loss, _, _ = _C_ops.yolov3_loss(x, gt_box, gt_label, gt_score, *attrs)
+        return loss
 
+    helper = LayerHelper('yolov3_loss', **locals())
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
 
@@ -2987,7 +2994,7 @@ def generate_proposals(scores,
                          im_info, anchors, variances)
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta)
@@ -3753,7 +3760,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
     num_lvl = max_level - min_level + 1
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale)
@@ -3950,7 +3957,7 @@ def collect_fpn_proposals(multi_rois,
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
         attrs = ('post_nms_topN', post_nms_top_n)
         output_rois, rois_num = _C_ops.collect_fpn_proposals(

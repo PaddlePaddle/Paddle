@@ -109,8 +109,17 @@ function create_fake_models() {
     # create multi_fc model, this will generate "multi_fc_model"
     python3 -m pip uninstall -y paddlepaddle
     python3 -m pip install  *whl
+
+    # generate test model
+    cd ${PADDLE_ROOT}
+    mkdir -p ${PADDLE_ROOT}/build/models
+    python3 paddle/infrt/tests/models/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+    python3 paddle/infrt/tests/models/resnet50_model.py ${PADDLE_ROOT}/build/models/resnet50/model
+    python3 paddle/infrt/tests/models/efficientnet-b4/model.py ${PADDLE_ROOT}/build/models/efficientnet-b4/model
+
     cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/models/linear.py
 }
 
 function test_infrt() {

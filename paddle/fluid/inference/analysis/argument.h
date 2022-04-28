@@ -182,12 +182,17 @@ struct Argument {
   // A set of op types to enable their bfloat16 kernels
   DECL_ARGUMENT_FIELD(bfloat16_enabled_op_types, Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
+
+  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMkldnnInt8, bool);
 #endif
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_gpu_fp16, UseGPUFp16, bool);
+  DECL_ARGUMENT_FIELD(gpu_fp16_disabled_op_types, GpuFp16DisabledOpTypes,
+                      std::unordered_set<std::string>);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape

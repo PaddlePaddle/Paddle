@@ -30,6 +30,8 @@ llvm::Optional<LayoutType> GetLayoutType(llvm::StringRef key) {
     return LayoutType::NCHW;
   else if (key.equals_insensitive("NHWC"))
     return LayoutType::NHWC;
+  else if (key.equals_insensitive("ANY"))
+    return LayoutType::ANY;
   else
     return llvm::None;
 }
@@ -39,6 +41,8 @@ llvm::Optional<PrecisionType> GetPrecisionType(llvm::StringRef key) {
     return PrecisionType::FLOAT32;
   else if (key.equals_insensitive("FP16"))
     return PrecisionType::FLOAT16;
+  else if (key.equals_insensitive("UNK"))
+    return PrecisionType::UNK;
   else
     return llvm::None;
 }
@@ -67,6 +71,9 @@ llvm::StringRef GetString(LayoutType type) {
     case (LayoutType::NHWC):
       str = "NHWC";
       break;
+    case (LayoutType::ANY):
+      str = "ANY";
+      break;
     default:
       str = "Unsupported";
   }
@@ -81,6 +88,9 @@ llvm::StringRef GetString(PrecisionType type) {
       break;
     case (PrecisionType::FLOAT16):
       str = "FP16";
+      break;
+    case (PrecisionType::UNK):
+      str = "UNK";
       break;
     default:
       str = "Unsupported";

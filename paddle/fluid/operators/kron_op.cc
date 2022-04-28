@@ -17,7 +17,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,27 +27,6 @@ namespace operators {
 class KronOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kron");
-
-    auto dim_x = ctx->GetInputDim("X");
-    auto dim_y = ctx->GetInputDim("Y");
-    auto rank_x = dim_x.size();
-    auto rank_y = dim_y.size();
-    auto rank = (rank_x > rank_y) ? rank_x : rank_y;
-
-    std::vector<int64_t> dim_out;
-    dim_out.reserve(rank);
-    for (int i = 0; i < rank; i++) {
-      int64_t dim_xi = (i < rank - rank_x) ? 1 : dim_x.at(i - (rank - rank_x));
-      int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
-      dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(dim_out));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -173,7 +154,10 @@ class KronGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(kron, KronInferShapeFunctor,
+                            PD_INFER_META(phi::KronInferMeta));
 REGISTER_OPERATOR(kron, ops::KronOp, ops::KronOpMaker,
                   ops::KronGradOpMaker<paddle::framework::OpDesc>,
-                  ops::KronGradOpMaker<paddle::imperative::OpBase>);
+                  ops::KronGradOpMaker<paddle::imperative::OpBase>,
+                  KronInferShapeFunctor);
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);

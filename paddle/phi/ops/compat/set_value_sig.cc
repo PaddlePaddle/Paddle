@@ -19,9 +19,9 @@ namespace phi {
 
 KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Input")) {
-    if (ctx.HasInput("StartsTensorList")) {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+    if (ctx.InputSize("StartsTensorList") > 0) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -197,7 +197,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -374,8 +374,8 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
         }
       }
     } else {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -551,7 +551,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -734,99 +734,92 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SetValueGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("StartsTensorList")) {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+  if (ctx.InputSize("StartsTensorList") > 0) {
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   } else {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
         return KernelSignature(
             "set_value_grad",
-            {GradVarName("Out")},
+            {"Out@GRAD"},
             {"starts", "ends", "steps", "axes", "decrease_axes", "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+            {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   }

@@ -60,6 +60,9 @@ class IpuBackend {
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
+  // Sync weights from IPU while training
+  void WeightsToHost();
+
   // detach IPU manually
   void Detach();
 
@@ -76,21 +79,16 @@ class IpuBackend {
   void SaveModelProto(const std::string &path);
 
  private:
-  void Prepare();
-
- private:
-  std::unique_ptr<Compiler> compiler_;
-  std::unique_ptr<Executor> executor_;
-  bool is_compiled_ = false;
-  bool is_prepared_ = false;
-
   // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 
- private:
-  // time record for IpuBackend::Run
+  // own
+  std::unique_ptr<Compiler> compiler_;
+  std::unique_ptr<Executor> executor_;
   std::unique_ptr<platform::Timer> timer_;
+
+  bool is_compiled_ = false;
 
   DISABLE_COPY_AND_ASSIGN(IpuBackend);
 };

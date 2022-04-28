@@ -281,18 +281,63 @@ class TestStrategyConfig(unittest.TestCase):
         }
         self.assertEqual(strategy.fs_client_param.user, "456")
 
+    def test_fleet_desc_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "adagrad"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.learning_rate, 0.05)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "naive"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.naive.learning_rate, 0.05)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "adam"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adam.beta1_decay_rate, 0.9)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {
+            "sparse_accessor_class": "DownpourUnitAccessor",
+            "embed_sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.ctr_accessor_param.show_scale, False)
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.initial_range, 0)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {
+            "sparse_accessor_class": "DownpourCtrDoubleAccessor",
+            "embed_sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.initial_range,
+                         0.0001)
+
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
             "dump_fields_path": "dump_data",
             "dump_fields": ["xxx", "yyy"],
-            "dump_param": []
+            "dump_param": ['zzz']
         }
         strategy.trainer_desc_configs = configs
         self.assertEqual(strategy.trainer_desc_configs["dump_fields_path"],
                          "dump_data")
         self.assertEqual(len(strategy.trainer_desc_configs["dump_fields"]), 2)
-        self.assertEqual(len(strategy.trainer_desc_configs["dump_param"]), 0)
+        self.assertEqual(len(strategy.trainer_desc_configs["dump_param"]), 1)
 
     def test_elastic(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

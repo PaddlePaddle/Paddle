@@ -37,6 +37,8 @@ xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
 
 template <typename DeviceContext, typename T>
 class PoolXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
@@ -68,17 +70,19 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
-    const float* input = in_x->data<float>();
+    auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
     out->mutable_data<T>(context.GetPlace());
-    float* output = out->data<float>();
+    auto output = reinterpret_cast<XPUType*>(out->data<T>());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
     if (pooling_type == "max") {
-      r = xpu::max_pool2d(dev_ctx.x_context(), input, output, index_data, n, c,
-                          in_h, in_w, ksize, strides, paddings, true);
+      r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(), input, output,
+                                   index_data, n, c, in_h, in_w, ksize, strides,
+                                   paddings, true);
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d(dev_ctx.x_context(), input, output, n, c, in_h, in_w,
-                          ksize, strides, paddings, !exclusive, true);
+      r = xpu::avg_pool2d<XPUType>(dev_ctx.x_context(), input, output, n, c,
+                                   in_h, in_w, ksize, strides, paddings,
+                                   !exclusive, true);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -92,6 +96,8 @@ class PoolXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class PoolGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
@@ -130,21 +136,21 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
-    const float* input = in_x->data<float>();
-    const float* output = out->data<float>();
-    const float* output_grad = out_grad->data<float>();
+    auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
+    auto output = reinterpret_cast<const XPUType*>(out->data<T>());
+    auto output_grad = reinterpret_cast<const XPUType*>(out_grad->data<T>());
     in_x_grad->mutable_data<T>(context.GetPlace());
-    float* input_grad = in_x_grad->data<float>();
+    auto input_grad = reinterpret_cast<XPUType*>(in_x_grad->data<T>());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
     if (pooling_type == "max") {
-      r = xpu::max_pool2d_grad(dev_ctx.x_context(), input, output, index_data,
-                               output_grad, input_grad, n, c, in_h, in_w, ksize,
-                               strides, paddings, true);
+      r = xpu::max_pool2d_grad<XPUType>(
+          dev_ctx.x_context(), input, output, index_data, output_grad,
+          input_grad, n, c, in_h, in_w, ksize, strides, paddings, true);
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d_grad(dev_ctx.x_context(), input, output, output_grad,
-                               input_grad, n, c, in_h, in_w, ksize, strides,
-                               paddings, !exclusive, true);
+      r = xpu::avg_pool2d_grad<XPUType>(
+          dev_ctx.x_context(), input, output, output_grad, input_grad, n, c,
+          in_h, in_w, ksize, strides, paddings, !exclusive, true);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -161,9 +167,13 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    pool2d, ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    pool2d, ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::PoolXPUKernel<paddle::platform::XPUDeviceContext,
+                       paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     pool2d_grad,
-    ops::PoolGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::PoolGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::PoolGradXPUKernel<paddle::platform::XPUDeviceContext,
+                           paddle::platform::float16>);
 
 #endif

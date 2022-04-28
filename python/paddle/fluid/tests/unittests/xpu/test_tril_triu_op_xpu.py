@@ -42,6 +42,7 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.real_np_op = getattr(np, self.real_op_type)
             self.set_xpu()
             self.op_type = "tril_triu"
+            self.place = paddle.XPUPlace(0)
             if self.dtype == np.int32:
                 self.X = np.arange(
                     1, self.get_Xshape_prod() + 1,
@@ -69,13 +70,22 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.real_op_type
 
         def test_check_output(self):
-            if paddle.is_compiled_with_xpu():
-                place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+            self.check_output_with_place(self.place)
+
+        def test_check_grad_normal(self):
+            if self.dtype == np.int32:
+                user_defined_grad_outputs = np.random.random(
+                    self.Xshape).astype('float32')
+                self.check_grad_with_place(
+                    self.place, ['X'],
+                    'Out',
+                    user_defined_grad_outputs=user_defined_grad_outputs)
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
         def initTestCase(self):
             self.diagonal = None
@@ -94,17 +104,27 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
     class TestTrilTriuOp3(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = 10
-            self.Xshape = (25, 25)
+            self.Xshape = (2, 25, 25)
 
     class TestTrilTriuOp4(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = -10
-            self.Xshape = (33, 11)
+            self.Xshape = (1, 2, 33, 11)
 
     class TestTrilTriuOp5(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = 11
-            self.Xshape = (1, 99)
+            self.Xshape = (1, 1, 99)
+
+    class TestTrilTriuOp6(TestTrilTriuOp):
+        def initTestCase(self):
+            self.diagonal = 5
+            self.Xshape = (1, 2, 3, 5, 99)
+
+    class TestTrilTriuOp7(TestTrilTriuOp):
+        def initTestCase(self):
+            self.diagonal = -100
+            self.Xshape = (2, 2, 3, 4, 5)
 
 
 class TestTrilTriuOpError(unittest.TestCase):

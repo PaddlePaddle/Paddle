@@ -30,9 +30,13 @@ from .. import core
 from ..framework import default_main_program
 from ..data_feeder import convert_dtype
 from ..layer_helper import LayerHelper
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 __all__ = [
     'RNNCell',
@@ -163,7 +167,7 @@ class RNNCell(object):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, collections.Sequence) and
+            return (isinstance(seq, Sequence) and
                     not isinstance(seq, six.string_types))
 
         class Shape(object):
@@ -494,7 +498,7 @@ def rnn(cell,
             outputs, final_states = paddle.fluid.layers.rnn(cell, inputs, prev_h) 
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
                                   time_major, is_reverse, **kwargs)
     else:
@@ -1662,7 +1666,7 @@ def dynamic_decode(decoder,
                                     inits=decoder_cell.get_initial_states(encoder_output),
                                     max_step_num=10)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _dynamic_decode_imperative(decoder, inits, max_step_num,
                                           output_time_major, impute_finished,
                                           is_test, return_length, **kwargs)
@@ -2373,7 +2377,7 @@ def dynamic_lstm(input,
             forward.shape  # (-1, 512)
             cell.shape  # (-1, 512)
     """
-    assert in_dygraph_mode(
+    assert _non_static_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstm."
 
@@ -2757,7 +2761,7 @@ def dynamic_lstmp(input,
             last_c.shape  # (-1, 512)
     """
 
-    assert in_dygraph_mode(
+    assert _non_static_mode(
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
@@ -2951,7 +2955,7 @@ def dynamic_gru(input,
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
-    assert in_dygraph_mode(
+    assert _non_static_mode(
     ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],

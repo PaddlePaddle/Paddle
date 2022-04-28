@@ -1,8 +1,11 @@
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -137,9 +140,19 @@ T Erfinv(T x) {
 template <typename T>
 struct TruncatedNormal {
   T mean, std;
-  TruncatedNormal(T mean, T std) : mean(mean), std(std) {}
+  T a_normal_cdf;
+  T b_normal_cdf;
+  TruncatedNormal(T mean, T std) : mean(mean), std(std) {
+    auto normal_cdf = [](T x) {
+      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
+    };
+    a_normal_cdf = normal_cdf(-2.0);
+    b_normal_cdf = normal_cdf(2.0);
+  }
+
   T operator()(T value) const {
-    return std::sqrt(2.0) * Erfinv(value) * std + mean;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return std::sqrt(2.0) * Erfinv(2 * p - 1) * std + mean;
   }
 };
 

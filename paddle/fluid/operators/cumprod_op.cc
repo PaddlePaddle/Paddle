@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,14 +23,6 @@ namespace operators {
 class CumprodOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Cumprod");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Cumprod");
-
-    ctx->ShareDim("X", "Out");
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 class CumprodOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -82,9 +76,12 @@ class CumprodGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(cumprod, CumprodInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(cumprod, ops::CumprodOp, ops::CumprodOpMaker,
                   ops::CumprodGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CumprodGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CumprodGradOpMaker<paddle::imperative::OpBase>,
+                  CumprodInferShapeFunctor);
 
 REGISTER_OPERATOR(cumprod_grad, ops::CumprodGradOp);

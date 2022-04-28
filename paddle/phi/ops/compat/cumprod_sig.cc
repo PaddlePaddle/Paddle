@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +18,8 @@ namespace phi {
 
 KernelSignature CumprodGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("cumprod_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"dim"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "cumprod_grad", {"X", "Out", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
 }
 
 }  // namespace phi

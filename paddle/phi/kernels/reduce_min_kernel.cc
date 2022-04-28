@@ -33,6 +33,7 @@ void MinKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     min, CPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
     min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}

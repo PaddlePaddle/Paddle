@@ -27,7 +27,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -179,8 +179,9 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
-                dist_params_grads)
+        resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
+                              dist_context, dist_params_grads)
+        resharder.reshard()
         # print_program_with_dist_attr(dist_main_prog, dist_context)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))

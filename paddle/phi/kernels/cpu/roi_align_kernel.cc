@@ -179,7 +179,7 @@ void AvgPool(const std::vector<T>& interpolated_values,
 }
 
 template <typename T, typename Context>
-void ROIAlignKernel(const Context& dev_ctx,
+void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
                     paddle::optional<const DenseTensor&> boxes_num,
@@ -315,4 +315,4 @@ void ROIAlignKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    roi_align, CPU, ALL_LAYOUT, phi::ROIAlignKernel, float, double, int) {}
+    roi_align, CPU, ALL_LAYOUT, phi::RoiAlignKernel, float, double, int) {}

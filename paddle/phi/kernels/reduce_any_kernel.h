@@ -17,7 +17,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 template <typename T, typename Context>
 void AnyRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -32,4 +31,5 @@ void AnyKernel(const Context& dev_ctx,
                const std::vector<int64_t>& dims,
                bool keep_dim,
                DenseTensor* out);
+
 }  // namespace phi

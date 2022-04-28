@@ -16,6 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
+SparseCooTensor::SparseCooTensor() {
+  DenseTensor non_zero_indices, non_zero_elements;
+  this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
+}
+
 SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
                                  const DenseTensor& non_zero_elements,
                                  const DDim& dims)

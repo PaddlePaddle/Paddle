@@ -1,5 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -54,8 +53,12 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -217,8 +220,12 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *x_data = x->data<T>();
     const auto *d_y_data = d_y->data<T>();
@@ -260,7 +267,7 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
 
     // TODO(guozibin): hadle the situation case of N * H * W = 1
     if (is_inplace) {
-      float *global_inv_std_data;
+      float *global_inv_std_data = nullptr;
       if (use_global_stats) {
         global_inv_std_data =
             RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());

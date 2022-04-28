@@ -113,22 +113,20 @@ class FcOpConverter : public OpConverter {
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
-    float in_scale = 0.;
-    if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr(i_name + "_scale"));
-      in_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
-      auto weight_scale =
-          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
-      weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
-                                              Y_t, true, weight_scale);
-      engine_->SetTensorDynamicRange(X, in_scale);
-#endif
-    } else {
-      weight_data =
-          engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
+    bool support_int8 = false;
+    if (op_desc.HasAttr("support_int8")) {
+      support_int8 = BOOST_GET_CONST(bool, op_desc.GetAttr("support_int8"));
     }
+    float in_scale = 0;
+    if (enable_int8 || support_int8) {
+      if (enable_int8) {
+        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+      } else {
+        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X"));
+      }
+      engine_->SetTensorDynamicRange(X, in_scale);
+    }
+    weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
                       platform::errors::InvalidArgument(
@@ -148,14 +146,18 @@ class FcOpConverter : public OpConverter {
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
-      if (enable_int8) {
+      if (enable_int8 || support_int8) {
         // add conv layer
-        PADDLE_ENFORCE_EQ(
-            op_desc.HasAttr("out_threshold"), true,
-            platform::errors::InvalidArgument(
-                "must have out threshold in fc layers in int8 mode"));
-        float out_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        float out_scale = 0;
+        if (enable_int8) {
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in fc layers in int8 mode"));
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        } else {
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+        }
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 =
             TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
@@ -235,8 +237,7 @@ class FcOpConverter : public OpConverter {
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
-      bias_data =
-          engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);
+      bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
       bias_num = b_t->numel();
     }
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
@@ -251,7 +252,7 @@ class FcOpConverter : public OpConverter {
     // not add Shuffle layer in ernie's multihead.
     if (engine_->use_oss() && engine_->with_ernie() && x_dim.nbDims == 4 &&
         x_dim.d[3] == 1 && x_num_col_dims == 2) {
-      if (enable_int8) {
+      if (enable_int8 || support_int8) {
         // add conv1x1 layer
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 =
@@ -265,8 +266,13 @@ class FcOpConverter : public OpConverter {
               op_desc.HasAttr("out_threshold"), true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
-          float out_scale =
-              BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          float out_scale = 0;
+          if (enable_int8) {
+            out_scale =
+                BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          } else {
+            out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+          }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
                                          out_scale);
           nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
@@ -308,7 +314,7 @@ class FcOpConverter : public OpConverter {
       auto* reshape_before_fc_layer =
           reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
       auto* reshape_itensor = reshape_before_fc_layer->getOutput(0);
-      if (enable_int8) {
+      if (enable_int8 || support_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
       regist_fc(reshape_itensor, n_output, weight, bias);
