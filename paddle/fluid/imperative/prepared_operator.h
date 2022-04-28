@@ -216,7 +216,7 @@ class PreparedOp {
   const phi::Kernel& phi_kernel_;
 };
 
-const inline framework::Attribute& GetAttr(
+const inline framework::Attribute* GetAttr(
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs, const std::string& name) {
   auto it = attrs.find(name);
@@ -225,10 +225,10 @@ const inline framework::Attribute& GetAttr(
     it = default_attrs.find(name);
     found = it != default_attrs.end();
   }
-  PADDLE_ENFORCE_EQ(
-      found, true,
-      platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-  return it->second;
+  if (found) {
+    return &it->second;
+  }
+  return nullptr;
 }
 
 template <typename VarType>
@@ -380,24 +380,14 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   VLOG(6) << "BuildDygraphPhiKernelContext: Outputs parsing completed.";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
+    VLOG(6) << "BuildDygraphPhiKernelContext: " << attr_names[i] << ": "
+            << attr_defs[i].type_index;
+    auto* attr_ptr = GetAttr(attrs, default_attrs, attr_names[i]);
     switch (attr_defs[i].type_index) {
-      case phi::AttributeType::FLOAT32: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } break;
-      case phi::AttributeType::INT32: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } break;
-      case phi::AttributeType::BOOL: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } break;
       case phi::AttributeType::SCALAR:
-        if (attrs.find(attr_names[i]) != attrs.end() ||
-            default_attrs.find(attr_names[i]) != default_attrs.end()) {
+        if (attr_ptr) {
           // scalar is in the attribute
-          auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+          auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
@@ -423,18 +413,9 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
         }
         break;
-      case phi::AttributeType::INT64: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } break;
-      case phi::AttributeType::INT32S: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
-      } break;
       case phi::AttributeType::INT_ARRAY:
-        if (attrs.find(attr_names[i]) != attrs.end() ||
-            default_attrs.find(attr_names[i]) != default_attrs.end()) {
-          auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (attr_ptr) {
+          auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS:
               kernel_ctx->EmplaceBackAttr(std::move(
@@ -474,50 +455,13 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           }
         }
         break;
-      case phi::AttributeType::DATA_TYPE: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        auto data_type = framework::TransToPhiDataType(
-            static_cast<framework::proto::VarType::Type>(
-                BOOST_GET_CONST(int, attr)));
-        kernel_ctx->EmplaceBackAttr(data_type);
-      } break;
-      case phi::AttributeType::STRING: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(
-            std::move(phi::Scalar(BOOST_GET_CONST(std::string, attr))));
-      } break;
-      case phi::AttributeType::INT64S: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        switch (AttrTypeID(attr)) {
-          case framework::proto::AttrType::LONGS:
-            kernel_ctx->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<int64_t>, attr));
-            break;
-          case framework::proto::AttrType::INTS: {
-            const auto& vector_int_attr =
-                BOOST_GET_CONST(std::vector<int>, attr);
-            const std::vector<int64_t> vector_int64_attr(
-                vector_int_attr.begin(), vector_int_attr.end());
-            kernel_ctx->EmplaceBackAttr(vector_int64_attr);
-          } break;
-          default:
-            PADDLE_THROW(platform::errors::Unimplemented(
-                "Unsupported cast op attribute `%s` to vector<int64_t> when "
-                "construct KernelContext.",
-                attr_names[i]));
-        }
-      } break;
-      case phi::AttributeType::FLOAT32S: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
-      } break;
-      case phi::AttributeType::STRINGS: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        kernel_ctx->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<std::string>, attr));
-      } break;
       case phi::AttributeType::SCALARS: {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        PADDLE_ENFORCE_NOT_NULL(
+            attr_ptr,
+            platform::errors::NotFound("(%s) is not found in AttributeMap when "
+                                       "buildind dygraph KernelContext.",
+                                       attr_names[i]));
+        auto& attr = *attr_ptr;
         switch (AttrTypeID(attr)) {
           case framework::proto::AttrType::INTS: {
             const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
@@ -571,11 +515,76 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                 attr_names[i]));
         }
       } break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported cast op attribute `%s` when construct "
-            "KernelContext in dygraph.",
-            attr_names[i]));
+      default: {
+        PADDLE_ENFORCE_NOT_NULL(
+            attr_ptr,
+            platform::errors::NotFound("(%s) is not found in AttributeMap when "
+                                       "buildind dygraph KernelContext.",
+                                       attr_names[i]));
+        auto& attr = *attr_ptr;
+        switch (attr_defs[i].type_index) {
+          case phi::AttributeType::FLOAT32:
+            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+            break;
+          case phi::AttributeType::INT32:
+            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+            break;
+          case phi::AttributeType::BOOL:
+            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+            break;
+          case phi::AttributeType::INT64:
+            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+            break;
+          case phi::AttributeType::INT32S:
+            kernel_ctx->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<int>, attr));
+            break;
+          case phi::AttributeType::DATA_TYPE: {
+            auto data_type = framework::TransToPhiDataType(
+                static_cast<framework::proto::VarType::Type>(
+                    BOOST_GET_CONST(int, attr)));
+            kernel_ctx->EmplaceBackAttr(data_type);
+          } break;
+          case phi::AttributeType::STRING:
+            kernel_ctx->EmplaceBackAttr(
+                std::move(BOOST_GET_CONST(std::string, attr)));
+            break;
+          case phi::AttributeType::INT64S: {
+            switch (AttrTypeID(attr)) {
+              case framework::proto::AttrType::LONGS:
+                kernel_ctx->EmplaceBackAttr(
+                    BOOST_GET_CONST(std::vector<int64_t>, attr));
+                break;
+              case framework::proto::AttrType::INTS: {
+                const auto& vector_int_attr =
+                    BOOST_GET_CONST(std::vector<int>, attr);
+                const std::vector<int64_t> vector_int64_attr(
+                    vector_int_attr.begin(), vector_int_attr.end());
+                kernel_ctx->EmplaceBackAttr(vector_int64_attr);
+              } break;
+              default:
+                PADDLE_THROW(platform::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to vector<int64_t> "
+                    "when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
+          } break;
+          case phi::AttributeType::FLOAT32S:
+            kernel_ctx->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<float>, attr));
+            break;
+          case phi::AttributeType::STRINGS:
+            kernel_ctx->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<std::string>, attr));
+            break;
+          default:
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported cast op attribute `%s` when construct "
+                "KernelContext in dygraph.",
+                attr_names[i]));
+        }
+      }
     }
   }
   VLOG(6) << "BuildDygraphPhiKernelContext: Attributes parsing completed.";
