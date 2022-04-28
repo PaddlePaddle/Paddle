@@ -35,24 +35,15 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor)"
              "[bsz, 12, max_seq_len, max_seq_len] float32 stack_0.tmp_0");
 
+    AddInput(
+        "NewMask",
+        "(Tensor)"
+        "[bsz, 12, slimmed_seq_len, slimmed_seq_len] float32 stack_0.tmp_0");
+
     AddOutput("SlimmedX",
               "(Tensor)"
               "[bsz, max_seq_len * factor, C = 768]");
 
-    AddAttr<float>("factor", "slim_len / max_seq_len")
-        .SetDefault(0.5f)
-        .AddCustomChecker([](const float& factor) {
-          PADDLE_ENFORCE_LE(factor, 1.0f,
-                            platform::errors::InvalidArgument(
-                                "factor should less equal than 1.0 "
-                                "but got %f",
-                                factor));
-          PADDLE_ENFORCE_GE(factor, 0.0f,
-                            platform::errors::InvalidArgument(
-                                "factor should greater equal than 0.0 "
-                                "but got %f",
-                                factor));
-        });
     AddComment(R"DOC(
                             Operator.
                         )DOC");
@@ -63,14 +54,18 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Attn"), "Input", "Attn", "Fuse");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Fuse");
-    OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "Fuse");
-    OP_INOUT_CHECK(ctx->HasOutput("SlimmedX"), "Output", "SlimmedX", "Fuse");
+    OP_INOUT_CHECK(ctx->HasInput("Attn"), "Input", "Attn", "FusedTokenPrune");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedTokenPrune");
+    OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "FusedTokenPrune");
+    OP_INOUT_CHECK(ctx->HasInput("NewMask"), "Input", "NewMask",
+                   "FusedTokenPrune");
+    OP_INOUT_CHECK(ctx->HasOutput("SlimmedX"), "Output", "SlimmedX",
+                   "FusedTokenPrune");
 
     auto mask_dim = ctx->GetInputDim("Mask");
     auto attn_dim = ctx->GetInputDim("Attn");
     auto x_dim = ctx->GetInputDim("X");
+    auto new_mask_dim = ctx->GetInputDim("NewMask");
 
     // check input dims number
     PADDLE_ENFORCE_EQ(mask_dim.size(), 4,
@@ -81,6 +76,9 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
                           "The input attn must be 4-dimention"));
     PADDLE_ENFORCE_EQ(x_dim.size(), 3, platform::errors::InvalidArgument(
                                            "The input x must be 4-dimention"));
+    PADDLE_ENFORCE_EQ(new_mask_dim.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "The input attn must be 4-dimention"));
 
     // check input dims relations
     PADDLE_ENFORCE_EQ(mask_dim[0], attn_dim[0],
@@ -114,11 +112,9 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
                           "The third dim of mask and the second dim of attn"
                           "should be the same which is max seq len"));
 
-    auto factor = ctx->Attrs().Get<float>("factor");
     auto bsz = mask_dim[0];
-    auto max_seq_len = mask_dim[2];
     auto c = x_dim[2];
-    int64_t slim_seq_len = max_seq_len * factor;
+    auto slim_seq_len = new_mask_dim[2];
 
     ctx->SetOutputDim("SlimmedX", {bsz, slim_seq_len, c});
   }

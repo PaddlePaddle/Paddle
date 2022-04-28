@@ -96,8 +96,9 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
           "The FusedTokenPrune Plugin only has one output, so the "
           "index value should be 0, but get %d.",
           output_index));
-  auto attn_dims = inputs[0], x_dims = inputs[1];
+  auto x_dims = inputs[1], new_mask_dims = inputs[3];
   nvinfer1::DimsExprs ret = x_dims;
+  ret.d[1] = new_mask_dims.d[2];
   return ret;
 }
 
@@ -115,7 +116,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
                                         pos, nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
-  if (pos < 3) {
+  if (pos < 4) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
@@ -156,6 +157,7 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
     T* attn_tmp_data, T* attn_by_data, int device_id) {
   auto attn_dims = input_desc[0].dims;
   auto x_dims = input_desc[1].dims;
+  auto new_mask_dims = input_desc[3].dims;
   auto bsz = attn_dims.d[0], nb_head = attn_dims.d[1],
        max_seq_len = attn_dims.d[2];
   auto c = x_dims.d[2];
@@ -190,7 +192,7 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   FillIndex<<<grid, block, 0, stream>>>(attn_by_indices_data, bsz, max_seq_len);
   SlicedArgsort<T><<<bsz, 1, 0, stream>>>(attn_by_data, attn_by_indices_data,
                                           bsz, max_seq_len);
-  int slimmed_x_len = max_seq_len * factor_;
+  int slimmed_x_len = new_mask_dims.d[2];
   // auto slimmed_indices = phi::funcs::Slice<int>(dev_ctx, attn_by_indices,
   // {1},
   //                                                 {0}, {slimmed_x_len});

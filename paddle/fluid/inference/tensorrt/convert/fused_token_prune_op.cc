@@ -29,10 +29,10 @@ class FusedTokenPruneOpConverter : public OpConverter {
     auto* Attn = engine_->GetITensor(op_desc.Input("Attn").front());
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Mask = engine_->GetITensor(op_desc.Input("Mask").front());
+    auto* NewMask = engine_->GetITensor(op_desc.Input("NewMask").front());
 
-    std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask};
+    std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
 
-    float factor = BOOST_GET_CONST(float, op_desc.GetAttr("factor"));
     auto output_name = op_desc.Output("SlimmedX")[0];
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
@@ -43,8 +43,8 @@ class FusedTokenPruneOpConverter : public OpConverter {
         with_fp16 = true;
       }
       plugin::FusedTokenPrunePluginDynamic* plugin =
-          new plugin::FusedTokenPrunePluginDynamic(factor, with_fp16);
-      layer = engine_->AddDynamicPlugin(itensors.data(), 3, plugin);
+          new plugin::FusedTokenPrunePluginDynamic(with_fp16);
+      layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "

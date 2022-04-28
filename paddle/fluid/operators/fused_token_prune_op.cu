@@ -75,8 +75,8 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     const Tensor* attn = context.Input<Tensor>("Attn");
     const Tensor* x = context.Input<Tensor>("X");
     const Tensor* mask = context.Input<Tensor>("Mask");
+    const Tensor* new_mask = context.Input<Tensor>("NewMask");
     Tensor* out_slimmed_x = context.Output<Tensor>("SlimmedX");
-    auto factor = context.template Attr<float>("factor");
     auto* out_slimmed_x_data =
         out_slimmed_x->mutable_data<T>(context.GetPlace());
 
@@ -120,7 +120,8 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
         attn_by_data, attn_by_indices_data, attn_dims[0], attn_dims[3]);
     // VLOG(4) << "after argsort attn indices = " << attn_by_indices;
 
-    int slimmed_x_len = attn_dims[3] * factor;
+    auto new_mask_dims = new_mask->dims();
+    int slimmed_x_len = new_mask_dims[2];
     Tensor slimmed_indices =
         phi::funcs::Slice<int>(context.cuda_device_context(), attn_by_indices,
                                {1}, {0}, {slimmed_x_len});

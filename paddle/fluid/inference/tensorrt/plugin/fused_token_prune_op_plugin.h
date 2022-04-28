@@ -26,15 +26,14 @@ namespace plugin {
 
 class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit FusedTokenPrunePluginDynamic(float factor, bool with_fp16)
-      : factor_(factor) {
+  explicit FusedTokenPrunePluginDynamic(bool with_fp16) {
     with_fp16_ = with_fp16;
   }
   FusedTokenPrunePluginDynamic(void const* serial_data, size_t serial_length) {
-    DeserializeValue(&serial_data, &serial_length, &factor_);
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new FusedTokenPrunePluginDynamic(factor_, with_fp16_);
+    return new FusedTokenPrunePluginDynamic(with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -44,10 +43,10 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   int initialize() TRT_NOEXCEPT override { return 0; }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return SerializedSize(factor_);
+    return SerializedSize(with_fp16_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
-    SerializeValue(&buffer, factor_);
+    SerializeValue(&buffer, with_fp16_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -89,7 +88,6 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
                   const void* const* inputs, void* const* outputs,
                   void* workspace, cudaStream_t stream, T* attn_tmp_data,
                   T* attn_by_data, int device_id);
-  float factor_;
 };
 
 class FusedTokenPrunePluginDynamicCreator : public nvinfer1::IPluginCreator {
