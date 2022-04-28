@@ -36,12 +36,13 @@ class RunCustomOpNode : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                              kSlotSmallVectorSize>
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
   operator()(  // NOLINT
-      paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                          kSlotSmallVectorSize>& grads,  // NOLINT
-      bool create_graph = false)                         // NOLINT
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>& grads,  // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false)  // NOLINT
       override;
 
   std::string name() {

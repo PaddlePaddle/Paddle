@@ -251,10 +251,10 @@ TEST(EagerUtils, GetGradAccumulationNode) {
 }
 
 TEST(EagerUtils, FillZeroForEmptyGradInputs) {
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
       grads = {std::vector<paddle::experimental::Tensor>(1)};
-  paddle::SmallVector<std::vector<GradSlotMeta>, egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<GradSlotMeta>, egr::kSlotSmallVectorSize>
       slot_metas = {std::vector<GradSlotMeta>(1)};
 
   phi::DenseTensorMeta tensor_meta;

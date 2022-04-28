@@ -182,11 +182,12 @@ class GradNodeBase {
    * so, vector of vector
    * is better choice to fit this format.
    * **/
-  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                              kSlotSmallVectorSize>
-  operator()(paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                                 kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false) = 0;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
 
@@ -202,14 +203,14 @@ class GradNodeBase {
 
   /**
    * Get Input Meta of current Grad node**/
-  const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   OutputMeta() const;
 
-  paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
   /**
    * Set bwd ins and outs info with forward vars
@@ -251,18 +252,18 @@ class GradNodeBase {
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
   ApplyGradientHooks(
-      const paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                                kSlotSmallVectorSize>& tensors);
+      const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                 kSlotSmallVectorSize>& tensors);
 
   /**
     * Handle Complex - Real Type Promotion
     * **/
   void HandleComplexGradToRealGrad(
-      paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                          kSlotSmallVectorSize>* out_grads);
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>* out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
   virtual std::string name() { return "GradNodeBase"; }
@@ -278,11 +279,11 @@ class GradNodeBase {
 
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
-  paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_out_meta_;
 
   // bwd_in_meta_ used to record Grad input info for backward
-  paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_in_meta_;
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during

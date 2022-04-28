@@ -80,8 +80,8 @@ TEST(AccumulationNode, Tensor) {
   grad_meta->SetStopGradient(false);
 
   // operator()
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       et0_vec = {{et0}};
   paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
@@ -89,8 +89,8 @@ TEST(AccumulationNode, Tensor) {
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
 

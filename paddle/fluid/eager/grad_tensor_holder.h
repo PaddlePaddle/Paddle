@@ -27,8 +27,8 @@ namespace egr {
 class GradTensorHolder {
  public:
   explicit GradTensorHolder(
-      const paddle::SmallVector<std::vector<GradSlotMeta>,
-                                kSlotSmallVectorSize>& metas) {
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& metas) {
     VLOG(7) << "Init GradTensorHolder with meta size: " << metas.size();
     buffer_.resize(metas.size());
     for (size_t i = 0; i < buffer_.size(); i++) {
@@ -40,8 +40,8 @@ class GradTensorHolder {
   GradTensorHolder(const GradTensorHolder& other) = default;
 
   explicit GradTensorHolder(
-      paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                          kSlotSmallVectorSize>&& inputs)
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>&& inputs)
       : buffer_(std::move(inputs)) {}
 
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
@@ -58,8 +58,8 @@ class GradTensorHolder {
     return buffer_[pos];
   }
 
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>&
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>&
   Buffers() {
     return buffer_;
   }
@@ -67,8 +67,8 @@ class GradTensorHolder {
   void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
 
  private:
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       buffer_;
 };
 

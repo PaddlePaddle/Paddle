@@ -144,12 +144,13 @@ void GradNodeScale::SetTensorWrappers_X(
 
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
-paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                    kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
 GradNodeScale::operator()(
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {
   // 1. Check Output Size
   VLOG(6) << "grad size is: " << grads.size();
   PADDLE_ENFORCE(
@@ -159,8 +160,8 @@ GradNodeScale::operator()(
           "However received: %d",
           "This indicates an issue with Eager Dygraph Backward logic",
           grads.size()));
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       outs;
   // 2. Create needed out parttern
   paddle::experimental::Tensor out;
@@ -168,8 +169,8 @@ GradNodeScale::operator()(
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
     // vector<vector<phi::tensor>> to apply all hooks?
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
         hooked_grads = ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,
              true /* bias_after_scale */, &out);

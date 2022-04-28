@@ -364,14 +364,15 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
-  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                              egr::kSlotSmallVectorSize>
-  operator()(paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                                 egr::kSlotSmallVectorSize> &grads,  // NOLINT
-             bool create_graph) override {
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize> &grads,  // NOLINT
+             bool create_graph,
+             bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
                       paddle::platform::errors::InvalidArgument(

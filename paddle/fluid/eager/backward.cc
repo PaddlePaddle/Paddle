@@ -169,8 +169,8 @@ class GeneralGrad {
           input_target_nodes_inputmeta_map.count(node);
 
       // Find and append next nodes
-      const paddle::SmallVector<std::vector<GradSlotMeta>,
-                                kSlotSmallVectorSize>& metas =
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& metas =
           node->OutputMeta();
       for (const auto& meta_list : metas) {
         for (const GradSlotMeta& meta : meta_list) {
@@ -384,10 +384,10 @@ class GeneralGrad {
               "unable to find copied target for certain grad node."));
       GradNodeBase* copied_node = orig_to_copied_node_mapping_[orig_node].get();
 
-      const paddle::SmallVector<std::vector<GradSlotMeta>,
-                                kSlotSmallVectorSize>& orig_meta =
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& orig_meta =
           orig_node->OutputMeta();
-      paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
           copied_edges = copied_node->MutableOutputMeta();
       for (size_t i = 0; i < orig_meta.size(); i++) {
         for (size_t j = 0; j < orig_meta[i].size(); j++) {
@@ -473,7 +473,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
             "We got null node when we traverse the backward graph, and this "
             "should not happened please check your code and contact us."));
     // Find and append next nodes
-    const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         metas = node->OutputMeta();
     for (const auto& meta_list : metas) {
       for (const GradSlotMeta& meta : meta_list) {
@@ -696,10 +696,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>
-        grad_output_tensors =
-            (*node)(node_input_buffer->Buffers(), create_graph);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
+        grad_output_tensors = (*node)(node_input_buffer->Buffers(),
+                                      create_graph, is_general_grad);
 
     // retain_grad or not
     if (!retain_graph) {
@@ -713,7 +713,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     node_input_buffers_dict.erase(node);
 
     // Prepare GradTensorHolder for next node
-    const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         metas = node->OutputMeta();
     PADDLE_ENFORCE(metas.size() == grad_output_tensors.size() || metas.empty(),
                    paddle::platform::errors::Fatal(

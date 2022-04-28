@@ -447,8 +447,8 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   while (!queue.empty()) {
     egr::GradNodeBase *node = queue.front();
     queue.pop();
-    const paddle::SmallVector<std::vector<egr::GradSlotMeta>,
-                              egr::kSlotSmallVectorSize> &metas =
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize> &metas =
         node->OutputMeta();
     for (size_t i = 0; i < metas.size(); i++) {
       for (size_t j = 0; j < metas[i].size(); j++) {

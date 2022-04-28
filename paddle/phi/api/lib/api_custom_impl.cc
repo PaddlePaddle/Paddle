@@ -69,7 +69,12 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
       kernel_data_type = kernel_key.dtype();
     }
   }
+
   std::string kernel_name = "adam";
+  if (!phi::DenseTensor::classof(grad.impl().get())) {
+    kernel_name = "adam_dense_param_sparse_grad";
+  }
+
   const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, {kernel_backend, kernel_layout, kernel_data_type});
   VLOG(6) << kernel_name << " API kernel key: [" << kernel_backend << ", "
@@ -77,9 +82,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
   VLOG(6) << kernel_name << " API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-
   auto input_param = PrepareData(param, kernel.InputAt(0), {});
-  auto input_grad = PrepareData(grad, kernel.InputAt(1), {});
   auto input_lr = PrepareData(learning_rate, kernel.InputAt(2), {});
   auto input_moment1 = PrepareData(moment1, kernel.InputAt(3), {});
   auto input_moment2 = PrepareData(moment2, kernel.InputAt(4), {});
@@ -140,78 +143,155 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
   phi::MetaTensor meta_out_4(kernel_out_4);
   phi::MetaTensor meta_out_5(kernel_out_5);
 
-  phi::AdamInferMeta(MakeMetaTensor(*input_param),
-                     MakeMetaTensor(*input_grad),
-                     MakeMetaTensor(*input_lr),
-                     MakeMetaTensor(*input_moment1),
-                     MakeMetaTensor(*input_moment2),
-                     MakeMetaTensor(*input_beta1_pow),
-                     MakeMetaTensor(*input_beta2_pow),
-                     input_meta_ref_master_param,
-                     input_meta_ref_skip_update,
-                     beta1,
-                     beta2,
-                     epsilon,
-                     lazy_mode,
-                     min_row_size_to_use_multithread,
-                     multi_precision,
-                     use_global_beta_pow,
-                     &meta_out_0,
-                     &meta_out_1,
-                     &meta_out_2,
-                     &meta_out_3,
-                     &meta_out_4,
-                     &meta_out_5);
+  if (phi::DenseTensor::classof(grad.impl().get())) {
+    auto input_grad = PrepareData(grad, kernel.InputAt(1), {});
 
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    paddle::optional<const phi::DenseTensor&>,
-                                    paddle::optional<const phi::DenseTensor&>,
-                                    const Scalar&,
-                                    const Scalar&,
-                                    const Scalar&,
-                                    bool,
-                                    int64_t,
-                                    bool,
-                                    bool,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*);
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    phi::AdamInferMeta(MakeMetaTensor(*input_param),
+                       MakeMetaTensor(*input_grad),
+                       MakeMetaTensor(*input_lr),
+                       MakeMetaTensor(*input_moment1),
+                       MakeMetaTensor(*input_moment2),
+                       MakeMetaTensor(*input_beta1_pow),
+                       MakeMetaTensor(*input_beta2_pow),
+                       input_meta_ref_master_param,
+                       input_meta_ref_skip_update,
+                       beta1,
+                       beta2,
+                       epsilon,
+                       lazy_mode,
+                       min_row_size_to_use_multithread,
+                       multi_precision,
+                       use_global_beta_pow,
+                       &meta_out_0,
+                       &meta_out_1,
+                       &meta_out_2,
+                       &meta_out_3,
+                       &meta_out_4,
+                       &meta_out_5);
 
-  (*kernel_fn)(*dev_ctx,
-               *input_param,
-               *input_grad,
-               *input_lr,
-               *input_moment1,
-               *input_moment2,
-               *input_beta1_pow,
-               *input_beta2_pow,
-               input_master_param,
-               input_skip_update,
-               beta1,
-               beta2,
-               epsilon,
-               lazy_mode,
-               min_row_size_to_use_multithread,
-               multi_precision,
-               use_global_beta_pow,
-               kernel_out_0,
-               kernel_out_1,
-               kernel_out_2,
-               kernel_out_3,
-               kernel_out_4,
-               kernel_out_5);
+    using kernel_signature = void (*)(const platform::DeviceContext&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      paddle::optional<const phi::DenseTensor&>,
+                                      paddle::optional<const phi::DenseTensor&>,
+                                      const Scalar&,
+                                      const Scalar&,
+                                      const Scalar&,
+                                      bool,
+                                      int64_t,
+                                      bool,
+                                      bool,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
+    (*kernel_fn)(*dev_ctx,
+                 *input_param,
+                 *input_grad,
+                 *input_lr,
+                 *input_moment1,
+                 *input_moment2,
+                 *input_beta1_pow,
+                 *input_beta2_pow,
+                 input_master_param,
+                 input_skip_update,
+                 beta1,
+                 beta2,
+                 epsilon,
+                 lazy_mode,
+                 min_row_size_to_use_multithread,
+                 multi_precision,
+                 use_global_beta_pow,
+                 kernel_out_0,
+                 kernel_out_1,
+                 kernel_out_2,
+                 kernel_out_3,
+                 kernel_out_4,
+                 kernel_out_5);
+  } else {
+    auto input_grad = TensorToSelectedRows(grad);
+
+    phi::AdamInferMeta(MakeMetaTensor(*input_param),
+                       MakeMetaTensor(*input_grad),
+                       MakeMetaTensor(*input_lr),
+                       MakeMetaTensor(*input_moment1),
+                       MakeMetaTensor(*input_moment2),
+                       MakeMetaTensor(*input_beta1_pow),
+                       MakeMetaTensor(*input_beta2_pow),
+                       input_meta_ref_master_param,
+                       input_meta_ref_skip_update,
+                       beta1,
+                       beta2,
+                       epsilon,
+                       lazy_mode,
+                       min_row_size_to_use_multithread,
+                       multi_precision,
+                       use_global_beta_pow,
+                       &meta_out_0,
+                       &meta_out_1,
+                       &meta_out_2,
+                       &meta_out_3,
+                       &meta_out_4,
+                       &meta_out_5);
+
+    using kernel_signature = void (*)(const platform::DeviceContext&,
+                                      const phi::DenseTensor&,
+                                      const phi::SelectedRows&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      const phi::DenseTensor&,
+                                      paddle::optional<const phi::DenseTensor&>,
+                                      paddle::optional<const phi::DenseTensor&>,
+                                      const Scalar&,
+                                      const Scalar&,
+                                      const Scalar&,
+                                      bool,
+                                      int64_t,
+                                      bool,
+                                      bool,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*,
+                                      phi::DenseTensor*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+    (*kernel_fn)(*dev_ctx,
+                 *input_param,
+                 *input_grad,
+                 *input_lr,
+                 *input_moment1,
+                 *input_moment2,
+                 *input_beta1_pow,
+                 *input_beta2_pow,
+                 input_master_param,
+                 input_skip_update,
+                 beta1,
+                 beta2,
+                 epsilon,
+                 lazy_mode,
+                 min_row_size_to_use_multithread,
+                 multi_precision,
+                 use_global_beta_pow,
+                 kernel_out_0,
+                 kernel_out_1,
+                 kernel_out_2,
+                 kernel_out_3,
+                 kernel_out_4,
+                 kernel_out_5);
+  }
   return api_output;
 }
 

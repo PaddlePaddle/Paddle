@@ -118,8 +118,8 @@ class {} : public egr::GradNodeBase {{
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
   ~{}() override = default;
 
-  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> operator()(
-      paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
   std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
@@ -149,7 +149,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = \
 """
-paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph) {{
+paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
     // Fill Zero For GradIn Tensors
 {}
 
@@ -355,7 +355,7 @@ AMP_LOGIC_TEMPLATE = \
     if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
         VLOG(5) << "Check and Prepare For AMP";
         {}
-        paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
         {}
         {}
         {}
@@ -1449,7 +1449,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         # Construct grad_api returns
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
-        returns_str = f"{indent}paddle::SmallVector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});\n"
+        returns_str = f"{indent}paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});\n"
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)

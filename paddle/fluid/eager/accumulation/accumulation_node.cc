@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/errors.h"
 
 #include "glog/logging.h"
-DECLARE_bool(retain_grad_for_all_tensor);
+
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
@@ -38,12 +38,13 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
   }
 }
 
-paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                    kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
 GradNodeAccumulation::operator()(
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -58,15 +59,15 @@ GradNodeAccumulation::operator()(
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
         hooked_grads = ApplyGradientHooks(grads);
     grad_out = hooked_grads[0][0];
   } else {
     grad_out = grads[0][0];
   }
 
-  if (!weak_grad_.expired() && FLAGS_retain_grad_for_all_tensor) {
+  if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
     CopyOrAddTensor(grad.get(), grad_out);
   }

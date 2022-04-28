@@ -2206,6 +2206,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CustomPlace>)
       .def("get_device_id",
            [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
@@ -4578,6 +4579,8 @@ All parameter, weight, gradient are variables in Paddle.
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
 #ifdef PADDLE_WITH_HETERPS
+  BindNodeQueryResult(&m);
+  BindNeighborSampleQuery(&m);
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif

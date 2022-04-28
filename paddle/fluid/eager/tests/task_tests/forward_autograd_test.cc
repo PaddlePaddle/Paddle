@@ -137,8 +137,8 @@ TEST(Forward, LinearNodes) {
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
-    const paddle::SmallVector<std::vector<GradSlotMeta>,
-                              egr::kSlotSmallVectorSize>& node1_metas =
+    const paddle::small_vector<std::vector<GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node1_metas =
         grad_node1->OutputMeta();
     const auto& node1_meta = node1_metas[0];
 
@@ -236,7 +236,7 @@ TEST(Forward, BranchedNodes) {
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
     // Node 1 -> Node 0
-    const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         node1_metas = grad_node1->OutputMeta();
     const Edge& node1_edge = node1_metas[0][0].GetEdge();
 
@@ -245,8 +245,8 @@ TEST(Forward, BranchedNodes) {
     CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
 
     // Node 2 -> Node 0
-    const paddle::SmallVector<std::vector<egr::GradSlotMeta>,
-                              egr::kSlotSmallVectorSize>& node2_metas =
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node2_metas =
         grad_node2->OutputMeta();
     const Edge& node2_edge = node2_metas[0][0].GetEdge();
 

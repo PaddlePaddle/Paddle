@@ -42,17 +42,17 @@ GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   bwd_out_meta_.resize(bwd_out_slot_num);
 }
 
-const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
 GradNodeBase::InputMeta() const {
   return bwd_in_meta_;
 }
 
-const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
 GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
 }
 
-paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
 GradNodeBase::MutableOutputMeta() {
   return bwd_out_meta_;
 }
@@ -305,13 +305,13 @@ int64_t GradNodeBase::RegisterGradientHook(
   return next_hook_id_++;
 }
 
-paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                    kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
 GradNodeBase::ApplyGradientHooks(
-    const paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                              kSlotSmallVectorSize>& tensors) {
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      kSlotSmallVectorSize>
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& tensors) {
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
       outs(tensors.size());
   for (auto& hook_pair : gradient_hooks_) {
     size_t slot_id = std::get<0>(hook_pair.second);
@@ -359,8 +359,8 @@ GradNodeBase::ApplyGradientHooks(
 }
 
 void GradNodeBase::HandleComplexGradToRealGrad(
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>* out_grads) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>* out_grads) {
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
     const std::vector<paddle::experimental::Tensor>& slot_out_grads =
         (*out_grads)[slot_id];

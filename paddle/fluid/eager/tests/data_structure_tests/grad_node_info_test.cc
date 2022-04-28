@@ -34,8 +34,8 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
-  paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                      egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
       grads;
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));

@@ -214,6 +214,10 @@ class PreparedOp {
   const phi::KernelSignature* default_kernel_signature_;
   phi::KernelSignature kernel_signature_;
   const phi::Kernel& phi_kernel_;
+
+  static const phi::KernelFactory& phi_kernel_factory;
+  static const phi::OpUtilsMap& phi_op_utils_map;
+  static const phi::DefaultKernelSignatureMap& default_phi_kernel_sig_map;
 };
 
 const inline framework::Attribute& GetAttr(
@@ -311,7 +315,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<framework::LoDTensorArray>()) {
-        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        paddle::small_vector<const phi::TensorBase*> tensor_vector;
         auto& tensor_array = var.template Get<framework::LoDTensorArray>();
         for (auto& t : tensor_array) {
           tensor_vector.emplace_back(&t);
@@ -357,7 +361,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          paddle::small_vector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
           for (auto& t : *tensor_array) {
@@ -382,20 +386,16 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
         auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int64_t>))) {
+        if (AttrTypeID(attr) == framework::proto::AttrType::LONGS) {
           kernel_ctx->EmplaceBackAttr(std::move(
               phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<int32_t>))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::INTS) {
           kernel_ctx->EmplaceBackAttr(std::move(
               phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int64_t))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::LONG) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::IntArray(&BOOST_GET_CONST(int64_t, attr), 1)));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int32_t))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::INT) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
@@ -429,15 +429,13 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           default_attrs.find(attr_names[i]) !=
               default_attrs.end()) {  // scalar is in the attribute
         auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        if (AttrTypeID(attr) == framework::proto::AttrType::FLOAT) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(float, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::string))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::STRING) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(std::string, attr))));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::INT) {
           kernel_ctx->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(int, attr))));
         } else {
@@ -465,8 +463,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       }
     } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-      if (std::type_index(attr.type()) ==
-          std::type_index(typeid(std::vector<int32_t>))) {
+      if (AttrTypeID(attr) == framework::proto::AttrType::INTS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -474,8 +471,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           scalar_list.emplace_back(val);
         }
         kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
+      } else if (AttrTypeID(attr) == framework::proto::AttrType::LONGS) {
         const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -483,8 +479,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           scalar_list.emplace_back(val);
         }
         kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<float>))) {
+      } else if (AttrTypeID(attr) == framework::proto::AttrType::FLOATS) {
         const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -492,8 +487,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           scalar_list.emplace_back(val);
         }
         kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<double>))) {
+      } else if (AttrTypeID(attr) == framework::proto::AttrType::FLOAT64S) {
         const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -501,8 +495,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           scalar_list.emplace_back(val);
         }
         kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<bool>))) {
+      } else if (AttrTypeID(attr) == framework::proto::AttrType::BOOLEANS) {
         const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
         std::vector<phi::Scalar> scalar_list;
         scalar_list.reserve(vec.size());
@@ -534,12 +527,10 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
-        if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int64_t>))) {
+        if (AttrTypeID(attr) == framework::proto::AttrType::LONGS) {
           kernel_ctx->EmplaceBackAttr(
               BOOST_GET_CONST(std::vector<int64_t>, attr));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<int>))) {
+        } else if (AttrTypeID(attr) == framework::proto::AttrType::INTS) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),

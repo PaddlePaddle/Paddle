@@ -441,9 +441,9 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
 }
 
 void EagerUtils::FillZeroForEmptyGradInputs(
-    paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                        kSlotSmallVectorSize>* in_grads,
-    const paddle::SmallVector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>* in_grads,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
     for (size_t j = 0; j < (*in_grads)[i].size(); j++) {

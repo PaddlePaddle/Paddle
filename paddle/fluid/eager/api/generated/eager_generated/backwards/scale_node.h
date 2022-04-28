@@ -38,11 +38,12 @@ class GradNodeScale : public GradNodeBase {
   ~GradNodeScale() override = default;
 
   // Functor: perform backward computations
-  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                              kSlotSmallVectorSize>
-  operator()(paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
-                                 kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
