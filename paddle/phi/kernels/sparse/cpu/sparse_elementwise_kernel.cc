@@ -59,13 +59,13 @@ void Merge(const IntT el_len,
   auto is_zero = funcs::IsZeroFunctor<T>();
 
   std::vector<const T*> b_values(len_b_max, zero.data());
-  for (int i = 0; i < len_b; ++i) {
+  for (auto i = 0; i < len_b; ++i) {
     b_values[b_index_org[i]] = b_values_org + i * el_len;
   }
   //  if is divide expend b_index_org to b_full_index
   if (is_divide) {
     b_full_index = std::vector<IntT>(len_b_max);
-    for (int j = 0; j < b_full_index.size(); ++j) {
+    for (auto j = 0; j < b_full_index.size(); ++j) {
       b_full_index[j] = j;
     }
     b_index = b_full_index.data();
@@ -147,7 +147,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         x.dims(),
                         y.dims()));
   int64_t element_size = 1;
-  for (int j = 1; j < x.non_zero_elements().dims().size(); ++j) {
+  for (auto j = 1; j < x.non_zero_elements().dims().size(); ++j) {
     element_size *= x.non_zero_elements().dims()[j];
   }
   IntT nnz = 0;
@@ -156,7 +156,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   const auto sparse_dim = x.non_zero_indices().dims()[0];
 
   int64_t max_len = 1;
-  for (int j = 0; j < sparse_dim; ++j) {
+  for (auto j = 0; j < sparse_dim; ++j) {
     max_len *= x.dims()[j];
   }
 
@@ -205,7 +205,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   out_indices_vec.resize(nnz * sparse_dim);
 
   Dim<DDim::kMaxRank> const_dims;
-  for (int i = 0; i < x.dims().size(); i++) {
+  for (auto i = 0; i < x.dims().size(); i++) {
     const_dims[i] = x.dims()[i];
   }
 
