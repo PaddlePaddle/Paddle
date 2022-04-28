@@ -33,6 +33,7 @@ from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
 from . import utils
+from . import fuse_utils
 
 __all__ = ['ImperativeQuantAware']
 
@@ -262,24 +263,7 @@ class ImperativeQuantAware(object):
             "The model must be the instance of dygraph.Layer."
 
         if self.fuse_conv_bn:
-            is_train = False
-            if model.training:
-                model.eval()
-                is_train = True
-            from . import fuse_utils
-            fuse_list = []
-            tmp_pair = []
-            for name, layer in model.named_sublayers():
-                if isinstance(layer, nn.Conv2D):
-                    tmp_pair = [name]
-                if isinstance(layer, nn.BatchNorm2D) and tmp_pair:
-                    tmp_pair.append(name)
-                if len(tmp_pair) == 2:
-                    fuse_list.append(tmp_pair)
-                    tmp_pair = []
-            model = fuse_utils.fuse_layers(model, fuse_list)
-            if is_train:
-                model.train()
+            fuse_utils.fuse_conv_bn(model)
 
         self._quantize_inputs.apply(model)
         self._quantize_outputs.apply(model)
