@@ -908,6 +908,38 @@ void TestKernelAdam() {
 }
 
 template <typename KernelTuple, typename PlaceType>
+void TestKernelAdamW() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  const T lr = 0.1;
+  const T lr_ratio = 0.4;
+  const T coeff = 0.3;
+  const int64_t numel = 123;
+
+  std::vector<T> param(numel), param_ref(numel);
+  RandomVec<T>(numel, param.data(), 0.5f);
+  param_ref = param;
+
+  auto ref = jit::GetReferFunc<KernelTuple>();
+  EXPECT_TRUE(ref != nullptr);
+
+  ref(lr, lr_ratio, coeff, numel, param_ref.data());
+
+  auto verifier = [](const typename KernelTuple::func_type tgt, T lr,
+                     T lr_ratio, T coeff, int64_t numel, std::vector<T> param,
+                     const std::vector<T>& param_ref) {
+    EXPECT_TRUE(tgt != nullptr);
+
+    EXPECT_EQ(param.size(), static_cast<size_t>(numel));
+
+    tgt(lr, lr_ratio, coeff, numel, param.data());
+    ExpectEQ<T>(param.data(), param_ref.data(), numel);
+  };
+  TestAllImpls<KernelTuple, PlaceType>(1, verifier, lr, lr_ratio, coeff, numel,
+                                       param, param_ref);
+}
+
+template <typename KernelTuple, typename PlaceType>
 void TestKernelSgd() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1464,6 +1496,7 @@ TEST_CPU_KERNEL(EmbSeqPool);
 TEST_CPU_KERNEL(MatMul);
 TEST_CPU_KERNEL(Softmax);
 TEST_CPU_KERNEL(Adam);
+TEST_CPU_KERNEL(AdamW);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
 

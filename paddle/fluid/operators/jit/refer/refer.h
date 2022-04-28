@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -565,6 +566,13 @@ void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
   }
 }
 
+template <typename T>
+void AdamW(T lr, T lr_ratio, T coeff, int64_t numel, T* param) {
+  Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param_array{
+      param, static_cast<Eigen::Index>(numel)};
+  param_array -= lr * lr_ratio * coeff * param_array;
+}
+
 #define DECLARE_REFER_KERNEL(name)                          \
   template <typename T>                                     \
   class name##Kernel : public ReferKernel<name##Tuple<T>> { \
@@ -617,6 +625,7 @@ DECLARE_REFER_KERNEL(MatMul);
 DECLARE_REFER_KERNEL(Softmax);
 DECLARE_REFER_KERNEL(EmbSeqPool);
 DECLARE_REFER_KERNEL(Adam);
+DECLARE_REFER_KERNEL(AdamW);
 DECLARE_REFER_KERNEL(Sgd);
 DECLARE_REFER_KERNEL(VBroadcast);
 

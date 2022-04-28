@@ -16,6 +16,7 @@
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
 
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 
 namespace phi {
@@ -417,13 +418,26 @@ class AdamWFunctor<T, CPUAdamW> {
       : coeff_(coeff), lr_ratio_(lr_ratio), lr_(lr), param_(param) {}
 
   inline HOSTDEVICE void operator()(size_t numel) const {
-    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param{
-        param_, static_cast<Eigen::Index>(numel)};
+    auto adamw = paddle::operators::jit::KernelFuncs<
+                     paddle::operators::jit::AdamWTuple<T>,
+                     phi::CPUPlace>::Cache()
+                     .At(1);
 
-    T lr = *lr_;
+    static constexpr int64_t chunk_size = 512;
 
-    // Calculation
-    param -= lr * lr_ratio_ * coeff_ * param;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (size_t i = 0; i < numel / chunk_size; ++i) {
+      const int64_t offset = i * chunk_size;
+      adamw(coeff_, lr_ratio_, *lr_, chunk_size, param_ + offset);
+    }
+
+    if (numel % chunk_size != 0) {
+      const int64_t offset = (numel / chunk_size) * chunk_size;
+      const int64_t tail_numel = numel % chunk_size;
+      adamw(coeff_, lr_ratio_, *lr_, tail_numel, param_ + offset);
+    }
   }
 };
 
