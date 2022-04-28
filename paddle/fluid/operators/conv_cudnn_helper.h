@@ -315,6 +315,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
                                         &result);
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -468,7 +469,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
             CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             workspace_size_limit, &(result.algo)));
 #endif
-
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -504,6 +505,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     ChooseAlgoByWorkspace<PerfT, AlgoT>(perf_results, workspace_size_limit,
                                         &result);
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -648,6 +650,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             workspace_size_limit, &(result.algo)));
 #endif
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -699,6 +702,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       ChooseAlgo(perf_results, workspace_size_limit, &result);
     }
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
