@@ -421,8 +421,8 @@ def affine(img, matrix, interpolation="nearest", fill=0):
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
-    return img.affine(
-        matrix, _pil_interp_from_str[interpolation], fillcolor=fill)
+    return img.transform(img.size, Image.AFFINE, matrix,
+                         _pil_interp_from_str[interpolation], fill)
 
 
 def rotate(img,

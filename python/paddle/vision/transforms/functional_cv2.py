@@ -441,16 +441,21 @@ def affine(img, matrix, interpolation='nearest', fill=0):
 
     h, w = img.shape[0:2]
 
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
     if len(img.shape) == 3 and img.shape[2] == 1:
         return cv2.warpAffine(
             img,
-            matrix, (w, h),
+            matrix,
+            dsize=(w, h),
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill)[:, :, np.newaxis]
     else:
         return cv2.warpAffine(
             img,
-            matrix, (w, h),
+            matrix,
+            dsize=(w, h),
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill)
 

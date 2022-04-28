@@ -212,12 +212,22 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
         paddle.Tensor: Affined image.
 
     """
+    img = img.unsqueeze(0)
+
+    # n, c, h, w = img.shape
+    w, h = _get_image_size(img, data_format=data_format)
+
+    img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
+
     matrix = paddle.to_tensor(matrix, place=img.place)
     matrix = matrix.reshape((1, 2, 3))
     shape = img.shape
 
     grid = _affine_grid(
         matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2])
+
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
 
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
