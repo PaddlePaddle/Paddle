@@ -444,6 +444,9 @@
     param : [out_v]
   kernel :
     func : eigh_grad
+    data_type : out_v
+  data_transform:
+    skip_transform : out_w, out_w_grad
 
 - backward_api : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
