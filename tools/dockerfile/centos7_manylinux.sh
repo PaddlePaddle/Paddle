@@ -115,6 +115,11 @@ function make_cuda115cudnn8() {
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
+function make_cuda116cudnn8() {
+  sed 's/<baseimg>/11.6.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
 function main() {
   local CMD=$1 
   case $CMD in
@@ -168,6 +173,9 @@ function main() {
      ;;
     cuda115cudnn8)
       make_cuda115cudnn8
+     ;;
+    cuda116cudnn8)
+      make_cuda116cudnn8
      ;;
     *)
       echo "Make dockerfile error, Without this paramet."
