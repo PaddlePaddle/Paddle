@@ -1123,6 +1123,8 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(output_name,
                                                               ref_dims_mapping)
 
+                grad_op_dist_attr.impl_type = forward_op_dist_attr.impl_type
+                grad_op_dist_attr.impl_idx = forward_op_dist_attr.impl_idx
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
@@ -1156,6 +1158,8 @@ class Completer:
                             var_name, ref_fwd_dims_mapping)
                     grad_op_dist_attr.set_output_dims_mapping(
                         output_name, ref_fwd_dims_mapping)
+                    grad_op_dist_attr.impl_type = "default"
+                    grad_op_dist_attr.impl_idx = 0
 
                 elif grad_op.type == 'fill_zeros_like':
                     ref_var_name = grad_op.input_arg_names[0]

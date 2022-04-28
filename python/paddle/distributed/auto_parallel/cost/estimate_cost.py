@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
+
+import paddle
+
+from .base_cost import Cost, CompOpCost, CommContext
+from ..operators.common import get_distributed_operator_impl_container
+
 
 class CostEstimator:
-    def __init__(self,
-                 program,
-                 cluster=None,
-                 dist_context=None,
-                 mode="modeling"):
+    def __init__(self, program, cluster, mode="modeling", rank=None):
         self._program = program
         self._cluster = cluster
-        self._dist_context = dist_context
         self._check_mode(mode)
         self._mode = mode
-        self._global_cost = None
-        self._local_cost = {}
+        self._rank = rank if rank is not None else paddle.distributed.get_rank()
+        self._global_cost = Cost()
+        self._local_cost_mapping = {}
+        # delta cost will be implemented in the future
+        self._detailed_cost = OrderedDict(
+        )  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
+        self._bubble_time_mapping = {}
+
+    @property
+    def detailed_cost(self):
+        return self._detailed_cost
 
     @property
     def program(self):
         return self._program
+
+    @property
+    def rank(self):
+        return self._rank
 
     @property
     def dist_context(self):
@@ -45,25 +60,147 @@ class CostEstimator:
 
     @property
     def global_cost(self):
+        max_time = 0
+        memory = 0
+        flops = 0
+        for rank in self._local_cost_mapping:
+            cost = self._local_cost_mapping[rank]
+            if cost.time > max_time:
+                max_time = cost.time
+            memory += cost.memory
+            flops += cost.memory
+        self._global_cost.time = max_time
+        self._global_cost.memory = memory
+        self._global_cost.flops = flops
         return self._global_cost
-
-    @property
-    def local_cost(self):
-        return self._local_cost
 
     def get_op_cost(self):
         return 0
 
+    def local_cost(self, rank=None):
+        rank = self.rank if rank is None else rank
+        if rank not in self._local_cost_mapping:
+            self._local_cost_mapping[rank] = Cost()
+
+        return self._local_cost_mapping[rank]
+
+    def local_bubble_time(self, rank=None):
+        rank = self.rank if rank is None else rank
+        return self._bubble_time_mapping[rank]
+
     def get_tensor_cost(self):
-        return 0
-
-    def get_global_cost(self):
-        return 0
-
-    def get_local_cost(self, rank=None):
         return 0
 
     def _check_mode(self, mode):
         if mode not in ["modeling", "profiling"]:
             raise ValueError(
                 "Just support modeling and profiling, but got {}".format(mode))
+
+    def estimate(self, dist_context, resharder=None):
+        def _is_special_var_name(var_name):
+            special_var_name = ["lod_tensor_blocking_queue_0"]
+            if var_name in special_var_name:
+                return True
+            return False
+
+        from ..reshard import Resharder
+        resharder = Resharder(self.program, None, self.rank, dist_context,
+                              []) if resharder is None else resharder
+
+        block = self.program.global_block()
+        ops = block.ops
+        vars = block.vars
+        for op in ops:
+            # print("id****", op.desc.id())
+            self._detailed_cost[op.desc.id()] = OrderedDict()
+            detail = self._detailed_cost[op.desc.id()]
+            detail["reshard_cost"] = OrderedDict()
+            for var_name in op.input_arg_names:
+                if _is_special_var_name(var_name):
+                    continue
+                var = vars[var_name]
+                reshard_cost = resharder.get_cost(op, var, self.cluster)
+                # calc reshard cost
+                if reshard_cost is not None:
+                    detail["reshard_cost"][var_name] = reshard_cost
+                    comm_costs = reshard_cost[0]
+                    local_comp_cost = reshard_cost[1]
+                    for comm_cost in comm_costs:
+                        # time is cumulative in global cost and local cost, but memory and flops just are cumulative in global cost.
+                        # comm sync
+                        for item in comm_cost:
+                            group_ranks, cost = item
+                            max_time = None
+                            cost_time = {}
+                            for rank in group_ranks:
+                                rank_cost = self.local_cost(rank)
+                                cost_time[rank] = rank_cost.time
+                                if max_time is None:
+                                    max_time = rank_cost.time
+                                else:
+                                    if max_time < rank_cost.time:
+                                        max_time = rank_cost.time
+
+                            for rank in group_ranks:
+                                self.local_cost(
+                                    rank).time = max_time + cost.time
+                                if rank not in self._bubble_time_mapping:
+                                    self._bubble_time_mapping[rank] = 0
+
+                                self._bubble_time_mapping[rank] += (
+                                    max_time - cost_time[rank])
+
+                    for rank in local_comp_cost:
+                        for comp_cost in local_comp_cost[rank]:
+                            self.local_cost(rank).time += comp_cost.time
+
+            if op.type in [
+                    "create_py_reader", "create_double_buffer_reader", "read"
+            ]:
+                continue
+
+            # calc dist op cost
+            dist_op = dist_context.get_dist_op_for_program(op)
+            op_dist_attr = dist_op.dist_attr
+            processes = op_dist_attr.process_mesh.processes
+
+            container = get_distributed_operator_impl_container(
+                op_dist_attr.impl_type)
+            dist_impl = container.impls[op_dist_attr.impl_idx]
+
+            dist_op_cost = dist_impl.calc_cost(
+                op.attr('op_role'), dist_op, dist_context, self.cluster)
+            detail["dist_op_cost"] = dist_op_cost
+            print("estimate dist op cost****", op)
+            print(dist_op_cost)
+            for item in dist_op_cost:
+                if isinstance(item, list):
+                    # comm sync
+                    for comm_op_cost in item:
+                        max_time = None
+                        cost_time = {}
+                        group_ranks = comm_op_cost.group_ranks
+                        for rank in comm_op_cost.group_ranks:
+                            rank_cost = self.local_cost(rank)
+                            cost_time[rank] = rank_cost.time
+                            if max_time is None:
+                                max_time = rank_cost.time
+                            else:
+                                if max_time < rank_cost.time:
+                                    max_time = rank_cost.time
+                        for rank in group_ranks:
+                            self.local_cost(
+                                rank).time = max_time + comm_op_cost.time
+                            if rank not in self._bubble_time_mapping:
+                                self._bubble_time_mapping[rank] = 0
+                            self._bubble_time_mapping[rank] += (
+                                max_time - cost_time[rank])
+                elif isinstance(item, dict):
+                    # op just one
+                    for rank in processes:
+                        # dp+pp+mp
+                        if rank not in item:
+                            continue
+                        self.local_cost(rank).time += item[rank].time
+
+        return self.global_cost

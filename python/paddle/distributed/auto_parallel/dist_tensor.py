@@ -41,7 +41,7 @@ class DistributedTensor:
                                       rank=None,
                                       shard_sizes=None):
         if not (isinstance(sizes, (list, tuple)) and
-                all(map(lambda x: isinstance(x, int) and x > 0, sizes))):
+                all(map(lambda x: isinstance(x, int) and x >= 0, sizes))):
             raise ValueError(
                 "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".
                 format(sizes))
