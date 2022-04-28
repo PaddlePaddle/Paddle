@@ -1302,3 +1302,61 @@ class HingeEmbeddingLoss(Layer):
             reduction=self.reduction,
             margin=self.margin,
             name=self.name)
+class SoftMarginLoss(Layer):
+    r"""
+    This op measures the soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
+    .. math::
+        Out = log(1 + exp((-label * input)))
+    And this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
+    Parameters:
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    Call Parameters:
+        input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``logit``
+            is usually the output of Linear layer. Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``logit``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``logit`` , else the shape of output is scalar.
+    Returns:
+        A callable object of SoftMarginLoss
+    Examples:
+        .. code-block:: python
+            import paddle
+            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            soft_margin_loss = paddle.nn.SoftMarginLoss()
+            output = soft_margin_loss(input, label)
+    """
+
+    def __init__(self,
+                 reduction='mean',
+                 name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+
+        super(SoftMarginLoss, self).__init__()
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        out = paddle.nn.functional.soft_margin_loss(
+            input,
+            label,
+            self.reduction,
+            self.name)
+        return out
