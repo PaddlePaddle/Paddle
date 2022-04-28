@@ -31,19 +31,6 @@ struct AddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a + b; }
 };
 template <typename T>
-struct AddPtrFunctor {
-  inline HOSTDEVICE std::vector<T> operator()(const T* a,
-                                              const T* b,
-                                              const int64_t len) const {
-    std::vector<T> res;
-    res.reserve(len);
-    for (int64_t i = 0; i < len; ++i) {
-      res.push_back(a[i] + b[i]);
-    }
-    return res;
-  }
-};
-template <typename T>
 struct InverseAddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
 };
@@ -54,19 +41,6 @@ struct SubtractFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a - b; }
 };
 template <typename T>
-struct SubtractPtrFunctor {
-  inline HOSTDEVICE std::vector<T> operator()(const T* a,
-                                              const T* b,
-                                              const int64_t len) const {
-    std::vector<T> res;
-    res.reserve(len);
-    for (int64_t i = 0; i < len; ++i) {
-      res.push_back(a[i] - b[i]);
-    }
-    return res;
-  }
-};
-template <typename T>
 struct InverseSubtractFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b - a; }
 };
@@ -75,19 +49,6 @@ struct InverseSubtractFunctor {
 template <typename T>
 struct MultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
-};
-template <typename T>
-struct MultiplyPtrFunctor {
-  inline HOSTDEVICE std::vector<T> operator()(const T* a,
-                                              const T* b,
-                                              const int64_t len) const {
-    std::vector<T> res;
-    res.reserve(len);
-    for (int64_t i = 0; i < len; ++i) {
-      res.push_back(a[i] * b[i]);
-    }
-    return res;
-  }
 };
 template <>
 struct MultiplyFunctor<bool> {
@@ -110,17 +71,6 @@ template <typename T>
 struct IsZeroFunctor {
   HOSTDEVICE bool operator()(T x) const { return x == static_cast<T>(0); }
 };
-template <typename T>
-struct IsZeroPtrFunctor {
-  inline HOSTDEVICE bool operator()(const T* x, const int64_t len) const {
-    for (int64_t i = 0; i < len; ++i) {
-      if (x[i] != static_cast<T>(0)) {
-        return false;
-      }
-    }
-    return true;
-  }
-};
 
 // Divide
 #define DIV_ERROR_INFO                                             \
@@ -130,20 +80,6 @@ struct IsZeroPtrFunctor {
 template <typename T, typename Enable = void>
 struct DivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
-};
-
-template <typename T, typename Enable = void>
-struct DividePtrFunctor {
-  inline HOSTDEVICE std::vector<T> operator()(const T* a,
-                                              const T* b,
-                                              const int64_t len) const {
-    std::vector<T> res(len, 0);
-    res.reserve(len);
-    for (int64_t i = 0; i < len; ++i) {
-      res[i] = a[i] / b[i];
-    }
-    return res;
-  }
 };
 
 template <typename T>

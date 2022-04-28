@@ -26,15 +26,35 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename T, typename IntT>
-inline bool IsEqual(const T* a, const T* b, const IntT len) {
-  for (IntT i = 0; i < len; ++i) {
-    if (a[i] != b[i]) {
-      return false;
+// template <typename T, typename IntT>
+// inline bool IsEqual(const T* a, const T* b, const IntT len) {
+//   for (IntT i = 0; i < len; ++i) {
+//     if (a[i] != b[i]) {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
+
+template <typename T, typename Functor>
+struct BinaryOPWithZeroCompareFunctor {
+  explicit BinaryOPWithZeroCompareFunctor(Functor functor)
+      : functor_(functor) {}
+  inline HOSTDEVICE bool operator()(const T* a,
+                                    const T* b,
+                                    T* result,
+                                    const int64_t len) const {
+    bool is_zero = true;
+    for (int64_t i = 0; i < len; ++i) {
+      result[i] = functor_(a[i], b[i]);
+      if (result[i] != 0) {
+        is_zero = false;
+      }
     }
+    return is_zero;
   }
-  return true;
-}
+  Functor functor_;
+};
 
 template <typename T, typename IntT, typename Functor>
 void Merge(const IntT el_len,
@@ -48,15 +68,16 @@ void Merge(const IntT el_len,
            IntT* c_index,
            T* c_values,
            IntT& nnz,
-           const Functor& functor) {
+           const Functor& functor_org,
+           const bool is_divide) {
   IntT a = 0;
   IntT b = 0;
   nnz = 0;
-  bool is_divide = std::is_same<Functor, funcs::DividePtrFunctor<T>>::value;
+  //  bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
   const IntT* b_index = nullptr;
   std::vector<IntT> b_full_index;
   const std::vector<T> zero(el_len, 0);
-  auto is_zero = funcs::IsZeroPtrFunctor<T>();
+  auto functor = BinaryOPWithZeroCompareFunctor<T, Functor>(functor_org);
 
   std::vector<const T*> b_values(len_b_max, zero.data());
   for (auto i = 0; i < len_b; ++i) {
@@ -75,9 +96,11 @@ void Merge(const IntT el_len,
   // merge
   while (a < len_a && b < (is_divide ? len_b_max : len_b)) {
     if (a_index[a] == b_index[b]) {
-      auto result =
-          functor(a_values + a * el_len, b_values[b_index[b]], el_len);
-      if (!is_zero(result.data(), result.size())) {
+      std::vector<T> result(el_len, 0);
+      if (!functor(a_values + a * el_len,
+                   b_values[b_index[b]],
+                   result.data(),
+                   el_len)) {
         c_index[nnz] = a_index[a];
         memcpy(
             c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
@@ -88,8 +111,8 @@ void Merge(const IntT el_len,
     }
     // coordinate x[a] < coordinate y[b]
     else if (a_index[a] < b_index[b]) {
-      auto result = functor(a_values + a * el_len, zero.data(), el_len);
-      if (!is_zero(result.data(), result.size())) {
+      std::vector<T> result(el_len, 0);
+      if (!functor(a_values + a * el_len, zero.data(), result.data(), el_len)) {
         c_index[nnz] = a_index[a];
         memcpy(
             c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
@@ -99,8 +122,8 @@ void Merge(const IntT el_len,
     }
     // coordinate x[a] > coordinate y[b]
     else if (a_index[a] > b_index[b]) {
-      auto result = functor(zero.data(), b_values[b_index[b]], el_len);
-      if (!is_zero(result.data(), result.size())) {
+      std::vector<T> result(el_len, 0);
+      if (!functor(zero.data(), b_values[b_index[b]], result.data(), el_len)) {
         c_index[nnz] = b_index[b];
         memcpy(
             c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
@@ -111,8 +134,8 @@ void Merge(const IntT el_len,
   }
   // a tail
   while (a < len_a) {
-    auto result = functor(a_values + a * el_len, zero.data(), el_len);
-    if (!is_zero(result.data(), result.size())) {
+    std::vector<T> result(el_len, 0);
+    if (!functor(a_values + a * el_len, zero.data(), result.data(), el_len)) {
       c_index[nnz] = a_index[a];
       memcpy(c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
       ++nnz;
@@ -121,8 +144,8 @@ void Merge(const IntT el_len,
   }
   //  b tail
   while (b < (is_divide ? len_b_max : len_b)) {
-    auto result = functor(zero.data(), b_values[b_index[b]], el_len);
-    if (!is_zero(result.data(), result.size())) {
+    std::vector<T> result(el_len, 0);
+    if (!functor(zero.data(), b_values[b_index[b]], result.data(), el_len)) {
       c_index[nnz] = b_index[b];
       memcpy(c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
       ++nnz;
@@ -131,7 +154,7 @@ void Merge(const IntT el_len,
   }
 }
 
-// SparseCooTensor elementwise op
+// SparseCooTensor elementwise op, only support same shape tensor now
 template <typename T, typename IntT, typename Context, typename Functor>
 void ElementWiseCooKernelImpl(const Context& dev_ctx,
                               const SparseCooTensor& x,
@@ -141,7 +164,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(x.dims(),
                     y.dims(),
                     phi::errors::InvalidArgument(
-                        "The input tensor X's shape "
+                        "Currently only support same shape elementwise "
+                        "compute. The input tensor X's shape "
                         "should be identical with Y's shape. But received X's "
                         "shape = [%s], Y's shape = [%s].",
                         x.dims(),
@@ -154,6 +178,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   const auto x_values = x.non_zero_elements().data<T>();
   const auto y_values = y.non_zero_elements().data<T>();
   const auto sparse_dim = x.non_zero_indices().dims()[0];
+  const bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
 
   int64_t max_len = 1;
   for (auto j = 0; j < sparse_dim; ++j) {
@@ -184,7 +209,11 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
 
   std::vector<IntT> out_indexs;
   std::vector<T> out_values_vec;
-  out_indexs.reserve(max_len);
+  if (is_divide) {
+    out_indexs.reserve(max_len);
+  } else {
+    out_indexs.reserve(x.nnz() + y.nnz());
+  }
   out_values_vec.reserve(max_len * element_size);
 
   //  merge x and y
@@ -199,7 +228,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                           out_indexs.data(),
                           out_values_vec.data(),
                           nnz,
-                          functor);
+                          functor,
+                          is_divide);
 
   std::vector<IntT> out_indices_vec;
   out_indices_vec.resize(nnz * sparse_dim);
@@ -250,22 +280,22 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
 }
 
-#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                             \
-  template <typename T, typename IntT, typename Context>                    \
-  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,              \
-                                       const SparseCsrTensor& x,            \
-                                       const SparseCsrTensor& y,            \
-                                       SparseCsrTensor* out) {              \
-    funcs::name##PtrFunctor<T> functor;                                     \
-    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                             \
-    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                             \
-    DenseTensor indeces;                                                    \
-    DenseTensor values;                                                     \
-    SparseCooTensor coo_out;                                                \
-    coo_out.SetMember(indeces, values, x.dims());                           \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##PtrFunctor<T>>( \
-        dev_ctx, coo_x, coo_y, &coo_out, functor);                          \
-    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                             \
+#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                          \
+  template <typename T, typename IntT, typename Context>                 \
+  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,           \
+                                       const SparseCsrTensor& x,         \
+                                       const SparseCsrTensor& y,         \
+                                       SparseCsrTensor* out) {           \
+    funcs::name##Functor<T> functor;                                     \
+    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                          \
+    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                          \
+    DenseTensor indeces;                                                 \
+    DenseTensor values;                                                  \
+    SparseCooTensor coo_out;                                             \
+    coo_out.SetMember(indeces, values, x.dims());                        \
+    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
+        dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
+    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                                   \
@@ -280,15 +310,15 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         }));                                                                  \
   }
 
-#define DEFINE_COO_ELEMENTWISE_CPU_KERNEL(name)                             \
-  template <typename T, typename IntT, typename Context>                    \
-  void ElementWise##name##CooCPUKernel(const Context& dev_ctx,              \
-                                       const SparseCooTensor& x,            \
-                                       const SparseCooTensor& y,            \
-                                       SparseCooTensor* out) {              \
-    funcs::name##PtrFunctor<T> functor;                                     \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##PtrFunctor<T>>( \
-        dev_ctx, x, y, out, functor);                                       \
+#define DEFINE_COO_ELEMENTWISE_CPU_KERNEL(name)                          \
+  template <typename T, typename IntT, typename Context>                 \
+  void ElementWise##name##CooCPUKernel(const Context& dev_ctx,           \
+                                       const SparseCooTensor& x,         \
+                                       const SparseCooTensor& y,         \
+                                       SparseCooTensor* out) {           \
+    funcs::name##Functor<T> functor;                                     \
+    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
+        dev_ctx, x, y, out, functor);                                    \
   }
 
 #define DEFINE_COO_ELEMENTWISE_KERNEL(name)                               \
