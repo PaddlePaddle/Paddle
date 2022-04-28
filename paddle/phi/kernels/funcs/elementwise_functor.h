@@ -29,6 +29,9 @@ namespace funcs {
 template <typename T>
 struct AddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a + b; }
+};
+template <typename T>
+struct AddPtrFunctor {
   inline HOSTDEVICE std::vector<T> operator()(const T* a,
                                               const T* b,
                                               const int64_t len) const {
@@ -49,6 +52,9 @@ struct InverseAddFunctor {
 template <typename T>
 struct SubtractFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a - b; }
+};
+template <typename T>
+struct SubtractPtrFunctor {
   inline HOSTDEVICE std::vector<T> operator()(const T* a,
                                               const T* b,
                                               const int64_t len) const {
@@ -69,6 +75,9 @@ struct InverseSubtractFunctor {
 template <typename T>
 struct MultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
+};
+template <typename T>
+struct MultiplyPtrFunctor {
   inline HOSTDEVICE std::vector<T> operator()(const T* a,
                                               const T* b,
                                               const int64_t len) const {
@@ -100,6 +109,9 @@ struct InverseMultiplyFunctor<bool> {
 template <typename T>
 struct IsZeroFunctor {
   HOSTDEVICE bool operator()(T x) const { return x == static_cast<T>(0); }
+};
+template <typename T>
+struct IsZeroPtrFunctor {
   inline HOSTDEVICE bool operator()(const T* x, const int64_t len) const {
     for (int64_t i = 0; i < len; ++i) {
       if (x[i] != static_cast<T>(0)) {
@@ -118,6 +130,10 @@ struct IsZeroFunctor {
 template <typename T, typename Enable = void>
 struct DivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
+};
+
+template <typename T, typename Enable = void>
+struct DividePtrFunctor {
   inline HOSTDEVICE std::vector<T> operator()(const T* a,
                                               const T* b,
                                               const int64_t len) const {

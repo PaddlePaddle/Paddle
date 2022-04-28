@@ -52,11 +52,11 @@ void Merge(const IntT el_len,
   IntT a = 0;
   IntT b = 0;
   nnz = 0;
-  bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
+  bool is_divide = std::is_same<Functor, funcs::DividePtrFunctor<T>>::value;
   const IntT* b_index = nullptr;
   std::vector<IntT> b_full_index;
   const std::vector<T> zero(el_len, 0);
-  auto is_zero = funcs::IsZeroFunctor<T>();
+  auto is_zero = funcs::IsZeroPtrFunctor<T>();
 
   std::vector<const T*> b_values(len_b_max, zero.data());
   for (auto i = 0; i < len_b; ++i) {
@@ -250,22 +250,22 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
 }
 
-#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                          \
-  template <typename T, typename IntT, typename Context>                 \
-  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,           \
-                                       const SparseCsrTensor& x,         \
-                                       const SparseCsrTensor& y,         \
-                                       SparseCsrTensor* out) {           \
-    funcs::name##Functor<T> functor;                                     \
-    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                          \
-    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                          \
-    DenseTensor indeces;                                                 \
-    DenseTensor values;                                                  \
-    SparseCooTensor coo_out;                                             \
-    coo_out.SetMember(indeces, values, x.dims());                        \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
-        dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
+#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                             \
+  template <typename T, typename IntT, typename Context>                    \
+  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,              \
+                                       const SparseCsrTensor& x,            \
+                                       const SparseCsrTensor& y,            \
+                                       SparseCsrTensor* out) {              \
+    funcs::name##PtrFunctor<T> functor;                                     \
+    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                             \
+    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                             \
+    DenseTensor indeces;                                                    \
+    DenseTensor values;                                                     \
+    SparseCooTensor coo_out;                                                \
+    coo_out.SetMember(indeces, values, x.dims());                           \
+    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##PtrFunctor<T>>( \
+        dev_ctx, coo_x, coo_y, &coo_out, functor);                          \
+    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                             \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                                   \
@@ -280,18 +280,18 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         }));                                                                  \
   }
 
-#define DEFINE_ELEMENTWISE_COO_CPU_KERNEL(name)                          \
-  template <typename T, typename IntT, typename Context>                 \
-  void ElementWise##name##CooCPUKernel(const Context& dev_ctx,           \
-                                       const SparseCooTensor& x,         \
-                                       const SparseCooTensor& y,         \
-                                       SparseCooTensor* out) {           \
-    funcs::name##Functor<T> functor;                                     \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
-        dev_ctx, x, y, out, functor);                                    \
+#define DEFINE_COO_ELEMENTWISE_CPU_KERNEL(name)                             \
+  template <typename T, typename IntT, typename Context>                    \
+  void ElementWise##name##CooCPUKernel(const Context& dev_ctx,              \
+                                       const SparseCooTensor& x,            \
+                                       const SparseCooTensor& y,            \
+                                       SparseCooTensor* out) {              \
+    funcs::name##PtrFunctor<T> functor;                                     \
+    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##PtrFunctor<T>>( \
+        dev_ctx, x, y, out, functor);                                       \
   }
 
-#define DEFINE_ELEMENTWISE_COO_KERNEL(name)                               \
+#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                               \
   template <typename T, typename Context>                                 \
   void ElementWise##name##CooKernel(const Context& dev_ctx,               \
                                     const SparseCooTensor& x,             \
@@ -315,15 +315,15 @@ DEFINE_CSR_ELEMENTWISE_KERNEL(Subtract)
 DEFINE_CSR_ELEMENTWISE_KERNEL(Multiply)
 DEFINE_CSR_ELEMENTWISE_KERNEL(Divide)
 
-DEFINE_ELEMENTWISE_COO_CPU_KERNEL(Add)
-DEFINE_ELEMENTWISE_COO_CPU_KERNEL(Subtract)
-DEFINE_ELEMENTWISE_COO_CPU_KERNEL(Multiply)
-DEFINE_ELEMENTWISE_COO_CPU_KERNEL(Divide)
+DEFINE_COO_ELEMENTWISE_CPU_KERNEL(Add)
+DEFINE_COO_ELEMENTWISE_CPU_KERNEL(Subtract)
+DEFINE_COO_ELEMENTWISE_CPU_KERNEL(Multiply)
+DEFINE_COO_ELEMENTWISE_CPU_KERNEL(Divide)
 
-DEFINE_ELEMENTWISE_COO_KERNEL(Add)
-DEFINE_ELEMENTWISE_COO_KERNEL(Subtract)
-DEFINE_ELEMENTWISE_COO_KERNEL(Multiply)
-DEFINE_ELEMENTWISE_COO_KERNEL(Divide)
+DEFINE_COO_ELEMENTWISE_KERNEL(Add)
+DEFINE_COO_ELEMENTWISE_KERNEL(Subtract)
+DEFINE_COO_ELEMENTWISE_KERNEL(Multiply)
+DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 
 }  // namespace sparse
 }  // namespace phi
