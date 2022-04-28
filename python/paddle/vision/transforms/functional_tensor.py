@@ -193,6 +193,39 @@ def _grid_transform(img, grid, mode, fill):
     return img
 
 
+def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
+    """Affine to the image by matrix.
+
+    Args:
+        img (paddle.Tensor): Image to be rotated.
+        matrix (float or int): Affine matrix parameters.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest" 
+            - "bilinear"
+            - "bicubic"
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        paddle.Tensor: Affined image.
+
+    """
+    matrix = paddle.to_tensor(matrix, place=img.place)
+    matrix = matrix.reshape((1, 2, 3))
+    shape = img.shape
+
+    grid = _affine_grid(
+        matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2])
+
+    out = _grid_transform(img, grid, mode=interpolation, fill=fill)
+
+    out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
+
+    return out.squeeze(0)
+
+
 def rotate(img,
            angle,
            interpolation='nearest',
@@ -514,39 +547,3 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         data_format='N' + data_format.upper())
 
     return img.squeeze(0)
-
-
-def affine(img,
-           matrix,
-           interpolation="nearest",
-           fill=None,
-           data_format='CHW'):
-    """Affine to the image by matrix.
-
-    Args:
-        img (paddle.Tensor): Image to be rotated.
-        matrix (float or int): Affine parameters.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest" 
-            - "bilinear"
-            - "bicubic"
-        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
-            If int, it is used for all channels respectively.
-
-    Returns:
-        paddle.Tensor: Affined image.
-
-    """
-    matrix = paddle.to_tensor(matrix, place=img.place)
-    matrix = matrix.reshape((1, 2, 3))
-    shape = img.shape
-
-    grid = _affine_grid(matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2])
-
-    out = _grid_transform(img, grid, mode=interpolation, fill=fill)
-
-    out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
-
-    return out.squeeze(0)

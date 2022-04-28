@@ -411,6 +411,50 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
+def affine(img, matrix, interpolation='nearest', fill=0):
+    """Affine the image by matrix.
+
+    Args:
+        img (PIL.Image): Image to be affined.
+        matrix (float or int): Affine matrix parameters.
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        np.array: Affined image.
+
+    """
+    cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+
+    h, w = img.shape[0:2]
+
+    if len(img.shape) == 3 and img.shape[2] == 1:
+        return cv2.warpAffine(
+            img,
+            matrix, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(
+            img,
+            matrix, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
+
+
 def rotate(img,
            angle,
            interpolation='nearest',
@@ -564,52 +608,3 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
     img = (img - mean) / std
     return img
-
-
-def affine(img,
-           matrix,
-           interpolation='nearest',
-           fill=0):
-    """Affine the image by matrix.
-
-    Args:
-        img (PIL.Image): Image to be affined.
-        matrix (float or int): Affine parameters.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
-            - "bicubic": Image.BICUBIC
-        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
-            If int, it is used for all channels respectively.
-
-    Returns:
-        np.array: Affined image.
-
-    """
-    cv2 = try_import('cv2')
-    _cv2_interp_from_str = {
-        'nearest': cv2.INTER_NEAREST,
-        'bilinear': cv2.INTER_LINEAR,
-        'area': cv2.INTER_AREA,
-        'bicubic': cv2.INTER_CUBIC,
-        'lanczos': cv2.INTER_LANCZOS4
-    }
-
-    h, w = img.shape[0:2]
-
-    if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpAffine(
-            img,
-            matrix,
-            (w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)[:, :, np.newaxis]
-    else:
-        return cv2.warpAffine(
-            img,
-            matrix,
-            (w, h),
-            flags=_cv2_interp_from_str[interpolation],
-            borderValue=fill)

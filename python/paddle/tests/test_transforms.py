@@ -123,6 +123,23 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_affine(self):
+        trans = transforms.Compose([
+            transforms.RandomAffine(90),
+            transforms.RandomAffine(
+                [-10, 10], translate=[0.1, 0.3]),
+            transforms.RandomAffine(
+                45, translate=[0.2, 0.2], scale=[0.2, 0.5]),
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40]),
+        ])
+        self.do_transform(trans)
+
     def test_rotate(self):
         trans = transforms.Compose([
             transforms.RandomRotation(90),
@@ -131,17 +148,6 @@ class TestTransformsCV2(unittest.TestCase):
                 45, expand=True),
             transforms.RandomRotation(
                 10, expand=True, center=(60, 80)),
-        ])
-        self.do_transform(trans)
-
-    def test_affine(self):
-        trans = transforms.Compose([
-            transforms.RandomAffine(90),
-            transforms.RandomAffine([-10, 10], translate=[0.2, 0.2]),
-            transforms.RandomAffine(
-                45, translate=[0.2, 0.2], scale=[0.5, 0.5]),
-            transforms.RandomAffine(
-                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
         ])
         self.do_transform(trans)
 
@@ -667,6 +673,22 @@ class TestFunctional(unittest.TestCase):
 
         os.remove(path)
 
+    def test_affine(self):
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np_affined_img = F.affine(np_img, 4)
+        pil_affined_img = F.affine(pil_img, 4)
+        tensor_affined_img = F.affine(tensor_img, 4)
+
+        np.testing.assert_almost_equal(np_affined_img,
+                                       np.array(pil_affined_img))
+        np.testing.assert_almost_equal(
+            np_affined_img,
+            tensor_affined_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
+
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
@@ -700,22 +722,6 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
-
-    def test_affine(self):
-        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
-        pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
-
-        np_affined_img = F.affine(np_img, 4)
-        pil_affined_img = F.affine(pil_img, 4)
-        tensor_affined_img = F.affine(tensor_img, 4)
-
-        np.testing.assert_almost_equal(np_affined_img,
-                                       np.array(pil_affined_img))
-        np.testing.assert_almost_equal(
-            np_affined_img,
-            tensor_affined_img.numpy().transpose((1, 2, 0)),
-            decimal=4)
 
 
 if __name__ == '__main__':
