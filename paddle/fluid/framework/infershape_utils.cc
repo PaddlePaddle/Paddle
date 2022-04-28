@@ -685,6 +685,14 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   BOOST_GET_CONST(std::vector<std::string>, attr));
               break;
+            case phi::AttributeType::BOOLS:
+              infer_meta_context.EmplaceBackAttr(
+                  BOOST_GET_CONST(std::vector<bool>, attr));
+              break;
+            case phi::AttributeType::FLOAT64S:
+              infer_meta_context.EmplaceBackAttr(
+                  BOOST_GET_CONST(std::vector<double>, attr));
+              break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` when construct "
