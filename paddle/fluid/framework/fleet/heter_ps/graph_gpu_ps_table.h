@@ -83,10 +83,15 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
     // }
   }
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
-  NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
-  NeighborSampleResult *graph_neighbor_sample(int gpu_id, int64_t *key,
-                                              int sample_size, int len);
-  NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
+  NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
+  NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
+                                                bool cpu_switch);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
+                                             int sample_size, int len);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int64_t *key,
+                                                int sample_size, int len,
+                                                bool cpu_query_switch);
+  NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,

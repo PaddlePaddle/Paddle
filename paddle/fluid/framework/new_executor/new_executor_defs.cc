@@ -365,6 +365,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
   return GetDims(vars);
 }
 
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
+}
+
 std::vector<proto::VarType::Type>
 InterpretercoreInferShapeContext::GetInputsVarType(
     const std::string& name) const {
@@ -391,6 +396,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
     const std::string& name, const std::vector<DDim>& dims) {
   auto& vars = OutputVars(name);
   SetDims(vars, dims);
+}
+
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
 }
 
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
@@ -753,6 +768,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {

@@ -429,8 +429,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
+
   // set runtime_ctx and infershape_ctx_
-  instr_node->ResetContext(ins_map, outs_map);
+  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
+                                                        // kernel
+    Scope* local_scope = create_local_scope_
+                             ? global_scope_->GetMutableLocalScope()
+                             : global_scope_->GetMutableScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+  } else {
+    instr_node->ResetContext(ins_map, outs_map);
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
