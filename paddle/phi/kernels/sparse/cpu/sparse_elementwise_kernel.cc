@@ -26,16 +26,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-// template <typename T, typename IntT>
-// inline bool IsEqual(const T* a, const T* b, const IntT len) {
-//   for (IntT i = 0; i < len; ++i) {
-//     if (a[i] != b[i]) {
-//       return false;
-//     }
-//   }
-//   return true;
-// }
-
 template <typename T, typename Functor>
 struct BinaryOPWithZeroCompareFunctor {
   explicit BinaryOPWithZeroCompareFunctor(Functor functor)
@@ -73,7 +63,6 @@ void Merge(const IntT el_len,
   IntT a = 0;
   IntT b = 0;
   nnz = 0;
-  //  bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
   const IntT* b_index = nullptr;
   std::vector<IntT> b_full_index;
   const std::vector<T> zero(el_len, 0);
@@ -96,14 +85,11 @@ void Merge(const IntT el_len,
   // merge
   while (a < len_a && b < (is_divide ? len_b_max : len_b)) {
     if (a_index[a] == b_index[b]) {
-      std::vector<T> result(el_len, 0);
       if (!functor(a_values + a * el_len,
                    b_values[b_index[b]],
-                   result.data(),
+                   c_values + nnz * el_len,
                    el_len)) {
         c_index[nnz] = a_index[a];
-        memcpy(
-            c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
         ++nnz;
       }
       ++a;
@@ -111,22 +97,22 @@ void Merge(const IntT el_len,
     }
     // coordinate x[a] < coordinate y[b]
     else if (a_index[a] < b_index[b]) {
-      std::vector<T> result(el_len, 0);
-      if (!functor(a_values + a * el_len, zero.data(), result.data(), el_len)) {
+      if (!functor(a_values + a * el_len,
+                   zero.data(),
+                   c_values + nnz * el_len,
+                   el_len)) {
         c_index[nnz] = a_index[a];
-        memcpy(
-            c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
         ++nnz;
       }
       ++a;
     }
     // coordinate x[a] > coordinate y[b]
     else if (a_index[a] > b_index[b]) {
-      std::vector<T> result(el_len, 0);
-      if (!functor(zero.data(), b_values[b_index[b]], result.data(), el_len)) {
+      if (!functor(zero.data(),
+                   b_values[b_index[b]],
+                   c_values + nnz * el_len,
+                   el_len)) {
         c_index[nnz] = b_index[b];
-        memcpy(
-            c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
         ++nnz;
       }
       ++b;
@@ -134,20 +120,22 @@ void Merge(const IntT el_len,
   }
   // a tail
   while (a < len_a) {
-    std::vector<T> result(el_len, 0);
-    if (!functor(a_values + a * el_len, zero.data(), result.data(), el_len)) {
+    if (!functor(a_values + a * el_len,
+                 zero.data(),
+                 c_values + nnz * el_len,
+                 el_len)) {
       c_index[nnz] = a_index[a];
-      memcpy(c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
       ++nnz;
     }
     ++a;
   }
   //  b tail
   while (b < (is_divide ? len_b_max : len_b)) {
-    std::vector<T> result(el_len, 0);
-    if (!functor(zero.data(), b_values[b_index[b]], result.data(), el_len)) {
+    if (!functor(zero.data(),
+                 b_values[b_index[b]],
+                 c_values + nnz * el_len,
+                 el_len)) {
       c_index[nnz] = b_index[b];
-      memcpy(c_values + nnz * el_len, result.data(), sizeof(T) * result.size());
       ++nnz;
     }
     ++b;
