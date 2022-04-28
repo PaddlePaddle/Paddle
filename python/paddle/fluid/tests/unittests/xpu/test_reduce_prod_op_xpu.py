@@ -131,6 +131,12 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.axis = (3, 4, 5)
             self.keep_dim = True
 
+    class TestReduceAll(TestXPUReduceProdOp):
+        def initTestCase(self):
+            self.shape = (5, 6, 2, 10)
+            self.axis = (0, )
+            self.reduce_all = True
+
 
 support_types = get_xpu_op_support_types('reduce_prod')
 for stype in support_types:

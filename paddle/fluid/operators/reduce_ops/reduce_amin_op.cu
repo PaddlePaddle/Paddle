@@ -12,24 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#endif
-
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-#ifdef PADDLE_WITH_XPU_KP
-REGISTER_OP_KERNEL(reduce_amax, KP, plat::XPUPlace,
-    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>);
-#else
+// reduce_min
 REGISTER_OP_CUDA_KERNEL(
-    reduce_amax,
-    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);
-#endif
+    reduce_amin,
+    ops::ReduceCudaKernel<float, kps::MinFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<double, kps::MinFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int, kps::MinFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::MinFunctor, kps::IdentityFunctor>);
