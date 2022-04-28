@@ -122,6 +122,7 @@ void TestShardSendRecv(
 void PressTestSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
   // long l = 0, m = 0;
+  // https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/send_20_34
   std::ifstream file("/send_20_34", std::ios::in | std::ios::binary);
   // l = file.tellg();
   // file.seekg(0, std::ios::end);
@@ -129,13 +130,13 @@ void PressTestSendRecv(
   // file.close();
   // VLOG(0) << "size of file " << "20_34" << " is " << (m - l) << " bytes.\n";
   int64_t vars_len = 2359296 * sizeof(float);
-  int64_t data_size = vars_len * sizeof(float);
+  int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
   file.read((char*)data_ptr, 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
-  int loopCnt = 600;
+  int loopCnt = 10000;
   auto send_async = [&]() -> void {
     int i = 0;
     while (i++ < loopCnt) {
@@ -254,8 +255,8 @@ TEST(HETERSENDANDRECV, CPU) {
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
   // TestScopeSendRecv(heter_client_ptr_);
-  TestShardSendRecv(heter_client_ptr_);
-  // PressTestSendRecv(heter_client_ptr_);
+  // TestShardSendRecv(heter_client_ptr_);
+  PressTestSendRecv(heter_client_ptr_);
 
   switch_server_ptr_a->Stop();
   LOG(INFO) << "switch server A stopped";

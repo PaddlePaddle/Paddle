@@ -1440,6 +1440,66 @@ void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_GE(downscale_factor,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "downscale_factor should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[2] % downscale_factor) == 0 &&
+            (input_dims[3] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[2],
+                                     input_dims[3]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[1] % downscale_factor) == 0 &&
+            (input_dims[2] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[1],
+                                     input_dims[2]));
+  }
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] / downscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] / downscale_factor;
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
                     int axis,
@@ -2975,7 +3035,7 @@ void UnStackInferMeta(const MetaTensor& x,
 }
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out) {
@@ -2985,7 +3045,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
   auto out_dims_vec = phi::vectorize(x_dims);
-  out_dims_vec.push_back(depth);
+  out_dims_vec.push_back(depth.to<int>());
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);

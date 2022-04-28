@@ -6781,7 +6781,10 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    from collections import Iterable
+    try:
+        from collections.abc import Iterable
+    except:
+        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
