@@ -48,6 +48,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -1641,7 +1642,9 @@ AnalysisPredictor::~AnalysisPredictor() {
     StatisticShapeRangeInfo();
   }
 
-  memory::Release(place_);
+  if (place_.GetType() != phi::AllocationType::UNDEFINED) {
+    memory::Release(place_);
+  }
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
