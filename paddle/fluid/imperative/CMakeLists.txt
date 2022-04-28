@@ -1,5 +1,6 @@
 cc_library(imperative_flag SRCS flags.cc DEPS gflags flags)
 cc_library(var_helper SRCS var_helper.cc DEPS tensor phi_api)
+cc_library(offload_scheduler SRCS offload_scheduler.cc DEPS nccl_tool layer tensor device_context)
 IF(WITH_XPU)
 cc_library(prepared_operator SRCS prepared_operator.cc DEPS xpu_op_list proto_desc operator device_context lod_tensor selected_rows_utils var_type_traits op_kernel_type data_transform nan_inf_utils phi_api phi phi_utils var_helper)
 ELSE()

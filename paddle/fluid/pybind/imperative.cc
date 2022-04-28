@@ -48,6 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
+#include "paddle/fluid/imperative/offload_scheduler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -2240,6 +2241,17 @@ void BindImperative(py::module *m_ptr) {
                     const std::vector<size_t> &, bool>())
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::arg("vars"), py::call_guard<py::gil_scoped_release>());
+  
+  py::class_<imperative::OffloadScheduler, std::shared_ptr<imperative::OffloadScheduler>>(
+      m, "OffloadScheduler", R"DOC()DOC")
+      .def(py::init<const std::vector<std::shared_ptr<imperative::VarBase>> &,
+                    const Place &, const Place &, const int64_t>())
+      .def("copy_var_to_gpu", &imperative::OffloadScheduler::CopyVarToGPUPlace,
+           py::arg("var_index"), py::arg("device_id"),
+           py::call_guard<py::gil_scoped_release>())
+      .def("wait_stream_for_copy", &imperative::OffloadScheduler::WaitStreamForCopyVar,
+           py::arg("var_index"), py::arg("device_id"),
+           py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),
