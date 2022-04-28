@@ -18,10 +18,13 @@ endif()
 
 if (WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
-  set(PYBIND_DEPS ${PYBIND_DEPS} offload_scheduler)
 endif()
 if (WITH_IPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} ipu_info)
+endif()
+
+if (WITH_NCCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} offload_scheduler)
 endif()
 
 if (WITH_NCCL OR WITH_RCCL)
