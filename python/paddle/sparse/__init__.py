@@ -14,6 +14,7 @@
 
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
+from .math import add, multiply, subtract, divide
 from .layer.activation import ReLU
 from .layer.norm import BatchNorm
 
@@ -22,7 +23,16 @@ from .layer.conv import SubmConv3D
 
 from .layer.pooling import MaxPool3D
 
-__all__ = [
-    'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D', 'SubmConv3D',
-    'BatchNorm', 'MaxPool3D'
+__all__ = [ #noqa
+    'sparse_coo_tensor',
+    'sparse_csr_tensor',
+    'ReLU',
+    'add',
+    'subtract',
+    'multiply',
+    'divide',
+    'Conv3D',
+    'SubmConv3D',
+    'BatchNorm',
+    'MaxPool3D'
 ]
