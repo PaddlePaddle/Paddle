@@ -24,6 +24,7 @@ from ..fluid.framework import _in_legacy_dygraph
 from paddle import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from collections import Counter
 
 from paddle.common_ops_import import dygraph_only
@@ -795,6 +796,9 @@ def gen_einsum_op(equation, *operands):
     EinsumOp Python Interface: 
     """
     assert len(operands) <= 2, "Only support two operands in EinsumOp."
+    if in_dygraph_mode():
+        return _C_ops.final_state_einsum(operands, equation)
+
     if _in_legacy_dygraph():
         # dygraph
         return _C_ops.einsum(operands, 'equation', equation)

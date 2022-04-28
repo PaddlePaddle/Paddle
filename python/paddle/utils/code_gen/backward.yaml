@@ -445,6 +445,16 @@
   kernel :
     func : eigh_grad
 
+- backward_api : einsum_grad
+  forward : einsum (Tensor[] x, str equation) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, str equation)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [x]
+  kernel :
+    func : einsum_grad
+
 - backward_api : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis=-1)
@@ -1498,7 +1508,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : sigmoid_cross_entropy_with_logits_grad 
+    func : sigmoid_cross_entropy_with_logits_grad
 
 - backward_api : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)

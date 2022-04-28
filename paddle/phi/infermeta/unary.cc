@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/impl/einsum_impl.h"
 
 namespace phi {
 
@@ -396,6 +397,45 @@ void EighInferMeta(const MetaTensor& x,
   }
   out_w->set_dims(phi::make_ddim(values_dim));
   out_v->set_dims(input_dim);
+}
+
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out) {
+  // collect the following informations to prepare einsum.
+  LabelMap labelshape(0);
+  LabelMap labeltype(LabelType::Reduction);
+  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
+  std::vector<char> all_labels;
+  std::vector<int> broadcast_dims;
+  std::vector<int> output_dims;
+  std::vector<std::vector<int>> ellipsis_dims(2);
+
+  std::vector<DDim> input_dims;
+  for (auto& i : inputs) {
+    input_dims.push_back(i->dims());
+  }
+  std::string right;
+  ParseEinsumEquation(equation,
+                      input_dims,
+                      &labelshape,
+                      &labeltype,
+                      &all_labels,
+                      &label2perms,
+                      &ellipsis_dims,
+                      &broadcast_dims,
+                      &output_dims,
+                      &right);
+
+  VLOG(3) << "Einsum Infershape: input dims:"
+          << paddle::string::join_strings(input_dims, "\n");
+  VLOG(3) << "Einsum Infershape: equation:" << equation;
+  VLOG(3) << "Einsum Infershape: all_labels:"
+          << paddle::string::join_strings(all_labels, ",");
+  VLOG(3) << "Einsum Infershape: output dims:"
+          << paddle::string::join_strings(output_dims, ",");
+  VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
+  VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
 }
 
 void ExpandInferMeta(const MetaTensor& x,

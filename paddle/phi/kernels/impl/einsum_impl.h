@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -21,6 +20,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 namespace phi {
+
 // check the validation of the Einsum equation.
 // 1. the label must between 'a' - 'z'.
 // 2. the dim of the same label must be same.
@@ -300,45 +300,6 @@ inline static void ParseEinsumEquation(
     InferLabelPerm(
         op_labels[i], ellipsis_dims->at(i).size(), &((*label2perms)[i]));
   }
-}
-
-inline void EinsumInferShape(const std::vector<const MetaTensor*>& inputs,
-                             const std::string& equation,
-                             MetaTensor* out) {
-  // collect the following informations to prepare einsum.
-  LabelMap labelshape(0);
-  LabelMap labeltype(LabelType::Reduction);
-  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
-  std::vector<char> all_labels;
-  std::vector<int> broadcast_dims;
-  std::vector<int> output_dims;
-  std::vector<std::vector<int>> ellipsis_dims(2);
-
-  std::vector<DDim> input_dims;
-  for (auto& i : inputs) {
-    input_dims.push_back(i->dims());
-  }
-  std::string right;
-  ParseEinsumEquation(equation,
-                      input_dims,
-                      &labelshape,
-                      &labeltype,
-                      &all_labels,
-                      &label2perms,
-                      &ellipsis_dims,
-                      &broadcast_dims,
-                      &output_dims,
-                      &right);
-
-  VLOG(3) << "Einsum Infershape: input dims:"
-          << paddle::string::join_strings(input_dims, "\n");
-  VLOG(3) << "Einsum Infershape: equation:" << equation;
-  VLOG(3) << "Einsum Infershape: all_labels:"
-          << paddle::string::join_strings(all_labels, ",");
-  VLOG(3) << "Einsum Infershape: output dims:"
-          << paddle::string::join_strings(output_dims, ",");
-  VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
-  VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
 }
 
 template <typename T>
