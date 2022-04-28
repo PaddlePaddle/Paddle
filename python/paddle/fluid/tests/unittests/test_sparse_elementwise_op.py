@@ -43,14 +43,15 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2022)
         self.op_list = [__add__, __sub__, __mul__, __truediv__]
-        self.shape = [128, 256]
+        self.csr_shape = [128, 256]
+        self.coo_shape = [4, 8, 3, 5]
         self.support_dtypes = ['float32', 'float64']
 
     def func_support_dtypes_csr(self):
         for op in self.op_list:
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
                 dense_x = paddle.to_tensor(x).astype(dtype)
                 dense_y = paddle.to_tensor(y).astype(dtype)
                 csr_x = dense_x.to_sparse_csr()
@@ -66,8 +67,8 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     def func_support_dtypes_coo(self):
         for op in self.op_list:
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
                 dense_x = paddle.to_tensor(x).astype(dtype)
                 dense_y = paddle.to_tensor(y).astype(dtype)
                 coo_x = dense_x.to_sparse_coo(2)
