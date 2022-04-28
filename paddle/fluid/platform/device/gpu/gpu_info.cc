@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -48,6 +49,12 @@ DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
 DECLARE_uint64(gpu_memory_limit_mb);
+
+#ifdef PADDLE_WITH_TESTING
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log, false,
+                            "Whether to print the message of gpu memory usage "
+                            "at exit, mainly used for UT and CI.");
+#endif
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -142,6 +149,15 @@ class RecordedGpuMallocHelper {
   DISABLE_COPY_AND_ASSIGN(RecordedGpuMallocHelper);
 
  public:
+  ~RecordedGpuMallocHelper() {
+#ifdef PADDLE_WITH_TESTING
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : "
+                << peak_size_ << std::endl;
+    }
+#endif
+  }
+
   static RecordedGpuMallocHelper *Instance(int dev_id) {
     std::call_once(once_flag_, [] {
       int dev_cnt = GetGPUDeviceCount();
@@ -200,6 +216,7 @@ class RecordedGpuMallocHelper {
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
+      peak_size_ = std::max(cur_size_.load(), peak_size_);
 #endif
 
       return gpuSuccess;
@@ -322,6 +339,7 @@ class RecordedGpuMallocHelper {
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
+  uint64_t peak_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
 

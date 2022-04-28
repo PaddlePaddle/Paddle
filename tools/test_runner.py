@@ -29,6 +29,10 @@ import static_mode_white_list
 
 def main():
     sys.path.append(os.getcwd())
+    if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
+        if (os.getenv('FLAGS_enable_gpu_memory_usage_log') == None):
+            os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
+
     some_test_failed = False
     for module_name in sys.argv[1:]:
         flag_need_static_mode = False
@@ -46,15 +50,6 @@ def main():
                     module = importlib.import_module(module_name)
                     tests = test_loader.loadTestsFromModule(module)
                     res = unittest.TextTestRunner(stream=buffer).run(tests)
-
-                    if core.is_compiled_with_cuda():
-                        print("\n========GPU Memory Usage (Bytes)========")
-                        dev_count = core.get_cuda_device_count()
-                        for dev_id in range(dev_count):
-                            print(
-                                f"[max memory reserved] gpu {dev_id} : {paddle.device.cuda.max_memory_reserved(dev_id)}"
-                            )
-                        print("========================================")
 
                     if not res.wasSuccessful():
                         some_test_failed = True

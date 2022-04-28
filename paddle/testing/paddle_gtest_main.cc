@@ -20,9 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/memory/stats.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
 int main(int argc, char** argv) {
@@ -86,6 +85,13 @@ int main(int argc, char** argv) {
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (strstr(undefok_str, "enable_gpu_memory_usage_log")) {
+    VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
+    FLAGS_enable_gpu_memory_usage_log = true;
+  }
+#endif
+
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
@@ -94,18 +100,6 @@ int main(int argc, char** argv) {
   paddle::framework::InitDefaultKernelSignatureMap();
 
   int ret = RUN_ALL_TESTS();
-
-#ifdef PADDLE_WITH_CUDA
-  std::cout << std::endl
-            << "========GPU Memory Usage (Bytes)========" << std::endl;
-  for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
-       ++dev_id) {
-    int64_t peak_value = MEMORY_STAT_PEAK_VALUE(Reserved, dev_id);
-    std::cout << "[max memory reserved] gpu " << dev_id << " : " << peak_value
-              << std::endl;
-  }
-  std::cout << "========================================" << std::endl;
-#endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
   paddle::platform::AclInstance::Instance().Finalize();
