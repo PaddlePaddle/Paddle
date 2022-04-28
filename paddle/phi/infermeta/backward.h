@@ -68,6 +68,11 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CummaxGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& indices,
+                         const MetaTensor& out_grad,
+                         MetaTensor* x_grad);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

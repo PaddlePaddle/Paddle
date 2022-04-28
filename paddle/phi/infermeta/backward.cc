@@ -103,6 +103,17 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+void CummaxGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& indices,
+                         const MetaTensor& out_grad,
+                         MetaTensor* x_grad) {
+  const auto& dtype = out_grad.dtype();
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(dtype);
+
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

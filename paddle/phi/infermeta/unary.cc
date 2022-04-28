@@ -228,6 +228,34 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+
+void CummaxInferMeta(const MetaTensor& x,
+                     int axis,
+                     MetaTensor* out,
+                     MetaTensor* indices) {
+  const auto& x_dims = x.dims();
+  const auto& num_dims = x_dims.size();
+
+  PADDLE_ENFORCE_GE(
+      axis,
+      -num_dims,
+      phi::errors::InvalidArgument(
+          "'axis'(%d) must be greater than or equal to -num_dims(%d).",
+          axis, -num_dims));
+  PADDLE_ENFORCE_LT(
+      axis,
+      num_dims,
+      phi::errors::InvalidArgument(
+          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+
+  out->share_dims(x);
+  out->set_dtype(x.dtype());
+  indices->share_dims(x);
+  indices->set_dtype(DataType::INT64);
+  out->share_lod(x);
+  indices->share_lod(x);
+}
+
 void CumsumInferMeta(const MetaTensor& x,
                      int axis,
                      bool flatten,

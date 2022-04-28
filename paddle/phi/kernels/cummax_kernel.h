@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cummax_kernel.h"
-#include "paddle/phi/kernels/impl/cummax_kernel_impl.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-PD_REGISTER_KERNEL(cummax,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CummaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+namespace phi {
+
+template <typename T, typename Context>
+void CummaxKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  DenseTensor* out,
+                  DenseTensor* indices);
+
+}  // namespace phi

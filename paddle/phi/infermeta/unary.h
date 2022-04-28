@@ -65,6 +65,11 @@ void CopyToInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CummaxInferMeta(const MetaTensor& x,
+                     int axis,
+                     MetaTensor* out,
+                     MetaTensor* indices);
+
 void CumsumInferMeta(const MetaTensor& x,
                      int axis,
                      bool flatten,

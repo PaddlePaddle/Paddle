@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cummax_kernel.h"
-#include "paddle/phi/kernels/impl/cummax_kernel_impl.h"
+#include "paddle/phi/kernels/cummax_grad_kernel.h"
+#include "paddle/phi/kernels/impl/cummax_grad_kernel_impl.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(cummax,
-                   CPU,
+
+PD_REGISTER_KERNEL(cummax_grad,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::CummaxKernel,
+                   phi::CumsumGradKernel,
                    float,
                    double,
                    int,

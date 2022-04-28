@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cummax_kernel.h"
-#include "paddle/phi/kernels/impl/cummax_kernel_impl.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
-PD_REGISTER_KERNEL(cummax,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CummaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+namespace phi {
+template <typename T, typename Context>
+void CumsumGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& indices,
+                      const DenseTensor& out_grad,
+                      DenseTensor* x_grad) {
+  dev_ctx.template Alloc<T>(x_grad);
+  //  phi::ScatterKernel(dev_ctx, x, indices, out_grad, true, x_grad);
+  phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, out_grad, indices, x_grad);
+}
+
+} // namespace phi

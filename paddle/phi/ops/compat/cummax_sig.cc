@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cummax_kernel.h"
-#include "paddle/phi/kernels/impl/cummax_kernel_impl.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(cummax,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CummaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+KernelSignature CummaxGradGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("cummax_grad",
+                         {"X", "Indices", GradVarName("Out")},
+                         {},
+                         {GradVarName("X")});
+}
+
+}  // namespace phi
+PD_REGISTER_ARG_MAPPING_FN(cumprod_grad, phi::CummaxGradGradOpArgumentMapping);
