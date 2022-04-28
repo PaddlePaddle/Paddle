@@ -146,6 +146,9 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
 
 class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+    def leaky_relu_wrapper(self, x):
+        return paddle.nn.functional.leaky_relu(x[0], negative_slope=0.2)
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -162,6 +165,8 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.leaky_relu_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
