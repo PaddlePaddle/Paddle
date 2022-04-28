@@ -1203,6 +1203,30 @@ void MultinomialInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::INT64);
 }
 
+void NanmedianInferMeta(const MetaTensor& x,
+                        bool ignore_nan,
+                        MetaTensor* out,
+                        MetaTensor* medians) {
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+
+  std::vector<int64_t> out_dims(x_rank);
+  std::vector<int64_t> median_dims(x_rank);
+  for (int64_t i = 0; i < x_rank - 1; i++) {
+    out_dims[i] = x_dim[i];
+    median_dims[i] = x_dim[i];
+  }
+
+  out_dims[x_rank - 1] = 1;
+  median_dims[x_rank - 1] = 2;
+
+  out->set_dims(make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  medians->set_dims(make_ddim(median_dims));
+  medians->set_dtype(x.dtype());
+}
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
