@@ -447,10 +447,12 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   while (!queue.empty()) {
     egr::GradNodeBase *node = queue.front();
     queue.pop();
-    const std::vector<std::vector<egr::Edge>> &edges = node->GetEdges();
-    for (size_t i = 0; i < edges.size(); i++) {
-      for (size_t j = 0; j < edges[i].size(); j++) {
-        const egr::Edge &edge = edges[i][j];
+    const paddle::SmallVector<std::vector<egr::GradSlotMeta>,
+                              egr::kSlotSmallVectorSize> &metas =
+        node->OutputMeta();
+    for (size_t i = 0; i < metas.size(); i++) {
+      for (size_t j = 0; j < metas[i].size(); j++) {
+        const egr::Edge &edge = metas[i][j].GetEdge();
         auto next_node_shared = edge.GetMutableGradNode();
         if (!next_node_shared || !next_node_shared.get()) {
           continue;

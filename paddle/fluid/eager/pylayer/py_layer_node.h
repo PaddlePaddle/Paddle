@@ -34,9 +34,11 @@ class GradNodePyLayer : public GradNodeBase {
 
   ~GradNodePyLayer() override { Py_DECREF(ctx_); };
 
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+  virtual paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
+                              kSlotSmallVectorSize>
+  operator()(paddle::SmallVector<std::vector<paddle::experimental::Tensor>,
+                                 kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
