@@ -32,7 +32,7 @@ def get_pull(pull_id):
     Returns:
         github.PullRequest.PullRequest
     """
-    github = Github('', timeout=60)
+    github = Github(timeout=60)
     idx = 1
     while idx < 4:
         try:
