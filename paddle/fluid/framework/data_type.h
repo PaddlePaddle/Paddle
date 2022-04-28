@@ -200,7 +200,7 @@ inline std::ostream& operator<<(std::ostream& out,
   return out;
 }
 
-extern inline bool IsComplexType(const proto::VarType::Type type) {
+extern inline bool IsComplexType(const proto::VarType::Type& type) {
   return (type == proto::VarType::COMPLEX64 ||
           type == proto::VarType::COMPLEX128);
 }
