@@ -7,6 +7,9 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+  if (WITH_HETERPS)
+    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
+  endif()
 endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -82,10 +85,6 @@ set(PYBIND_SRCS
   generator_py.cc
   communication.cc
   cuda_streams_py.cc)
-
-if (WITH_ONNXRUNTIME)
-  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
-endif()
 
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
@@ -169,10 +168,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
 
-  if (WITH_ONNXRUNTIME)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  endif()
-
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif(WITH_CNCL)
@@ -181,10 +176,9 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
   target_link_libraries(eager_op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
-  add_executable(kernel_signature_generator kernel_signature_generator.cc)
-  target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
-  if(WIN32)
-    target_link_libraries(kernel_signature_generator shlwapi.lib)
+  if(NOT WIN32)
+    add_executable(kernel_signature_generator kernel_signature_generator.cc)
+    target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

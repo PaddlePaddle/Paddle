@@ -90,15 +90,17 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
   bool IsRunMKLDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
-  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string& name) const override;
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
   std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override;
@@ -110,6 +112,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
   void SetSkipLoD(bool skip);
 
@@ -238,6 +244,10 @@ class VariableScope : public ScopeBase {
 
   bool GetVarSikpInplace(int id) const;
 
+  void ClearListener();
+
+  void ResetListener();
+
   friend class VariableScopeListener;
 
  private:
@@ -342,6 +352,10 @@ class Instruction {
 
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
+
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
