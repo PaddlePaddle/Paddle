@@ -100,7 +100,7 @@ if(APPLE AND WITH_ARM)
 endif()
 
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
 endif()
 
 if(WIN32)
@@ -389,7 +389,7 @@ if(WITH_DISTRIBUTE)
     if(WITH_ASCEND_CL)
         # disable WITH_PSCORE for NPU before include third_party
         MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
-        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+	# set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
     endif()
 endif()
 

@@ -128,11 +128,11 @@ void PressTestSendRecv(
   // m = file.tellg();
   // file.close();
   // VLOG(0) << "size of file " << "20_34" << " is " << (m - l) << " bytes.\n";
-  int64_t vars_len = 2359296 * sizeof(float);
-  int64_t data_size = vars_len * sizeof(float);
+  int vars_len = 2359296 * sizeof(float);
+  int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
-  file.read((char*)data_ptr, 9437184);
+  file.read(reinterpret_cast<char*>(data_ptr), 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
   int loopCnt = 600;
@@ -167,7 +167,7 @@ void PressTestSendRecv(
   delete[] values;
 
   std::ofstream recv("/recv_20_34", std::ios::out | std::ios::binary);
-  recv.write((char*)values, data_size);
+  recv.write(reinterpret_cast<char*>(values), data_size);
   recv.close();
   t.join();
 }
@@ -254,8 +254,8 @@ TEST(HETERSENDANDRECV, CPU) {
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
   // TestScopeSendRecv(heter_client_ptr_);
-  TestShardSendRecv(heter_client_ptr_);
-  // PressTestSendRecv(heter_client_ptr_);
+  // TestShardSendRecv(heter_client_ptr_);
+  PressTestSendRecv(heter_client_ptr_);
 
   switch_server_ptr_a->Stop();
   LOG(INFO) << "switch server A stopped";
