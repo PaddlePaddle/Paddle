@@ -34,7 +34,8 @@ class GraphGpuWrapper {
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
-  std::vector<std::vector<int64_t>> get_all_id(int type, int idx);
+  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
+                                               int slice_num);
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
