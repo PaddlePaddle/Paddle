@@ -1299,8 +1299,7 @@ class RandomRotation(BaseTransform):
 
 
 class RandomErasing(BaseTransform):
-    """Erase the pixels in a rectangle region selected randomly. This transform only
-        supports Tensor.
+    """Erase the pixels in a rectangle region selected randomly.
 
     Args:
         prob (float, optional): Probability of the input data being erased. Default: 0.5.
@@ -1368,11 +1367,15 @@ class RandomErasing(BaseTransform):
         """Get parameters for ``erase`` for a random erasing.
 
         Args:
-            img (paddle.Tensor): Image to be erased.
-            output_size (tuple): Expected parameters for ``erase``.
+            img (paddle.Tensor | np.array | PIL.Image): Image to be erased.
+            scale (sequence, optional): The proportional range of the erased area to the input image. 
+            ratio (sequence, optional): Aspect ratio range of the erased area.
+            value (sequence | None): The value each pixel in erased area will be replaced with.
+                               If value is a sequence with length 3, the R, G, B channels will be ereased 
+                               respectively. If value is None, each pixel will be erased with random values.
 
         Returns:
-            tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
+            tuple: params (i, j, h, w, v) to be passed to ``erase`` for random erase.
         """
         if F._is_pil_image(img):
             shape = np.asarray(img).astype(np.uint8).shape
@@ -1425,8 +1428,7 @@ class RandomErasing(BaseTransform):
                 value = None
             else:
                 value = self.value
-            if value is not None and not (len(value) == 1 or
-                                          len(value) == img.shape[-3]):
+            if value is not None and not (len(value) == 1 or len(value) == 3):
                 raise ValueError(
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
