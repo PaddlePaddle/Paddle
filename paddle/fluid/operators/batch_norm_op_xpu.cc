@@ -53,8 +53,12 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -103,12 +107,6 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
                             "The batch_norm XPU API return wrong value[%d %s]",
                             r, XPUAPIErrorMsg[r]));
     } else {
-      PADDLE_ENFORCE_EQ(
-          data_layout_str == "NCHW", true,
-          platform::errors::InvalidArgument(
-              "The batch_norm_infer 'data_layout' attribute must be NCHW. "
-              "But recevived 'data_layout' is [%s].",
-              data_layout_str));
       const auto *mean = ctx.Input<Tensor>("Mean");
       const auto *variance = ctx.Input<Tensor>("Variance");
       const auto *mean_data = mean->data<float>();
@@ -222,8 +220,12 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *x_data = x->data<T>();
     const auto *d_y_data = d_y->data<T>();
