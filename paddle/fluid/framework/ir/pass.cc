@@ -32,6 +32,14 @@ class Graph;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+void CudaMemInfo() {
+  size_t avail;
+  size_t total;
+  cudaMemGetInfo(&avail, &total);
+  VLOG(1) << "used: " << (total - avail)/1000000 << "MB; total: " << total/1000000 << "MB";
+}
+
 static const char kParamScopeAttr[] = "__param_scope__";
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
@@ -50,7 +58,8 @@ Graph *Pass::Apply(Graph *graph) const {
                           "Required atrribute %s for graph is not set.", attr));
   }
   ApplyImpl(graph);
-  VLOG(3) << "applied pass: " << Type();
+  VLOG(1) << "applied pass: " << Type();
+  CudaMemInfo();
   for(auto* node : graph->Nodes()) {
     if (node->IsVar() && node->Name()=="fill_constant_batch_size_like_8.tmp_0") {
        for (auto* out : node->outputs) {
@@ -75,12 +84,13 @@ Graph *Pass::Apply(Graph *graph) const {
     VLOG(3) << "find sub_graphs: " << graph->SubGraphsSize() << " in pass: " << Type();
     for(size_t i=1; i<graph->SubGraphsSize(); i++) {
       auto* sub_graph = graph->GetSubGraph(i);
-      VLOG(3) << "process graph: " << i;
+      VLOG(1) << "process graph: " << i;
       if(!sub_graph->Has(framework::ir::kParamScopeAttr)) { 
         sub_graph->SetNotOwned<Scope>(framework::ir::kParamScopeAttr, &graph->Get<Scope>(framework::ir::kParamScopeAttr));
       }
        
       ApplyImpl(sub_graph);
+      CudaMemInfo();
       PADDLE_ENFORCE_EQ(
           HasCircle(*sub_graph), false,
           platform::errors::InvalidArgument(

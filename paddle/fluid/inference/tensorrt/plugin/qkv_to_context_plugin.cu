@@ -413,7 +413,7 @@ int QkvToContextPluginDynamic::enqueue(
     PADDLE_THROW(platform::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));
   }
-  cudaDeviceSynchronize();
+  // cudaDeviceSynchronize();
   return cudaGetLastError() != cudaSuccess;
 }
 #endif

@@ -23,6 +23,13 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+void CudaMemInfo() {
+  size_t avail;
+  size_t total;
+  cudaMemGetInfo(&avail, &total);
+  VLOG(1) << "used: " << (total - avail)/1000000 << "MB; total: " << total/1000000 << "MB";
+}
+
 #ifdef PADDLE_WITH_ASCEND_CL
 void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
   if (!argument->use_npu()) return;
@@ -134,6 +141,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   }
 
   for (auto &var_name : all_vars) {
+    VLOG(3) << "syn var: " << var_name;
+    CudaMemInfo();
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
       if (!reserve_cpu_weights) {

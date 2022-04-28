@@ -1070,7 +1070,7 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
       max_seq_len, head_number_, head_size_, time_step,
       scale_);
   }
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
   return cudaGetLastError() != cudaSuccess;
 }
 

@@ -190,7 +190,7 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
     PADDLE_THROW(platform::errors::Fatal(
         "The PrelnResidualBias TRT Plugin's input type should be float or half."));
   }
-  cudaDeviceSynchronize();
+  // cudaDeviceSynchronize();
   return cudaGetLastError() != cudaSuccess;
 }
 
