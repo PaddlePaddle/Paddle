@@ -421,9 +421,7 @@ class FunctionGeneratorBase:
 
             self.forward_outputs_position_map[
                 return_name] = [return_type, return_pos]
-        print("Generated Forward Input Position Map: ",
               self.forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
               self.forward_outputs_position_map)
 
 
