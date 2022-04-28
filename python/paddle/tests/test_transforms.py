@@ -668,6 +668,47 @@ class TestFunctional(unittest.TestCase):
         pil_img = Image.fromarray(np_img).convert('YCbCr')
         pil_tensor = F.to_tensor(pil_img)
 
+    def test_erase(self):
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+
+        expected = np_img.copy()
+        expected[10:15, 10:15, :] = 0
+
+        F.erase(np_img, 10, 10, 5, 5, 0, inplace=True)
+        np.testing.assert_equal(np_img, expected)
+
+        pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
+        np.testing.assert_equal(np.array(pil_result), expected)
+
+        np_data = np.random.rand(3, 28, 28).astype('float32')
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            tensor_img = paddle.to_tensor(np_data)
+            expected_tensor = tensor_img.clone()
+            expected_tensor[:, 10:15, 10:15] = paddle.to_tensor([0.88])
+
+            tensor_result = F.erase(tensor_img, 10, 10, 5, 5,
+                                    paddle.to_tensor([0.88]))
+            np.testing.assert_equal(tensor_result.numpy(),
+                                    expected_tensor.numpy())
+
+    def test_erase_backward(self):
+        img = paddle.randn((3, 14, 14), dtype=np.float32)
+        img.stop_gradient = False
+        erased = F.erase(
+            img, 3, 3, 5, 5, paddle.ones(
+                (1, 1, 1), dtype='float32'))
+        loss = erased.sum()
+        loss.backward()
+
+        expected_grad = np.ones((3, 14, 14), dtype=np.float32)
+        expected_grad[:, 3:8, 3:8] = 0.
+        np.testing.assert_equal(img.grad.numpy(), expected_grad)
+
     def test_image_load(self):
         fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype(
             'uint8'))
@@ -720,44 +761,6 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
-
-    def test_erase(self):
-        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
-        pil_img = Image.fromarray(np_img).convert('RGB')
-        tensor_img = paddle.randn((3, 28, 28), dtype='float32')
-        expected = np_img.copy()
-        expected[10:15, 10:15, :] = 0
-
-        F.erase(np_img, 10, 10, 5, 5, 0, inplace=True)
-        np.testing.assert_equal(np_img, expected)
-
-        pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
-        np.testing.assert_equal(np.array(pil_result), expected)
-
-        expected_tensor = tensor_img.clone()
-        expected_tensor[:, 10:15, 10:15] = 0.88
-        places = ['cpu']
-        if paddle.device.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
-            paddle.set_device(place)
-            tensor_result = F.erase(tensor_img, 10, 10, 5, 5,
-                                    paddle.to_tensor([0.88]))
-            np.testing.assert_equal(tensor_result.numpy(),
-                                    expected_tensor.numpy())
-
-    def test_erase_backward(self):
-        img = paddle.randn((3, 14, 14), dtype=np.float32)
-        img.stop_gradient = False
-        erased = F.erase(
-            img, 3, 3, 5, 5, paddle.ones(
-                (1, 1, 1), dtype='float32'))
-        loss = erased.sum()
-        loss.backward()
-
-        expected_grad = np.ones((3, 14, 14), dtype=np.float32)
-        expected_grad[:, 3:8, 3:8] = 0.
-        np.testing.assert_equal(img.grad.numpy(), expected_grad)
 
 
 if __name__ == '__main__':

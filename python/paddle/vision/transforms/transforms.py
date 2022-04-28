@@ -1298,6 +1298,53 @@ class RandomRotation(BaseTransform):
                         self.center, self.fill)
 
 
+class Grayscale(BaseTransform):
+    """Converts image to grayscale.
+
+    Args:
+        num_output_channels (int): (1 or 3) number of channels desired for output image
+        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): Grayscale version of the input image. 
+            - If output_channels == 1 : returned image is single channel
+            - If output_channels == 3 : returned image is 3 channel with r == g == b
+
+    Returns:
+        A callable object of Grayscale.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import Grayscale
+
+            transform = Grayscale()
+
+            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+
+            fake_img = transform(fake_img)
+            print(np.array(fake_img).shape)
+    """
+
+    def __init__(self, num_output_channels=1, keys=None):
+        super(Grayscale, self).__init__(keys)
+        self.num_output_channels = num_output_channels
+
+    def _apply_image(self, img):
+        """
+        Args:
+            img (PIL Image): Image to be converted to grayscale.
+
+        Returns:
+            PIL Image: Randomly grayscaled image.
+        """
+        return F.to_grayscale(img, self.num_output_channels)
+
+
 class RandomErasing(BaseTransform):
     """Erase the pixels in a rectangle region selected randomly.
 
@@ -1436,50 +1483,3 @@ class RandomErasing(BaseTransform):
                                                              self.ratio, value)
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img
-
-
-class Grayscale(BaseTransform):
-    """Converts image to grayscale.
-
-    Args:
-        num_output_channels (int): (1 or 3) number of channels desired for output image
-        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-
-    Shape:
-        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): Grayscale version of the input image. 
-            - If output_channels == 1 : returned image is single channel
-            - If output_channels == 3 : returned image is 3 channel with r == g == b
-
-    Returns:
-        A callable object of Grayscale.
-
-    Examples:
-    
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Grayscale
-
-            transform = Grayscale()
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(np.array(fake_img).shape)
-    """
-
-    def __init__(self, num_output_channels=1, keys=None):
-        super(Grayscale, self).__init__(keys)
-        self.num_output_channels = num_output_channels
-
-    def _apply_image(self, img):
-        """
-        Args:
-            img (PIL Image): Image to be converted to grayscale.
-
-        Returns:
-            PIL Image: Randomly grayscaled image.
-        """
-        return F.to_grayscale(img, self.num_output_channels)
