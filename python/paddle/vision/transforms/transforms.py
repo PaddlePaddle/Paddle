@@ -675,12 +675,12 @@ class Normalize(BaseTransform):
     Examples:
     
         .. code-block:: python
-
+          :name: code-example
             import numpy as np
             from PIL import Image
             from paddle.vision.transforms import Normalize
 
-            normalize = Normalize(mean=[127.5, 127.5, 127.5], 
+            normalize = Normalize(mean=[127.5, 127.5, 127.5],
                                   std=[127.5, 127.5, 127.5],
                                   data_format='HWC')
 
@@ -688,7 +688,9 @@ class Normalize(BaseTransform):
 
             fake_img = normalize(fake_img)
             print(fake_img.shape)
-            print(fake_img.max, fake_img.max)
+            # (300, 320, 3)
+            print(fake_img.max(), fake_img.min())
+            # 0.99215686 -1.0
     
     """
 
