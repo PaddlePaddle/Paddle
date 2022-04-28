@@ -65,7 +65,7 @@ void Merge(const IntT el_len,
   //  if is divide expend b_index_org to b_full_index
   if (is_divide) {
     b_full_index = std::vector<IntT>(len_b_max);
-    for (auto j = 0; j < b_full_index.size(); ++j) {
+    for (int64_t j = 0; j < static_cast<int64_t>(b_full_index.size()); ++j) {
       b_full_index[j] = j;
     }
     b_index = b_full_index.data();
