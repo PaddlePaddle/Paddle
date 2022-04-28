@@ -97,10 +97,7 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
           "index value should be 0, but get %d.",
           output_index));
   auto attn_dims = inputs[0], x_dims = inputs[1];
-  int max_seq_len = attn_dims.d[2]->getConstantValue();
-  int slimmed_seq_len = max_seq_len * factor_;
   nvinfer1::DimsExprs ret = x_dims;
-  ret.d[1] = expr_builder.constant(slimmed_seq_len);
   return ret;
 }
 
@@ -173,7 +170,6 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   int grid = operators::CeilDivide(total, block);
   ElementwiseMask<T><<<grid, block, 0, stream>>>(
       attn_data, mask_data, attn_tmp_data, grid, max_seq_len);
-
   auto* device_ctx = static_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(
           platform::CUDAPlace(device_id)));
@@ -186,7 +182,6 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   grid = operators::CeilDivide(total, block);
   ReduceSum<T><<<grid, block, 0, stream>>>(attn_tmp_data, attn_by_data, bsz,
                                            nb_head, max_seq_len);
-
   framework::Tensor attn_by_indices;
   attn_by_indices.Resize({bsz, max_seq_len});
   auto* attn_by_indices_data =
@@ -195,7 +190,6 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   FillIndex<<<grid, block, 0, stream>>>(attn_by_indices_data, bsz, max_seq_len);
   SlicedArgsort<T><<<bsz, 1, 0, stream>>>(attn_by_data, attn_by_indices_data,
                                           bsz, max_seq_len);
-
   int slimmed_x_len = max_seq_len * factor_;
   // auto slimmed_indices = phi::funcs::Slice<int>(dev_ctx, attn_by_indices,
   // {1},
@@ -204,6 +198,7 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   TakeAlongLastAxis2D<T><<<grid, block, 0, stream>>>(
       x_data, output_data, attn_by_indices_data, bsz, max_seq_len,
       slimmed_x_len, c);
+  return cudaGetLastError() != cudaSuccess;
 }
 
 int FusedTokenPrunePluginDynamic::enqueue(
@@ -229,8 +224,9 @@ int FusedTokenPrunePluginDynamic::enqueue(
     auto* attn_by_data =
         attn_by.mutable_data<float>(platform::CUDAPlace(device_id));
 
-    enqueueImpl<float>(input_desc, output_desc, inputs, outputs, workspace,
-                       stream, attn_tmp_data, attn_by_data, device_id);
+    return enqueueImpl<float>(input_desc, output_desc, inputs, outputs,
+                              workspace, stream, attn_tmp_data, attn_by_data,
+                              device_id);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -248,8 +244,9 @@ int FusedTokenPrunePluginDynamic::enqueue(
         attn_by.mutable_data<int16_t>(platform::CUDAPlace(device_id));
     auto* attn_by_data = reinterpret_cast<half*>(attn_by_data_tmp);
 
-    enqueueImpl<half>(input_desc, output_desc, inputs, outputs, workspace,
-                      stream, attn_tmp_data, attn_by_data, device_id);
+    return enqueueImpl<half>(input_desc, output_desc, inputs, outputs,
+                             workspace, stream, attn_tmp_data, attn_by_data,
+                             device_id);
 
 #else
     PADDLE_THROW(platform::errors::Fatal(
@@ -264,7 +261,6 @@ int FusedTokenPrunePluginDynamic::enqueue(
         platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
                                 "should be float or half."));
   }
-  return cudaGetLastError() != cudaSuccess;
 }
 
 #endif
