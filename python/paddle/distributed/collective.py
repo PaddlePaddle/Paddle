@@ -226,7 +226,9 @@ def _new_process_group_impl(backend,
                             world_size,
                             group_name,
                             pg_options,
-                            group_id=0):
+                            group_id=0,
+                            src_rank=None,
+                            dst_rank=None):
     pg = None
     genv = _get_global_env()
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
@@ -269,7 +271,9 @@ def _new_process_group_impl(backend,
             gloo_rank=cluster_id,
             gloo_size=len(cluster_size),
             with_switch=True,
-            switch_endpoint=switch_ep)
+            switch_endpoint=switch_ep,
+            src_rank=src_rank,
+            dst_rank=dst_rank)
 
     return pg
 
@@ -350,19 +354,33 @@ def new_group(ranks=None, backend=None, group_id=None):
         global _default_group_name
         gid = group_id if group_id else _new_ring_id()
         group_name = _default_group_name + str(gid)
-        global_group = _get_default_group()
-        global_rank = global_group.rank
-        global_ranks = global_group.ranks
-        backend = _default_backend if backend is None else backend
-        if ranks is None:
-            ranks = global_ranks
-        assert len(ranks) <= len(global_ranks), (
-            "Size of new group must be less than or "
-            "equal to that of the default global group.")
+        if backend != "heter":
+            global_group = _get_default_group()
+            global_rank = global_group.rank
+            global_ranks = global_group.ranks
+            backend = _default_backend if backend is None else backend
+            if ranks is None:
+                ranks = global_ranks
+            assert len(ranks) <= len(global_ranks), (
+                "Size of new group must be less than or "
+                "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if global_rank in ranks and size > 1:
-            rank = ranks.index(global_rank)
+        print("****************here1")
+        if backend == "heter" or (global_rank in ranks and size > 1):
+            print("****************here2")
+            print("backend:", backend)
+            if backend == "heter":
+                rank = 0
+            else:
+                rank = ranks.index(global_rank)
+            src_rank = None
+            dst_rank = None
+            if backend == "heter":
+                src_rank = ranks[0]
+                dst_rank = ranks[1]
+                print("****************INFO: src_rank: {}, dst_rank: {}".format(
+                    src_rank, dst_rank))
             pg = _new_process_group_impl(
                 backend,
                 _default_store,
@@ -370,7 +388,9 @@ def new_group(ranks=None, backend=None, group_id=None):
                 size,
                 group_name,
                 pg_options=None,
-                group_id=gid)
+                group_id=gid,
+                src_rank=src_rank,
+                dst_rank=dst_rank)
         else:
             rank = -1
             pg = None

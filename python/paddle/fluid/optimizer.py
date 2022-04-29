@@ -6005,7 +6005,14 @@ class PipelineOptimizer(object):
         for p in program_list:
             self._create_vars(p.global_block(), main_block)
 
-        self.local_rank %= len(device_list)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            self.local_rank = int(os.getenv("PADDLE_MANUAL_PIPELINE_STAGE"))
+            assert self.local_rank < len(device_list), (
+                "Manually specified "
+                "pipeline stage must be less than total number of pipeline "
+                "stages.")
+        else:
+            self.local_rank %= len(device_list)
         # Step3.5: optimize forward send sync_comm to overlap send and recv
         self._optimize_forward_send_sync(program_list[self.local_rank])
 
@@ -6056,6 +6063,11 @@ class PipelineOptimizer(object):
         # forward and used in backward
         self._check_pipeline_persist_var(program_list[self.local_rank])
 
+        print("Pipeline Info:")
+        print("    local_rank:", self.local_rank)
+        print("    pp_stages:", len(device_list))
+        print("    place:", place_list[self.local_rank])
+        print("    place_id:", place_id)
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
