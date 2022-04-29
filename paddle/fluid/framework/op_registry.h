@@ -129,7 +129,7 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs,
+                                                const AttributeMap& attrs,
                                                 bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
