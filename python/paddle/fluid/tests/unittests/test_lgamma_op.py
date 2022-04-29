@@ -24,6 +24,7 @@ paddle.enable_static()
 class TestLgammaOp(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
+        self.python_api = paddle.lgamma
         self.init_dtype_type()
         shape = (5, 20)
         data = np.random.random(shape).astype(self.dtype) + 1
@@ -38,10 +39,10 @@ class TestLgammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7, check_eager=True)
 
 
 class TestLgammaOpFp32(TestLgammaOp):
@@ -49,7 +50,8 @@ class TestLgammaOpFp32(TestLgammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005)
+        self.check_grad(
+            ['X'], 'Out', numeric_grad_delta=0.005, check_eager=True)
 
 
 if __name__ == "__main__":

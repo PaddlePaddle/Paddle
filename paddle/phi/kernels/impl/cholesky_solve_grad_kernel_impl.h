@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/cholesky_solve_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -46,8 +46,8 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   std::vector<int64_t> y_bst_dims_vec;
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
-  ScalarArray x_bst_dims(x_bst_dims_vec);
-  ScalarArray y_bst_dims(y_bst_dims_vec);
+  IntArray x_bst_dims(x_bst_dims_vec);
+  IntArray y_bst_dims(y_bst_dims_vec);
 
   // Tensor broadcast to temp 'y_bst'
   DenseTensor y_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims);

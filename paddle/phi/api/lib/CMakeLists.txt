@@ -1,13 +1,11 @@
 add_subdirectory(utils)
 
-cc_library(ext_compat_utils SRCS ext_compat_utils.cc DEPS place)
-
 if (WITH_GPU)
-  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 elseif (WITH_ROCM)
-  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 else()
-  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
+  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
@@ -165,8 +163,8 @@ cc_library(context_pool SRCS context_pool.cc DEPS phi_context phi_enforce place)
 cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS phi_tensor_raw phi_context kernel_factory context_pool)
 cc_library(api_gen_utils SRCS api_gen_utils.cc DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
 cc_library(phi_data_transform SRCS data_transform.cc DEPS phi_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
-cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
-cc_library(sparse_api_custom_impl SRCS sparse_api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
+cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta phi_data_transform)
+cc_library(sparse_api_custom_impl SRCS sparse_api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform tensor_copy)
 
 cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform api_custom_impl)
 cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta phi_data_transform phi_function_api api_custom_impl global_utils)
@@ -175,3 +173,5 @@ cc_library(sparse_bw_api SRCS ${sparse_bw_api_source_file} DEPS phi_tensor_raw p
 cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform phi_function_api sparse_api)
 cc_library(strings_api SRCS ${strings_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api api_gen_utils kernel_dispatch infermeta sparse_api strings_api)
+cc_library(tensor_copy SRCS tensor_copy.cc DEPS phi_tensor_raw copy_kernel kernel_dispatch api_gen_utils)
+cc_library(api_scalar SRCS scalar.cc DEPS tensor_copy)

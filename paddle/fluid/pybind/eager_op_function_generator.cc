@@ -134,7 +134,7 @@ const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, M
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
 std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
 const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
-  "#include \"paddle/fluid/pybind/custom_handwrite_op_funcs.h\"\n";
+  "#include \"paddle/fluid/pybind/eager_custom_python_api.h\"\n";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -433,7 +433,7 @@ GenerateOpFunctions() {
     std::map<std::string, std::string> inplace_map;
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (infer_inplace && !special_inplace_op_set.count(op_type)) {
       // Inplace OP: op_type_.
       // The inplace OP needs a new implementation method.
       auto in_to_outs = infer_inplace(true);

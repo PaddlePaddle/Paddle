@@ -99,7 +99,7 @@ class RunProgramOpTest(unittest.TestCase):
     def prepare_attrs(self):
         return ('global_block', self.program_desc.block(0), 'start_op_index', 0,
                 'end_op_index', self.fwd_op_num, 'program_id',
-                _hash_with_id(self.program_desc))
+                _hash_with_id(self.program_desc, self))
 
     def get_param_grad_names(self):
         grad_names = []

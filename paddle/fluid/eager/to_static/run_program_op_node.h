@@ -114,7 +114,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var" || !tensors[i].is_initialized()) {
+    if (name == "Fake_var" || !tensors[i].initialized()) {
       continue;
     }
     auto *var = scope->Var(name);
@@ -364,12 +364,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>> &grads,  // NOLINT
-      bool create_graph) override {
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize> &grads,  // NOLINT
+             bool create_graph,
+             bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-        GradNodeRunProgram::ApplyGradientHooks(grads);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads.size() of RunProgramGradOp should "
@@ -407,10 +411,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
@@ -466,6 +466,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
       param_grad->back().set_name(t.name() + "@GRAD");
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
+    return copied_node;
   }
 
  private:

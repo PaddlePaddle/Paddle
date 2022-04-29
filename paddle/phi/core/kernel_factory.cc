@@ -19,6 +19,8 @@
 
 namespace phi {
 
+const static Kernel empty_kernel;  // NOLINT
+
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
   // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -37,15 +39,15 @@ KernelFactory& KernelFactory::Instance() {
   return g_op_kernel_factory;
 }
 
-Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
-                                   const KernelKey& kernel_key) const {
+const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
+                                          const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
-    return Kernel();
+    return empty_kernel;
   }
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end()) {
-    return Kernel();
+    return empty_kernel;
   }
   return kernel_iter->second;
 }
@@ -59,14 +61,47 @@ KernelKeyMap KernelFactory::SelectKernelMap(
   return iter->second;
 }
 
-const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name, const KernelKey& kernel_key) const {
+bool KernelFactory::HasKernel(const std::string& kernel_name,
+                              const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
+  auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end()) {
+    return false;
+  }
+  return true;
+}
+
+const Kernel& KernelFactory::SelectKernelOrThrowError(
+    const std::string& kernel_name,
+    const KernelKey& kernel_key,
+    bool use_gpudnn) const {
+  auto iter = kernels_.find(kernel_name);
+  PADDLE_ENFORCE_NE(
+      iter,
+      kernels_.end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
+    auto kernel_iter = iter->second.find(
+        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      kernel_iter = iter->second.find(
+          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+    }
+    if (kernel_iter != iter->second.end()) {
+      return kernel_iter->second;
+    }
+    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
+                 << "] is not registered.";
+  }
+#endif
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
@@ -93,6 +128,78 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
     DataType dtype) const {
   return SelectKernelOrThrowError(kernel_name,
                                   KernelKey(backend, layout, dtype));
+}
+
+const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
+    const std::string& kernel_name) const {
+  auto iter = kernels_.find(kernel_name);
+  PADDLE_ENFORCE_NE(
+      iter,
+      kernels_.end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  return iter->second.cbegin()->second.args_def();
+}
+
+std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
+  switch (attr_type) {
+    case AttributeType::BOOL:
+      os << "bool";
+      break;
+    case AttributeType::INT32:
+      os << "int";
+      break;
+    case AttributeType::INT64:
+      os << "int64_t";
+      break;
+    case AttributeType::FLOAT32:
+      os << "float";
+      break;
+    case AttributeType::FLOAT64:
+      os << "double";
+      break;
+    case AttributeType::STRING:
+      os << "string";
+      break;
+    case AttributeType::BOOLS:
+      os << "vector<bool>";
+      break;
+    case AttributeType::INT32S:
+      os << "vector<int>";
+      break;
+    case AttributeType::INT64S:
+      os << "vector<int64_t>";
+      break;
+    case AttributeType::FLOAT32S:
+      os << "vector<float>";
+      break;
+    case AttributeType::FLOAT64S:
+      os << "vector<double>";
+      break;
+    case AttributeType::STRINGS:
+      os << "vector<string>";
+      break;
+    case AttributeType::SCALAR:
+      os << "Scalar";
+      break;
+    case AttributeType::SCALARS:
+      os << "vector<Scalar>";
+      break;
+    case AttributeType::INT_ARRAY:
+      os << "IntArray";
+      break;
+    case AttributeType::DATA_TYPE:
+      os << "DataType";
+      break;
+    case AttributeType::DATA_LAYOUT:
+      os << "DataLayout";
+      break;
+    case AttributeType::PLACE:
+      os << "Place";
+      break;
+    default:
+      os << "Undefined";
+  }
+  return os;
 }
 
 // print kernel info with json format:
@@ -130,7 +237,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   need_comma = false;
   for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index.name() << "\"";
+    os << "\"" << arg_def.type_index << "\"";
     need_comma = true;
   }
   os << "]}";

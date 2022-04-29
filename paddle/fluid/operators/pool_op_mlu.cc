@@ -116,11 +116,16 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
         framework::Tensor extra_device_tensor =
             ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
                 {static_cast<int64_t>(extra_input_size)}, dev_ctx);
-        // TODO(fwg): use Async copy, and add a callback to stream that free
-        // host
-        // memory.
-        framework::TensorCopySync(extra_host_tensor, ctx.GetPlace(),
-                                  &extra_device_tensor);
+        framework::TensorCopy(extra_host_tensor, ctx.GetPlace(),
+                              &extra_device_tensor);
+        // Increase extra_host_tensor holder_ reference count until copy
+        // complete.
+        auto increase_ref_count = [extra_host_tensor]() {
+          VLOG(4) << "Finished copying extra_host_tensor["
+                  << GetBasePtr(&extra_host_tensor)
+                  << "] in mlu pooling kernel.";
+        };
+        dev_ctx.AddStreamCallback(increase_ref_count);
         MLUCnnl::PoolingForward(
             ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
             in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,

@@ -19,7 +19,7 @@ from ..fluid import core, layers
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-from ..fluid.framework import _non_static_mode
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -36,6 +36,7 @@ __all__ = [ #noqa
     'PSRoIPool',
     'roi_align',
     'RoIAlign',
+    'nms',
 ]
 
 
@@ -377,6 +378,12 @@ def yolo_box(x,
                                                    clip_bbox=True,
                                                    scale_x_y=1.)
     """
+    if in_dygraph_mode():
+        boxes, scores = _C_ops.final_state_yolo_box(
+            x, img_size, anchors, class_num, conf_thresh, downsample_ratio,
+            clip_bbox, scale_x_y, iou_aware, iou_aware_factor)
+        return boxes, scores
+
     if _non_static_mode():
         boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
@@ -551,7 +558,15 @@ def deform_conv2d(x,
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_deformable_conv(
+            x, offset, weight, mask, stride, padding, dilation,
+            deformable_groups, groups, 1)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=1)
+        else:
+            out = pre_bias
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'deformable_groups', deformable_groups, 'groups', groups,
                  'im2col_step', 1)
@@ -952,7 +967,11 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     assert len(x.shape) == 4, \
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_psroi_pool(x, boxes, boxes_num, pooled_height,
+                                             pooled_width, output_channels,
+                                             spatial_scale)
+    if _in_legacy_dygraph():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
                                  spatial_scale, "pooled_height", pooled_height,
@@ -1062,7 +1081,11 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_pool(x, boxes, boxes_num, pooled_height,
+                                           pooled_width, spatial_scale)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1217,7 +1240,12 @@ def roi_align(x,
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(x, boxes, boxes_num, pooled_height,
+                                            pooled_width, spatial_scale,
+                                            sampling_ratio, aligned)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1307,13 +1335,13 @@ class ConvNormActivation(Sequential):
     Args:
         in_channels (int): Number of channels in the input image
         out_channels (int): Number of channels produced by the Convolution-Normalzation-Activation block
-        kernel_size: (int, optional): Size of the convolving kernel. Default: 3
-        stride (int, optional): Stride of the convolution. Default: 1
-        padding (int, tuple or str, optional): Padding added to all four sides of the input. Default: None,
+        kernel_size: (int|list|tuple, optional): Size of the convolving kernel. Default: 3
+        stride (int|list|tuple, optional): Stride of the convolution. Default: 1
+        padding (int|str|tuple|list, optional): Padding added to all four sides of the input. Default: None,
             in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
         norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer.
-            If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2d``
+            If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2D``
         activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
             layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
         dilation (int): Spacing between kernel elements. Default: 1
@@ -1351,3 +1379,152 @@ class ConvNormActivation(Sequential):
         if activation_layer is not None:
             layers.append(activation_layer())
         super().__init__(*layers)
+
+
+def nms(boxes,
+        iou_threshold=0.3,
+        scores=None,
+        category_idxs=None,
+        categories=None,
+        top_k=None):
+    r"""
+    This operator implements non-maximum suppression. Non-maximum suppression (NMS)
+    is used to select one bounding box out of many overlapping bounding boxes in object detection. 
+    Boxes with IoU > iou_threshold will be considered as overlapping boxes, 
+    just one with highest score can be kept. Here IoU is Intersection Over Union, 
+    which can be computed by:
+
+    ..  math::
+
+        IoU = \frac{intersection\_area(box1, box2)}{union\_area(box1, box2)}
+
+    If scores are provided, input boxes will be sorted by their scores firstly.
+
+    If category_idxs and categories are provided, NMS will be performed with a batched style, 
+    which means NMS will be applied to each category respectively and results of each category
+    will be concated and sorted by scores.
+    
+    If K is provided, only the first k elements will be returned. Otherwise, all box indices sorted by scores will be returned.
+
+    Args:
+        boxes(Tensor): The input boxes data to be computed, it's a 2D-Tensor with 
+            the shape of [num_boxes, 4]. The data type is float32 or float64. 
+            Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
+            and (x2, y2) is the bottom right coordinates. 
+            Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
+        iou_threshold(float32, optional): IoU threshold for determine overlapping boxes. Default value: 0.3.
+        scores(Tensor, optional): Scores corresponding to boxes, it's a 1D-Tensor with 
+            shape of [num_boxes]. The data type is float32 or float64. Default: None.
+        category_idxs(Tensor, optional): Category indices corresponding to boxes. 
+            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64. Default: None.
+        categories(List, optional): A list of unique id of all categories. The data type is int64. Default: None.
+        top_k(int64, optional): The top K boxes who has higher score and kept by NMS preds to 
+            consider. top_k should be smaller equal than num_boxes. Default: None.
+
+    Returns:
+        Tensor: 1D-Tensor with the shape of [num_boxes]. Indices of boxes kept by NMS.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import numpy as np
+
+            boxes = np.random.rand(4, 4).astype('float32')
+            boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+            boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+            # [[0.06287421 0.5809351  0.3443958  0.8713329 ]
+            #  [0.0749094  0.9713205  0.99241287 1.2799143 ]
+            #  [0.46246734 0.6753201  1.346266   1.3821303 ]
+            #  [0.8984796  0.5619834  1.1254641  1.0201943 ]]
+
+            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
+            # [0, 1, 3, 0]
+
+            scores = np.random.rand(4).astype('float32')
+            # [0.98015213 0.3156527  0.8199343  0.874901 ]
+
+            categories = [0, 1, 2, 3]
+            category_idxs = np.random.choice(categories, 4)                        
+            # [2 0 0 3]
+
+            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 
+                                                    0.1, 
+                                                    paddle.to_tensor(scores), 
+                                                    paddle.to_tensor(category_idxs), 
+                                                    categories, 
+                                                    4)
+            # [0, 3, 2]
+    """
+
+    def _nms(boxes, iou_threshold):
+        if _non_static_mode():
+            return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
+
+        helper = LayerHelper('nms', **locals())
+        out = helper.create_variable_for_type_inference('int64')
+        helper.append_op(
+            type='nms',
+            inputs={'Boxes': boxes},
+            outputs={'KeepBoxesIdxs': out},
+            attrs={'iou_threshold': iou_threshold})
+        return out
+
+    if scores is None:
+        return _nms(boxes, iou_threshold)
+
+    import paddle
+    if category_idxs is None:
+        sorted_global_indices = paddle.argsort(scores, descending=True)
+        return _nms(boxes[sorted_global_indices], iou_threshold)
+
+    if top_k is not None:
+        assert top_k <= scores.shape[
+            0], "top_k should be smaller equal than the number of boxes"
+    assert categories is not None, "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
+
+    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+
+    for category_id in categories:
+        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        shape = cur_category_boxes_idxs.shape[0]
+        cur_category_boxes_idxs = paddle.reshape(cur_category_boxes_idxs,
+                                                 [shape])
+        if shape == 0:
+            continue
+        elif shape == 1:
+            mask[cur_category_boxes_idxs] = 1
+            continue
+        cur_category_boxes = boxes[cur_category_boxes_idxs]
+        cur_category_scores = scores[cur_category_boxes_idxs]
+        cur_category_sorted_indices = paddle.argsort(
+            cur_category_scores, descending=True)
+        cur_category_sorted_boxes = cur_category_boxes[
+            cur_category_sorted_indices]
+
+        cur_category_keep_boxes_sub_idxs = cur_category_sorted_indices[_nms(
+            cur_category_sorted_boxes, iou_threshold)]
+
+        updates = paddle.ones_like(
+            cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
+            dtype=paddle.int32)
+        mask = paddle.scatter(
+            mask,
+            cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
+            updates,
+            overwrite=True)
+    keep_boxes_idxs = paddle.where(mask)[0]
+    shape = keep_boxes_idxs.shape[0]
+    keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
+    sorted_sub_indices = paddle.argsort(
+        scores[keep_boxes_idxs], descending=True)
+
+    if top_k is None:
+        return keep_boxes_idxs[sorted_sub_indices]
+
+    if _non_static_mode():
+        top_k = shape if shape < top_k else top_k
+        _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
+        return keep_boxes_idxs[topk_sub_indices]
+
+    return keep_boxes_idxs[sorted_sub_indices][:top_k]

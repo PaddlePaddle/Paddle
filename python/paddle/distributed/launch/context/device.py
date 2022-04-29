@@ -142,4 +142,4 @@ class Device(object):
 
 if __name__ == '__main__':
     d = Device.parse_device()
-    print(d.get_selected_flag())
+    print(d.get_selected_devices())

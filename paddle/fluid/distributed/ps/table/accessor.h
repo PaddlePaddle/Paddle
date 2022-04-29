@@ -46,25 +46,22 @@ struct DataConverter {
 };
 
 struct AccessorInfo {
+  // value维度
   size_t dim;
+  // value各个维度的size
   size_t size;
-  size_t select_size;
+  // pull value维度
   size_t select_dim;
-  size_t update_size;
+  // pull value各维度相加总size
+  size_t select_size;
+  // push value维度
   size_t update_dim;
+  // push value各个维度的size
+  size_t update_size;
+  // value中mf动态长度部分总size大小, sparse下生效
   size_t mf_size;
+  // value总维度，dense下生效
   size_t fea_dim;
-};
-
-enum InfoKey {
-  DIM = 0,
-  SIZE = 1,
-  SELECT_SIZE = 2,
-  SELECT_DIM = 3,
-  UPDATE_SIZE = 4,
-  UPDATE_DIM = 5,
-  MF_SIZE = 6,
-  FEA_DIM = 7
 };
 
 class ValueAccessor {
@@ -72,7 +69,7 @@ class ValueAccessor {
   ValueAccessor() {}
   virtual ~ValueAccessor() {}
 
-  virtual int configure(const TableAccessorParameter& parameter) {
+  virtual int Configure(const TableAccessorParameter& parameter) {
     _config = parameter;
     // data_convert结构体初始化
     if (_config.table_accessor_save_param_size() != 0) {
@@ -88,38 +85,14 @@ class ValueAccessor {
     }
     return 0;
   }
-  virtual int initialize() = 0;
+  virtual int Initialize() = 0;
 
-  virtual void SetTableInfo(AccessorInfo& info) = 0;
-  virtual size_t GetTableInfo(InfoKey key) = 0;
+  virtual AccessorInfo GetAccessorInfo() { return _accessor_info; }
 
-  // value维度
-  virtual size_t dim() = 0;
-  // value各个维度的size
-  virtual size_t dim_size(size_t dim) = 0;
-  // value各维度相加总size
-  virtual size_t size() = 0;
-
-  // value中mf动态长度部分总size大小, sparse下生效
-  virtual size_t mf_size() { return 0; }
-  virtual bool need_extend_mf(float* value) { return false; }
-  virtual bool has_mf(size_t size) { return false; }
-  // pull value维度
-  virtual size_t select_dim() = 0;
-  // pull value各个维度的size
-  virtual size_t select_dim_size(size_t dim) = 0;
-  // pull value各维度相加总size
-  virtual size_t select_size() = 0;
-  // push value维度
-  virtual size_t update_dim() = 0;
-  // push value各个维度的size
-  virtual size_t update_dim_size(size_t dim) = 0;
-  // push value各维度相加总size
-  virtual size_t update_size() = 0;
-  // fea total for dense
-  virtual size_t fea_dim() { return _config.fea_dim(); }
+  virtual bool NeedExtendMF(float* value) { return false; }
+  virtual bool HasMF(size_t size) { return false; }
   // converter for save
-  virtual std::string get_converter(int param) {
+  virtual std::string GetConverter(int param) {
     auto itr = _data_coverter_map.find(param);
     if (itr == _data_coverter_map.end()) {
       return "";
@@ -128,7 +101,7 @@ class ValueAccessor {
     }
   }
   // deconverter for load
-  virtual std::string get_deconverter(int param) {
+  virtual std::string GetDeconverter(int param) {
     auto itr = _data_coverter_map.find(param);
     if (itr == _data_coverter_map.end()) {
       return "";
@@ -137,47 +110,52 @@ class ValueAccessor {
     }
   }
   // 判断该value是否进行shrink
-  virtual bool shrink(float* value) = 0;
+  virtual bool Shrink(float* value) = 0;
 
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
-  virtual bool save(float* value, int param) = 0;
+  virtual bool Save(float* value, int param) = 0;
   // update delta_score and unseen_days after save
-  virtual void update_stat_after_save(float* value, int param) {}
+  virtual void UpdateStatAfterSave(float* value, int param) {}
+  // 判断该value是否保存到ssd
+  virtual bool SaveSSD(float* value) = 0;
+  //
+  virtual bool SaveCache(float* value, int param,
+                         double global_cache_threshold) = 0;
 
   // keys不存在时，为values生成随机值
-  virtual int32_t create(float** value, size_t num) = 0;
-  virtual bool create_value(int type, const float* value) { return true; }
+  virtual int32_t Create(float** value, size_t num) = 0;
+  virtual bool CreateValue(int type, const float* value) { return true; }
   // 从values中选取到select_values中
-  virtual int32_t select(float** select_values, const float** values,
+  virtual int32_t Select(float** select_values, const float** values,
                          size_t num) = 0;
   // 将update_values聚合到一起
-  virtual int32_t merge(float** update_values,
+  virtual int32_t Merge(float** update_values,
                         const float** other_update_values, size_t num) = 0;
   // 将update_values聚合到一起，通过it.next判定是否进入下一个key
-  // virtual int32_t merge(float** update_values, iterator it);
+  // virtual int32_t Merge(float** update_values, iterator it);
   // 将update_values更新应用到values中
-  virtual int32_t update(float** values, const float** update_values,
+  virtual int32_t Update(float** values, const float** update_values,
                          size_t num) = 0;
 
   // used to save model, will filter feature
-  virtual std::string parse_to_string(const float* value, int param) = 0;
+  virtual std::string ParseToString(const float* value, int param) = 0;
   //  parse value from string, used to load model
-  virtual int32_t parse_from_string(const std::string& data, float* value) = 0;
+  virtual int32_t ParseFromString(const std::string& data, float* value) = 0;
 
-  virtual FsDataConverter converter(int param) {
+  virtual FsDataConverter Converter(int param) {
     FsDataConverter data_convert;
-    data_convert.converter = this->get_converter(param);
-    data_convert.deconverter = this->get_deconverter(param);
+    data_convert.converter = this->GetConverter(param);
+    data_convert.deconverter = this->GetDeconverter(param);
     return data_convert;
   }
 
-  virtual int set_weight(float** values, const float** update_values,
-                         size_t num) {
+  virtual int SetWeight(float** values, const float** update_values,
+                        size_t num) {
     return 0;
   }
 
-  virtual float get_field(float* value, const std::string& name) { return 0.0; }
+  virtual float GetField(float* value, const std::string& name) { return 0.0; }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() override { return class ::field##_index(); }
 

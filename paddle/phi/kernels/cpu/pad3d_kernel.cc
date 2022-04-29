@@ -379,7 +379,7 @@ void Pad3DNDHWC(const T* in_data,
 template <typename T, typename Context>
 void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& paddings,
+                 const IntArray& paddings,
                  const std::string& mode,
                  float pad_value,
                  const std::string& data_format,

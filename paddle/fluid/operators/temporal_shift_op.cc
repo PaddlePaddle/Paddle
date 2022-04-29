@@ -15,6 +15,10 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -23,49 +27,6 @@ using framework::Tensor;
 class TemporalShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SpectralNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SpectralNorm");
-
-    auto dim_x = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input(X) rank should be 4 in shape of [N*T, C, H, "
-                          "W], but received X rank(%d)",
-                          dim_x.size()));
-
-    int seg_num = ctx->Attrs().Get<int>("seg_num");
-    float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
-    PADDLE_ENFORCE_GT(
-        seg_num, 0,
-        platform::errors::InvalidArgument(
-            "Attr(seg_num) should be greater than 0, but received %d",
-            seg_num));
-    PADDLE_ENFORCE_GT(
-        shift_ratio, 0.,
-        platform::errors::InvalidArgument(
-            "Attr(shift_ratio) should be greater than 0, but received %d",
-            shift_ratio));
-    PADDLE_ENFORCE_LT(
-        shift_ratio, 0.5,
-        platform::errors::InvalidArgument(
-            "Attr(shift_ratio) should be less than 0.5, but received %d",
-            shift_ratio));
-
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(dim_x[0] % seg_num, 0,
-                        platform::errors::InvalidArgument(
-                            "Input(X) dimension[0] should be divided exactly "
-                            "by Attr(seg_num), but received X dimension[0](%d) "
-                            "mod seg_num(%d) != 0",
-                            dim_x[0], seg_num));
-    }
-
-    ctx->SetOutputDim("Out", dim_x);
-    ctx->ShareLoD("X", "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -186,10 +147,13 @@ class TemporalShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift, TemporalShiftInferShapeFunctor,
+                            PD_INFER_META(phi::TemporalShiftInferMeta));
 REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
                   ops::TemporalShiftOpMaker,
                   ops::TemporalShiftGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TemporalShiftGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TemporalShiftGradOpMaker<paddle::imperative::OpBase>,
+                  TemporalShiftInferShapeFunctor);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
 REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);

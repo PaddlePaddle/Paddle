@@ -35,7 +35,8 @@ class DataTranferHelper {
   bool apply(const OpKernelType& kernel_type_for_var,
              const OpKernelType& expected_kernel_key,
              const std::string& var_name, std::string* new_var_name,
-             std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope);
+             std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope,
+             bool is_fetch_v2);
 
   void RunAndConstructShareNode(const std::string& src_var_name,
                                 const std::string& dst_var_name,
@@ -94,12 +95,10 @@ inline bool need_layout_transform(const OpKernelType& kernel_type_for_var,
                                         expected_kernel_key.data_layout_);
 }
 
-std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
-                                             std::string* new_var_name,
-                                             DataLayout in_layout,
-                                             DataLayout out_layout,
-                                             VariableScope* var_scope,
-                                             framework::Scope* local_scope);
+std::shared_ptr<OperatorBase> TransferLayout(
+    const std::string& var_name, std::string* new_var_name,
+    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope,
+    framework::Scope* local_scope, bool is_fetch_v2);
 
 std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             std::string* new_var_name,

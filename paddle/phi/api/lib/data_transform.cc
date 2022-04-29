@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/backends/all_context.h"
@@ -37,9 +36,17 @@ inline bool NeedTransformDataType(const DataType& input,
 inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
-  bool ret = transform_flag.need_trans_backend() &&
-             target != Backend::ALL_BACKEND &&
-             phi::TransToPhiBackend(input) != target;
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as api.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = input.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(input) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
 
@@ -180,20 +187,23 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
-  phi::DenseTensor& dense_tensor =
-      *static_cast<phi::DenseTensor*>(tensor_in.get());
-  if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
-      (!NeedTransformPlace(
-           dense_tensor.place(), target_args_def.backend, transform_flag) &&
-       !NeedTransformDataType(
-           dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-       !NeedTransformLayout(
-           dense_tensor.layout(), target_args_def.layout, transform_flag))) {
-    return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+  if (tensor_in) {
+    phi::DenseTensor& dense_tensor =
+        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
+        (!NeedTransformPlace(
+             dense_tensor.place(), target_args_def.backend, transform_flag) &&
+         !NeedTransformDataType(
+             dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
+         !NeedTransformLayout(
+             dense_tensor.layout(), target_args_def.layout, transform_flag))) {
+      return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+    }
+    phi::DenseTensor out =
+        TransformData(dense_tensor, target_args_def, transform_flag);
+    return std::make_shared<phi::DenseTensor>(std::move(out));
   }
-  phi::DenseTensor out =
-      TransformData(dense_tensor, target_args_def, transform_flag);
-  return std::make_shared<phi::DenseTensor>(std::move(out));
+  return nullptr;
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
@@ -243,7 +253,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     }
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 }  // namespace experimental

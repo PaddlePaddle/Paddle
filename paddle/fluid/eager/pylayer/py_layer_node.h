@@ -34,16 +34,14 @@ class GradNodePyLayer : public GradNodeBase {
 
   ~GradNodePyLayer() override { Py_DECREF(ctx_); };
 
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
@@ -67,9 +65,15 @@ class GradNodePyLayer : public GradNodeBase {
         } else {
           forward_outputs_meta_[i].emplace_back();
         }
-        forward_outputs_place_[i].emplace_back(tensor->inner_place());
+        forward_outputs_place_[i].emplace_back(tensor->place());
       }
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
+    return copied_node;
   }
 
  private:
