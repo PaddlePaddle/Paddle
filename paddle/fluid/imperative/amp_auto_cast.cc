@@ -220,6 +220,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
+      paddle::platform::is_custom_place(place) ||
       paddle::platform::is_npu_place(place) ||
       paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
