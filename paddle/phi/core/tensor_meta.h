@@ -54,8 +54,9 @@ struct DenseTensorMeta {
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
-  LoD lod;
   size_t offset{0};
+
+  LoD lod;
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {

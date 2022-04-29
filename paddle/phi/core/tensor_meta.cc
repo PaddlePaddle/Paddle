@@ -30,7 +30,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  DataLayout layout,
                                  const LoD& lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {}
+    : dims(dims), dtype(dtype), layout(layout), offset(offset), lod(lod) {}
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};

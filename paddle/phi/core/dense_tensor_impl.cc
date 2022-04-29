@@ -213,10 +213,10 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
                          const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
+    : holder_(storage->move_data_shared()), meta_(meta) {}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
+    : holder_(storage->move_data_shared()), meta_(std::move(meta)) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
@@ -371,9 +371,20 @@ dnnl::memory::format_tag DenseTensor::format() const {
 }
 #endif
 
+// NOTE: For historical reasons, this interface has a special behavior,
+// sharing other tensor members except lod
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();
-  *this = src;
+  holder_ = src.holder_;
+  meta_.is_scalar = src.meta_.is_scalar;
+  meta_.dims = src.meta_.dims;
+  meta_.dtype = src.meta_.dtype;
+  meta_.layout = src.meta_.layout;
+  meta_.offset = src.meta_.offset;
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = src.format_;
+  mem_desc_ = src.mem_desc_;
+#endif
   return *this;
 }
 
