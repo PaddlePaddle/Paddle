@@ -173,14 +173,22 @@ def _alexnet(arch, pretrained, **kwargs):
 
 
 def alexnet(pretrained=False, **kwargs):
-    """AlexNet model
+    """
+    AlexNet model
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-
+    
+    Returns:
+        the model of alexnet
+    
+    Return Type:
+        Layer
+    
     Examples:
         .. code-block:: python
-
+          :name: code-example1
+            import paddle
             from paddle.vision.models import alexnet
 
             # build model
@@ -188,5 +196,11 @@ def alexnet(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = alexnet(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _alexnet('alexnet', pretrained, **kwargs)
