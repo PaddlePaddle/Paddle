@@ -174,6 +174,9 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> Clear(uint32_t table_id) override;
 
+  std::future<int32_t> Revert() override;
+  std::future<int32_t> CheckSavePrePatchDone() override;
+
   std::future<int32_t> StopServer() override;
 
   std::future<int32_t> StartProfiler() override;

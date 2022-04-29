@@ -926,6 +926,11 @@ class Fleet(object):
 
     @is_non_distributed_check
     @inited_runtime_handler
+    def check_save_pre_patch_done(self):
+        return self._runtime_handle._check_save_pre_patch_done()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_one_table(self, table_id, path, mode):
         """
         save fleet one table from path
@@ -977,8 +982,8 @@ class Fleet(object):
                 fleet.save_dense_params(exe, "path", scope, program)
 
         """
-        self._runtime_handle._save_dense_params(table_id, path, mode)
->>>>>>> 475fa028d545af43a8e253e47b931ad76caf4544
+        self._runtime_handle._save_dense_params(executor, dirname, scope,
+                                                program, var_names)
 
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)

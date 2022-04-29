@@ -139,6 +139,13 @@ class BrpcPsService : public PsBaseService {
                             PsResponseMessage &response,
                             brpc::Controller *cntl);
 
+  int32_t Revert(Table *table, const PsRequestMessage &request,
+                 PsResponseMessage &response, brpc::Controller *cntl);
+
+  int32_t CheckSavePrePatchDone(Table *table, const PsRequestMessage &request,
+                                PsResponseMessage &response,
+                                brpc::Controller *cntl);
+
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;
   std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;

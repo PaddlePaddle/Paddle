@@ -78,6 +78,7 @@ distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
+check_save_pre_patch_done = fleet.check_save_pre_patch_done
 save_one_table = fleet.save_one_table
 save_dense_params = fleet.save_dense_params
 load_model = fleet.load_model

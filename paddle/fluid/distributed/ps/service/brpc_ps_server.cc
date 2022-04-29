@@ -210,7 +210,8 @@ int32_t BrpcPsService::Initialize() {
   _service_handler_map[PS_CACHE_SHUFFLE] = &BrpcPsService::CacheShuffle;
 
   _service_handler_map[PS_REVERT] = &BrpcPsService::Revert;
-  _service_handler_map[PS_CHECK_SAVE_PRE_PATCH_DONE] = &BrpcPsService::CheckSavePrePatchDone;
+  _service_handler_map[PS_CHECK_SAVE_PRE_PATCH_DONE] =
+      &BrpcPsService::CheckSavePrePatchDone;
 
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_server_pull_dense");
@@ -318,7 +319,6 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   table_context.pull_context.values = res_data->data();
   table_context.num = num;
   table->Pull(table_context);
-  // table->PullDense(res_data->data(), num);
 
   cntl->response_attachment().append((char *)(res_data->data()),
                                      res_data->size() * sizeof(float));
@@ -355,7 +355,6 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
   table_context.push_context.is_param = true;
   table_context.num = num;
 
-  //  if (table->PushDenseParam(values, num) != 0) {
   if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "PushDenseParam failed");
   }
@@ -750,25 +749,28 @@ int32_t BrpcPsService::GetCacheThreshold(Table *table,
   return 0;
 }
 
-int32_t BrpcPsService::Revert(Table* table,
-            const PsRequestMessage& request, PsResponseMessage& response, brpc::Controller* cntl) {
-        auto& table_map = *(_server->GetTable());
-        for (auto& itr : table_map) {
-            itr.second->Flush();
-            itr.second->Revert();
-        }
-        return 0;
-    }
+int32_t BrpcPsService::Revert(Table *table, const PsRequestMessage &request,
+                              PsResponseMessage &response,
+                              brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->Flush();
+    itr.second->Revert();
+  }
+  return 0;
+}
 
-int32_t DownpourPsService::CheckSavePrePatchDone(Table* table,
-            const PsRequestMessage& request, PsResponseMessage& response, brpc::Controller* cntl) {
-        auto& table_map = *(_server->GetTable());
-        for (auto& itr : table_map) {
-            itr.second->CheckSavePrePatchDone();
-        }
-        return 0;
-    }
- 
+int32_t BrpcPsService::CheckSavePrePatchDone(Table *table,
+                                             const PsRequestMessage &request,
+                                             PsResponseMessage &response,
+                                             brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->CheckSavePrePatchDone();
+  }
+  return 0;
+}
+
 int32_t BrpcPsService::ShrinkTable(Table *table,
                                    const PsRequestMessage &request,
                                    PsResponseMessage &response,

@@ -1326,13 +1326,17 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         return feasign_num
 
+    ### no use?
     def _revert(self):
-        """  
-        revert all the updated params in current pass
-        """
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.revert()
+        fleet.util.barrier()
+
+    def _check_save_pre_patch_done(self):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.check_save_pre_patch_done()
         fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):

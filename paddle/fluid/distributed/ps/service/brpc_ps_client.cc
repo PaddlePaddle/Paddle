@@ -513,12 +513,12 @@ std::future<int32_t> BrpcPsClient::Clear(uint32_t table_id) {
 }
 
 std::future<int32_t> BrpcPsClient::Revert() {
-        return send_cmd(-1, PS_REVERT, {});
+  return SendCmd(-1, PS_REVERT, {});
 }
 
 std::future<int32_t> BrpcPsClient::CheckSavePrePatchDone() {
-        return send_cmd(-1, PS_CHECK_SAVE_PRE_PATCH_DONE, {});
-    }
+  return SendCmd(-1, PS_CHECK_SAVE_PRE_PATCH_DONE, {});
+}
 
 std::future<int32_t> BrpcPsClient::Flush() {
   VLOG(0) << "BrpcPsClient::flush begin";
@@ -1142,6 +1142,7 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
         }
         closure->set_promise_value(ret);
       });
+
   closure->add_timer(timer);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
