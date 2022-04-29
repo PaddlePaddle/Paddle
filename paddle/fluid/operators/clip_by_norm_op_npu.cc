@@ -71,8 +71,8 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
     if (x_norm_v <= max_norm) {
       framework::TensorCopy(*input, place, dev_ctx, output);
     } else {
-      float epsilon = x_norm_v <= static_cast<T>(1e-30) ? static_cast<T>(1e-6)
-                                                        : static_cast<T>(0);
+      auto epsilon = x_norm_v <= static_cast<T>(1e-30) ? static_cast<T>(1e-6)
+                                                       : static_cast<T>(0);
       float scaling = max_norm / (x_norm_v + epsilon);
       const auto& muls_runner =
           NpuOpRunner("Muls", {*input}, {*output}, {{"value", scaling}});
