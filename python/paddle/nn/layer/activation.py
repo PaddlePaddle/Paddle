@@ -465,6 +465,7 @@ class RReLU(Layer):
 
     Examples:
         .. code-block:: python
+            :name: RReLU-example
 
             import paddle
             import numpy as np

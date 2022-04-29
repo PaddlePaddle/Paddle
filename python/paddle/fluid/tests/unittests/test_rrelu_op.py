@@ -17,9 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
@@ -53,9 +51,10 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_0 = 0.25
         self.upper_1 = 0.33
 
-        self.places = [fluid.CUDAPlace(0)]
-        if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+        self.places = [
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda() else fluid.CPUPlace()
+        ]
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
