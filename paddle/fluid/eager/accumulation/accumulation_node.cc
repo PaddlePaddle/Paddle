@@ -38,10 +38,13 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
   }
 }
 
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
-operator()(
-    std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-    bool create_graph, bool is_new_grad) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+GradNodeAccumulation::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -56,8 +59,9 @@ operator()(
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
-    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-        ApplyGradientHooks(grads);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
+        hooked_grads = ApplyGradientHooks(grads);
     grad_out = hooked_grads[0][0];
   } else {
     grad_out = grads[0][0];

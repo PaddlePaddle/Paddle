@@ -466,6 +466,7 @@
     func : DeformableConvInferMeta
   kernel :
     func : deformable_conv
+    data_type : x
   optional : mask
   backward : deformable_conv_grad
 
@@ -546,6 +547,7 @@
     func : DropoutInferMeta
   kernel :
     func : dropout
+    data_type : x
   optional : seed_tensor
   backward : dropout_grad
 
@@ -1065,6 +1067,7 @@
     func : LayerNormInferMeta
   kernel :
     func : layer_norm
+    data_type : x
   backward : layer_norm_grad
   optional : scale, bias
 
@@ -1608,6 +1611,7 @@
     func : PsroiPoolInferMeta
   kernel :
     func : psroi_pool
+    data_type : x
   optional : boxes_num
   backward : psroi_pool_grad
 
@@ -1713,6 +1717,7 @@
     func : RoiAlignInferMeta
   kernel :
     func : roi_align
+    data_type : x
   optional : boxes_num
   backward : roi_align_grad
 
@@ -1723,6 +1728,7 @@
     func : RoiPoolInferMeta
   kernel :
     func : roi_pool
+    data_type : x
   optional : boxes_num
   intermediate : arg_max
   backward : roi_pool_grad
