@@ -58,11 +58,6 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
-void CopyToInferMeta(const MetaTensor& x,
-                     Backend backend,
-                     bool blocking,
-                     MetaTensor* out);
-
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CumsumInferMeta(const MetaTensor& x,
@@ -208,6 +203,11 @@ void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
                                int upscale_factor,
                                const std::string& data_format,
                                MetaTensor* x_grad);
+
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out);
 
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
@@ -431,7 +431,7 @@ void UnStackInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> outs);
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out);
@@ -439,5 +439,10 @@ void OneHotRawInferMeta(const MetaTensor& x,
 void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
+
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out);
 
 }  // namespace phi
