@@ -44,7 +44,7 @@ class Corr_Test(unittest.TestCase):
                 tensor = paddle.to_tensor(np_arr, place=p)
                 corr = paddle.linalg.corrcoef(tensor)
                 np_corr = numpy_corr(np_arr, rowvar=True, dtype=dtype)
-                if dtype=='float32':
+                if dtype == 'float32':
                     self.assertTrue(
                         np.allclose(
                             np_corr, corr.numpy(), atol=1.e-5))
@@ -68,7 +68,7 @@ class Corr_Test(unittest.TestCase):
                 tensor = paddle.to_tensor(np_arr, place=p)
                 corr = paddle.linalg.corrcoef(tensor, rowvar=False)
                 np_corr = numpy_corr(np_arr, rowvar=False, dtype=dtype)
-                if dtype=='float32':
+                if dtype == 'float32':
                     self.assertTrue(
                         np.allclose(
                             np_corr, corr.numpy(), atol=1.e-5))
