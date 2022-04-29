@@ -80,6 +80,10 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out);
+
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
