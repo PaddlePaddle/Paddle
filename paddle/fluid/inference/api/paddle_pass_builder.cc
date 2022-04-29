@@ -116,6 +116,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_elementwise_add_fuse_pass",  //
       //"graph_viz_pass",
 //      "add_support_int8_pass",
+      "fill_concat_assign_fuse_pass", //
+      "graph_viz_pass",                  //
       "tensorrt_subgraph_pass",  //
       "graph_viz_pass",                  //
       "conv_bn_fuse_pass",       //

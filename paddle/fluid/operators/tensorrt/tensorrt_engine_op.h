@@ -530,6 +530,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+        
+        if (x=="stack_2.tmp_0") {
+          t_shape = {1,32,1,128};
+        }
+        if (x=="stack_3.tmp_0") {
+          t_shape = {1,6,1,128};
+        }
+        VLOG(3) << "Set bindings, x=" << x;
+        for(auto i : t_shape) {
+          VLOG(3) << i;
+        }
+
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
@@ -548,6 +560,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         PADDLE_THROW(
             platform::errors::Fatal("The TRT Engine OP only support "
                                     "float/int32_t/int64_t/float16 input."));
+      }
+      if (buffers[bind_index]==nullptr) {
+        VLOG(3) << "Input binding is null, bind_index="<<bind_index << "; name=" << x;
       }
     }
 
@@ -600,6 +615,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
       output_index += 1;
+
+      if (buffers[bind_index]==nullptr) {
+        VLOG(3) << "Ouput binding is null, bind_index="<<bind_index << "; name=" << y;
+      }
+
     }
 
     if (!engine->with_dynamic_shape()) {
