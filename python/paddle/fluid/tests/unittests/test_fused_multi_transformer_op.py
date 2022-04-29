@@ -122,11 +122,11 @@ class TestFusedMultiTransformerOp(OpTest):
         self.training = False
 
         self.layers = 4
-        self.batch_size = 8
+        self.batch_size = 4
         self.query_length = 128
         self.cache_length = 128
         self.head_dim = 64
-        self.num_heads = 16
+        self.num_heads = 8
         self.embed_dim = self.head_dim * self.num_heads
 
         self.dropout_prob = 0.0
