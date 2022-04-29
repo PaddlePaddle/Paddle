@@ -69,6 +69,12 @@ if(WIN32)
         list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/paddle2onnx.dll)
     endif()
 
+    message("Copied glob_op_shared for Eager AutoCodeGen")
+    add_custom_target(copy_glob_op_shared
+      COMMAND ${CMAKE_COMMAND} -E copy ${GLOB_OP_SHARED_DLL} ${eager_generator_path}
+      COMMAND ${CMAKE_COMMAND} -E copy ${GLOB_OP_SHARED_LIB} ${eager_generator_path}
+      DEPENDS glob_op_shared)
+
     add_custom_target(eager_codegen
       COMMAND "${eager_generator_path}/eager_generator.exe" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path} ${dygraph_forward_h_path}

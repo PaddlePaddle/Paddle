@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+#include <iostream>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -142,6 +143,7 @@ class OpInfoMap {
                       platform::errors::AlreadyExists(
                           "Operator (%s) has been registered.", type));
     map_.insert({type, info});
+    std::cout << "*********    insert op: " << type << std::endl;
   }
 
   const OpInfo& Get(const std::string& type) const {

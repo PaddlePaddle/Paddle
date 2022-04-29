@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/pybind/pybind.h"
+// #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
@@ -391,8 +391,13 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-
+  std::cout << "**********************    GenerateOpFunctions    "
+               "**********************"
+            << std::endl;
   for (auto& pair : op_info_map) {
+    std::cout << "##########################    get op_info    "
+                 "##########################"
+              << std::endl;
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {

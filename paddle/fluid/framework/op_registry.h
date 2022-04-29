@@ -279,9 +279,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
       __reg_op__##op_type,                                               \
       "REGISTER_OPERATOR must be called in global namespace");           \
-  static ::paddle::framework::OperatorRegistrar<op_class, ##__VA_ARGS__> \
-      __op_registrar_##op_type##__(#op_type);                            \
-  __declspec(dllexport) int TouchOpRegistrar_##op_type() {                                     \
+  __declspec(dllexport) static ::paddle::framework::OperatorRegistrar    \
+  <op_class, ##__VA_ARGS__> __op_registrar_##op_type##__(#op_type);      \
+  __declspec(dllexport) int TouchOpRegistrar_##op_type() {               \
     __op_registrar_##op_type##__.Touch();                                \
     return 0;                                                            \
   }
@@ -301,11 +301,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       __reg_op_kernel_##op_type##_##library_type##_##customized_name##__,      \
                                  "REGISTER_OP_KERNEL must be called in "       \
                                  "global namespace");                          \
-  static ::paddle::framework::OpKernelRegistrar<place_class,                   \
-                                                __VA_ARGS__>                   \
+  __declspec(dllexport) static ::paddle::framework::OpKernelRegistrar          \
+      <place_class, __VA_ARGS__>                                               \
       __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__(\
           #op_type, #library_type, customized_type_value);                     \
-  __declspec(dllexport) int TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {\
+  __declspec(dllexport) int                                                    \
+    TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {  \
     __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__   \
         .Touch();                                                              \
     return 0;                                                                  \
@@ -351,7 +352,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
                                                   __VA_ARGS__>  \
       __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__(\
           #op_type, #library_type, customized_type_value);  \
-  __declspec(dllexport) int TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {\
+  __declspec(dllexport) int                                                    \
+    TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {  \
     __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__   \
         .Touch();                                                              \
     return 0;                                                                  \

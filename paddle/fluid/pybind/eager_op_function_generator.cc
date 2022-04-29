@@ -387,11 +387,16 @@ static std::string GenerateCoreOpsInfoMap() {
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
 GenerateOpFunctions() {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
-
+  std::cout << "**********************    eager GenerateOpFunctions    "
+               "**********************"
+            << std::endl;
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
+    std::cout << "##########################    get op_info    "
+                 "##########################"
+              << std::endl;
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {

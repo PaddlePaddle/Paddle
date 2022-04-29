@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
-#include "paddle/fluid/pybind/pybind.h"
+// #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
 // phi
@@ -2773,8 +2773,13 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
   std::string grad_node_cc_str = "";
 
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
-
+  std::cout << "**********************    DygraphCodeGeneration    "
+               "**********************"
+            << std::endl;
   for (auto& pair : op_info_map) {
+    std::cout << "##########################    get op_info    "
+                 "##########################"
+              << std::endl;
     const OpInfo& op_info = pair.second;
     proto::OpProto* op_proto = op_info.proto_;
 
