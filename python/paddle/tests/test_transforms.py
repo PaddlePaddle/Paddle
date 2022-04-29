@@ -134,6 +134,14 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_perspective(self):
+        trans = transforms.Compose([
+            transforms.RandomPerspective(prob=1.0),
+            transforms.RandomPerspective(
+                prob=1.0, distortion_scale=0.9),
+        ])
+        self.do_transform(trans)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -689,6 +697,25 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+
+    def test_perspective(self):
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW')
+
+        startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
+        endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
+
+        np_perspectived_img = F.perspective(np_img, startpoints, endpoints)
+        pil_perspectived_img = F.perspective(pil_img, startpoints, endpoints)
+        tensor_perspectived_img = F.perspective(tensor_img, startpoints,
+                                                endpoints)
+
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                np.array(pil_perspectived_img).shape)
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                tensor_perspectived_img.transpose(
+                                    (1, 2, 0)).shape)
 
 
 if __name__ == '__main__':

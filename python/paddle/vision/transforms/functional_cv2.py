@@ -509,6 +509,86 @@ def rotate(img,
             borderValue=fill)
 
 
+def _perspective_grid(img, coeffs, ow, oh):
+    # https://github.com/python-pillow/Pillow/blob/4634eafe3c695a014267eefdce830b4a825beed7/src/libImaging/Geometry.c#L394
+    # x_out = (coeffs[0] * x + coeffs[1] * y + coeffs[2]) / (coeffs[6] * x + coeffs[7] * y + 1)
+    # y_out = (coeffs[3] * x + coeffs[4] * y + coeffs[5]) / (coeffs[6] * x + coeffs[7] * y + 1)
+    theta1 = paddle.to_tensor(
+        [[[coeffs[0], coeffs[1], coeffs[2]], [coeffs[3], coeffs[4], coeffs[5]]]
+         ],
+        place=img.place).astype(img.dtype)
+    theta2 = paddle.to_tensor(
+        [[[coeffs[6], coeffs[7], 1.0], [coeffs[6], coeffs[7], 1.0]]],
+        place=img.place).astype(img.dtype)
+
+    d = 0.5
+    base_grid = paddle.ones((1, oh, ow, 3), dtype=img.dtype)
+
+    x_grid = paddle.linspace(d, ow * 1.0 + d - 1.0, ow)
+    base_grid[..., 0] = x_grid
+    y_grid = paddle.linspace(d, oh * 1.0 + d - 1.0, oh).unsqueeze_(-1)
+    base_grid[..., 1] = y_grid
+
+    scaled_theta1 = theta1.transpose(
+        (0, 2, 1)) / paddle.to_tensor([0.5 * ow, 0.5 * oh])
+    output_grid1 = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta1)
+    output_grid2 = base_grid.reshape(
+        (1, oh * ow, 3)).bmm(theta2.transpose((0, 2, 1)))  #
+
+    output_grid = output_grid1 / output_grid2 - 1.0
+    return output_grid.reshape((1, oh, ow, 2))
+
+
+def perspective(img, startpoints, endpoints, interpolation='bicubic', fill=0):
+    """Perspective the image.
+
+    Args:
+        img (np.array): Image to be perspectived.
+        startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
+        endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        np.array: Perspectived image.
+
+    """
+    cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+    h, w = img.shape[0:2]
+
+    startpoints = np.array(startpoints, dtype="float32")
+    endpoints = np.array(endpoints, dtype="float32")
+    matrix = cv2.getPerspectiveTransform(startpoints, endpoints)
+
+    if len(img.shape) == 3 and img.shape[2] == 1:
+        return cv2.warpPerspective(
+            img,
+            matrix,
+            dsize=(w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpPerspective(
+            img,
+            matrix,
+            dsize=(w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
+
+
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
 

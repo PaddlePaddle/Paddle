@@ -595,6 +595,96 @@ def rotate(img,
         return F_cv2.rotate(img, angle, interpolation, expand, center, fill)
 
 
+def _get_perspective_coeffs(startpoints, endpoints):
+    """
+    get coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
+
+    In Perspective Transform each pixel (x, y) in the original image gets transformed as,
+     (x, y) -> ( (ax + by + c) / (gx + hy + 1), (dx + ey + f) / (gx + hy + 1) )
+
+    Args:
+        startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
+        endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
+
+    Returns:
+        octuple (a, b, c, d, e, f, g, h) for transforming each pixel.
+    """
+    a_matrix = np.zeros((2 * len(startpoints), 8))
+
+    for i, (p1, p2) in enumerate(zip(endpoints, startpoints)):
+        a_matrix[2 * i, :] = [
+            p1[0], p1[1], 1, 0, 0, 0, -p2[0] * p1[0], -p2[0] * p1[1]
+        ]
+        a_matrix[2 * i + 1, :] = [
+            0, 0, 0, p1[0], p1[1], 1, -p2[1] * p1[0], -p2[1] * p1[1]
+        ]
+
+    b_matrix = np.array(startpoints).reshape([8])
+    res = np.linalg.lstsq(a_matrix, b_matrix)[0]
+
+    output = list(res)
+    return output
+
+
+def perspective(img, startpoints, endpoints, interpolation='bilinear', fill=0):
+    """Perform perspective transform of the given image.
+
+    Args:
+        img (PIL.Image|np.array|paddle.Tensor): Image to be transformed.
+        startpoints (list of list of ints): List containing four lists of two integers corresponding to four corners
+            ``[top-left, top-right, bottom-right, bottom-left]`` of the original image.
+        endpoints (list of list of ints): List containing four lists of two integers corresponding to four corners
+            ``[top-left, top-right, bottom-right, bottom-left]`` of the transformed image.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. when use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (sequence or number, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
+
+    Returns:
+        PIL.Image|np.array|paddle.Tensor: transformed Image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            fake_img = Image.fromarray(fake_img)
+
+            startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
+            endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
+
+            perspectived_img = F.perspective(fake_img, startpoints, endpoints)
+            print(perspectived_img.size)
+
+    """
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
+        raise TypeError(
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
+            format(type(img)))
+
+    coeffs = _get_perspective_coeffs(startpoints, endpoints)
+
+    if _is_pil_image(img):
+        return F_pil.perspective(img, coeffs, interpolation, fill)
+    elif _is_tensor_image(img):
+        return F_t.perspective(img, coeffs, interpolation, fill)
+    else:
+        return F_cv2.perspective(img, startpoints, endpoints, interpolation,
+                                 fill)
+
+
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
 
