@@ -1604,7 +1604,7 @@ class OneCycleLR(LRScheduler):
 
     Please note that the default behaviour of this scheduler follows the fastai implementation of one cycle,
     which claims that “unpublished work has shown even better results by using only two phases”.
-    Set ``three_phase=True``, If you want the behaviour of this scheduler to be consistent with the paper.
+    Set ``three_phase=True``, if you want the behaviour of this scheduler to be consistent with the paper.
 
     Also note that you should update learning rate each step.
 
@@ -1623,12 +1623,12 @@ class OneCycleLR(LRScheduler):
         anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
             'linear' for linear annealing. Default: 'cos'.
         divide_factor (float, optional): Initial learning rate will be determined by initial_lr = max_lr/div_factor. Default: 25.
-        final_divide_factor (float, optional): Minimum learning rate will be determined by initial_lr = max_lr/div_factor. Default: 1e4.
+        final_divide_factor (float, optional): Minimum learning rate will be determined by minimum = max_lr/final_divide_factor. Default: 1e4.
         three_phase (bool, optional): Whether to use three phase.
             If ``True``:
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
-                2. Then it will be decrease to learning rate. Number of step in this phase is the same as the one in first phase.
-                3. Finally, it decrease to minimum learning rate which is much less than initial learning rate.
+                2. Then it will decrease to initial learning rate. Number of step in this phase is the same as the one in first phase.
+                3. Finally, it will decrease to minimum learning rate which is much less than initial learning rate.
             If ``False``:
                 1. The learning rate will increase to maximum learning rate.
                 2. Then it will directly decrease to minimum learning rate.
