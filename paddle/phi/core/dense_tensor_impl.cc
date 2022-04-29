@@ -373,10 +373,7 @@ dnnl::memory::format_tag DenseTensor::format() const {
 
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();
-  // Preserve LoD
-  auto lod = meta_.lod;
   *this = src;
-  meta_.lod = lod;
   return *this;
 }
 
