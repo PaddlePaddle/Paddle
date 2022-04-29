@@ -47,7 +47,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Loss",
         "The output KL divergence loss tensor. if Attr(reduction) is "
-        "'none', this tensor should be in same shape of of Input(X), else "
+        "'none', this tensor should be in same shape of Input(X), else "
         "this tensor should be in shape of [1].");
 
     AddAttr<std::string>(
@@ -72,7 +72,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
 
          While :attr:`reduction` is :attr:`none`, output loss is in
          the same shape as Input(X), loss in each point is calculated 
-         seperately and no reduction is applied.
+         separately and no reduction is applied.
          
          While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.

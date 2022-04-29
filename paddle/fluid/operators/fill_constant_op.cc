@@ -32,7 +32,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
             shape[i], 0,
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+                "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i, shape[i], phi::make_ddim(shape)));
       }
     }

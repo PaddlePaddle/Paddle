@@ -511,7 +511,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                        ExtractOpRole(cluster));
   cinn_op_desc.Flush();
   auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
-  // Add new links from or to the the cinn launch op node
+  // Add new links from or to the cinn launch op node
   AddLinkToCinnOp(cluster_inputs, cluster_outputs, cinn_op_node);
 
   VLOG(4) << "Add op [" << kCinnLaunchOp << "] into graph.";
