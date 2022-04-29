@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
@@ -46,9 +47,8 @@ namespace egr {
  * indicate which
  * input of grad this edge belong).
  * */
-class Edge;
 class AutogradMeta;
-
+class GradNodeBase;
 /**
  * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
  * has lots of operators
@@ -56,185 +56,6 @@ class AutogradMeta;
  * So, we need a meta info
  * to record it's needs.
  * **/
-class GradSlotMeta {
- public:
-  GradSlotMeta() = default;
-  bool IsStopGradient() const { return stop_gradient_; }
-  void SetStopGradient(bool stop_gradient = true) {
-    stop_gradient_ = stop_gradient;
-  }
-
-  void SetTensorMeta(const phi::DenseTensorMeta& meta) {
-    meta_ = std::make_shared<phi::DenseTensorMeta>(meta);
-  }
-  bool HasTensorMeta() const { return meta_ && meta_.get(); }
-  const phi::DenseTensorMeta& GetTensorMeta() const {
-    if (!HasTensorMeta()) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "meta_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasTensorMeta()"
-          "before calling GetTensorMeta() interface."));
-    }
-    return *meta_.get();
-  }
-
-  void SetPlace(const phi::Place& place) { place_ = place; }
-  const phi::Place& GetPlace() const { return place_; }
-
- private:
-  bool stop_gradient_{false};
-  phi::Place place_;
-  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
-};
-
-class GradNodeBase {
- public:
-  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
-  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
-  // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
-
-  /**
-   * operator() designed to contian the real backward execution logic, it should
-   * be
-   * overrided by derived class defined for each operator. It accepts a vector
-   * of
-   * Tensor which contains grads input of current operator
-   *
-   * Note: why we need backward inputs and outputs construct as vector of vector
-   * of paddle::experimental::Tensor?
-   * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
-   * so, vector of vector
-   * is better choice to fit this format.
-   * **/
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) = 0;
-
-  virtual void ClearTensorWrappers() = 0;
-
-  /**
-       * Self-Copy interface designed for use in DoubleGrad
-       * **/
-  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
-
-  /**
-   * AddEdges is designed to set input tensors' backward Node as current
-   * node's Edges.
-   * This method should be call in forward code and for double backward depends
-   * computation.
-   *
-   * This one is called slot by slot
-   * **/
-  void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
-  void AddEdges(AutogradMeta* meta, size_t slot_id);
-
-  // adj_edges were moved inside OutputMeta(), so no available direct access
-  // from GradNodeBase.
-  // To access Edges, get GradSlotMeta by calling OutputMeta(), then use
-  // slot_meta.GetEdge()
-
-  /**
-   * Get Input Meta of current Grad node**/
-  const std::vector<std::vector<GradSlotMeta>>& InputMeta() const;
-  /**
-   * Get Output Meta of current Grad node**/
-  const std::vector<std::vector<GradSlotMeta>>& OutputMeta() const;
-  /**
-   * Set bwd ins and outs info with forward vars
-   * **/
-
-  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
-                     size_t slot_rank);
-  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
-                     size_t slot_rank);
-
-  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
-                      size_t slot_rank);
-  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
-                      size_t slot_rank);
-  /**
-   * Default setters for Grad in/out meta this should be used for same special
-   * Node which will not create by user
-   * **/
-  void SetDefaultGradInOutMeta();
-  /**
-   * Register GradientHook
-   * **/
-  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
-                               std::shared_ptr<egr::TensorHook>&& hook);
-
-  /**
-  * Remove GradientHook
-  * **/
-  bool RemoveGradientHook(const int64_t& hook_id) {
-    auto remove_cnt = gradient_hooks_.erase(hook_id);
-    if (remove_cnt == 0) {
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * Apply GradientHook
-   * **/
-  inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
-
-  std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
-
-  /**
-    * Handle Complex - Real Type Promotion
-    * **/
-  void HandleComplexGradToRealGrad(
-      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
-  bool NeedComplexToRealConversion() { return need_complex_to_real_; }
-
-  virtual std::string name() { return "GradNodeBase"; }
-
-  /**
-       * GetEdges is designed to get all edges of current node**/
-  const std::vector<std::vector<Edge>>& GetEdges() const;
-  std::vector<std::vector<Edge>>& GetMutableEdges();
-
-  /**
-       * The following interfaces are designed for no_need_buffer
-       * **/
-  bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
-
-  void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
-    is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
-  }
-
- private:
-  // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
-  // Edges recorded the backward related node info, which indicate all edges
-  // linked
-  // by this Grad Node.
-  // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
-  std::vector<std::vector<Edge>> adj_edges_;
-
-  // bwd_out_meta_ is used to record Grad output info for backward
-  std::vector<std::vector<GradSlotMeta>> bwd_out_meta_;
-
-  // bwd_in_meta_ used to record Grad input info for backward
-  std::vector<std::vector<GradSlotMeta>> bwd_in_meta_;
-  // Gradient Hooks
-  // Customer may register a list of hooks which will be called in order during
-  // backward
-  // Each entry consists one pair of
-  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
-  std::map<int64_t, std::tuple<
-                        /* slot id */ size_t, /* rank */ size_t,
-                        /* hook */ std::shared_ptr<TensorHook>>>
-      gradient_hooks_;
-
-  // We handle complex to real conversion only if any complex GradIn is involved
-  bool need_complex_to_real_ = false;
-  int64_t next_hook_id_{0};
-  bool is_tensor_wrappers_cleared_ = false;
-};
-
 class Edge {
  public:
   // Default constructor for Edges in order to construct it for AutogradMeta
@@ -298,6 +119,186 @@ class Edge {
   size_t in_slot_id_;
   size_t in_rank_;
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
+};
+class GradSlotMeta {
+ public:
+  GradSlotMeta() = default;
+  bool IsStopGradient() const { return stop_gradient_; }
+  void SetStopGradient(bool stop_gradient = true) {
+    stop_gradient_ = stop_gradient;
+  }
+
+  void SetTensorMeta(const phi::DenseTensorMeta& meta) {
+    meta_ = std::make_shared<phi::DenseTensorMeta>(meta);
+  }
+  bool HasTensorMeta() const { return meta_ && meta_.get(); }
+  const phi::DenseTensorMeta& GetTensorMeta() const {
+    if (!HasTensorMeta()) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "meta_ of GradSlotMeta has not been initialized yet."
+          "You're expected to check Edge availability with HasTensorMeta()"
+          "before calling GetTensorMeta() interface."));
+    }
+    return *meta_.get();
+  }
+
+  void SetPlace(const phi::Place& place) { place_ = place; }
+  const phi::Place& GetPlace() const { return place_; }
+
+  void SetEdge(const Edge& edge) { adj_edge_ = edge; }
+  void SetEdge(
+      const std::shared_ptr<GradNodeBase>& grad_node,
+      const std::pair</* slot_id */ size_t, /* rank */ size_t>& rank_info) {
+    adj_edge_.SetGradNode(grad_node);
+    adj_edge_.SetEdgeRankInfo(rank_info);
+  }
+  Edge& GetMutableEdge() { return adj_edge_; }
+  const Edge& GetEdge() const { return adj_edge_; }
+
+ private:
+  bool stop_gradient_{false};
+  phi::Place place_;
+  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
+  Edge adj_edge_;
+};
+
+class GradNodeBase {
+ public:
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
+  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
+  // TODO(jiabin): Should we have other constructor here?
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
+
+  /**
+   * operator() designed to contian the real backward execution logic, it should
+   * be
+   * overrided by derived class defined for each operator. It accepts a vector
+   * of
+   * Tensor which contains grads input of current operator
+   *
+   * Note: why we need backward inputs and outputs construct as vector of vector
+   * of paddle::experimental::Tensor?
+   * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
+   * so, vector of vector
+   * is better choice to fit this format.
+   * **/
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) = 0;
+
+  virtual void ClearTensorWrappers() = 0;
+
+  /**
+       * Self-Copy interface designed for use in DoubleGrad
+       * **/
+  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
+
+  // adj_edges were moved inside OutputMeta(), so no available direct access
+  // from GradNodeBase.
+  // To access Edges, get GradSlotMeta by calling OutputMeta(), then use
+  // slot_meta.GetEdge()
+
+  /**
+   * Get Input Meta of current Grad node**/
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  InputMeta() const;
+  /**
+   * Get Output Meta of current Grad node**/
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  OutputMeta() const;
+
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+  MutableOutputMeta();
+  /**
+   * Set bwd ins and outs info with forward vars
+   * **/
+
+  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
+                     size_t slot_rank);
+  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
+                     size_t slot_rank);
+
+  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
+                      size_t slot_rank);
+  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+                      size_t slot_rank);
+  /**
+   * Default setters for Grad in/out meta this should be used for same special
+   * Node which will not create by user
+   * **/
+  void SetDefaultGradInOutMeta();
+  /**
+   * Register GradientHook
+   * **/
+  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
+                               std::shared_ptr<egr::TensorHook>&& hook);
+
+  /**
+  * Remove GradientHook
+  * **/
+  bool RemoveGradientHook(const int64_t& hook_id) {
+    auto remove_cnt = gradient_hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Apply GradientHook
+   * **/
+  inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
+
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+  ApplyGradientHooks(
+      const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                 kSlotSmallVectorSize>& tensors);
+
+  /**
+    * Handle Complex - Real Type Promotion
+    * **/
+  void HandleComplexGradToRealGrad(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>* out_grads);
+  bool NeedComplexToRealConversion() { return need_complex_to_real_; }
+
+  virtual std::string name() { return "GradNodeBase"; }
+
+  /**
+       * The following interfaces are designed for no_need_buffer
+       * **/
+  bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
+
+  void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
+    is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
+  }
+
+ private:
+  // bwd_out_meta_ is used to record Grad output info for backward
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+      bwd_out_meta_;
+
+  // bwd_in_meta_ used to record Grad input info for backward
+  paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+      bwd_in_meta_;
+  // Gradient Hooks
+  // Customer may register a list of hooks which will be called in order during
+  // backward
+  // Each entry consists one pair of
+  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
+  std::map<int64_t, std::tuple<
+                        /* slot id */ size_t, /* rank */ size_t,
+                        /* hook */ std::shared_ptr<TensorHook>>>
+      gradient_hooks_;
+
+  // We handle complex to real conversion only if any complex GradIn is involved
+  bool need_complex_to_real_ = false;
+  int64_t next_hook_id_{0};
+  bool is_tensor_wrappers_cleared_ = false;
 };
 
 inline void CheckTensor(const paddle::experimental::Tensor& pre,
