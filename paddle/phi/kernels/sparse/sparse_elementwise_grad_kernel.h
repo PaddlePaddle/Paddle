@@ -21,29 +21,46 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void ElementWiseAddCsrGradKernel(const Context& dev_ctx,
-                                 const SparseCsrTensor& x,
-                                 const SparseCsrTensor& y,
-                                 const SparseCsrTensor& dout,
-                                 SparseCsrTensor* dx,
-                                 SparseCsrTensor* dy);
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD(name)          \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD_WITH_TYPE(name, Csr) \
+                                                           \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD_WITH_TYPE(name, Coo)
 
-template <typename T, typename Context>
-void ElementWiseSubtractCsrGradKernel(const Context& dev_ctx,
-                                      const SparseCsrTensor& x,
-                                      const SparseCsrTensor& y,
-                                      const SparseCsrTensor& dout,
-                                      SparseCsrTensor* dx,
-                                      SparseCsrTensor* dy);
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC(name)          \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC_WITH_TYPE(name, Csr) \
+                                                           \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC_WITH_TYPE(name, Coo)
 
-template <typename T, typename Context>
-void ElementWiseMultiplyCsrGradKernel(const Context& dev_ctx,
-                                      const SparseCsrTensor& x,
-                                      const SparseCsrTensor& y,
-                                      const SparseCsrTensor& dout,
-                                      SparseCsrTensor* dx,
-                                      SparseCsrTensor* dy);
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD_WITH_TYPE(name, type)            \
+  template <typename T, typename Context>                                    \
+  void ElementWise##name##type##GradKernel(const Context& dev_ctx,           \
+                                           const Sparse##type##Tensor& x,    \
+                                           const Sparse##type##Tensor& y,    \
+                                           const Sparse##type##Tensor& dout, \
+                                           Sparse##type##Tensor* dx,         \
+                                           Sparse##type##Tensor* dy);
+
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC_WITH_TYPE(name, type)  \
+  template <typename T, typename Context>                          \
+  std::vector<Sparse##type##Tensor> ElementWise##name##type##Grad( \
+      const Context& dev_ctx,                                      \
+      const Sparse##type##Tensor& x,                               \
+      const Sparse##type##Tensor& y,                               \
+      const Sparse##type##Tensor& dout) {                          \
+    Sparse##type##Tensor dx;                                       \
+    Sparse##type##Tensor dy;                                       \
+    ElementWise##name##type##GradKernel<T, Context>(               \
+        dev_ctx, x, y, dout, &dx, &dy);                            \
+    return std::vector<Sparse##type##Tensor>{dx, dy};              \
+  }
+
+DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD(Add)
+DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD(Subtract)
+DEFINE_ELEMENTWISE_GRAD_KERNEL_HEAD(Multiply)
+
+DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC(Add)
+DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC(Subtract)
+DEFINE_ELEMENTWISE_GRAD_KERNEL_FUNC(Multiply)
 
 template <typename T, typename Context>
 void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
@@ -54,23 +71,14 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
                                     SparseCsrTensor* dx,
                                     SparseCsrTensor* dy);
 
-#define DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(name)      \
-  template <typename T, typename Context>                  \
-  std::vector<SparseCsrTensor> ElementWise##name##CsrGrad( \
-      const Context& dev_ctx,                              \
-      const SparseCsrTensor& x,                            \
-      const SparseCsrTensor& y,                            \
-      const SparseCsrTensor& dout) {                       \
-    SparseCsrTensor dx;                                    \
-    SparseCsrTensor dy;                                    \
-    ElementWise##name##CsrGradKernel<T, Context>(          \
-        dev_ctx, x, y, dout, &dx, &dy);                    \
-    return std::vector<SparseCsrTensor>{dx, dy};           \
-  }
-
-DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Add)
-DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Subtract)
-DEFINE_CSR_ELEMENTWISE_GRAD_KERNEL_FUNC(Multiply)
+template <typename T, typename Context>
+void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
+                                    const SparseCooTensor& x,
+                                    const SparseCooTensor& y,
+                                    const SparseCooTensor& out,
+                                    const SparseCooTensor& dout,
+                                    SparseCooTensor* dx,
+                                    SparseCooTensor* dy);
 
 template <typename T, typename Context>
 std::vector<SparseCsrTensor> ElementWiseDivideCsrGrad(
@@ -84,6 +92,20 @@ std::vector<SparseCsrTensor> ElementWiseDivideCsrGrad(
   ElementWiseDivideCsrGradKernel<T, Context>(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCsrTensor>{dx, dy};
+}
+
+template <typename T, typename Context>
+std::vector<SparseCooTensor> ElementWiseDivideCooGrad(
+    const Context& dev_ctx,
+    const SparseCooTensor& x,
+    const SparseCooTensor& y,
+    const SparseCooTensor& out,
+    const SparseCooTensor& dout) {
+  SparseCooTensor dx;
+  SparseCooTensor dy;
+  ElementWiseDivideCooGradKernel<T, Context>(
+      dev_ctx, x, y, out, dout, &dx, &dy);
+  return std::vector<SparseCooTensor>{dx, dy};
 }
 
 }  // namespace sparse

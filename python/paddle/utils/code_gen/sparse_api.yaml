@@ -49,6 +49,7 @@
   kernel :
     func : sparse_elementwise_add_coo
     layout : x
+  backward : elementwise_add_coo_grad
 
 - api : elementwise_add_csr
   args : (Tensor x, Tensor y)
@@ -63,6 +64,7 @@
   kernel :
     func : sparse_elementwise_div_coo
     layout : x
+  backward : elementwise_div_coo_grad
 
 - api : elementwise_div_csr
   args : (Tensor x, Tensor y)
@@ -77,6 +79,7 @@
   kernel :
     func : sparse_elementwise_mul_coo
     layout : x
+  backward : elementwise_mul_coo_grad
 
 - api : elementwise_mul_csr
   args : (Tensor x, Tensor y)
@@ -91,6 +94,7 @@
   kernel :
     func : sparse_elementwise_sub_coo
     layout : x
+  backward : elementwise_sub_coo_grad
 
 - api : elementwise_sub_csr
   args : (Tensor x, Tensor y)

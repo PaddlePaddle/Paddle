@@ -68,22 +68,36 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
     def func_support_dtypes_coo(self):
         for op in self.op_list:
-            for dtype in self.support_dtypes:
-                x = np.random.randint(
-                    -255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(
-                    -255, 255, size=self.coo_shape).astype(dtype)
-                dense_x = paddle.to_tensor(x).astype(dtype)
-                dense_y = paddle.to_tensor(y).astype(dtype)
-                coo_x = dense_x.to_sparse_coo(2)
-                coo_y = dense_y.to_sparse_coo(2)
+            for sparse_dim in range(2, len(self.coo_shape) + 1):
+                for dtype in self.support_dtypes:
+                    x = np.random.randint(
+                        -255, 255, size=self.coo_shape).astype(dtype)
+                    y = np.random.randint(
+                        -255, 255, size=self.coo_shape).astype(dtype)
+                    dense_x = paddle.to_tensor(x).astype(dtype)
+                    dense_y = paddle.to_tensor(y).astype(dtype)
+                    coo_x = dense_x.to_sparse_coo(sparse_dim)
+                    coo_y = dense_y.to_sparse_coo(sparse_dim)
 
-                actual_res = get_actual_res(coo_x, coo_y, op)
-                expect_res = op(dense_x, dense_y)
+                    actual_res = get_actual_res(coo_x, coo_y, op)
+                    actual_res.backward(actual_res)
+                    actual_grad_x = coo_x.grad()
+                    actual_grad_y = coo_y.grad()
 
-                self.assertTrue(
-                    np.allclose(expect_res.numpy(),
-                                actual_res.to_dense().numpy()))
+                    expect_res = op(dense_x, dense_y)
+                    expect_res.backward(expect_res)
+                    expect_grad_x = dense_x.grad()
+                    expect_grad_y = dense_y.grad()
+
+                    self.assertTrue(
+                        np.allclose(expect_res.numpy(),
+                                    actual_res.to_dense().numpy()))
+                    self.assertTrue(
+                        np.allclose(expect_grad_x.numpy(),
+                                    actual_grad_x.to_dense().numpy()))
+                    self.assertTrue(
+                        np.allclose(expect_grad_y.numpy(),
+                                    actual_grad_y.to_dense().numpy()))
 
     def test_support_dtypes_csr(self):
         if paddle.device.get_device() == "cpu":
