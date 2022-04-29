@@ -58,6 +58,11 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
     device_id_mapping.push_back(device_id);
   }
 }
+std::vector<std::vector<int64_t>> GraphGpuWrapper::get_all_id(int type, int idx,
+                                                              int slice_num) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table->get_all_id(type, idx, slice_num);
+}
 void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
                                    std::vector<std::string> &node_types) {
   id_to_edge = edge_types;
@@ -288,18 +293,18 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   }
   /* VLOG(0) << "cumsum " << cumsum; */
 
-  std::vector<int64_t> res;
-  res.resize(cumsum * 2);
-  int count = 0;
+  std::vector<int64_t> cpu_key, res;
+  cpu_key.resize(key.size() * sample_size);
+
+  cudaMemcpy(cpu_key.data(), neighbor_sample_res.val,
+             key.size() * sample_size * sizeof(int64_t),
+             cudaMemcpyDeviceToHost);
   for (int i = 0; i < key.size(); i++) {
     for (int j = 0; j < actual_sample_size[i]; j++) {
-      res[count] = key[i];
-      count += 1;
+      res.push_back(key[i]);
+      res.push_back(cpu_key[i * sample_size + j]);
     }
   }
-
-  cudaMemcpy(res.data() + cumsum, neighbor_sample_res.val,
-             cumsum * sizeof(int64_t), cudaMemcpyDeviceToHost);
   /* for(int i = 0;i < res.size();i ++) { */
   /*     VLOG(0) << i << " " << res[i]; */
   /* } */
