@@ -29,14 +29,18 @@
 #include "pybind11/pytypes.h"
 
 namespace egr {
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodePyLayer::
-operator()(
-    std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-    bool create_graph, bool is_new_grad) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+GradNodePyLayer::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: " << name();
 
-  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-      GradNodePyLayer::ApplyGradientHooks(grads);
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
 
   paddle::pybind::PyLayerObject* ctx =
       reinterpret_cast<paddle::pybind::PyLayerObject*>(ctx_);
@@ -124,7 +128,9 @@ operator()(
         ctx->forward_input_tensor_is_duplicable.size(), outputs_size));
   }
 
-  std::vector<std::vector<paddle::experimental::Tensor>> grad_out;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
     if (i < outputs_size) {
