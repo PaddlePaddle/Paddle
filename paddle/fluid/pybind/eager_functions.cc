@@ -406,12 +406,9 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
 
       if (slot_map[0].find(i) != slot_map[0].end()) {
         grad_node->SetGradOutMeta(in_tensors, slot_map[0][i]);
-        grad_node->AddEdges(&ins_auto_grad_metas[i], slot_map[0][i]);
       } else {
         grad_node->SetGradOutMeta(in_tensors,
                                   ins_auto_grad_metas.size() - 1 - no_grad_cnt);
-        grad_node->AddEdges(&ins_auto_grad_metas[i],
-                            ins_auto_grad_metas.size() - 1 - no_grad_cnt);
         no_grad_cnt++;
       }
     }
