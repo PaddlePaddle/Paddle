@@ -42,14 +42,14 @@ limitations under the License. */
 namespace phi {
 
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
-    : holder_(a->Allocate(SizeOf(dtype()) * numel())), meta_(meta) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : holder_(a->Allocate(SizeOf(dtype()) * numel())), meta_(std::move(meta)) {}
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
-    : holder_(holder), meta_(meta) {}
+    : meta_(meta), holder_(holder) {}
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;

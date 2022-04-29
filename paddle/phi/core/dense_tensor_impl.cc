@@ -213,10 +213,10 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
                          const DenseTensorMeta& meta)
-    : holder_(storage->move_data_shared()), meta_(meta) {}
+    : meta_(meta), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : holder_(storage->move_data_shared()), meta_(std::move(meta)) {}
+    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
