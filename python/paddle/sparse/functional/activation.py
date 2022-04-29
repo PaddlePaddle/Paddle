@@ -40,7 +40,7 @@ def relu(x, name=None):
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor([-2, 0, 1])
+                dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.functional.relu(sparse_x) 
     """
@@ -80,7 +80,7 @@ def tanh(x, name=None):
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor([-2, 0, 1])
+                dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.sparse.tanh(sparse_x)
     """

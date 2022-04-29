@@ -66,4 +66,3 @@
   output : Tensor(x_grad@SparseCooTensor)
   kernel :
     func : sparse_maxpool_grad
-
