@@ -47,67 +47,101 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         self.coo_shape = [4, 8, 3, 5]
         self.support_dtypes = ['float32', 'float64']
 
-    def func_support_dtypes_csr(self):
-        for op in self.op_list:
-            for dtype in self.support_dtypes:
-                x = np.random.randint(
-                    -255, 255, size=self.csr_shape).astype(dtype)
-                y = np.random.randint(
-                    -255, 255, size=self.csr_shape).astype(dtype)
-                dense_x = paddle.to_tensor(x).astype(dtype)
-                dense_y = paddle.to_tensor(y).astype(dtype)
-                csr_x = dense_x.to_sparse_csr()
-                csr_y = dense_y.to_sparse_csr()
+    def func_test_csr(self, op):
+        for type in self.support_dtypes:
+            x = np.random.randint(-255, 255, size=self.csr_shape).astype(type)
+            y = np.random.randint(-255, 255, size=self.csr_shape).astype(type)
+            dense_x = paddle.to_tensor(x).astype(type)
+            dense_y = paddle.to_tensor(y).astype(type)
+            csr_x = dense_x.to_sparse_csr()
+            csr_y = dense_y.to_sparse_csr()
 
-                actual_res = get_actual_res(csr_x, csr_y, op)
+            actual_res = get_actual_res(csr_x, csr_y, op)
+            expect_res = op(dense_x, dense_y)
+
+            self.assertTrue(
+                np.allclose(
+                    expect_res.numpy(),
+                    actual_res.to_dense().numpy(),
+                    equal_nan=True))
+
+    def func_test_coo(self, op):
+        for sparse_dim in range(2, len(self.coo_shape) + 1):
+            for type in self.support_dtypes:
+                x = np.random.randint(
+                    -255, 255, size=self.coo_shape).astype(type)
+                y = np.random.randint(
+                    -255, 255, size=self.coo_shape).astype(type)
+
+                dense_x = paddle.to_tensor(x, dtype=type, stop_gradient=False)
+                dense_y = paddle.to_tensor(y, dtype=type, stop_gradient=False)
+
+                s_dense_x = paddle.to_tensor(x, dtype=type, stop_gradient=False)
+                s_dense_y = paddle.to_tensor(y, dtype=type, stop_gradient=False)
+                coo_x = s_dense_x.to_sparse_coo(sparse_dim)
+                coo_y = s_dense_y.to_sparse_coo(sparse_dim)
+
+                actual_res = get_actual_res(coo_x, coo_y, op)
+                actual_res.backward(actual_res)
+
                 expect_res = op(dense_x, dense_y)
+                expect_res.backward(expect_res)
 
                 self.assertTrue(
-                    np.allclose(expect_res.numpy(),
-                                actual_res.to_dense().numpy()))
+                    np.allclose(
+                        expect_res.numpy(),
+                        actual_res.to_dense().numpy(),
+                        equal_nan=True))
+                self.assertTrue(
+                    np.allclose(
+                        dense_x.grad.numpy(),
+                        coo_x.grad.to_dense().numpy(),
+                        equal_nan=True))
+                self.assertTrue(
+                    np.allclose(
+                        dense_y.grad.numpy(),
+                        coo_y.grad.to_dense().numpy(),
+                        equal_nan=True))
 
-    def func_support_dtypes_coo(self):
-        for op in self.op_list:
-            for sparse_dim in range(2, len(self.coo_shape) + 1):
-                for dtype in self.support_dtypes:
-                    x = np.random.randint(
-                        -255, 255, size=self.coo_shape).astype(dtype)
-                    y = np.random.randint(
-                        -255, 255, size=self.coo_shape).astype(dtype)
-                    dense_x = paddle.to_tensor(x).astype(dtype)
-                    dense_y = paddle.to_tensor(y).astype(dtype)
-                    coo_x = dense_x.to_sparse_coo(sparse_dim)
-                    coo_y = dense_y.to_sparse_coo(sparse_dim)
-
-                    actual_res = get_actual_res(coo_x, coo_y, op)
-                    actual_res.backward(actual_res)
-                    actual_grad_x = coo_x.grad()
-                    actual_grad_y = coo_y.grad()
-
-                    expect_res = op(dense_x, dense_y)
-                    expect_res.backward(expect_res)
-                    expect_grad_x = dense_x.grad()
-                    expect_grad_y = dense_y.grad()
-
-                    self.assertTrue(
-                        np.allclose(expect_res.numpy(),
-                                    actual_res.to_dense().numpy()))
-                    self.assertTrue(
-                        np.allclose(expect_grad_x.numpy(),
-                                    actual_grad_x.to_dense().numpy()))
-                    self.assertTrue(
-                        np.allclose(expect_grad_y.numpy(),
-                                    actual_grad_y.to_dense().numpy()))
-
-    def test_support_dtypes_csr(self):
+    def test_coo_add(self):
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
-                self.func_support_dtypes_csr()
+                self.func_test_coo(__add__)
 
-    def test_support_dtypes_coo(self):
+    def test_coo_sub(self):
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
-                self.func_support_dtypes_coo()
+                self.func_test_coo(__sub__)
+
+    def test_coo_mul(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_coo(__mul__)
+
+    def test_coo_div(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_coo(__truediv__)
+
+    def test_csr_add(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_csr(__add__)
+
+    def test_csr_sub(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_csr(__sub__)
+
+    def test_csr_mul(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_csr(__mul__)
+
+    def test_csr_div(self):
+        if paddle.device.get_device() == "cpu":
+            with _test_eager_guard():
+                self.func_test_csr(__truediv__)
 
 
 if __name__ == "__main__":

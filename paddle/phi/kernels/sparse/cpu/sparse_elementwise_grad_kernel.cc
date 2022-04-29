@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -25,77 +26,106 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void ElementWiseAddCsrGradKernel(const Context& dev_ctx,
-                                 const SparseCsrTensor& x,
-                                 const SparseCsrTensor& y,
-                                 const SparseCsrTensor& dout,
-                                 SparseCsrTensor* dx,
-                                 SparseCsrTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void AllocCsrPtr(const Context& dev_ctx,
+                 const SparseCsrTensor& x,
+                 SparseCsrTensor* dx) {
+  DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_crows());
+  DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_cols());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
+}
+
+template <typename T, typename IntT, typename Context>
+void AllocCooPtr(const Context& dev_ctx,
+                 const SparseCooTensor& x,
+                 SparseCooTensor* dx) {
+  DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  dx->SetMember(dx_indices, dx_values, x.dims(), true);
+}
+
+template <typename T, typename IntT, typename Context>
+void ElementWiseAddCsrGradCPUKernel(const Context& dev_ctx,
+                                    const SparseCsrTensor& x,
+                                    const SparseCsrTensor& y,
+                                    const SparseCsrTensor& dout,
+                                    SparseCsrTensor* dx,
+                                    SparseCsrTensor* dy) {
   // Special case when y_grad is not needed
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
+    AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
+    AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   } else {
+    AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
+    AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseSubtractCsrGradKernel(const Context& dev_ctx,
-                                      const SparseCsrTensor& x,
-                                      const SparseCsrTensor& y,
-                                      const SparseCsrTensor& dout,
-                                      SparseCsrTensor* dx,
-                                      SparseCsrTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void ElementWiseSubtractCsrGradCPUKernel(const Context& dev_ctx,
+                                         const SparseCsrTensor& x,
+                                         const SparseCsrTensor& y,
+                                         const SparseCsrTensor& dout,
+                                         SparseCsrTensor* dx,
+                                         SparseCsrTensor* dy) {
   if (dx) {
+    AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   }
 
   if (dy) {
+    AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::OppositeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseMultiplyCsrGradKernel(const Context& dev_ctx,
-                                      const SparseCsrTensor& x,
-                                      const SparseCsrTensor& y,
-                                      const SparseCsrTensor& dout,
-                                      SparseCsrTensor* dx,
-                                      SparseCsrTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void ElementWiseMultiplyCsrGradCPUKernel(const Context& dev_ctx,
+                                         const SparseCsrTensor& x,
+                                         const SparseCsrTensor& y,
+                                         const SparseCsrTensor& dout,
+                                         SparseCsrTensor* dx,
+                                         SparseCsrTensor* dy) {
   if (dx) {
     //    dout*y
+    AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, y, dx);
   }
 
   if (dy) {
     //    dout*x
+    AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     sparse::ElementWiseMultiplyCsrKernel<T, Context>(dev_ctx, dout, x, dy);
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
-                                    const SparseCsrTensor& x,
-                                    const SparseCsrTensor& y,
-                                    const SparseCsrTensor& out,
-                                    const SparseCsrTensor& dout,
-                                    SparseCsrTensor* dx,
-                                    SparseCsrTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
+                                       const SparseCsrTensor& x,
+                                       const SparseCsrTensor& y,
+                                       const SparseCsrTensor& out,
+                                       const SparseCsrTensor& dout,
+                                       SparseCsrTensor* dx,
+                                       SparseCsrTensor* dy) {
   if (dx) {
     //    dout/y
+    AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, dout, y, dx);
   }
 
   if (dy) {
     //    -dout * out / y
+    AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::OppositeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
@@ -104,62 +134,111 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseAddCooGradKernel(const Context& dev_ctx,
-                                 const SparseCooTensor& x,
-                                 const SparseCooTensor& y,
-                                 const SparseCooTensor& dout,
-                                 SparseCooTensor* dx,
-                                 SparseCooTensor* dy) {
-  // Special case when y_grad is not needed
+template <typename T, typename IntT, typename Context>
+void ElementWiseAddCooGradCPUKernel(const Context& dev_ctx,
+                                    const SparseCooTensor& x,
+                                    const SparseCooTensor& y,
+                                    const SparseCooTensor& dout,
+                                    SparseCooTensor* dx,
+                                    SparseCooTensor* dy) {
+  //     Special case when y_grad is not needed*/
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
+    AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
+    AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   } else {
+    AllocCooPtr<T, IntT>(dev_ctx, x, dx);
+    AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseSubtractCooGradKernel(const Context& dev_ctx,
-                                      const SparseCooTensor& x,
-                                      const SparseCooTensor& y,
-                                      const SparseCooTensor& dout,
-                                      SparseCooTensor* dx,
-                                      SparseCooTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void ElementWiseSubtractCooGradCPUKernel(const Context& dev_ctx,
+                                         const SparseCooTensor& x,
+                                         const SparseCooTensor& y,
+                                         const SparseCooTensor& dout,
+                                         SparseCooTensor* dx,
+                                         SparseCooTensor* dy) {
   if (dx) {
+    AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   }
 
   if (dy) {
+    AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::OppositeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
   }
 }
 
-template <typename T, typename Context>
-void ElementWiseMultiplyCooGradKernel(const Context& dev_ctx,
-                                      const SparseCooTensor& x,
-                                      const SparseCooTensor& y,
-                                      const SparseCooTensor& dout,
-                                      SparseCooTensor* dx,
-                                      SparseCooTensor* dy) {
+template <typename T, typename IntT, typename Context>
+void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
+                                         const SparseCooTensor& x,
+                                         const SparseCooTensor& y,
+                                         const SparseCooTensor& dout,
+                                         SparseCooTensor* dx,
+                                         SparseCooTensor* dy) {
   if (dx) {
     //    dout*y
+    AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, y, dx);
   }
 
   if (dy) {
     //    dout*x
+    AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     sparse::ElementWiseMultiplyCooKernel<T, Context>(dev_ctx, dout, x, dy);
   }
 }
 
+template <typename T, typename IntT, typename Context>
+void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
+                                       const SparseCooTensor& x,
+                                       const SparseCooTensor& y,
+                                       const SparseCooTensor& out,
+                                       const SparseCooTensor& dout,
+                                       SparseCooTensor* dx,
+                                       SparseCooTensor* dy) {
+  if (dx) {
+    //    dout/y
+    AllocCooPtr<T, IntT>(dev_ctx, x, dx);
+    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, dout, y, dx);
+  }
+
+  if (dy) {
+    //    -dout * out / y
+    AllocCooPtr<T, IntT>(dev_ctx, y, dy);
+    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    phi::OppositeKernel<T, Context>(
+        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+    auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, *dy, out);
+    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, dy);
+  }
+}
+// CPU Kernel end
+
+// Kernel
+template <typename T, typename Context>
+void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
+                                    const SparseCsrTensor& x,
+                                    const SparseCsrTensor& y,
+                                    const SparseCsrTensor& out,
+                                    const SparseCsrTensor& dout,
+                                    SparseCsrTensor* dx,
+                                    SparseCsrTensor* dy) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_crows().dtype(), "ElementWiseDivideCsrGradCPUKernel", ([&] {
+        ElementWiseDivideCsrGradCPUKernel<T, data_t>(
+            dev_ctx, x, y, out, dout, dx, dy);
+      }));
+}
 template <typename T, typename Context>
 void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
                                     const SparseCooTensor& x,
@@ -168,20 +247,53 @@ void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
                                     const SparseCooTensor& dout,
                                     SparseCooTensor* dx,
                                     SparseCooTensor* dy) {
-  if (dx) {
-    //    dout/y
-    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, dout, y, dx);
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "ElementWiseDivideCooGradCPUKernel", ([&] {
+        ElementWiseDivideCooGradCPUKernel<T, data_t>(
+            dev_ctx, x, y, out, dout, dx, dy);
+      }));
+}
+
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL(name) \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_CSR(name)   \
+                                             \
+  DEFINE_ELEMENTWISE_GRAD_KERNEL_COO(name)
+
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_CSR(name)                              \
+  template <typename T, typename Context>                                     \
+  void ElementWise##name##CsrGradKernel(const Context& dev_ctx,               \
+                                        const SparseCsrTensor& x,             \
+                                        const SparseCsrTensor& y,             \
+                                        const SparseCsrTensor& dout,          \
+                                        SparseCsrTensor* dx,                  \
+                                        SparseCsrTensor* dy) {                \
+    PD_VISIT_INTEGRAL_TYPES(x.non_zero_crows().dtype(),                       \
+                            "ElementWise##name##CsrGradCPUKernel",            \
+                            ([&] {                                            \
+                              ElementWise##name##CsrGradCPUKernel<T, data_t>( \
+                                  dev_ctx, x, y, dout, dx, dy);               \
+                            }));                                              \
   }
 
-  if (dy) {
-    //    -dout * out / y
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-    phi::OppositeKernel<T, Context>(
-        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
-    auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, *dy, out);
-    sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, dy);
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_COO(name)                              \
+  template <typename T, typename Context>                                     \
+  void ElementWise##name##CooGradKernel(const Context& dev_ctx,               \
+                                        const SparseCooTensor& x,             \
+                                        const SparseCooTensor& y,             \
+                                        const SparseCooTensor& dout,          \
+                                        SparseCooTensor* dx,                  \
+                                        SparseCooTensor* dy) {                \
+    PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                     \
+                            "ElementWise##name##CooGradCPUKernel",            \
+                            ([&] {                                            \
+                              ElementWise##name##CooGradCPUKernel<T, data_t>( \
+                                  dev_ctx, x, y, dout, dx, dy);               \
+                            }));                                              \
   }
-}
+
+DEFINE_ELEMENTWISE_GRAD_KERNEL(Add)
+DEFINE_ELEMENTWISE_GRAD_KERNEL(Subtract)
+DEFINE_ELEMENTWISE_GRAD_KERNEL(Multiply)
 
 }  // namespace sparse
 }  // namespace phi
@@ -197,6 +309,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_add_grad_csr,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_sub_grad_csr,
@@ -210,6 +323,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_sub_grad_csr,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_mul_grad_csr,
@@ -223,6 +337,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul_grad_csr,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_div_grad_csr,
@@ -236,6 +351,8 @@ PD_REGISTER_KERNEL(sparse_elementwise_div_grad_csr,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_add_grad_coo,
@@ -249,6 +366,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_add_grad_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_sub_grad_coo,
@@ -262,6 +380,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_sub_grad_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_mul_grad_coo,
@@ -275,6 +394,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul_grad_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(sparse_elementwise_div_grad_coo,
@@ -288,4 +408,6 @@ PD_REGISTER_KERNEL(sparse_elementwise_div_grad_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

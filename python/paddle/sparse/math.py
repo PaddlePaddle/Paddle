@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-math functions
+sparse math functions
 """
 from __future__ import print_function
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode, device
 
 
 def add(x, y, name=None):
     """
-    Add two sparse tensors element-wise. The equation is:
+    Add two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
+    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
+    The equation is:
 
     .. math::
         out = x + y
@@ -56,19 +58,22 @@ def add(x, y, name=None):
         # [ 6.,  8.,  4.,  8.]]
 
     """
-
+    assert device.get_device(
+    ) == "cpu", "Currently, Sparse add only support CPU device."
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
     if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_elementwise_add_coo(x, y)
+        return _C_ops.final_state_sparse_add_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_add_csr(x, y)
+    return _C_ops.final_state_sparse_add_csr(x, y)
 
 
 def subtract(x, y, name=None):
     """
-    Subtract two sparse tensors element-wise. The equation is:
+    Subtract two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
+    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
+    The equation is:
 
     .. math::
         out = x - y
@@ -103,19 +108,22 @@ def subtract(x, y, name=None):
         # [ 2.,  2., -4., -8.]]
 
     """
-
+    assert device.get_device(
+    ) == "cpu", "Currently, Sparse subtract only support CPU device."
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
     if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_elementwise_sub_coo(x, y)
+        return _C_ops.final_state_sparse_sub_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_sub_csr(x, y)
+    return _C_ops.final_state_sparse_sub_csr(x, y)
 
 
 def multiply(x, y, name=None):
     """
-    Multiply two sparse tensors element-wise. The equation is:
+    Multiply two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
+    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
+    The equation is:
 
     .. math::
         out = x * y
@@ -150,19 +158,22 @@ def multiply(x, y, name=None):
         # [ 8., 15.,  0.,  0.]]
 
     """
-
+    assert device.get_device(
+    ) == "cpu", "Currently, Sparse multiply only support CPU device."
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
     if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_elementwise_mul_coo(x, y)
+        return _C_ops.final_state_sparse_mul_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_mul_csr(x, y)
+    return _C_ops.final_state_sparse_mul_csr(x, y)
 
 
 def divide(x, y, name=None):
     """
-    Divide two sparse tensors element-wise. The equation is:
+    Divide two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
+    type（SparseCooTensor or SparseCsrTensor）.If input is SparseCooTensor, x and y's sparse_dim should be identical.
+    The equation is:
 
     .. math::
         out = x / y
@@ -197,11 +208,12 @@ def divide(x, y, name=None):
         # [ 2.       , 1.66666663,  0.       ,  0.       ]]
 
     """
-
+    assert device.get_device(
+    ) == "cpu", "Currently, Sparse divide only support CPU device."
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
     if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_elementwise_div_coo(x, y)
+        return _C_ops.final_state_sparse_div_coo(x, y)
 
-    return _C_ops.final_state_sparse_elementwise_div_csr(x, y)
+    return _C_ops.final_state_sparse_div_csr(x, y)
