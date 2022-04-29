@@ -38,9 +38,9 @@ class RReluOp : public framework::OperatorWithKernel {
 class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input of RRelu op.");
-    AddOutput("Out", "The output of RRelu op.");
-    AddOutput("Noise", "The random sampled RRelu noise.")
+    AddInput("X", "The input of RReLU op.");
+    AddOutput("Out", "The output of RReLU op.");
+    AddOutput("Noise", "The random sampled RReLU noise.")
         .AsIntermediate()
         .AsExtra();
     AddAttr<bool>("is_test",
@@ -74,7 +74,7 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "'RRelu_upper' must be between 0.0 and 1.0."));
         });
     AddComment(R"DOC(
-RRelu Operator.
+RReLU Operator.
 
 Applies the randomized leaky rectified liner unit function, element-wise,
 as described in the paper:
