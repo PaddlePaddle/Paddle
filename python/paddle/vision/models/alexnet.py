@@ -187,7 +187,7 @@ def alexnet(pretrained=False, **kwargs):
     
     Examples:
         .. code-block:: python
-          :name: code-example1
+          :name: code-example
             import paddle
             from paddle.vision.models import alexnet
 
