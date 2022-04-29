@@ -239,9 +239,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
             (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
   }
 
-  paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string& name) const override {
-    paddle::SmallVector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
+    paddle::small_vector<framework::InferShapeVarPtr,
+                         phi::kInputSmallVectorSize>
         res;
     auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
@@ -253,10 +254,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return res;
   }
 
-  paddle::SmallVector<framework::InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<framework::InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string& name) const override {
-    paddle::SmallVector<framework::InferShapeVarPtr,
-                        phi::kOutputSmallVectorSize>
+    paddle::small_vector<framework::InferShapeVarPtr,
+                         phi::kOutputSmallVectorSize>
         res;
     auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
