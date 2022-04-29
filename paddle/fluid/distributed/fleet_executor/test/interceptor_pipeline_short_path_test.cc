@@ -73,39 +73,47 @@ TEST(AmplifierInterceptor, Amplifier) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}});
+  carrier->Init(0,
+                {{SOURCE_ID, 0}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {SINK_ID, 0}});
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, ""}}, "");
 
   int64_t micro_steps = 6;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, micro_steps);  // rank, task_id, max_run_times
   TaskNode* node_a =
       new TaskNode(0, 0, 0, micro_steps, 0);  // role, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
   TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
   TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps, 0);
+  TaskNode* sink = new TaskNode(0, SINK_ID, micro_steps);
 
-  // a->b->c->d
+  // source->a->b->c->d->sink
   // LR->F->B->U
-  LinkNodes({node_a, node_b, node_c, node_d}, {{{node_b, node_c}, 1}});
+  LinkNodes({source, node_a, node_b, node_c, node_d, sink},
+            {{{node_b, node_c}, 1}});
 
   node_a->SetRunPerSteps(micro_steps);
   node_d->SetRunPerSteps(micro_steps);
   node_d->SetRunAtOffset(micro_steps - 1);
 
+  carrier->SetInterceptor(
+      SOURCE_ID, InterceptorFactory::Create("Source", SOURCE_ID, source));
   carrier->SetInterceptor(0,
                           InterceptorFactory::Create("Amplifier", 0, node_a));
   carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
   carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
   carrier->SetInterceptor(3,
                           InterceptorFactory::Create("Amplifier", 3, node_d));
+  carrier->SetInterceptor(SINK_ID,
+                          InterceptorFactory::Create("Sink", SINK_ID, sink));
 
   // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
-  msg.set_src_id(-1);
-  msg.set_dst_id(0);
+  msg.set_message_type(START);
+  msg.set_dst_id(SOURCE_ID);
   carrier->EnqueueInterceptorMessage(msg);
   carrier->Wait();
   carrier->Release();

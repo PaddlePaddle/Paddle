@@ -33,12 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -161,7 +162,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (custom_in.is_gpu_pinned()) {
+        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+      } else {
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      }
+#else
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
+#endif
     }
   }
 
@@ -627,8 +639,8 @@ class CustomGradOpMaker<imperative::OpBase>
 static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
-    const proto::VarType::Type type, const PlaceType& place) {
-  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
+    const proto::VarType::Type type, const platform::Place& place) {
+  OpKernelType key(type, place);
   VLOG(3) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
@@ -666,10 +678,10 @@ static void RegisterOperatorKernel(const std::string& name,
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU);
+                                  platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU);
+                                  platform::CUDAPlace());
 #endif
 }
 

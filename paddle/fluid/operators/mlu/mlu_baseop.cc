@@ -44,6 +44,32 @@ bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type) {
   return false;
 }
 
+const std::shared_ptr<MLUCnnlRandomGeneratorDesc>& GetMLURandomGenerator(
+    const ExecutionContext& ctx, const int64_t device_id, const int seed) {
+  static int64_t num_mlu_devices = -1;
+  static std::once_flag num_devices_init_flag;
+  static std::deque<std::once_flag> mlu_device_flags;
+  static std::vector<std::shared_ptr<MLUCnnlRandomGeneratorDesc>>
+      mlu_rand_generators;
+
+  std::call_once(num_devices_init_flag, []() {
+    num_mlu_devices = paddle::platform::GetMLUDeviceCount();
+    mlu_device_flags.resize(num_mlu_devices);
+    mlu_rand_generators.resize(num_mlu_devices);
+  });
+  if (device_id < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "mlu device id shoule be greater than 0"));
+  }
+
+  std::call_once(mlu_device_flags[device_id], [&]() {
+    mlu_rand_generators[device_id].reset(
+        new MLUCnnlRandomGeneratorDesc(ctx, seed));
+    VLOG(4) << "device_id: " << device_id << ", initial seed: " << seed;
+  });
+  return mlu_rand_generators[device_id];
+}
+
 class MLUCnnlTensorDescPool {
  public:
   cnnlTensorDescriptor_t Pop() {
@@ -208,8 +234,20 @@ MLUCnnlTensorDesc::~MLUCnnlTensorDesc() {
 MLUCnnlActivationDesc::MLUCnnlActivationDesc(
     const cnnlActivationMode_t act_mode, const float ceof) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateActivationDescriptor(&active_desc_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor(
-      active_desc_, act_mode, CNNL_NOT_PROPAGATE_NAN, ceof));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor_v4(
+      active_desc_, act_mode, CNNL_ACTIVATION_HIGH_PRECISION,
+      CNNL_NOT_PROPAGATE_NAN, ceof, 1.0f /*sliced_dim*/,
+      1.67326319217681884765625 /*selu_alpha*/,
+      1.05070102214813232421875 /*selu_lambda*/));
+}
+
+MLUCnnlActivationDesc::MLUCnnlActivationDesc(
+    const cnnlActivationMode_t act_mode, const float ceof,
+    const float sliced_dim, const float selu_alpha, const float selu_lambda) {
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateActivationDescriptor(&active_desc_));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetActivationDescriptor_v4(
+      active_desc_, act_mode, CNNL_ACTIVATION_HIGH_PRECISION,
+      CNNL_NOT_PROPAGATE_NAN, ceof, sliced_dim, selu_alpha, selu_lambda));
 }
 
 const cnnlActivationDescriptor_t MLUCnnlActivationDesc::get() const {
@@ -254,22 +292,31 @@ MLUCnnlPoolingDesc::~MLUCnnlPoolingDesc() {
   }
 }
 
-MLUCnnlRandomGeneratorDesc::MLUCnnlRandomGeneratorDesc(const bool is_mlu200,
-                                                       const int seed) {
-  if (is_mlu200) {
-    PADDLE_ENFORCE_MLU_SUCCESS(
-        cnnlRandCreateGenerator(&mlu_generator, CNNL_RAND_RNG_FAST));
-  } else {
-    PADDLE_ENFORCE_MLU_SUCCESS(
-        cnnlRandCreateGenerator(&mlu_generator, CNNL_RAND_RNG_MTGP32));
-    PADDLE_ENFORCE_MLU_SUCCESS(
-        cnnlRandSetPseudoRandomGeneratorSeed(mlu_generator, seed));
-  }
+MLUCnnlRandomGeneratorDesc::MLUCnnlRandomGeneratorDesc(
+    const ExecutionContext& ctx, const int seed) {
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlRandCreateGenerator(&mlu_generator, CNNL_RAND_RNG_MTGP32));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlRandSetPseudoRandomGeneratorSeed(mlu_generator, seed));
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlRandGetMTGP32StateSize(mlu_generator, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  mlu_state = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* mlu_state_ptr = mlu_state.mutable_data(ctx.GetPlace());
+
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlRandMakeMTGP32KernelState(
+      handle, mlu_state_ptr, nullptr, nullptr, seed));
 }
 
 const cnnlRandGenerator_t MLUCnnlRandomGeneratorDesc::get() const {
   return mlu_generator;
 }
+
+Tensor& MLUCnnlRandomGeneratorDesc::get_state() { return mlu_state; }
 
 MLUCnnlRandomGeneratorDesc::~MLUCnnlRandomGeneratorDesc() {
   if (mlu_generator) {
@@ -541,12 +588,15 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                         output_desc, output));
 }
 
-/* static */ void MLUCnnl::Fill(const ExecutionContext& ctx, float value,
+/* static */ void MLUCnnl::Fill(const ExecutionContext& ctx,
+                                const cnnlPointerMode_t pointer_mode,
+                                const void* value_ptr,
                                 const cnnlTensorDescriptor_t output_desc,
                                 void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlFill(handle, value, output_desc, output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlFill_v3(handle, pointer_mode, value_ptr, output_desc, output));
 }
 
 /* static */ void MLUCnnl::QuantifyOffline(
@@ -919,9 +969,8 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     beta_ptr = static_cast<const void*>(&beta_int);
   }
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetOpTensorWorkspaceSize_v2(
-      handle, op_tensor_desc, alpha1_ptr, a_desc, a, alpha2_ptr, b_desc, b,
-      beta_ptr, output_desc, output, &workspace_size));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetOpTensorWorkspaceSize(
+      handle, a_desc, b_desc, output_desc, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
@@ -931,6 +980,26 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlOpTensor(
       handle, op_tensor_desc, alpha1_ptr, a_desc, a, alpha2_ptr, b_desc, b,
       workspace_ptr, workspace_size, beta_ptr, output_desc, output));
+}
+
+/* static */ void MLUCnnl::MulAx(const ExecutionContext& ctx,
+                                 const cnnlTensorDescriptor_t alpha_desc,
+                                 const void* alpha,
+                                 const cnnlTensorDescriptor_t output_desc,
+                                 void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlGetAxWorkspaceSize(handle, alpha_desc, output_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlAx_v2(handle, alpha_desc, alpha, output_desc,
+                                       output, workspace_ptr, workspace_size));
 }
 
 /* static */ void MLUCnnl::BiasAddGrad(
@@ -945,12 +1014,23 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
 /* static */ void MLUCnnl::RandomUniform(
     const ExecutionContext& ctx, const int num, const cnnlDataType_t data_type,
-    const cnnlRandGenerator_t mlu_generator, const float min, const float max,
-    void* output) {
+    const cnnlRandGenerator_t mlu_generator, void* mlu_state, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlRandGenerateUniform(
-      handle, mlu_generator, data_type, nullptr, num, min, max, output));
+      handle, mlu_generator, data_type, mlu_state, num, 0, 1, output));
+}
+
+/* static */ void MLUCnnl::FusedDropout(
+    const ExecutionContext& ctx, const cnnlRandGenerator_t generator,
+    const cnnlTensorDescriptor_t input_desc, const void* input, const float p,
+    void* state, const cnnlTensorDescriptor_t mask_desc, const void* mask,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlFusedDropout_v2(handle, generator, input_desc,
+                                                 input, p, state, mask_desc,
+                                                 mask, output_desc, output));
 }
 
 /* static */ void MLUCnnl::TopK(
@@ -1141,6 +1221,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlSoftmaxForward(handle, algorithm, mode, alpha,
                                                 input_desc, input, beta,
                                                 output_desc, output));
+}
+
+/* static */ void MLUCnnl::SoftmaxBackward(
+    const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+    cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlSoftmaxBackward(handle, algorithm, mode, nullptr, y_desc, y,
+                          diff_y_desc, diff_y, nullptr, diff_x_desc, diff_x));
 }
 
 /* static */ void MLUCnnl::Softplus(const ExecutionContext& ctx,
