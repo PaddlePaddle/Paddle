@@ -404,7 +404,7 @@ def affine(img, matrix, interpolation="nearest", fill=0):
 
     Args:
         img (PIL.Image): Image to be affined.
-        matrix (float or int): Affine matrix parameters.
+        matrix (float or int): Affine matrix.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
             support method are as following: 

@@ -1226,13 +1226,13 @@ def _setup_angle(x, name, req_sizes=(2, )):
 
 
 class RandomAffine(BaseTransform):
-    """Random affine transformation of the image keeping center invariant.
+    """Random affine transformation of the image.
 
     Args:
-        degrees (sequence or number): Range of degrees to select from.
+        degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        translate (tuple, optional): tuple of maximum absolute fraction for horizontal
+        translate (tuple, optional): maximum absolute fraction for horizontal
             and vertical translations. For example translate=(a, b), then horizontal shift
             is randomly sampled in the range -img_width * a < dx < img_width * a and vertical shift is
             randomly sampled in the range -img_height * b < dy < img_height * b. 
@@ -1241,10 +1241,9 @@ class RandomAffine(BaseTransform):
             randomly sampled from the range a <= scale <= b. 
             Will keep original scale by default.
         shear (sequence or number, optional): Range of degrees to select from.
-            If shear is a number, a shear parallel to the x axis in the range (-shear, +shear)
-            will be applied. Else if shear is a sequence of 2 values a shear parallel to the x axis in the
-            range (shear[0], shear[1]) will be applied. Else if shear is a sequence of 4 values,
-            a x-axis shear in (shear[0], shear[1]) and y-axis shear in (shear[2], shear[3]) will be applied.
+            If set as a number, a shear parallel to the x axis in the range (-shear, +shear) will be applied. 
+            Else if set as a sequence of 2 values a shear parallel to the x axis in the range (shear[0], shear[1]) will be applied. 
+            Else if set as a sequence of 4 values, a x-axis shear in (shear[0], shear[1]) and y-axis shear in (shear[2], shear[3]) will be applied.
             Will not apply shear by default.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
@@ -1256,8 +1255,9 @@ class RandomAffine(BaseTransform):
             - "nearest": cv2.INTER_NEAREST, 
             - "bilinear": cv2.INTER_LINEAR, 
             - "bicubic": cv2.INTER_CUBIC
-        fill (sequence or number): Pixel fill value for the area outside the transformed
-            image. Default is ``0``. If given a number, the value is used for all bands respectively.
+        fill (int|list|tuple): Pixel fill value for constant fill. Default is 0. If a list/tuple of
+            length 3, it is used to fill R, G, B channels respectively.
+            This value is only used when the padding_mode is constant
         center (sequence, optional): Optional center of rotation, (x, y).
             Origin is the upper left corner.
             Default is the center of the image.

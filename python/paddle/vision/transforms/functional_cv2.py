@@ -411,12 +411,23 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
-def affine(img, matrix, interpolation='nearest', fill=0):
+def affine(img,
+           angle,
+           translate,
+           scale,
+           shear,
+           interpolation='nearest',
+           fill=0,
+           center=None):
     """Affine the image by matrix.
 
     Args:
         img (PIL.Image): Image to be affined.
-        matrix (float or int): Affine matrix parameters.
+        translate (sequence or int): horizontal and vertical translations
+        scale (float): overall scale ratio
+        shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
+            If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
+            the second value corresponds to a shear parallel to the y axis.
         interpolation (int|str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following: 
@@ -425,6 +436,8 @@ def affine(img, matrix, interpolation='nearest', fill=0):
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
+        center (sequence, optional): Optional center of rotation. Origin is the upper left corner.
+            Default is the center of the image.
 
     Returns:
         np.array: Affined image.
@@ -444,17 +457,35 @@ def affine(img, matrix, interpolation='nearest', fill=0):
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
+    if center is None:
+        center = (w * 0.5, h * 0.5)
+
+    M = np.ones([2, 3])
+    # Rotate and Scale
+    R = cv2.getRotationMatrix2D(angle=angle, center=center, scale=scale)
+
+    # Shear
+    sx = math.tan(shear[0] * math.pi / 180)
+    sy = math.tan(shear[1] * math.pi / 180)
+    M[0] = R[0] + sy * R[1]
+    M[1] = R[1] + sx * R[0]
+
+    # Translation
+    tx, ty = translate
+    M[0, 2] = tx
+    M[1, 2] = ty
+
     if len(img.shape) == 3 and img.shape[2] == 1:
         return cv2.warpAffine(
             img,
-            matrix,
+            M,
             dsize=(w, h),
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill)[:, :, np.newaxis]
     else:
         return cv2.warpAffine(
             img,
-            matrix,
+            M,
             dsize=(w, h),
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill)

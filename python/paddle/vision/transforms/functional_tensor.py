@@ -198,7 +198,7 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
 
     Args:
         img (paddle.Tensor): Image to be rotated.
-        matrix (float or int): Affine matrix parameters.
+        matrix (float or int): Affine matrix.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set NEAREST . when use pil backend, 
             support method are as following: 
@@ -207,16 +207,14 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
             - "bicubic"
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
 
     Returns:
         paddle.Tensor: Affined image.
 
     """
     img = img.unsqueeze(0)
-
-    # n, c, h, w = img.shape
-    w, h = _get_image_size(img, data_format=data_format)
-
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
 
     matrix = paddle.to_tensor(matrix, place=img.place)

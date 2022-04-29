@@ -22,7 +22,6 @@ import collections
 
 import numpy as np
 from PIL import Image
-import cv2
 from numpy import sin, cos, tan
 import paddle
 
@@ -526,26 +525,6 @@ def adjust_hue(img, hue_factor):
         return F_cv2.adjust_hue(img, hue_factor)
 
 
-def _get_affine_matrix_cv2(center, angle, translate, scale, shear):
-    M = np.ones([2, 3])
-
-    # Rotate and Scale
-    R = cv2.getRotationMatrix2D(angle=angle, center=center, scale=scale)
-
-    # Shear
-    sx = math.tan(shear[0] * math.pi / 180)
-    sy = math.tan(shear[1] * math.pi / 180)
-    M[0] = R[0] + sy * R[1]
-    M[1] = R[1] + sx * R[0]
-
-    # Translation
-    tx, ty = translate
-    M[0, 2] = tx
-    M[1, 2] = ty
-
-    return M
-
-
 def _get_affine_matrix(center, angle, translate, scale, shear, inverted=True):
     # Affine matrix is : M = T * C * RotateScaleShear * C^-1
     # Ihe inverse one is : M^-1 = C * RotateScaleShear^-1 * C^-1 * T^-1
@@ -598,10 +577,10 @@ def affine(img,
     """Apply affine transformation on the image keeping image center invariant.
 
     Args:
-        img (PIL.Image|np.array|paddle.Tensor)): Image to be transform.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be transform.
         angle (float or int): In degrees degrees counter clockwise order.
         translate (sequence or int): horizontal and vertical translations
-        scale (float): overall scale
+        scale (float): overall scale ratio
         shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
             If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
             the second value corresponds to a shear parallel to the y axis.
@@ -697,11 +676,9 @@ def affine(img,
         return F_pil.affine(img, matrix, interpolation, fill)
 
     if _is_numpy_image(img):
-        height, width = img.shape[0:2]
-        if center is None:
-            center = (width * 0.5, height * 0.5)
-        matrix = _get_affine_matrix_cv2(center, angle, translate, scale, shear)
-        return F_cv2.affine(img, matrix, interpolation, fill)
+        # get affine_matrix in F_cv2.affine() using cv2 functions
+        return F_cv2.affine(img, angle, translate, scale, shear, interpolation,
+                            fill, center)
 
     if _is_tensor_image(img):
         center_f = [0.0, 0.0]
