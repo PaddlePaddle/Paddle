@@ -164,6 +164,7 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   attrs.insert({"groups", groups});
   attrs.insert({"exhaustive_search", exhaustive_search});
   attrs.insert({"use_addto", use_addto});
+  attrs.insert({"workspace_size_MB", 512});
 
   auto op = framework::OpRegistry::CreateOp(
       "conv2d_grad", {{"Input", {"Input"}},
