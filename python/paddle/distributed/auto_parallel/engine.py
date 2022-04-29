@@ -70,6 +70,7 @@ class Engine:
         self._saver = DistributedSaver()
         self._logger = get_logger(logging.INFO)
 
+        self._default_strategy = None
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
@@ -117,10 +118,11 @@ class Engine:
                 losses = to_list(self._loss(*(outputs + labels)))
 
         default_ctx = get_default_distributed_context()
-        if not default_ctx.is_annotation:
+        if not default_ctx.is_annotation or self._default_strategy:
             inputs = [self._set_data_parallel(var) for var in inputs]
             labels = [self._set_data_parallel(var) for var in labels]
 
+        # print(serial_main_prog)
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
         self._fetch_vars[mode] = {
@@ -504,6 +506,7 @@ class Engine:
 
     def _set_data_parallel(self, var):
         if self._nranks == 1:
+            self._default_strategy = 'serial'
             auto.shard_tensor(
                 var,
                 dist_attr={
@@ -511,6 +514,7 @@ class Engine:
                     "dims_mapping": [-1 for _ in range(len(var.shape))]
                 })
         else:
+            self._default_strategy = 'dp'
             auto.shard_tensor(
                 var,
                 dist_attr={
