@@ -498,6 +498,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         res = []
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
         main_block = backward_op.main_block
         vars = main_block.vars
         Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
@@ -535,7 +536,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             res.append(comm_op_cost_list)
 
         # need gradient allreduce
-        process_mesh = dist_attr.process_mesh
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0])
         mesh_shape = process_mesh.topology
@@ -831,6 +831,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             var_names,
             attrs=attrs,
             parallel_axis=parallel_axis)
+
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
         comm_op_cost_list = build_comm_costs_from_desc_mapping(
             IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
         res.append(comm_op_cost_list)
@@ -838,13 +841,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         # calc comp op cost
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx)
-        processes = process_mesh.processes
         cost_mpping = build_comp_costs_from_desc_mapping(
             MatmulGradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mpping)
 
         # need gradient allreduce
-        process_mesh = dist_attr.process_mesh
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("X")[0])
         mesh_shape = process_mesh.topology
@@ -1871,7 +1872,6 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         return cost
 
     def calc_bwd_cost(self, dist_op, ctx, cluster):
-        print("matmulv2 replic********", dist_op.serial_op.desc.id())
         res = []
         backward_op = dist_op.serial_op
         dist_attr = dist_op.dist_attr
@@ -1892,10 +1892,6 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
             backward_op.input("X")[0])
         mesh_shape = process_mesh.topology
         batch_size_axis = var_dim_mapping[0]
-        print("allreduce****",
-              dist_op.serial_op.desc.id(), batch_size_axis,
-              mesh_shape[batch_size_axis],
-              is_parameter_related(backward_op.input("Y")[0], main_block))
         if batch_size_axis > -1 and mesh_shape[
                 batch_size_axis] > 1 and is_parameter_related(
                     backward_op.input("Y")[0], main_block):
@@ -1904,7 +1900,6 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
             var_names = [backward_op.output('Y@GRAD')[0]]
             build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
                            cluster)
-            print("res****", res)
 
         return res
 

@@ -15,6 +15,7 @@
 from collections import OrderedDict
 
 import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from .base_cost import Cost, CompOpCost, CommContext
 from ..operators.common import get_distributed_operator_impl_container
@@ -111,10 +112,16 @@ class CostEstimator:
         ops = block.ops
         vars = block.vars
         for op in ops:
-            # print("id****", op.desc.id())
             self._detailed_cost[op.desc.id()] = OrderedDict()
             detail = self._detailed_cost[op.desc.id()]
             detail["reshard_cost"] = OrderedDict()
+            detail["dist_op_cost"] = []
+            if int(op.attr('op_role')) == int(OpRole.Optimize):
+                continue
+            if op.type in [
+                    "create_py_reader", "create_double_buffer_reader", "read"
+            ]:
+                continue
             for var_name in op.input_arg_names:
                 if _is_special_var_name(var_name):
                     continue
@@ -154,11 +161,6 @@ class CostEstimator:
                         for comp_cost in local_comp_cost[rank]:
                             self.local_cost(rank).time += comp_cost.time
 
-            if op.type in [
-                    "create_py_reader", "create_double_buffer_reader", "read"
-            ]:
-                continue
-
             # calc dist op cost
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
@@ -171,8 +173,6 @@ class CostEstimator:
             dist_op_cost = dist_impl.calc_cost(
                 op.attr('op_role'), dist_op, dist_context, self.cluster)
             detail["dist_op_cost"] = dist_op_cost
-            print("estimate dist op cost****", op)
-            print(dist_op_cost)
             for item in dist_op_cost:
                 if isinstance(item, list):
                     # comm sync
