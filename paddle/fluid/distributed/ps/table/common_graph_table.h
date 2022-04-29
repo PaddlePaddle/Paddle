@@ -63,7 +63,13 @@ class GraphShard {
     }
     return res;
   }
-
+  std::vector<int64_t> get_all_id() {
+    std::vector<int64_t> res;
+    for (int i = 0; i < (int)bucket.size(); i++) {
+      res.push_back(bucket[i]->get_id());
+    }
+    return res;
+  }
   GraphNode *add_graph_node(int64_t id);
   GraphNode *add_graph_node(Node *node);
   FeatureNode *add_feature_node(int64_t id);
@@ -465,6 +471,8 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
+  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
+                                               int slice_num);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx, std::vector<int64_t> &id_list,
