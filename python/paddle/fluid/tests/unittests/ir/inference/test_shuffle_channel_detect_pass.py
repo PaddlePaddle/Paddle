@@ -62,13 +62,13 @@ class TestShuffleChannelDetectPass(PassAutoScanTest):
             "transpose2",
             inputs={"X": ["reshape2_output1"], },
             outputs={
-                "Out": ["transpose2_ouput"],
+                "Out": ["transpose2_output"],
                 "XShape": ["transpose2_xshape"]
             },
             axis=axis_v)
         reshape2_op2 = OpConfig(
             "reshape2",
-            inputs={"X": ["transpose2_ouput"], },
+            inputs={"X": ["transpose2_output"], },
             outputs={
                 "Out": ["reshape2_output2"],
                 "XShape": ["reshape2_xshape2"]

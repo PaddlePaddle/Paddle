@@ -158,7 +158,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         normal_params_grads = []
         moe_params_grads = []
 
-        # seperate moe params from normal params
+        # separate moe params from normal params
         if self.moe_group is not None and self.moe_group.nranks > 1:
             for p, g in params_grads:
                 if self.is_expert_param_func(p):
