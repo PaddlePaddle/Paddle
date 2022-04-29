@@ -62,7 +62,10 @@ void NanmedianKernel(const Context& dev_ctx,
         col_vec.begin(), x_ptr + i * stride, x_ptr + (i + 1) * stride);
 
     int64_t num_nan =
-        std::count_if(col_vec.begin(), col_vec.end(), std::isnan<double>);
+        std::count_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
+          return std::isnan(static_cast<double>(val));
+        });
+
     int64_t pos = (stride - num_nan - 1) / 2;
     std::nth_element(col_vec.begin(),
                      col_vec.begin() + pos,
