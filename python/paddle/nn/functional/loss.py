@@ -542,7 +542,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
+    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
@@ -879,7 +879,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
     While :attr:`reduction` is :attr:`none`, output loss is in
     the same shape as input, loss in each point is calculated
-    seperately and no reduction is applied.
+    separately and no reduction is applied.
 
     While :attr:`reduction` is :attr:`mean`, output loss is in
     shape of [1] and loss value is the mean value of all losses.
@@ -2006,7 +2006,7 @@ def sigmoid_focal_loss(logit,
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
             a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the the number of positive samples.
+            For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25. 

@@ -405,7 +405,7 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = False
-        # The accuracy diff of post-traing quantization (abs_max) maybe bigger
+        # The accuracy diff of post-training quantization (abs_max) maybe bigger
         diff_threshold = 0.05
         self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
