@@ -183,7 +183,7 @@ static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
 }
 
 OperatorWithKernel::CacheImpl {
-  CacheImpl() : kernel_ctx_(nullptr), infer_shape_ctx_(nullptr){};
+  CacheImpl() : kernel_ctx_(nullptr), infer_shape_ctx_(nullptr) {}
 
   phi::KernelContext* getKernelContext() {
     if (kernel_ctx_ == nullptr) updateKernelContext();
@@ -224,7 +224,7 @@ OperatorWithKernel::CacheImpl {
     }
   }
 };
-CacheImpl* OperatorWithKernel::getCacheImpl() {
+struct CacheImpl* OperatorWithKernel::getCacheImpl() {
   if (impl_ == nullptr) impl_ = new CacheImpl();
   return impl_;
 }
