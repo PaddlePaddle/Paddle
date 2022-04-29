@@ -179,9 +179,9 @@ struct NeighborSampleResult {
         if (neighbor.size() > 0) neighbor += ";";
         if (neighbor2.size() > 0) neighbor2 += ";";
         neighbor += std::to_string(res[i * sample_size + j]);
-        neighbor += std::to_string(res2[start + j]);
+        neighbor2 += std::to_string(res2[start + j]);
       }
-      VLOG(0) << neighbor;
+      VLOG(0) << neighbor << " " << neighbor2;
       start += ac_size[i];
     }
     delete[] res;
