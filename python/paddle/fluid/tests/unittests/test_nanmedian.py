@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-np.random.seed(10)
+np.random.seed(102)
 
 
 class TestNanmedian(unittest.TestCase):
@@ -36,9 +36,9 @@ class TestNanmedian(unittest.TestCase):
             "multi_axis_all_nan": np.full(multi_axis_shape, np.nan),
         }
 
-        single_partial_nan = self.fake_data["single_axis_normal"]
+        single_partial_nan = self.fake_data["single_axis_normal"].copy()
         single_partial_nan[single_partial_nan > 0] = np.nan
-        multi_partial_nan = self.fake_data["multi_axis_normal"]
+        multi_partial_nan = self.fake_data["multi_axis_normal"].copy()
         multi_partial_nan[multi_partial_nan > 0] = np.nan
         self.fake_data["single_axis_partial_nan"] = single_partial_nan
         self.fake_data["multi_axis_partial_nan"] = multi_partial_nan

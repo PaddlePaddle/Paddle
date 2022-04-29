@@ -43,7 +43,14 @@ __global__ void KernelNanCounts(const T* input,
   extern __shared__ int64_t buf[];
   for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
     buf[i] = 0;
+    nan_counts[i] = 0;
   }
+
+  if (threadIdx.x == 0) {
+    nan_total[0] = 0;
+    nan_total[1] = 0;
+  }
+
   __syncthreads();
 
   CUDA_KERNEL_LOOP(index, numel) {
@@ -51,6 +58,7 @@ __global__ void KernelNanCounts(const T* input,
     if (isnan(x)) {
       auto bin = static_cast<int64_t>(index / stride);
       paddle::platform::CudaAtomicAdd(&buf[bin], 1);
+      // NOTE: at this moment paddle.sort does not suppert nan values
       output[index] = min_val;
     }
   }
@@ -59,7 +67,7 @@ __global__ void KernelNanCounts(const T* input,
   for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
     paddle::platform::CudaAtomicAdd(&nan_counts[i], buf[i]);
     paddle::platform::CudaAtomicAdd(&nan_total[0], buf[i]);
-    paddle::platform::CudaAtomicMax(&nan_total[1], buf[i]);
+    paddle::platform::CudaAtomicMax(&nan_total[1], stride - buf[i]);
   }
 }
 
@@ -93,13 +101,12 @@ __global__ void CalcNanmedianKernel(const T* sort_out,
                                     T* output,
                                     const bool is_odd,
                                     const int64_t pre_dim,
-                                    const int64_t max_nan_num,
-                                    const int64_t stride) {
-  T div_factor = static_cast<T>(2.0);
-  T nan_val = std::numeric_limits<T>::quiet_NaN();
-
+                                    const int64_t max_valid_num,
+                                    const int64_t stride,
+                                    const T div_factor,
+                                    const T nan_val) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
-    int64_t pos = static_cast<int64_t>(index * max_nan_num);
+    int64_t pos = static_cast<int64_t>(index * max_valid_num);
     int64_t nan_cnt = nan_counts[index];
     if (nan_cnt == stride) {
       median_val[index * 2] = nan_val;
@@ -107,21 +114,17 @@ __global__ void CalcNanmedianKernel(const T* sort_out,
       output[index] = nan_val;
     } else {
       bool check_odd = is_odd;
-      if (nan_cnt > 0) {
-        int64_t nan_k = static_cast<int64_t>(stride - nan_cnt);
-        int64_t new_k = static_cast<int64_t>(nan_k >> 1);
-        pos += new_k - 1;
-        check_odd = nan_k & 1;
-      } else {
-        pos += max_nan_num - 1;
-      }
+      int64_t nan_k =
+          nan_cnt > 0 ? static_cast<int64_t>(stride - nan_cnt) : max_valid_num;
+      pos += static_cast<int64_t>(nan_k >> 1);
+      check_odd = nan_k & 1;
 
       if (check_odd) {
         median_val[index * 2] = sort_out[pos];
         median_val[index * 2 + 1] = sort_out[pos];
         output[index] = sort_out[pos];
       } else {
-        median_val[index * 2] = pos > 1 ? sort_out[pos - 1] : sort_out[pos];
+        median_val[index * 2] = pos > 0 ? sort_out[pos - 1] : sort_out[pos];
         median_val[index * 2 + 1] = sort_out[pos];
         output[index] =
             (median_val[index * 2] + median_val[index * 2 + 1]) / div_factor;
@@ -211,9 +214,17 @@ void NanmedianKernel(const Context& dev_ctx,
     }
 
     if (nan_stat_cpu_ptr[0] > 0) {
-      int64_t max_nan_num = nan_stat_cpu_ptr[1];
-      TopkKernel<T, Context>(
-          dev_ctx, x, Scalar(max_nan_num), -1, true, true, &sort_out, &indices);
+      int64_t max_valid_num = nan_stat_cpu_ptr[1];
+      T div_factor = static_cast<T>(2.0);
+
+      TopkKernel<T, Context>(dev_ctx,
+                             x,
+                             Scalar(max_valid_num),
+                             -1,
+                             true,
+                             true,
+                             &sort_out,
+                             &indices);
 
       CalcNanmedianKernel<
           T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
@@ -223,8 +234,10 @@ void NanmedianKernel(const Context& dev_ctx,
           o_ptr,
           is_ori_odd,
           pre_dim,
-          max_nan_num,
-          stride);
+          max_valid_num,
+          stride,
+          div_factor,
+          nan_val);
 
       return;
     }
