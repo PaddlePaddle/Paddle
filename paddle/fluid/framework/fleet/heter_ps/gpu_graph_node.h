@@ -163,13 +163,18 @@ struct NeighborSampleResult {
   void display() {
     VLOG(0) << "in node sample result display ------------------";
     int64_t *res = new int64_t[sample_size * key_size];
-    int64_t *res2 = new int64_t[7];
     cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
-    cudaMemcpy(res2, actual_val, 7 * sizeof(int64_t), cudaMemcpyDeviceToHost);
     int *ac_size = new int[key_size];
     cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
+    int total_sample_size = 0;
+    for (int i = 0; i < key_size; i++) {
+      total_sample_size += ac_size[i];
+    }
+    int64_t *res2 = new int64_t[total_sample_size];
+    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
 
     int start = 0;
     for (int i = 0; i < key_size; i++) {
