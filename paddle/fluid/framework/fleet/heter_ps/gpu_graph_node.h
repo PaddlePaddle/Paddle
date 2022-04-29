@@ -138,7 +138,8 @@ struct NeighborSampleQuery {
   }
 };
 struct NeighborSampleResult {
-  int64_t *val, *actual_val;
+  int64_t *val;
+  int64_t *actual_val;
   int *actual_sample_size, sample_size, key_size;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
   std::shared_ptr<memory::Allocation> actual_val_mem;
