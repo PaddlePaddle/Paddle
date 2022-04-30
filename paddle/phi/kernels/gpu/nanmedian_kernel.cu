@@ -55,7 +55,7 @@ __global__ void KernelNanCounts(const T* input,
 
   CUDA_KERNEL_LOOP(index, numel) {
     const T x = input[index];
-    if (isnan(x)) {
+    if (isnan(static_cast<float>(x))) {
       auto bin = static_cast<int64_t>(index / stride);
       paddle::platform::CudaAtomicAdd(&buf[bin], 1);
       // NOTE: at this moment paddle.sort does not suppert nan values

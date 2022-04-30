@@ -38,7 +38,8 @@ __global__ void KernelNanmedianGrad(const T* x_ptr,
   CUDA_KERNEL_LOOP(index, numel) {
     int64_t row = static_cast<int64_t>(index / stride);
     int64_t m_row = 2 * row;
-    if (isnan(x_ptr[index]) || isnan(medians_ptr[m_row]) ||
+    if (isnan(static_cast<float>(x_ptr[index])) ||
+        isnan(static_cast<float>(medians_ptr[m_row])) ||
         (x_ptr[index] != medians_ptr[m_row] &&
          x_ptr[index] != medians_ptr[m_row + 1])) {
       x_grad_ptr[index] = zero;

@@ -38,7 +38,7 @@ void NanmedianKernel(const Context& dev_ctx,
 
   bool all_nan = true;
   for (i = 0; i < numel; i++) {
-    if (!std::isnan(static_cast<double>(*(x_ptr + i)))) {
+    if (!std::isnan(static_cast<float>(*(x_ptr + i)))) {
       all_nan = false;
       break;
     }
@@ -63,7 +63,7 @@ void NanmedianKernel(const Context& dev_ctx,
 
     int64_t num_nan =
         std::count_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
-          return std::isnan(static_cast<double>(val));
+          return std::isnan(static_cast<float>(val));
         });
 
     int64_t pos = (stride - num_nan - 1) / 2;
@@ -71,8 +71,8 @@ void NanmedianKernel(const Context& dev_ctx,
                      col_vec.begin() + pos,
                      col_vec.end(),
                      [](const T& l, const T& r) {
-                       return (!std::isnan(static_cast<double>(l)) &&
-                               std::isnan(static_cast<double>(r))) ||
+                       return (!std::isnan(static_cast<float>(l)) &&
+                               std::isnan(static_cast<float>(r))) ||
                               (l < r);
                      });
 
@@ -83,8 +83,8 @@ void NanmedianKernel(const Context& dev_ctx,
                        col_vec.begin() + pos + 1,
                        col_vec.end(),
                        [](const T& l, const T& r) {
-                         return (!std::isnan(static_cast<double>(l)) &&
-                                 std::isnan(static_cast<double>(r))) ||
+                         return (!std::isnan(static_cast<float>(l)) &&
+                                 std::isnan(static_cast<float>(r))) ||
                                 (l < r);
                        });
       m_ptr[2 * i + 1] = col_vec[pos + 1];
