@@ -38,7 +38,7 @@ void SoftMarginLossGradKernel(const Context& dev_ctx,
   for (int i = 0; i < x_numel; ++i) {
     dx_data[i] =
         dout_data[i] * ((- label_data[i]* std::exp(-label_data[i]*x_data[i] )) /
-                        (static_cast<T>(1) + std::exp(-label_data[i]*x_data[i]));
+                        (static_cast<T>(1) + std::exp(-label_data[i]*x_data[i])));
   }
 }
 }  // namespace phi
