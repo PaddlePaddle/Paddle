@@ -21,10 +21,9 @@ import unittest
 
 
 def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):
-    batch_size, hidden_size = input1.shape
     z = (input1 * input2).sum(axis=-1)
-    mag_square1 = np.square(input1).sum(axis=-1) + 10e-6
-    mag_square2 = np.square(input2).sum(axis=-1) + 10e-6
+    mag_square1 = np.square(input1).sum(axis=-1) + 10e-12
+    mag_square2 = np.square(input2).sum(axis=-1) + 10e-12
     denom = np.sqrt(mag_square1 * mag_square2)
     cos = z / denom
     zeros = np.zeros_like(cos)
@@ -45,8 +44,10 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.input1_np = np.random.random(size=(5, 3)).astype(np.float64)
         self.input2_np = np.random.random(size=(5, 3)).astype(np.float64)
-        self.label_np = np.random.randint(
-            low=0, high=2, size=5).astype(np.int32)
+        a = np.array([-1, -1, -1]).astype(np.int32)
+        b = np.array([1, 1]).astype(np.int32)
+        self.label_np = np.concatenate((a, b), axis=0)
+        np.random.shuffle(self.label_np)
 
     def run_dynamic(self):
         input1 = paddle.to_tensor(self.input1_np)
@@ -184,13 +185,6 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
 
         self.assertRaises(ValueError, test_input_shape2D_error)
 
-        def test_input_label_different_size_error():
-            label = paddle.to_tensor(np.ndarray([1]))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
-
-        self.assertRaises(ValueError, test_input_label_different_size_error)
-
         def test_label_value_error():
             label = paddle.to_tensor(np.ndarray([-1, -2]))
             paddle.nn.functional.cosine_embedding_loss(
@@ -217,8 +211,17 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.input1_np = np.random.random(size=(10, 3)).astype(np.float32)
         self.input2_np = np.random.random(size=(10, 3)).astype(np.float32)
-        self.label_np = np.random.randint(
-            low=0, high=2, size=10).astype(np.int64)
+        # self.label_np = np.random.randint(
+        #     low=0, high=2, size=10).astype(np.int64)
+        a = np.array([-1, -1, -1, -1, -1]).astype(np.int64)
+        b = np.array([1, 1, 1, 1, 1]).astype(np.int64)
+        self.label_np = np.concatenate((a, b), axis=0)
+        np.random.shuffle(self.label_np)
+        self.input1_np_1D = np.random.random(size=10).astype(np.float32)
+        self.input2_np_1D = np.random.random(size=10).astype(np.float32)
+        # self.label_np_1D = np.random.randint(
+        #     low=0, high=2, size=1).astype(np.int64)
+        self.label_np_1D = np.array([1]).astype(np.int64)
 
     def run_dynamic(self):
         input1 = paddle.to_tensor(self.input1_np)
@@ -235,6 +238,18 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
             reduction='mean')
         self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
+
+        input1_1D = paddle.to_tensor(self.input1_np_1D)
+        input2_1D = paddle.to_tensor(self.input2_np_1D)
+        label_1D = paddle.to_tensor(self.label_np_1D)
+        dy_result = CosineEmbeddingLoss(input1_1D, input2_1D, label_1D)
+        expected2 = cosine_embedding_loss(
+            self.input1_np_1D,
+            self.input2_np_1D,
+            self.label_np_1D,
+            margin=0.5,
+            reduction='mean')
+        self.assertTrue(np.allclose(dy_result.numpy(), expected2))
 
     def run_static(self):
         input1 = static.data(name='input1', shape=[10, 3], dtype='float32')

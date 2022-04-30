@@ -1344,28 +1344,29 @@ class CosineEmbeddingLoss(Layer):
             elements in the output, ``'sum'``: the output will be summed.
 
     Shape:
-        input1 (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-            number of additional dimensions. Available dtypes are float32, float64.
-        input2 (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-            number of additional dimensions. Available dtypes are float32, float64.
-        label (Tensor): 2-D tensor with the same shape as ``input``. The target
-            labels which values should be numbers between 0 and 1. Available
-            dtypes are int32, int64, float32, float64.
+        input1 (Tensor): 1-D or 2-D tensor with shape: [*, N], * means batch_size which
+            could be emited when batch_size is 1, `N` means size of intpu.
+            Available dtypes are float32, float64.
+        input2 (Tensor): 1-D or 2-D tensor with shape: [*, N], * means batch_size which
+            could be emited when batch_size is 1, `N` means size of intpu.
+            Available dtypes are float32, float64.
+        label (Tensor): 0-D or 1-D tensor. The target labels which values should be
+            numbers between -1 and 1. Available dtypes are int32, int64, float32, float64.
         output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+            same as ``label`` , else the shape of output is scalar.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            input1 = paddle.to_tensor([[1.6, 1.2, -0.5]], 'float32')
-            input2 = paddle.to_tensor([[0.5, 0.5, -1.8]], 'float32')
+            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
+            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
             label = paddle.to_tensor([1], 'int32')
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='mean')
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # output: [0.42310387]
+            print(output)  # output: [0.42310387]
 
     """
 

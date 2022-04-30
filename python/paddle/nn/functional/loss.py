@@ -2246,11 +2246,11 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
      Parameters:
-        input1 (Tensor): 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input1 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input2 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): 0D or 1D tensor. The target labels values should be numbers between 0 and 1.
+        label (Tensor): 0D or 1D tensor. The target labels values should be numbers between -1 and 1.
                          Available dtypes are int32, int64, float32, float64.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
@@ -2270,19 +2270,19 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
 
             import paddle
 
-            input1 = paddle.to_tensor([[1.6, 1.2, -0.5]], 'float64')
-            input2 = paddle.to_tensor([[0.5, 0.5, -1.8]], 'float64')
+            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
+            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
             label = paddle.to_tensor([1], 'int64')
 
             output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
-            print(output) # output: [0.42310387]
+            print(output)  # output: [0.42310387]
 
     """
     if len(label.shape) != 1:
         raise ValueError(
             "1D target tensor expected, multi-target not supported")
 
-    if len(input1.shape) != len(input2.shape):
+    if input1.shape != input2.shape:
         raise ValueError(
             "the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
             "different sizes")
@@ -2292,24 +2292,19 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
             "1D target tensor expects 1D or 2D input tensors, but found inputs with different sizes"
         )
 
-    if input1.shape[0] != label.shape[0]:
-        raise ValueError(
-            "the 0 axis size of input should be same as target size, but found mismatch size"
-        )
-
-    if "{}".format(input1.dtype) not in ["paddle.float32", "paddle.float64"]:
+    if input1.dtype not in [paddle.float32, paddle.float64]:
         raise ValueError(
             "The data type of input Variable must be 'float32' or 'float64'")
-    if "{}".format(label.dtype) not in [
-            "paddle.int32", "paddle.int64", "paddle.float32", "paddle.float64"
+    if label.dtype not in [
+            paddle.int32, paddle.int64, paddle.float32, paddle.float64
     ]:
         raise ValueError(
             "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
         )
 
     prod_sum = (input1 * input2).sum(axis=-1)
-    mag_square1 = paddle.square(input1).sum(axis=-1) + 10e-6
-    mag_square2 = paddle.square(input2).sum(axis=-1) + 10e-6
+    mag_square1 = paddle.square(input1).sum(axis=-1) + 10e-12
+    mag_square2 = paddle.square(input2).sum(axis=-1) + 10e-12
     denom = paddle.sqrt(mag_square1 * mag_square2)
     cos = prod_sum / denom
     zeros = paddle.zeros_like(cos)
