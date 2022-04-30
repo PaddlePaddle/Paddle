@@ -99,6 +99,12 @@ class TestNanmedian(unittest.TestCase):
 
         def test_data_case(data, ignore_nan=True):
             for keep_dim in [False, True]:
+                if np.isnan(data).all() and keep_dim:
+                    np_ver = np.version.version.split('.')
+                    if int(np_ver[0]) < 1 or int(np_ver[1]) <= 20:
+                        print("This numpy version does not support all nan elements when keepdim is True")
+                        continue
+
                 np_res = np.nanmedian(data, keepdims=keep_dim)
                 pd_res = paddle.nanmedian(
                     paddle.to_tensor(data),
