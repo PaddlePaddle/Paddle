@@ -39,14 +39,14 @@ void NanmedianGradKernel(const Context& dev_ctx,
     T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
     int64_t i = 0;
     for (i = 0; i < numel; i++) {
-      if (std::isnan(x_ptr[i])) {
+      if (std::isnan(static_cast<double>(x_ptr[i]))) {
         x_grad_ptr[i] = zero;
         continue;
       }
 
       int64_t row = static_cast<int64_t>(i / stride);
       int64_t m_row = 2 * row;
-      if (std::isnan(m_ptr[m_row]) ||
+      if (std::isnan(static_cast<double>(m_ptr[m_row])) ||
           (x_ptr[i] != m_ptr[m_row] && x_ptr[i] != m_ptr[m_row + 1])) {
         x_grad_ptr[i] = zero;
         continue;
