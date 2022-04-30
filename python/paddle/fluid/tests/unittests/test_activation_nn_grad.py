@@ -52,6 +52,9 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
 
 
 class TestSigmoidDoubleGradCheck(unittest.TestCase):
+    def sigmoid_wrapper(self, x):
+        return fluid.layers.sigmoid(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -64,6 +67,8 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sigmoid_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -75,6 +80,9 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
 
 
 class TestTanhTripleGradCheck(unittest.TestCase):
+    def tanh_wrapper(self, x):
+        return paddle.tanh(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -87,6 +95,8 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -98,6 +108,9 @@ class TestTanhTripleGradCheck(unittest.TestCase):
 
 
 class TestTanhDoubleGradCheck(unittest.TestCase):
+    def tanh_wrapper(self, x):
+        return paddle.tanh(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -110,6 +123,8 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -146,6 +161,9 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
 
 class TestLeakyReluDoubleGradCheck(unittest.TestCase):
+    def leaky_relu_wrapper(self, x):
+        return paddle.nn.functional.leaky_relu(x[0], negative_slope=0.2)
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -162,6 +180,8 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.leaky_relu_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -173,6 +193,9 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
 
 class TestELUDoubleGradCheck(unittest.TestCase):
+    def elu_wrapper(self, x):
+        return paddle.nn.functional.elu(x[0], alpha=0.2)
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -189,6 +212,8 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.elu_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()

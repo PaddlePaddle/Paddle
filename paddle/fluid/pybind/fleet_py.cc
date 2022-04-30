@@ -342,6 +342,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)
+      .def("get_all_id", &GraphGpuWrapper::get_all_id)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif
