@@ -173,37 +173,38 @@ class KernelArgsDef {
     attribute_defs_.emplace_back(AttributeArgDef(type_index));
   }
 
-  const paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs()
+  const paddle::small_vector<TensorArgDef, kInputSmallVectorSize>& input_defs()
       const {
     return input_defs_;
   }
 
-  const paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs()
-      const {
+  const paddle::small_vector<TensorArgDef, kOutputSmallVectorSize>&
+  output_defs() const {
     return output_defs_;
   }
 
-  const paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>&
+  const paddle::small_vector<AttributeArgDef, kAttrSmallVectorSize>&
   attribute_defs() const {
     return attribute_defs_;
   }
 
-  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs() {
+  paddle::small_vector<TensorArgDef, kInputSmallVectorSize>& input_defs() {
     return input_defs_;
   }
 
-  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs() {
+  paddle::small_vector<TensorArgDef, kOutputSmallVectorSize>& output_defs() {
     return output_defs_;
   }
 
-  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>& attribute_defs() {
+  paddle::small_vector<AttributeArgDef, kAttrSmallVectorSize>&
+  attribute_defs() {
     return attribute_defs_;
   }
 
  private:
-  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize> input_defs_{{}};
-  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize> output_defs_{{}};
-  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize> attribute_defs_{
+  paddle::small_vector<TensorArgDef, kInputSmallVectorSize> input_defs_{{}};
+  paddle::small_vector<TensorArgDef, kOutputSmallVectorSize> output_defs_{{}};
+  paddle::small_vector<AttributeArgDef, kAttrSmallVectorSize> attribute_defs_{
       {}};
 };
 

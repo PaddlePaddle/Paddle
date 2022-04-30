@@ -85,6 +85,7 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   }
   return res;
 }
+
 int32_t GraphTable::add_node_to_ssd(int type_id, int idx, int64_t src_id,
                                     char *data, int len) {
   if (_db != NULL) {
@@ -1060,6 +1061,26 @@ std::pair<int32_t, std::string> GraphTable::parse_feature(
   return std::make_pair<int32_t, std::string>(-1, "");
 }
 
+std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
+                                                         int slice_num) {
+  std::vector<std::vector<int64_t>> res(slice_num);
+  auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
+  std::vector<std::future<std::vector<int64_t>>> tasks;
+  for (int i = 0; i < search_shards.size(); i++) {
+    tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
+        [&search_shards, i]() -> std::vector<int64_t> {
+          return search_shards[i]->get_all_id();
+        }));
+  }
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    tasks[i].wait();
+  }
+  for (size_t i = 0; i < tasks.size(); i++) {
+    auto ids = tasks[i].get();
+    for (auto &id : ids) res[id % slice_num].push_back(id);
+  }
+  return res;
+}
 int32_t GraphTable::pull_graph_list(int type_id, int idx, int start,
                                     int total_size,
                                     std::unique_ptr<char[]> &buffer,
