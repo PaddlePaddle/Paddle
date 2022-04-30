@@ -38,7 +38,7 @@ void NanmedianKernel(const Context& dev_ctx,
 
   bool all_nan = true;
   for (i = 0; i < numel; i++) {
-    if (!std::isnan(*(x_ptr + i))) {
+    if (!std::isnan(static_cast<double>(*(x_ptr + i)))) {
       all_nan = false;
       break;
     }
