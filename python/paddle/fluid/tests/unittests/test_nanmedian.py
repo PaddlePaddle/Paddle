@@ -102,7 +102,9 @@ class TestNanmedian(unittest.TestCase):
                 if np.isnan(data).all() and keep_dim:
                     np_ver = np.version.version.split('.')
                     if int(np_ver[0]) < 1 or int(np_ver[1]) <= 20:
-                        print("This numpy version does not support all nan elements when keepdim is True")
+                        print(
+                            "This numpy version does not support all nan elements when keepdim is True"
+                        )
                         continue
 
                 np_res = np.nanmedian(data, keepdims=keep_dim)
