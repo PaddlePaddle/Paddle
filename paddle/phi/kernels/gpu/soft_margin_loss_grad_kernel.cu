@@ -35,7 +35,7 @@ struct SoftMarginLossGradFunctor {
   }
 
   HOSTDEVICE inline T operator()(const T x, const T label, const T dout) const {
-    T term1 = max((one + std::exp(-label * x)), eps);
+    T term1 = (one + std::exp(-label * x));
     return (dout * (-label * std::exp(-label * x)) / term1);
   }
 };

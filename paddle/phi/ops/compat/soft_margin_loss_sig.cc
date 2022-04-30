@@ -16,7 +16,7 @@
 namespace phi{
 KernelSignature SoftMarginLossGradOpArgumentMapping(const ArgumentMappingContext& ctx){
 return KernelSignature("soft_margin_loss_grad",
-                        {"Out@GRAD","X","Label"},
+                        {"X","Label","Out@GRAD"},
                         {},
                         {"X@GRAD"});
                         }
