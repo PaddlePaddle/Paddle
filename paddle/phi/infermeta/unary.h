@@ -282,6 +282,10 @@ void RReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaTensor* noise);
 
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad);
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);

@@ -1957,6 +1957,15 @@ void RReluInferMeta(const MetaTensor& x,
   }
 }
 
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  x_grad->set_dims(do_dims);
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->share_lod(out_grad);
+}
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
   auto in_dims = x.dims();
   PADDLE_ENFORCE_LT(

@@ -38,8 +38,8 @@ void RReluKernel(const Context& dev_ctx,
   int i = 0;
 
   if (is_test) {
+    T mid_val = static_cast<T>((lower + upper) / 2.0);
     for (i = 0; i < numel; i++) {
-      T mid_val = static_cast<T>((lower + upper) / 2.0);
       if (x_ptr[i] < zero) {
         o_ptr[i] = mid_val * x_ptr[i];
         n_ptr[i] = mid_val;
@@ -71,4 +71,10 @@ void RReluKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rrelu, CPU, ALL_LAYOUT, phi::RReluKernel, float, double) {}
+PD_REGISTER_KERNEL(rrelu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RReluKernel,
+                   float,
+                   phi::dtype::float16,
+                   double) {}

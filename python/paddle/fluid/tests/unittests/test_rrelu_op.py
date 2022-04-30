@@ -95,6 +95,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 name="x2", shape=self.x_np.shape, dtype="float64")
             out_1 = F.rrelu(x_1, self.lower_0, self.upper_0, training=False)
             out_2 = F.rrelu(x_2, self.lower_1, self.upper_1, training=False)
+            out_3 = F.rrelu(x_2, self.lower_1, self.upper_1, training=True)
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(fluid.default_main_program(),
@@ -105,11 +106,17 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                             feed={"x2": self.x_np},
                             fetch_list=out_2,
                             use_prune=True)
+            res_3 = exe.run(fluid.default_main_program(),
+                            feed={"x2": self.x_np},
+                            fetch_list=out_3,
+                            use_prune=True)
 
             out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
             out_ref_2 = ref_rrelu(self.x_np, self.lower_1, self.upper_1)
             self.assertEqual(np.allclose(out_ref_1, res_1), True)
             self.assertEqual(np.allclose(out_ref_2, res_2), True)
+            self.assertTrue(
+                check_output(self.x_np, res_3[0], self.lower_1, self.upper_1))
 
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
@@ -267,10 +274,14 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 class RReluTest(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
-        self.init_boundary()
-        self.init_dtype()
-        self.init_input_shape()
-        self.init_attr()
+        self.lower = 0.1
+        self.upper = 0.3
+        self.is_test = True
+        self.init_prams()
+
+    def init_prams(self):
+        self.dtype = "float64"
+        self.x_shape = [2, 3, 4, 5]
 
         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         out_np = ref_rrelu(x_np, self.lower, self.upper)
@@ -279,25 +290,35 @@ class RReluTest(OpTest):
 
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np, 'Noise': noise_np}
-
-    def init_boundary(self):
-        self.lower = 0.1
-        self.upper = 0.3
-
-    def init_dtype(self):
-        self.dtype = "float64"
-
-    def init_input_shape(self):
-        self.x_shape = [2, 3, 4, 5]
-
-    def init_attr(self):
-        self.attrs = {'lower': self.lower, "upper": self.upper, "is_test": True}
+        self.attrs = {
+            'lower': self.lower,
+            "upper": self.upper,
+            "is_test": self.is_test
+        }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class RReluTrainingTest(OpTest):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.lower = 0.3
+        self.upper = 0.3000009
+        self.is_test = False
+        self.init_prams()
+
+
+class RReluTrainingTest(OpTest):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.lower = 0.3
+        self.upper = 0.3000009
+        self.is_test = False
+        self.init_prams()
 
 
 if __name__ == "__main__":

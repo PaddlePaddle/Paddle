@@ -590,8 +590,8 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
                               [[ 1.0, -2.0, -3.0,  4.0],
                                [-5.0,  6.0,  7.0, -8.0],
                                [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-            x = paddle.to_tensor(data)
-            out = F.rrelu(x, 0.1, 0.3)
+            input_tensor = paddle.to_tensor(data)
+            out = F.rrelu(input_tensor, 0.1, 0.3)
             #[[[[-0.20000899  3.         -0.8810822   5.        ]
             #   [ 3.         -0.55175185  5.         -1.0776101 ]
             #   [-1.0680687  -1.9896201   8.          9.        ]]

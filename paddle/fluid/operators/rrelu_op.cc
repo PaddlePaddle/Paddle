@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -102,26 +102,6 @@ where :math:`a` is randomly sampled from uniform distribution
 class RReluGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "rrelu");
-    OP_INOUT_CHECK(ctx->HasInput("Noise"), "Input", "Noise", "rrelu");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "rrelu");
-
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
-    ctx->ShareLoD(framework::GradVarName("Out"),
-                  /*->*/ framework::GradVarName("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
-  }
 };
 
 template <typename T>
@@ -150,4 +130,7 @@ REGISTER_OPERATOR(rrelu, ops::RReluOp, ops::RReluOpMaker,
                   ops::RReluGradOpMaker<paddle::framework::OpDesc>,
                   ops::RReluGradOpMaker<paddle::imperative::OpBase>,
                   RReluInferShapeFunctor);
-REGISTER_OPERATOR(rrelu_grad, ops::RReluGradOp);
+
+DECLARE_INFER_SHAPE_FUNCTOR(rrelu_grad, RReluGradInferShapeFunctor,
+                            PD_INFER_META(phi::RReluGradInferMeta));
+REGISTER_OPERATOR(rrelu_grad, ops::RReluGradOp, RReluGradInferShapeFunctor);
