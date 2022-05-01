@@ -389,7 +389,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     m = batch_size * seq_len_m * seq_len_r;
     n = 3 * num_head * c;
     k = hidden_size;
-    ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k, true);
+    bool use_addto = false;
+    if (is_gating) {
+      use_addto = true;
+    }
+    ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k,
+                                      use_addto);
   }
 };
 
@@ -401,8 +406,10 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
                         ops::FusedGateAttentionOpKernel<float>,
                         ops::FusedGateAttentionOpKernel<double>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>);
+                        ops::FusedGateAttentionOpKernel<plat::float16>,
+                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
                         ops::FusedGateAttentionGradKernel<float>,
                         ops::FusedGateAttentionGradKernel<double>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>);
+                        ops::FusedGateAttentionGradKernel<plat::float16>,
+                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);

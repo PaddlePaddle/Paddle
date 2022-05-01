@@ -514,7 +514,7 @@ class FMHAGateRef {
                                    src_mask_grad, &qk_out_grad,
                                    nonbatched_bias_grad);
 
-    alpha = static_cast<T>(1.0);
+    alpha = static_cast<T>(1.0 / sqrt(head_dim_));
     // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
     // bw: dy (seq_len * head_dim) = (dout)^t * x
     transA = CblasTrans;
@@ -529,7 +529,6 @@ class FMHAGateRef {
                      stride_a, stride_b);
 
     // dx (seq_len * head_dim) = dout * y
-    alpha = static_cast<T>(1.0 / sqrt(head_dim_));
     transA = CblasNoTrans;
     transB = CblasNoTrans;
     gemm_m = seq_len_r_;
