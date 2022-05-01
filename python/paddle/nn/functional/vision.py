@@ -347,6 +347,64 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     return out
 
 
+def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
+    """
+    This API implements pixel unshuffle operation.
+    See more details in :ref:`api_nn_vision_PixelUnshuffle` .
+
+    Parameters:
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+        downscale_factor (int): Factor to decrease spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Out (Tensor): Reshaped tensor according to the new dimension.
+
+    Examples:
+        .. code-block:: python
+            :name: pixel_unshuffle-example
+
+            import paddle
+            import paddle.nn.functional as F
+            x = paddle.randn([2, 1, 12, 12])
+            out = F.pixel_unshuffle(x, 3)
+            # out.shape = [2, 9, 4, 4]
+    """
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
+
+    if not isinstance(downscale_factor, int):
+        raise TypeError("Downscale factor must be int type")
+
+    if downscale_factor <= 0:
+        raise ValueError("Downscale factor must be positive")
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
+                         "But recevie Attr(data_format): {} ".format(
+                             data_format))
+
+    if _non_static_mode():
+        return _C_ops.pixel_unshuffle(x, "downscale_factor", downscale_factor,
+                                      "data_format", data_format)
+
+    helper = LayerHelper("pixel_unshuffle", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_unshuffle')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="pixel_unshuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={
+            "downscale_factor": downscale_factor,
+            "data_format": data_format
+        })
+    return out
+
+
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.

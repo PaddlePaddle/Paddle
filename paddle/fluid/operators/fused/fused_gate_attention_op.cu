@@ -12,8 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_fp16.h>
-#include <cub/cub.cuh>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
@@ -21,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 
@@ -100,14 +110,14 @@ Tensor *ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
 template <typename T>
 Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                    const Tensor *x, const Tensor *fmha_out,
-                                   int m, int n, int k) {
+                                   Tensor *gate_bias_out, int m, int n, int k) {
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
-  auto *gate_bias_out = ctx.Output<Tensor>("GateBiasOut");
+  // auto *gate_bias_out = ctx.Output<Tensor>("GateBiasOut");
   auto *gate_out = ctx.Output<Tensor>("GateOut");
 
-  gate_bias_out->mutable_data<T>(ctx.GetPlace());
+  // gate_bias_out->mutable_data<T>(ctx.GetPlace());
   gate_out->mutable_data<T>(ctx.GetPlace());
 
   // The first gate_bias_out stores the result of the multiplication,
@@ -131,14 +141,21 @@ template <typename T>
 Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                     const Tensor *fmha_out,
                                     const Tensor *d_gate_out, Tensor *d_x,
-                                    Tensor *d_fmha_out, int m, int n, int k) {
-  auto *gate_bias_out = ctx.Input<Tensor>("GateBiasOut");
+                                    Tensor *d_fmha_out, Tensor *d_gate_bias_out,
+                                    Tensor *gate_bias_out, int m, int n,
+                                    int k) {
+  // auto *gate_bias_out = ctx.Input<Tensor>("GateBiasOut");
   auto *x = ctx.Input<Tensor>("X");
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
+  auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
-  auto *d_gate_bias_out =
-      ctx.Output<Tensor>(framework::GradVarName("GateBiasOut"));
-  d_gate_bias_out->mutable_data<T>(ctx.GetPlace());
+  // auto *d_gate_bias_out =
+  //     ctx.Output<Tensor>(framework::GradVarName("GateBiasOut"));
+
+  auto gate_attn_compute =
+      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  gate_attn_compute.ComputeForward(gate_weight, x, gate_bias, gate_bias_out,
+                                   gate_bias_out);
 
   auto *d_gate_weight =
       ctx.Output<Tensor>(framework::GradVarName("GateWeight"));
@@ -154,8 +171,8 @@ Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
       T, SigmoidMultiplyGradFunctor<T>, 2>(
       ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyGradFunctor<T>());
 
-  auto gate_attn_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
+  // auto gate_attn_compute =
+  //     AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_attn_compute.ComputeBackward(x, gate_weight, d_gate_bias_out, d_x,
                                     d_gate_weight, d_gate_bias);
   return d_fmha_out;
@@ -213,7 +230,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
     // y: qkv's weight: [3, num_head, c, qkv_dim]
-    using U = LayerNormParamType<T>;
     auto *x = ctx.Input<Tensor>("X");
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
@@ -266,8 +282,12 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       m = batch_size * seq_len_m * seq_len_r;
       n = num_head * c;
       k = hidden_size;
-      fmha_or_gate_out =
-          ComputeGatingLinearForward<T>(ctx, x, &fmha_out, m, n, k);
+
+      Tensor gate_bias_out;
+      gate_bias_out.Resize({batch_size, seq_len_m, seq_len_r, num_head, c});
+      gate_bias_out.mutable_data<T>(ctx.GetPlace());
+      fmha_or_gate_out = ComputeGatingLinearForward<T>(ctx, x, &fmha_out,
+                                                       &gate_bias_out, m, n, k);
     } else {
       fmha_or_gate_out = &fmha_out;
     }
@@ -353,9 +373,18 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       m = batch_size * seq_len_m * seq_len_r;
       n = num_head * c;
       k = hidden_size;
+
+      Tensor gate_bias_out;
+      gate_bias_out.Resize({batch_size, seq_len_m, seq_len_r, num_head, c});
+      gate_bias_out.mutable_data<T>(ctx.GetPlace());
+
+      Tensor d_gate_bias_out;
+      d_gate_bias_out.Resize({batch_size, seq_len_m, seq_len_r, num_head, c});
+      d_gate_bias_out.mutable_data<T>(ctx.GetPlace());
       // d_fhma_or_gate_out is d_gate_out.
       ComputeGatingLinearBackward<T>(ctx, &fmha_out, d_fhma_or_gate_out, d_x,
-                                     &d_fmha_out, m, n, k);
+                                     &d_fmha_out, &d_gate_bias_out,
+                                     &gate_bias_out, m, n, k);
     }
 
     // Re-compute the qkv_transpose_out.
@@ -380,7 +409,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     m = batch_size * seq_len_m * seq_len_r;
     n = 3 * num_head * c;
     k = hidden_size;
-    ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k, true);
+    bool use_addto = false;
+    if (is_gating) {
+      use_addto = true;
+    }
+    ComputeMergedQKVMatmulBackward<T>(ctx, x, d_qkv_out, d_x, m, n, k,
+                                      use_addto);
   }
 };
 
@@ -392,8 +426,10 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
                         ops::FusedGateAttentionOpKernel<float>,
                         ops::FusedGateAttentionOpKernel<double>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>);
+                        ops::FusedGateAttentionOpKernel<plat::float16>,
+                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
                         ops::FusedGateAttentionGradKernel<float>,
                         ops::FusedGateAttentionGradKernel<double>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>);
+                        ops::FusedGateAttentionGradKernel<plat::float16>,
+                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);
