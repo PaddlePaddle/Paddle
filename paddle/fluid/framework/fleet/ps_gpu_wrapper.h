@@ -94,6 +94,10 @@ class PSGPUWrapper {
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -481,6 +485,7 @@ class PSGPUWrapper {
   std::thread pre_build_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
+  std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
 
  protected:
   static bool is_initialized_;

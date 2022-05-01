@@ -551,7 +551,7 @@ void HeterComm<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
   if (!multi_mf_dim_) {
     tables_[gpu_num]->show();
   } else {
-    ptr_tables_[gpu_num]->show();
+    // ptr_tables_[gpu_num]->show();
   }
 }
 
