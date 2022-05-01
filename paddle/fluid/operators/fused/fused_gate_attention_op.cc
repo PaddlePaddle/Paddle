@@ -63,8 +63,8 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
                       {batch_size, seq_len_m, num_head, seq_len_r, c});
 
     if (ctx->Attrs().Get<bool>("is_gating")) {
-      ctx->SetOutputDim("GateBiasOut",
-                        {batch_size, seq_len_m, seq_len_r, num_head, c});
+      // ctx->SetOutputDim("GateBiasOut",
+      //                   {batch_size, seq_len_m, seq_len_r, num_head, c});
       ctx->SetOutputDim("GateOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, c});
     }
@@ -97,9 +97,9 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("QKVOut", "Result after qkv.").AsIntermediate();
     AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
-    AddOutput("GateBiasOut", "Result after add bias")
-        .AsIntermediate()
-        .AsDispensable();
+    // AddOutput("GateBiasOut", "Result after add bias")
+    // .AsIntermediate()
+    // .AsDispensable();
     AddOutput("GateOut", "Result gate").AsIntermediate().AsDispensable();
     AddOutput("Y", "Result after attention.");
     AddAttr<bool>("is_gating",
@@ -150,8 +150,8 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("GateWeight"));
       ctx->SetOutputDim(framework::GradVarName("GateBias"),
                         ctx->GetInputDim("GateBias"));
-      ctx->SetOutputDim(framework::GradVarName("GateBiasOut"),
-                        ctx->GetInputDim("GateBiasOut"));
+      // ctx->SetOutputDim(framework::GradVarName("GateBiasOut"),
+      //                   ctx->GetInputDim("GateBiasOut"));
       ctx->SetOutputDim(framework::GradVarName("GateOut"),
                         ctx->GetInputDim("GateOut"));
     }
@@ -239,9 +239,9 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetOutput(framework::GradVarName("GateBias"),
                     this->InputGrad("GateBias"));
 
-      op->SetInput("GateBiasOut", this->Output("GateBiasOut"));
-      op->SetOutput(framework::GradVarName("GateBiasOut"),
-                    this->OutputGrad("GateBiasOut"));
+      // op->SetInput("GateBiasOut", this->Output("GateBiasOut"));
+      // op->SetOutput(framework::GradVarName("GateBiasOut"),
+      //               this->OutputGrad("GateBiasOut"));
 
       op->SetInput("GateOut", this->Output("GateOut"));
       op->SetOutput(framework::GradVarName("GateOut"),
