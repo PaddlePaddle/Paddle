@@ -14,23 +14,18 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RReluRawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    paddle::optional<const DenseTensor&> seed_tensor,
-                //   float p,
-                    float lower,
-                    float upper,
-                    bool is_test,
-                    bool fix_seed,
-                //   const std::string& mode,
-                    int seed,
-                    DenseTensor* out,
-                    DenseTensor* mask);
-
+void RReluKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const float lower,
+                 const float upper,
+                 bool is_test,
+                 bool fix_seed,
+                 int seed,
+                 DenseTensor* out,
+                 DenseTensor* noise);
 }  // namespace phi

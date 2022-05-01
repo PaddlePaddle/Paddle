@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +15,14 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RReluGradRawKernel(const Context& dev_ctx,
-                        const DenseTensor& mask,
-                        const DenseTensor& out_grad,
-                        // float p,
-                        // bool is_test,
-                        // const std::string& mode,
-                        DenseTensor* x_grad);
-
+void RReluGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& noise,
+                     const DenseTensor& out_grad,
+                     DenseTensor* x_grad);
 }  // namespace phi
