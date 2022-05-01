@@ -133,7 +133,7 @@ KernelSignature ElementwiseSubGradOpArgumentMapping(
 KernelSignature ElementwiseSubDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "subtract_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+      "subtract_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseDivGradOpArgumentMapping(

@@ -21,7 +21,6 @@ from op_test import OpTest
 from gradient_checker import grad_check
 from paddle.fluid.framework import _enable_legacy_dygraph
 
-# _enable_legacy_dygraph()
 
 
 def valid_eigh_result(A, eigh_value, eigh_vector, uplo):

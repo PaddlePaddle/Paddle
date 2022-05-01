@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 
-# from paddle.fluid.framework import _enable_legacy_dygraph
-# _enable_legacy_dygraph()
+from paddle.fluid.framework import _test_eager_guard
+
 
 
 class TestDiffOp(unittest.TestCase):
@@ -56,7 +56,7 @@ class TestDiffOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
-    def test_dygraph(self):
+    def func_dygraph(self):
         for place in self.places:
             paddle.disable_static()
             x = paddle.to_tensor(self.input, place=place)
@@ -71,6 +71,13 @@ class TestDiffOp(unittest.TestCase):
                 prepend=self.prepend,
                 append=self.append)
             self.assertTrue((out.numpy() == self.output).all(), True)
+
+    def test_dygraph(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_dygraph()
+        self.setUp()
+        self.func_dygraph()
 
     def test_static(self):
         paddle.enable_static()
@@ -111,7 +118,7 @@ class TestDiffOp(unittest.TestCase):
                                   fetch_list=[out])
                 self.assertTrue((fetches[0] == self.output).all(), True)
 
-    def test_grad(self):
+    def func_grad(self):
         for place in self.places:
             x = paddle.to_tensor(self.input, place=place, stop_gradient=False)
             if self.prepend is not None:
@@ -129,6 +136,13 @@ class TestDiffOp(unittest.TestCase):
                 x_grad = x.grad
             except:
                 raise RuntimeError("Check Diff Gradient Failed")
+
+    def test_grad(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_grad()
+        self.setUp()
+        self.func_grad()
 
 
 class TestDiffOpAxis(TestDiffOp):
