@@ -22,7 +22,10 @@ namespace framework {
 #ifdef PADDLE_WITH_HETERPS
 class GraphGpuWrapper {
  public:
-  char* graph_table;
+  static GraphGpuWrapper* GetInstance() {
+    static GraphGpuWrapper wrapper;
+    return &wrapper;
+  }
   void initialize();
   void test();
   void set_device(std::vector<int> ids);
@@ -50,6 +53,7 @@ class GraphGpuWrapper {
   std::vector<std::vector<int>> table_feat_conf_feat_shape;
   ::paddle::distributed::GraphParameter table_proto;
   std::vector<int> device_id_mapping;
+  char* graph_table;
 };
 #endif
 }
