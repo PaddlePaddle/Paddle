@@ -48,7 +48,8 @@ void RReluGradRawKernel(const Context& dev_ctx,
 
   // Can the following be changed to :
   // dX.device(place) = dY * M ;
-  dX.device(place) = dY * M.cast<T>();
+  // dX.device(place) = dY * M.cast<T>();
+  dX.device(place) = dY * M;
 //   auto& dropout_implementation = mode;
 //   if (is_test == true) {
 //     if (dropout_implementation == "upscale_in_train") {
