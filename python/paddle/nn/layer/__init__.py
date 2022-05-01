@@ -22,11 +22,11 @@ from .activation import CELU  # noqa: F401
 from .activation import PReLU  # noqa: F401
 from .activation import ReLU  # noqa: F401
 from .activation import ReLU6  # noqa: F401
-from .activation import RReLU  # noqa: F401
 from .activation import LeakyReLU  # noqa: F401
 from .activation import Sigmoid  # noqa: F401
 from .activation import Softmax  # noqa: F401
 from .activation import LogSoftmax  # noqa: F401
+from .activation import RReLU  # noqa: F401
 from .activation import Softmax2D  # noqa: F401
 from .common import Bilinear  # noqa: F401
 from .common import Pad1D  # noqa: F401
