@@ -332,7 +332,9 @@ void BindGraphGpuWrapper(py::module* m) {
   py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
       // nit<>())
       //.def("test", &GraphGpuWrapper::test)
-      .def(py::init([]() { return framework::GraphGpuWrapper::GetInstance(); }))
+      //.def(py::init([]() { return framework::GraphGpuWrapper::GetInstance();
+      //}))
+      .def(py::init<>())
       .def("initialize", &GraphGpuWrapper::initialize)
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
