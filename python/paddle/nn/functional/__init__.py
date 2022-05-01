@@ -30,7 +30,6 @@ from .activation import prelu  # noqa: F401
 from .activation import relu  # noqa: F401
 from .activation import relu_  # noqa: F401
 from .activation import relu6  # noqa: F401
-from .activation import rrelu  # noqa: F401
 from .activation import selu  # noqa: F401
 from .activation import sigmoid  # noqa: F401
 from .activation import silu  # noqa: F401
@@ -48,6 +47,7 @@ from .activation import thresholded_relu  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
 from .activation import gumbel_softmax  # noqa: F401
+from .activation import rrelu  # noqa: F401
 from .common import dropout  # noqa: F401
 from .common import dropout2d  # noqa: F401
 from .common import dropout3d  # noqa: F401
@@ -146,7 +146,6 @@ __all__ = [     #noqa
            'relu',
            'relu_',
            'relu6',
-           'rrelu',
            'selu',
            'softmax',
            'softmax_',
@@ -230,4 +229,5 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'fold',
+           'rrelu',
 ]
