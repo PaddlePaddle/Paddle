@@ -139,9 +139,12 @@ struct NeighborSampleQuery {
 };
 struct NeighborSampleResult {
   int64_t *val;
+  int64_t *actual_val;
   int *actual_sample_size, sample_size, key_size;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
+  std::shared_ptr<memory::Allocation> actual_val_mem;
   int64_t *get_val() { return val; }
+  int64_t *get_actual_val() { return actual_val; }
   int *get_actual_sample_size() { return actual_sample_size; }
   int get_sample_size() { return sample_size; }
   int get_key_size() { return key_size; }
@@ -165,18 +168,30 @@ struct NeighborSampleResult {
     int *ac_size = new int[key_size];
     cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
+    int total_sample_size = 0;
+    for (int i = 0; i < key_size; i++) {
+      total_sample_size += ac_size[i];
+    }
+    int64_t *res2 = new int64_t[total_sample_size];
+    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
 
+    int start = 0;
     for (int i = 0; i < key_size; i++) {
       VLOG(0) << "actual sample size for " << i << "th key is " << ac_size[i];
       VLOG(0) << "sampled neighbors are ";
-      std::string neighbor;
+      std::string neighbor, neighbor2;
       for (int j = 0; j < ac_size[i]; j++) {
         if (neighbor.size() > 0) neighbor += ";";
+        if (neighbor2.size() > 0) neighbor2 += ";";
         neighbor += std::to_string(res[i * sample_size + j]);
+        neighbor2 += std::to_string(res2[start + j]);
       }
-      VLOG(0) << neighbor;
+      VLOG(0) << neighbor << " " << neighbor2;
+      start += ac_size[i];
     }
     delete[] res;
+    delete[] res2;
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }
