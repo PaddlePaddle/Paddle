@@ -1915,23 +1915,23 @@ void RollInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void RReluInferMeta(const MetaTensor& x, 
-                    const MetaTensor& seed_tensor,
+void RReluInferMeta(const MetaTensor& x,
                     float lower,
-                    float upper, 
+                    float upper,
                     bool is_test,
                     bool fix_seed,
                     int seed,
                     MetaTensor* out,
-                    MetaTensor* mask) {
+                    MetaTensor* noise) {
+  auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(lower,
-                    0.0f,
+                    0,
                     phi::errors::InvalidArgument(
                         "The lower value should be greater than or equal to 0. "
                         "But received lower value = %f.",
                         lower));
   PADDLE_ENFORCE_LE(upper,
-                    1.0f,
+                    1,
                     phi::errors::InvalidArgument(
                         "The upper value should be less than or equal to 1. "
                         "But received upper value = %f.",
@@ -1945,16 +1945,25 @@ void RReluInferMeta(const MetaTensor& x,
           upper,
           lower));
 
-  out->set_dims(x.dims());
+  out->set_dims(x_dims);
   out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   out->share_lod(x);
 
-  if (is_test == false) {
-    // ctx->SetOutputDim("Mask", x_dims);
-    mask->set_dims(x.dims());
-    mask->set_dtype(x.dtype());
+  if (noise != nullptr) {
+    noise->set_dims(x_dims);
+    noise->set_dtype(x.dtype());
+    noise->set_layout(x.layout());
   }
-  // ctx->ShareLoD("X", /*->*/ "Out");
+}
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  x_grad->set_dims(do_dims);
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->share_lod(out_grad);
 }
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
