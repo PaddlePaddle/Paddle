@@ -325,6 +325,8 @@ void BindNeighborSampleResult(py::module* m) {
   py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
       .def(py::init<>())
       .def("initialize", &NeighborSampleResult::initialize)
+      .def("get_len", &NeighborSampleResult::get_len)
+      .def("get_val", &NeighborSampleResult::get_actual_val)
       .def("display", &NeighborSampleResult::display);
 }
 

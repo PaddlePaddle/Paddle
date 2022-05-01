@@ -141,13 +141,16 @@ struct NeighborSampleResult {
   int64_t *val;
   int64_t *actual_val;
   int *actual_sample_size, sample_size, key_size;
+  int total_sample_size;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
   std::shared_ptr<memory::Allocation> actual_val_mem;
   int64_t *get_val() { return val; }
-  int64_t *get_actual_val() { return actual_val; }
+  int64_t get_actual_val() { return (int64_t)actual_val; }
   int *get_actual_sample_size() { return actual_sample_size; }
   int get_sample_size() { return sample_size; }
   int get_key_size() { return key_size; }
+  void set_total_sample_size(int s) { total_sample_size = s; }
+  int get_len() { return total_sample_size; }
   void initialize(int _sample_size, int _key_size, int dev_id) {
     sample_size = _sample_size;
     key_size = _key_size;

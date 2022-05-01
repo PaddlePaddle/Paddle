@@ -871,6 +871,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
         memory::AllocShared(place, total_sample_size * sizeof(int64_t));
     result.actual_val = (int64_t*)(result.actual_val_mem)->ptr();
 
+    result.set_total_sample_size(total_sample_size);
+
     thrust::device_vector<int> cumsum_actual_sample_size(len);
     thrust::exclusive_scan(t_actual_sample_size, t_actual_sample_size + len,
                            cumsum_actual_sample_size.begin(), 0);
