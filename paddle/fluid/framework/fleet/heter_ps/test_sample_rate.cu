@@ -264,6 +264,8 @@ void testSampleRate() {
     res[i].push_back(result);
   }
   */
+
+  // g.graph_neighbor_sample
   start = 0;
   auto func = [&rwlock, &g, &start, &ids](int i) {
     int st = 0;
@@ -288,8 +290,37 @@ void testSampleRate() {
   auto end1 = std::chrono::steady_clock::now();
   auto tt =
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-  std::cerr << "total time cost without cache is "
+  std::cerr << "total time cost without cache for v1 is "
             << tt.count() / exe_count / gpu_num1 << " us" << std::endl;
+
+  // g.graph_neighbor_sample_v2
+  start = 0;
+  auto func2 = [&rwlock, &g, &start, &ids](int i) {
+    int st = 0;
+    int size = ids.size();
+    for (int k = 0; k < exe_count; k++) {
+      st = 0;
+      while (st < size) {
+        int len = std::min(fixed_key_size, (int)ids.size() - st);
+        auto r = g.graph_neighbor_sample_v2(i, (int64_t *)(key[i] + st),
+                                            sample_size, len, false);
+        st += len;
+        delete r;
+      }
+    }
+  };
+  auto start2 = std::chrono::steady_clock::now();
+  std::thread thr2[gpu_num1];
+  for (int i = 0; i < gpu_num1; i++) {
+    thr2[i] = std::thread(func2, i);
+  }
+  for (int i = 0; i < gpu_num1; i++) thr2[i].join();
+  auto end2 = std::chrono::steady_clock::now();
+  auto tt2 =
+      std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+  std::cerr << "total time cost without cache for v2 is "
+            << tt2.count() / exe_count / gpu_num1 << " us" << std::endl;
+
   for (int i = 0; i < gpu_num1; i++) {
     cudaFree(key[i]);
   }

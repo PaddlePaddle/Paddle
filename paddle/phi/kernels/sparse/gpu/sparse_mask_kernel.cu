@@ -231,7 +231,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   T* out_ptr = out->data<T>();
 
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
 
   SparseMaskCopyKernel<<<config.block_per_grid,
                          config.thread_per_block,

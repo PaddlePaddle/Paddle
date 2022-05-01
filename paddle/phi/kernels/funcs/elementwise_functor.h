@@ -18,6 +18,10 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#include <xpu/runtime.h>
+#include "xpu/kernel/math_xpu2.h"  //pow()
+#endif
 
 namespace phi {
 namespace funcs {
@@ -573,6 +577,9 @@ struct ElementwisePowFunctor {
       return std::llrint(
           std::pow(static_cast<double>(a), static_cast<double>(b)));
     }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    return pow(a, b);
 #endif
     return std::pow(a, b);
   }
