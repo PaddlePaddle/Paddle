@@ -120,6 +120,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
   }
   g.cpu_graph_table->build_sampler(0);
   ids1.push_back(5);
+  ids1.push_back(7);
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids0));
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids1));
   vec[0].display_on_cpu();
@@ -136,20 +137,28 @@ TEST(TEST_FLEET, test_cpu_cache) {
   }
   */
   void *key;
-  platform::CUDADeviceGuard guard(0);
-  cudaMalloc((void **)&key, 3 * sizeof(int64_t));
-  cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-  auto neighbor_sample_res =
-      g.graph_neighbor_sample_v2(0, (int64_t *)key, 2, 3, true);
-  neighbor_sample_res.display();
-  //{1,9} or {9,1} is expected for key 0
-  //{0,2} or {2,0} is expected for key 1
-  //{1,3} or {3,1} is expected for key 2
-  auto node_query_res = g.query_node_list(0, 0, 4);
-  node_query_res.display();
-  NeighborSampleQuery query;
-  query.initialize(0, node_query_res.get_val(), 2, node_query_res.get_len());
-  query.display();
-  auto c = g.graph_neighbor_sample_v3(query, false);
-  c.display();
+  for (int i = 0; i < 2; i++) {
+    // platform::CUDADeviceGuard guard(i);
+    LOG(0) << "query on card " << i;
+    //{1,9} or {9,1} is expected for key 0
+    //{0,2} or {2,0} is expected for key 1
+    //{1,3} or {3,1} is expected for key 2
+    int step = 2;
+    int cur = 0;
+    while (true) {
+      auto node_query_res = g.query_node_list(i, cur, step);
+      node_query_res.display();
+      if (node_query_res.get_len() == 0) {
+        VLOG(0) << "no more ids,break";
+        break;
+      }
+      cur += node_query_res.get_len();
+      NeighborSampleQuery query;
+      query.initialize(i, node_query_res.get_val(), 2,
+                       node_query_res.get_len());
+      query.display();
+      auto c = g.graph_neighbor_sample_v3(query, false);
+      c.display();
+    }
+  }
 }

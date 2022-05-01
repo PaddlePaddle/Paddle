@@ -172,9 +172,9 @@ struct NeighborSampleResult {
     for (int i = 0; i < key_size; i++) {
       total_sample_size += ac_size[i];
     }
-    int64_t *res2 = new int64_t[total_sample_size];
-    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
-               cudaMemcpyDeviceToHost);
+    // int64_t *res2 = new int64_t[total_sample_size]; //r
+    //  cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+    //             cudaMemcpyDeviceToHost); //r
 
     int start = 0;
     for (int i = 0; i < key_size; i++) {
@@ -183,15 +183,15 @@ struct NeighborSampleResult {
       std::string neighbor, neighbor2;
       for (int j = 0; j < ac_size[i]; j++) {
         if (neighbor.size() > 0) neighbor += ";";
-        if (neighbor2.size() > 0) neighbor2 += ";";
+        // if (neighbor2.size() > 0) neighbor2 += ";"; //r
         neighbor += std::to_string(res[i * sample_size + j]);
-        neighbor2 += std::to_string(res2[start + j]);
+        //  neighbor2 += std::to_string(res2[start + j]); //r
       }
       VLOG(0) << neighbor << " " << neighbor2;
-      start += ac_size[i];
+      // start += ac_size[i]; //r
     }
     delete[] res;
-    delete[] res2;
+    //    delete[] res2; //r
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }

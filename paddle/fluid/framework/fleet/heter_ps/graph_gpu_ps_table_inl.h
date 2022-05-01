@@ -861,6 +861,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       d_shard_vals_ptr, val, d_shard_actual_sample_size_ptr, actual_sample_size,
       d_idx_ptr, sample_size, len);
 
+  /*
+
   thrust::device_ptr<int> t_actual_sample_size(actual_sample_size);
   int total_sample_size =
       thrust::reduce(t_actual_sample_size, t_actual_sample_size + len);
@@ -875,6 +877,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       val, result.actual_val, actual_sample_size,
       thrust::raw_pointer_cast(cumsum_actual_sample_size.data()), sample_size,
       len);
+  */
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
@@ -898,13 +901,10 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
   if (query_size <= 0) return result;
   int& actual_size = result.actual_sample_size;
   actual_size = 0;
-  result.initialize(query_size, resource_->dev_id(gpu_id));
-  int64_t* val = result.val;
   // int dev_id = resource_->dev_id(gpu_id);
   // platform::CUDADeviceGuard guard(dev_id);
-  platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
-  std::vector<int> idx, gpu_begin_pos, local_begin_pos, sample_size;
-  int size = 0;
+  std::vector<int> idx, gpu_begin_pos, local_begin_pos;
+  int sample_size;
   /*
   if idx[i] = a, gpu_begin_pos[i] = p1,
   gpu_local_begin_pos[i] = p2;
@@ -928,6 +928,31 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
     x2 = max(x1, x);
     return y2 - x2;
   };
+  auto graph = gpu_graph_list[gpu_id];
+  if (graph.node_size == 0) {
+    return result;
+  }
+  int x2, y2;
+  int len = range_check(start, start + query_size, 0, graph.node_size, x2, y2);
+
+  if (len == 0) {
+    return result;
+  }
+  int64_t* val;
+  sample_size = len;
+  result.initialize(len, resource_->dev_id(gpu_id));
+  actual_size = len;
+  val = result.val;
+  int dev_id_i = resource_->dev_id(gpu_id);
+  platform::CUDADeviceGuard guard(dev_id_i);
+  // platform::CUDADeviceGuard guard(i);
+  int grid_size = (len - 1) / block_size_ + 1;
+  node_query_example<<<grid_size, block_size_, 0,
+                       resource_->remote_stream(gpu_id, gpu_id)>>>(
+      gpu_graph_list[gpu_id], x2, len, (int64_t*)val);
+  cudaStreamSynchronize(resource_->remote_stream(gpu_id, gpu_id));
+  return result;
+  /*
   for (int i = 0; i < gpu_graph_list.size() && query_size != 0; i++) {
     auto graph = gpu_graph_list[i];
     if (graph.node_size == 0) {
@@ -973,6 +998,7 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
     destroy_storage(gpu_id, x);
   }
   return result;
+  */
 }
 }
 };
