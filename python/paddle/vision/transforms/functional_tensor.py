@@ -86,6 +86,68 @@ def _get_image_size(img, data_format):
         _get_image_h_axis(data_format)]
 
 
+def _rgb_to_hsv(img):
+    """Convert a image Tensor from RGB to HSV. This implementation is based on Pillow (
+            https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c)
+    """
+    maxc = img.max(axis=-3)
+    minc = img.min(axis=-3)
+
+    is_equal = paddle.equal(maxc, minc)
+    one_divisor = paddle.ones_like(maxc)
+    c_delta = maxc - minc
+    # s is 0 when maxc == minc, set the divisor to 1 to avoid zero divide.
+    s = c_delta / paddle.where(is_equal, one_divisor, maxc)
+
+    r, g, b = img.unbind(axis=-3)
+    c_delta_divisor = paddle.where(is_equal, one_divisor, c_delta)
+    # when maxc == minc, there is r == g == b, set the divisor to 1 to avoid zero divide.
+    rc = (maxc - r) / c_delta_divisor
+    gc = (maxc - g) / c_delta_divisor
+    bc = (maxc - b) / c_delta_divisor
+
+    hr = (maxc == r).astype(maxc.dtype) * (bc - gc)
+    hg = ((maxc == g) & (maxc != r)).astype(maxc.dtype) * (rc - bc + 2.0)
+    hb = ((maxc != r) & (maxc != g)).astype(maxc.dtype) * (gc - rc + 4.0)
+    h = (hr + hg + hb) / 6.0 + 1.0
+    h = h - h.trunc()
+    return paddle.stack([h, s, maxc], axis=-3)
+
+
+def _hsv_to_rgb(img):
+    """Convert a image Tensor from HSV to RGB.
+    """
+    h, s, v = img.unbind(axis=-3)
+    f = h * 6.0
+    i = paddle.floor(f)
+    f = f - i
+    i = i.astype(paddle.int32) % 6
+
+    p = paddle.clip(v * (1.0 - s), 0.0, 1.0)
+    q = paddle.clip(v * (1.0 - s * f), 0.0, 1.0)
+    t = paddle.clip(v * (1.0 - s * (1.0 - f)), 0.0, 1.0)
+
+    mask = paddle.equal(
+        i.unsqueeze(axis=-3),
+        paddle.arange(
+            6, dtype=i.dtype).reshape((-1, 1, 1))).astype(img.dtype)
+    matrix = paddle.stack(
+        [
+            paddle.stack(
+                [v, q, p, p, t, v], axis=-3), paddle.stack(
+                    [t, v, v, q, p, p], axis=-3), paddle.stack(
+                        [p, p, t, v, v, q], axis=-3)
+        ],
+        axis=-4)
+    return paddle.einsum("...ijk, ...xijk -> ...xjk", mask, matrix)
+
+
+def _blend_images(img1, img2, ratio):
+    max_value = 1.0 if paddle.is_floating_point(img1) else 255.0
+    return paddle.lerp(img2, img1, float(ratio)).clip(
+        0, max_value).astype(img1.dtype)
+
+
 def normalize(img, mean, std, data_format='CHW'):
     """Normalizes a tensor image given mean and standard deviation.
 
@@ -514,3 +576,127 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         data_format='N' + data_format.upper())
 
     return img.squeeze(0)
+
+
+def adjust_brightness(img, brightness_factor):
+    """Adjusts brightness of an Image.
+
+    Args:
+        img (paddle.Tensor): Image to be adjusted.
+        brightness_factor (float): How much to adjust the brightness. Can be
+            any non negative number. 0 gives a black image, 1 gives the
+            original image while 2 increases the brightness by a factor of 2.
+
+    Returns:
+        paddle.Tensor: Brightness adjusted image.
+
+    """
+    _assert_image_tensor(img, 'CHW')
+    assert brightness_factor >= 0, "brightness_factor should be non-negative."
+    assert _get_image_num_channels(
+        img, 'CHW') in [1, 3], "channels of input should be either 1 or 3."
+
+    extreme_target = paddle.zeros_like(img, img.dtype)
+    return _blend_images(img, extreme_target, brightness_factor)
+
+
+def adjust_contrast(img, contrast_factor):
+    """Adjusts contrast of an image.
+
+    Args:
+        img (paddle.Tensor): Image to be adjusted.
+        contrast_factor (float): How much to adjust the contrast. Can be any
+            non negative number. 0 gives a solid gray image, 1 gives the
+            original image while 2 increases the contrast by a factor of 2.
+
+    Returns:
+        paddle.Tensor: Contrast adjusted image.
+
+    """
+    _assert_image_tensor(img, 'chw')
+    assert contrast_factor >= 0, "contrast_factor should be non-negative."
+
+    channels = _get_image_num_channels(img, 'CHW')
+    dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
+    if channels == 1:
+        extreme_target = paddle.mean(
+            img.astype(dtype), axis=(-3, -2, -1), keepdim=True)
+    elif channels == 3:
+        extreme_target = paddle.mean(
+            to_grayscale(img).astype(dtype), axis=(-3, -2, -1), keepdim=True)
+    else:
+        raise ValueError("channels of input should be either 1 or 3.")
+
+    return _blend_images(img, extreme_target, contrast_factor)
+
+
+def adjust_saturation(img, saturation_factor):
+    """Adjusts color saturation of an image.
+
+    Args:
+        img (paddle.Tensor): Image to be adjusted.
+        saturation_factor (float):  How much to adjust the saturation. 0 will
+            give a black and white image, 1 will give the original image while
+            2 will enhance the saturation by a factor of 2.
+
+    Returns:
+        paddle.Tensor: Saturation adjusted image.
+
+    """
+    _assert_image_tensor(img, 'CHW')
+    assert saturation_factor >= 0, "saturation_factor should be non-negative."
+    channels = _get_image_num_channels(img, 'CHW')
+    if channels == 1:
+        return img
+    elif channels == 3:
+        extreme_target = to_grayscale(img)
+    else:
+        raise ValueError("channels of input should be either 1 or 3.")
+
+    return _blend_images(img, extreme_target, saturation_factor)
+
+
+def adjust_hue(img, hue_factor):
+    """Adjusts hue of an image.
+
+    The image hue is adjusted by converting the image to HSV and
+    cyclically shifting the intensities in the hue channel (H).
+    The image is then converted back to original image mode.
+
+    `hue_factor` is the amount of shift in H channel and must be in the
+    interval `[-0.5, 0.5]`.
+
+    Args:
+        img (paddle.Tensor): Image to be adjusted.
+        hue_factor (float):  How much to shift the hue channel. Should be in
+            [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
+            HSV space in positive and negative direction respectively.
+            0 means no shift. Therefore, both -0.5 and 0.5 will give an image
+            with complementary colors while 0 gives the original image.
+
+    Returns:
+        paddle.Tensor: Hue adjusted image.
+
+    """
+    _assert_image_tensor(img, 'CHW')
+    assert hue_factor >= -0.5 and hue_factor <= 0.5, "hue_factor should be in range [-0.5, 0.5]"
+    channels = _get_image_num_channels(img, 'CHW')
+    if channels == 1:
+        return img
+    elif channels == 3:
+        dtype = img.dtype
+        if dtype == paddle.uint8:
+            img = img.astype(paddle.float32) / 255.0
+
+        img_hsv = _rgb_to_hsv(img)
+        h, s, v = img_hsv.unbind(axis=-3)
+        h = (h + hue_factor)
+        h = h - h.floor()
+        img_adjusted = _hsv_to_rgb(paddle.stack([h, s, v], axis=-3))
+
+        if dtype == paddle.uint8:
+            img_adjusted = (img_adjusted * 255.0).astype(dtype)
+    else:
+        raise ValueError("channels of input should be either 1 or 3.")
+
+    return img_adjusted
