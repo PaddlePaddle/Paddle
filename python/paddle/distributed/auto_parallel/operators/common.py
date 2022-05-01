@@ -18,16 +18,16 @@ from ..dist_attribute import OperatorDistributedAttribute
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
-    "elementwise_add", "gelu", "dropout", "cast", "gather", "concat"
+    "elementwise", "gelu", "dropout", "cast", "gather", "concat"
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 def is_elementwise_op(op_type):
-    if op_type in _g_elementwise_ops:
-        return True
-    else:
-        return False
+    for eltwise_op in _g_elementwise_ops:
+        if eltwise_op in op_type:
+            return True
+    return False
 
 
 class DistributedOperatorImplContainer:

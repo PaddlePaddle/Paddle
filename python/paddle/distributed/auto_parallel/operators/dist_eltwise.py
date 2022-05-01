@@ -52,21 +52,48 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
-        if is_elementwise_op(op_desc.type()):
-            return True
-        else:
+        if not is_elementwise_op(op_desc.type()):
             return False
+        op_dist_attr = dist_op.dist_attr
+        dims_mapping_list = []
+        input_arg_names = op_desc.input_arg_names()
+        max_dims_mapping_len = -1
+        for arg_name in input_arg_names:
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if max_dims_mapping_len < len(dims_mapping):
+                max_dims_mapping_len = len(dims_mapping)
+            dims_mapping_list.append(dims_mapping)
+
+        for idx in range(max_dims_mapping_len):
+            dim_mappings = []
+            for dims_mapping in dims_mapping_list:
+                if idx < len(dims_mapping):
+                    dim_mappings.append(dims_mapping[-(idx + 1)])
+            if not all(dim_mappings[0] == dim_mapping
+                       for dim_mapping in dim_mappings):
+                return False
+        return True
 
     def is_output_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
-        op_desc = dist_op.serial_op.desc
-        if is_elementwise_op(op_desc.type()):
-            return True
-        else:
+        if not is_elementwise_op(op_desc.type()):
             return False
+        op_dist_attr = dist_op.dist_attr
+        dims_mapping_list = []
+        output_arg_names = op_desc.output_arg_names()
+        for arg_name in output_arg_names:
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            dims_mapping_list.append(dims_mapping)
+
+        if not all(dims_mapping_list[0] == dims_mapping
+                   for dims_mapping in dims_mapping_list):
+            return False
+        return True
 
     def is_auto_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
+        if not is_elementwise_op(op_desc.type()):
+            return False
         op_dist_attr = dist_op.dist_attr
         dims_mapping_list = []
         input_arg_names = op_desc.input_arg_names()

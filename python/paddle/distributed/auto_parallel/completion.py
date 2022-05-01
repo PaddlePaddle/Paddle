@@ -123,6 +123,18 @@ def merge_process_mesh_two(pm1, pm2):
     return merged_process_mesh
 
 
+def _validate_dims_mapping(dims_mapping, process_mesh):
+    if dims_mapping is None:
+        return False
+    for i in range(len(dims_mapping)):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(
+                process_mesh.topology):
+            return False
+    for i in range(len(process_mesh.topology)):
+        if dims_mapping.count(i) > 1:
+            return False
+
+
 class Completer:
     def __init__(self, dist_context):
         assert dist_context is not None
@@ -146,6 +158,7 @@ class Completer:
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         if fwd:
             dims_mapping_list = []
+            # print("fwd before tensor", tensor_desc.name(), tensor_desc.id(), changed, tensor_dist_attr, flush=True)
             for pred_op_node in tensor_node.inputs:
                 if pred_op_node.op() is not None:
                     if pred_op_node.op().type() == "create_py_reader" \
@@ -161,12 +174,17 @@ class Completer:
             dims_mapping_list.append(tensor_dims_mapping)
             compatible_dims_mapping = compute_compatible_dims_mapping(
                 dims_mapping_list)
+            if not _validate_dims_mapping(compatible_dims_mapping,
+                                          tensor_dist_attr.process_mesh):
+                return False
             if (compatible_dims_mapping is not None) and \
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
+            # print("fwd after tensor", tensor_desc.name(), tensor_desc.id(), changed, tensor_dist_attr, "\n", flush=True)
         else:
             dims_mapping_list = []
+            # print("bwd before tensor", tensor_desc.name(), tensor_desc.id(), changed, tensor_dist_attr, flush=True)
             for succ_op_node in tensor_node.outputs:
                 if succ_op_node.op() is not None:
                     if succ_op_node.op().type() == "create_py_reader" \
@@ -182,10 +200,14 @@ class Completer:
             dims_mapping_list.append(tensor_dims_mapping)
             compatible_dims_mapping = compute_compatible_dims_mapping(
                 dims_mapping_list)
+            if not _validate_dims_mapping(compatible_dims_mapping,
+                                          tensor_dist_attr.process_mesh):
+                return False
             if (compatible_dims_mapping is not None) and \
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
+            # print("bwd after tensor", tensor_desc.name(), tensor_desc.id(), changed, tensor_dist_attr, "\n", flush=True)
         return changed
 
     def _update_op_node_dims_mapping(self, op_node, fwd=True):
@@ -196,11 +218,14 @@ class Completer:
         op_desc = op_node.op()
         if op_desc.type() == "create_py_reader" \
             or op_desc.type() == "create_double_buffer_reader" \
+            or op_desc.type() == "while" \
             or op_desc.type() == "read":
             return False
         dist_op = self._dist_context.get_dist_op_for_graph(op_node)
         op_dist_attr = dist_op.dist_attr
+        original_op_dist_attr = copy.deepcopy(op_dist_attr)
         if fwd:
+            # print("fwd before op", op_desc.type(), op_desc.id(), changed, op_dist_attr, flush=True)
             for tensor_node in op_node.inputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -234,8 +259,17 @@ class Completer:
                         op_dist_attr.impl_type = "default"
                     else:
                         op_dist_attr.impl_type = op_dist_impl.type
+                    # op_dist_attr.impl_type = op_dist_impl.type
                     op_dist_attr.impl_idx = op_dist_impl.idx
+                else:
+                    dist_op.dist_attr = original_op_dist_attr
+                    changed = False
+            else:
+                dist_op.dist_attr = original_op_dist_attr
+                changed = False
+            # print("fwd after op", op_desc.type(), op_desc.id(), changed, op_dist_attr, "\n", flush=True)
         else:
+            # print("bwd before op", op_desc.type(), op_desc.id(), changed, op_dist_attr, flush=True)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -269,7 +303,15 @@ class Completer:
                         op_dist_attr.impl_type = "default"
                     else:
                         op_dist_attr.impl_type = op_dist_impl.type
+                    # op_dist_attr.impl_type = op_dist_impl.type
                     op_dist_attr.impl_idx = op_dist_impl.idx
+                else:
+                    dist_op.dist_attr = original_op_dist_attr
+                    changed = False
+            else:
+                dist_op.dist_attr = original_op_dist_attr
+                changed = False
+            # print("bwd after op", op_desc.type(), op_desc.id(), changed, op_dist_attr, "\n", flush=True)
         return changed
 
     def _update_dims_mapping_between_graphs(self):
@@ -279,17 +321,22 @@ class Completer:
                 parent_node)
             child_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
                 child_node)
+            if parent_node_dist_attr.process_mesh != child_node_dist_attr.process_mesh:
+                continue
             parent_node_dims_mapping = parent_node_dist_attr.dims_mapping
             child_node_dims_mapping = child_node_dist_attr.dims_mapping
             compatible_dims_mapping = compute_compatible_dims_mapping(
                 [parent_node_dims_mapping, child_node_dims_mapping])
+            if not _validate_dims_mapping(compatible_dims_mapping,
+                                          parent_node_dist_attr.process_mesh):
+                return False
             if (compatible_dims_mapping is not None) \
                 and (compatible_dims_mapping != parent_node_dims_mapping):
                 parent_node_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
             if (compatible_dims_mapping is not None) \
                 and (compatible_dims_mapping != child_node_dims_mapping):
-                parent_node_dist_attr.dims_mapping = compatible_dims_mapping
+                child_node_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
         return changed
 
@@ -319,6 +366,7 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+            # print("one pass $$$$$$$$$$$$$$$$$$$$$", is_fwd)
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
         op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
@@ -341,6 +389,7 @@ class Completer:
             if tensor_node.is_var() and tensor_node.var() is not None:
                 tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
                     tensor_node)
+                # print("outside input process_mesh", _node_id(tensor_node), tensor_node.var().name(), tensor_dist_attr)
                 if tensor_dist_attr.is_annotated("process_mesh"):
                     continue
                 # Skip the non-leaf var node
@@ -351,11 +400,13 @@ class Completer:
                 if compatible_process_mesh is not None \
                     and tensor_dist_attr.process_mesh != compatible_process_mesh:
                     tensor_dist_attr.process_mesh = compatible_process_mesh
-        # Set the process mesh of the op node's outputs
+                    # print("inside input process_mesh", _node_id(tensor_node), tensor_node.var().name(), compatible_process_mesh, tensor_dist_attr)
+                # Set the process mesh of the op node's outputs
         for tensor_node in op_node.outputs:
             if tensor_node.is_var() and tensor_node.var() is not None:
                 tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
                     tensor_node)
+                # print("outside output process_mesh", _node_id(tensor_node), tensor_node.var().name(), tensor_dist_attr)
                 if tensor_dist_attr.is_annotated("process_mesh"):
                     continue
                 compatible_process_mesh = compute_compatible_process_mesh(
@@ -363,6 +414,7 @@ class Completer:
                 if compatible_process_mesh is not None \
                     and tensor_dist_attr.process_mesh != compatible_process_mesh:
                     tensor_dist_attr.process_mesh = compatible_process_mesh
+                    # print("inside output process_mesh", _node_id(tensor_node), tensor_node.var().name(), compatible_process_mesh, tensor_dist_attr)
 
     def _update_process_mesh_for_specials(self):
         def _find_nearest_tensor_node_before(nodes, idx, var_name):
@@ -389,7 +441,8 @@ class Completer:
                 if _node_id(cur) in visited:
                     continue
                 # TODO: need more restrictions
-                for node in cur.inputs:
+                neighbors = cur.inputs + cur.outputs
+                for node in neighbors:
                     if node.is_var() and node.var() is not None:
                         if node.var().type() != core.VarDesc.VarType.READER \
                             and len(node.var().shape()) == 1:
@@ -421,10 +474,29 @@ class Completer:
                 visited.add(_node_id(cur))
             return related_nodes
 
+        def _make_dims_mapping_replicate(dist_attr):
+            if isinstance(dist_attr, TensorDistributedAttribute):
+                for i, _ in enumerate(dist_attr.dims_mapping):
+                    dist_attr.dims_mapping[i] = -1
+            if isinstance(dist_attr, OperatorDistributedAttribute):
+                for arg_name in dist_attr.inputs_dist_attrs.keys():
+                    new_dims_mapping = []
+                    dims_mapping = dist_attr.get_input_dims_mapping(arg_name)
+                    for _ in dims_mapping:
+                        new_dims_mapping.append(-1)
+                    dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                for arg_name in dist_attr.outputs_dist_attrs.keys():
+                    new_dims_mapping = []
+                    dims_mapping = dist_attr.get_output_dims_mapping(arg_name)
+                    for _ in dims_mapping:
+                        new_dims_mapping.append(-1)
+                    dist_attr.set_output_dims_mapping(arg_name,
+                                                      new_dims_mapping)
+
         # Amend the process meshes related to while_op
         for while_op_node, while_op_node_idx in self._while_op_nodes.values():
             sub_graph_id = while_op_node.op()._block_attr_id("sub_block")
-            sub_graph = self._dist_context._serial_graph.get_sub_graph(
+            sub_graph = self._dist_context.serial_graph.get_sub_graph(
                 sub_graph_id)
             sub_graph_nodes = list(sub_graph.all_nodes())
             while_dist_op = self._dist_context.get_dist_op_for_graph(
@@ -440,6 +512,7 @@ class Completer:
                     merged_process_mesh = merge_process_mesh_two(
                         merged_process_mesh, dist_attr.process_mesh)
             while_op_dist_attr.process_mesh = merged_process_mesh
+            _make_dims_mapping_replicate(while_op_dist_attr)
 
             # Step 2: set the related nodes of while_op to the process mesh of while_op
             # Step 2.1: Find related nodes of cond var the graph of while_op
@@ -479,7 +552,16 @@ class Completer:
             for node in cond_tensor_related_nodes:
                 tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
                     node)
+                # if node.is_op():
+                #     print("cond before #########", node.op().type(), tensor_dist_attr)
+                # if node.is_var():
+                #     print("cond before #########", node.var().name(), tensor_dist_attr)
                 tensor_dist_attr.process_mesh = merged_process_mesh
+                _make_dims_mapping_replicate(tensor_dist_attr)
+                # if node.is_op():
+                #     print("cond after #########", node.op().type(), tensor_dist_attr)
+                # if node.is_var():
+                #     print("cond after #########", node.var().name(), tensor_dist_attr)
 
             # Step 3: set the process meshes of the inputs in while_op to the process meshes of the outside input nodes
             while_op_inputs_dist_attrs = while_op_dist_attr.inputs_dist_attrs
@@ -519,6 +601,25 @@ class Completer:
                 dist_attr = self._dist_context.get_dist_attr_for_graph(
                     array_node)
                 dist_attr.process_mesh = merged_process_mesh
+                _make_dims_mapping_replicate(dist_attr)
+
+    def _update_process_mesh_between_graphs(self):
+        for parent_node, child_node in self._node_pairs_between_graphs:
+            parent_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                parent_node)
+            child_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                child_node)
+            parent_node_dist_attr.process_mesh = child_node_dist_attr.process_mesh
+            compatible_process_mesh = compute_compatible_process_mesh([
+                parent_node_dist_attr.process_mesh,
+                child_node_dist_attr.process_mesh
+            ])
+            if compatible_process_mesh is not None \
+                and parent_node_dist_attr.process_mesh != compatible_process_mesh:
+                parent_node_dist_attr.process_mesh = compatible_process_mesh
+            if compatible_process_mesh is not None \
+                and child_node_dist_attr.process_mesh != compatible_process_mesh:
+                child_node_dist_attr.process_mesh = compatible_process_mesh
 
     def _update_process_mesh(self):
         ordered_op_nodes = self._dist_context._serial_ordered_op_nodes
@@ -528,6 +629,7 @@ class Completer:
         for tensor_node in ordered_tensor_nodes:
             tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
                 tensor_node)
+            # print("$$$$$", _node_id(tensor_node), tensor_node.var().name(), tensor_dist_attr, flush=True)
             if not tensor_dist_attr.is_annotated("process_mesh"):
                 continue
             first_op_node = None
@@ -569,7 +671,7 @@ class Completer:
             return None
         for idx, op_node in enumerate(ordered_op_nodes[
                 idx_of_first_op_node_has_process_mesh + 1:]):
-            original_idx = idx_of_first_op_node_has_process_mesh + +idx + 1
+            original_idx = idx_of_first_op_node_has_process_mesh + idx + 1
             nearest_op_node = ordered_op_nodes[original_idx - 1]
             nearest_op_dist_attr = self._dist_context.get_dist_attr_for_graph(
                 nearest_op_node)
@@ -584,6 +686,9 @@ class Completer:
 
         # Step 3: adjust the process meshes for special ops
         self._update_process_mesh_for_specials()
+
+        # Step 4: adjust the process meshes between graphs 
+        self._update_process_mesh_between_graphs()
 
     def _prepare(self):
         self._while_op_nodes = {}
@@ -620,7 +725,7 @@ class Completer:
                             self._node_pairs_between_graphs.append(
                                 (after_node, node))
 
-    def complete_forward_annotation(self, serial_main_program):
+    def complete_forward_annotation(self, serial_main_program=None):
         """ Complete annotation for the partial annotated serial_main_program.
         Arguments:
             serial_main_program: partial annotated serial_main_program.
@@ -628,15 +733,24 @@ class Completer:
             serial_main_program: completed annotated serial_main_program.
         """
 
-        # Use the default distribted context for completeion if there is no one
-        self._dist_context.serial_program = serial_main_program
-
-        # Initialize distributed attributes for all var and op node in serial_main_program
-        self._dist_context.init_dist_attr_for_program()
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context.serial_main_program = serial_main_program
         # print_program_with_dist_attr(serial_main_program, self._dist_context)
 
-        # Initialize distributed attributes for all var and op node in graph
-        self._dist_context.init_dist_attr_for_graph()
+        # all_nodes = self._dist_context.serial_ordered_nodes
+        # for idx, node in enumerate(all_nodes):
+        #     if node.is_op():
+        #         op_dist_attr = self._dist_context.get_op_dist_attr_for_graph(
+        #             node)
+        #         print("$$$$$", _node_id(node), node.op().type(), op_dist_attr, flush=True)
+        #     if node.is_var() and node.var() is not None:
+        #         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+        #             node)
+        #         print("$$$$$", _node_id(node), node.var().name(), tensor_dist_attr, flush=True)
+
+        self._dist_context.initialize()
 
         self._prepare()
 
@@ -646,7 +760,6 @@ class Completer:
 
         # Copy the corresponding distributed attribute from graph to serial_main_program
         self._dist_context.copy_dist_attr_from_graph_to_program()
-        self._dist_context.clear_dist_info_for_graph()
 
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
@@ -655,8 +768,12 @@ class Completer:
 
         return serial_main_program
 
-    def complete_backward_annotation(self, serial_main_program):
+    def complete_backward_annotation(self, serial_main_program=None):
         """Complete the annotation of vars and ops in the backward phase for parallel program."""
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context.serial_main_program = serial_main_program
 
         def _is_grad_var_name(name):
             if "@GRAD" in name:
@@ -801,6 +918,7 @@ class Completer:
                         input_name = _get_forward_varname_from_grad_varname(
                             output_name)
                     else:
+                        # print("grad op type", grad_op.type, flush=True)
                         assert grad_op.type in [
                             "cast", "c_identity", "c_allreduce_sum"
                         ]
@@ -864,8 +982,12 @@ class Completer:
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
-    def complete_update_annotation(self, serial_main_program):
+    def complete_update_annotation(self, serial_main_program=None):
         """Complete the annotation of vars and ops in the update phase for parallel program."""
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context.serial_main_program = serial_main_program
         ops = list(serial_main_program.global_block().ops)
         vars = serial_main_program.global_block().vars
         learning_rate_completed = False
