@@ -25,7 +25,10 @@ class GradNodeAccumulation : public GradNodeBase {
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
     VLOG(6) << "Construct GradNodeAccumulation";
-    weak_grad_ = meta->WeakGrad();
+    if (meta) {
+      weak_grad_ = meta->WeakGrad();
+    }
+
     SetDefaultGradInOutMeta();
   }
 
@@ -34,16 +37,14 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override;
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
 
   std::string name() { return "GradNodeAccumulation"; }
 
@@ -57,6 +58,11 @@ class GradNodeAccumulation : public GradNodeBase {
    * **/
   inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
   void ApplyReduceHooks();
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    return std::shared_ptr<GradNodeAccumulation>(
+        new GradNodeAccumulation(nullptr));
+  }
 
  private:
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_;

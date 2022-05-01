@@ -163,7 +163,8 @@ class TestSparseMomentumOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(atol=5e-3 if self.multi_precision else 1e-5)
+        self.check_output(
+            atol=5e-3 if self.multi_precision else 1e-5, check_eager=True)
 
 
 class TestSparseMomentumOpDtype1(TestSparseMomentumOp):
@@ -240,3 +241,7 @@ class TestSparseMomentumOpMultiPrecision3(TestSparseMomentumOp):
 
     def init_use_nesterov(self):
         self.use_nesterov = False
+
+
+if __name__ == "__main__":
+    unittest.main()

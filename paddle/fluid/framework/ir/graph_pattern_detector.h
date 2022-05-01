@@ -1032,6 +1032,22 @@ struct Elementwise : public PatternBase {
   PATTERN_DECL_NODE(elementwise_out);
 };
 
+// Residual Elementwise ops
+// This pattern allows operator output to be X or Y
+// and residual data Y or X, based on as_x flag
+struct ResidualElementwise : public PatternBase {
+  ResidualElementwise(PDPattern* pattern, const std::string& name_scope,
+                      bool as_x)
+      : PatternBase(pattern, name_scope, "residual_elementwise") {}
+  PDNode* operator()(PDNode* op_var, PDNode* residual_var,
+                     const std::string elementwise_type, bool as_x);
+
+  PATTERN_DECL_NODE(operator_output);
+  PATTERN_DECL_NODE(residual_data);
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_out);
+};
+
 // Transpose op
 // Forward pass for transpose.
 // transpose_out is a result of the operator.
@@ -1549,36 +1565,9 @@ struct UnsupportedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
-struct LastBfloat16Ops : public PatternBase {
-  LastBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "last_bfloat16_ops") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op);
-  PATTERN_DECL_NODE(op_out);
-};
-
-struct FirstBfloat16Ops : public PatternBase {
-  FirstBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "first_bfloat16_ops") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op_in);
-  PATTERN_DECL_NODE(op);
-};
-
-struct DuplicatedInputs : public PatternBase {
-  DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "many_inputs_op") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op);
-};
-
-struct DuplicatedOutputs : public PatternBase {
-  DuplicatedOutputs(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "many_outputs_op") {}
+struct Bloat16Ops : public PatternBase {
+  Bloat16Ops(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_bfloat16_ops") {}
 
   PDNode* operator()();
 
@@ -1699,6 +1688,40 @@ struct DeleteQuantDequantFilterOpPattern : public PatternBase {
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
+  DeleteWeightQuantDequantLinearOpPattern(PDPattern* pattern,
+                                          const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteQuantDequantLinearOpPattern : public PatternBase {
+  DeleteQuantDequantLinearOpPattern(PDPattern* pattern,
+                                    const std::string& name_scope)
+      : PatternBase(pattern, name_scope,
+                    "delete_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(quantize_linear_op_x);
+  PATTERN_DECL_NODE(quantize_linear_op_scale);
+  PATTERN_DECL_NODE(quantize_linear_op);
+  PATTERN_DECL_NODE(quantize_linear_op_out);
+  PATTERN_DECL_NODE(dequantize_linear_op);
+  // PATTERN_DECL_NODE(dequantize_linear_op_scale);  // Can not add this node.
+  // Todo: Wangzheee
+  PATTERN_DECL_NODE(dequantize_linear_op_out);
   PATTERN_DECL_NODE(any_op2);
 };
 
@@ -1887,8 +1910,6 @@ struct AddSupportInt8 : public PatternBase {
       : PatternBase(pattern, name_scope, "Add_support_int8") {}
 
   PDNode* operator()();
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(prev_out);
   PATTERN_DECL_NODE(quant_op);
   PATTERN_DECL_NODE(quant_out);
 };

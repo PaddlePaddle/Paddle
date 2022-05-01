@@ -21,9 +21,8 @@ from .auto_parallel_fp16 import *
 from .auto_parallel_recompute import *
 from .cpp_pass import *
 import os
-if os.getenv("WITH_DISTRIBUTE") == "ON":
-    from .ps_trainer_pass import *
-    from .ps_server_pass import *
+from .ps_trainer_pass import *
+from .ps_server_pass import *
 
 __all__ = [
     'new_pass',

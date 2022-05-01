@@ -421,4 +421,5 @@ class TestErrorInForLoop(TestTransformForLoop):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

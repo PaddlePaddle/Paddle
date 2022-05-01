@@ -53,7 +53,9 @@ class TestImperativeQat(unittest.TestCase):
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
-        print('weight_quantize_type', self.weight_quantize_type)
+        self.onnx_format = False
+        self.check_export_model_accuracy = True
+        self.diff_threshold = 0.01
 
     def func_qat(self):
         self.set_vars()
@@ -159,9 +161,13 @@ class TestImperativeQat(unittest.TestCase):
             data = next(test_reader())
             test_data = np.array([x[0].reshape(1, 28, 28)
                                   for x in data]).astype('float32')
+            y_data = np.array(
+                [x[1] for x in data]).astype('int64').reshape(-1, 1)
             test_img = fluid.dygraph.to_variable(test_data)
+            label = fluid.dygraph.to_variable(y_data)
             lenet.eval()
-            before_save = lenet(test_img)
+            fp32_out = lenet(test_img)
+            fp32_acc = fluid.layers.accuracy(fp32_out, label).numpy()
 
         with tempfile.TemporaryDirectory(prefix="qat_save_path_") as tmpdir:
             # save inference quantized model
@@ -171,7 +177,8 @@ class TestImperativeQat(unittest.TestCase):
                 input_spec=[
                     paddle.static.InputSpec(
                         shape=[None, 1, 28, 28], dtype='float32')
-                ])
+                ],
+                onnx_format=self.onnx_format)
             print('Quantized model saved in %s' % tmpdir)
 
             if core.is_compiled_with_cuda():
@@ -185,18 +192,28 @@ class TestImperativeQat(unittest.TestCase):
                  executor=exe,
                  model_filename="lenet" + INFER_MODEL_SUFFIX,
                  params_filename="lenet" + INFER_PARAMS_SUFFIX)
-            after_save, = exe.run(inference_program,
-                                  feed={feed_target_names[0]: test_data},
-                                  fetch_list=fetch_targets)
-            # check
-            self.assertTrue(
-                np.allclose(after_save, before_save.numpy()),
-                msg='Failed to save the inference quantized model.')
+            quant_out, = exe.run(inference_program,
+                                 feed={feed_target_names[0]: test_data},
+                                 fetch_list=fetch_targets)
+            paddle.disable_static()
+            quant_out = fluid.dygraph.to_variable(quant_out)
+            quant_acc = fluid.layers.accuracy(quant_out, label).numpy()
+            paddle.enable_static()
+            delta_value = fp32_acc - quant_acc
+            self.assertLess(delta_value, self.diff_threshold)
 
     def test_qat(self):
         with _test_eager_guard():
             self.func_qat()
         self.func_qat()
+
+
+class TestImperativeQatONNXFormat(unittest.TestCase):
+    def set_vars(self):
+        self.weight_quantize_type = 'abs_max'
+        self.activation_quantize_type = 'moving_average_abs_max'
+        self.onnx_format = True
+        self.diff_threshold = 0.025
 
 
 if __name__ == '__main__':

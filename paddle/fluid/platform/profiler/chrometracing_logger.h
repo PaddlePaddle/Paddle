@@ -50,6 +50,7 @@ class ChromeTracingLogger : public BaseLogger {
   static const char* categary_name_[];
   std::set<std::pair<uint64_t, uint64_t>> pid_tid_set_;
   std::set<std::pair<uint64_t, uint64_t>> deviceid_streamid_set_;
+  uint64_t start_time_;
 };
 
 }  // namespace platform

@@ -42,8 +42,12 @@ KernelSignature ElementwiseMulOpArgumentMapping(
       return KernelSignature("multiply", {"X", "Y"}, {}, {"Out"});
     }
     return KernelSignature("multiply_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  } else {
+    if (axis == -1) {
+      return KernelSignature("multiply_sr", {"X", "Y"}, {}, {"Out"});
+    }
+    return KernelSignature("multiply_raw_sr", {"X", "Y"}, {"axis"}, {"Out"});
   }
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ElementwiseDivOpArgumentMapping(
@@ -82,18 +86,34 @@ KernelSignature ElementwiseModOpArgumentMapping(
   return KernelSignature("modulo_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ElementwiseFloorDivOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("floor_divide", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature("floor_divide_raw", {"X", "Y"}, {"axis"}, {"Out"});
+}
+
+KernelSignature ElementwisePowOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("elementwise_pow", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature("elementwise_pow_raw", {"X", "Y"}, {"axis"}, {"Out"});
+}
+
 KernelSignature ElementwiseAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("add_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "add_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseAddDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "add_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+      "add_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
@@ -106,32 +126,28 @@ KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
 
 KernelSignature ElementwiseSubGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("subtract_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "subtract_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseSubDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "subtract_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+      "subtract_double_grad", {"Y", "DOut", "DDX", "DDY"}, {"axis"}, {"DDOut"});
 }
 
 KernelSignature ElementwiseDivGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("divide_grad",
-                         {"X", "Y", "Out", GradVarName("Out")},
+                         {"X", "Y", "Out", "Out@GRAD"},
                          {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseFMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fmin_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "fmin_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
@@ -139,15 +155,13 @@ KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
   return KernelSignature("divide_double_grad",
                          {"Y", "Out", "DX", "DDX", "DDY"},
                          {"axis"},
-                         {GradVarName("Y"), "DOut", "DDOut"});
+                         {"Y@GRAD", "DOut", "DDOut"});
 }
 
 KernelSignature ElementwiseMulGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("multiply_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "multiply_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseFMaxOpArgumentMapping(
@@ -162,10 +176,8 @@ KernelSignature ElementwiseFMinOpArgumentMapping(
 
 KernelSignature ElementwiseFMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fmax_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "fmax_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
@@ -173,7 +185,7 @@ KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
   return KernelSignature("multiply_double_grad",
                          {"X", "Y", "DOut", "DDX", "DDY"},
                          {"axis"},
-                         {GradVarName("X"), GradVarName("Y"), "DDOut"});
+                         {"X@GRAD", "Y@GRAD", "DDOut"});
 }
 
 KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
@@ -187,18 +199,21 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("maximum_grad",
-                         {"X", "Y", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+  return KernelSignature(
+      "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("minimum_grad",
-                         {"X", "Y", GradVarName("Out")},
+  return KernelSignature(
+      "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+}
+KernelSignature ElementwisePowGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_pow_grad",
+                         {"X", "Y", "Out@GRAD"},
                          {"axis"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 }  // namespace phi
 
@@ -209,6 +224,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, modulo);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
@@ -240,6 +256,10 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_min,
                            phi::ElementwiseMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_mod,
                            phi::ElementwiseModOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_floordiv,
+                           phi::ElementwiseFloorDivOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_pow,
+                           phi::ElementwisePowOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
                            phi::ElementwiseAddGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
@@ -272,3 +292,5 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_max_grad,
                            phi::ElementwiseMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_min_grad,
                            phi::ElementwiseMinGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
+                           phi::ElementwisePowGradOpArgumentMapping);

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
@@ -76,15 +77,21 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
   }
 #endif
 #endif
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (g_state != ProfilerState::kDisabled) {  // avoid temp string
-      OriginalConstruct(name, role, "none");
-    }
-    return;
-  }
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
+
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    if (g_state != ProfilerState::kDisabled) {  // avoid temp string
+      if (type == TracerEventType::Operator ||
+          type == TracerEventType::OperatorInner ||
+          type == TracerEventType::UserDefined) {
+        OriginalConstruct(name, role, "none");
+      }
+    }
+    return;
+  }
+
   is_enabled_ = true;
   shallow_copy_name_ = name;
   role_ = role;
@@ -102,13 +109,19 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   }
 #endif
 #endif
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, "none");
-    return;
-  }
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
+
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    if (type == TracerEventType::Operator ||
+        type == TracerEventType::OperatorInner ||
+        type == TracerEventType::UserDefined) {
+      OriginalConstruct(name, role, "none");
+    }
+    return;
+  }
+
   is_enabled_ = true;
   name_ = new std::string(name);
   role_ = role;
@@ -127,13 +140,20 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
   }
 #endif
 #endif
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, attr);
-    return;
-  }
+
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
+
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    if (type == TracerEventType::Operator ||
+        type == TracerEventType::OperatorInner ||
+        type == TracerEventType::UserDefined) {
+      OriginalConstruct(name, role, attr);
+    }
+    return;
+  }
+
   is_enabled_ = true;
   type_ = type;
   name_ = new std::string(name);
@@ -162,8 +182,9 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 void RecordEvent::End() {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed_ && is_enabled_) {
+  if (g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
+    is_pushed_ = false;
   }
 #endif
 #endif
@@ -332,6 +353,8 @@ void EnableProfiler(ProfilerState state) {
     return;
   }
   g_state = state;
+  ProfilerOptions option;
+  HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -589,7 +612,7 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
   auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
-  return std::move(thr_events);
+  return thr_events;
 }
 
 static void DockHostEventRecorderDevicePart(

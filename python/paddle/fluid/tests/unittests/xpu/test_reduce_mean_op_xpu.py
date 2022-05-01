@@ -194,13 +194,5 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
 
 
-class TestReduceAll(Test1DReduce):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-        self.attrs = {'reduce_all': True, 'use_xpu': True}
-        self.outputs = {'Out': self.inputs['X'].mean()}
-
-
 if __name__ == '__main__':
     unittest.main()

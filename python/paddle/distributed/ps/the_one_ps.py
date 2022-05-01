@@ -15,9 +15,8 @@
 import warnings
 
 import os
-import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.fluid import core
 from paddle.distributed.ps.utils.public import *
 from paddle.fluid.framework import Program
@@ -27,6 +26,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
 
@@ -518,7 +518,7 @@ class BarrierTable(Table):
         table_proto.table_id = self.idx
         table_proto.table_class = 'BarrierTable'
         table_proto.shard_num = 256
-        table_proto.type = ps_pb2.PS_OTHER_TABLE
+        table_proto.type = the_one_ps_pb2.PS_OTHER_TABLE
 
         table_proto.accessor.accessor_class = "CommMergeAccessor"
         table_proto.accessor.fea_dim = 0
@@ -544,7 +544,7 @@ class TensorTable(Table):
 
     def _set(self, table_proto):
         table_proto.table_id = self.idx
-        table_proto.type = ps_pb2.PS_OTHER_TABLE
+        table_proto.type = the_one_ps_pb2.PS_OTHER_TABLE
         table_proto.table_class = self.tensor_dict.get("tensor_table_class", '')
 
         table_proto.accessor.accessor_class = "CommMergeAccessor"
@@ -573,7 +573,7 @@ class SparseTable(Table):
             return
         table_proto.table_id = ctx.table_id()
         table_proto.table_class = self.table_class
-        table_proto.type = ps_pb2.PS_SPARSE_TABLE
+        table_proto.type = the_one_ps_pb2.PS_SPARSE_TABLE
         table_proto.shard_num = self.shard_num
 
         self.common.table_name = self.context['grad_name_to_param_name'][
@@ -609,7 +609,6 @@ class SparseTable(Table):
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
 
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -621,7 +620,7 @@ class SparseTable(Table):
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
         super(GeoSparseTable, self).__init__(context, send_ctx)
-        self.table_class = "SparseGeoTable"
+        self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
 
@@ -632,7 +631,7 @@ class GeoSparseTable(SparseTable):
             return
         table_proto.table_id = ctx.table_id()
         table_proto.table_class = self.table_class
-        table_proto.type = ps_pb2.PS_SPARSE_TABLE
+        table_proto.type = the_one_ps_pb2.PS_SPARSE_TABLE
         table_proto.shard_num = self.shard_num
 
         table_proto.accessor.accessor_class = 'CommMergeAccessor'
@@ -641,7 +640,6 @@ class GeoSparseTable(SparseTable):
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -664,8 +662,8 @@ class DenseTable(Table):
 
         table_proto.table_id = ctx.table_id()
 
-        table_proto.type = ps_pb2.PS_DENSE_TABLE
-        table_proto.table_class = "CommonDenseTable"
+        table_proto.type = the_one_ps_pb2.PS_DENSE_TABLE
+        table_proto.table_class = "MemoryDenseTable"
         table_proto.shard_num = 256
 
         table_proto.accessor.accessor_class = 'CommMergeAccessor'
@@ -673,7 +671,6 @@ class DenseTable(Table):
         table_proto.accessor.embedx_dim = 1
 
         self.common.table_name = "MergedDense"
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -748,7 +745,7 @@ class PsDescBuilder(object):
         self.service = self._get_service()
         self.fs_client = self._get_fs_client()
 
-        self.ps_desc = ps_pb2.PSParameter()
+        self.ps_desc = the_one_ps_pb2.PSParameter()
 
     def _get_tensor_tables(self):
         program_idx = 0
@@ -806,7 +803,7 @@ class PsDescBuilder(object):
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
-            if table_proto.type == ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
+            if table_proto.type == the_one_ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
                 self.sparse_table_maps[
                     table_proto.common.table_name] = table_proto.table_id
 
@@ -859,7 +856,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
-    def _init_params(self, scopes, send_ctx, recv_map):
+    def _init_all_params(self, scopes, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -880,6 +877,17 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _init_params(self, program, scope, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            if ctx.program_id() != id(program):
+                continue
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            # print("init params:", table_id, var_names)
+            self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_dense(self, program, scope, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
@@ -911,11 +919,6 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
-
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
         send_ctx = get_the_one_send_context(
@@ -926,6 +929,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
+        proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -1010,7 +1014,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self._communicator.init_params(init_params)
             else:
                 if role_id == 0:
-                    self._init_params(scopes, send_ctx, dense_map)
+                    self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
 
@@ -1048,6 +1052,10 @@ class TheOnePSRuntime(RuntimeBase):
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
+
+        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        # if debug:
+        #     print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,
@@ -1307,6 +1315,30 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
 
+    def _save_cache_model(self, dirname, **kwargs):
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        self._worker.client_flush()
+        fleet.util.barrier()
+        cache_threshold = 0.0
+
+        if self.role_maker._is_first_worker():
+            cache_threshold = self._worker.get_cache_threshold(table_id)
+        #check cache threshold right or not
+        fleet.util.barrier()
+
+        if self.role_maker._is_first_worker():
+            self._worker.cache_shuffle(table_id, dirname, mode, cache_threshold)
+
+        fleet.util.barrier()
+
+        feasign_num = -1
+        if self.role_maker._is_first_worker():
+            feasign_num = self._worker.save_cache(table_id, dirname, mode)
+
+        fleet.util.barrier()
+        return feasign_num
+
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
                                                      True)
@@ -1324,19 +1356,17 @@ class TheOnePSRuntime(RuntimeBase):
                                            dirname,
                                            mode=0,
                                            main_program=None):
-        if main_program is None:
-            main_program = self.origin_main_program
+        main_program = self.origin_main_programs[
+            0] if main_program is None else main_program
+        _, _, idx = get_program_by_id(self.context, id(main_program))
+        scope = self.scopes[idx]
+        print("load inference model scope idx:", idx)
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        denses = get_the_one_recv_context(
-            self.context,
-            is_dense=True,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
         sparses = get_the_one_recv_context(
             self.context,
             is_dense=False,
@@ -1346,8 +1376,16 @@ class TheOnePSRuntime(RuntimeBase):
         sparse_varnames = self._load_sparse_params(dirname, sparses,
                                                    main_program, mode)
 
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
+            self.context,
+            split_dense_table=self.is_heter_ps_mode,
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+
         recv_dense_varnames = []
-        for id, names in denses.items():
+        for _, names in dense_map.items():
             recv_dense_varnames.extend(names)
 
         loaded_varnames = sparse_varnames
@@ -1366,9 +1404,9 @@ class TheOnePSRuntime(RuntimeBase):
             if var.name not in recv_dense_varnames:
                 continue
             tensor = paddle.load(os.path.join(model_path, var.name))
-            var.set_value(tensor)
+            var.set_value(tensor, scope)
 
-        self._communicator.init_params(denses)
+        self._init_params(main_program, scope, send_ctx, dense_map)
 
     def _load_distributed_persistables(self, path, mode):
         self._worker.load_model(path, mode)

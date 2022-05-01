@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
-                    const ScalarArray& shifts,
+                    const IntArray& shifts,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   auto* in_data = out_grad.data<T>();

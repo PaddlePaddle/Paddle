@@ -25,15 +25,14 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
-
-
+'''
 def nearest_neighbor_interp_np(X,
                                out_h,
                                out_w,
                                out_size=None,
                                actual_shape=None,
                                align_corners=True,
-                               data_layout='NCHW'):
+                               data_layout="NCHW"):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
@@ -85,7 +84,7 @@ class TestNearestInterpOp(XPUOpTest):
         self.use_xpu = True
         self.out_size = None
         self.actual_shape = None
-        self.data_layout = 'NCHW'
+        self.data_layout = "NCHW"
         self.init_test_case()
         self.op_type = "nearest_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
@@ -107,20 +106,20 @@ class TestNearestInterpOp(XPUOpTest):
         output_np = nearest_neighbor_interp_np(
             input_np, out_h, out_w, self.out_size, self.actual_shape,
             self.align_corners, self.data_layout)
-        self.inputs = {'X': input_np}
+        self.inputs = {"X": input_np}
         if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
+            self.inputs["OutSize"] = self.out_size
         if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
+            self.inputs["OutSize"] = self.actual_shape
         self.attrs = {
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'scale': self.scale,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'data_layout': self.data_layout
+            "out_h": self.out_h,
+            "out_w": self.out_w,
+            "scale": self.scale,
+            "interp_method": self.interp_method,
+            "align_corners": self.align_corners,
+            "data_layout": self.data_layout
         }
-        self.outputs = {'Out': output_np}
+        self.outputs = {"Out": output_np}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
@@ -128,10 +127,10 @@ class TestNearestInterpOp(XPUOpTest):
 
     def test_check_grad(self):
         place = paddle.XPUPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', in_place=True)
+        self.check_grad_with_place(place, ["X"], "Out", in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [2, 3, 4, 5]
         self.out_h = 2
         self.out_w = 2
@@ -144,7 +143,7 @@ class TestNearestInterpOp(XPUOpTest):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
@@ -156,7 +155,7 @@ class TestNearestNeighborInterpCase1(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
@@ -168,7 +167,7 @@ class TestNearestNeighborInterpCase2(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
@@ -180,7 +179,7 @@ class TestNearestNeighborInterpCase3(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase4(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
         self.out_w = 1
@@ -193,7 +192,7 @@ class TestNearestNeighborInterpCase4(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase5(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
@@ -206,7 +205,7 @@ class TestNearestNeighborInterpCase5(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
@@ -219,7 +218,7 @@ class TestNearestNeighborInterpCase6(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpSame(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
@@ -231,7 +230,7 @@ class TestNearestNeighborInterpSame(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
@@ -244,7 +243,7 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpDataLayout(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [2, 4, 4, 5]
         self.out_h = 2
         self.out_w = 2
@@ -265,7 +264,7 @@ class TestNearestInterpWithoutCorners(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpScale1(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
@@ -278,7 +277,7 @@ class TestNearestNeighborInterpScale1(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpScale2(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 5, 7]
         self.out_h = 64
         self.out_w = 32
@@ -291,7 +290,7 @@ class TestNearestNeighborInterpScale2(TestNearestInterpOp):
                  "core is not compiled with XPU")
 class TestNearestNeighborInterpScale3(TestNearestInterpOp):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 7, 5]
         self.out_h = 64
         self.out_w = 32
@@ -311,38 +310,38 @@ class TestNearestInterpOp_attr_tensor(XPUOpTest):
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
+            "interp_method": self.interp_method,
+            "align_corners": self.align_corners,
         }
 
         input_np = np.random.random(self.input_shape).astype("float32")
-        self.inputs = {'X': input_np}
+        self.inputs = {"X": input_np}
 
         if self.scale_by_1Dtensor:
-            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
+            self.inputs["Scale"] = np.array([self.scale]).astype("float32")
         elif self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
             out_w = int(self.input_shape[3] * self.scale)
-            self.attrs['scale'] = self.scale
+            self.attrs["scale"] = self.scale
         else:
             out_h = self.out_h
             out_w = self.out_w
 
         if self.shape_by_1Dtensor:
-            self.inputs['OutSize'] = self.out_size
+            self.inputs["OutSize"] = self.out_size
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
-            self.inputs['SizeTensor'] = size_tensor
+                    (1)).astype("int32") * ele))
+            self.inputs["SizeTensor"] = size_tensor
 
-        self.attrs['out_h'] = self.out_h
-        self.attrs['out_w'] = self.out_w
+        self.attrs["out_h"] = self.out_h
+        self.attrs["out_w"] = self.out_w
         output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
                                                self.out_size, self.actual_shape,
                                                self.align_corners)
-        self.outputs = {'Out': output_np}
+        self.outputs = {"Out": output_np}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
@@ -350,10 +349,10 @@ class TestNearestInterpOp_attr_tensor(XPUOpTest):
 
     def test_check_grad(self):
         place = paddle.XPUPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', in_place=True)
+        self.check_grad_with_place(place, ["X"], "Out", in_place=True)
 
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
@@ -367,7 +366,7 @@ class TestNearestInterpOp_attr_tensor(XPUOpTest):
                  "core is not compiled with XPU")
 class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
@@ -381,7 +380,7 @@ class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
                  "core is not compiled with XPU")
 class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
@@ -396,7 +395,7 @@ class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
                  "core is not compiled with XPU")
 class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
     def init_test_case(self):
-        self.interp_method = 'nearest'
+        self.interp_method = "nearest"
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 64
         self.out_w = 32
@@ -415,10 +414,10 @@ class TestNearestInterpException(unittest.TestCase):
         def attr_data_format():
             # for 4-D input, data_format can only be NCHW or NHWC
             out = fluid.layers.resize_nearest(
-                input, out_shape=[4, 8], data_format='NDHWC')
+                input, out_shape=[4, 8], data_format="NDHWC")
 
         def attr_scale_type():
-            out = fluid.layers.resize_nearest(input, scale='scale')
+            out = fluid.layers.resize_nearest(input, scale="scale")
 
         def attr_scale_value():
             out = fluid.layers.resize_nearest(input, scale=-0.3)
@@ -426,7 +425,7 @@ class TestNearestInterpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)
         self.assertRaises(ValueError, attr_scale_value)
-
+'''
 
 if __name__ == "__main__":
     unittest.main()

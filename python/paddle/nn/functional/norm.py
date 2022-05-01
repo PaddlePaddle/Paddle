@@ -24,6 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -78,7 +79,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             # [[0.         0.24253564 0.37139067]
             # [1.         0.97014254 0.9284767 ]]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
+        return x / _C_ops.elementwise_max(out, eps)
+
+    if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, 'axis', axis, 'porder',
                             float(p), 'keepdim', True, 'epsilon', epsilon)
@@ -180,15 +186,26 @@ def batch_norm(x,
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        batch_norm_out, _, _, _, _, _ = _C_ops.final_state_batch_norm(
+            x, weight, bias, running_mean, running_var, momentum, epsilon,
+            data_format, not training, use_global_stats, trainable_statistics,
+            False)
+
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=None)
+
+    elif _in_legacy_dygraph():
         # for dygraph need tuple
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
+
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, mean_out, variance_out,
-            *attrs)
+            x, weight, bias, running_mean, running_var, None, mean_out,
+            variance_out, *attrs)
+
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -301,7 +318,13 @@ def layer_norm(x,
                          str_normalized_shape[
                              1:] + ', but got input shape ' + str(input_shape))
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
+                                                       begin_norm_axis, False)
+
+        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+
+    if _in_legacy_dygraph():
         pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
                                           'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)

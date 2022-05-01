@@ -17,12 +17,14 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/BuiltinOps.h>
 #include <mlir/Parser.h>
+#include <mlir/Pass/PassManager.h>
+#include <mlir/Transforms/Passes.h>
 
 #include <unordered_map>
 #include <vector>
 
-#include "mlir/Pass/PassManager.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
@@ -47,6 +49,18 @@
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
+
+#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
+
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#include "paddle/infrt/kernel/tensorrt/registry.h"
+
+#include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_graph_split_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
+#endif
 
 using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT
@@ -229,17 +243,42 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
 #endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
 #endif
 
-  auto module_op = impl_->module_gen_.ImportPaddleModel(config.model_dir(),
-                                                        config.param_dir());
+  mlir::ModuleOp module_op;
+  if (config.tensorrt_enabled()) {
+    module_op = impl_->module_gen_.ImportPaddleModel(
+        config.model_dir(), config.param_dir(), false);
+  } else {
+    module_op = impl_->module_gen_.ImportPaddleModel(config.model_dir(),
+                                                     config.param_dir());
+  }
 
   context->loadAllAvailableDialects();
   ::mlir::PassManager pm(context);
-  ::mlir::OpPassManager& phi_pass_manager = pm.nest<::mlir::FuncOp>();
-  std::vector<::infrt::Place> valid_places = {{::infrt::TargetType::CPU,
-                                               ::infrt::PrecisionType::FLOAT32,
-                                               ::infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(::infrt::createPhiOpCvtPass(valid_places));
-  phi_pass_manager.addPass(::infrt::createInfrtOpFusePass());
+  ::mlir::OpPassManager& pass_manager = pm.nest<::mlir::FuncOp>();
+  if (config.tensorrt_enabled()) {
+    pass_manager.addPass(::infrt::CreateInfrtWeightsUnfoldPass());
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+    pass_manager.addPass(::infrt::trt::CreateTrtOpTellerPass());
+    pass_manager.addPass(::infrt::trt::CreateTrtGraphFusePass());
+    pass_manager.addPass(::infrt::trt::CreateTrtGraphSplitPass(1));
+    pass_manager.addPass(::infrt::trt::CreateTrtOpConverterPass());
+    pass_manager.addPass(::infrt::trt::CreateTrtTypeConvertPass());
+#endif
+    pass_manager.addPass(::mlir::createCanonicalizerPass());
+  } else {
+    std::vector<::infrt::Place> valid_places = {
+        {::infrt::TargetType::CPU,
+         ::infrt::PrecisionType::FLOAT32,
+         ::infrt::LayoutType::NCHW}};
+    if (config.gpu_enabled()) {
+      valid_places.insert(valid_places.begin(),
+                          ::infrt::Place(::infrt::TargetType::GPU,
+                                         ::infrt::PrecisionType::FLOAT32,
+                                         ::infrt::LayoutType::NCHW));
+    }
+    pass_manager.addPass(CreatePhiOpCvtPass(valid_places));
+    pass_manager.addPass(CreateInfrtOpFusePass());
+  }
   if (mlir::failed(pm.run(module_op))) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;
@@ -267,12 +306,19 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   }
 
   // Load params
-  auto tensor_map = ::infrt::kernel::phi::LoadCombinedParameters(
-      config.model_dir(), config.param_dir());
+  if (config.gpu_enabled() && !config.tensorrt_enabled()) {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParamsToGpu(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
 
-  // Create PredictExecutor
-  impl_->executor.reset(
-      new PredictExecutor(module_op, registry, std::move(tensor_map)));
+  } else {
+    auto tensor_map = ::infrt::kernel::phi::LoadCombinedParameters(
+        config.model_dir(), config.param_dir());
+    impl_->executor.reset(
+        new PredictExecutor(module_op, registry, std::move(tensor_map)));
+  }
+
   return 0;
 }
 

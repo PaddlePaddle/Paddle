@@ -163,6 +163,8 @@ message TrainerDescConfig {
   repeated string dump_fields = 2;
   repeated string dump_param = 3;
   repeated string stat_var_names = 4;
+  optional string trainer = 5;
+  optional string device_worker = 6;
 }
 
 message PipelineConfig {
@@ -189,6 +191,7 @@ message TableParameter {
   optional uint64 shard_num = 4 [ default = 1000 ];
   optional TableType type = 5;
   optional TableAccessorParameter accessor = 6;
+  optional bool compress_in_save = 7 [ default = false ];
 }
 
 message TableAccessorParameter {
@@ -255,6 +258,7 @@ message CtrAccessorParameter {
       [ default = 0.8 ]; // threshold to shrink a feasign
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+  optional bool show_scale = 10 [ default = true ];
 }
 
 message TableAccessorSaveParameter {
@@ -307,7 +311,7 @@ message DistributedStrategy {
   optional bool asp = 33 [ default = false ];
   optional bool fuse_grad_merge = 34 [ default = false ];
   optional bool semi_auto = 35 [ default = false ];
-  optional bool adam_d2sum = 36 [ default = true ];
+  optional bool adam_d2sum = 36 [ default = false ];
   optional bool auto_search = 37 [ default = false ];
   optional bool heter_ccl_mode = 38 [ default = false ];
 

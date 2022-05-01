@@ -80,14 +80,14 @@ class TestPRROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_backward(self):
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            self.check_grad_with_place(place, ['X'], 'Out')
+            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -197,14 +197,14 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_backward(self):
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            self.check_grad_with_place(place, ['X'], 'Out')
+            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -280,4 +280,6 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

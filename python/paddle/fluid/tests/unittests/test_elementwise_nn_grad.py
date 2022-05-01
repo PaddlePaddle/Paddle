@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -45,6 +46,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -72,6 +74,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -99,6 +102,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -126,6 +130,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -134,6 +139,9 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -151,8 +159,14 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper, [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -180,6 +194,7 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -188,6 +203,9 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
+    def divide_wrapper(self, x):
+        return paddle.divide(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -206,8 +224,15 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.divide_wrapper, [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+            atol=1e-3)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -236,6 +261,7 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -263,6 +289,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -290,6 +317,7 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -298,6 +326,9 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseMulTripleGradCheck(unittest.TestCase):
+    def multiply_wrapper(self, x):
+        return paddle.multiply(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -315,8 +346,14 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
 
         gradient_checker.triple_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.multiply_wrapper, [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -344,6 +381,7 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))

@@ -28,6 +28,25 @@ class CreateDenseTensorOp<string target>
   let results = (outs DenseTensor:$output);
 }
 
+def CreateHostInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32", [NoSideEffect]> {
+  let arguments = (ins
+    Context:$context,
+    I64ArrayAttr:$dims,
+    LayoutAttr:$layout,
+    I64ArrayAttr:$lod,
+    F32ArrayAttr:$values,
+    DefaultValuedAttr<BoolAttr, "true">:$run_once
+  );
+  let results = (outs DenseTensor:$output);
+}
+
+def CreateInitedGpuFLOAT32DenseTensorOp
+      : PDT_Op<"create_inited_dense_tensor.gpu.f32", [NoSideEffect]> {
+  let arguments = (ins Context:$context, I64ArrayAttr:$dims,
+    LayoutAttr:$layout, I64ArrayAttr:$lod, F32Attr:$value);
+  let results = (outs DenseTensor:$output);
+}
+
 def CreateInitedCpuFLOAT32DenseTensorOp
       : PDT_Op<"create_inited_dense_tensor.cpu.f32", [NoSideEffect]> {
   let arguments = (ins Context:$context, I64ArrayAttr:$dims, 
@@ -67,6 +86,14 @@ def PDT_LoadParamsOp : PDT_Op<"load_params", [NoSideEffect]> {
 }
 
 def PDT_LoadCombinedParamsOp : PDT_Op<"load_combined_params", [NoSideEffect]> {
+  // input path of model params.
+  let arguments = (ins StrAttr:$model_path, StrAttr:$params_path);
+  let results = (outs PD_DenseTensorMap:$out);
+
+  let assemblyFormat = "`(``)`attr-dict";
+}
+
+def PDT_LoadCombinedParamsGpuOp : PDT_Op<"load_combined_params_to_gpu", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins StrAttr:$model_path, StrAttr:$params_path);
   let results = (outs PD_DenseTensorMap:$out);

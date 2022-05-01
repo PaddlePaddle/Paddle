@@ -1,13 +1,47 @@
 - backward_api : conv3d_grad
   forward : conv3d (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
   args : (Tensor x, Tensor kernel, Tensor rulebook, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
-  output : Tensor(x_grad@DenseTensor), Tensor(kernel_grad@DenseTensor)
+  output : Tensor(x_grad@SparseCooTensor), Tensor(kernel_grad@DenseTensor)
   kernel :
     func : sparse_conv3d_grad
+
+- backward_api : coo_to_dense_grad
+  forward : coo_to_dense(Tensor x) -> Tensor(out@DenseTensor)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel :
+    func : sparse_coo_to_dense_grad
+
+- backward_api : coo_values_grad
+  forward : coo_values(Tensor x) -> Tensor(out@DenseTensor)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel :
+    func : coo_values_grad
+
+- backward_api : create_sparse_coo_tensor_grad
+  forward : create_sparse_coo_tensor(Tensor values, Tensor indices, IntArray dense_shape) -> Tensor(out@SparseCooTensor)
+  args : (Tensor indices, Tensor out_grad)
+  output : Tensor(values_grad@DenseTensor)
+  kernel :
+    func : sparse_coo_tensor_grad
+
+- backward_api : dense_to_coo_grad
+  forward : dense_to_coo(Tensor x, int64_t sparse_dim) -> Tensor(out@SparseCooTensor)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad@DenseTensor)
+  invoke : to_dense_impl(out_grad)
+
+- backward_api : sparse_maxpool_grad
+  forward : sparse_maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
+  args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel :
+    func : sparse_maxpool_grad
 
 - backward_api : sparse_relu_grad
   forward : sparse_relu(Tensor x) -> Tensor(out@SparseCooTensor)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad@SparseCooTensor)
-  kernel : 
+  kernel :
     func : sparse_relu_grad

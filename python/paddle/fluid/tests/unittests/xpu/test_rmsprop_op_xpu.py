@@ -45,10 +45,9 @@ def create_selected_rows_and_tensor(scope, place, height, row_num,
     tensor.set(tensor_val, place)
     return tensor_val, sr_val
 '''
-
-
+"""
 class TestBase(XPUOpTest):
-    op_type = "rmsprop"
+    op_type = 'rmsprop'
 
     def setup(self,
               place,
@@ -63,29 +62,29 @@ class TestBase(XPUOpTest):
         self.scope = fluid.global_scope()
         self.place = place
 
-        self.param_name = "param"
-        self.param = np.random.random(size).astype("float32")
+        self.param_name = 'param'
+        self.param = np.random.random(size).astype('float32')
 
-        self.mean_square_name = "mean_square"
+        self.mean_square_name = 'mean_square'
         self.mean_square = np.random.uniform(
-            low=1, high=2, size=size).astype("float32")
+            low=1, high=2, size=size).astype('float32')
 
-        self.mean_grad_name = "mean_grad"
-        self.mean_grad = np.random.random(size).astype("float32")
+        self.mean_grad_name = 'mean_grad'
+        self.mean_grad = np.random.random(size).astype('float32')
 
-        self.lr_name = "lr"
-        self.learning_rate = np.array([0.01]).astype("float32")
+        self.lr_name = 'lr'
+        self.learning_rate = np.array([0.01]).astype('float32')
 
-        self.grad_name = "grad"
+        self.grad_name = 'grad'
         self.is_sparse = is_sparse
 
-        self.grad = np.random.random(size).astype("float32")
+        self.grad = np.random.random(size).astype('float32')
         grad_tensor = self.scope.var(self.grad_name).get_tensor()
         grad_tensor.set(self.grad, place)
 
-        self.moment_name = "moment"
+        self.moment_name = 'moment'
         self.moment = np.random.uniform(
-            low=0, high=1, size=size).astype("float32")
+            low=0, high=1, size=size).astype('float32')
 
         self.epsilon = epsilon
         self.decay = 0.9
@@ -128,8 +127,8 @@ class TestBase(XPUOpTest):
         self.assertTrue(
             np.allclose(
                 actual_t, expect_t, atol=atol),
-            "Output (" + out_name + ") has diff at " + str(place) + "\nExpect "
-            + str(expect_t) + "\n" + "But Got" + str(actual_t))
+            'Output (' + out_name + ') has diff at ' + str(place) + '\nExpect '
+            + str(expect_t) + '\n' + 'But Got' + str(actual_t))
 
 
 class TestRmspropOp(TestBase):
@@ -223,11 +222,11 @@ class TestRmspropOp(TestBase):
 
 
 class TestRMSPropV2(XPUOpTest):
-    op_type = "rmsprop"
+    op_type = 'rmsprop'
 
     def test_rmsprop_dygraph(self):
         paddle.disable_static()
-        value = np.arange(26).reshape(2, 13).astype("float32")
+        value = np.arange(26).reshape(2, 13).astype('float32')
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
@@ -293,7 +292,7 @@ class TestRMSPropV2(XPUOpTest):
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.RMSProp(
                 0.1, rho=-1, parameters=linear.parameters())
-
+"""
 
 if __name__ == "__main__":
     paddle.enable_static()

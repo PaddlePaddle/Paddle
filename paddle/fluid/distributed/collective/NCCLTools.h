@@ -26,6 +26,8 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/distributed/collective/Types.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -193,6 +195,9 @@ class NCCLCommManager {
   int rank_;
   mutable std::mutex mutex_;
 };
+
+ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
 }  // namespace distributed
 }  // namespace paddle

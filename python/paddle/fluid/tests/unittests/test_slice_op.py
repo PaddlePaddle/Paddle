@@ -21,6 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -533,13 +534,13 @@ class TestSliceAPI(unittest.TestCase):
         # value_int64 is greater than 2147483647 which is the max of int32
         value_int64 = fluid.layers.fill_constant([1], "int64", 2147483648)
 
-        out_1 = fluid.layers.slice(
+        out_1 = paddle.slice(
             x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1])
-        out_2 = fluid.layers.slice(
+        out_2 = paddle.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1])
-        out_3 = fluid.layers.slice(
+        out_3 = paddle.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, minus_1])
-        out_4 = fluid.layers.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
+        out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
 
         out_5 = x[-3:3, 0:100, 2:-1]
         out_6 = x[minus_3:3, 0:100, :, 2:-1]
@@ -597,6 +598,31 @@ class TestSliceApiWithTensor(unittest.TestCase):
 
             self.assertTrue(paddle.bool == y_paddle.dtype)
             self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+
+
+class TestSliceApiEager(unittest.TestCase):
+    def test_slice_api(self):
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                a = paddle.rand(shape=[4, 5, 6], dtype='float32')
+                a.stop_gradient = False
+                axes = [0, 1, 2]
+                starts = [-3, 0, 2]
+                ends = [3, 2, 4]
+                a_1 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
+
+                a_2 = paddle.slice(
+                    a,
+                    axes=axes,
+                    starts=paddle.to_tensor(starts),
+                    ends=paddle.to_tensor(ends))
+
+                a_1.backward()
+                grad_truth = paddle.zeros_like(a)
+                grad_truth[-3:3, 0:2, 2:4] = 1
+                self.assertTrue(np.array_equal(grad_truth, a.gradient()))
+
+                self.assertTrue(np.allclose(a_1.numpy(), a[-3:3, 0:2, 2:4]))
 
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):

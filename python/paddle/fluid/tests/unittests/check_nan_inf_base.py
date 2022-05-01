@@ -103,6 +103,14 @@ def check(use_cuda):
 
 
 if __name__ == '__main__':
+    try:
+        check(use_cuda=False)
+        assert False
+    except Exception as e:
+        print(e)
+        print(type(e))
+        assert type(e) == RuntimeError
+
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
@@ -113,10 +121,3 @@ if __name__ == '__main__':
             # Note. Enforce in cuda kernel may not catch in paddle, and
             # Exception type will be RuntimeError
             assert type(e) == OSError or type(e) == RuntimeError
-    try:
-        check(use_cuda=False)
-        assert False
-    except Exception as e:
-        print(e)
-        print(type(e))
-        assert type(e) == RuntimeError

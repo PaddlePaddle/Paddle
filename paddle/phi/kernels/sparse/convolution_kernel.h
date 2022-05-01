@@ -45,11 +45,7 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const int groups,
                        const bool subm,
                        DenseTensor* rulebook) {
-  DenseTensor indices = phi::Empty<Context>(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
-  DenseTensor values =
-      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
-  SparseCooTensor coo(indices, values, x.dims());
+  SparseCooTensor coo;
   Conv3dKernel<T, Context>(dev_ctx,
                            x,
                            kernel,

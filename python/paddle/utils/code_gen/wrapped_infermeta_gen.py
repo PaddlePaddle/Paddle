@@ -51,7 +51,6 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
-            print("@@@", api.api)
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
                     print("type", api.inputs['input_info'])
@@ -92,7 +91,7 @@ def header_include():
     return """
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 """
 
 
@@ -142,7 +141,8 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
             api_item)
         header_file.write(declare_code)
         source_file.write(defind_code)
-        infermeta_register_code = infermeta_register_code + register_code
+        if infermeta_register_code.find(register_code) == -1:
+            infermeta_register_code = infermeta_register_code + register_code
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

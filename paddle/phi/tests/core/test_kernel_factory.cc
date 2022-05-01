@@ -73,6 +73,67 @@ TEST(KernelRegistry, SetFP32Input) {
   EXPECT_EQ(output_defs.at(0).dtype, phi::DataType::FLOAT16);
 }
 
+TEST(AttributeType, OStream) {
+  std::ostringstream oss;
+  oss << phi::AttributeType::UNDEFINED;
+  EXPECT_EQ(oss.str(), "Undefined");
+  oss.str("");
+  oss << phi::AttributeType::BOOL;
+  EXPECT_EQ(oss.str(), "bool");
+  oss.str("");
+  oss << phi::AttributeType::INT32;
+  EXPECT_EQ(oss.str(), "int");
+  oss.str("");
+  oss << phi::AttributeType::INT64;
+  EXPECT_EQ(oss.str(), "int64_t");
+  oss.str("");
+  oss << phi::AttributeType::FLOAT32;
+  EXPECT_EQ(oss.str(), "float");
+  oss.str("");
+  oss << phi::AttributeType::FLOAT64;
+  EXPECT_EQ(oss.str(), "double");
+  oss.str("");
+  oss << phi::AttributeType::STRING;
+  EXPECT_EQ(oss.str(), "string");
+  oss.str("");
+  oss << phi::AttributeType::BOOLS;
+  EXPECT_EQ(oss.str(), "vector<bool>");
+  oss.str("");
+  oss << phi::AttributeType::INT32S;
+  EXPECT_EQ(oss.str(), "vector<int>");
+  oss.str("");
+  oss << phi::AttributeType::INT64S;
+  EXPECT_EQ(oss.str(), "vector<int64_t>");
+  oss.str("");
+  oss << phi::AttributeType::FLOAT32S;
+  EXPECT_EQ(oss.str(), "vector<float>");
+  oss.str("");
+  oss << phi::AttributeType::FLOAT64S;
+  EXPECT_EQ(oss.str(), "vector<double>");
+  oss.str("");
+  oss << phi::AttributeType::STRINGS;
+  EXPECT_EQ(oss.str(), "vector<string>");
+  oss.str("");
+  oss << phi::AttributeType::SCALAR;
+  EXPECT_EQ(oss.str(), "Scalar");
+  oss.str("");
+  oss << phi::AttributeType::SCALARS;
+  EXPECT_EQ(oss.str(), "vector<Scalar>");
+  oss.str("");
+  oss << phi::AttributeType::INT_ARRAY;
+  EXPECT_EQ(oss.str(), "IntArray");
+  oss.str("");
+  oss << phi::AttributeType::DATA_TYPE;
+  EXPECT_EQ(oss.str(), "DataType");
+  oss.str("");
+  oss << phi::AttributeType::DATA_LAYOUT;
+  EXPECT_EQ(oss.str(), "DataLayout");
+  oss.str("");
+  oss << phi::AttributeType::PLACE;
+  EXPECT_EQ(oss.str(), "Place");
+  oss.str("");
+}
+
 }  // namespace tests
 }  // namespace phi
 

@@ -6,12 +6,15 @@ file(APPEND ${kernel_declare_file} "#include \"paddle/phi/core/kernel_registry.h
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
 
+# kernel autotune
+add_subdirectory(autotune)
+
 # phi depends all phi kernel targets
 set_property(GLOBAL PROPERTY PHI_KERNELS "")
 
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils custom_kernel)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor selected_rows_functor )
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
@@ -27,22 +30,29 @@ kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 # Some kernels depend on some targets that are not commonly used.
 # These targets are not suitable for common dependencies.
 # In this case, you need to manually generate them here.
-set(MANUAL_BUILD_KERNELS adam_kernel adamw_kernel deformable_conv_kernel deformable_conv_grad_kernel eigh_kernel
+set(AUTOTUNE_KERNELS conv_kernel conv_grad_kernel conv_grad_grad_kernel conv_transpose_kernel conv_transpose_grad_kernel)
+set(MANUAL_BUILD_KERNELS ${AUTOTUNE_KERNELS} cross_entropy_kernel adam_kernel adamw_kernel deformable_conv_kernel deformable_conv_grad_kernel eigh_kernel
     gumbel_softmax_kernel gumbel_softmax_grad_kernel hierarchical_sigmoid_kernel hierarchical_sigmoid_grad_kernel
     matrix_power_kernel matrix_power_grad_kernel maxout_kernel maxout_grad_kernel pool_kernel
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
-    triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel warpctc_kernel warpctc_grad_kernel)
+    triangular_solve_grad_kernel determinant_grad_kernel reduce_sum_kernel reduce_mean_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
+foreach(src ${AUTOTUNE_KERNELS})
+  kernel_library(${src} DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
+endforeach()
 kernel_library(adam_kernel DEPS gflags glog flags ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper)
 kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
+kernel_library(cross_entropy_kernel DEPS ${COMMON_KERNEL_DEPS} softmax cross_entropy)
 kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
 kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
+kernel_library(determinant_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
 kernel_library(hierarchical_sigmoid_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit_code)
 kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit_code)
 kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(reduce_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+kernel_library(reduce_sum_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+kernel_library(reduce_mean_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
 kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
@@ -57,9 +67,10 @@ kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
-kernel_library(determinant_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
+kernel_library(rnn_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor lstm_compute gru_compute)
+kernel_library(rnn_grad_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor lstm_compute gru_compute)
 kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc sequence_padding sequence_scale)
-kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS} sequence_padding sequence_scale)
+kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc sequence_padding sequence_scale)
 
 # 4. auto parse and build kernel targets by cmake
 register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS ${COMMON_KERNEL_DEPS} ${COMMON_BAISC_KERNELS} )
@@ -72,6 +83,3 @@ add_subdirectory(selected_rows)
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 # For strings kernels
 add_subdirectory(strings)
-
-# 5. kernel autotune 
-add_subdirectory(autotune)
