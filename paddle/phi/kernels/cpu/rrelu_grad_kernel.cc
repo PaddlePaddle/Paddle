@@ -12,78 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include "paddle/phi/kernels/dropout_grad_kernel.h"
 #include "paddle/phi/kernels/rrelu_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 
-// template <typename T, typename Context>
-// void DropoutGradRawKernel(const Context& dev_ctx,
-//                           const DenseTensor& mask,
-//                           const DenseTensor& out_grad,
-//                           float p,
-//                           bool is_test,
-//                           const std::string& mode,
-//                           DenseTensor* x_grad) {
 template <typename T, typename Context>
-void RReluGradRawKernel(const Context& dev_ctx,
-                        const DenseTensor& mask,
-                        const DenseTensor& out_grad,
-                        // float p,
-                        // bool is_test,
-                        // const std::string& mode,
-                        DenseTensor* x_grad) {
-  auto* grad_x = x_grad;
-  auto* grad_y = &out_grad;
-  grad_x->mutable_data<T>(dev_ctx.GetPlace());
+void RReluGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& noise,
+                     const DenseTensor& out_grad,
+                     DenseTensor* x_grad) {
+  const T* n_ptr = noise.data<T>();
+  const T* x_ptr = x.data<T>();
+  const T* out_grad_ptr = out_grad.data<T>();
+  int numel = x.numel();
+  if (!x_grad) return;
 
-  auto dX = EigenVector<T>::Flatten(*grad_x);
-  auto dY = EigenVector<T>::Flatten(*grad_y);
-  auto M = EigenVector<T>::Flatten(mask);
-
-  auto& place = *dev_ctx.eigen_device();
-
-  // Can the following be changed to :
-  // dX.device(place) = dY * M ;
-  // dX.device(place) = dY * M.cast<T>();
-  dX.device(place) = dY * M;
-//   auto& dropout_implementation = mode;
-//   if (is_test == true) {
-//     if (dropout_implementation == "upscale_in_train") {
-//       dX.device(place) = static_cast<T>(1) * dY;
-//     } else {
-//       dX.device(place) = dY * static_cast<T>(1.0f - p);
-//     }
-//   } else {
-//     auto M = EigenVector<uint8_t>::Flatten(mask);
-//     if (dropout_implementation == "upscale_in_train") {
-//       if (p == 1.0f) {
-//         dX.device(place) = static_cast<T>(0) * dY;
-//       } else {
-//         dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - p);
-//       }
-//     } else {
-//       dX.device(place) = dY * M.cast<T>();
-//     }
-//   }
+  int i = 0;
+  T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
+  for (i = 0; i < numel; i++) {
+    x_grad_ptr[i] = x_ptr[i] > 0 ? out_grad_ptr[i] : n_ptr[i] * out_grad_ptr[i];
+  }
 }
 
 }  // namespace phi
 
-// PD_REGISTER_KERNEL(dropout_grad,
-//                    CPU,
-//                    ALL_LAYOUT,
-//                    phi::DropoutGradRawKernel,
-//                    float,
-//                    double,
-//                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(rrelu_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RReluGradRawKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    rrelu_grad, CPU, ALL_LAYOUT, phi::RReluGradKernel, float, double) {}
