@@ -280,8 +280,10 @@ def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
 
     Examples:
         .. code-block:: python
+            :name: nanmedian-example
 
             import paddle
+            import numpy as np
             x = paddle.to_tensor([[np.nan, 2. , 3. ], [0. , 1. , 2. ]])
 
             y1 = x.nanmedian()
