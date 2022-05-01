@@ -12,40 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include "paddle/fluid/operators/dropout_impl.cu.h"
-#include "paddle/phi/kernels/gpu/rrelu_impl.cu.h"
-// #include "paddle/phi/kernels/dropout_kernel.h"
 #include "paddle/phi/kernels/rrelu_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/rrelu_funcs.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RReluRawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    paddle::optional<const DenseTensor&> seed_tensor,
-                    float lower,
-                    float upper,
-                    bool is_test,
-                    bool fix_seed,
-                    int seed,
-                    DenseTensor* out,
-                    DenseTensor* mask) {
-  out->mutable_data<T>(dev_ctx.GetPlace());
-  mask->mutable_data<T>(dev_ctx.GetPlace());
+void RReluKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const float lower,
+                 const float upper,
+                 bool is_test,
+                 bool fix_seed,
+                 int seed,
+                 DenseTensor* out,
+                 DenseTensor* noise) {
+  const T* x_ptr = x.data<T>();
+  T* o_ptr = dev_ctx.template Alloc<T>(out);
+  T* n_ptr = dev_ctx.template Alloc<T>(noise);
 
-  paddle::operators::RReluFwGPUKernelDriver<T>(dev_ctx,
-                                               is_test,
-                                               lower,
-                                               upper, 
-                                               fix_seed,
-                                               seed,
-                                               x,
-                                               seed_tensor.get_ptr(),
-                                               mask,
-                                               out);
+  int numel = x.numel();
+  auto dim = x.dims();
+  RReluElementWiseDirectCUDAFunctor<T> rrelu_element_wise;
+
+  int seed_data = fix_seed ? seed : 0;
+  rrelu_element_wise(dev_ctx.stream(),
+                     x_ptr,
+                     o_ptr,
+                     n_ptr,
+                     lower,
+                     upper,
+                     is_test,
+                     seed_data,
+                     numel);
 }
 
 }  // namespace phi
@@ -53,8 +55,7 @@ void RReluRawKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(rrelu,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RReluRawKernel,
+                   phi::RReluKernel,
                    float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   double) {}
