@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <thrust/device_vector.h>
+#include <thrust/reduce.h>
+#include <thrust/scan.h>
 #include <functional>
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
@@ -370,6 +372,18 @@ __global__ void fill_dvalues(int64_t* d_shard_vals, int64_t* d_vals,
     d_actual_sample_size[idx[i]] = d_shard_actual_sample_size[i];
     for (int j = 0; j < sample_size; j++) {
       d_vals[idx[i] * sample_size + j] = d_shard_vals[i * sample_size + j];
+    }
+  }
+}
+
+__global__ void fill_actual_vals(int64_t* vals, int64_t* actual_vals,
+                                 int* actual_sample_size,
+                                 int* cumsum_actual_sample_size,
+                                 int sample_size, int len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    for (int j = 0; j < actual_sample_size[i]; j++) {
+      actual_vals[cumsum_actual_sample_size[i] + j] = vals[sample_size * i + j];
     }
   }
 }
@@ -846,6 +860,22 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   fill_dvalues<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals_ptr, val, d_shard_actual_sample_size_ptr, actual_sample_size,
       d_idx_ptr, sample_size, len);
+
+  thrust::device_ptr<int> t_actual_sample_size(actual_sample_size);
+  int total_sample_size =
+      thrust::reduce(t_actual_sample_size, t_actual_sample_size + len);
+  result.actual_val_mem =
+      memory::AllocShared(place, total_sample_size * sizeof(int64_t));
+  result.actual_val = (int64_t*)(result.actual_val_mem)->ptr();
+
+  thrust::device_vector<int> cumsum_actual_sample_size(len);
+  thrust::exclusive_scan(t_actual_sample_size, t_actual_sample_size + len,
+                         cumsum_actual_sample_size.begin(), 0);
+  fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
+      val, result.actual_val, actual_sample_size,
+      thrust::raw_pointer_cast(cumsum_actual_sample_size.data()), sample_size,
+      len);
+
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
