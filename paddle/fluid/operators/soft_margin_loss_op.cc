@@ -124,10 +124,10 @@ class SoftMarginLossGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(SoftMarginLossInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(SoftMarginLossGradInplaceInferer,
+//DECLARE_INPLACE_OP_INFERER(SoftMarginLossInplaceInferer, {"X", "Out"});
+/*DECLARE_INPLACE_OP_INFERER(SoftMarginLossGradInplaceInferer,
                            {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+                            framework::GradVarName("X")});*/
 
 }  // namespace operators
 }  // namespace paddle
