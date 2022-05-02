@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#error "should not include this"
 
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/kernels/adadelta_kernel.h"
@@ -21,6 +22,25 @@
 
 namespace phi {
 
+// inline HOSTDEVICE bool is_less(const double* current_step, float t0) {
+//   printf("%d", __LINE__);
+//   printf("%lf", *current_step);
+//   printf("%f", t0);
+//   return current_step[0] < t0;
+// }
+//
+// inline HOSTDEVICE bool is_less(const float* current_step, float t0) {
+//   printf("%d", __LINE__);
+// #ifdef __CUDA_ARCH__
+//   printf("cuda");
+// #else
+//   printf("cpu");
+// #endif
+//   printf("%f", *current_step);
+//   printf("%f", t0);
+//   return current_step[0] < t0;
+// }
+//
 template <typename T, typename Context>
 void AsgdKernel(const Context& dev_ctx,
                 const DenseTensor& param,
@@ -28,18 +48,18 @@ void AsgdKernel(const Context& dev_ctx,
                 const DenseTensor& grad,
                 const DenseTensor& avg_param,
                 const DenseTensor& current_step,
-                const DenseTensor& t0,
+                float t0,
                 DenseTensor* param_out,
                 DenseTensor* avg_param_out,
                 DenseTensor* current_step_out) {
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<T>(avg_param_out);
+  dev_ctx.template Alloc<T>(current_step_out);
 
   auto eigen_param = EigenVector<T>::Flatten(param);
   auto eigen_grad = EigenVector<T>::Flatten(grad);
   auto eigen_avg_param = EigenVector<T>::Flatten(avg_param);
   auto eigen_current_step = EigenVector<T>::Flatten(current_step);
-  auto eigen_t0 = EigenVector<T>::Flatten(t0);
   auto eigen_param_out = EigenVector<T>::Flatten(*param_out);
   auto eigen_avg_param_out = EigenVector<T>::Flatten(*avg_param_out);
   auto eigen_current_step_out = EigenVector<T>::Flatten(*current_step_out);
@@ -55,16 +75,14 @@ void AsgdKernel(const Context& dev_ctx,
         eigen_param - eigen_lr.broadcast(dsize) * eigen_grad;
   }
 
-  if (eigen_current_step < eigen_t0) {
+  if (current_step.data<T>()[0] < t0) {
     eigen_avg_param_out.device(place) = eigen_param_out;
   } else {
-    // const auto mu = eigen_current_step - eigen_t0 + 1;
+    const auto mu = (1 - t0) + eigen_current_step;
     eigen_avg_param_out.device(place) =
-        eigen_avg_param + (eigen_param_out - eigen_avg_param) / eigen_current_step;
+        eigen_avg_param + mu * (eigen_param_out - eigen_avg_param);
   }
-
-  // eigen_current_step_out = eigen_current_step + 1;
-  eigen_current_step++;
+  eigen_current_step_out.device(place) = 1 + eigen_current_step;
 }
 
 }  // namespace phi

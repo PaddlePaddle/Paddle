@@ -24,6 +24,7 @@ class ASGD(Optimizer):
     r"""
     """
     _avg_parameter_acc_str = "_avg_parameter"
+    _current_step_acc_str = "_current_step"
 
     def __init__(self,
                  learning_rate,
@@ -51,8 +52,11 @@ class ASGD(Optimizer):
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
 
+        self._averaged_parameters = []
         for p in parameters:
-            self._add_accumulator(self._avg_parameter_acc_str, p)
+            avg_param = self._add_accumulator(self._avg_parameter_acc_str, p)
+            self._averaged_parameters.append(avg_param)
+            self._add_accumulator(self._current_step_acc_str, p, shape=[1], device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -63,17 +67,21 @@ class ASGD(Optimizer):
         avg_parameter = self._get_accumulator(
             self._avg_parameter_acc_str, param_and_grad[0])
 
-        # Create the adagrad optimizer op
+        current_step = self._get_accumulator(
+            self._current_step_acc_str, param_and_grad[0])
+
         asgd_op = block.append_op(
             type=self.type,
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "LearningRate": self._create_param_lr(param_and_grad),
-                "AvgParam": avg_parameter
+                "AvgParam": avg_parameter,
+                "CurrentStep": current_step,
             },
             outputs={"ParamOut": param_and_grad[0],
-                     "AvgParamOut": avg_parameter
+                     "AvgParamOut": avg_parameter,
+                     "CurrentStepOut": current_step,
                      },
             attrs={'t0': self._t0},
             stop_gradient=True)
@@ -84,3 +92,7 @@ class ASGD(Optimizer):
         self._t0 = parameters.get('t0', self._default_dict['t0'])
         parameters = parameters.get('params')
         return parameters
+
+    def averaged_parameters(self):
+        return self._averaged_parameters
+

@@ -25,7 +25,7 @@ void AsgdKernel(const Context& dev_ctx,
                 const DenseTensor& grad,
                 const DenseTensor& avg_param,
                 const DenseTensor& current_step,
-                const DenseTensor& t0,
+                float t0,
                 DenseTensor* param_out,
                 DenseTensor* avg_param_out,
                 DenseTensor* current_step_out);

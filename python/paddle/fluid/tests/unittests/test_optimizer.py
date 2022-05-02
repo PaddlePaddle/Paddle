@@ -70,22 +70,38 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual([op.type for op in opts], ["sgd"])
 
     def test_asgd_optimizer(self):
+        w_shape = [3, 4]
         class MyLayer(paddle.nn.Layer):
             def __init__(self):
                 super(MyLayer, self).__init__()
-                self._w = self.create_parameter([2, 3])
-                self._b = self.create_parameter([2, 3])
+                self._w = self.create_parameter(w_shape, default_initializer=paddle.fluid.initializer.ConstantInitializer())
 
             def forward(self, x):
-                return x * self._w + self._b
+                return x * self._w
 
         with paddle.fluid.dygraph.guard():
             model = MyLayer()
-            x = paddle.rand([10, 2, 3])
+            x = paddle.ones([1, 3, 4])
             loss = model(x)
-            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            asgd = paddle.optimizer.ASGD(learning_rate=1., parameters=model.parameters(), t0=1)
             loss.backward()
-            adam.step()
+
+            np_neg_ones = np.ones(w_shape) * -1
+            asgd.step()
+            assert np.array_equal(model._w.numpy(), np_neg_ones)
+            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones)
+            asgd.step()
+            assert np.array_equal(model._w.numpy(), np_neg_ones * 2)
+            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 2)
+            asgd.step()
+            assert np.array_equal(model._w.numpy(), np_neg_ones * 3)
+            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3)
+            asgd.step()
+            assert np.array_equal(model._w.numpy(), np_neg_ones * 4)
+            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3.5)
+            asgd.step()
+            assert np.array_equal(model._w.numpy(), np_neg_ones * 5)
+            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 4)
 
 
 class TestOptimizerBackwardApplygrad(unittest.TestCase):

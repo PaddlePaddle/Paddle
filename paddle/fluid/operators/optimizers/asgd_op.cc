@@ -37,14 +37,12 @@ class AsgdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param", "(Tensor) Input parameter");
-    AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("AvgParam",
              "(Tensor) Average of parameter");
     AddInput("CurrentStep",
              "(Tensor) Current step");
-    AddInput("t0",
-             "(Tensor) point at which to start averaging");
     AddOutput("ParamOut",
               "(Tensor, same with Param) "
               "Output parameter, should share the same memory with Param");
@@ -53,6 +51,9 @@ class AsgdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("CurrentStepOut",
              "(Tensor) Increased step");
 
+    AddAttr<float>("t0",
+                   "(float, default 1e6) point at which to start averaging")
+        .SetDefault(0.95f);
     AddComment(R"DOC(
 )DOC");
   }
@@ -63,7 +64,7 @@ class AsgdOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(asgd, AsgdInferMetaFunctor,
-                            PD_INFER_META(phi::SgdInferMeta));
+                            PD_INFER_META(phi::AsgdInferMeta));
 REGISTER_OPERATOR(
     asgd, ops::AsgdOp, ops::AsgdOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

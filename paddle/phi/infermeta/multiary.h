@@ -122,6 +122,16 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void AsgdInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& avg_param,
+                   const MetaTensor& current_step,
+                   float t0,
+                   MetaTensor* param_out,
+                   MetaTensor* avg_param_out,
+                   MetaTensor* current_step_out);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
