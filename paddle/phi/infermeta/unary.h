@@ -280,10 +280,10 @@ void RReluInferMeta(const MetaTensor& x,
                     bool fix_seed,
                     int seed,
                     MetaTensor* out,
-                    MetaTensor* noise);
+                    MetaTensor* mask);
 
 void RReluGradInferMeta(const MetaTensor& out_grad,
-                        const MetaTensor& noise,
+                        const MetaTensor& mask,
                         MetaTensor* x_grad);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);

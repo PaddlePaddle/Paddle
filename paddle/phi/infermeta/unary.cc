@@ -1922,7 +1922,7 @@ void RReluInferMeta(const MetaTensor& x,
                     bool fix_seed,
                     int seed,
                     MetaTensor* out,
-                    MetaTensor* noise) {
+                    MetaTensor* mask) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(lower,
                     0,
@@ -1950,18 +1950,17 @@ void RReluInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->share_lod(x);
 
-  if (noise != nullptr) {
-    noise->set_dims(x_dims);
-    noise->set_dtype(x.dtype());
-    noise->set_layout(x.layout());
+  if (mask != nullptr) {
+    mask->set_dims(x_dims);
+    mask->set_dtype(x.dtype());
+    mask->set_layout(x.layout());
   }
 }
 
 void RReluGradInferMeta(const MetaTensor& out_grad,
-                        const MetaTensor& noise,
+                        const MetaTensor& mask,
                         MetaTensor* x_grad) {
-  auto do_dims = out_grad.dims();
-  x_grad->set_dims(do_dims);
+  x_grad->set_dims(out_grad.dims());
   x_grad->set_dtype(out_grad.dtype());
   x_grad->share_lod(out_grad);
 }
