@@ -612,7 +612,8 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
             format(lower, upper))
 
     seed = None
-    if in_dygraph_mode():
+    # if in_dygraph_mode():
+    if _in_legacy_dygraph():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
 
