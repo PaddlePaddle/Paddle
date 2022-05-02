@@ -88,7 +88,7 @@ class TensorWrapper {
     } else {
       intermidiate_tensor_.set_impl(tensor.impl());
     }
-
+    // TODO(jiabin): This may has server performance issue
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
 
     auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
