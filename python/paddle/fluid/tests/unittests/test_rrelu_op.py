@@ -285,11 +285,14 @@ class RReluTest(OpTest):
 
         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         out_np = ref_rrelu(x_np, self.lower, self.upper)
-        noise_np = np.ones(self.x_shape).astype(self.dtype)
-        noise_np[x_np < 0] = (self.lower + self.upper) / 2.0
+        # noise_np = np.ones(self.x_shape).astype(self.dtype)
+        mask_np = np.ones(self.x_shape).astype(self.dtype)
+        # noise_np[x_np < 0] = (self.lower + self.upper) / 2.0
+        mask_np[x_np < 0] = (self.lower + self.upper) / 2.0
 
         self.inputs = {'X': x_np}
-        self.outputs = {'Out': out_np, 'Noise': noise_np}
+        # self.outputs = {'Out': out_np, 'Noise': noise_np}
+        self.outputs = {'Out': out_np, 'Mask': mask_np}
         self.attrs = {
             'lower': self.lower,
             "upper": self.upper,
