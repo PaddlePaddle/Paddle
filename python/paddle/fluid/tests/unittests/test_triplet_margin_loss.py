@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 import numpy as np
 import unittest
-
 
 def call_TripletMarginLoss_layer(input,
                     positive,
@@ -70,11 +68,11 @@ def test_static(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
+        input = paddle.static.data(
             name='input', shape=input_np.shape, dtype='float64')
-        positive = paddle.fluid.data(
+        positive = paddle.static.data(
             name='positive', shape=positive_np.shape, dtype='float64')
-        negative = paddle.fluid.data(
+        negative = paddle.static.data(
             name='negative', shape=negative_np.shape, dtype='float64')
         feed_dict = {"input": input_np, "positive": positive_np, "negative": negative_np}
 
@@ -170,9 +168,9 @@ class TestTripletMarginLoss(unittest.TestCase):
         positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
         negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
 
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [paddle.CPUPlace()]
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -243,7 +241,7 @@ class TestTripletMarginLoss(unittest.TestCase):
 
     def test_TripletMarginLoss_swap(self):
         reduction = 'mean'
-        place = fluid.CPUPlace()
+        place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
         negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
@@ -292,7 +290,7 @@ class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss_p(self):
         p = 3
         reduction = 'mean'
-        place = fluid.CPUPlace()
+        place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
         negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)

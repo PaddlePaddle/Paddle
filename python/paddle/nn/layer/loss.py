@@ -1311,7 +1311,7 @@ class TripletMarginLoss(Layer):
     This is used for measuring a relative similarity between samples. A triplet
     is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
     examples` respectively). The shapes of all input tensors should be
-    :math:`(N, D)`.
+    :math:`(N, *)`.
 
     The loss function for each sample in the mini-batch is:
 

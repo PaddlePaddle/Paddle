@@ -2238,12 +2238,12 @@ def triplet_margin_loss(input,
                         reduction='mean',
                         name=None):
     """
-    Creates a criterion that measures the triplet loss given an input
+    Measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
     This is used for measuring a relative similarity between samples. A triplet
     is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
     examples` respectively). The shapes of all input tensors should be
-    :math:`(N, D)`.
+    :math:`(N, *)`.
 
     The loss function for each sample in the mini-batch is:
 
