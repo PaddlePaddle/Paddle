@@ -23,24 +23,23 @@ import hypothesis.strategies as st
 
 class TestMkldnnParamToInt8Pass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
-        config.pass_builder().append_pass(
-            "cpu_quantize_pass"
-        )  #, ['quant_var_scales', 'input_x'],[[False, np.random.random([1]).astype(np.float32)], 'NHWC'])
+        config = self.create_inference_config(
+            use_gpu=False, ir_optim=True, use_mkldnn=True)
         config.enable_quantizer()
-        config.quantizer_config().set_quant_batch_size(1)
-        # minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
-        batch_size = 5
-        # minputs = fluid.create_lod_tensor(t, [[1] * batch_size], fluid.CPUPlace())
+        bsz = 1
+        config.quantizer_config().set_quant_batch_size(bsz)
         minputs = fluid.create_lod_tensor(
-            np.random.rand(12, 10).astype('float32'), [[3, 3, 4, 2]],
+            np.random.rand(bsz, 1, 1, 1).astype('float32'), [[1] * bsz],
             fluid.CPUPlace())
         infer_data = fluid.core.PaddleTensor()
         infer_data.data = fluid.core.PaddleBuf(np.array(minputs))
+        infer_data.lod = minputs.lod()
+        infer_data.shape = minputs.shape()
+        infer_data.dtype = fluid.core.PaddleDType.FLOAT32
         warmup_data = [infer_data]
         print("warmup data type:", type(warmup_data[0]))
         config.quantizer_config().set_quant_data(warmup_data)
+
         config.pass_builder().append_pass("params_to_int8_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
 
@@ -55,11 +54,11 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         input_shape = prog_config.inputs["input_x"].shape
         if padding_algorithm == "VALID":
             if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-            ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+               ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
                 return False
         if padding_algorithm == "EXPLICIT":
             if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-                ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+               ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
                 return False
         if data_format == "NCHW":
             if input_shape[1] != filter_shape[1] * groups:
@@ -77,8 +76,8 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=5, max_value=100), min_size=4, max_size=4))
-        x_shape[1] = draw(st.integers(min_value=5, max_value=10))
+                    min_value=1, max_value=1), min_size=4, max_size=4))
+        x_shape[1] = draw(st.integers(min_value=1, max_value=1))
 
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
 
@@ -151,16 +150,20 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
 
         ops = [conv2d_op]
 
+        def generate_weight():
+            return np.array(np.random.random(x_shape)).astype(np.float32)
+
         program_config = ProgramConfig(
             ops=ops,
             weights=weights,
-            inputs={"input_x": TensorConfig(shape=x_shape)},
+            inputs={"input_x":
+                    TensorConfig(data_gen=generate_weight)},  # shape=x_shape
             outputs=["conv2d_out"])
         return program_config
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=350, passes=["params_to_int8_pass"])
+            quant=False, max_examples=100, passes=["params_to_int8_pass"])
 
 
 if __name__ == "__main__":
