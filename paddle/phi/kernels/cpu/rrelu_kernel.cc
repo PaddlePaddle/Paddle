@@ -30,41 +30,42 @@ void RReluKernel(const Context& dev_ctx,
                  int seed,
                  DenseTensor* out,
                  DenseTensor* noise) {
-  const T* x_ptr = x.data<T>();
-  T* o_ptr = dev_ctx.template Alloc<T>(out);
-  T* n_ptr = dev_ctx.template Alloc<T>(noise);
-  T zero = static_cast<T>(0);
-  int numel = x.numel();
-  int i = 0;
+  // T* out_data = dev_ctx.template Alloc<T>(out);
+  // T* mask_data = dev_ctx.template Alloc<T>(mask);
+  auto* mask = noise;
+  auto* y = out;
+  const auto* x_data = x.data<T>();
+  auto* y_data = y->mutable_data<T>(dev_ctx.GetPlace());
+  auto* mask_data = mask->mutable_data<T>(dev_ctx.GetPlace());
+  size_t size = x.numel();
+  auto zero = static_cast<T>(0);
+  auto one = static_cast<T>(1);
 
-  if (is_test) {
-    T mid_val = static_cast<T>((lower + upper) / 2.0);
-    for (i = 0; i < numel; i++) {
-      if (x_ptr[i] < zero) {
-        o_ptr[i] = mid_val * x_ptr[i];
-        n_ptr[i] = mid_val;
+  if (!is_test) {
+    int seed_data = fix_seed ? seed : 0;
+    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::uniform_real_distribution<float> dist(lower, upper);
+
+    for (size_t i = 0; i < size; ++i) {
+      if (x_data[i] >= zero) {
+        mask_data[i] = one;
+        y_data[i] = x_data[i];
       } else {
-        o_ptr[i] = x_ptr[i];
-        n_ptr[i] = 1.0;
+        auto ramdom_sampled_value = static_cast<T>(dist(*engine));
+        mask_data[i] = ramdom_sampled_value;
+        y_data[i] = x_data[i] * ramdom_sampled_value;
       }
     }
-
-    return;
-  }
-
-  int seed_data = fix_seed ? seed : 0;
-  auto engine = paddle::framework::GetCPURandomEngine(seed_data);
-
-  std::uniform_real_distribution<float> dist(lower, upper);
-
-  for (i = 0; i < numel; i++) {
-    if (x_ptr[i] < zero) {
-      T scale = static_cast<T>(dist(*engine));
-      o_ptr[i] = scale * x_ptr[i];
-      n_ptr[i] = scale;
-    } else {
-      o_ptr[i] = x_ptr[i];
-      n_ptr[i] = 1.0;
+  } else {
+    auto middle_value = static_cast<T>((lower + upper) / 2.0f);
+    for (size_t i = 0; i < size; ++i) {
+      if (x_data[i] >= zero) {
+        y_data[i] = x_data[i];
+        mask_data[i] = one;
+      } else {
+        y_data[i] = x_data[i] * middle_value;
+        mask_data[i] = middle_value;
+      }
     }
   }
 }
