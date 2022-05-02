@@ -14,10 +14,8 @@
 
 #include "paddle/phi/kernels/rrelu_kernel.h"
 #include "paddle/phi/kernels/gpu/rrelu_impl.cu.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-// #include "paddle/phi/kernels/gpu/rrelu_funcs.h"
 
 namespace phi {
 
@@ -30,28 +28,7 @@ void RReluKernel(const Context& dev_ctx,
                  bool fix_seed,
                  int seed,
                  DenseTensor* out,
-                 DenseTensor* noise) {
-//   const T* x_ptr = x.data<T>();
-//   T* o_ptr = dev_ctx.template Alloc<T>(out);
-//   T* n_ptr = dev_ctx.template Alloc<T>(noise);
-
-//   int numel = x.numel();
-//   auto dim = x.dims();
-//   RReluElementWiseDirectCUDAFunctor<T> rrelu_element_wise;
-
-//   int seed_data = fix_seed ? seed : 0;
-//   rrelu_element_wise(dev_ctx.stream(),
-//                      x_ptr,
-//                      o_ptr,
-//                      n_ptr,
-//                      lower,
-//                      upper,
-//                      is_test,
-//                      seed_data,
-//                      numel);
-
-  auto* mask = noise;
-
+                 DenseTensor* mask) {
   out->mutable_data<T>(dev_ctx.GetPlace());
   mask->mutable_data<T>(dev_ctx.GetPlace());
 

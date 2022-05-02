@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/phi/kernels/gpu/rrelu_impl.cu.h"
-// #include "paddle/phi/kernels/dropout_grad_kernel.h"
 #include "paddle/phi/kernels/rrelu_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -24,12 +21,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void RReluGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
                      const DenseTensor& mask,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad) {
   x_grad->mutable_data<T>(dev_ctx.GetPlace());
-  auto size = x.numel();
+  auto size = mask.numel();
   paddle::operators::RReluGradGPUKernelDriver<T>(
       dev_ctx, out_grad, mask, x_grad);
 }
@@ -41,6 +37,5 @@ PD_REGISTER_KERNEL(rrelu_grad,
                    ALL_LAYOUT,
                    phi::RReluGradKernel,
                    float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}                  
+                   phi::dtype::float16,
+                   double) {}                  

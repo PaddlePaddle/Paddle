@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// This whole file is modified based on the file 
+// "paddle/fluid/operators/dropout_impl.cu.h"
 #pragma once
 
 #include <string>
@@ -31,8 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-// This file "dropout_impl_util.h" can be used in rrelu op without
-// any modification.
+// This file "dropout_impl_util.h" is originally used in the implementation 
+// of dropout op  and can be used in rrelu op without any modification.
 #include "paddle/fluid/operators/dropout_impl_util.h"   
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
@@ -40,21 +42,18 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 
 // Maybe it is better to put the following functions and classes in the namespace phi 
+// TODO: remain to be done
 namespace paddle {
 namespace operators {
 
-// template <typename T, typename MaskType>
 template <typename T>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
-                                // const float dropout_prob,
                                 bool is_test,
                                 const float lower,
                                 const float upper,
                                 const T* src,
-                                // MaskType* mask, 
                                 T* mask,
                                 T* dst,
-                                // bool is_upscale_in_train,
                                 uint64_t increment) {
   using MT = typename details::MPTypeTrait<T>::Type;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -107,22 +106,17 @@ __global__ void RandomGenerator(const size_t n, uint64_t seed,
   }
 }
 
-// template <typename T, typename MaskType, int VecSize>
 template <typename T, int VecSize>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
-                                        //   const float dropout_prob,
                                           bool is_test,
                                           const float lower,
                                           const float upper,
                                           const T* src, 
-                                        //   MaskType* mask, 
                                           T* mask,
                                           T* dst,
-                                        //   bool is_upscale_in_train,
                                           uint64_t increment) {
   using MT = typename details::MPTypeTrait<T>::Type;
   using LoadT = phi::AlignedVector<T, VecSize>;
-//   using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
 
 #ifdef PADDLE_WITH_HIP
   int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
@@ -146,15 +140,12 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   #endif
 
       LoadT dst_val;
-      // MaskLoadT mask_val;
       LoadT mask_val;
 
   #pragma unroll
       for (int j = 0; j < VecSize; j++) {
-      //   if ((&rand.x)[j] < dropout_prob) {
         if (src_val[j] >= static_cast<T>(0)) {
           dst_val[j] = src_val[j];
-          // mask_val[j] = 0;
           mask_val[j] = static_cast<T>(1);
         } else {
           // random_sampled_value should be in [0, 1]
@@ -164,9 +155,7 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
           mask_val[j] = static_cast<T>(random_sampled_value);
         }
       }
-
       phi::Store<T, VecSize>(dst_val, &dst[i]);
-      // phi::Store<MaskType, VecSize>(mask_val, &mask[i]);
       phi::Store<T, VecSize>(mask_val, &mask[i]);
     }
   } else {
@@ -174,32 +163,25 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
       LoadT src_val;
       phi::Load<T, VecSize>(&src[i], &src_val);
-
       LoadT dst_val;
-      // MaskLoadT mask_val;
       LoadT mask_val;
 
   #pragma unroll
       for (int j = 0; j < VecSize; j++) {
-      //   if ((&rand.x)[j] < dropout_prob) {
         if (src_val[j] >= static_cast<T>(0)) {
           dst_val[j] = src_val[j];
-          // mask_val[j] = 0;
           mask_val[j] = static_cast<T>(1);
         } else {
           dst_val[j] = static_cast<T>(static_cast<MT>(src_val[j]) * static_cast<MT>(middle_value));
           mask_val[j] = static_cast<T>(middle_value);
         }
       }
-
       phi::Store<T, VecSize>(dst_val, &dst[i]);
-      // phi::Store<MaskType, VecSize>(mask_val, &mask[i]);
       phi::Store<T, VecSize>(mask_val, &mask[i]);
     }
   }
 }
 
-// template <typename T, typename MaskType>
 template <typename T>
 struct CudaRReluGradFunctor {
   using MT = typename details::MPTypeTrait<T>::Type;
@@ -207,71 +189,28 @@ struct CudaRReluGradFunctor {
   explicit CudaRReluGradFunctor(const MT factor) : factor_(factor) {}
 
   __device__ __forceinline__ T operator()(const T dout, const T mask) const {
-    // return static_cast<T>(static_cast<MT>(dout) * static_cast<MT>(mask) *
-    //                       factor_);
     return static_cast<T>(static_cast<MT>(dout) * static_cast<MT>(mask));
   }
 
  private:
- // factor_ is useless, but I am not sure how to delete it
+ // factor_ is useless, but I am not sure how to delete it in a safe way
   MT factor_;
 };
 
-// template <typename T, typename MaskType, int VecSize>
-// this function is not used in the implementation of rrelu op
-template <typename T, int VecSize>
-__global__ void RReluGradCUDAKernel(
-    const T* dout, 
-    // const MaskType* mask,
-    const T* mask,
-    // const typename details::MPTypeTrait<T>::Type factor, 
-    const int64_t size, T* dx) {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  // using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
-
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
-    LoadT dout_val;
-    phi::Load<T, VecSize>(&dout[i], &dout_val);
-
-    // MaskLoadT mask_val;
-    LoadT mask_val;
-    // phi::Load<MaskType, VecSize>(&mask[i], &mask_val);
-    phi::Load<T, VecSize>(&mask[i], &mask_val);
-
-    LoadT dx_val;
-
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      // dx_val[j] = static_cast<T>(static_cast<MT>(dout_val[j]) *
-      //                            static_cast<MT>(mask_val[j]) * factor);
-      dx_val[j] = static_cast<T>(static_cast<MT>(dout_val[j]) *
-                                 static_cast<MT>(mask_val[j]));
-    }
-
-    phi::Store<T, VecSize>(dx_val, &dx[i]);
-  }
-}
-
 template <typename T>
 void RReluFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
-                            // const std::string dropout_implementation,
-                            // float dropout_prob, bool upscale_in_train,
                             float lower, float upper,
                             bool is_fix_seed, int seed_val,
                             const framework::Tensor& x,
                             const framework::Tensor* seed,
                             framework::Tensor* mask, framework::Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
-  int64_t x_numel = x.numel();
+  uint64_t x_numel = x.numel();
   auto stream = dev_ctx.stream();
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
-
-  // auto* mask_data = mask->data<uint8_t>();
   auto* mask_data = mask->data<T>();
-  size_t size = phi::product(mask->dims());
+  size_t size = x_numel;
 
   // increment is used to set the args(offset) of curand_init, which defines
   // offset in subsequence.
@@ -320,16 +259,10 @@ void RReluFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 
 template <typename T>
 void RReluGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
-                              // const std::string dropout_implementation,
-                              // float dropout_prob,
                               const framework::Tensor& grad_y,
                               const framework::Tensor& mask, 
-                              // int64_t size,
-                              framework::Tensor* grad_x
-                              // bool is_test = false
-                              ) {
+                              framework::Tensor* grad_x) {
   using MT = typename details::MPTypeTrait<T>::Type;
-  // auto stream = dev_ctx.stream();
   MT factor = static_cast<MT>(1.0f);
 
   std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
