@@ -164,6 +164,7 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   attrs.insert({"groups", groups});
   attrs.insert({"exhaustive_search", exhaustive_search});
   attrs.insert({"use_addto", use_addto});
+  attrs.insert({"workspace_size_MB", 512});
 
   auto op = framework::OpRegistry::CreateOp(
       "conv2d_grad", {{"Input", {"Input"}},
@@ -408,7 +409,7 @@ TEST(CudnnNormConvFp16, K1S1) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -434,7 +435,7 @@ TEST(CudnnNormConvFp16, K3S1) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -460,7 +461,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
