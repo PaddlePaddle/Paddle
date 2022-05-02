@@ -143,5 +143,5 @@ REGISTER_OPERATOR(soft_margin_loss, ops::SoftMarginLossOp,
                   ops::SoftMarginLossGradOpMaker<paddle::imperative::OpBase>,
                   //ops::SoftMarginLossInplaceInferer,
                   SoftMarginLossInferShapeFunctor);
-REGISTER_OPERATOR(soft_margin_loss_grad, ops::SoftMarginLossGradOp,);
+REGISTER_OPERATOR(soft_margin_loss_grad, ops::SoftMarginLossGradOp);
                   //ops::SoftMarginLossGradInplaceInferer);
