@@ -599,34 +599,40 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
             #   [-1.3766339   6.          7.         -2.3465784 ]
             #   [ 6.          7.          8.          9.        ]]]]
     """
+    if not in_dynamic_mode():
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
+                                 'rrelu')
 
-    if not isinstance(lower, (float, int)) or not isinstance(upper, (float, int)):
+    if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
-            "The lower and upper values must be float or int type. Received: lower {}, upper {}.".
+            "The lower and upper values must be float type. Received: lower {}, upper {}.".
             format(lower, upper))
 
-    if lower < 0 or upper < lower or upper > 1:
+    if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower and upper value must be in the range [0.0, 1.0] and upper must be greater "
-            " than or equal to lower. Received: lower={}, upper={}.".
+            "The lower value must be no less than zero or greater than one. Received: {}.".
+            format(lower))
+
+    if upper < lower:
+        raise ValueError(
+            "The upper value must be greater than lower value. Received: lower {}, upper {}.".
             format(lower, upper))
 
+    if upper > 1:
+        raise ValueError(
+            "The upper value must be no greater than one. Received: {}.".format(
+                upper))
+
+    is_test = not training
     seed = None
-    # if in_dygraph_mode():
+
     if _in_legacy_dygraph():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-
-        out, mask = _C_ops.rrelu(
-            x, 'lower', lower, 'upper', upper, 'is_test', not training, 'fix_seed',
-            seed is not None, 'seed', seed if seed is not None else 0)
+        out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+                                  is_test, 'fix_seed', seed is not None, 'seed',
+                                  seed if seed is not None else 0)
         return out
-
-    helper = LayerHelper('rrelu', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    mask = helper.create_variable_for_type_inference(dtype=x.dtype, stop_gradient=True)
 
     def get_attrs(prog, lower, upper, is_test, seed):
         if (seed is None or seed == 0) and prog.random_seed != 0:
@@ -640,13 +646,16 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
         }
         return attrs
 
-    attrs = get_attrs(helper.main_program, lower, upper, not training, seed)
+    helper = LayerHelper('rrelu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    noise = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
 
     helper.append_op(
         type='rrelu',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'Mask': [mask]},
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Noise": noise},
         attrs=attrs)
     return out
 
