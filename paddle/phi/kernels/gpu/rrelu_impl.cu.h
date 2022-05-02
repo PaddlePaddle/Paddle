@@ -218,6 +218,7 @@ struct CudaRReluGradFunctor {
 };
 
 // template <typename T, typename MaskType, int VecSize>
+// this function is not used in the implementation of rrelu op
 template <typename T, int VecSize>
 __global__ void RReluGradCUDAKernel(
     const T* dout, 
