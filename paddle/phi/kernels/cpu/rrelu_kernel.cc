@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/rrelu_kernel.h"
-
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,12 +28,12 @@ void RReluKernel(const Context& dev_ctx,
                  bool fix_seed,
                  int seed,
                  DenseTensor* out,
-                 DenseTensor* noise) {
-  // T* out_data = dev_ctx.template Alloc<T>(out);
-  // T* mask_data = dev_ctx.template Alloc<T>(mask);
-  auto* mask = noise;
+                 DenseTensor* mask) {
   auto* y = out;
   const auto* x_data = x.data<T>();
+  // you may try the following 2 lines(what is the difference?)
+  // T* out_data = dev_ctx.template Alloc<T>(out);
+  // T* mask_data = dev_ctx.template Alloc<T>(mask);
   auto* y_data = y->mutable_data<T>(dev_ctx.GetPlace());
   auto* mask_data = mask->mutable_data<T>(dev_ctx.GetPlace());
   size_t size = x.numel();
