@@ -16,19 +16,24 @@
 
 namespace phi {
 
-KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("rrelu",
-                         {"X"},
-                         {"lower", "upper", "is_test", "fix_seed", "seed"},
-                         {"Out", "Noise"});
-}
-
-KernelSignature RReluGradGradOpArgumentMapping(
+KernelSignature RReluOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "rrelu_grad", {"X", "Noise", "Out@GRAD"}, {}, {"X@GRAD"});
+    "rrelu",
+    {"X"},
+    {"lower", "upper", "is_test", "fix_seed", "seed"},
+    {"Out", "Mask"});
+}
+
+KernelSignature RReluGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "rrelu_grad", 
+      {"Mask", "Out@GRAD"}, 
+      {}, 
+      {"X@GRAD"});
 }
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(rrelu, phi::RReluOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(rrelu_grad, phi::RReluGradGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(rrelu_grad, phi::RReluGradOpArgumentMapping);
