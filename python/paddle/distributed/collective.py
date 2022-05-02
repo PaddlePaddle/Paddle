@@ -350,18 +350,19 @@ def new_group(ranks=None, backend=None):
         global _default_group_name
         gid = _new_ring_id()
         group_name = _default_group_name + str(gid)
-        global_group = _get_default_group()
-        global_rank = global_group.rank
-        global_ranks = global_group.ranks
-        backend = _default_backend if backend is None else backend
-        if ranks is None:
-            ranks = global_ranks
-        assert len(ranks) <= len(global_ranks), (
-            "Size of new group must be less than or "
-            "equal to that of the default global group.")
+        if ranks is None or len(ranks) > 1:
+            global_group = _get_default_group()
+            global_rank = global_group.rank
+            global_ranks = global_group.ranks
+            backend = _default_backend if backend is None else backend
+            if ranks is None:
+                ranks = global_ranks
+            assert len(ranks) <= len(global_ranks), (
+                "Size of new group must be less than or "
+                "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if global_rank in ranks and size > 1:
+        if size > 1 and global_rank in ranks:
             rank = ranks.index(global_rank)
             pg = _new_process_group_impl(
                 backend,
@@ -642,6 +643,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
@@ -744,6 +747,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group
