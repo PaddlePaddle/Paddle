@@ -278,6 +278,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_increment',
     'test_index_sample_op',
     'test_index_select_op',
+    'test_index_fill_op',
     'test_infer_no_need_buffer_slots',
     'test_inference_model_io',
     'test_initializer',
