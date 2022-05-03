@@ -459,15 +459,6 @@
     func : cumsum
   backward : cumsum_grad
 
-- api : logcumsumexp
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumInferMeta
-  kernel :
-    func : logcumsumexp
-  backward : logcumsumexp_grad
-
 - api : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
   output : Tensor(out)
@@ -1198,6 +1189,15 @@
   kernel :
     func : log_softmax
   backward : log_softmax_grad
+
+- api : logcumsumexp
+  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(out)
+  infer_meta :
+    func : CumInferMeta
+  kernel :
+    func : logcumsumexp
+  backward : logcumsumexp_grad
 
 # logical_and
 - api : logical_and

@@ -25,9 +25,12 @@ from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
-def np_logcumsumexp(x: np.ndarray, axis: Optional[int]=None, reverse: bool=False, exclusive: bool=False):
+def np_logcumsumexp(x: np.ndarray,
+                    axis: Optional[int]=None,
+                    reverse: bool=False,
+                    exclusive: bool=False):
     x = np.copy(x)
-    
+
     if axis is None:
         x = x.flatten()
         axis = 0
@@ -98,7 +101,11 @@ class TestLogcumsumexpOp(unittest.TestCase):
             exe.run(fluid.default_startup_program())
             out = exe.run(feed={'X': data_np},
                           fetch_list=[
-                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y.name,
+                              y2.name,
+                              y3.name,
+                              y4.name,
+                              y5.name,
                           ])
 
             z = np_logcumsumexp(data_np)
@@ -144,10 +151,7 @@ class TestLogcumsumexpOp(unittest.TestCase):
                 place = fluid.CUDAPlace(0)
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
-                out = exe.run(feed={'X': data_np},
-                              fetch_list=[
-                                  y.name
-                              ])
+                out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
 
 
 if __name__ == '__main__':

@@ -146,7 +146,8 @@ void CumsumKernel(const Context& dev_ctx,
       dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
 }
 
-// Copied from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/scan_ops.h
+// Copied from
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/scan_ops.h
 template <typename T>
 struct LogSumExp {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T operator()(const T& a,
@@ -268,9 +269,5 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(logcumsumexp,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LogcumsumexpKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    logcumsumexp, CPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
