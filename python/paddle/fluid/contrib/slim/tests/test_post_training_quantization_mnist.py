@@ -408,8 +408,8 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
             onnx_format=onnx_format)
 
 
-class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
-    def test_post_training_avg(self):
+class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
+    def test_post_training_avg_skip_op(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
