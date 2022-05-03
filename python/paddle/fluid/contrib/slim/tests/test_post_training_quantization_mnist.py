@@ -118,7 +118,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  batch_size=10,
                                  batch_nums=10,
                                  onnx_format=False,
-                                 skip_op_list=None):
+                                 skip_tensor_list=None):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -137,7 +137,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             is_full_quantize=is_full_quantize,
             optimize_model=is_optimize_model,
             onnx_format=onnx_format,
-            skip_op_list=skip_op_list,
+            skip_tensor_list=skip_tensor_list,
             is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model_path)
@@ -157,7 +157,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  infer_iterations=10,
                  quant_iterations=5,
                  onnx_format=False,
-                 skip_op_list=None):
+                 skip_tensor_list=None):
 
         origin_model_path = self.download_model(data_url, data_md5, model_name)
         origin_model_path = os.path.join(origin_model_path, model_name)
@@ -172,7 +172,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.generate_quantized_model(
             origin_model_path, algo, round_type, quantizable_op_type,
             is_full_quantize, is_use_cache_file, is_optimize_model, batch_size,
-            quant_iterations, onnx_format, skip_op_list)
+            quant_iterations, onnx_format, skip_tensor_list)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model_name, infer_iterations * batch_size))
@@ -423,7 +423,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        skip_op_list = ["fc_0.w_0"]
+        skip_tensor_list = ["fc_0.w_0"]
         self.run_test(
             model_name,
             data_url,
@@ -438,7 +438,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
             batch_size,
             infer_iterations,
             quant_iterations,
-            skip_op_list=skip_op_list)
+            skip_tensor_list=skip_tensor_list)
 
 
 if __name__ == '__main__':
