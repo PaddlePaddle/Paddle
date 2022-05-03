@@ -88,20 +88,20 @@ class TestOptimizer(unittest.TestCase):
 
             np_neg_ones = np.ones(w_shape) * -1
             asgd.step()
-            assert np.array_equal(model._w.numpy(), np_neg_ones)
-            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones)
+            assert np.allclose(model._w.numpy(), np_neg_ones)
+            assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones)
             asgd.step()
-            assert np.array_equal(model._w.numpy(), np_neg_ones * 2)
-            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 2)
+            assert np.allclose(model._w.numpy(), np_neg_ones * 2)
+            assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 2)
             asgd.step()
-            assert np.array_equal(model._w.numpy(), np_neg_ones * 3)
-            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3)
+            assert np.allclose(model._w.numpy(), np_neg_ones * 3)
+            assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3)
             asgd.step()
-            assert np.array_equal(model._w.numpy(), np_neg_ones * 4)
-            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3.5)
+            assert np.allclose(model._w.numpy(), np_neg_ones * 4)
+            assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 3.5)
             asgd.step()
-            assert np.array_equal(model._w.numpy(), np_neg_ones * 5)
-            assert np.array_equal(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 4)
+            assert np.allclose(model._w.numpy(), np_neg_ones * 5)
+            assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 4)
 
 
 class TestOptimizerBackwardApplygrad(unittest.TestCase):
