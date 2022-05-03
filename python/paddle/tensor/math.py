@@ -4260,18 +4260,19 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
         if in_dygraph_mode():
-            input_back = input_front = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
                                             [])
         else:
             input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
-            op = getattr(_C_ops, "logical_xor")
-            out = op(input_back, input_front)
+            if in_dygraph_mode():
+                return _C_ops.final_state_logical_xor(input_back, input_front)
+            else:
+                return _C_ops.logical_xor(input_back, input_front)
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
-        return out
+            return elementwise_sub(input_back, input_front, axis=axis)
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')

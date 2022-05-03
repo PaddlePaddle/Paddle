@@ -346,10 +346,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
         for (auto t : inputs_tensor[i]) {
           grad_node->SetGradOutMeta(*t, i);
         }
-        grad_node->AddEdges(&inputs_autograd_meta[i], i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
-        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
       }
     }
 
