@@ -17,7 +17,7 @@
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
-#include "paddle/phi/kernels/cumsum_kernel.h"
+#include "paddle/phi/kernels/cum_kernel.h"
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
