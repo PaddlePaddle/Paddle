@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -599,29 +599,16 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
             #   [-1.3766339   6.          7.         -2.3465784 ]
             #   [ 6.          7.          8.          9.        ]]]]
     """
-    if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
-                                 'rrelu')
-
-    if not isinstance(lower, float) or not isinstance(upper, float):
+    if not isinstance(lower, (float, int)) or not isinstance(upper, (float, int)):
         raise TypeError(
-            "The lower and upper values must be float type. Received: lower {}, upper {}.".
+            "The lower and upper values must be float or int type. Received: lower {}, upper {}.".
             format(lower, upper))
 
-    if lower < 0 or lower > 1:
+    if lower < 0 or upper < lower or upper > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".
-            format(lower))
-
-    if upper < lower:
-        raise ValueError(
-            "The upper value must be greater than lower value. Received: lower {}, upper {}.".
+            "The lower and upper values must be in the range [0.0, 1.0] and upper must be greater "
+            " than or equal to lower. Received: lower={}, upper={}.".
             format(lower, upper))
-
-    if upper > 1:
-        raise ValueError(
-            "The upper value must be no greater than one. Received: {}.".format(
-                upper))
 
     is_test = not training
     seed = None
@@ -633,6 +620,8 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
                                   is_test, 'fix_seed', seed is not None, 'seed',
                                   seed if seed is not None else 0)
         return out
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
 
     def get_attrs(prog, lower, upper, is_test, seed):
         if (seed is None or seed == 0) and prog.random_seed != 0:
