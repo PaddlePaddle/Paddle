@@ -112,6 +112,7 @@ class SparseFcOpConverter : public OpConverter {
       w_name = "W";
       i_name = "Input";
     }
+    std::cout << "output name: " << output_name << std::endl;
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     auto x_dim = X->getDimensions();
@@ -224,6 +225,7 @@ class SparseFcOpConverter : public OpConverter {
     if (op_desc.HasAttr("transpose_Y")) {
       transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
     }
+    transpose_y = true;
     int weight_w, weight_h;
     if (!transpose_y) {
       std::vector<float> weight_data_tmp;

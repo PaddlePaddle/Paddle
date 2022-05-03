@@ -558,14 +558,14 @@ void SpmmPluginDynamic::configurePlugin(
     PADDLE_ENFORCE_EQ(inDims0.d[4], 1, platform::errors::InvalidArgument(
                                            "inDims0.d[4] should be 1"));
     const int BS = inputs->max.d[0];
-
+    const int Seq = inputs->max.d[1];
     // The optimal algorighm id is for m = m_max_
     // To Do: configurePlugin takes time when m is changed
     if (is_configured_) {
       return;
     }
 
-    m_max_ = BS;
+    m_max_ = BS * Seq;
     if (has_bias_) {
       if (inputs->desc.type == nvinfer1::DataType::kINT8) {
         for (int i = 0; i < out_dim_; ++i) {
