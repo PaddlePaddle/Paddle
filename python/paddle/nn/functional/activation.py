@@ -629,7 +629,7 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
     if _in_legacy_dygraph():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+        out, mask = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
                                   is_test, 'fix_seed', seed is not None, 'seed',
                                   seed if seed is not None else 0)
         return out
@@ -648,14 +648,14 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
 
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
-    noise = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mask = helper.create_variable_for_type_inference(dtype=x.dtype)
     attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
 
     helper.append_op(
         type='rrelu',
         inputs={"X": x},
         outputs={"Out": out,
-                 "Noise": noise},
+                 "Mask": mask},
         attrs=attrs)
     return out
 
