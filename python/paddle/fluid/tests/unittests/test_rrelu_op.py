@@ -394,8 +394,8 @@ class TestRReluOpInference2(TestRReluOpInference):
         self.seed = 198
         self.dtype = "float64"
         self.x_shape = [20, 10]
-        self.x_low = -99999
-        self.x_high = -1000
+        self.x_low = -9
+        self.x_high = -1
         self.init()
 
 
@@ -407,9 +407,9 @@ class TestRReluOpInference3(TestRReluOpInference):
         self.fix_seed = False
         self.seed = 198
         self.dtype = "float16"
-        self.x_shape = [2, 10]
+        self.x_shape = [2, 100]
         self.x_low = -9
-        self.x_high = 1000
+        self.x_high = 10
         self.init()
 
 
@@ -460,8 +460,8 @@ class TestRReluOpTraining2(TestRReluOpTraining):
         self.lower = 0.897
         self.fix_seed = True
         self.seed = 123
-        self.dtype = "float32"
-        self.x_shape = [3, 4, 5]
+        self.dtype = "float64"
+        self.x_shape = [11, 4, 5]
         self.x_low = -10
         self.x_high = 10
         self.init()
@@ -473,9 +473,9 @@ class TestRReluOpTraining3(TestRReluOpTraining):
         self.lower = 0.0786
         self.fix_seed = False
         self.seed = 123
-        self.dtype = "float32"
+        self.dtype = "float64"
         self.x_shape = [2, 3, 4, 5]
-        self.x_low = -10000
+        self.x_low = -100
         self.x_high = 10
         self.init()
 
@@ -483,13 +483,13 @@ class TestRReluOpTraining3(TestRReluOpTraining):
 class TestRReluOp(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.inputs = {'X': np.random.random((32, 64)).astype("float64")}
         self.attrs = {
             'lower': 0.0, 'upper': 0.8, 
             'fix_seed': False, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64)).astype("float32")
+            'Mask': np.ones((32, 64)).astype("float64")
         }    
 
     def test_check_output(self):
@@ -502,13 +502,13 @@ class TestRReluOp(OpTest):
 class TestRReluOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
-        self.inputs = {'X': np.random.random((2000, )).astype("float32")}
+        self.inputs = {'X': np.random.random((2000, )).astype("float64")}
         self.attrs = {
             'lower': 0.2, 'upper': 0.7,
             'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((2000)).astype('float32')
+            'Mask': np.ones((2000)).astype('float64')
         }
 
     def test_check_output(self):
@@ -521,26 +521,26 @@ class TestRReluOpInput1d(OpTest):
 class TestRReluOp2(TestRReluOp):
     def setUp(self):
         self.op_type = "rrelu"
-        self.inputs = {'X': np.random.uniform(-100, -10, [2, 3, 4]).astype('float32')}
+        self.inputs = {'X': np.random.uniform(-100, -10, [19, 3, 4]).astype('float64')}
         self.attrs = {
             'lower': 0, 'upper': 0,
             'fix_seed': True, 'is_test': False}
         self.outputs = {
-            'Out': np.zeros([2, 3, 4]).astype('float32'),
-            'Mask': np.zeros([2, 3, 4]).astype('float32')
+            'Out': np.zeros([19, 3, 4]).astype('float64'),
+            'Mask': np.zeros([19, 3, 4]).astype('float64')
         }
 
 
 class TestRReluOp3(TestRReluOp):
     def setUp(self):
         self.op_type = "rrelu"
-        self.inputs = {'X': np.random.uniform(-10, 10, [2, 3, 4]).astype('float32')}
+        self.inputs = {'X': np.random.uniform(-10, 10, [2, 30, 4]).astype('float64')}
         self.attrs = {
             'lower': 1, 'upper': 1,
             'fix_seed': False, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones([2, 3, 4]).astype('float32')
+            'Mask': np.ones([2, 30, 4]).astype('float64')
         }
 
 
