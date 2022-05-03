@@ -406,11 +406,14 @@ class TestRReluOpInference3(TestRReluOpInference):
         self.upper = 0.99
         self.fix_seed = False
         self.seed = 198
-        self.dtype = "float16"
+        self.dtype = "float32"
         self.x_shape = [2, 100]
         self.x_low = -9
         self.x_high = 10
         self.init()
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
 
 
 class TestRReluOpTraining(OpTest):
