@@ -393,7 +393,7 @@ class TestRReluOpInference2(TestRReluOpInference):
         self.fix_seed = True
         self.seed = 198
         self.dtype = "float64"
-        self.x_shape = [20, 100]
+        self.x_shape = [20, 10]
         self.x_low = -99999
         self.x_high = -1000
         self.init()
@@ -407,7 +407,7 @@ class TestRReluOpInference3(TestRReluOpInference):
         self.fix_seed = False
         self.seed = 198
         self.dtype = "float16"
-        self.x_shape = [200, 100]
+        self.x_shape = [2, 10]
         self.x_low = -9
         self.x_high = 1000
         self.init()
@@ -461,7 +461,7 @@ class TestRReluOpTraining2(TestRReluOpTraining):
         self.fix_seed = True
         self.seed = 123
         self.dtype = "float32"
-        self.x_shape = [200, 300, 4, 5]
+        self.x_shape = [3, 4, 5]
         self.x_low = -10
         self.x_high = 10
         self.init()
@@ -474,99 +474,80 @@ class TestRReluOpTraining3(TestRReluOpTraining):
         self.fix_seed = False
         self.seed = 123
         self.dtype = "float32"
-        self.x_shape = [20, 30, 40, 50]
+        self.x_shape = [2, 3, 4, 5]
         self.x_low = -10000
         self.x_high = 10
         self.init()
+
+
+class TestRReluOp(OpTest):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'lower': 0.0, 'upper': 0.8, 
+            'fix_seed': False, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64)).astype("float32")
+        }    
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestRReluOpInput1d(OpTest):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.inputs = {'X': np.random.random((2000, )).astype("float32")}
+        self.attrs = {
+            'lower': 0.2, 'upper': 0.7,
+            'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((2000)).astype('float32')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestRReluOp2(TestRReluOp):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.inputs = {'X': np.random.uniform(-100, -10, [2, 3, 4]).astype('float32')}
+        self.attrs = {
+            'lower': 0, 'upper': 0,
+            'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': np.zeros([2, 3, 4]).astype('float32'),
+            'Mask': np.zeros([2, 3, 4]).astype('float32')
+        }
+
+
+class TestRReluOp3(TestRReluOp):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.inputs = {'X': np.random.uniform(-10, 10, [2, 3, 4]).astype('float32')}
+        self.attrs = {
+            'lower': 1, 'upper': 1,
+            'fix_seed': False, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones([2, 3, 4]).astype('float32')
+        }
 
 
 if __name__ == '__main__':
     # paddle.enable_static()
     unittest.main()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class TestRReluOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "rrelu"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64)).astype('uint8')
-#         }    
-
-#     def test_check_output(self):
-#         self.check_output()
-
-#     def test_check_grad_normal(self):
-#         self.check_grad(['X'], 'Out')
-
-
-# class TestDropoutOpInput1d(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.inputs = {'X': np.random.random((2000, )).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((2000)).astype('uint8')
-#         }
-
-#     def test_check_output(self):
-#         self.check_output()
-
-#     def test_check_grad_normal(self):
-#         self.check_grad(['X'], 'Out')
-
-
-# class TestDropoutOp2(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': np.zeros((32, 64)).astype('float32'),
-#             'Mask': np.zeros((32, 64)).astype('uint8')
-#         }
-
-
-# class TestDropoutOp3(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64, 2)).astype('uint8')
-#         }
-
-
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestDropoutOp4(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
-#         self.outputs = {
-#             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-#         }
-
-#     def test_check_output(self):
-#         self.check_output()
 
 
 # @skip_check_grad_ci(reason="For inference, check_grad is not required.")
