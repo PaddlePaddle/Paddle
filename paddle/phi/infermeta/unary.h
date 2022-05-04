@@ -80,6 +80,10 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out);
+
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
@@ -431,7 +435,7 @@ void UnStackInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> outs);
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out);

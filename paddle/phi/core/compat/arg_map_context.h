@@ -80,9 +80,9 @@ struct KernelSignature {
 
   KernelSignature& operator=(KernelSignature&& other) noexcept {
     name = other.name;
-    input_names.swap(other.input_names);
-    attr_names.swap(other.attr_names);
-    output_names.swap(other.output_names);
+    input_names = std::move(other.input_names);
+    attr_names = std::move(other.attr_names);
+    output_names = std::move(other.output_names);
     return *this;
   }
 };
