@@ -463,12 +463,6 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomRotation([1, 2, 3])
 
         with self.assertRaises(ValueError):
-            transforms.RandomPerspective(prob=0.5)
-
-        with self.assertRaises(ValueError):
-            transforms.RandomPerspective(prob=1.0, distortion_scale=0.9)
-
-        with self.assertRaises(ValueError):
             trans_gray = transforms.Grayscale(5)
             fake_img = self.create_image((100, 120, 3))
             trans_gray(fake_img)

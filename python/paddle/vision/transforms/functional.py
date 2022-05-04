@@ -686,11 +686,11 @@ def perspective(img, startpoints, endpoints, interpolation='bilinear', fill=0):
             'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
-    coeffs = _get_perspective_coeffs(startpoints, endpoints)
-
     if _is_pil_image(img):
+        coeffs = _get_perspective_coeffs(startpoints, endpoints)
         return F_pil.perspective(img, coeffs, interpolation, fill)
     elif _is_tensor_image(img):
+        coeffs = _get_perspective_coeffs(startpoints, endpoints)
         return F_t.perspective(img, coeffs, interpolation, fill)
     else:
         return F_cv2.perspective(img, startpoints, endpoints, interpolation,

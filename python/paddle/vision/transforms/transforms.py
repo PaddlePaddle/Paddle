@@ -1316,6 +1316,29 @@ class RandomPerspective(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC
         fill (sequence or number): Pixel fill value for the area outside the transformed
             image. Default is ``0``. If given a number, the value is used for all bands respectively.
+        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A perspectived image.
+
+    Returns:
+        A callable object of RandomPerspective.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import RandomPerspective
+
+            transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
+
+            fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
+
+            fake_img = transform(fake_img)
+            print(fake_img.size)
     """
 
     def __init__(self,
@@ -1325,6 +1348,11 @@ class RandomPerspective(BaseTransform):
                  fill=0,
                  keys=None):
         super(RandomPerspective, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
+        assert 0 <= distortion_scale <= 1, "distortion_scale must be between 0 and 1"
+        assert interpolation in ['nearest', 'bilinear', 'bicubic']
+        assert isinstance(fill, (numbers.Number, str, list, tuple))
+
         self.prob = prob
         self.distortion_scale = distortion_scale
         self.interpolation = interpolation
