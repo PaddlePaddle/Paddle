@@ -987,9 +987,9 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  //x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  //scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  //bias_grad
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
 
@@ -1001,9 +1001,9 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  //x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  //scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  //bias_grad
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
 
@@ -1016,7 +1016,6 @@ PD_REGISTER_KERNEL(batch_norm_grad_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
-
 #else
 PD_REGISTER_KERNEL(batch_norm_grad_grad,
                    GPU,
