@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class IndexFillOp : public framework::OperatorWithKernel {
+class IndexAddOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -30,12 +30,12 @@ class IndexFillOp : public framework::OperatorWithKernel {
   }
 };
 
-class IndexFillOpMaker : public framework::OpProtoAndCheckerMaker {
+class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
              "(Tensor, default input Tensor<float>), "
-             "the input feature data of IndexFillOp, dtype should be"
+             "the input feature data of IndexAddOp, dtype should be"
              "int32, int64, float16, float32, float64.");
     AddInput("Index",
              "(Tensor, default 1-d Tensor<int>), "
@@ -45,71 +45,70 @@ class IndexFillOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 0), "
                  "the dimension in which we index.")
         .SetDefault(0);
-    AddAttr<float>("fill_value",
-                   "(float, default 0.0f) The value to be filled.")
+    AddAttr<float>("added_value",
+                   "(float, default 0.0f) The value to add.")
         .SetDefault(0.0f);
     AddOutput("Out",
               "(Tensor, default Tensor<float>),"
-              " the output of  IndexFillOp, whose dtype is the same as X.");
+              " the output of  IndexAddOp, whose dtype is the same as X.");
     AddComment(R"DOC(
-                IndexFill operator
-                Fills the elements of the input tensor with value
-                by selecting the indices in the order given in index.
+index_add operator.
+Add the elements of the input tensor with value
+by selecting the indices in the order given in index.
 
-                This operator also supports inplace modification.
+This operator also supports inplace modification.
         )DOC");
   }
 };
 
 template <typename T>
-class IndexFillGradMaker : public framework::SingleGradOpMaker<T> {
+class IndexAddGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("index_fill_grad");
-    op->SetInput("Index", this->Input("Index"));
+    op->SetType("index_add_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
   }
 };
 
-class IndexFillGradOp : public framework::OperatorWithKernel {
+class IndexAddGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(
+          ctx, framework::GradVarName("Out")), ctx.GetPlace());
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(IndexFillInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(IndexFillGradInplaceInferer,
+DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexFillGradNoNeedBufferVarsInferer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(index_fill, IndexFillInferShapeFunctor,
-                            PD_INFER_META(phi::IndexFillInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_add, IndexAddInferShapeFunctor,
+                            PD_INFER_META(phi::IndexAddInferMeta));
 
-REGISTER_OPERATOR(index_fill, ops::IndexFillOp, ops::IndexFillOpMaker,
-                  ops::IndexFillGradMaker<paddle::framework::OpDesc>,
-                  ops::IndexFillGradMaker<paddle::imperative::OpBase>,
-                  ops::IndexFillInplaceInferer, IndexFillInferShapeFunctor);
+REGISTER_OPERATOR(index_add, ops::IndexAddOp, ops::IndexAddOpMaker,
+                  ops::IndexAddGradOpMaker<paddle::framework::OpDesc>,
+                  ops::IndexAddGradOpMaker<paddle::imperative::OpBase>,
+                  ops::IndexAddInplaceInferer, IndexAddInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(index_fill_grad, IndexFillGradInferShapeFunctor,
-                            PD_INFER_META(phi::IndexFillGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::IndexAddGradInferMeta));
 
-REGISTER_OPERATOR(index_fill_grad, ops::IndexFillGradOp,
-                  ops::IndexFillGradInplaceInferer,
-                  ops::IndexFillGradNoNeedBufferVarsInferer,
-                  IndexFillGradInferShapeFunctor);
+REGISTER_OPERATOR(index_add_grad, ops::IndexAddGradOp,
+                  ops::IndexAddGradInplaceInferer,
+                  ops::IndexAddGradNoNeedBufferVarsInferer,
+                  IndexAddGradInferShapeFunctor);
