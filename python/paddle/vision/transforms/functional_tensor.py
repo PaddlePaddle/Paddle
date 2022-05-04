@@ -378,7 +378,7 @@ def _perspective_grid(img, coeffs, ow, oh):
         (0, 2, 1)) / paddle.to_tensor([0.5 * ow, 0.5 * oh])
     output_grid1 = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta1)
     output_grid2 = base_grid.reshape(
-        (1, oh * ow, 3)).bmm(theta2.transpose((0, 2, 1)))  #
+        (1, oh * ow, 3)).bmm(theta2.transpose((0, 2, 1)))
 
     output_grid = output_grid1 / output_grid2 - 1.0
     return output_grid.reshape((1, oh, ow, 2))
@@ -386,7 +386,7 @@ def _perspective_grid(img, coeffs, ow, oh):
 
 def perspective(img,
                 coeffs,
-                interpolation="bilinear",
+                interpolation="bicubic",
                 fill=None,
                 data_format='CHW'):
     """Perspective the image.
@@ -395,7 +395,7 @@ def perspective(img,
         img (paddle.Tensor): Image to be rotated.
         coeffs (list[float]): coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set NEAREST . when use pil backend, 
+            image has only one channel, it is set NEAREST. When use pil backend, 
             support method are as following: 
             - "nearest" 
             - "bilinear"

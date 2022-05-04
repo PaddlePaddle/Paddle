@@ -463,6 +463,12 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomRotation([1, 2, 3])
 
         with self.assertRaises(ValueError):
+            transforms.RandomPerspective(prob=0.5)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomPerspective(prob=1.0, distortion_scale=0.9)
+
+        with self.assertRaises(ValueError):
             trans_gray = transforms.Grayscale(5)
             fake_img = self.create_image((100, 120, 3))
             trans_gray(fake_img)
@@ -756,12 +762,15 @@ class TestFunctional(unittest.TestCase):
                                 np.array(rotated_pil_img).shape)
 
     def test_perspective(self):
-        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
-        tensor_img = F.to_tensor(pil_img, data_format='CHW')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
 
-        startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
-        endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+
+        startpoints = [[0, 0], [13, 0], [13, 15], [0, 15]]
+        endpoints = [[3, 2], [12, 3], [10, 14], [2, 15]]
 
         np_perspectived_img = F.perspective(np_img, startpoints, endpoints)
         pil_perspectived_img = F.perspective(pil_img, startpoints, endpoints)
@@ -773,6 +782,15 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np_perspectived_img.shape,
                                 tensor_perspectived_img.transpose(
                                     (1, 2, 0)).shape)
+
+        result_pil = np.array(pil_perspectived_img)
+        result_tensor = tensor_perspectived_img.numpy().transpose(
+            (1, 2, 0)).astype('uint8')
+        num_diff_pixels = (result_pil != result_tensor).sum() / 3.0
+        ratio_diff_pixels = num_diff_pixels / result_tensor.shape[
+            0] / result_tensor.shape[1]
+        # Tolerance : less than 6% of different pixels
+        assert ratio_diff_pixels < 0.06
 
 
 if __name__ == '__main__':
