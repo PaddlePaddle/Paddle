@@ -29,92 +29,48 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         config.enable_quantizer()
         bsz = 1
         config.quantizer_config().set_quant_batch_size(bsz)
-        minputs = fluid.create_lod_tensor(
-            np.random.rand(bsz, 1, 1, 1).astype('float32'), [[1] * bsz],
-            fluid.CPUPlace())
         infer_data = fluid.core.PaddleTensor()
-        infer_data.data = fluid.core.PaddleBuf(np.array(minputs))
-        infer_data.lod = minputs.lod()
-        infer_data.shape = minputs.shape()
+        infer_data.name = "data"
+        arr = np.ndarray([1, 1, 1, 1], dtype=np.float32)
+        infer_data.lod = [[1]]
+        infer_data.data = fluid.core.PaddleBuf(arr)
+        infer_data.shape = arr.shape
         infer_data.dtype = fluid.core.PaddleDType.FLOAT32
         warmup_data = [infer_data]
+        print("warmup_data:", infer_data.data.float_data())
         print("warmup data type:", type(warmup_data[0]))
         config.quantizer_config().set_quant_data(warmup_data)
 
         config.switch_use_feed_fetch_ops(True)
-        predictor = fluid.core.create_paddle_predictor(config)
-        predictor.run(warmup_data)
 
         config.pass_builder().append_pass("params_to_int8_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
-        paddings = prog_config.ops[0].attrs["paddings"]
-        strides = prog_config.ops[0].attrs["strides"]
-        groups = prog_config.ops[0].attrs["groups"]
-        padding_algorithm = prog_config.ops[0].attrs["padding_algorithm"]
-        dilations = prog_config.ops[0].attrs["dilations"]
-        data_format = prog_config.ops[0].attrs["data_format"]
-        filter_shape = prog_config.weights["filter"].shape
-        input_shape = prog_config.inputs["input_x"].shape
-        if padding_algorithm == "VALID":
-            if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-               ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
-                return False
-        if padding_algorithm == "EXPLICIT":
-            if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-               ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
-                return False
-        if data_format == "NCHW":
-            if input_shape[1] != filter_shape[1] * groups:
-                return False
-            if filter_shape[0] % groups != 0:
-                return False
-        else:
-            if input_shape[3] != filter_shape[1] * groups:
-                return False
-            if filter_shape[0] % groups != 0:
-                return False
         return True
 
     def sample_program_config(self, draw):
-        x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=1), min_size=4, max_size=4))
-        x_shape[1] = draw(st.integers(min_value=1, max_value=1))
+        x_shape = [1, 1, 1, 4]
 
-        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+        data_format = "NCHW"
 
-        f_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=1), min_size=4, max_size=4))
+        f_shape = [1, 1, 1, 1]
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:
             f_shape[1] = x_shape[3]
 
-        strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+        strides = [1, 1]
 
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = "EXPLICIT"
 
-        padding = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=4, max_size=4))
+        padding = [0, 0, 0, 0]
 
-        groups = draw(st.integers(min_value=1, max_value=3))
+        groups = 1
 
-        dilations = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+        dilations = [1, 1]
 
-        has_bias = st.booleans()
+        has_bias = False
 
         def generate_one():
             return np.random.random([1]).astype(np.float32)
@@ -134,7 +90,7 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
             "Activation_scale": generate_one(),
         }
 
-        if draw(has_bias):
+        if has_bias:
             conv_inputs["Bias"] = ["bias"]
             program_weights["bias"] = TensorConfig(shape=f_shape[0])
             attrs["Bias_scales"] = np.random.random(f_shape[0]).astype(
@@ -165,7 +121,7 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=100, passes=["params_to_int8_pass"])
+            quant=False, max_examples=1, passes=["params_to_int8_pass"])
 
 
 if __name__ == "__main__":
