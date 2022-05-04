@@ -53,5 +53,6 @@ PD_REGISTER_KERNEL(rrelu,
                    ALL_LAYOUT,
                    phi::RReluKernel,
                    float,
+                   double,
                    phi::dtype::float16,
-                   double) {}
+                   phi::dtype::bfloat16) {}

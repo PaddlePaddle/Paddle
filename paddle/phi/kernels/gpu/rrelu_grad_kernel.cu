@@ -37,5 +37,6 @@ PD_REGISTER_KERNEL(rrelu_grad,
                    ALL_LAYOUT,
                    phi::RReluGradKernel,
                    float,
+                   double,
                    phi::dtype::float16,
-                   double) {}                  
+                   phi::dtype::bfloat16) {}                  
