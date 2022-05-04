@@ -144,6 +144,14 @@ class RecordedGpuMallocHelper {
     if (NeedRecord()) {
       mtx_.reset(new std::mutex());
     }
+
+#ifdef PADDLE_WITH_TESTING
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      // A fake UPDATE to trigger the construction of memory stat instances,
+      // make sure that they are destructed after RecordedGpuMallocHelper.
+      MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
+    }
+#endif
   }
 
   DISABLE_COPY_AND_ASSIGN(RecordedGpuMallocHelper);
@@ -153,12 +161,14 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_TESTING
     if (FLAGS_enable_gpu_memory_usage_log) {
       std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : "
-                << peak_size_ << std::endl;
+                << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) << std::endl;
     }
 #endif
   }
 
   static RecordedGpuMallocHelper *Instance(int dev_id) {
+    static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
+
     std::call_once(once_flag_, [] {
       int dev_cnt = GetGPUDeviceCount();
       instances_.reserve(dev_cnt);
@@ -216,7 +226,6 @@ class RecordedGpuMallocHelper {
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
-      peak_size_ = std::max(cur_size_.load(), peak_size_);
 #endif
 
       return gpuSuccess;
@@ -339,19 +348,15 @@ class RecordedGpuMallocHelper {
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
-  uint64_t peak_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
 
   static std::once_flag once_flag_;
-  static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
 
   std::set<void *> gpu_ptrs;  // just for testing
 };                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
-std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
-    RecordedGpuMallocHelper::instances_;
 
 gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
                              bool malloc_managed_memory) {
