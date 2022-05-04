@@ -216,6 +216,7 @@ class TestImperativeQatONNXFormat(unittest.TestCase):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
         self.diff_threshold = 0.025
+        self.fuse_conv_bn = False
 
 
 if __name__ == '__main__':
