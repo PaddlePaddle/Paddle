@@ -21,11 +21,13 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestKronOp(OpTest):
     def setUp(self):
         self.op_type = "kron"
+        self.python_api = paddle.kron
         self.dtype = self._init_dtype()
         x = np.random.uniform(size=(10, 10)).astype(self.dtype)
         y = np.random.uniform(size=(10, 10)).astype(self.dtype)
@@ -37,21 +39,22 @@ class TestKronOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
+        self.check_grad(['Y'], 'Out', no_grad_set=set('X'), check_eager=True)
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
 
 
 class TestKronOp2(TestKronOp):
     def setUp(self):
         self.op_type = "kron"
+        self.python_api = paddle.kron
         self.dtype = self._init_dtype()
         x = np.random.uniform(size=(5, 5, 4)).astype(self.dtype)
         y = np.random.uniform(size=(10, 10)).astype(self.dtype)
@@ -63,6 +66,7 @@ class TestKronOp2(TestKronOp):
 class TestKronOp3(TestKronOp):
     def setUp(self):
         self.op_type = "kron"
+        self.python_api = paddle.kron
         self.dtype = self._init_dtype()
         x = np.random.uniform(size=(10, 10)).astype(self.dtype)
         y = np.random.uniform(size=(5, 5, 4)).astype(self.dtype)
@@ -101,10 +105,16 @@ class TestKronLayer(unittest.TestCase):
         c, = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(c, np.kron(a, b))
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_case()
+            self.test_case_with_output()
+
 
 class TestComplexKronOp(OpTest):
     def setUp(self):
         self.op_type = "kron"
+        self.python_api = paddle.kron
         self.x_shape = np.array([10, 10])
         self.y_shape = np.array([3, 35])
         self.out_shape = self.x_shape * self.y_shape
@@ -160,14 +170,15 @@ class TestComplexKronOp(OpTest):
         return grad_y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -175,7 +186,8 @@ class TestComplexKronOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
@@ -183,7 +195,8 @@ class TestComplexKronOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestKronOpTypePromotion(TestComplexKronOp):

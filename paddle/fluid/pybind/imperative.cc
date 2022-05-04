@@ -60,6 +60,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/type_defs.h"
+#include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
 namespace pybind {
@@ -2035,14 +2036,23 @@ void BindImperative(py::module *m_ptr) {
              auto ins_map = ConvertToNameTensorMap(ins);
              auto outs_map = ConvertToNameTensorMap(outs);
              {
-               auto to_vector = [](paddle::SmallVector<std::string> &vec) {
-                 return std::vector<std::string>(vec.begin(), vec.end());
-               };
+               auto input_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto output_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto attr_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
                auto ret = self.GetExpectedKernelSignature(type, ins_map,
                                                           outs_map, attrs);
-               auto kernelsig_ins = to_vector(std::get<0>(ret.args));
-               auto kernelsig_attrs = to_vector(std::get<1>(ret.args));
-               auto kernelsig_outs = to_vector(std::get<2>(ret.args));
+               auto kernelsig_ins = input_to_vector(ret.input_names);
+               auto kernelsig_attrs = attr_to_vector(ret.attr_names);
+               auto kernelsig_outs = output_to_vector(ret.output_names);
                return std::make_tuple(kernelsig_ins, kernelsig_attrs,
                                       kernelsig_outs);
              }
@@ -2182,6 +2192,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
@@ -2338,6 +2349,11 @@ void BindImperative(py::module *m_ptr) {
         });
   m.def("pylayer_apply",
         [](const platform::MLUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+  m.def("pylayer_apply",
+        [](const platform::CustomPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });

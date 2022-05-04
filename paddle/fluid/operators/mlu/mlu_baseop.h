@@ -45,6 +45,22 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
+const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
+    {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
+    {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
+    {"reduce_min", CNNL_REDUCE_MIN},  {"reduce_sum", CNNL_REDUCE_ADD},
+    {"reduce_prod", CNNL_REDUCE_MUL},
+};
+
+inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
+  auto iter = MLUReduceOpMap.find(reduce_name);
+  if (iter != MLUReduceOpMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
@@ -218,6 +234,9 @@ class MLUCnnlActivationDesc {
   MLUCnnlActivationDesc(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc& operator=(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof);
+  MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof,
+                        const float sliced_dim, const float selu_alpha,
+                        const float selu_lambda);
 
   const cnnlActivationDescriptor_t get() const;
   ~MLUCnnlActivationDesc();
@@ -254,13 +273,18 @@ class MLUCnnlPoolingDesc {
 
 class MLUCnnlRandomGeneratorDesc {
  public:
-  MLUCnnlRandomGeneratorDesc(const bool is_mlu200, const int seed);
+  MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
+  Tensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
+  Tensor mlu_state;
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
+
+const std::shared_ptr<MLUCnnlRandomGeneratorDesc>& GetMLURandomGenerator(
+    const ExecutionContext& ctx, const int64_t device_id, const int seed);
 
 class MLUCnnlReduceDesc {
  public:
@@ -418,7 +442,8 @@ class MLUCnnl {
                   const cnnlTensorDescriptor_t in1_desc, const void* in1,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void Fill(const ExecutionContext& ctx, float value,
+  static void Fill(const ExecutionContext& ctx,
+                   const cnnlPointerMode_t pointer_mode, const void* value_ptr,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void LRN(const ExecutionContext& ctx, const int local_size,
@@ -517,7 +542,13 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            const float min, const float max, void* output);
+                            void* mlu_state, void* output);
+
+  static void FusedDropout(
+      const ExecutionContext& ctx, const cnnlRandGenerator_t generator,
+      const cnnlTensorDescriptor_t input_desc, const void* input, const float p,
+      void* state, const cnnlTensorDescriptor_t mask_desc, const void* mask,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -689,6 +720,10 @@ class MLUCnnl {
       const void* in0, const cnnlTensorDescriptor_t in1_desc, const void* in1,
       const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void MulAx(const ExecutionContext& ctx,
+                    const cnnlTensorDescriptor_t alpha_desc, const void* alpha,
+                    const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void OpTensor(const ExecutionContext& ctx,
                        const cnnlOpTensorDescriptor_t op_tensor_desc,
                        const cnnlTensorDescriptor_t a_desc, const void* a,
@@ -735,6 +770,13 @@ class MLUCnnl {
                              const void* input, const void* beta,
                              const cnnlTensorDescriptor_t output_desc,
                              void* output);
+
+  static void SoftmaxBackward(
+      const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+      cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc,
+      const void* y, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
 
   static void Softplus(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t features_desc,

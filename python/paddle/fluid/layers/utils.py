@@ -21,6 +21,10 @@ from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -74,8 +78,7 @@ def is_sequence(seq):
     """
     if isinstance(seq, dict):
         return True
-    return (isinstance(seq, collections.Sequence) and
-            not isinstance(seq, six.string_types))
+    return (isinstance(seq, Sequence) and not isinstance(seq, six.string_types))
 
 
 def _hash_with_id(*args):
@@ -148,7 +151,7 @@ def _sequence_like(instance, args):
         return type(instance)((key, result[key])
                               for key in six.iterkeys(instance))
     elif (isinstance(instance, tuple) and hasattr(instance, "_fields") and
-          isinstance(instance._fields, collections.Sequence) and
+          isinstance(instance._fields, Sequence) and
           all(isinstance(f, six.string_types) for f in instance._fields)):
         # This is a namedtuple
         return type(instance)(*args)

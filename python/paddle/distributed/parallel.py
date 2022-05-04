@@ -30,6 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.distributed import collective
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
@@ -218,8 +219,9 @@ def init_parallel_env():
             "required to create a process group.")
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
-        endpoints = None
-        if not master_addr or not master_port:
+        endpoints = ":".join(
+            [master_addr, master_port]) if master_addr and master_port else None
+        if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
             endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]

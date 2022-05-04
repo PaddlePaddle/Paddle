@@ -69,7 +69,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
                             "the same Tensors."));
     }
 
-    auto mu = ctx.Attr<float>("mu");
+    auto mu = static_cast<T>(ctx.Attr<float>("mu"));
     auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
@@ -114,14 +114,15 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
 
     Tensor mu_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
-    MLUCnnl::Fill(ctx, mu, mu_tensor_desc.get(), GetBasePtr(&mu_tensor));
+    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &mu, mu_tensor_desc.get(),
+                  GetBasePtr(&mu_tensor));
 
     for (size_t idx = 0; idx < n; ++idx) {
-      RegularizationType regularization_flag =
+      phi::RegularizationType regularization_flag =
           regularization_methods.size() > 0 &&
                   regularization_methods[idx] == "l2_decay"
-              ? RegularizationType::kL2DECAY
-              : RegularizationType::kNONE;
+              ? phi::RegularizationType::kL2DECAY
+              : phi::RegularizationType::kNONE;
       T regularization_coeff = static_cast<T>(0.0);
       if (regularization_coeffs.size() != 0) {
         regularization_coeff = static_cast<T>(regularization_coeffs[idx]);
@@ -134,7 +135,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
       auto grad = grads[idx];
       Tensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param_out);
-      if (regularization_flag == RegularizationType::kL2DECAY) {
+      if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
             param_out->dims(), dev_ctx);
         MLUCnnlOpTensorDesc op_tensor_desc(

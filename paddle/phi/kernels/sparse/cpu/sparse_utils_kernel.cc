@@ -256,9 +256,11 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   }
   const int64_t dense_dim = values.dims().size() - 1;
 
-  const auto place = dev_ctx.GetPlace();
   const T* x_data = values.data<T>();
-  T* out_data = out->mutable_data<T>(place);
+  *out = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(x.dtype(), x.dims(), x.non_zero_elements().layout()));
+  T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
@@ -394,3 +396,15 @@ PD_REGISTER_KERNEL(csr_values,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+
+PD_REGISTER_KERNEL(sparse_coo_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseCooTensorKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
