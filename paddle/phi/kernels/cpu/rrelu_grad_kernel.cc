@@ -47,5 +47,4 @@ PD_REGISTER_KERNEL(
     phi::RReluGradKernel, 
     float, 
     double,
-    phi::dtype::float16,
     phi::dtype::bfloat16) {}
