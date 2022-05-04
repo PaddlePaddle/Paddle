@@ -33,6 +33,7 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+// #include "gperftools/profiler.h"
 
 namespace paddle {
 namespace inference {
@@ -304,6 +305,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    //ProfilerStart("tensorrt_engine_op.perf");
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place);
       return;
@@ -384,6 +386,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       }
     }
     RunTrt(scope, dev_place, trt_engine);
+    //ProfilerStop();
   }
 
   void RunCalibration(const framework::Scope &scope,
@@ -469,7 +472,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
-
+    std::map<std::string, std::vector<int>> max_input_shape =
+            engine->max_input_shape();
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
       // convert input and copy to TRT engine's buffer
@@ -531,19 +535,31 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
         
-        if (x=="stack_2.tmp_0") {
-          t_shape = {1,32,1,128};
+        // if (x=="stack_2.tmp_0") {
+        //   t_shape = {1,32,1,81};
+        // }
+        // if (x=="stack_3.tmp_0") {
+        //   t_shape = {1,6,1,81};
+        // }
+        // VLOG(3) << "Set bindings, x=" << x;
+        // for(auto i : t_shape) {
+        //   VLOG(3) << i;
+        // }
+        
+        if(x=="stack_2.tmp_0" || x=="stack_3.tmp_0" || x.rfind("fill_constant_batch", 0) == 0) {
+          // std::vector<int64_t> tmp_shape(max_input_shape[x].begin(),
+          //                                       max_input_shape[x].end());
+          //t_shape = max_input_shape[x];
+          // VLOG(3) << "set bindings, x=" << x << "; shape:";
+          // for(auto i : t_shape) {
+          //   VLOG(3) << i;
+          // }
+          trt_context->setBindingDimensions(
+              bind_index, inference::tensorrt::Vec2TRT_Dims(max_input_shape[x], x, true));
+        } else {
+          trt_context->setBindingDimensions(
+              bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         }
-        if (x=="stack_3.tmp_0") {
-          t_shape = {1,6,1,128};
-        }
-        VLOG(3) << "Set bindings, x=" << x;
-        for(auto i : t_shape) {
-          VLOG(3) << i;
-        }
-
-        trt_context->setBindingDimensions(
-            bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
       }
       runtime_batch = t_shape[0];
@@ -647,6 +663,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
+    // cudaDeviceSynchronize();
+    VLOG(3) << "finish tensorrt engine op.";
+
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,

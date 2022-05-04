@@ -47,7 +47,6 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
 // debuggggg
 PDNode* TransformerDecoderPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
-
   // First path with scale
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_op("mul");
   auto* mul0_w_var = pattern->NewNode(mul0_w_repr())
@@ -461,7 +460,8 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
       Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk, Node* reshape2_qkv, Node* gather_index, Node* k_cache, Node* v_cache) {
+      Node* matmul_qk, Node* reshape2_qkv,
+      Node* k_cache, Node* v_cache, Node* time_step) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -574,7 +574,9 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetInput("KCache", {k_cache->Name()});
     multihead_op_desc.SetInput("VCache", {v_cache->Name()});
     //multihead_op_desc.SetInput("KVCache", {k_cache->Name()});
-    multihead_op_desc.SetInput("GatherIndex", {gather_index->Name()});
+    // multihead_op_desc.SetInput("GatherIndex", {gather_index->Name()});
+    multihead_op_desc.SetInput("TimeStep", {time_step->Name()});
+    VLOG(3) << "set timestep input: " << time_step->Name();
 
 
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
@@ -624,11 +626,11 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     IR_NODE_LINK_TO(eltadd0_b, multihead);
     IR_NODE_LINK_TO(eltadd_qk_b, multihead);
 
-    IR_NODE_LINK_TO(gather_index, multihead);
     IR_NODE_LINK_TO(k_cache, multihead);
     IR_NODE_LINK_TO(v_cache, multihead);
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
+    IR_NODE_LINK_TO(time_step, multihead);
     
   };
 
@@ -728,6 +730,13 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(gather2_out, gather2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gather_index, gather_index, multihead_pattern);
 
+    Node* time_step = nullptr;
+    for (auto* node: g->Nodes()) {
+      if (node->IsOp() && node->Name()=="increment") {
+           time_step = node->outputs[0];
+           VLOG(3) << "find output of increment as time_step";
+      }
+    }
     // If weights or biases in qkv's fc are shared by multiple transformer_decoder
     // patterns, we do not support this kind of fusion, this pass will not take
     // effect.
@@ -741,7 +750,8 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv, gather_index, k_cache_r, v_cache_r);
+                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv,
+                 k_cache_r, v_cache_r, time_step);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,

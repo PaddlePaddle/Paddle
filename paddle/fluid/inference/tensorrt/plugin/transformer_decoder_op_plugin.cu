@@ -46,7 +46,7 @@ namespace plugin {
     int batch_size;
     int num_head;
     // int dim_head;
-    int timestep;  // cache_seq_length
+    const int64_t* timestep;  // cache_seq_length
     int max_seq_length;
   
     // 1.f / sqrt(Dh)
@@ -560,7 +560,7 @@ namespace plugin {
   
     constexpr int WARP_SIZE = 32;
     constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
-  
+    int timestep = static_cast<int>(params.timestep[0]);
     extern __shared__ char smem_[];
   
     float *qk_smem = reinterpret_cast<float *>(smem_);
@@ -620,7 +620,7 @@ namespace plugin {
       int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
       int offset = bhi * params.max_seq_length * Dh +
                    co * params.max_seq_length * QK_ELTS_IN_16B +
-                   params.timestep * QK_ELTS_IN_16B + ci;
+                   timestep * QK_ELTS_IN_16B + ci;
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
   
       float qk = dot<Qk_vec, Qk_vec>(q, k);
@@ -633,10 +633,10 @@ namespace plugin {
       if (tid == 0) {
         // NOTE(wangxi): mask must be 0.0
         // T mask = params.attn_mask[
-        //    bi * (params.timestep + 1) + params.timestep];
+        //    bi * (timestep + 1) + timestep];
         // qk += static_cast<float>(mask);
         qk_max = qk;
-        qk_smem[params.timestep] = qk;
+        qk_smem[timestep] = qk;
       }
     }
     __syncthreads();
@@ -670,14 +670,14 @@ namespace plugin {
     constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
   
     T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
-    int ti_end = div_up(params.timestep, K_PER_WARP) * K_PER_WARP;
+    int ti_end = div_up(timestep, K_PER_WARP) * K_PER_WARP;
   
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
   #pragma unroll
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * params.max_seq_length + ti;
-        if (ti < params.timestep) {
+        if (ti < timestep) {
           k[ii] = *reinterpret_cast<const K_vec *>(&k_cache[jj * QK_ELTS_IN_16B]);
         }
       }
@@ -685,9 +685,9 @@ namespace plugin {
       float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k) * params.inv_sqrt_dh;
   
       // bool is_mask = false;
-      if (ti < params.timestep && tid % THREADS_PER_KEY == 0) {
+      if (ti < timestep && tid % THREADS_PER_KEY == 0) {
         // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
-        T mask = params.attn_mask[bi * (params.timestep + 1) + ti];
+        T mask = params.attn_mask[bi * (timestep + 1) + ti];
         qk += static_cast<float>(mask);
         qk_max = fmaxf(qk_max, qk);
   
@@ -720,14 +720,14 @@ namespace plugin {
   #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     if (bi == 0 && hi == 0 && tid == 0) {
       printf("=======qk_out=======\n");
-      for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
+      for (int i = 0; i <= timestep; ++i) printf("%f ", qk_smem[i]);
       printf("qk_max=%f\n", qk_max);
     }
     __syncthreads();
   #endif
   
     float sum = 0.f;
-    for (int ti = tid; ti <= params.timestep; ti += THREADS_PER_BLOCK) {
+    for (int ti = tid; ti <= timestep; ti += THREADS_PER_BLOCK) {
       // bool is_mask = false;
       // float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
       float logit = __expf(qk_smem[ti] - qk_max);
@@ -739,7 +739,7 @@ namespace plugin {
   
     // FIXME(wangxi): need add 1.e-6f?
     float inv_sum = __fdividef(1.f, sum + 1.e-6f);
-    for (int ti = tid; ti <= params.timestep; ti += THREADS_PER_BLOCK) {
+    for (int ti = tid; ti <= timestep; ti += THREADS_PER_BLOCK) {
       convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
     }
     __syncthreads();
@@ -764,7 +764,7 @@ namespace plugin {
     zero(out);
   
     constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
-    for (int ti = vo; ti < params.timestep; ti += V_PER_ITER) {
+    for (int ti = vo; ti < timestep; ti += V_PER_ITER) {
       V_vec v = *reinterpret_cast<const V_vec *>(&v_cache[ti * Dh]);
   #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
       float logit = logits_smem[ti];
@@ -779,24 +779,24 @@ namespace plugin {
   #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     if (bi == 0 && hi == 0 && tid == 0) {
       printf("======logits_out=====\n");
-      for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
+      for (int i = 0; i <= timestep; ++i) printf("%f ", logits_smem[i]);
       printf("\n");
     }
     __syncthreads();
   #endif
   
-    if (vo == (params.timestep % V_PER_ITER)) {
+    if (vo == (timestep % V_PER_ITER)) {
       V_vec v = *reinterpret_cast<const V_vec *>(
           &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
       V_vec v_bias = *reinterpret_cast<const V_vec *>(
           &params.qkv_bias[2 * params.num_head * Dh + hi * Dh + vi]);
       v = add(v, v_bias);
-      *reinterpret_cast<V_vec *>(&v_cache[params.timestep * Dh]) = v;
+      *reinterpret_cast<V_vec *>(&v_cache[timestep * Dh]) = v;
   
   #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
-      out = fma(logits_smem[params.timestep], cast_to_float(v), out);
+      out = fma(logits_smem[timestep], cast_to_float(v), out);
   #else
-      out = fma(logits_smem[params.timestep], v, out);
+      out = fma(logits_smem[timestep], v, out);
   #endif
     }
   
@@ -846,7 +846,8 @@ namespace plugin {
   inline size_t smem_size_in_bytes(
       const Masked_multihead_attention_params<T> &params, int dim_head,
       int threads_per_value, int threads_per_block) {
-    size_t qk_sz = div_up(params.timestep + 1, 4) * 16;
+    int timestep = 20;
+    size_t qk_sz = div_up(timestep + 1, 4) * 16;
     size_t logits_sz = 0;
   
   #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
@@ -875,20 +876,20 @@ namespace plugin {
   void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                           const cudaStream_t &stream) {
     constexpr int THREADS_PER_VALUE = Dh * sizeof(T) / 16;
-    if (params.timestep < 32) {
+    //if (params.timestep < 32) {
       MMHA_LAUNCH_KERNEL(T, Dh, 4, THREADS_PER_VALUE, 64, stream);
-    } else if (params.timestep < 2048) {
-      MMHA_LAUNCH_KERNEL(T, Dh, 2, THREADS_PER_VALUE, 128, stream);
-    } else {
-      MMHA_LAUNCH_KERNEL(T, Dh, 1, THREADS_PER_VALUE, 256, stream);
-    }
+    // } else if (params.timestep < 2048) {
+    //   MMHA_LAUNCH_KERNEL(T, Dh, 2, THREADS_PER_VALUE, 128, stream);
+    // } else {
+    //   MMHA_LAUNCH_KERNEL(T, Dh, 1, THREADS_PER_VALUE, 256, stream);
+    // }
   }
   
   template <typename T>
   void fmha(cudaStream_t stream, const T *qkv_tensor,
             const T *qkv_bias_tensor, const T *src_mask_tensor,
             T *cache_kv_tensor, T *out_tensor, int batch_size,
-            int max_seq_length, int num_head, int dim_head, int timestep,
+            int max_seq_length, int num_head, int dim_head, const int64_t* timestep,
             float inv_sqrt_dh) {
     Masked_multihead_attention_params<T> params;
     params.out = out_tensor;
@@ -1042,9 +1043,7 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
   auto input_type = input_desc[0].type;
   int bsz = input_dims.d[1];
   int max_seq_len = input_desc[2].dims.d[2]; // debugggg
-  int time_step = input_desc[3].dims.d[0];
   VLOG(3) << "TransformerDecoderPluginDynamic::enqueue ----- ";
-  VLOG(3) << "bsz: " << bsz << "; max_seq_len: " << max_seq_len << "; time_step: " << time_step;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. TransformerDecoderPluginDynamic-->fp32";
     PADDLE_THROW(platform::errors::Fatal(
@@ -1052,10 +1051,15 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. TransformerDecoderPluginDynamic-->fp16";
+
+    int64_t time_step = 0;
+    const int64_t* d_time_step = static_cast<const int64_t *>(inputs[3]);
+    // cudaMemcpy(&time_step, d_time_step, sizeof(int64_t), cudaMemcpyDeviceToHost);
+    // VLOG(3) << "bsz: " << bsz << "; max_seq_len: " << max_seq_len << "; time_step: " << time_step;
+
     const half *qkv_tensor = static_cast<const half *>(inputs[0]);
     const half *bias_qk = static_cast<const half *>(inputs[1]);
     const half *kv_cache = static_cast<const half *>(inputs[2]);
-    const half *gather_index = static_cast<const half *>(inputs[3]);
     half *output = static_cast<half *>(outputs[0]);
 
     // void fmha(cudaStream_t stream, const T *qkv_tensor,
@@ -1067,7 +1071,7 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
     fmha<half>(stream, qkv_tensor, 
       const_cast<const half*>(p_gpu_bias_), bias_qk, 
       const_cast<half*>(kv_cache), output, bsz, 
-      max_seq_len, head_number_, head_size_, time_step,
+      max_seq_len, head_number_, head_size_, d_time_step,
       scale_);
   }
   //cudaDeviceSynchronize();

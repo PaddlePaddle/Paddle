@@ -1,0 +1,55 @@
+type: "fill_constant_batch_size_like"
+def {
+  inputs {
+    name: "Input"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "output_dim_idx"
+    type: INT
+  }
+  attrs {
+    name: "shape"
+    type: INTS
+  }
+  attrs {
+    name: "value"
+    type: FLOAT
+  }
+}
+extra {
+    attrs {
+    name: "str_value"
+    type: STRING
+  }
+  attrs {
+    name: "force_cpu"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "place_type"
+    type: INT
+  }
+  attrs {
+    name: "op_role"
+    type: INT
+  }
+  attrs {
+    name: "op_role_var"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_namescope"
+    type: STRING
+  }
+  attrs {
+    name: "op_callstack"
+    type: STRINGS
+  }
+  attrs {
+    name: "op_device"
+    type: STRING
+  }
+}

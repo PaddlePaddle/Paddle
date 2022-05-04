@@ -188,7 +188,7 @@ bool AnalysisPredictor::Init(
   }
 
   // no matter with or without MKLDNN
-//  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  //paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (!PrepareScope(parent_scope)) {
     return false;
@@ -1312,7 +1312,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
     return true;
   }
 #endif
-  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  //paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
     std::vector<std::vector<int>> shape_vector;
@@ -1336,7 +1336,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
-  paddle::platform::SetNumThreads(1);
+  // paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
