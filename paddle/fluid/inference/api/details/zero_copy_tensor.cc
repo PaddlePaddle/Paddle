@@ -678,8 +678,7 @@ void Tensor::ORTCopyFromCpu(const T *data) {
   if (buffer_size > buffer_.size()) {
     buffer_.resize(buffer_size);
   }
-  std::memcpy(static_cast<void *>(buffer_.data()),
-              static_cast<void *>(const_cast<T *>(data)), buffer_size);
+  std::memcpy(static_cast<void *>(buffer_.data()), data, buffer_size);
 
   auto onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
   if (std::is_same<T, float>::value) {
