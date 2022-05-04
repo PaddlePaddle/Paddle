@@ -188,6 +188,7 @@ class XPUDeviceContext : public phi::XPUContext {
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
 };
 
 template <>
