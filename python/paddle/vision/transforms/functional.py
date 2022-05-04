@@ -537,7 +537,7 @@ def adjust_hue(img, hue_factor):
         return F_t.adjust_hue(img, hue_factor)
 
 
-def _get_affine_matrix(center, angle, translate, scale, shear, inverted=True):
+def _get_affine_matrix(center, angle, translate, scale, shear):
     # Affine matrix is : M = T * C * RotateScaleShear * C^-1
     # Ihe inverse one is : M^-1 = C * RotateScaleShear^-1 * C^-1 * T^-1
     rot = math.radians(angle)
@@ -554,26 +554,16 @@ def _get_affine_matrix(center, angle, translate, scale, shear, inverted=True):
     cx, cy = center
     tx, ty = translate
 
-    if inverted:
-        # Inverted rotation matrix with scale and shear
-        # det([[a, b], [c, d]]) == 1, since det(rotation) = 1 and det(shear) = 1
-        matrix = [d, -b, 0.0, -c, a, 0.0]
-        matrix = [x / scale for x in matrix]
-        # Apply inverse of translation and of center translation: RSS^-1 * C^-1 * T^-1
-        matrix[2] += matrix[0] * (-cx - tx) + matrix[1] * (-cy - ty)
-        matrix[5] += matrix[3] * (-cx - tx) + matrix[4] * (-cy - ty)
-        # Apply center translation: C * RSS^-1 * C^-1 * T^-1
-        matrix[2] += cx
-        matrix[5] += cy
-    else:
-        matrix = [a, b, 0.0, c, d, 0.0]
-        matrix = [x * scale for x in matrix]
-        # Apply inverse of center translation: RSS * C^-1
-        matrix[2] += matrix[0] * (-cx) + matrix[1] * (-cy)
-        matrix[5] += matrix[3] * (-cx) + matrix[4] * (-cy)
-        # Apply translation and center : T * C * RSS * C^-1
-        matrix[2] += cx + tx
-        matrix[5] += cy + ty
+    # Inverted rotation matrix with scale and shear
+    # det([[a, b], [c, d]]) == 1, since det(rotation) = 1 and det(shear) = 1
+    matrix = [d, -b, 0.0, -c, a, 0.0]
+    matrix = [x / scale for x in matrix]
+    # Apply inverse of translation and of center translation: RSS^-1 * C^-1 * T^-1
+    matrix[2] += matrix[0] * (-cx - tx) + matrix[1] * (-cy - ty)
+    matrix[5] += matrix[3] * (-cx - tx) + matrix[4] * (-cy - ty)
+    # Apply center translation: C * RSS^-1 * C^-1 * T^-1
+    matrix[2] += cx
+    matrix[5] += cy
 
     return matrix
 
@@ -689,6 +679,12 @@ def affine(img,
 
     if _is_numpy_image(img):
         # get affine_matrix in F_cv2.affine() using cv2 functions
+        width, height = img.shape[0:2]
+        # center = (width * 0.5 + 0.5, height * 0.5 + 0.5)
+        # it is visually better to estimate the center without 0.5 offset
+        # otherwise image rotated by 90 degrees is shifted vs output image of F_t.affine
+        if center is None:
+            center = (width * 0.5, height * 0.5)
         return F_cv2.affine(img, angle, translate, scale, shear, interpolation,
                             fill, center)
 

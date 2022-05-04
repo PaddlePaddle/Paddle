@@ -747,6 +747,11 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np_affined_img.shape,
                                 tensor_affined_img.transpose((1, 2, 0)).shape)
 
+        np.testing.assert_almost_equal(
+            np.array(pil_affined_img),
+            tensor_affined_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
+
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')

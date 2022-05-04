@@ -458,7 +458,7 @@ def affine(img,
         fill = tuple([fill] * 3)
 
     if center is None:
-        center = (w * 0.5, h * 0.5)
+        center = (w / 2.0, h / 2.0)
 
     M = np.ones([2, 3])
     # Rotate and Scale
