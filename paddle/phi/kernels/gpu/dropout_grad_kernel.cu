@@ -28,9 +28,23 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           bool is_test,
                           const std::string& mode,
                           DenseTensor* x_grad) {
-  x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(x_grad);
   auto size = x_grad->numel();
   paddle::operators::DropoutGradGPUKernelDriver<T>(
+      dev_ctx, mode, p, out_grad, mask, size, x_grad, is_test);
+}
+
+template <typename T, typename Context>
+void DropoutNdGradKernel(const Context& dev_ctx,
+                         const DenseTensor& mask,
+                         const DenseTensor& out_grad,
+                         float p,
+                         bool is_test,
+                         const std::string& mode,
+                         DenseTensor* x_grad) {
+  dev_ctx.template Alloc<T>(x_grad);
+  auto size = x_grad->numel();
+  paddle::operators::DropoutNdGradGPUKernelDriver<T>(
       dev_ctx, mode, p, out_grad, mask, size, x_grad, is_test);
 }
 
@@ -40,6 +54,15 @@ PD_REGISTER_KERNEL(dropout_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DropoutGradRawKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(dropout_nd_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DropoutNdGradKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,

@@ -883,6 +883,33 @@ void DropoutInferMeta(const MetaTensor& x,
   }
 }
 
+void DropoutNdInferMeta(const MetaTensor& x,
+                        paddle::optional<const MetaTensor&> seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const IntArray& axes,
+                        MetaTensor* out,
+                        MetaTensor* mask) {
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (mask != nullptr) {
+    std::vector<int32_t> tmp(x.dims().size(), 1);
+
+    std::for_each(axes.GetData().begin(),
+                  axes.GetData().end(),
+                  [&tmp, &x_dims](const int64_t& t) { tmp[t] = x_dims[t]; });
+
+    mask->set_dims(make_ddim(tmp));
+    mask->set_dtype(DataType::UINT8);
+  }
+}
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
   auto x_rank = static_cast<size_t>(x_dims.size());

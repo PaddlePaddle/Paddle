@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -144,6 +145,17 @@ void DropoutInferMeta(const MetaTensor& x,
                       bool fix_seed,
                       MetaTensor* out,
                       MetaTensor* mask);
+
+void DropoutNdInferMeta(const MetaTensor& x,
+                        paddle::optional<const MetaTensor&> seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const IntArray& axis,
+                        MetaTensor* out,
+                        MetaTensor* mask);
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,

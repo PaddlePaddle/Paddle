@@ -29,7 +29,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           DenseTensor* x_grad) {
   auto* grad_x = x_grad;
   auto* grad_y = &out_grad;
-  grad_x->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(grad_x);
 
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(*grad_y);
@@ -56,6 +56,51 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void DropoutNdGradKernel(const Context& dev_ctx,
+                         const DenseTensor& mask,
+                         const DenseTensor& out_grad,
+                         float p,
+                         bool is_test,
+                         const std::string& mode,
+                         DenseTensor* x_grad) {
+  auto* grad_x = x_grad;
+  auto* grad_y = &out_grad;
+  dev_ctx.template Alloc<T>(grad_x);
+
+  auto dX = EigenVector<T>::Flatten(*grad_x);
+  auto dY = EigenVector<T>::Flatten(*grad_y);
+
+  auto& place = *dev_ctx.eigen_device();
+  auto& dropout_implementation = mode;
+  if (is_test == true) {
+    if (dropout_implementation == "upscale_in_train") {
+      dX.device(place) = static_cast<T>(1) * dY;
+    } else {
+      dX.device(place) = dY * static_cast<T>(1.0f - p);
+    }
+  } else {
+    auto& out_dims = out_grad.dims();
+    std::vector<int64_t> dims;
+    for (int i = 0; i < out_dims.size(); i++) {
+      dims.emplace_back(out_dims[i]);
+    }
+    auto in_mask = EigenVector<uint8_t>::Flatten(mask);
+
+    auto M = in_mask.broadcast(dims);
+
+    if (dropout_implementation == "upscale_in_train") {
+      if (p == 1.0f) {
+        dX.device(place) = static_cast<T>(0) * dY;
+      } else {
+        dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - p);
+      }
+    } else {
+      dX.device(place) = dY * M.cast<T>();
+    }
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(dropout_grad,
@@ -65,3 +110,7 @@ PD_REGISTER_KERNEL(dropout_grad,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    dropout_nd_grad, CPU, ALL_LAYOUT, phi::DropoutNdGradKernel, float, double) {
+}

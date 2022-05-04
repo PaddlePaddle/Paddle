@@ -31,10 +31,10 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
   float dropout_prob = p;
   bool upscale_in_train = (mode == "upscale_in_train");
-  mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<uint8_t>(mask);
 
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
@@ -49,12 +49,50 @@ void DropoutRawKernel(const Context& dev_ctx,
                                                  out);
 }
 
+template <typename T, typename Context>
+void DropoutNdKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     paddle::optional<const DenseTensor&> seed_tensor,
+                     float p,
+                     bool is_test,
+                     const std::string& mode,
+                     int seed,
+                     bool fix_seed,
+                     const IntArray& axes,
+                     DenseTensor* out,
+                     DenseTensor* mask) {
+  dev_ctx.template Alloc<T>(out);
+  float dropout_prob = p;
+  bool upscale_in_train = (mode == "upscale_in_train");
+  dev_ctx.template Alloc<uint8_t>(mask);
+  paddle::operators::DropoutNdFwGPUKernelDriver<T>(dev_ctx,
+                                                   is_test,
+                                                   mode,
+                                                   dropout_prob,
+                                                   upscale_in_train,
+                                                   fix_seed,
+                                                   seed,
+                                                   x,
+                                                   seed_tensor.get_ptr(),
+                                                   mask,
+                                                   out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(dropout,
                    GPU,
                    ALL_LAYOUT,
                    phi::DropoutRawKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(dropout_nd,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DropoutNdKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
