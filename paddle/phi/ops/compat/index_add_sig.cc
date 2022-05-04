@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,21 +16,21 @@
 
 namespace phi {
 
-KernelSignature IndexFillOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature IndexAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "index_fill", {"X", "Index"}, {"axis", "fill_value"}, {"Out"});
+      "index_add", {"X", "Index"}, {"axis", "added_value"}, {"Out"});
 }
 
-KernelSignature IndexFillGradOpArgumentMapping(
+KernelSignature IndexAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_fill_grad",
-                         {"Out@GRAD", "Index"},
-                         {"axis", "fill_value"},
+  return KernelSignature("index_add_grad",
+                         {"Out@GRAD"},
+                         {"axis", "added_value"},
                          {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(index_fill, phi::IndexFillOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(index_fill_grad,
-                           phi::IndexFillGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(index_add, phi::IndexAddOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(index_add_grad,
+                           phi::IndexAddGradOpArgumentMapping);
