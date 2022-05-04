@@ -1915,6 +1915,56 @@ void RollInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    bool fix_seed,
+                    int seed,
+                    MetaTensor* out,
+                    MetaTensor* mask) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(lower,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The lower value should be greater than or equal to 0. "
+                        "But received lower value = %f.",
+                        lower));
+  PADDLE_ENFORCE_LE(upper,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The upper value should be less than or equal to 1. "
+                        "But received upper value = %f.",
+                        upper));
+  PADDLE_ENFORCE_GE(
+      upper,
+      lower,
+      phi::errors::InvalidArgument(
+          "The upper value should be greater than or equal to lower value "
+          "But received upper value = %f, lower value = %f.",
+          upper,
+          lower));
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+
+  if (mask != nullptr) {
+    mask->set_dims(x_dims);
+    mask->set_dtype(x.dtype());
+    mask->set_layout(x.layout());
+  }
+}
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& mask,
+                        MetaTensor* x_grad) {
+  x_grad->set_dims(out_grad.dims());
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->share_lod(out_grad);
+}
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
   auto in_dims = x.dims();
   PADDLE_ENFORCE_LT(
