@@ -95,7 +95,6 @@ from .transforms import HueTransform  # noqa: F401
 from .transforms import ColorJitter  # noqa: F401
 from .transforms import RandomCrop  # noqa: F401
 from .transforms import Pad  # noqa: F401
-from .transforms import RandomAffine  # noqa: F401
 from .transforms import RandomRotation  # noqa: F401
 from .transforms import Grayscale  # noqa: F401
 from .transforms import ToTensor  # noqa: F401
@@ -104,7 +103,6 @@ from .transforms import hflip  # noqa: F401
 from .transforms import vflip  # noqa: F401
 from .transforms import resize  # noqa: F401
 from .transforms import pad  # noqa: F401
-from .transforms import affine  # noqa: F401
 from .transforms import rotate  # noqa: F401
 from .transforms import to_grayscale  # noqa: F401
 from .transforms import crop  # noqa: F401

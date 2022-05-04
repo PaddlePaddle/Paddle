@@ -1298,6 +1298,7 @@ class RandomAffine(BaseTransform):
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2, ))
 
         super(RandomAffine, self).__init__(keys)
+        assert interpolation in ['nearest', 'bilinear', 'bicubic']
         self.interpolation = interpolation
 
         if translate is not None:

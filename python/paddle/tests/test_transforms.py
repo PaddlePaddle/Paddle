@@ -290,6 +290,26 @@ class TestTransformsCV2(unittest.TestCase):
             F.pad(tensor_img, [1.0, 2.0, 3.0])
 
         with self.assertRaises(ValueError):
+            transforms.RandomAffine(-10)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine([-30, 60], translate=[2, 2])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 0, 20, 40])
+
+        with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
 
         with self.assertRaises(ValueError):
@@ -731,9 +751,12 @@ class TestFunctional(unittest.TestCase):
         os.remove(path)
 
     def test_affine(self):
-        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
-        tensor_img = F.to_tensor(pil_img, data_format='CHW')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
 
         np_affined_img = F.affine(
             np_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])

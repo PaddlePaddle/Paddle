@@ -678,7 +678,7 @@ def affine(img,
         return F_pil.affine(img, matrix, interpolation, fill)
 
     if _is_numpy_image(img):
-        # get affine_matrix in F_cv2.affine() using cv2 functions
+        # get affine_matrix in F_cv2.affine() using cv2's functions
         width, height = img.shape[0:2]
         # center = (width * 0.5 + 0.5, height * 0.5 + 0.5)
         # it is visually better to estimate the center without 0.5 offset
