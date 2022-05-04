@@ -14,28 +14,28 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/gpu/index_fill_funcs.h"
-#include "paddle/phi/kernels/index_fill_kernel.h"
+#include "paddle/phi/kernels/gpu/index_add_funcs.h"
+#include "paddle/phi/kernels/index_add_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& index,
-                     int axis,
-                     float fill_value,
-                     DenseTensor* output) {
+void IndexAddKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& index,
+                    int axis,
+                    float added_value,
+                    DenseTensor* output) {
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-  index_fill_cuda_impl<T, Context>(dev_ctx, index, axis, fill_value, output);
+  index_add_cuda_impl<T, Context>(dev_ctx, index, axis, added_value, output);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_fill,
+PD_REGISTER_KERNEL(index_add,
                    GPU,
                    ALL_LAYOUT,
-                   phi::IndexFillKernel,
+                   phi::IndexAddKernel,
                    float,
                    phi::dtype::float16,
                    double,

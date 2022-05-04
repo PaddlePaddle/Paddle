@@ -16,36 +16,36 @@
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/index_fill_kernel.h"
+#include "paddle/phi/kernels/index_add_kernel.h"
 
 namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
-__global__ void index_fill_cuda_kernel(T* output,
-                                       const IndexT* index,
-                                       int64_t N,
-                                       int64_t stride,
-                                       int64_t size,
-                                       int64_t delta,
-                                       T fill_val) {
+__global__ void index_add_cuda_kernel(T* output,
+                                      const IndexT* index,
+                                      int64_t N,
+                                      int64_t stride,
+                                      int64_t size,
+                                      int64_t delta,
+                                      T added_val) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];
     int64_t output_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    output[output_idx] = fill_val;
+    output[output_idx] += added_val;
   }
 }
 
 template <typename T, typename Context>
-void index_fill_cuda_impl(const Context& dev_ctx,
-                          const DenseTensor& index,
-                          int axis,
-                          float fill_value,
-                          DenseTensor* output) {
+void index_add_cuda_impl(const Context& dev_ctx,
+                         const DenseTensor& index,
+                         int axis,
+                         float added_value,
+                         DenseTensor* output) {
   auto output_dim = output->dims();
   axis = axis >= 0 ? axis : axis + output_dim.size();
   auto stride_dim = phi::stride(output_dim);
@@ -78,15 +78,15 @@ void index_fill_cuda_impl(const Context& dev_ctx,
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
   paddle::platform::LimitGridDim(dev_ctx, &grid_dim);
 
-  T fill_val = static_cast<T>(fill_value);
+  T added_val = static_cast<T>(added_value);
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    index_fill_cuda_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
-        out_data, index_data, numel, stride, size, delta, fill_val);
+    index_add_cuda_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
+        out_data, index_data, numel, stride, size, delta, added_val);
   } else {
     const int* index_data = index.data<int>();
-    index_fill_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
-        out_data, index_data, numel, stride, size, delta, fill_val);
+    index_add_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
+        out_data, index_data, numel, stride, size, delta, added_val);
   }
 }
 
