@@ -87,14 +87,18 @@ class TestOptimizer(unittest.TestCase):
             asgd = paddle.optimizer.ASGD(learning_rate=1., parameters=model.parameters(), t0=1)
 
             loss = model(x)
+            print(f'1: w grad before bw: {model._w.grad}')
             loss.backward()
+            print(f'1: w grad: {model._w.grad}')
             asgd.step()
             assert np.allclose(model._w.numpy(), np_neg_ones)
             assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones)
             asgd.clear_grad()
 
             loss = model(x)
+            print(f'2: w grad before bw: {model._w.grad}')
             loss.backward()
+            print(f'2: w grad: {model._w.grad}')
             asgd.step()
             assert np.allclose(model._w.numpy(), np_neg_ones * 2)
             assert np.allclose(asgd.averaged_parameters()[0].numpy(), np_neg_ones * 2)
