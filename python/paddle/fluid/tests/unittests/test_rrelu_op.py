@@ -336,6 +336,7 @@ from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 import os
 
 from paddle import _C_ops
+from python.paddle.nn.functional.activation import leaky_relu
 
 
 def rrelu_inference(x, lower, upper):
@@ -344,25 +345,62 @@ def rrelu_inference(x, lower, upper):
     return np.where(x_t < 0, alpha * x_t, x_t)
 
 
-# def check_rrelu_output_in_training(input: np.ndarray, op_output: np.ndarray, lower: float, upper: float, num_segments: int):
-#     """
-#     divide the interval [lower, upper] into num_segments equal parts
-#     Caution: there 
-#     """
-#     lower_res = np.where(input < 0, lower * input, input)
-#     upper_res = np.where(input < 0, upper * input, input)
-#     return (op_output <= lower_res).all() and (op_output >= upper_res).all()
+def check_element_range_of_rrelu_output_in_training(input: np.ndarray, op_output: np.ndarray, lower: float, upper: float):
+    """
+    input: x
+    op outpout: y
+    check that:
+    if x[i] >= 0, then x[i] == y[i]
+    if x[i] < 0, then  upper * x[i] <= y[i] <= lower * x[i]
 
-#     num_positive_elements = np.sum(input >= 0)
-#     if op_output.size < 200 or num_positive_elements / op_output.size > :
-        
-#     one_part_length = (upper - lower) / num_segments
-#     for i in range(num_segments):
-#         current_lower = lower + i * one_part_length
-#         current_upper = current_lower + one_part_length
+    return: True: the test is passed;
+            False: the test is not passed
+    """
+    passed_1 = np.allclose(input[input >= 0], op_output[input >= 0])
+    if passed_1 == False:
+        return False
+    passed_2 = (op_output[input < 0] <= (input[input < 0] * lower)).all()
+    if passed_2 == False:
+        return False
+    passed_3 = (op_output[input < 0] >= (input[input < 0] * upper)).all()
+    return passed_3
 
 
+def check_negative_elements_distribution_of_rrelu_output_in_training(input: np.ndarray, op_output: np.ndarray, lower: float, upper: float, num_segments: int, scale: float):
+    """
+    input: x
+    op_output: y
 
+    Only check negative elements.
+    Divide the interval [lower, upper] into num_segments equal parts.
+    [a, b] is a small interval in [lower, upper].  0 <=a <= b <= 1
+    count = the number of i that satisfies x[i] < 0 and b * x[i] <= y[i] <= a * x[i]
+    Then count / x.size >=  scale * (b - a) / (upper - lower)
+
+    scale is recommended to be in the range [0.1, 0.8]
+    
+    if this check is passed, you can "roughly" believe that the function of 
+    RReLU API has been properly implemented.
+    the function of RReLU API can be shown as follows:
+    out = np.where(x < 0, 
+            np.random.uniform(lower, upper, x.shape) * x, x)
+    """
+    num_negative_elements = np.sum(input < 0)   
+    one_part_length = (upper - lower) / num_segments
+    special_alphas = []
+    for i in range(num_segments):
+        alpha = lower + i * one_part_length
+        special_alphas.append(alpha)
+    special_alphas.append(upper)
+
+    for i in range(num_segments):
+        bool_array_1 = op_output[input < 0] <= (input[input < 0] * special_alphas[i])
+        bool_array_2 = op_output[input < 0] >= (input[input < 0] * special_alphas[i+1])
+        count = np.sum(bool_array_1 * bool_array_2)
+        # print(i, "{}%".format(count / num_negative_elements * 100))
+        if count / num_negative_elements < scale * 1 / num_segments:
+            return False
+    return True
 
 
 class TestRReluOpInference(OpTest):
@@ -695,7 +733,22 @@ class TestRReluFAPI(unittest.TestCase):
                               fetch_list=[res4])
             self.assertTrue(np.allclose(fetches[0], res_np))
 
-            # I stopped here... at 2022/5/4  9:04
+            # Attention: this part is important!!!
+            lower, upper = 0.2, 0.9
+            res5 = paddle.nn.functional.rrelu(x=input, lower=lower, upper=upper, training=True)
+            in_np = np.random.uniform(-50, 1, [40, 30]).astype("float32")
+            fetches = exe.run(static.default_main_program(),
+                              feed={"input": in_np},
+                              fetch_list=[res5])
+            passed_1 = check_element_range_of_rrelu_output_in_training(
+                in_np, fetches[0], lower=lower, upper=upper
+            )
+            self.assertTrue(passed_1)
+            passed_2 = check_negative_elements_distribution_of_rrelu_output_in_training(
+                in_np, fetches[0], lower=lower, upper=upper, num_segments=5, scale=0.8
+            )
+            self.assertTrue(passed_2)
+
         paddle.disable_static()
 
     def test_static(self):
@@ -727,6 +780,19 @@ class TestRReluFAPI(unittest.TestCase):
             res4 = paddle.nn.functional.rrelu(x=in_tensor, lower=lower, upper=upper, training=True)
             self.assertTrue(np.allclose(res4.numpy(), res_np))
 
+            #Attention: this part is important!!!
+            lower, upper = 0.23, 0.99
+            in_np = np.random.uniform(-50, 1, [11, 20, 3]).astype("float32")
+            in_tensor = paddle.to_tensor(in_np, place=place)
+            res5 = paddle.nn.functional.rrelu(x=in_tensor, lower=lower, upper=upper, training=True)
+            passed_1 = check_element_range_of_rrelu_output_in_training(
+                in_np, res5.numpy(), lower=lower, upper=upper
+            )
+            self.assertTrue(passed_1)
+            passed_2 = check_negative_elements_distribution_of_rrelu_output_in_training(
+                in_np, res5.numpy(), lower=lower, upper=upper, num_segments=5, scale=0.8
+            )
+            self.assertTrue(passed_2)
 
 
 if __name__ == '__main__':
