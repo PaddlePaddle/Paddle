@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -4238,11 +4238,11 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                   reduce)
 
 
-def _index_fill_params_check(x, axis, index, fill_value):
+def _index_add_params_check(x, axis, index, added_value):
     dims = len(x.shape)
     if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
         raise ValueError(
-            "Axis should be int, element should in range [-rank(x), rank(x)).")
+            "Axis should be int and should be in range [-rank(x), rank(x)).")
 
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
@@ -4256,92 +4256,92 @@ def _index_fill_params_check(x, axis, index, fill_value):
     if len(index.shape) != 1:
         raise ValueError("The index should be a 1-D Tensor.")
 
-    if isinstance(fill_value, Variable) and fill_value.numel() != 1:
+    if isinstance(added_value, Variable) and added_value.numel() != 1:
         raise ValueError(
-            "The numel of fill_value must be one when it is a tensor.")
+            "The numel of added_value must be one when it is a tensor.")
 
 
-def index_fill(x, index, axis=0, fill_value=0.0):
+def index_add(x, index, axis=0, added_value=0.0):
     """
-    Fills the elements of the input tensor with value by selecting the indices in the order given in index.
+    Add the elements of the input tensor with value by selecting the indices in the order given in index.
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
-        fill_value(float|int|Tensor): The constant value
-            used to fill the elements along the target axis.
-            If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
-            Default: if None, the ``fill_value`` is 0.0.
+        added_value(float|int|Tensor): The constant value
+            used to add to the elements along the target axis.
+            If ``added_value`` is an Tensor, it must be an 1-D Tensor.
+            Default: if None, the ``added_value`` is 0.0.
     Returns :
         Tensor: same dimention and dtype with x
     Examples:
         .. code-block:: python
-            :name: index_fill-example
+            :name: index_add-example
             import paddle
             input_tensor = paddle.ones((3, 4))
             index = paddle.to_tensor([0, 2])
-            outplace_res = paddle.index_fill(input_tensor, index, axis=0, fill_value=0.5)
+            outplace_res = paddle.index_add(input_tensor, index, axis=0, added_value=0.5)
             print(outplace_res.numpy())
-            # [[0.5 0.5 0.5 0.5]
+            # [[1.5 1.5 1.5 1.5]
             #  [1.  1.  1.  1. ]
-            #  [0.5 0.5 0.5 0.5]]
-            fill_value_tensor = paddle.to_tensor([2.0])
-            inplace_res = paddle.index_fill_(input_tensor, index, axis=1, fill_value=fill_value_tensor)
+            #  [1.5 1.5 1.5 1.5]]
+            added_value_tensor = paddle.to_tensor([2.0])
+            inplace_res = paddle.index_add_(input_tensor, index, axis=1, added_value=added_value_tensor)
             print(inplace_res.numpy())
-            # [[2. 1. 2. 1.]
-            #  [2. 1. 2. 1.]
-            #  [2. 1. 2. 1.]]
+            # [[3. 1. 3. 1.]
+            #  [3. 1. 3. 1.]
+            #  [3. 1. 3. 1.]]
     """
-    _index_fill_params_check(x, axis, index, fill_value)
+    _index_add_params_check(x, axis, index, added_value)
 
     if axis < 0:
         axis += len(x.shape)
 
-    fill_value = float(fill_value)
+    added_value = float(added_value)
     # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_fill(x, index, axis, fill_value)
+    #     return _C_ops.final_state_index_add(x, index, axis, added_value)
 
     if _non_static_mode():
-        return _C_ops.index_fill(x, index, "axis", axis, "fill_value",
-                                 fill_value)
+        return _C_ops.index_add(x, index, "axis", axis, "added_value",
+                                 added_value)
 
-    helper = LayerHelper("index_fill", **locals())
+    helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.manipulation.index_fill')
+                             'paddle.tensor.manipulation.index_add')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.manipulation.index_fill')
+                             'paddle.tensor.manipulation.index_add')
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
-        type='index_fill',
+        type='index_add',
         inputs={'X': x,
                 'Index': index},
         outputs={'Out': out},
         attrs={'axis': axis,
-               'fill_value': fill_value})
+               'added_value': added_value})
     return out
 
 
 @inplace_apis_in_dygraph_only
-def index_fill_(x, index, axis=0, fill_value=0.0):
+def index_add_(x, index, axis=0, added_value=0.0):
     r"""
-    Inplace version of ``index_fill`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_index_fill`.
+    Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_index_add`.
     """
-    _index_fill_params_check(x, axis, index, fill_value)
+    _index_add_params_check(x, axis, index, added_value)
 
     if axis < 0:
         axis += len(x.shape)
 
-    fill_value = float(fill_value)
+    added_value = float(added_value)
     # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_fill_(x, index, axis, fill_value)
+    #     return _C_ops.final_state_index_add_(x, index, axis, added_value)
 
     if _non_static_mode():
-        return _C_ops.index_fill_(x, index, "axis", axis, "fill_value",
-                                  fill_value)
+        return _C_ops.index_add_(x, index, "axis", axis, "added_value",
+                                  added_value)
 
-    raise ValueError("This inplace op index_fill_ should only work in dygraph.")
+    raise ValueError("This inplace op index_add_ should only work in dygraph.")
 
 
 # TODO(dev): We need avoid implementing it by this way.
