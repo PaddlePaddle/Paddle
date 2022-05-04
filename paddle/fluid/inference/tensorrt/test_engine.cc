@@ -275,7 +275,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
 
   plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kGelu;
 
-  plugin::SpmmPluginDynamic* plugin = new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", nvinfer1::DataType::kFLOAT, 1, (&weight)->get(), (&bias)->get(), act);
+  plugin::SpmmPluginDynamic* plugin = new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", nvinfer1::DataType::kFLOAT, 1, weight.get(), bias.get(), act);
   std::vector<nvinfer1::ITensor*> plugin_inputs;
   plugin_inputs.emplace_back(x);
   auto fc_layer = engine_->network()->addPluginV2(
