@@ -1181,16 +1181,16 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
-void IndexFillInferMeta(const MetaTensor& x,
-                        const MetaTensor& index,
-                        int axis,
-                        float fill_value,
-                        MetaTensor* output) {
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       int axis,
+                       float added_value,
+                       MetaTensor* output) {
   auto input_dim = x.dims();
   auto index_dim = index.dims();
 
   PADDLE_ENFORCE_EQ(
-      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      axis < input_dim.size() && axis >= - input_dim.size(),
       true,
       phi::errors::OutOfRange(
           "Attr(axis) is out of range, It's expected "
@@ -1220,13 +1220,11 @@ void IndexFillInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
-void IndexFillGradInferMeta(const MetaTensor& out_grad,
-                            const MetaTensor& index,
-                            int axis,
-                            float fill_value,
-                            MetaTensor* x_grad) {
-  auto do_dims = out_grad.dims();
-  x_grad->set_dims(do_dims);
+void IndexAddGradInferMeta(const MetaTensor& out_grad,
+                           int axis,
+                           float added_value,
+                           MetaTensor* x_grad) {
+  x_grad->set_dims(out_grad.dims());
   x_grad->set_dtype(out_grad.dtype());
   x_grad->set_layout(out_grad.layout());
   x_grad->share_lod(out_grad);
