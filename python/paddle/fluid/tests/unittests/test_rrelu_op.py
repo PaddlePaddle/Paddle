@@ -639,11 +639,6 @@ class TestBF16RReluOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-if __name__ == '__main__':
-    # paddle.enable_static()
-    unittest.main()
-
-
 class TestRReluFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -652,6 +647,7 @@ class TestRReluFAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with static.program_guard(static.Program(), static.Program()):
             input = static.data(name="input", shape=[-1, -1], dtype="float32")
             exe = static.Executor(place)
@@ -685,6 +681,7 @@ class TestRReluFAPI(unittest.TestCase):
             self.assertTrue(np.allclose(fetches[0], res_np))
 
             # I stopped here... at 2022/5/4  9:04
+        paddle.disable_static()
 
     def test_static(self):
         for place in self.places:
@@ -715,6 +712,10 @@ class TestRReluFAPI(unittest.TestCase):
             self.assertTrue(np.allclose(res4.numpy(), res_np))
 
 
+
+if __name__ == '__main__':
+    # paddle.enable_static()
+    unittest.main()
 
 
 
