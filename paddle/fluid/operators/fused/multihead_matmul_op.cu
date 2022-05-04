@@ -241,6 +241,107 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class MultiHeadMatMulWithAttentionKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    using Tensor = framework::Tensor;
+    auto *input = context.Input<framework::Tensor>("Input");
+    auto *w = context.Input<framework::Tensor>("W");
+    auto *bias = context.Input<framework::Tensor>("Bias");
+    auto &bias_qk = GET_DATA_SAFELY(context.Input<framework::Tensor>("BiasQK"),
+                          "Input", "BiasQK", "MultiHeadMatMulWithAttention");
+
+    auto *input_d = input->data<T>();
+    auto *w_d = w->data<T>();
+    auto *bias_d = bias->data<T>();
+    auto *bias_qk_d = bias_qk.template data<T>();
+    T scale = static_cast<T>(context.Attr<float>("alpha"));
+
+    int head_number = context.Attr<int>("head_number");
+    // compute q*k with eltadd
+    auto &device_ctx = context.template device_context<DeviceContext>();
+    auto stream = device_ctx.stream();
+    // should be (B * S * hidden)
+    auto input_dims = input->dims();
+    // shouble be (hidden * 3 * all_head_size)
+    auto w_dims = w->dims();
+    int batch = input_dims[0];
+    int seq_len = input_dims[1];
+    int hidden = input_dims[2];
+    Tensor temp_bias_tensor;
+    // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
+    if (bias_qk.numel() == (batch * seq_len)) {
+      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
+      auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
+      int grid = batch * head_number * seq_len;
+      int block = round_up(seq_len);
+      broadcast<<<grid, block, 0, stream>>>(bias_qk_d, temp_qk_bias, seq_len,
+                                            head_number);
+      bias_qk_d = static_cast<const T *>(temp_qk_bias);
+    }
+    int all_head_size = w_dims[2];
+    int head_size = all_head_size / head_number;
+
+    auto *out = context.Output<framework::Tensor>("Out");
+    out->Resize({batch, seq_len, all_head_size});
+    auto *output_d = out->mutable_data<T>(context.GetPlace());
+
+    // (B*S, hidden)
+    const Tensor input_matrix =
+        framework::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
+    // (hidden, 3 * all_head_size)
+    const Tensor w_matrix =
+        framework::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
+
+    Tensor temp_out_tensor;
+    auto temp_out_dims =
+        phi::make_ddim({batch, seq_len, 3, head_number, head_size});
+    temp_out_tensor.Resize(
+        {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
+    auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
+
+    // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(device_ctx);
+    blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
+
+    // temp_out_tensor.Resize(temp_out_dims);
+
+    // Attention output as qkptr
+    auto *attn = context.Output<framework::Tensor>("Attention");
+    attn->Resize({batch, head_number, seq_len, seq_len});
+    auto *qkptr = attn->mutable_data<T>(context.GetPlace());
+
+    // Allocate temp tensor as tptr
+    Tensor multihead_temp_tensor;
+    multihead_temp_tensor.Resize({temp_out_tensor.numel()});
+    auto *tptr = multihead_temp_tensor.mutable_data<T>(context.GetPlace());
+
+    // Tensor multihead_temp_tensor;
+    // // B * head_number * S * S * 1 + B * S * 3 * N * H
+    // int scratch_size = batch * head_number * seq_len * seq_len * 1;
+    // multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
+    // auto *multihead_temp_data =
+    //     multihead_temp_tensor.mutable_data<T>(context.GetPlace());
+    // auto *qkptr = multihead_temp_data;
+    // auto *tptr = multihead_temp_data + scratch_size;
+
+    // Do the transpose with bias.
+    // BxSx3xNxH => tptr: 3xBxNxSxH.
+    TransQKVWithBias(batch, seq_len, head_size, head_number, temp_out_data,
+                     bias_d, tptr, stream);
+
+    math::MultiHeadGPUComputeFunctor<T> multihead_compute_func;
+    multihead_compute_func(device_ctx, batch, seq_len, head_number, head_size,
+                           qkptr, bias_qk_d, tptr, scale, T(0.0));
+
+    int grid = batch * head_number * seq_len;
+    int block = head_size;
+    transpose<T><<<grid, block, 0, stream>>>(tptr, output_d, batch, seq_len,
+                                             head_number, head_size);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -248,3 +349,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     multihead_matmul,
     ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    multihead_matmul_with_attention,
+    ops::MultiHeadMatMulWithAttentionKernel<paddle::platform::CUDADeviceContext, float>);

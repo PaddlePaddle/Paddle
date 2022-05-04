@@ -178,6 +178,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_matmul_with_attention",
       "skip_layernorm",
       "slice",
       "strided_slice",
@@ -1414,7 +1415,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multihead_matmul") {
+    if (op_type == "multihead_matmul" ||
+        op_type == "multihead_matmul_with_attention") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the multihead_matmul does not support static shape yet";
         return false;

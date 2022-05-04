@@ -96,6 +96,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
       "multihead_matmul_fuse_pass_v2",                //
       "multihead_matmul_fuse_pass_v3",                //
+      "multihead_matmul_with_attention_fuse_pass",    //
       "skip_layernorm_fuse_pass",                     //
       "preln_skip_layernorm_fuse_pass",               //
       "conv_bn_fuse_pass",                            //
@@ -147,6 +148,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_bn_fuse_pass",           //
         "embedding_eltwise_layernorm_fuse_pass",  //
         "multihead_matmul_fuse_pass_v2",          //
+        "multihead_matmul_with_attention_fuse_pass", //
         "gpu_cpu_squeeze2_matmul_fuse_pass",      //
         "gpu_cpu_reshape2_matmul_fuse_pass",      //
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
@@ -189,6 +191,7 @@ void GpuPassStrategy::Exp_EnableUseGpuFp16() {
         "conv_eltwiseadd_bn_fuse_pass",           //
         "embedding_eltwise_layernorm_fuse_pass",  //
         "multihead_matmul_fuse_pass_v2",          //
+        "multihead_matmul_with_attention_fuse_pass", //
         "gpu_cpu_squeeze2_matmul_fuse_pass",      //
         "gpu_cpu_reshape2_matmul_fuse_pass",      //
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
