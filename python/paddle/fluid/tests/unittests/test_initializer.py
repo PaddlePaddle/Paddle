@@ -1037,11 +1037,11 @@ class TestDiracInitializer1(unittest.TestCase):
             block = start_prog.global_block()
             self.assertEqual(len(block.ops), self.num_ops)
             self.assertEqual(block.ops[0].type, 'fill_constant')
-            self.assertEqual(block.ops[1].type, 'reshape')
+            self.assertEqual(block.ops[1].type, 'reshape2')
             self.assertEqual(block.ops[2].type, 'assign_value')
             self.assertEqual(block.ops[3].type, 'assign_value')
             self.assertEqual(block.ops[4].type, 'scatter')
-            self.assertEqual(block.ops[5].type, 'reshape')
+            self.assertEqual(block.ops[5].type, 'reshape2')
 
             exe = paddle.static.Executor()
             exe.run(start_prog)
