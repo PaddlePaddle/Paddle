@@ -180,8 +180,8 @@ from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
-from .tensor.manipulation import index_fill  # noqa: F401
-from .tensor.manipulation import index_fill_  # noqa: F401
+from .tensor.manipulation import index_add  # noqa: F401
+from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -637,6 +637,6 @@ __all__ = [  # noqa
            'renorm',
            'take_along_axis',
            'put_along_axis',
-           'index_fill',
-           'index_fill_',
+           'index_add',
+           'index_add_',
 ]
