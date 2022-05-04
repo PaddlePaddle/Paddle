@@ -86,8 +86,9 @@ void GraphGpuWrapper::make_partitions(int idx, int64_t byte_size,
   ((GpuPsGraphTable *)graph_table)
       ->cpu_graph_table->make_partitions(idx, byte_size, device_len);
 }
-void GraphGpuWrapper::load_next_partition(int idx) {
-  ((GpuPsGraphTable *)graph_table)->cpu_graph_table->load_next_partition(idx);
+int32_t GraphGpuWrapper::load_next_partition(int idx) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table->load_next_partition(idx);
 }
 
 void GraphGpuWrapper::set_search_level(int level) {
@@ -162,10 +163,11 @@ void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
   }
   VLOG(0) << "add conf over";
 }
+void GraphGpuWrapper::init_search_level(int level) { search_level = level; }
 
 void GraphGpuWrapper::init_service() {
   table_proto.set_task_pool_size(24);
-
+  table_proto.set_search_level(search_level);
   table_proto.set_table_name("cpu_graph_table");
   table_proto.set_use_cache(false);
   for (int i = 0; i < id_to_edge.size(); i++)

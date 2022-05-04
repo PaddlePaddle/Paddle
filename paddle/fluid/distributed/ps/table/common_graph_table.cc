@@ -230,7 +230,7 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
     VLOG(0) << "no edges are detected,make partitions exits";
     return;
   }
-  const float a = 3.0, y = 1.3;
+  const float a = 2.0, y = 1.25;
   int64_t gb_size_by_discount = byte_size * 0.8 * device_len;
   if (gb_size_by_discount <= 0) gb_size_by_discount = 1;
   int part_len = total_memory_cost / gb_size_by_discount;

@@ -562,7 +562,7 @@ class GraphTable : public Table {
   int64_t load_graph_to_memory_from_ssd(int idx, std::vector<int64_t> &ids);
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
-  int32_t get_partition_num(int idx) { return partitions.size(); }
+  int32_t get_partition_num(int idx) { return partitions[idx].size(); }
   std::vector<int64_t> get_partition(int idx, int index) {
     if (idx >= partitions.size() || index >= partitions[idx].size())
       return std::vector<int64_t>();

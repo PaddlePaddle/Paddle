@@ -337,7 +337,6 @@ void BindGraphGpuWrapper(py::module* m) {
       //.def(py::init([]() { return framework::GraphGpuWrapper::GetInstance();
       //}))
       .def(py::init<>())
-      .def("initialize", &GraphGpuWrapper::initialize)
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -350,8 +349,10 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("get_all_id", &GraphGpuWrapper::get_all_id)
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
-      .def("make_complementary_graph", &GraphGpuWrapper::make_partitions)
+      .def("make_complementary_graph",
+           &GraphGpuWrapper::make_complementary_graph)
       .def("set_search_level", &GraphGpuWrapper::set_search_level)
+      .def("init_search_level", &GraphGpuWrapper::init_search_level)
       .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
       .def("get_partition", &GraphGpuWrapper::get_partition)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
