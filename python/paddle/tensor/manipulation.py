@@ -4238,6 +4238,112 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                   reduce)
 
 
+def _index_fill_params_check(x, axis, index, fill_value):
+    dims = len(x.shape)
+    if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
+        raise ValueError(
+            "Axis should be int, element should in range [-rank(x), rank(x)).")
+
+    if not isinstance(x, Variable):
+        raise TypeError("The input x should be a Tensor.")
+
+    if not isinstance(index, Variable):
+        raise TypeError("The index should be a Tensor.")
+
+    if index.dtype != paddle.int64 and index.dtype != paddle.int32:
+        raise TypeError("The index dtype should be int32 or int64.")
+
+    if len(index.shape) != 1:
+        raise ValueError("The index should be a 1-D Tensor.")
+
+    if isinstance(fill_value, Variable) and fill_value.numel() != 1:
+        raise ValueError(
+            "The numel of fill_value must be one when it is a tensor.")
+
+
+def index_fill(x, index, axis=0, fill_value=0.0):
+    """
+    Fills the elements of the input tensor with value by selecting the indices in the order given in index.
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        fill_value(float|int|Tensor): The constant value
+            used to fill the elements along the target axis.
+            If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
+            Default: if None, the ``fill_value`` is 0.0.
+    Returns :
+        Tensor: same dimention and dtype with x
+    Examples:
+        .. code-block:: python
+            :name: index_fill-example
+            import paddle
+            input_tensor = paddle.ones((3, 4))
+            index = paddle.to_tensor([0, 2])
+            outplace_res = paddle.index_fill(input_tensor, index, axis=0, fill_value=0.5)
+            print(outplace_res.numpy())
+            # [[0.5 0.5 0.5 0.5]
+            #  [1.  1.  1.  1. ]
+            #  [0.5 0.5 0.5 0.5]]
+            fill_value_tensor = paddle.to_tensor([2.0])
+            inplace_res = paddle.index_fill_(input_tensor, index, axis=1, fill_value=fill_value_tensor)
+            print(inplace_res.numpy())
+            # [[2. 1. 2. 1.]
+            #  [2. 1. 2. 1.]
+            #  [2. 1. 2. 1.]]
+    """
+    _index_fill_params_check(x, axis, index, fill_value)
+
+    if axis < 0:
+        axis += len(x.shape)
+
+    fill_value = float(fill_value)
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_index_fill(x, index, axis, fill_value)
+
+    if _non_static_mode():
+        return _C_ops.index_fill(x, index, "axis", axis, "fill_value",
+                                 fill_value)
+
+    helper = LayerHelper("index_fill", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.manipulation.index_fill')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.manipulation.index_fill')
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='index_fill',
+        inputs={'X': x,
+                'Index': index},
+        outputs={'Out': out},
+        attrs={'axis': axis,
+               'fill_value': fill_value})
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def index_fill_(x, index, axis=0, fill_value=0.0):
+    r"""
+    Inplace version of ``index_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_index_fill`.
+    """
+    _index_fill_params_check(x, axis, index, fill_value)
+
+    if axis < 0:
+        axis += len(x.shape)
+
+    fill_value = float(fill_value)
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_index_fill_(x, index, axis, fill_value)
+
+    if _non_static_mode():
+        return _C_ops.index_fill_(x, index, "axis", axis, "fill_value",
+                                  fill_value)
+
+    raise ValueError("This inplace op index_fill_ should only work in dygraph.")
+
+
 # TODO(dev): We need avoid implementing it by this way.
 __METHODS = {
     'fill_': fill_,
