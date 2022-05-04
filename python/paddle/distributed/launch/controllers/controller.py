@@ -75,8 +75,9 @@ class ControllerBase(object):
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            if self.ctx.continous_log():
-                self.pod.logs()
+            #if self.ctx.continous_log():
+            # default to print log
+            self.pod.logs()
 
             # completed
             if status == self.ctx.status.COMPLETED:
@@ -127,14 +128,15 @@ class ControllerBase(object):
         self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            time.sleep(11)
             sys.exit(sigint)
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 

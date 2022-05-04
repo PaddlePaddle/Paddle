@@ -91,18 +91,11 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             view_var_b[0] = 2.  # var_b is modified inplace
 
             loss = paddle.nn.functional.relu(var_c)
-            if in_dygraph_mode():
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received current_inplace_version:{} != inplace_version_snapshot_:{}".
-                        format(1, 0)):
-                    loss.backward()
-            else:
-                with self.assertRaisesRegexp(
-                        RuntimeError,
-                        "received tensor_version:{} != wrapper_version_snapshot:{}".
-                        format(1, 0)):
-                    loss.backward()
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
     def test_backward_error(self):
         with _test_eager_guard():

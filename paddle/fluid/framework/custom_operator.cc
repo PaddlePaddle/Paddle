@@ -33,12 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -67,9 +68,17 @@ inline static bool IsDuplicableVar(const std::string& var_name) {
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline static std::string NoGrad(const std::string& var_name) {
+inline static std::string NoGrad(const std::string& var_name,
+                                 bool is_double_grad = false) {
   std::string suffix = kGradVarSuffix;
-  return var_name.substr(0, var_name.size() - kGradVarSuffixSize);
+  std::string new_out_suffix = kDoubleGradNewOutSuffix;
+  std::string tmp_var_name(var_name);
+  if (is_double_grad &&
+      (tmp_var_name.rfind(new_out_suffix) != std::string::npos)) {
+    tmp_var_name = tmp_var_name.substr(
+        0, tmp_var_name.size() - /*kDoubleGradNewOutSuffix length*/ 4);
+  }
+  return tmp_var_name.substr(0, tmp_var_name.size() - kGradVarSuffixSize);
 }
 
 inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
@@ -153,7 +162,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (custom_in.is_gpu_pinned()) {
+        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+      } else {
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      }
+#else
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
+#endif
     }
   }
 
@@ -533,11 +553,12 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
     for (auto& out_name : outputs_) {
       VLOG(3) << "Custom Operator: GradOpDescMaker - output: " << out_name;
       if (detail::IsDuplicableVar(out_name)) {
-        grad_op->SetOutput(out_name,
-                           this->InputGrad(detail::NoGrad(out_name),
-                                           /*drop_empty_grad=*/false));
+        grad_op->SetOutput(
+            out_name, this->InputGrad(detail::NoGrad(out_name, is_double_grad_),
+                                      /*drop_empty_grad=*/false));
       } else {
-        grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
+        grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(
+                                         out_name, is_double_grad_)));
       }
     }
     grad_op->SetAttrMap(this->Attrs());
@@ -600,7 +621,8 @@ class CustomGradOpMaker<imperative::OpBase>
     }
     for (auto& out_name : outputs_) {
       VLOG(3) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
-      grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
+      grad_op->SetOutput(
+          out_name, this->InputGrad(detail::NoGrad(out_name, is_double_grad_)));
     }
     grad_op->SetAttrMap(this->Attrs());
   }
@@ -617,8 +639,8 @@ class CustomGradOpMaker<imperative::OpBase>
 static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
-    const proto::VarType::Type type, const PlaceType& place) {
-  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
+    const proto::VarType::Type type, const platform::Place& place) {
+  OpKernelType key(type, place);
   VLOG(3) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
@@ -656,10 +678,10 @@ static void RegisterOperatorKernel(const std::string& name,
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU);
+                                  platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU);
+                                  platform::CUDAPlace());
 #endif
 }
 
@@ -885,8 +907,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
-      grad_info.infer_shape_ = [grad_op_inputs,
-                                grad_op_outputs](InferShapeContext* ctx) {
+      grad_info.infer_shape_ = [grad_op_inputs, grad_op_outputs,
+                                is_double_grad](InferShapeContext* ctx) {
         // 1. if forward input exists, gradient's shape is same with forward
         // input
         // default
@@ -897,7 +919,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         //    [Suitable for the situation that forward input is not used as
         //    backward input]
         for (auto& out_name : grad_op_outputs) {
-          auto fwd_name = detail::NoGrad(out_name);
+          auto fwd_name = detail::NoGrad(out_name, is_double_grad);
           if (detail::IsDuplicableVar(fwd_name)) {
             // Duplicable forward var must as backward input
             ctx->ShareDim(fwd_name, out_name);

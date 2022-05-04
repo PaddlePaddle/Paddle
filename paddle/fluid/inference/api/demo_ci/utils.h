@@ -71,7 +71,8 @@ Record ProcessALine(const std::string& line) {
   return record;
 }
 
-void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
+void CheckOutput(const std::string& referfile, const PaddleTensor& output,
+                 float threshold = 1e-5) {
   std::string line;
   std::ifstream file(referfile);
   std::getline(file, line);
@@ -93,7 +94,7 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
       for (size_t i = 0; i < numel; ++i) {
         CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
-            1e-5);
+            threshold);
       }
       break;
     }

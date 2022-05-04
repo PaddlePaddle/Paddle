@@ -355,6 +355,10 @@ class TestTransformsTensor(TestTransformsCV2):
         trans = transforms.Compose([normalize])
         self.do_transform(trans)
 
+    def test_color_jitter(self):
+        trans = transforms.Compose([transforms.ColorJitter(1.1, 2.2, 0.8, 0.1)])
+        self.do_transform(trans)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -561,6 +565,59 @@ class TestFunctional(unittest.TestCase):
             np_cropped_img,
             tensor_cropped_img.numpy().transpose((1, 2, 0)),
             decimal=4)
+
+    def test_color_jitter_sub_function(self):
+        np.random.seed(555)
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(np_img)
+        np_img = pil_img
+
+        np_img_gray = (np.random.rand(28, 28, 1) * 255).astype('uint8')
+        tensor_img_gray = F.to_tensor(np_img_gray)
+
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+
+        def test_adjust_brightness(np_img, tensor_img):
+            result_cv2 = np.array(F.adjust_brightness(np_img, 1.2))
+            result_tensor = F.adjust_brightness(tensor_img, 1.2).numpy()
+            result_tensor = np.transpose(result_tensor * 255,
+                                         (1, 2, 0)).astype('uint8')
+            np.testing.assert_equal(result_cv2, result_tensor)
+
+        # For adjust_contrast / adjust_saturation / adjust_hue the implement is kind
+        # of different between PIL and Tensor. So the results can not equal exactly.
+
+        def test_adjust_contrast(np_img, tensor_img):
+            result_pil = np.array(F.adjust_contrast(np_img, 0.36))
+            result_tensor = F.adjust_contrast(tensor_img, 0.36).numpy()
+            result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff < 1.1)
+
+        def test_adjust_saturation(np_img, tensor_img):
+            result_pil = np.array(F.adjust_saturation(np_img, 1.0))
+            result_tensor = F.adjust_saturation(tensor_img, 1.0).numpy()
+            result_tensor = np.transpose(result_tensor * 255., (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff < 1.1)
+
+        def test_adjust_hue(np_img, tensor_img):
+            result_pil = np.array(F.adjust_hue(np_img, 0.45))
+            result_tensor = F.adjust_hue(tensor_img, 0.45).numpy()
+            result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff <= 16.0)
+
+        for place in places:
+            paddle.set_device(place)
+
+            test_adjust_brightness(np_img, tensor_img)
+            test_adjust_contrast(np_img, tensor_img)
+            test_adjust_saturation(np_img, tensor_img)
+            test_adjust_hue(np_img, tensor_img)
 
     def test_pad(self):
         np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')

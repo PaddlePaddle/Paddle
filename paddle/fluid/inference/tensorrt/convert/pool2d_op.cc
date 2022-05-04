@@ -132,11 +132,10 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr("X_scale"));
-      float input_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
+      CHECK(op_desc.HasAttr("Input_scale"));
+      float input_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
-#endif
     }
 
     std::vector<int> real_paddings = paddings;
@@ -257,19 +256,51 @@ class Pool2dOpConverter : public OpConverter {
 
     if (!adaptive) {
       if (ceil_mode) {
-        std::vector<int> input_shape_v;
-        for (int i = 0; i < input_dims; i++) {
-          input_shape_v.push_back(input_shape.d[i]);
+        if (nv_ksize.d[0] % nv_strides.d[0] == 0 &&
+            nv_ksize.d[1] % nv_strides.d[1] == 0) {
+          nvinfer1::DimsHW pre_pad(0, 0);
+          nvinfer1::DimsHW post_pad(0, 0);
+          // If ceil mode is true, we will pad the appropriate size to the
+          // input.
+          DealCeilMode(input_shape, ksize, strides, paddings, &pre_pad,
+                       &post_pad, input_dims);
+          auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
+                                                 pre_pad, post_pad);
+
+          PADDLE_ENFORCE_NOT_NULL(
+              pad_layer, platform::errors::Fatal(
+                             "Pad layer in poolOp converter could not be "
+                             "created. The pointer to pad layer is `NULL`."));
+          input1 = pad_layer->getOutput(0);
+
+          auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
+                                                  nv_pool_type, nv_ksize);
+          PADDLE_ENFORCE_NOT_NULL(
+              pool_layer,
+              platform::errors::Fatal(
+                  "trt pool layer in converter could not be created."));
+          pool_layer->setStride(nv_strides);
+          pool_layer->setPadding(nv_paddings);
+          if (padding_algorithm == "SAME") {
+            pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+          }
+          pool_layer->setAverageCountExcludesPadding(exclusive);
+          layer = pool_layer;
+        } else {
+          std::vector<int> input_shape_v;
+          for (int i = 0; i < input_dims; i++) {
+            input_shape_v.push_back(input_shape.d[i]);
+          }
+          plugin::PoolPlugin *plugin = new plugin::PoolPlugin(
+              ceil_mode, plugin_pool_type, adaptive, exclusive, ksize, strides,
+              paddings, input_shape_v, real_paddings);
+          auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+          PADDLE_ENFORCE_NOT_NULL(
+              pool_layer,
+              platform::errors::Fatal(
+                  "trt pool plugin layer in converter could not be created."));
+          layer = pool_layer;
         }
-        plugin::PoolPlugin *plugin = new plugin::PoolPlugin(
-            ceil_mode, plugin_pool_type, adaptive, exclusive, ksize, strides,
-            paddings, input_shape_v, real_paddings);
-        auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
-        PADDLE_ENFORCE_NOT_NULL(
-            pool_layer,
-            platform::errors::Fatal(
-                "trt pool plugin layer in converter could not be created."));
-        layer = pool_layer;
       } else {
 #if IS_TRT_VERSION_GE(8000)
         // Exclude padding pixels from the average mean is not supported well by
@@ -300,7 +331,6 @@ class Pool2dOpConverter : public OpConverter {
         pool_layer->setAverageCountExcludesPadding(exclusive);
         layer = pool_layer;
       }
-
     } else {
       // Average pooling needs to exclude the padding pixels from the average
       // mean.
@@ -328,5 +358,4 @@ class Pool2dOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP_ITSELF(pool2d);
 REGISTER_TRT_OP_CONVERTER(pool2d, Pool2dOpConverter);

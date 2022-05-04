@@ -51,32 +51,6 @@ int32_t FleetWrapper::CopyTableByFeasign(
   return 0;
 }
 
-void FleetWrapper::Stop() { StopServer(); }
-
-void FleetWrapper::Load(WrapperContext& context) {
-  auto table_id = context.table_id;
-  if (table_id >= 0 && context.meta != "") {
-    LoadSparseOnServer(context.path, context.meta, context.table_id);
-    return;
-  }
-  if (table_id < 0) {  // laod all
-    LoadModel(context.path, context.mode);
-  } else {  // load one table
-    LoadModelOneTable(table_id, context.path, context.mode);
-  }
-  return;
-}
-
-void FleetWrapper::Save(WrapperContext& context) {
-  auto table_id = context.table_id;
-  if (table_id < 0) {
-    SaveModel(context.path, context.mode);
-  } else {
-    SaveModelOneTable(table_id, context.path, context.mode);
-  }
-  return;
-}
-
 void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
                                           int connect_timeout_ms,
                                           int max_retry) {
@@ -90,7 +64,7 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
                                       uint32_t table_id) {
   VLOG(3) << "load sparse table " << table_id << " with " << path << " meta "
           << meta;
-  pserver_ptr_->_server_ptr->table(table_id)->load(path, meta);
+  pserver_ptr_->_server_ptr->GetTable(table_id)->Load(path, meta);
 }
 
 void FleetWrapper::InitServer(
@@ -101,8 +75,8 @@ void FleetWrapper::InitServer(
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
-    pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
-                              index, trainers, server_sub_program);
+    pserver_ptr_->InitServer(dist_desc, &host_sign_list, host_sign_list.size(),
+                             index, trainers, server_sub_program);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
@@ -143,10 +117,10 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
       InitGFlag(ps_param.init_gflags());
       int servers = host_sign_list.size();
-      ps_env_.set_ps_servers(&host_sign_list, servers);
+      ps_env_.SetPsServers(&host_sign_list, servers);
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-          paddle::distributed::PSClientFactory::create(ps_param));
-      worker_ptr_->configure(ps_param, dense_pull_regions, ps_env_, index);
+          paddle::distributed::PSClientFactory::Create(ps_param));
+      worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
     }
   } else {
     VLOG(3) << "Client can be initialized only once";
@@ -155,13 +129,13 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
 
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
-  auto status = worker_ptr_->stop_server();
+  auto status = worker_ptr_->StopServer();
   status.wait();
 }
 
 void FleetWrapper::FinalizeWorker() {
   VLOG(3) << "Going to finalize worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
 }
 
 void FleetWrapper::BarrierWithTable(uint32_t barrier_type) {
@@ -172,13 +146,13 @@ void FleetWrapper::BarrierWithTable(uint32_t barrier_type) {
 
 uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
   VLOG(3) << "Going to run server with ip " << ip << " port " << port;
-  auto ret = pserver_ptr_->run_server(ip, port);
+  auto ret = pserver_ptr_->RunServer(ip, port);
   return ret;
 }
 
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
-  std::vector<uint64_t> res = ps_env_.get_client_info();
+  std::vector<uint64_t> res = ps_env_.GetClientInfo();
   for (auto rr : res) {
     VLOG(2) << "FleetWrapper::GetClientInfo " << rr;
   }
@@ -187,14 +161,14 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 
 int FleetWrapper::SetClients(std::vector<uint64_t>& host_sign_list) {
   int node = host_sign_list.size();
-  return ps_env_.set_ps_clients(host_sign_list.data(), node);
+  return ps_env_.SetPsClients(host_sign_list.data(), node);
 }
 
 void FleetWrapper::CreateClient2ClientConnection() {
   VLOG(1) << "Going to create client2client connection";
-  worker_ptr_->create_client2client_connection(
-      client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
-      client2client_max_retry_);
+  worker_ptr_->CreateClient2ClientConnection(client2client_request_timeout_ms_,
+                                             client2client_connect_timeout_ms_,
+                                             client2client_max_retry_);
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
@@ -230,9 +204,9 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   }
 
   bool training = true;
-  return pserver_ptr_->_worker_ptr->pull_sparse(pull_result_ptr.data(),
-                                                table_id, fea_keys->data(),
-                                                fea_keys->size(), training);
+  return pserver_ptr_->_worker_ptr->PullSparse(pull_result_ptr.data(), table_id,
+                                               fea_keys->data(),
+                                               fea_keys->size(), training);
 }
 
 void FleetWrapper::PullSparseVarsSync(
@@ -279,7 +253,7 @@ void FleetWrapper::PullSparseVarsSync(
     pull_result_ptr.push_back(t.data());
   }
   bool training = true;
-  auto status = pserver_ptr_->_worker_ptr->pull_sparse(
+  auto status = pserver_ptr_->_worker_ptr->PullSparse(
       pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
       training);
   pull_sparse_status.push_back(std::move(status));
@@ -337,21 +311,10 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  // ps client pull sparse
-  // construct client request context
-  RequestContext req_context;
-  req_context.value_type = Sparse;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.sparse_values = pull_result_ptr.data();
-  req_context.keys = fea_keys.data();
-  req_context.num = fea_keys.size();
-  req_context.is_training = is_training;
-  auto status = worker_ptr_->Pull(req_context);
-  // auto status =
-  //     worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
-  //                              fea_keys.data(), fea_keys.size(),
-  //                              is_training);
+
+  auto status =
+      worker_ptr_->PullSparse(pull_result_ptr.data(), table_id, fea_keys.data(),
+                              fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -364,7 +327,7 @@ void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
     std::vector<std::future<int32_t>>* pull_dense_status, bool in_cpu) {
-  auto& regions = _regions[tid];
+  auto& regions = regions_[tid];
   regions.clear();
   regions.resize(var_names.size());
   for (auto i = 0u; i < var_names.size(); ++i) {
@@ -378,21 +341,15 @@ void FleetWrapper::PullDenseVarsAsync(
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
   }
-  RequestContext req_context;
-  req_context.value_type = Dense;
-  req_context.training_mode = Async;
-  req_context.table = tid;
-  req_context.dense_values = regions.data();
-  req_context.num = regions.size();
-  auto status = worker_ptr_->Pull(req_context);
-  // auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
+
+  auto status = worker_ptr_->PullDense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
 }
 
 void FleetWrapper::PullDenseVarsSync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names) {
-  auto& regions = _regions[tid];
+  auto& regions = regions_[tid];
   regions.clear();
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
@@ -404,7 +361,7 @@ void FleetWrapper::PullDenseVarsSync(
       regions.emplace_back(std::move(reg));
     }
   }
-  auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
+  auto status = worker_ptr_->PullDense(regions.data(), regions.size(), tid);
   status.wait();
 }
 
@@ -424,7 +381,7 @@ void FleetWrapper::PushDenseParamSync(
     }
   }
   auto push_status =
-      worker_ptr_->push_dense_param(regions.data(), regions.size(), table_id);
+      worker_ptr_->PushDenseParam(regions.data(), regions.size(), table_id);
   push_status.wait();
   auto status = push_status.get();
   CHECK(status == 0) << "push dense param failed, status[" << status << "]";
@@ -470,15 +427,8 @@ void FleetWrapper::PushDenseVarsAsync(
             << g[tensor->numel() - 1];
   }
 
-  RequestContext req_context;
-  req_context.value_type = Dense;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.push_context.push_dense_values = regions.data();
-  req_context.num = regions.size();
-  // auto push_status =
-  //     worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
-  auto push_status = worker_ptr_->Push(req_context);
+  auto push_status =
+      worker_ptr_->PushDense(regions.data(), regions.size(), table_id);
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -650,23 +600,13 @@ void FleetWrapper::PushSparseFromTensorAsync(
     push_g_vec[i] = push_values.at(i).data();
   }
 
-  // ps client push sparse
-  // construct request context
-  RequestContext req_context;
-  req_context.value_type = Sparse;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.push_context.push_values = (const float**)push_g_vec.data();
-  req_context.push_context.keys = push_keys.data();
-  req_context.num = push_keys.size();
-  auto status = worker_ptr_->Push(req_context);
-  // auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
-  //                                        (const float**)push_g_vec.data(),
-  //                                        push_keys.size());
+  auto status = worker_ptr_->PushSparse(table_id, push_keys.data(),
+                                        (const float**)push_g_vec.data(),
+                                        push_keys.size());
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
-  auto ret = worker_ptr_->load(path, std::to_string(mode));
+  auto ret = worker_ptr_->Load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -675,7 +615,7 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
-  auto ret = worker_ptr_->load(table_id, path, std::to_string(mode));
+  auto ret = worker_ptr_->Load(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id
@@ -684,7 +624,7 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 }
 
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
-  auto ret = worker_ptr_->save(path, std::to_string(mode));
+  auto ret = worker_ptr_->Save(path, std::to_string(mode));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
@@ -694,7 +634,7 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 
 void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
-  auto ret = worker_ptr_->save(table_id, path, std::to_string(mode));
+  auto ret = worker_ptr_->Save(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
@@ -704,7 +644,7 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
 
 void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
                                     const std::string& path) {
-  auto ret = worker_ptr_->recv_and_save_table(table_id, path);
+  auto ret = worker_ptr_->RecvAndSaveTable(table_id, path);
   if (ret != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
                << ", to path: " << path << " failed";
@@ -712,7 +652,7 @@ void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
 }
 
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
-  auto ret = worker_ptr_->print_table_stat(table_id);
+  auto ret = worker_ptr_->PrintTableStat(table_id);
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -721,7 +661,7 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 }
 
 void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
-  auto ret = worker_ptr_->shrink(table_id, std::to_string(threshold));
+  auto ret = worker_ptr_->Shrink(table_id, std::to_string(threshold));
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -730,12 +670,12 @@ void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
 }
 
 void FleetWrapper::ClearModel() {
-  auto ret = pserver_ptr_->_worker_ptr->clear();
+  auto ret = pserver_ptr_->_worker_ptr->Clear();
   ret.wait();
 }
 
 void FleetWrapper::ClearOneTable(const uint64_t table_id) {
-  auto ret = pserver_ptr_->_worker_ptr->clear(table_id);
+  auto ret = pserver_ptr_->_worker_ptr->Clear(table_id);
   ret.wait();
 }
 
@@ -774,7 +714,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
       regions.emplace_back(std::move(reg));
     }
   }
-  auto push_status = pserver_ptr_->_worker_ptr->push_dense_param(
+  auto push_status = pserver_ptr_->_worker_ptr->PushDenseParam(
       regions.data(), regions.size(), table_id);
   push_status.wait();
   auto status = push_status.get();
@@ -791,7 +731,7 @@ void FleetWrapper::ClientFlush() {
     VLOG(0) << "worker_ptr null, do nothing";
     return;
   }
-  auto ret = worker_ptr_->flush();
+  auto ret = worker_ptr_->Flush();
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -805,13 +745,53 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
     VLOG(0) << "FleetWrapper::Client is null";
     return -1;
   } else {
-    return worker_ptr_->registe_client2client_msg_handler(msg_type, handler);
+    return worker_ptr_->RegisteClient2ClientMsgHandler(msg_type, handler);
   }
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
-  return worker_ptr_->send_client2client_msg(msg_type, to_client_id, msg);
+  return worker_ptr_->SendClient2ClientMsg(msg_type, to_client_id, msg);
+}
+
+double FleetWrapper::GetCacheThreshold(int table_id) {
+  double cache_threshold = 0.0;
+  auto ret = worker_ptr_->Flush();
+  ret.wait();
+  ret = worker_ptr_->GetCacheThreshold(table_id, cache_threshold);
+  ret.wait();
+  if (cache_threshold < 0) {
+    LOG(ERROR) << "get cache threshold failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return cache_threshold;
+}
+
+void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
+                                const int mode, const double cache_threshold) {
+  auto ret = worker_ptr_->CacheShuffle(table_id, path, std::to_string(mode),
+                                       std::to_string(cache_threshold));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "cache shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+}
+
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
+  auto ret = worker_ptr_->SaveCache(table_id, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {

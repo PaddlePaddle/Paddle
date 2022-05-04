@@ -20,13 +20,13 @@ namespace experimental {
 /* ------------------ for input ----------------------- */
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+  return std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
 std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl());
+    return std::static_pointer_cast<phi::DenseTensor>(tensor->impl());
   }
   return nullptr;
 }
@@ -41,17 +41,17 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
         *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
-  return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
+  return std::static_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor) {
+    const paddle::optional<const Tensor&>& tensor) {
   if (tensor) {
-    return std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl());
+    return std::static_pointer_cast<phi::SelectedRows>(tensor->impl());
   }
   return nullptr;
 }
@@ -79,6 +79,16 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
   for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::DenseTensor*>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (auto* t : tensors) {
     meta_tensors.emplace_back(*t);
   }
   return meta_tensors;
@@ -144,7 +154,7 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
           std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
                                                  phi::DenseTensor(),
                                                  phi::DenseTensor(),
-                                                 phi::DDim{-1});
+                                                 phi::DDim{-1, -1});
       out->set_impl(sparse_tensor);
       return sparse_tensor.get();
     } else {

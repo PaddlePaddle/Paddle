@@ -48,7 +48,8 @@ void Copy(const Context& dev_ctx,
     // dev_ctx can not alloc pinned memory now
     dst_ptr = dst->mutable_data(dst_place, src.dtype());
   } else {
-    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+    dst_ptr = dev_ctx.Alloc(
+        dst, src.dtype(), 0, paddle::platform::is_cuda_pinned_place(dst_place));
   }
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -151,6 +152,30 @@ void Copy(const Context& dev_ctx,
             "Context place dose not match the source and destination place."));
       }
     }
+  } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
+             paddle::platform::is_cuda_pinned_place(dst_place)) {
+    auto src_gpu_place = src_place;
+    auto dst_cuda_pinned_place = dst_place;
+    auto ctx_place = dev_ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::is_gpu_place(ctx_place),
+        true,
+        phi::errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto ctx_gpu_place = ctx_place;
+    PADDLE_ENFORCE_EQ(src_gpu_place,
+                      ctx_gpu_place,
+                      phi::errors::Unavailable(
+                          "Source place and context place do not match, source "
+                          "place is %s, context place is %s.",
+                          src_gpu_place,
+                          ctx_gpu_place));
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    paddle::memory::Copy(
+        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Place type error. Please check the place of src and dst Tensor."));

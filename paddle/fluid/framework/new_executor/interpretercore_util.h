@@ -63,6 +63,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "HostTasks",
                                /*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ false,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
@@ -70,6 +71,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                                /*num_threads*/ deivce_num_threads,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ true,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
@@ -77,6 +79,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "Prepare",
                                /*num_threads*/ 1,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ false,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
@@ -116,7 +119,8 @@ void build_op_func_list(const platform::Place& place,
                         VariableScope* var_scope, bool use_local_scope = true);
 
 std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction);
+    const std::vector<Instruction>& vec_instruction,
+    std::vector<std::vector<bool>>* op_happens_before);
 
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);

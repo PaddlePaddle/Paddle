@@ -38,10 +38,12 @@ static std::string DefaultFileName() {
 }
 
 const char* ChromeTracingLogger::categary_name_[] = {
-    "Operator",      "Dataloader", "ProfileStep",      "CudaRuntime",
-    "Kernel",        "Memcpy",     "Memset",           "UserDefined",
-    "OperatorInner", "Forward",    "Backward",         "Optimization",
-    "Communication", "PythonOp",   "PythonUserDefined"};
+    "Operator",      "Dataloader",  "ProfileStep",
+    "CudaRuntime",   "Kernel",      "Memcpy",
+    "Memset",        "UserDefined", "OperatorInner",
+    "Forward",       "Backward",    "Optimization",
+    "Communication", "PythonOp",    "PythonUserDefined",
+    "MluRuntime"};
 
 void ChromeTracingLogger::OpenFile() {
   output_file_stream_.open(filename_,
@@ -325,7 +327,7 @@ void ChromeTracingLogger::HandleTypeKernel(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
@@ -376,7 +378,7 @@ void ChromeTracingLogger::HandleTypeMemcpy(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
@@ -411,7 +413,7 @@ void ChromeTracingLogger::HandleTypeMemset(
     "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
-    "cname": "rail_animation",
+    "cname": "cq_build_failed",
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
@@ -598,6 +600,12 @@ void ChromeTracingLogger::RefineDisplayName(
         (*it).second * 2, (*it).first, (*it).second, (*it).second * 2 + 1);
   }
 
+#ifdef PADDLE_WITH_MLU
+  static std::string device_type("MLU");
+#else
+  static std::string device_type("GPU");
+#endif
+
   for (auto it = deviceid_streamid_set_.begin();
        it != deviceid_streamid_set_.end(); ++it) {
     output_file_stream_ << string_format(
@@ -607,7 +615,7 @@ void ChromeTracingLogger::RefineDisplayName(
     "name": "process_name", "pid": %lld, "tid": %lld,
     "ph": "M", 
     "args": {
-      "name": "Deivce %lld (GPU)"
+      "name": "Deivce %lld (%s)"
     }
   },
    {
@@ -632,9 +640,9 @@ void ChromeTracingLogger::RefineDisplayName(
     }
   },  
   )JSON"),
-        (*it).first, (*it).second, (*it).first, (*it).first, (*it).second,
-        (*it).second, (*it).first, (*it).second, (*it).first + 0x10000000,
-        (*it).first, (*it).second, (*it).second);
+        (*it).first, (*it).second, (*it).first, device_type.c_str(),
+        (*it).first, (*it).second, (*it).second, (*it).first, (*it).second,
+        (*it).first + 0x10000000, (*it).first, (*it).second, (*it).second);
   }
 }
 

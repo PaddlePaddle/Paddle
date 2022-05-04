@@ -23,6 +23,7 @@ import os
 import subprocess
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.fluid.framework import _test_eager_guard
 
 
 def get_cluster_from_args(selected_gpus):
@@ -99,6 +100,7 @@ def start_local_trainers(cluster,
                          pod,
                          training_script,
                          training_script_args,
+                         eager_mode=True,
                          log_dir=None):
     current_env = copy.copy(os.environ.copy())
     #paddle broadcast ncclUniqueId use socket, and
@@ -117,6 +119,9 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+
+        if not eager_mode:
+            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
 
         current_env.update(proc_env)
 
@@ -144,15 +149,8 @@ def start_local_trainers(cluster,
     return procs
 
 
-def get_dist_port_from_flags():
-    DIST_UT_PORT = 6175
-    if os.getenv("PADDLE_DIST_UT_PORT"):
-        DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
-    return DIST_UT_PORT
-
-
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name):
+    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
         if not fluid.core.is_compiled_with_cuda(
         ) or fluid.core.get_cuda_device_count() == 0:
             return
@@ -166,6 +164,7 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
+            eager_mode=eager_mode,
             training_script=target_file_name,
             training_script_args=[])
 
@@ -206,11 +205,8 @@ class TestDataParallelGradientCheck(TestMultipleGpus):
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
-
-
-class TestDataParallelInEagerMode(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
+        self.run_mnist_2gpu(
+            'parallel_dygraph_dataparallel_with_pylayer.py', eager_mode=False)
 
 
 class TestGradientCheckInEagerMode(TestMultipleGpus):

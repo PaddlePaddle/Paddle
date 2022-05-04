@@ -166,6 +166,7 @@ from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
 from .math import nansum  # noqa: F401
+from .math import nanmean  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
@@ -228,6 +229,7 @@ from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
 from .math import inner  # noqa: F401
 from .math import outer  # noqa: F401
+from .math import frac  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -261,6 +263,7 @@ from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
 from .stat import quantile  # noqa: F401
+from .stat import nanquantile  # noqa: F401
 
 from .to_string import set_printoptions  # noqa: F401
 
@@ -335,6 +338,7 @@ tensor_method_func  = [ #noqa
            'stanh',
            'sum',
            'nansum',
+           'nanmean',
            'tanh',
            'tanh_',
            'add_n',
@@ -444,6 +448,7 @@ tensor_method_func  = [ #noqa
            'numel',
            'median',
            'quantile',
+           'nanquantile',
            'is_complex',
            'is_integer',
            'rank',
@@ -454,6 +459,7 @@ tensor_method_func  = [ #noqa
            'digamma',
            'diagonal',
            'trunc',
+           'frac',
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',

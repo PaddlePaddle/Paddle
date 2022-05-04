@@ -57,4 +57,6 @@ class TestDygraphFleetAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    with _test_eager_guard():
+        pass
     unittest.main()

@@ -271,27 +271,6 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
   }
 }
 
-void EagerUtils::ModifyInplaceInput(
-    const std::shared_ptr<EagerVariable>& inplace_variable,
-    paddle::experimental::Tensor* inplace_tensor) {
-  // Only modify the meta information of the inplace tensor, because
-  // EagerVariable cannot modify Tensor's meta information after inplace
-  // op (such as ``reshape``) is executed.
-  PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
-                          paddle::platform::errors::Fatal(
-                              "Inplace Tensor is null and cannot be modified. "
-                              "We are tring to Modify Inplace Input from its "
-                              "shared_ptr, this error may indicate the inplace "
-                              " input is nullptr"));
-  if (phi::DenseTensor::classof(inplace_variable->GetTensorBase().get())) {
-    phi::DenseTensor* variable_dense_tensor =
-        static_cast<phi::DenseTensor*>(inplace_variable->GetTensorBase().get());
-    phi::DenseTensor* tensor_dense_tensor =
-        static_cast<phi::DenseTensor*>(inplace_tensor->impl().get());
-    tensor_dense_tensor->set_meta(variable_dense_tensor->meta());
-  }
-}
-
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs) {
   std::vector<paddle::experimental::Tensor> res;
@@ -381,32 +360,15 @@ void EagerUtils::Output2Result(
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  return tw->recover(grad_node);
-}
-
-paddle::optional<const paddle::experimental::Tensor&>
-EagerUtils::RecoverOptionalTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  PADDLE_ENFORCE_NOT_NULL(
-      tw, phi::errors::InvalidArgument("TensorWrapper in "
-                                       "RecoverOptionalTensorWrapper function "
-                                       "should not be null"));
-  auto tmp = tw->recover(grad_node);
-
-  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
-  if (tmp.initialized()) {
-    res = tmp;
-  }
-  return res;
+    TensorWrapper* tw) {
+  return tw->recover();
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
-    std::vector<TensorWrapper>* tw,
-    const std::shared_ptr<GradNodeBase>& grad_node) {
+    std::vector<TensorWrapper>* tw) {
   std::vector<paddle::experimental::Tensor> ret;
   for (auto& t : *tw) {
-    ret.emplace_back(t.recover(grad_node));
+    ret.emplace_back(t.recover());
   }
   return ret;
 }
@@ -479,12 +441,14 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
 }
 
 void EagerUtils::FillZeroForEmptyGradInputs(
-    std::vector<std::vector<paddle::experimental::Tensor>>* in_grads,
-    const std::vector<std::vector<GradSlotMeta>>& grad_in_metas) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>* in_grads,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
     for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
       paddle::experimental::Tensor& grad = (*in_grads)[i][j];
-      if (!grad.is_initialized()) {
+      if (!grad.initialized()) {
         const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
         PADDLE_ENFORCE(
             grad_in_meta.HasTensorMeta(),

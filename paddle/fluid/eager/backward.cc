@@ -22,10 +22,10 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
 
@@ -50,7 +50,16 @@ class GeneralGrad {
       for (size_t i = 0; i < num_inputs; i++) {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
-        auto target_node = auto_grad_meta->GetMutableGradNode().get();
+        auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+
+        if (orig_to_copied_node_mapping_.count(target_node)) {
+          target_node = orig_to_copied_node_mapping_[target_node].get();
+        } else {
+          VLOG(6) << "Unable to find target node in "
+                     "orig_to_copied_node_mapping_, likely indicating an "
+                     "unused input";
+        }
+
         PADDLE_ENFORCE_NOT_NULL(target_node,
                                 paddle::platform::errors::Fatal(
                                     "There is no grad op for %s:[%d] or it's"
@@ -160,9 +169,12 @@ class GeneralGrad {
           input_target_nodes_inputmeta_map.count(node);
 
       // Find and append next nodes
-      const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-      for (const auto& edge_list : edges) {
-        for (const Edge& edge : edge_list) {
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& metas =
+          node->OutputMeta();
+      for (const auto& meta_list : metas) {
+        for (const GradSlotMeta& meta : meta_list) {
+          const auto& edge = meta.GetEdge();
           GradNodeBase* next_node = edge.GetMutableGradNode().get();
 
           // Next node could be nullptr if it is leaf tensor with no
@@ -249,7 +261,15 @@ class GeneralGrad {
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto& input = inputs[i];
       AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(input);
-      auto target_node = auto_grad_meta->GetMutableGradNode().get();
+
+      auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+      if (orig_to_copied_node_mapping_.count(target_node)) {
+        target_node = orig_to_copied_node_mapping_[target_node].get();
+      } else {
+        VLOG(6) << "Unable to find target node in "
+                   "orig_to_copied_node_mapping_, likely indicating an unused "
+                   "input";
+      }
 
       auto iter = results_map.find(target_node);
       if (iter != results_map.end()) {
@@ -326,6 +346,79 @@ class GeneralGrad {
     potential_stop_nodes.clear();
     depending_nodes.clear();
     results_map.clear();
+    copied_grad_nodes_.clear();
+    orig_to_copied_node_mapping_.clear();
+  }
+
+  GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
+    if (orig_to_copied_node_mapping_.count(orig_node.get())) {
+      return orig_to_copied_node_mapping_[orig_node.get()].get();
+    }
+    std::shared_ptr<GradNodeBase> copied_node = orig_node->Copy();
+
+    // Save node and update mapping
+    orig_to_copied_node_mapping_[orig_node.get()] = copied_node;
+    copied_grad_nodes_.push_back(copied_node);
+
+    return copied_node.get();
+  }
+
+  void ReconstructBackwardGraph(
+      const std::queue<GradNodeBase*>& orig_init_queue) {
+    std::queue<GradNodeBase*> queue = orig_init_queue;
+    std::unordered_set<GradNodeBase*> visited;
+
+    // BFS and recursively copy the grad nodes
+    while (!queue.empty()) {
+      GradNodeBase* orig_node = queue.front();
+      queue.pop();
+      if (visited.count(orig_node)) {
+        continue;
+      }
+      visited.insert(orig_node);
+
+      PADDLE_ENFORCE(
+          orig_to_copied_node_mapping_.count(orig_node),
+          paddle::platform::errors::Fatal(
+              "Cannot reconstruct backward graph,"
+              "unable to find copied target for certain grad node."));
+      GradNodeBase* copied_node = orig_to_copied_node_mapping_[orig_node].get();
+
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& orig_meta =
+          orig_node->OutputMeta();
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+          copied_edges = copied_node->MutableOutputMeta();
+      for (size_t i = 0; i < orig_meta.size(); i++) {
+        for (size_t j = 0; j < orig_meta[i].size(); j++) {
+          const Edge& orig_edge = orig_meta[i][j].GetEdge();
+          Edge& copied_edge = copied_edges[i][j].GetMutableEdge();
+
+          std::shared_ptr<GradNodeBase> orig_next_node =
+              orig_edge.GetMutableGradNode();
+          if (!orig_next_node) continue;
+
+          // Copy Next Node
+          std::shared_ptr<GradNodeBase> copied_next_node;
+          if (orig_to_copied_node_mapping_.count(orig_next_node.get())) {
+            copied_next_node =
+                orig_to_copied_node_mapping_[orig_next_node.get()];
+
+          } else {
+            copied_next_node = orig_next_node->Copy();
+            orig_to_copied_node_mapping_[orig_next_node.get()] =
+                copied_next_node;
+            copied_grad_nodes_.push_back(copied_next_node);
+          }
+
+          // Update Edge's Grad Node
+          copied_edge.SetGradNode(copied_next_node);
+
+          // Update BFS queue
+          queue.push(orig_next_node.get());
+        }
+      }
+    }
   }
 
  private:
@@ -345,6 +438,11 @@ class GeneralGrad {
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes;
   std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map;
+
+  std::vector<std::shared_ptr<GradNodeBase>> copied_grad_nodes_;
+  std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
+      orig_to_copied_node_mapping_;
+
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
 
@@ -375,9 +473,11 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
             "We got null node when we traverse the backward graph, and this "
             "should not happened please check your code and contact us."));
     // Find and append next nodes
-    const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-    for (const auto& edge_list : edges) {
-      for (const Edge& edge : edge_list) {
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        metas = node->OutputMeta();
+    for (const auto& meta_list : metas) {
+      for (const GradSlotMeta& meta : meta_list) {
+        const auto& edge = meta.GetEdge();
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
@@ -392,6 +492,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
+
   return node_in_degree_map;
 }
 
@@ -433,23 +534,32 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     bool allow_unused = false,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
   VLOG(6) << "Start Backward";
+
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
 
   // GeneralGrad
   bool is_general_grad = !inputs.empty();
+  if (is_general_grad) GeneralGrad::Instance().Clear();
 
   /* --- Initialization --- */
   // 1. Init queue with starting nodes
   // 2. Prepare initial input buffers
   std::queue<GradNodeBase*> queue;
+  std::queue<GradNodeBase*> orig_queue;
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   for (size_t i = 0; i < tensors.size(); i++) {
     const paddle::experimental::Tensor& tensor = tensors[i];
 
-    AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(tensor);
+    AutogradMeta* auto_grad_meta = EagerUtils::nullable_autograd_meta(tensor);
+    if (auto_grad_meta == nullptr) {
+      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+                 "stop_gradient=True: "
+              << tensor.name();
+      continue;
+    }
     // Get grad input info from target tensors
     auto input_info = auto_grad_meta->OutRankInfo();
 
@@ -466,7 +576,18 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       continue;
     }
 
+    // TODO(zhanlve): Copy and Modify GradNode if is_general_grad
     GradNodeBase* grad_node = shared_grad_node.get();
+    if (is_general_grad) {
+      // Save orig grad node
+      orig_queue.push(grad_node);
+
+      // Replace grad_node with copied grad_node
+      grad_node = GeneralGrad::Instance().CopyGradNode(shared_grad_node);
+
+      // Record potential startup grad node
+      GeneralGrad::Instance().GetPotentialStartupNodes()->insert(grad_node);
+    }
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
@@ -475,8 +596,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
-
-    if (grad_tensors.size() > 0) {
+    bool copy_from_grad_t =
+        grad_tensors.size() > 0 && grad_tensors[i].initialized();
+    if (copy_from_grad_t) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           paddle::platform::errors::Fatal(
@@ -486,17 +608,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
 
-      if (grad_tensors[i].is_initialized()) {
-        // Deep copy
-        paddle::experimental::Tensor tmp_tensor;
-        tmp_tensor.copy_(grad_tensors[i], grad_tensors[i].inner_place(), false);
-        node_input_buffers_dict[grad_node]->add(input_info.first,
-                                                input_info.second, tmp_tensor);
-      } else {
-        node_input_buffers_dict[grad_node]->add(
-            input_info.first, input_info.second, grad_tensors[i]);
-      }
-
+      // Deep copy
+      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
+          input_info.first, input_info.second, grad_tensors[i]);
     } else {
       VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
@@ -504,15 +618,17 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // dims
       // GradTensorHolder will initialize another tensor with same tensortype,
       // datatype and dims but filled with 1.0
-      node_input_buffers_dict[grad_node]->add(
+      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
           input_info.first, input_info.second, tensor, true /*fill_one=true*/);
     }
 
     // Prepare queue, potential startup_nodes
     queue.push(grad_node);
-    if (is_general_grad) {
-      GeneralGrad::Instance().GetPotentialStartupNodes()->emplace(grad_node);
-    }
+  }
+
+  if (is_general_grad) {
+    // Copy Backward Graph
+    GeneralGrad::Instance().ReconstructBackwardGraph(orig_queue);
   }
 
   VLOG(6) << "Update In degree Map for backward";
@@ -541,7 +657,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Running GradNode:" << node->name();
 
     paddle::platform::RecordEvent node_record_event(
-        std::string(typeid(*node).name()) + " grad_node",
+        std::string((*node).name()) + " grad_node",
         paddle::platform::TracerEventType::Operator, 1);
 
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
@@ -586,8 +702,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
-    std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
-        (*node)(node_input_buffer->Buffers(), create_graph);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
+        grad_output_tensors = (*node)(node_input_buffer->Buffers(),
+                                      create_graph, is_general_grad);
 
     // retain_grad or not
     if (!retain_graph) {
@@ -601,17 +719,18 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     node_input_buffers_dict.erase(node);
 
     // Prepare GradTensorHolder for next node
-    const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-    PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        metas = node->OutputMeta();
+    PADDLE_ENFORCE(metas.size() == grad_output_tensors.size() || metas.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
                        ") or the same as number of output grad tensors, but we "
                        "got edges size is: %d, grad_output size is: %d",
-                       edges.size(), grad_output_tensors.size()));
+                       metas.size(), grad_output_tensors.size()));
 
-    for (size_t i = 0; i < edges.size(); i++) {
-      for (size_t j = 0; j < edges[i].size(); j++) {
-        const Edge& edge = edges[i][j];
+    for (size_t i = 0; i < metas.size(); i++) {
+      for (size_t j = 0; j < metas[i].size(); j++) {
+        const Edge& edge = metas[i][j].GetEdge();
         if (!edge.IsInitialized()) {
           continue;
         }
@@ -644,6 +763,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           VLOG(6) << "We get grad_output_tensor with slot: " << i
                   << ", rank: " << j << " as uninitialized or undefined tensor";
         }
+
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
                 << " 's name is: " << grad_output_tensor.name();
@@ -657,10 +777,13 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                   << next_node->name();
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
+
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
+
         node_input_buffers_dict[next_node]->add(
-            edge_rank.first, edge_rank.second, grad_output_tensor);
+            edge_rank.first, edge_rank.second, grad_output_tensor,
+            create_graph);
 
         // Update queue
         node_in_degree_map[next_node]--;
@@ -686,6 +809,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
   }
+
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
@@ -698,6 +822,7 @@ void Backward(
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::Operator, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
+  phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
 std::vector<paddle::experimental::Tensor> Grad(
