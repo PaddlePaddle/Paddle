@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 struct GpuPsGraphNode {
   int64_t node_id;
-  int neighbor_size, neighbor_offset;
+  unsigned int neighbor_size, neighbor_offset;
   // this node's neighbor is stored on [neighbor_offset,neighbor_offset +
   // neighbor_size) of int64_t *neighbor_list;
 };
@@ -32,28 +32,38 @@ struct GpuPsGraphNode {
 struct GpuPsCommGraph {
   int64_t *neighbor_list;
   GpuPsGraphNode *node_list;
-  int neighbor_size, node_size;
+  unsigned int neighbor_size, node_size;
   // the size of neighbor array and graph_node_list array
   GpuPsCommGraph()
       : neighbor_list(NULL), node_list(NULL), neighbor_size(0), node_size(0) {}
   GpuPsCommGraph(int64_t *neighbor_list_, GpuPsGraphNode *node_list_,
-                 int neighbor_size_, int node_size_)
+                 unsigned int neighbor_size_, unsigned int node_size_)
       : neighbor_list(neighbor_list_),
         node_list(node_list_),
         neighbor_size(neighbor_size_),
         node_size(node_size_) {}
+  void init_on_cpu(unsigned int neighbor_size, unsigned int node_size) {
+    this->neighbor_size = neighbor_size;
+    this->node_size = node_size;
+    this->neighbor_list = new int64_t[neighbor_size];
+    this->node_list = new paddle::framework::GpuPsGraphNode[node_size];
+  }
+  void release_on_cpu() {
+    delete[] neighbor_list;
+    delete[] node_list;
+  }
   void display_on_cpu() {
     VLOG(0) << "neighbor_size = " << neighbor_size;
     VLOG(0) << "node_size = " << node_size;
-    for (int i = 0; i < neighbor_size; i++) {
+    for (size_t i = 0; i < neighbor_size; i++) {
       VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
     }
-    for (int i = 0; i < node_size; i++) {
+    for (size_t i = 0; i < node_size; i++) {
       VLOG(0) << "node i " << node_list[i].node_id
               << " neighbor_size = " << node_list[i].neighbor_size;
       std::string str;
       int offset = node_list[i].neighbor_offset;
-      for (int j = 0; j < node_list[i].neighbor_size; j++) {
+      for (size_t j = 0; j < node_list[i].neighbor_size; j++) {
         if (j > 0) str += ",";
         str += std::to_string(neighbor_list[j + offset]);
       }

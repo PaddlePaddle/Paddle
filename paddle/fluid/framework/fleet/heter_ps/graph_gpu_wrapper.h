@@ -37,6 +37,12 @@ class GraphGpuWrapper {
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
+  void load_next_partition(int idx);
+  int32_t get_partition_num(int idx);
+  std::vector<int64_t> get_partition(int idx, int num);
+  void make_partitions(int idx, int64_t byte_size, int device_len);
+  void make_complementary_graph(int idx, int64_t byte_size);
+  void set_search_level(int level);
   std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
                                                int slice_num);
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
@@ -45,6 +51,7 @@ class GraphGpuWrapper {
   std::vector<int64_t> graph_neighbor_sample(int gpu_id,
                                              std::vector<int64_t>& key,
                                              int sample_size);
+
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
