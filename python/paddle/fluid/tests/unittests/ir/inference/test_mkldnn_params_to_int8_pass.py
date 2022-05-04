@@ -25,6 +25,7 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
             use_gpu=False, ir_optim=True, use_mkldnn=True)
+
         config.enable_quantizer()
         bsz = 1
         config.quantizer_config().set_quant_batch_size(bsz)
@@ -39,6 +40,10 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         warmup_data = [infer_data]
         print("warmup data type:", type(warmup_data[0]))
         config.quantizer_config().set_quant_data(warmup_data)
+
+        config.switch_use_feed_fetch_ops(True)
+        predictor = fluid.core.create_paddle_predictor(config)
+        predictor.run(warmup_data)
 
         config.pass_builder().append_pass("params_to_int8_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
@@ -84,7 +89,7 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         f_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=4), min_size=4, max_size=4))
+                    min_value=1, max_value=1), min_size=4, max_size=4))
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:
@@ -114,11 +119,13 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
         def generate_one():
             return np.random.random([1]).astype(np.float32)
 
-        inputs = {
+        conv_inputs = {
             "Input": ["input_x"],
             "Filter": ["filter"],
         }
-        weights = {"filter": TensorConfig(shape=f_shape), }
+        program_weights = {"filter": TensorConfig(shape=f_shape)}
+        program_inputs = {"input_x": TensorConfig(shape=x_shape)}
+
         attrs = {
             "Scale_weights": [0.45],
             "Scale_in": generate_one(),
@@ -126,17 +133,16 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
             "Output_shift_scale": generate_one(),
             "Activation_scale": generate_one(),
         }
-        print("Scale weights:", attrs["Scale_weights"])
 
         if draw(has_bias):
-            inputs["Bias"] = ["bias"]
-            weights["bias"] = TensorConfig(shape=f_shape[0])
+            conv_inputs["Bias"] = ["bias"]
+            program_weights["bias"] = TensorConfig(shape=f_shape[0])
             attrs["Bias_scales"] = np.random.random(f_shape[0]).astype(
                 np.float32)
 
         conv2d_op = OpConfig(
             "conv2d",
-            inputs=inputs,
+            inputs=conv_inputs,
             outputs={"Output": ["conv2d_out"]},
             strides=strides,
             padding_algorithm=padding_algorithm,
@@ -150,14 +156,10 @@ class TestMkldnnParamToInt8Pass(PassAutoScanTest):
 
         ops = [conv2d_op]
 
-        def generate_weight():
-            return np.array(np.random.random(x_shape)).astype(np.float32)
-
         program_config = ProgramConfig(
             ops=ops,
-            weights=weights,
-            inputs={"input_x":
-                    TensorConfig(data_gen=generate_weight)},  # shape=x_shape
+            weights=program_weights,
+            inputs=program_inputs,
             outputs=["conv2d_out"])
         return program_config
 
