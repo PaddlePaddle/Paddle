@@ -19,11 +19,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& index,
-                     int axis,
-                     float fill_value,
-                     DenseTensor* output);
+void IndexAddKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& index,
+                    int axis,
+                    float added_value,
+                    DenseTensor* output);
 
 }  // namespace phi
