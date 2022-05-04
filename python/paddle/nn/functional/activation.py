@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
+from ...fluid.framework import convert_np_dtype_to_dtype_, default_main_program
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
@@ -545,6 +545,107 @@ def prelu(x, weight, data_format="NCHW", name=None):
         outputs={"Out": out},
         attrs={"mode": mode,
                "data_format": data_format})
+    return out
+
+
+def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
+    """
+    rrelu activation.
+
+    .. _`Empirical Evaluation of Rectified Activations in Convolutional Network`:
+    https://arxiv.org/abs/1505.00853
+
+    .. math::
+        \text{RReLU}(x) =
+        \begin{cases}
+            x & \text{if } x \geq 0 \\
+            ax & \text{ otherwise }
+        \end{cases}
+
+    where :math:`a` is randomly sampled from uniform distribution
+    :math:`\mathcal{U}(\text{lower}, \text{upper})`.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float 16 float32, float64.
+        lower (float, optional): The lower bound of uniform distribution. Default: :math:`\frac{1}{8}`.
+        upper (float, optional): The upper bound of uniform distribution. Default: :math:`\frac{1}{3}`.
+        training (bool, optional): Current is training mode or others.  Default is True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+            :name: rrelu-example
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                               [ 3.0, -4.0,  5.0, -6.0],
+                               [-7.0, -8.0,  8.0,  9.0]],
+                              [[ 1.0, -2.0, -3.0,  4.0],
+                               [-5.0,  6.0,  7.0, -8.0],
+                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+            input_tensor = paddle.to_tensor(data)
+            out = F.rrelu(input_tensor, 0.1, 0.3)
+            #[[[[-0.20000899  3.         -0.8810822   5.        ]
+            #   [ 3.         -0.55175185  5.         -1.0776101 ]
+            #   [-1.0680687  -1.9896201   8.          9.        ]]
+            #  [[ 1.         -0.5238267  -0.65515125  4.        ]
+            #   [-1.3766339   6.          7.         -2.3465784 ]
+            #   [ 6.          7.          8.          9.        ]]]]
+    """
+    if not isinstance(lower, (float, int)) or not isinstance(upper, (float, int)):
+        raise TypeError(
+            "The lower and upper values must be float or int type. Received: lower {}, upper {}.".
+            format(lower, upper))
+
+    if lower < 0 or upper < lower or upper > 1:
+        raise ValueError(
+            "The lower and upper values must be in the range [0.0, 1.0] and upper must be greater "
+            " than or equal to lower. Received: lower={}, upper={}.".
+            format(lower, upper))
+
+    is_test = not training
+    seed = None
+
+    if _in_legacy_dygraph():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        out, mask = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+                                  is_test, 'fix_seed', seed is not None, 'seed',
+                                  seed if seed is not None else 0)
+        return out
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
+
+    def get_attrs(prog, lower, upper, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'lower': lower,
+            'upper': upper,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+        }
+        return attrs
+
+    helper = LayerHelper('rrelu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    mask = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
+
+    helper.append_op(
+        type='rrelu',
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Mask": mask},
+        attrs=attrs)
     return out
 
 
