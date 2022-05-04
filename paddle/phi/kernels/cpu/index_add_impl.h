@@ -22,11 +22,11 @@
 
 namespace phi {
 template <typename Context, typename T, typename IndexT = int>
-void IndexFillInner(const Context& ctx,
-                    const DenseTensor& index,
-                    DenseTensor* output,
-                    int axis,
-                    T fill_val) {
+void IndexAddInner(const Context& ctx,
+                   const DenseTensor& index,
+                   DenseTensor* output,
+                   int axis,
+                   T added_val) {
   auto output_dim = output->dims();
   auto output_dim_size = output_dim.size();
   auto index_size = index.dims()[0];
@@ -54,7 +54,7 @@ void IndexFillInner(const Context& ctx,
         index_data[i],
         0,
         phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_select) "
+            "Variable value (index) of OP(index_add) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             output_dim[axis],
@@ -63,7 +63,7 @@ void IndexFillInner(const Context& ctx,
         index_data[i],
         output_dim[axis],
         phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_select) "
+            "Variable value (index) of OP(index_add) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             output_dim[axis],
@@ -77,7 +77,8 @@ void IndexFillInner(const Context& ctx,
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
     auto output_t = output_tensor.chip(index_value, 1);
-    output_t.device(place) = output_t.constant(fill_val);
+    // output_t.device(place) = output_t.constant(fill_val);
+    output_t.device(place) += output_t.constant(added_val);
   }
   output->Resize(output_dim);
 }

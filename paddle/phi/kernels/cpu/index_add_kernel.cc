@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/index_fill_kernel.h"
+#include "paddle/phi/kernels/index_add_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/cpu/index_fill_impl.h"
+#include "paddle/phi/kernels/cpu/index_add_impl.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& index,
-                     int axis,
-                     float fill_value,
-                     DenseTensor* output) {
+void IndexAddKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& index,
+                    int axis,
+                    float added_value,
+                    DenseTensor* output) {
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
   if (axis < 0) {
     axis += x.dims().size();
@@ -45,20 +45,20 @@ void IndexFillKernel(const Context& dev_ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  auto fill_val = static_cast<T>(fill_value);
+  auto added_val = static_cast<T>(added_value);
   if (index_type == phi::DataType::INT32) {
-    IndexFillInner<Context, T, int>(dev_ctx, index, output, axis, fill_val);
+    IndexAddInner<Context, T, int>(dev_ctx, index, output, axis, added_val);
   } else if (index_type == phi::DataType::INT64) {
-    IndexFillInner<Context, T, int64_t>(dev_ctx, index, output, axis, fill_val);
+    IndexAddInner<Context, T, int64_t>(dev_ctx, index, output, axis, added_val);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_fill,
+PD_REGISTER_KERNEL(index_add,
                    CPU,
                    ALL_LAYOUT,
-                   phi::IndexFillKernel,
+                   phi::IndexAddKernel,
                    float,
                    phi::dtype::float16,
                    double,
