@@ -800,125 +800,125 @@ if __name__ == '__main__':
 
 
 
-class TestRReluFAPIError(unittest.TestCase):
-    def test_errors(self):
-        paddle.enable_static()
-        with static.program_guard(static.Program(), static.Program()):
-            def test_Variable():
-                # the input of rrelu must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-                paddle.nn.functional.rrelu(x1, training=True)
+# class TestRReluFAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         paddle.enable_static()
+#         with static.program_guard(static.Program(), static.Program()):
+#             def test_Variable():
+#                 # the input of rrelu must be Variable.
+#                 x1 = fluid.create_lod_tensor(
+#                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+#                 paddle.nn.functional.rrelu(x1, training=True)
 
-            self.assertRaises(TypeError, test_Variable)
+#             self.assertRaises(TypeError, test_Variable)
 
-            def test_Variable2():
-                # the input of rrelu must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, -3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-                paddle.nn.functional.rrelu(x1, training=False)
+#             def test_Variable2():
+#                 # the input of rrelu must be Variable.
+#                 x1 = fluid.create_lod_tensor(
+#                     np.array([-1, -3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+#                 paddle.nn.functional.rrelu(x1, training=False)
 
-            self.assertRaises(TypeError, test_Variable2)
+#             self.assertRaises(TypeError, test_Variable2)
 
-            def test_dtype():
-                # the input dtype of dropout must be float32 or float64
-                # float16 only can be set on GPU place
-                xr = fluid.data(name='xr', shape=[3, 4, 5, 6], dtype="int32")
-                paddle.nn.functional.rrelu(xr)
+#             def test_dtype():
+#                 # the input dtype of dropout must be float32 or float64
+#                 # float16 only can be set on GPU place
+#                 xr = fluid.data(name='xr', shape=[3, 4, 5, 6], dtype="int32")
+#                 paddle.nn.functional.rrelu(xr)
 
-            self.assertRaises(TypeError, test_dtype)
+#             self.assertRaises(TypeError, test_dtype)
 
-            # I stopped here at 2022/5/4 14:52
-            def test_pdtype():
-                # p should be int or float
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, p='0.5')
+#             # I stopped here at 2022/5/4 14:52
+#             def test_pdtype():
+#                 # p should be int or float
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, p='0.5')
 
-            self.assertRaises(TypeError, test_pdtype)
+#             self.assertRaises(TypeError, test_pdtype)
 
-            def test_pvalue():
-                # p should be 0.<=p<=1.
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, p=1.2)
+#             def test_pvalue():
+#                 # p should be 0.<=p<=1.
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, p=1.2)
 
-            self.assertRaises(ValueError, test_pvalue)
+#             self.assertRaises(ValueError, test_pvalue)
 
-            def test_mode():
-                # mode should be 'downscale_in_infer' or 'upscale_in_train'
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, mode='abc')
+#             def test_mode():
+#                 # mode should be 'downscale_in_infer' or 'upscale_in_train'
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, mode='abc')
 
-            self.assertRaises(ValueError, test_mode)
+#             self.assertRaises(ValueError, test_mode)
 
-            def test_axis():
-                # axis should be int or list
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, axis=1.2)
+#             def test_axis():
+#                 # axis should be int or list
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, axis=1.2)
 
-            self.assertRaises(TypeError, test_axis)
+#             self.assertRaises(TypeError, test_axis)
 
-            def test_axis_max():
-                # maximum of axis should less than dimensions of x
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, axis=[0, 5])
+#             def test_axis_max():
+#                 # maximum of axis should less than dimensions of x
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, axis=[0, 5])
 
-            self.assertRaises(ValueError, test_axis_max)
+#             self.assertRaises(ValueError, test_axis_max)
 
-            def test_axis_min():
-                # minimum of axis should greater equal than 0
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, axis=[0, -1])
+#             def test_axis_min():
+#                 # minimum of axis should greater equal than 0
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, axis=[0, -1])
 
-            self.assertRaises(ValueError, test_axis_min)
+#             self.assertRaises(ValueError, test_axis_min)
 
-            def test_axis_len():
-                # length of axis should not greater than dimensions of x
-                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
-                paddle.nn.functional.dropout(x2, axis=[0, 1, 2, 3, 4])
+#             def test_axis_len():
+#                 # length of axis should not greater than dimensions of x
+#                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+#                 paddle.nn.functional.dropout(x2, axis=[0, 1, 2, 3, 4])
 
-            self.assertRaises(ValueError, test_axis_len)
-        paddle.disable_static()
+#             self.assertRaises(ValueError, test_axis_len)
+#         paddle.disable_static()
 
-class TestDropoutCAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+# class TestDropoutCAPI(unittest.TestCase):
+#     def setUp(self):
+#         np.random.seed(123)
+#         self.places = [fluid.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             self.places.append(fluid.CUDAPlace(0))
 
-    def test_dygraph(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                input_np = np.random.random([40, 40]).astype("float32")
-                result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.Dropout(p=0.)
-                m.eval()
-                result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
-
-
+#     def test_dygraph(self):
+#         for place in self.places:
+#             with fluid.dygraph.guard(place):
+#                 input_np = np.random.random([40, 40]).astype("float32")
+#                 result_np = input_np
+#                 input = fluid.dygraph.to_variable(input_np)
+#                 m = paddle.nn.Dropout(p=0.)
+#                 m.eval()
+#                 result = m(input)
+#                 self.assertTrue(np.allclose(result.numpy(), result_np))
 
 
 
-class TestDropout2DFAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
 
-    def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(
-                name="input", shape=[2, 3, 4, 5], dtype="float32")
-            res1 = paddle.nn.functional.dropout2d(
-                x=input, p=0., training=False, data_format='NCHW')
-            res2 = paddle.nn.functional.dropout2d(
-                x=input, p=0., training=False, data_format='NHWC')
 
-            in_np = np.random.random([2, 3, 4, 5]).astype("float32")
-            res_np = in_np
+# class TestDropout2DFAPI(unittest.TestCase):
+#     def setUp(self):
+#         np.random.seed(123)
+#         self.places = [fluid.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             self.places.append(fluid.CUDAPlace(0))
+
+#     def check_static_result(self, place):
+#         with fluid.program_guard(fluid.Program(), fluid.Program()):
+#             input = fluid.data(
+#                 name="input", shape=[2, 3, 4, 5], dtype="float32")
+#             res1 = paddle.nn.functional.dropout2d(
+#                 x=input, p=0., training=False, data_format='NCHW')
+#             res2 = paddle.nn.functional.dropout2d(
+#                 x=input, p=0., training=False, data_format='NHWC')
+
+#             in_np = np.random.random([2, 3, 4, 5]).astype("float32")
+#             res_np = in_np
 
 #             exe = fluid.Executor(place)
 #             res_list = [res1, res2]
