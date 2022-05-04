@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -21,6 +20,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 namespace phi {
+
 // check the validation of the Einsum equation.
 // 1. the label must between 'a' - 'z'.
 // 2. the dim of the same label must be same.
@@ -302,45 +302,6 @@ inline static void ParseEinsumEquation(
   }
 }
 
-inline void EinsumInferShape(const std::vector<const MetaTensor*>& inputs,
-                             const std::string& equation,
-                             MetaTensor* out) {
-  // collect the following informations to prepare einsum.
-  LabelMap labelshape(0);
-  LabelMap labeltype(LabelType::Reduction);
-  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
-  std::vector<char> all_labels;
-  std::vector<int> broadcast_dims;
-  std::vector<int> output_dims;
-  std::vector<std::vector<int>> ellipsis_dims(2);
-
-  std::vector<DDim> input_dims;
-  for (auto& i : inputs) {
-    input_dims.push_back(i->dims());
-  }
-  std::string right;
-  ParseEinsumEquation(equation,
-                      input_dims,
-                      &labelshape,
-                      &labeltype,
-                      &all_labels,
-                      &label2perms,
-                      &ellipsis_dims,
-                      &broadcast_dims,
-                      &output_dims,
-                      &right);
-
-  VLOG(3) << "Einsum Infershape: input dims:"
-          << paddle::string::join_strings(input_dims, "\n");
-  VLOG(3) << "Einsum Infershape: equation:" << equation;
-  VLOG(3) << "Einsum Infershape: all_labels:"
-          << paddle::string::join_strings(all_labels, ",");
-  VLOG(3) << "Einsum Infershape: output dims:"
-          << paddle::string::join_strings(output_dims, ",");
-  VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
-  VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
-}
-
 template <typename T>
 std::vector<T> GetLabelIndexByType(const std::vector<char>& all_labels,
                                    const LabelMap& type,
@@ -394,6 +355,13 @@ DenseTensor PerformReduction(const Context& dev_ctx,
   return Sum<T, Context>(dev_ctx, tensor, indices, tensor.dtype(), true);
 }
 
+inline bool is_no_need_transpose(const std::vector<int>& axis) {
+  for (size_t i = 0; i < axis.size(); ++i) {
+    if (i != static_cast<size_t>(axis[i])) return false;
+  }
+  return true;
+}
+
 template <typename T, typename Context>
 DenseTensor PerformTranspose(const Context& dev_ctx,
                              const DenseTensor& tensor,
@@ -401,12 +369,6 @@ DenseTensor PerformTranspose(const Context& dev_ctx,
                              const std::vector<char>& all_labels,
                              const std::vector<int>& ellipsis,
                              const LabelMap& label2type) {
-  auto is_no_need_transpose = [](std::vector<int>& axis) {
-    for (size_t i = 0; i < axis.size(); ++i) {
-      if (i != size_t(axis[i])) return false;
-    }
-    return true;
-  };
   auto axis = GetLabelIndexByType<int>(
       all_labels, label2type, label2perm, ellipsis, LabelType::ALL_TYPE);
   VLOG(5) << "PerformTranspose: " << paddle::string::join_strings(axis, ",");
@@ -496,9 +458,9 @@ void TransposeToOutput(const Context& dev_ctx,
       axis.push_back(it - all_labels.begin() + offset);
     }
   }
+  if (is_no_need_transpose(axis)) return output->ShareBufferWith(to_trans);
   VLOG(5) << "call TransposeToOutput: with axis: "
           << paddle::string::join_strings(axis, ",");
-  if (axis.size() == 0) return output->ShareBufferWith(to_trans);
   return TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
 }
 
