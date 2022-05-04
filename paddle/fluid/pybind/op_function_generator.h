@@ -32,6 +32,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fused_attention",
      {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "CacheKV", "SrcMask",
       "OutLinearW", "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
+    {"fused_multi_transformer",
+     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "CacheKV", "TimeStep",
+      "SrcMask", "OutLinearW", "OutLinearBias", "FFNLnScale", "FFNLnBias",
+      "FFN1Weight", "FFN1Bias", "FFN2Weight", "FFN2Bias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
@@ -176,6 +180,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"fused_multi_transformer", {"CacheKVOut", "Out"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -253,6 +258,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"assign_value", {"Out"}},
     {"split", {"Out"}},
     {"concat", {"Out"}},
+    {"fused_multi_transformer", {"CacheKVOut"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

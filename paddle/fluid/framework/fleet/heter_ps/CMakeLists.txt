@@ -17,6 +17,7 @@ IF(WITH_GPU)
         nv_library(graph_sampler SRCS graph_sampler_inl.h DEPS graph_gpu_ps)
 
         nv_test(test_cpu_query SRCS test_cpu_query.cu DEPS heter_comm table heter_comm_kernel hashtable_kernel heter_ps ${HETERPS_DEPS})
+        nv_library(graph_gpu_wrapper SRCS graph_gpu_wrapper.cu DEPS heter_comm table heter_comm_kernel hashtable_kernel heter_ps ${HETERPS_DEPS})
         #ADD_EXECUTABLE(test_sample_rate test_sample_rate.cu)
         #target_link_libraries(test_sample_rate heter_comm table heter_comm_kernel hashtable_kernel heter_ps ${HETERPS_DEPS})
         #nv_test(test_sample_rate SRCS test_sample_rate.cu DEPS heter_comm table heter_comm_kernel hashtable_kernel heter_ps ${HETERPS_DEPS})
