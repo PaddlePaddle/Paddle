@@ -11,13 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+//#define _GLIBCXX_USE_CXX11_ABI 0
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -257,6 +260,56 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
 
   ASSERT_EQ(y_cpu[0], 2.0);
   ASSERT_EQ(y_cpu[1], 5.0);
+}
+
+TEST_F(TensorRTEngineTest, test_sparse_fc) {
+  // Weight in CPU memory.
+  float raw_weight[4] = {1.0, 0, 0, 4.4};
+  float raw_bias[1] = {0.0, };
+  std::vector<void *> buffers(2);  // TRT binded inputs
+
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
+  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
+  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+                                  nvinfer1::Dims3{1, 4, 1});
+
+  plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kGelu;
+
+  plugin::SpmmPluginDynamic* plugin = new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", nvinfer1::DataType::kFLOAT, 1, (&weight)->get(), (&bias)->get(), act);
+  std::vector<nvinfer1::ITensor*> plugin_inputs;
+  plugin_inputs.emplace_back(x);
+  auto fc_layer = engine_->network()->addPluginV2(
+      plugin_inputs.data(), plugin_inputs.size(), *plugin);
+
+  PADDLE_ENFORCE_NOT_NULL(fc_layer,
+                          platform::errors::InvalidArgument(
+                              "TRT fully connected layer building failed."));
+
+  engine_->DeclareOutput(fc_layer, 0, "y");
+  engine_->FreezeNetwork();
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+
+  // fill in real data
+  std::vector<float> x_v = {1.0, 2.0, 3.0, 4.0};
+  std::vector<float> y_cpu;
+  PrepareInputOutput(x_v, {2});
+
+  auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
+  auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
+
+  buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
+  engine_->Execute(1, &buffers, ctx_->stream());
+
+  LOG(INFO) << "to get output";
+  GetOutput(&y_cpu);
+
+  auto dims = engine_->GetITensor("y")->getDimensions();
+  ASSERT_EQ(dims.nbDims, 2);
+  ASSERT_EQ(dims.d[0], 1);
+
+  ASSERT_EQ(y_cpu[0], 18.6);
 }
 
 }  // namespace tensorrt
