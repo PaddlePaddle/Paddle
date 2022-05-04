@@ -344,10 +344,25 @@ def rrelu_inference(x, lower, upper):
     return np.where(x_t < 0, alpha * x_t, x_t)
 
 
-# def check_rrelu_output_in_training(input, output, lower, upper):
-#     lower_res = np.where(input <= 0, lower * input, input)
-#     upper_res = np.where(input <= 0, upper * input, input)
-#     return (output <= lower_res).all() and (output >= upper_res).all()
+# def check_rrelu_output_in_training(input: np.ndarray, op_output: np.ndarray, lower: float, upper: float, num_segments: int):
+#     """
+#     divide the interval [lower, upper] into num_segments equal parts
+#     Caution: there 
+#     """
+#     lower_res = np.where(input < 0, lower * input, input)
+#     upper_res = np.where(input < 0, upper * input, input)
+#     return (op_output <= lower_res).all() and (op_output >= upper_res).all()
+
+#     num_positive_elements = np.sum(input >= 0)
+#     if op_output.size < 200 or num_positive_elements / op_output.size > :
+        
+#     one_part_length = (upper - lower) / num_segments
+#     for i in range(num_segments):
+#         current_lower = lower + i * one_part_length
+#         current_upper = current_lower + one_part_length
+
+
+
 
 
 class TestRReluOpInference(OpTest):
@@ -688,6 +703,7 @@ class TestRReluFAPI(unittest.TestCase):
             self.check_static_result(place=place)
 
     def test_dygraph(self):
+        paddle.disable_static()
         for place in self.places:
             in_np = np.random.uniform(-3, 2, [2, 7, 40]).astype("float32")
             res_np = in_np
