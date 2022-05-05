@@ -1164,9 +1164,7 @@ class TheOnePSRuntime(RuntimeBase):
             tensor = scope.find_var(var).get_tensor()
             import paddle
             paddle.save(
-                tensor,
-                os.path.join(dirname, var),
-                use_binary_format=True)
+                tensor, os.path.join(dirname, var), use_binary_format=True)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
