@@ -265,7 +265,7 @@ def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
         ignore_nan (bool, optional): Whether to ignore nan values when median was calculated.
-            If `ignore_nan` is True, the calculation process is the same as `median` operator.
+            If `ignore_nan` is False, the calculation process is the same as `median` operator.
             Default is True.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
