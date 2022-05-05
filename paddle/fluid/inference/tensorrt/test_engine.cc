@@ -290,7 +290,10 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
   // fill in real data
-  std::vector<float> x_v = {1.0, 2.0, 3.0, 4.0};
+  std::vector<float> x_v = {1.0, 2.0, 3.0, 4.0,
+                            1.0, 2.0, 3.0, 4.0,
+                            1.0, 2.0, 3.0, 4.0,
+                            1.0, 2.0, 3.0, 4.0};
   std::vector<float> y_cpu;
   PrepareInputOutput(x_v, {2});
 
@@ -300,7 +303,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  engine_->Execute(1, &buffers, ctx_->stream());
+  engine_->Execute(4, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
