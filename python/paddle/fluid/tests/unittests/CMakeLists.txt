@@ -13,9 +13,9 @@ endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+    #    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
+    #    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
+    #    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
