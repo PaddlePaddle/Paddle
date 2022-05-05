@@ -1,4 +1,5 @@
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,13 +98,56 @@ def _convert_attention_mask(attn_mask, dtype):
     Returns:
         Tensor: A Tensor with shape same as input `attn_mask`, with data type `dtype`.
     """
-    if attn_mask is not None and attn_mask.dtype != dtype:
-        attn_mask_dtype = convert_dtype(attn_mask.dtype)
+
+    if isinstance(attn_mask, MHAMeta):
+        return attn_mask
+
+    mha_meta = _prepare_mha_meta(attn_mask)
+
+    if mha_meta.attn_mask is not None and mha_meta.attn_mask.dtype != dtype:
+        attn_mask_dtype = convert_dtype(mha_meta.attn_mask.dtype)
         if attn_mask_dtype == 'bool' or 'int' in attn_mask_dtype:
-            attn_mask = (paddle.cast(attn_mask, dtype) - 1.0) * 1e9
+            mha_meta.attn_mask = (
+                paddle.cast(mha_meta.attn_mask, dtype) - 1.0) * 1e9
         else:
-            attn_mask = paddle.cast(attn_mask, dtype)
-    return attn_mask
+            mha_meta.attn_mask = paddle.cast(mha_meta.attn_mask, dtype)
+    return mha_meta
+
+
+def _is_enable_cudnn_mha():
+    cudnn_version = paddle.device.get_cudnn_version()
+    if ((cudnn_version >= 8300) and paddle.device.is_compiled_with_cuda()):
+        return True
+    return False
+
+
+def _prepare_mha_meta(attn_mask):
+    attn_mask_dtype = convert_dtype(attn_mask.dtype)
+
+    assert attn_mask_dtype == 'bool' or attn_mask_dtype == 'int32', \
+        "The dtype of attention mask for MultiHeadAttention should be int32 or bool." \
+        " But received " + attn_mask_dtype
+
+    if attn_mask_dtype == 'bool':
+        attn_mask = paddle.cast(attn_mask, np.int32)
+
+    if _is_enable_cudnn_mha():
+        return MHAMeta(attn_mask, *F.mha_data_prepare(attn_mask[:, 0, 0, :]))
+    else:
+        return MHAMeta(attn_mask)
+
+
+class MHAMeta(object):
+    def __init__(self,
+                 attn_mask,
+                 qo_kv_seqlen=None,
+                 qo_kv_seqlen_host=None,
+                 low_high_windows_host=None):
+        self.attn_mask = attn_mask
+        self.qo_kv_seqlen = qo_kv_seqlen
+        self.qo_kv_seqlen_host = qo_kv_seqlen_host
+        self.low_high_windows_host = low_high_windows_host
+        self.max_seqlen = attn_mask.shape[-1]
 
 
 class MultiHeadAttention(Layer):
@@ -177,14 +221,223 @@ class MultiHeadAttention(Layer):
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
 
-        self.q_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.k_proj = Linear(
-            self.kdim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.v_proj = Linear(
-            self.vdim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.out_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+        self.weight_attr = weight_attr
+        self.bias_attr = bias_attr
+
+        if _is_enable_cudnn_mha():
+            self.softmax_scaler = self.head_dim**-0.5
+            weight_shape = (embed_dim * embed_dim * 4, ) if bias_attr==False \
+                           else (embed_dim * embed_dim * 4 + embed_dim * 4, )
+            self.weight = self.create_parameter(
+                shape=weight_shape,
+                attr=self.weight_attr,
+                dtype=self._helper.get_default_dtype(),
+                is_bias=False)
+
+            self.legacy_forward = self.forward
+
+            import types
+            fwd, state, set_state = self._cudnn_func_maker()
+            self.forward = types.MethodType(fwd, self)
+            self.state_dict = types.MethodType(state, self)
+            self.set_state_dict = types.MethodType(set_state, self)
+            paddle.fluid.dygraph.jit._register_save_pre_hook(
+                MultiHeadAttention._to_legacy)
+        else:
+            self.q_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+            self.k_proj = Linear(
+                self.kdim, embed_dim, weight_attr, bias_attr=bias_attr)
+            self.v_proj = Linear(
+                self.vdim, embed_dim, weight_attr, bias_attr=bias_attr)
+            self.out_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+
+    @staticmethod
+    def _to_legacy(layer, inputs=None, configs=None):
+        assert isinstance(layer, Layer), \
+            "[MultiHeadAttention] _to_legacy's layer is only allowed nn.Layer, " \
+            "but received layer is {}".format(type(layer))
+
+        in_dygraph_mode_before = paddle.fluid.framework.in_dygraph_mode()
+        if not in_dygraph_mode_before:
+            paddle.disable_static()
+
+        new_inputs = None
+        if inputs is not None:
+            from paddle.static import InputSpec
+            new_inputs = []
+            for i, input_ in enumerate(inputs):
+                shape = [None, *input_.shape[1:]]
+                new_inputs.append(
+                    InputSpec(
+                        shape=shape,
+                        dtype=input_.dtype,
+                        name="input_{}".format(i)))
+
+        def add_legacy_mha(lyr):
+            lyr.q_proj = Linear(
+                lyr.embed_dim,
+                lyr.embed_dim,
+                lyr.weight_attr,
+                bias_attr=lyr.bias_attr)
+            lyr.k_proj = Linear(
+                lyr.kdim,
+                lyr.embed_dim,
+                lyr.weight_attr,
+                bias_attr=lyr.bias_attr)
+            lyr.v_proj = Linear(
+                lyr.vdim,
+                lyr.embed_dim,
+                lyr.weight_attr,
+                bias_attr=lyr.bias_attr)
+            lyr.out_proj = Linear(
+                lyr.embed_dim,
+                lyr.embed_dim,
+                lyr.weight_attr,
+                bias_attr=lyr.bias_attr)
+
+            q_proj_weight, q_proj_bias, \
+            k_proj_weight, k_proj_bias, \
+            v_proj_weight, v_proj_bias, \
+            out_proj_weight, out_proj_bias = \
+                MultiHeadAttention._split_cudnn_weight_into_legacy_format(
+                    np.array(lyr.weight), lyr.embed_dim)
+            lyr.q_proj.weight.set_value(q_proj_weight)
+            lyr.k_proj.weight.set_value(k_proj_weight)
+            lyr.v_proj.weight.set_value(v_proj_weight)
+            lyr.out_proj.weight.set_value(out_proj_weight)
+            lyr.q_proj.bias.set_value(q_proj_bias)
+            lyr.k_proj.bias.set_value(k_proj_bias)
+            lyr.v_proj.bias.set_value(v_proj_bias)
+            lyr.out_proj.bias.set_value(out_proj_bias)
+
+            lyr.forward = lyr.legacy_forward
+
+        if _is_enable_cudnn_mha():
+            for _, l in layer.named_sublayers(include_self=True):
+                if isinstance(l, MultiHeadAttention):
+                    add_legacy_mha(l)
+
+        if isinstance(layer.forward, paddle.fluid.dygraph.dygraph_to_static.
+                      program_translator.StaticFunction):
+            dygraph_function = layer.forward._dygraph_function.__get__(
+                layer.forward._class_instance)
+            new_inputs = layer.forward._input_spec if new_inputs is None else new_inputs
+            layer.forward = paddle.jit.to_static(
+                dygraph_function, input_spec=new_inputs)
+        else:
+            layer.forward = paddle.jit.to_static(
+                layer.forward, input_spec=new_inputs)
+
+        if not in_dygraph_mode_before:
+            paddle.enable_static()
+
+        return layer
+
+    @staticmethod
+    def _split_cudnn_weight_into_legacy_format(weight, embed_dim):
+        param_shape = (embed_dim, embed_dim)
+        stride = embed_dim * embed_dim
+        q_proj_weight = weight[:stride].reshape(param_shape)
+        k_proj_weight = weight[stride:2 * stride].reshape(param_shape)
+        v_proj_weight = weight[2 * stride:3 * stride].reshape(param_shape)
+        out_proj_weight = weight[3 * stride:4 * stride].reshape(param_shape)
+
+        bias_start = 4 * stride
+        q_proj_bias = weight[bias_start:bias_start + embed_dim]
+        k_proj_bias = weight[bias_start + embed_dim:bias_start + 2 * embed_dim]
+        v_proj_bias = weight[bias_start + 2 * embed_dim:bias_start + 3 *
+                             embed_dim]
+        out_proj_bias = weight[bias_start + 3 * embed_dim:]
+
+        return q_proj_weight, q_proj_bias, \
+               k_proj_weight, k_proj_bias, \
+               v_proj_weight, v_proj_bias, \
+               out_proj_weight, out_proj_bias
+
+    @staticmethod
+    def _merge_weight_from_legacy_format(
+            q_proj_weight, q_proj_bias, k_proj_weight, k_proj_bias,
+            v_proj_weight, v_proj_bias, out_proj_weight, out_proj_bias):
+        weight = np.concatenate([
+            q_proj_weight.flatten(), k_proj_weight.flatten(),
+            v_proj_weight.flatten(), out_proj_weight.flatten(),
+            q_proj_bias.flatten(), k_proj_bias.flatten(), v_proj_bias.flatten(),
+            out_proj_bias.flatten()
+        ])
+        return weight
+
+    def _cudnn_func_maker(self):
+        def fwd_cudnn_impl(self,
+                           query,
+                           key=None,
+                           value=None,
+                           attn_mask=None,
+                           cache=None):
+            key = query if key is None else key
+            value = query if value is None else value
+
+            mha_meta = _convert_attention_mask(attn_mask, query.dtype)
+
+            enable_bias = False if self.bias_attr == False else True
+            return F.multi_head_attn(
+                query,
+                key,
+                value,
+                self.weight,
+                mha_meta.qo_kv_seqlen,
+                mha_meta.qo_kv_seqlen_host,
+                mha_meta.low_high_windows_host,
+                self.num_heads,
+                self.embed_dim,
+                self.head_dim,
+                mha_meta.max_seqlen,
+                mha_meta.max_seqlen,
+                softmax_scaler=self.softmax_scaler,
+                pre_dropout_rate=self.dropout,
+                is_training=self.training,
+                enable_bias=enable_bias)
+
+        def state_dict_cudnn_impl(self,
+                                  destination=None,
+                                  include_sublayers=True,
+                                  structured_name_prefix=""):
+            if destination is None:
+                destination = collections.OrderedDict()
+            q_proj_weight, q_proj_bias, \
+            k_proj_weight, k_proj_bias, \
+            v_proj_weight, v_proj_bias, \
+            out_proj_weight, out_proj_bias = \
+                MultiHeadAttention._split_cudnn_weight_into_legacy_format(
+                    self.weight, self.embed_dim)
+            destination['q_proj.weight'] = q_proj_weight
+            destination['q_proj.bias'] = q_proj_bias
+            destination['k_proj.weight'] = k_proj_weight
+            destination['k_proj.bias'] = k_proj_bias
+            destination['v_proj.weight'] = v_proj_weight
+            destination['v_proj.bias'] = v_proj_bias
+            destination['out_proj.weight'] = out_proj_weight
+            destination['out_proj.bias'] = out_proj_bias
+            return destination
+
+        def set_state_dict_cudnn_impl(self,
+                                      state_dict,
+                                      use_structured_name=True):
+            q_proj_weight = state_dict['q_proj.weight']
+            q_proj_bias = state_dict['q_proj.bias']
+            k_proj_weight = state_dict['k_proj.weight']
+            k_proj_bias = state_dict['k_proj.bias']
+            v_proj_weight = state_dict['v_proj.weight']
+            v_proj_bias = state_dict['v_proj.bias']
+            out_proj_weight = state_dict['out_proj.weight']
+            out_proj_bias = state_dict['out_proj.bias']
+            weight = cuDNNMultiHeadAttention._merge_weight_from_legacy_format(
+                q_proj_weight, q_proj_bias, k_proj_weight, k_proj_bias,
+                v_proj_weight, v_proj_bias, out_proj_weight, out_proj_bias)
+            self.weight.set_value(weight)
+
+        return fwd_cudnn_impl, state_dict_cudnn_impl, set_state_dict_cudnn_impl
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -395,6 +648,7 @@ class MultiHeadAttention(Layer):
         """
         key = query if key is None else key
         value = query if value is None else value
+
         # compute q ,k ,v
         if cache is None:
             q, k, v = self._prepare_qkv(query, key, value, cache)
@@ -406,7 +660,8 @@ class MultiHeadAttention(Layer):
             x=q * (self.head_dim**-0.5), y=k, transpose_y=True)
         if attn_mask is not None:
             # Support bool or int mask
-            attn_mask = _convert_attention_mask(attn_mask, product.dtype)
+            attn_mask = _convert_attention_mask(attn_mask,
+                                                product.dtype).attn_mask
             product = product + attn_mask
         weights = F.softmax(product)
         if self.dropout:
@@ -899,8 +1154,9 @@ class TransformerDecoderLayer(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
-        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
-        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype).attn_mask
+        memory_mask = _convert_attention_mask(memory_mask,
+                                              memory.dtype).attn_mask
 
         residual = tgt
         if self.normalize_before:
@@ -1055,8 +1311,9 @@ class TransformerDecoder(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
-        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
-        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype).attn_mask
+        memory_mask = _convert_attention_mask(memory_mask,
+                                              memory.dtype).attn_mask
 
         output = tgt
         new_caches = []
@@ -1339,11 +1596,12 @@ class Transformer(Layer):
             Tensor: It is a tensor that has the same shape and data type \
                 as `tgt`, representing the output of Transformer decoder.
         """
-        src_mask = _convert_attention_mask(src_mask, src.dtype)
+        src_mask = _convert_attention_mask(src_mask, src.dtype).attn_mask
         memory = self.encoder(src, src_mask=src_mask)
 
-        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
-        memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+        tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype).attn_mask
+        memory_mask = _convert_attention_mask(memory_mask,
+                                              memory.dtype).attn_mask
         output = self.decoder(
             tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         return output
