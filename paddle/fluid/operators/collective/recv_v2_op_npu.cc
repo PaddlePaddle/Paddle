@@ -43,7 +43,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
       distributed::ProcessGroup* pg = map->get(rid);
       std::vector<phi::DenseTensor> out_tensor;
       out_tensor.emplace_back(*out);
-      auto task = pg->Recv(out_tensor, peer);
+      auto task = pg->Recv(out_tensor, 0);
       return;
     }
     auto place = ctx.GetPlace();

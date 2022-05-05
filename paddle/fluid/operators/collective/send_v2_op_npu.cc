@@ -43,7 +43,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
       std::vector<phi::DenseTensor> in_tensor;
       auto x = ctx.Input<framework::LoDTensor>("X");
       in_tensor.push_back(*x);
-      auto task = pg->Send(in_tensor, peer);
+      auto task = pg->Send(in_tensor, 1);
       return;
     }
     auto place = ctx.GetPlace();
