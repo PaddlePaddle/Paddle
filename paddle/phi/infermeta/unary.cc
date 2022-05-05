@@ -436,6 +436,8 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
           << paddle::string::join_strings(output_dims, ",");
   VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
   VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
+  out->set_dims(make_ddim(output_dims));
+  out->set_dtype(inputs[0]->dtype());
 }
 
 void ExpandInferMeta(const MetaTensor& x,
