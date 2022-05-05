@@ -32,7 +32,7 @@ class TestClipByNormOp(OpTest):
         self.max_relative_error = 0.006
         self.init_dtype()
         self.initTestCase()
-        input = np.array([1, 2, 3, 4], dtype=np.float32)
+        input = np.random.random(self.shape).astype(self.dtype)
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
         self.inputs = {'X': input, }
@@ -81,6 +81,9 @@ class TestCase3(TestClipByNormOp):
 class TestClipByNormOpFp16(TestClipByNormOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):

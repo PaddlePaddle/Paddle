@@ -24,7 +24,7 @@ template <typename DeviceContext, typename T>
 class NPUClipByNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max_norm = context.Attr<T>("max_norm");
+    auto max_norm = context.Attr<float>("max_norm");
     auto in_var = context.InputVar("X");
 
     if (!(in_var->IsType<framework::LoDTensor>())) {
@@ -67,12 +67,13 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
 
     Tensor x_norm_t;
     framework::TensorCopySync(x_norm, platform::CPUPlace(), &x_norm_t);
-    auto x_norm_v = *x_norm_t.data<T>();
+    auto x_norm_v = static_cast<float>(*x_norm_t.data<T>());
     if (x_norm_v <= max_norm) {
       framework::TensorCopy(*input, place, dev_ctx, output);
     } else {
-      auto epsilon = x_norm_v <= static_cast<T>(1e-30) ? static_cast<T>(1e-6)
-                                                       : static_cast<T>(0);
+      auto epsilon = x_norm_v <= static_cast<float>(1e-30)
+                         ? static_cast<float>(1e-6)
+                         : static_cast<float>(0);
       float scaling = max_norm / (x_norm_v + epsilon);
       const auto& muls_runner =
           NpuOpRunner("Muls", {*input}, {*output}, {{"value", scaling}});
