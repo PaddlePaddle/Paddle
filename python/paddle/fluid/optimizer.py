@@ -45,7 +45,6 @@ from .. import compat as cpt
 import warnings
 from paddle import _C_ops
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.incubate.ad_transform.primx import orig2prim, prim2orig, Transform, prim_enabled
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -65,6 +64,7 @@ def append_backward_new(loss_list,
                         callbacks=None,
                         checkpoints=None,
                         distop_context=None):
+    from paddle.incubate.autograd.primx import orig2prim, Transform
     program = default_main_program()
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
@@ -952,6 +952,7 @@ class Optimizer(object):
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
             with program_guard(program, startup_program):
+                from paddle.incubate.autograd.primx import prim_enabled
                 if prim_enabled():
                     params_grads = append_backward_new(
                         [loss], parameter_list, act_no_grad_set, callbacks)
