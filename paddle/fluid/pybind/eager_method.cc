@@ -1218,6 +1218,7 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
     grad_tensor->set_impl(std::make_shared<phi::SelectedRows>());
   }
+  Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1226,6 +1227,7 @@ static PyObject* tensor__clear(TensorObject* self, PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
   self->tensor.reset();
+  Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1396,6 +1398,7 @@ static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* kwargs) {
   EAGER_TRY
   self->tensor.bump_inplace_version();
+  Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
