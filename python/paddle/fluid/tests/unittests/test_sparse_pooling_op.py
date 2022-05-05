@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard
+import copy
 
 
 class TestMaxPool3DFunc(unittest.TestCase):
@@ -44,23 +45,28 @@ class TestMaxPool3DFunc(unittest.TestCase):
     def test(self):
         with _test_eager_guard():
             self.setUp()
+            self.dense_x.stop_gradient = False
             sparse_x = self.dense_x.to_sparse_coo(4)
-            out = paddle.sparse.functional.max_pool3d(
+            sparse_out = paddle.sparse.functional.max_pool3d(
                 sparse_x,
                 self.kernel_sizes,
                 stride=self.strides,
                 padding=self.paddings)
-            out = out.to_dense()
+            out = sparse_out.to_dense()
+            out.backward(out)
 
+            dense_x = copy.deepcopy(self.dense_x)
             dense_out = paddle.nn.functional.max_pool3d(
-                self.dense_x,
+                dense_x,
                 self.kernel_sizes,
                 stride=self.strides,
                 padding=self.paddings,
                 data_format='NDHWC')
+            dense_out.backward(dense_out)
+
             #compare with dense
-            assert np.allclose(dense_out.flatten().numpy(),
-                               out.flatten().numpy())
+            assert np.allclose(dense_out.numpy(), out.numpy())
+            assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
 
 
 class TestStride(TestMaxPool3DFunc):

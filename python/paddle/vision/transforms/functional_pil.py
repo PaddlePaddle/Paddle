@@ -506,3 +506,26 @@ def to_grayscale(img, num_output_channels=1):
         raise ValueError('num_output_channels should be either 1 or 3')
 
     return img
+
+
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image with given value. PIL format is
+        not support inplace.
+
+       Args:
+            img (PIL.Image): input image, which shape is (C, H, W).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (np.array): value used to replace the pixels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            PIL.Image: Erased image.
+        
+    """
+    np_img = np.array(img, dtype=np.uint8)
+    np_img[i:i + h, j:j + w, ...] = v
+    img = Image.fromarray(np_img, 'RGB')
+    return img
