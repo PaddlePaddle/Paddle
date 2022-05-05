@@ -103,7 +103,8 @@ class IPUTest(unittest.TestCase):
         return wrapper
 
     # Cast a fp32 model to a full-fp16 model
-    def cast_model_to_fp16(main_program):
+    @classmethod
+    def cast_model_to_fp16(cls, main_program):
         amp_list = paddle.static.amp.CustomOpLists()
         amp_list.unsupported_list = {}
         to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
