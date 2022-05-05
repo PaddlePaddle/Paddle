@@ -19,44 +19,9 @@ from paddle.fluid.framework import Operator
 from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
-from .primrules import get_input_vars, get_output_vars, _orig2prim, _prim2orig, _jvp, _transpose
-from .primrules import get_input_var_list, get_output_var_list
+from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
+from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
 from collections import OrderedDict
-
-
-class PrimOption(object):
-    def __init__(self):
-        self.enable_prim = False
-
-    def get_status(self):
-        return self.enable_prim
-
-    def set_status(self, flag):
-        self.enable_prim = flag
-
-
-prim_option = PrimOption()
-
-
-def prim_enabled():
-    return prim_option.get_status()
-
-
-def enable_prim():
-    prim_option.set_status(True)
-
-
-def disable_prim():
-    prim_option.set_status(False)
-
-
-def flatten(inp):
-    if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
-        return [inp]
-    flattened = []
-    for part in inp:
-        flattened += flatten(part)
-    return flattened
 
 
 def topo_path(xs, ys, block=None):
@@ -87,7 +52,7 @@ def topo_path(xs, ys, block=None):
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
-    reaching = lambda op: any(id(v) in reached_vars for v in get_input_vars(op))
+    reaching = lambda op: any(id(v) in reached_vars for v in flatten_and_remove_none(get_input_var_list(op)))
 
     # block.ops are supposedly in the order that preserves correct data
     # dependence.
@@ -95,17 +60,17 @@ def topo_path(xs, ys, block=None):
     for op in block.ops:
         if reaching(op):
             path.append(op)
-            for var in get_output_vars(op):
+            for var in flatten_and_remove_none(get_output_var_list(op)):
                 reached_vars[id(var)] = var
 
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
-    back_reaching = lambda op: any(id(out) in used_vars for out in get_output_vars(op))
+    back_reaching = lambda op: any(id(out) in used_vars for out in flatten_and_remove_none(get_output_var_list(op)))
 
     # Backward pass to find all used variables
     for op in reversed(path):
         if back_reaching(op):
             backpath.append(op)
-            for var in get_input_vars(op):
+            for var in flatten_and_remove_none(get_input_var_list(op)):
                 used_vars[id(var)] = var
 
     unused_xs = [x for x in xs if id(x) not in used_vars]
@@ -126,7 +91,7 @@ def output_vars_on_path(path):
     """
     vars = OrderedDict()
     for op in path:
-        for out in get_output_vars(op):
+        for out in flatten_and_remove_none(get_output_var_list(op)):
             vars[id(out)] = out
 
     return vars
@@ -394,7 +359,8 @@ class Transform(object):
         if not retain_fwd and len(path) > 0:
             vars_to_remove = set()
             for op in path:
-                vars_to_remove.update(get_output_vars(op))
+                vars_to_remove.update(
+                    flatten_and_remove_none(get_output_var_list(op)))
 
             op_indexes = []
 

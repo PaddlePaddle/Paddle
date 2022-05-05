@@ -20,20 +20,7 @@ from .primreg import (lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp,
 from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
                       transpose, split, concat, reduce, matmul, slice_select,
                       slice_assign, gather, scatter_add, fill_const, set_value)
-
-INT_DTYPE_2_STRING = {
-    int(0): 'bool',
-    int(1): 'int16',
-    int(2): 'int32',
-    int(3): 'int64',
-    int(4): 'float16',
-    int(5): 'float32',
-    int(6): 'float64',
-    int(20): 'uint8',
-    int(21): 'int8',
-    int(23): 'complex64',
-    int(24): 'complex128',
-}
+from .utils import get_input_var_list, get_output_var_list, INT_DTYPE_2_STRING
 
 
 def _orig2prim(op, *args):
@@ -54,43 +41,6 @@ def _jvp(op, *args):
 def _transpose(op, dot_checker, *args):
     _transposerule = lookup_transpose(op.type)
     return _transposerule(op, dot_checker, *args)
-
-
-def get_var_block(block, names):
-    assert isinstance(names, list)
-    if len(names) == 0:
-        return None
-    elif len(names) == 1:
-        return block.var(names[0])
-    else:
-        return [block.var(name) for name in names]
-
-
-def get_input_vars(op):
-    return tuple(map(op.block.var, op.input_arg_names))
-
-
-def get_output_vars(op):
-    return tuple(map(op.block.var, op.output_arg_names))
-
-
-def get_input_var_list(op):
-    if op.input_names is None:
-        return []
-    else:
-        return [
-            get_var_block(op.block, op.input(n)) for n in sorted(op.input_names)
-        ]
-
-
-def get_output_var_list(op):
-    if op.output_names is None:
-        return []
-    else:
-        return [
-            get_var_block(op.block, op.output(n))
-            for n in sorted(op.output_names)
-        ]
 
 
 def linear_jvp(op, *args, **kwargs):
@@ -196,7 +146,7 @@ def tanh_orig2prim(op, x):
 def reshape2_orig2prim(op, shape_t, shape_tl, x):
     assert shape_t is None, 'Can not lower reshape2 into prim ops with shapetensor.'
     assert shape_tl is None, 'Can not lower reshape2 into prim ops with shapetensorlist.'
-    y, xshape = get_output_vars(op)
+    y, xshape = get_output_var_list(op)
     return reshape(
         x, shape=y.shape), fill_const(
             shape=xshape.shape, dtype=xshape.dtype, value=0.0)
@@ -221,8 +171,7 @@ def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
     y = slice_select(x, starts=starts, ends=ends, strides=strides, axis=axis)
     # op.attr('decrease_axis') is p[]
     if op.attr('decrease_axis'):
-        # get_output_vars return tuple
-        y = reshape(y, shape=get_output_vars(op)[0].shape)
+        y = reshape(y, shape=get_output_var_list(op)[0].shape)
     return y
 
 
@@ -748,7 +697,7 @@ def gather_transpose(op, check_dot, y_bar):
 
 @REGISTER_TRANSPOSE('scatter_add_p')
 def scatter_add_transpose(op, check_dot, z_bar):
-    indextensor, x, y = get_input_vars(op)
+    x, y, indextensor = op_position_inputs(op)
     assert check_dot(x) and check_dot(y)
     axis = op.attr('axis')
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)

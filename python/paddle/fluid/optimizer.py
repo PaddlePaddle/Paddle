@@ -952,7 +952,7 @@ class Optimizer(object):
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
             with program_guard(program, startup_program):
-                from paddle.incubate.autograd.primx import prim_enabled
+                from paddle.incubate.autograd.utils import prim_enabled
                 if prim_enabled():
                     params_grads = append_backward_new(
                         [loss], parameter_list, act_no_grad_set, callbacks)

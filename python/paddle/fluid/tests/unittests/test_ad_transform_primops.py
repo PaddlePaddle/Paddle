@@ -19,8 +19,8 @@ from paddle.incubate.autograd.primops import (
     neg, set_value, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
     transpose, split, concat, reduce, matmul, slice_select, slice_assign,
     gather, scatter_add, fill_const)
-from paddle.incubate.autograd.primx import Transform, topo_path, orig2prim, prim2orig
-from paddle.incubate.autograd.primx import _gradients, enable_prim
+from paddle.incubate.autograd.primx import Transform, topo_path, orig2prim, prim2orig, _gradients
+from paddle.incubate.autograd.utils import enable_prim
 
 
 def prog1(x, y):
