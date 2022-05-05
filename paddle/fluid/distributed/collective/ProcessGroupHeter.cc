@@ -44,13 +44,11 @@ bool ProcessGroupHeter::HeterTask::Wait(std::chrono::milliseconds timeout) {
   return true;
 }
 
-ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
-                                     int rank, int size, int gid,
-                                     int local_rank, int local_size,
-                                     int gloo_rank, int gloo_size,
-                                     bool with_switch,
-                                     std::string switch_endpoint)
-    : ProcessGroup(rank, size, gid),
+ProcessGroupHeter::ProcessGroupHeter(
+    const std::shared_ptr<Store>& store, int rank, int size,
+    const platform::Place& place, int gid, int local_rank, int local_size,
+    int gloo_rank, int gloo_size, bool with_switch, std::string switch_endpoint)
+    : ProcessGroup(rank, size, place, gid),
       store_(store),
       local_rank_(local_rank),
       local_size_(local_size),
@@ -60,10 +58,10 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
       switch_endpoint_(switch_endpoint) {
 #if defined(PADDLE_WITH_NCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
-                                                 IGNORE_ID);
+                                                 place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(store, local_rank, local_size,
-                                                 IGNORE_ID);
+                                                 place_, IGNORE_ID);
 #else
   PADDLE_THROW(platform::errors::Fatal(
       "ProcessGroupHeter only supports NCCL and HCCL now.");
@@ -71,8 +69,8 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
   if (local_rank_ == 0 && !with_switch_) {
     auto opts = ProcessGroupGloo::GlooOptions::create();
     opts->device = ProcessGroupGloo::createDefaultDevice();
-    inter_pg_ = std::make_shared<ProcessGroupGloo>(store, gloo_rank_,
-                                                   gloo_size_, IGNORE_ID, opts);
+    inter_pg_ = std::make_shared<ProcessGroupGloo>(
+        store, gloo_rank_, gloo_size_, place_, IGNORE_ID, opts);
   }
 }
 
@@ -118,7 +116,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
         HeterClient* client_ =
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
         auto dense_cpu_tensor = cpu_tensors[0];
-        std::vector<int> send_size;
+        std::vector<int64_t> send_size;
         send_size.push_back(dense_cpu_tensor.numel());
         int ret = client_->Send(
             gid_, {dense_cpu_tensor.name()}, send_size, dense_cpu_tensor.data(),
@@ -214,7 +212,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
             HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
         auto dense_cpu_tensor = cpu_tensors[0];
         if (gloo_rank_ == 0) {
-          std::vector<int> send_size;
+          std::vector<int64_t> send_size;
           send_size.push_back(dense_cpu_tensor.numel());
           int ret = client_->Send(
               gid_, {dense_cpu_tensor.name()}, send_size,

@@ -37,6 +37,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
@@ -151,11 +156,11 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
-void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
-                           const std::vector<MetaTensor*>& outputs_grad,
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
 
-void MultiDotGradInferMeta(const std::vector<MetaTensor*>& x,
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad);
 
@@ -172,6 +177,11 @@ void NllLossGradInferMeta(const MetaTensor& input,
                           const std::string& reduction,
                           MetaTensor* intput_grad,
                           MetaConfig config = MetaConfig());
+
+void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int downscale_factor,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,

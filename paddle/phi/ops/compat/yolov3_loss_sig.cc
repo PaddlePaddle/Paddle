@@ -31,25 +31,23 @@ KernelSignature Yolov3LossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Yolov3LossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("yolov3_loss_grad",
-                         {"X",
-                          "GTBox",
-                          "GTLabel",
-                          "GTScore",
-                          GradVarName("Loss"),
-                          "ObjectnessMask",
-                          "GTMatchMask"},
-                         {"anchors",
-                          "anchor_mask",
-                          "class_num",
-                          "ignore_thresh",
-                          "downsample_ratio",
-                          "use_label_smooth",
-                          "scale_x_y"},
-                         {GradVarName("X"),
-                          GradVarName("GTBox"),
-                          GradVarName("GTLabel"),
-                          GradVarName("GTScore")});
+  return KernelSignature(
+      "yolov3_loss_grad",
+      {"X",
+       "GTBox",
+       "GTLabel",
+       "GTScore",
+       "Loss@GRAD",
+       "ObjectnessMask",
+       "GTMatchMask"},
+      {"anchors",
+       "anchor_mask",
+       "class_num",
+       "ignore_thresh",
+       "downsample_ratio",
+       "use_label_smooth",
+       "scale_x_y"},
+      {"X@GRAD", "GTBox@GRAD", "GTLabel@GRAD", "GTScore@GRAD"});
 }
 }  // namespace phi
 

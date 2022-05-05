@@ -89,6 +89,7 @@ from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
 from .tensor.creation import eye  # noqa: F401
 from .tensor.creation import linspace  # noqa: F401
+from .tensor.creation import logspace  # noqa: F401
 from .tensor.creation import ones  # noqa: F401
 from .tensor.creation import ones_like  # noqa: F401
 from .tensor.creation import zeros  # noqa: F401
@@ -591,6 +592,7 @@ __all__ = [  # noqa
            'sqrt',
            'randperm',
            'linspace',
+           'logspace',
            'reshape',
            'reshape_',
            'reverse',
