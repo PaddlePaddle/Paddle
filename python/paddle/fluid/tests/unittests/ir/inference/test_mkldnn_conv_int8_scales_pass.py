@@ -19,7 +19,7 @@ import unittest
 import hypothesis.strategies as st
 
 
-class TestConvInt8ScalesPass(PassAutoScanTest):
+class TestConvInt8ScalesMNkldnnPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.pass_builder().append_pass("conv_int8_scales_pass")
