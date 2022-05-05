@@ -38,7 +38,7 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
  * for non-leaf tensor grad is only available while user set `retain_grad`
  * option as `true`.
  *
- *  * TODO(jiabin) : support hooks
+ * TODO(jiabin) : support hooks
  * 3. hooks:
  * Hooks are some computation logic which only attached with backward operation,
  * it registered by user and run before accumulator.
