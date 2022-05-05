@@ -78,7 +78,7 @@ void IndexAddInner(const Context& ctx,
     IndexT index_value = index_data[j];
     auto output_t = output_tensor.chip(index_value, 1);
     // output_t.device(place) = output_t.constant(fill_val);
-    output_t.device(place) += output_t.constant(added_val);
+    output_t.device(place) = output_t + output_t.constant(added_val);
   }
   output->Resize(output_dim);
 }
