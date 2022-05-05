@@ -50,7 +50,8 @@ bool ProcessGroupHeter::HeterTask::Wait(std::chrono::milliseconds timeout) {
 ProcessGroupHeter::ProcessGroupHeter(
     const std::shared_ptr<Store>& store, int rank, int size,
     const platform::Place& place, int gid, int local_rank, int local_size,
-    int gloo_rank, int gloo_size, bool with_switch, std::string switch_endpoint)
+    int gloo_rank, int gloo_size, bool with_switch, std::string switch_endpoint,
+    int src_rank, int dst_rank)
     : ProcessGroup(rank, size, place, gid),
       store_(store),
       local_rank_(local_rank),
@@ -58,7 +59,10 @@ ProcessGroupHeter::ProcessGroupHeter(
       gloo_rank_(gloo_rank),
       gloo_size_(gloo_size),
       with_switch_(with_switch),
-      switch_endpoint_(switch_endpoint) {
+      switch_endpoint_(switch_endpoint),
+      src_rank_(src_rank),
+      dst_rank_(dst_rank) {
+  return;
 #if defined(PADDLE_WITH_NCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
                                                  place_, IGNORE_ID);
@@ -271,7 +275,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
                         "Gloo does not support the send operation."));
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> diff = end - start;
-  VLOG(1) << "Time to copy tensor of dims(" << cpu_tensor.dims()
+  VLOG(2) << "Time to copy tensor of dims(" << cpu_tensor.dims()
           << ") from gpu to cpu for send " << std::setw(9)
           << " is: " << diff.count() << " s" << std::endl;
 
@@ -282,8 +286,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
       cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype());
   std::vector<int64_t> send_size;
   send_size.push_back(tensor_size);
-  std::string tensor_name =
-      std::to_string(gid_) + std::string("_") + std::to_string(send_count++);
+  auto id = src_rank_ * 10000 + dst_rank_;
+  std::string tensor_name = std::to_string(gid_) + "_id_" + std::to_string(id) +
+                            std::string("_") + std::to_string(send_count++);
+  VLOG(2) << "tensor_name:" << tensor_name;
   int ret = client_->Send(gid_, {tensor_name}, send_size, cpu_tensor.data(),
                           tensor_size);
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
@@ -317,10 +323,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   // recv from switch
   HeterClient* client_ =
       HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
-  std::vector<int> recv_size;
-  recv_size.push_back(cpu_tensor.numel());
-  std::string tensor_name =
-      std::to_string(gid_) + std::string("_") + std::to_string(recv_count++);
+  auto id = src_rank_ * 10000 + dst_rank_;
+  std::string tensor_name = std::to_string(gid_) + "_id_" + std::to_string(id) +
+                            std::string("_") + std::to_string(recv_count++);
+  VLOG(2) << "tensor_name: " << tensor_name;
   auto start = std::chrono::high_resolution_clock::now();
   int ret = client_->Recv(
       gid_, {tensor_name}, cpu_tensor.data(),
