@@ -33,6 +33,10 @@ from ..layer_helper import LayerHelper
 from ..framework import _non_static_mode
 from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 __all__ = [
     'RNNCell',
@@ -163,7 +167,7 @@ class RNNCell(object):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, collections.Sequence) and
+            return (isinstance(seq, Sequence) and
                     not isinstance(seq, six.string_types))
 
         class Shape(object):

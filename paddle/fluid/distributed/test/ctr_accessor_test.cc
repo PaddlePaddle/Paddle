@@ -61,7 +61,7 @@ TableAccessorParameter gen_param() {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  return std::move(param);
+  return param;
 }
 
 TEST(downpour_feature_value_accessor_test, test_shrink) {

@@ -2154,7 +2154,6 @@ def load(program, model_path, executor=None, var_list=None):
 
 def load_program_state(model_path, var_list=None):
     """
-    :api_attr: Static Graph
 
     Load program state from local file
 
@@ -2169,6 +2168,7 @@ def load_program_state(model_path, var_list=None):
         state_dict(dict): the dict store Parameter and optimizer information
 
     Examples:
+    
         .. code-block:: python
 
             import paddle

@@ -207,6 +207,9 @@ following codes there.
    *       this field.
    */
   dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
+
+  /// \brief memory descriptor of tensor which have layout set as kMKLDNN
+  dnnl::memory::desc mem_desc_;
 #endif
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL

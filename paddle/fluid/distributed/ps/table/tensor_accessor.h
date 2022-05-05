@@ -38,6 +38,12 @@ class CommMergeAccessor : public ValueAccessor {
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   virtual bool Save(float * /*value*/, int /*param*/);
 
+  bool SaveCache(float *value, int param, double global_cache_threshold) {
+    return false;
+  }
+
+  bool SaveSSD(float *value) { return false; }
+
   // keys不存在时，为values生成随机值
   virtual int32_t Create(float **value, size_t num);
   // 从values中选取到select_values中
