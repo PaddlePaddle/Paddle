@@ -139,23 +139,17 @@ TEST(TEST_FLEET, test_cpu_cache) {
   platform::CUDADeviceGuard guard(0);
   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-  auto neighbor_sample_res = g.graph_neighbor_sample(0, (int64_t *)key, 2, 3);
-  int64_t *res = new int64_t[7];
-  cudaMemcpy(res, neighbor_sample_res->val, 3 * 2 * sizeof(int64_t),
-             cudaMemcpyDeviceToHost);
-  int *actual_sample_size = new int[3];
-  cudaMemcpy(actual_sample_size, neighbor_sample_res->actual_sample_size,
-             3 * sizeof(int),
-             cudaMemcpyDeviceToHost);  // 3, 1, 3
-
-  //{0,9} or {9,0} is expected for key 0
+  auto neighbor_sample_res =
+      g.graph_neighbor_sample_v2(0, (int64_t *)key, 2, 3, true);
+  neighbor_sample_res.display();
+  //{1,9} or {9,1} is expected for key 0
   //{0,2} or {2,0} is expected for key 1
   //{1,3} or {3,1} is expected for key 2
-  for (int i = 0; i < 3; i++) {
-    VLOG(0) << "actual sample size for " << i << " is "
-            << actual_sample_size[i];
-    for (int j = 0; j < actual_sample_size[i]; j++) {
-      VLOG(0) << "sampled an neighbor for node" << i << " : " << res[i * 2 + j];
-    }
-  }
+  auto node_query_res = g.query_node_list(0, 0, 4);
+  node_query_res.display();
+  NeighborSampleQuery query;
+  query.initialize(0, node_query_res.get_val(), 2, node_query_res.get_len());
+  query.display();
+  auto c = g.graph_neighbor_sample_v3(query, false);
+  c.display();
 }

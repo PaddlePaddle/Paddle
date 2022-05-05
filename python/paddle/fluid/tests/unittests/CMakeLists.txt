@@ -25,6 +25,7 @@ list(APPEND DIST_TEST_OPS test_ir_pass_pipeline)
 list(APPEND DIST_TEST_OPS test_static_model_parallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
+list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
@@ -128,6 +129,7 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
 endif()
 
@@ -912,6 +914,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_distributed_fused_lamb_op_with_clip
         test_distributed_fused_lamb_op_without_clip
+        test_distributed_fused_lamb_op_with_gradient_merge
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -1045,6 +1048,7 @@ set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
@@ -1187,6 +1191,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
         set_tests_properties(test_static_model_parallel_fused_feedforward PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel_fused_attention PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_static_model_parallel_fused_multi_transformer PROPERTIES TIMEOUT 120)
         set_tests_properties(test_collective_split_embedding
             test_collective_split_embedding_none_divisible
             test_collective_split_row_linear
