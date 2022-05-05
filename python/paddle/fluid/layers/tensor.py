@@ -1471,6 +1471,11 @@ def range(start, end, step, dtype, name=None):
             # [3, 4, 5, 6]
 
     """
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1501,11 +1506,6 @@ def range(start, end, step, dtype, name=None):
         out.stop_gradient = True
         return out
 
-    out_shape = None
-    if not isinstance(start, Variable) and not isinstance(
-            end, Variable) and not isinstance(step, Variable):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
@@ -1517,6 +1517,8 @@ def range(start, end, step, dtype, name=None):
                 'Step': step},
         outputs={'Out': out})
     out.stop_gradient = True
+    if out_shape is not None:
+        out.desc.set_shape(out_shape)
     return out
 
 

@@ -554,6 +554,7 @@ void BroadcastKernel(const KPDevice &ctx,
                      int axis,
                      Functor func) {
   std::vector<int> dims_size;
+  dims_size.reserve(ins.size());
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag &= ins[0]->dims() == in->dims();

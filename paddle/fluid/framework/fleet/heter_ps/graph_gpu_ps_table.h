@@ -23,13 +23,18 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
+class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
-      : HeterComm<int64_t, int, int>(1, resource) {
+      : HeterComm<int64_t, unsigned int, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();
+    for (int i = 0; i < gpu_num; i++) {
+      gpu_graph_list.push_back(GpuPsCommGraph());
+      sample_status.push_back(NULL);
+      tables_.push_back(NULL);
+    }
     cpu_table_status = -1;
     if (topo_aware) {
       int total_gpu = resource_->total_device();
@@ -82,11 +87,18 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
     //   end_graph_sampling();
     // }
   }
+  void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id);
+  void clear_graph_info(int gpu_id);
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
-  NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
-  NeighborSampleResult *graph_neighbor_sample(int gpu_id, int64_t *key,
-                                              int sample_size, int len);
-  NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
+  NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
+  NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
+                                                bool cpu_switch);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
+                                             int sample_size, int len);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int64_t *key,
+                                                int sample_size, int len,
+                                                bool cpu_query_switch);
+  NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,

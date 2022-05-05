@@ -18,7 +18,6 @@ limitations under the License. */
 #include <ctime>
 #include <memory>
 #include <numeric>
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "xpu/kernel/cluster_header.h"  // NOLINT
@@ -162,23 +161,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
   }
 }
 
-PSGPUWrapper::~PSGPUWrapper() {
-  delete HeterPs_;
-  xpu_free((void*)optimizer_config::nonclk_coeff);
-  xpu_free((void*)optimizer_config::clk_coeff);
-  xpu_free((void*)optimizer_config::min_bound);
-  xpu_free((void*)optimizer_config::max_bound);
-  xpu_free((void*)optimizer_config::learning_rate);
-  xpu_free((void*)optimizer_config::initial_g2sum);
-  xpu_free((void*)optimizer_config::initial_range);
-
-  xpu_free((void*)optimizer_config::mf_create_thresholds);
-  xpu_free((void*)optimizer_config::mf_learning_rate);
-  xpu_free((void*)optimizer_config::mf_initial_g2sum);
-  xpu_free((void*)optimizer_config::mf_initial_range);
-  xpu_free((void*)optimizer_config::mf_min_bound);
-  xpu_free((void*)optimizer_config::mf_max_bound);
-}
+PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                uint64_t** gpu_keys,
@@ -272,66 +255,29 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
                                 float min_bound, float max_bound,
                                 float learning_rate, float initial_g2sum,
                                 float initial_range) {
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::nonclk_coeff),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::clk_coeff),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::min_bound),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::max_bound),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::learning_rate),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::initial_g2sum),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::initial_range),
-             sizeof(float));
-
-  xpu_memcpy((void*)optimizer_config::nonclk_coeff, &nonclk_coeff,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::min_bound, &min_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::max_bound, &max_bound, sizeof(float),
-             XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::learning_rate, &learning_rate,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::initial_g2sum, &initial_g2sum,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::initial_range, &initial_range,
-             sizeof(float), XPU_HOST_TO_DEVICE);
+  OptimizerConfig optimizer_config;
+  optimizer_config.nonclk_coeff = nonclk_coeff;
+  optimizer_config.clk_coeff = clk_coeff;
+  optimizer_config.min_bound = min_bound;
+  optimizer_config.max_bound = max_bound;
+  optimizer_config.learning_rate = learning_rate;
+  optimizer_config.initial_g2sum = initial_g2sum;
+  optimizer_config.initial_range = initial_range;
+  HeterPs_->set_sparse_sgd(optimizer_config);
 }
 
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_learning_rate, float mf_initial_g2sum,
                                 float mf_initial_range, float mf_min_bound,
                                 float mf_max_bound) {
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_create_thresholds),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_learning_rate),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_initial_g2sum),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_initial_range),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_min_bound),
-             sizeof(float));
-  xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_max_bound),
-             sizeof(float));
-
-  xpu_memcpy((void*)optimizer_config::mf_create_thresholds,
-             &mf_create_thresholds, sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_initial_range, &mf_initial_range,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_min_bound, &mf_min_bound,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_max_bound, &mf_max_bound,
-             sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memcpy((void*)optimizer_config::mf_learning_rate, &mf_learning_rate,
-             sizeof(float), XPU_HOST_TO_DEVICE);
+  OptimizerConfig optimizer_config;
+  optimizer_config.mf_create_thresholds = mf_create_thresholds;
+  optimizer_config.mf_learning_rate = mf_learning_rate;
+  optimizer_config.mf_initial_g2sum = mf_initial_g2sum;
+  optimizer_config.mf_initial_range = mf_initial_range;
+  optimizer_config.mf_min_bound = mf_min_bound;
+  optimizer_config.mf_max_bound = mf_max_bound;
+  HeterPs_->set_embedx_sgd(optimizer_config);
 }
 
 }  // end namespace framework

@@ -579,7 +579,8 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
-    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+    if (out_layout == paddle::framework::DataLayout::kNHWC ||
+        out_layout == paddle::framework::DataLayout::kNDHWC) {
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
@@ -673,8 +674,39 @@ void Tensor::ORTCopyFromCpu(const T *data) {
                               OrtMemTypeDefault);
   size_t size = std::accumulate(begin(shape_), end(shape_), 1UL,
                                 std::multiplies<size_t>());
-  auto ort_value = GetOrtVaule(memory_info, const_cast<T *>(data), size,
-                               shape_.data(), shape_.size());
+  size_t buffer_size = size * sizeof(T);
+  if (buffer_size > buffer_.size()) {
+    buffer_.resize(buffer_size);
+  }
+  std::memcpy(static_cast<void *>(buffer_.data()), data, buffer_size);
+
+  auto onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+  if (std::is_same<T, float>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  } else if (std::is_same<T, double>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE;
+  } else if (std::is_same<T, int64_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
+  } else if (std::is_same<T, int32_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32;
+  } else if (std::is_same<T, uint8_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8;
+  } else if (std::is_same<T, int8_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8;
+  } else if (std::is_same<T, float16>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
+  }
+
+  if (onnx_dtype == ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Found undefined data type for onnxruntime, only supports "
+        "float16/float32/float64/int8/uint8/int32/int64."));
+  }
+
+  auto ort_value =
+      Ort::Value::CreateTensor(memory_info, buffer_.data(), buffer_size,
+                               shape_.data(), shape_.size(), onnx_dtype);
+
   binding->BindInput(name_.c_str(), ort_value);
 }
 
@@ -692,10 +724,9 @@ void Tensor::ORTCopyToCpu(T *data) const {
   if (place_ == PlaceType::kCPU) {
     std::memcpy(static_cast<void *>(data), value.GetTensorData<void *>(), size);
   } else {
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         static_cast<void *>(data),
-                         paddle::platform::CUDAPlace(device_),
-                         value.GetTensorData<void>(), size, nullptr);
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "CopyToCpu error.The current ONNXRuntime backend doesn't support "
+        "GPU."));
   }
 }
 

@@ -200,7 +200,7 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
         paddle.disable_static()
 
-    def test_clip_dygraph(self):
+    def func_clip_dygraph(self):
         paddle.disable_static()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
@@ -233,9 +233,29 @@ class TestClipAPI(unittest.TestCase):
             np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
         self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
 
-    def test_eager(self):
+    def test_clip_dygraph(self):
         with _test_eager_guard():
-            self.test_clip_dygraph()
+            self.func_clip_dygraph()
+        self.func_clip_dygraph()
+
+    def test_clip_dygraph_default_max(self):
+        paddle.disable_static()
+        with _test_eager_guard():
+            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+            egr_out1 = paddle.clip(x_int32, min=1)
+            egr_out2 = paddle.clip(x_int64, min=1)
+            egr_out3 = paddle.clip(x_f32, min=1)
+        x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+        x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+        x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+        out1 = paddle.clip(x_int32, min=1)
+        out2 = paddle.clip(x_int64, min=1)
+        out3 = paddle.clip(x_f32, min=1)
+        self.assertTrue(np.allclose(out1.numpy(), egr_out1.numpy()))
+        self.assertTrue(np.allclose(out2.numpy(), egr_out2.numpy()))
+        self.assertTrue(np.allclose(out3.numpy(), egr_out3.numpy()))
 
     def test_errors(self):
         paddle.enable_static()

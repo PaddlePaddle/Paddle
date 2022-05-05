@@ -25,6 +25,10 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 
 def _product(t):
@@ -89,7 +93,7 @@ def var_to_np_array_in_scope(scope, place, name):
 def make_jacobian(x, y_size, np_dtype):
     if isinstance(x, fluid.framework.Variable):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
-    elif isinstance(x, collections.Sequence):
+    elif isinstance(x, Sequence):
         jacobians = list(
             filter(lambda t: t is not None, (make_jacobian(
                 item, y_size, np_dtype) for item in x)))
