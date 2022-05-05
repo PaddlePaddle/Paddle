@@ -152,15 +152,14 @@ GRAD_FUNCTION_TEMPLATE = \
 paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
     // Fill Zero For GradIn Tensors
 {}
-
     // Apply Gradient Hooks
     auto hooked_grads = ApplyGradientHooks(grads);
-    
+
     // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
 {}
 
     // Call grad_api function
-    VLOG(3) << \"Final State Running: \" << \"{}\"; 
+    VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
 
     // Get Output
@@ -171,14 +170,12 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 
     // Get GradOut autograd_meta
 {}
-    
     // Compute Require Grad
 {}
-    
     // Create Grad Node
 {}
 
-    // Return 
+    // Return
 {}
 
 }}
@@ -191,21 +188,10 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     // AMP Logic
 {}
-    
     // Get Input AutoGradMeta
 {}
-    // Set Device Id
-    auto place = egr::Controller::Instance().GetExpectedPlace();
-    if (paddle::platform::is_gpu_place(place)) {{
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      phi::backends::gpu::SetDeviceId(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU if use CUDAPlace."));
-#endif
-    }}
     // Forward API Call
-    VLOG(3) << \"Final State Running: \" << \"{}\"; 
+    VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
     // Get Outputs
 {}
@@ -213,39 +199,35 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     bool trace_backward = egr::Controller::Instance().HasGrad();
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
-    
-    // Check Inplace & Bump Inplace Version
-{}
-{}
+
+    // Check Inplace if needed
+{}{}
     // Node Creation
 {}
-
     // Returns
     return {};
 }}
-
 """
 
 FORWARD_BODY_TEMPLATE = \
-"""
-    if(require_any_grad) {{
+"""    if(require_any_grad) {{
 {}
-      egr::EagerUtils::PassStopGradient({});
-            
-      // Node Construction
+        egr::EagerUtils::PassStopGradient({});
+
+        // Node Construction
 {}
-      // SetAttributes
+        // SetAttributes if needed
 {}
-      // Set TensorWrappers for Forward Inputs
+        // Set TensorWrappers for Forward Inputs if needed
 {}
-      // SetGradOutMeta & SetEdges
+        // SetGradOutMeta & SetEdges
 {}
-      // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-{}
+        // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
 {}
 {}
 {}
-      // Set TensorWrappers for Forward Outputs
+{}
+        // Set TensorWrappers for Forward Outputs if needed
 {}
     }}
 """
@@ -340,19 +322,18 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_
 
 CHECK_INPLACE_TEMPLATE = \
 """
-    egr::EagerUtils::CheckInplace({}, {}, require_any_grad);\n
+    egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
 """
 
 BUMP_INPLACE_VERSION_TEMPLATE = \
 """
     // Bump Inplace Version
     {}.bump_inplace_version();
-    VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";\n
+    VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
 
 AMP_LOGIC_TEMPLATE = \
-"""
-    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+"""    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
         VLOG(5) << "Check and Prepare For AMP";
         {}
         paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
@@ -1045,7 +1026,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.GenerateNodeCreationCodes()
 
         node_creation_str = self.node_creation_str
-        dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
+        dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
         forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
 
         # Forward amp logic
