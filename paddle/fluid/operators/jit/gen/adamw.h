@@ -41,17 +41,37 @@ class AdamWJitCode : public JitCode {
 
  private:
   reg64_t reg_numel{abi_param1};
-  reg64_t reg_param_ptr{abi_param2};
+  reg64_t reg_grad_ptr{abi_param2};
+  reg64_t reg_mom1_ptr{abi_param3};
+  reg64_t reg_mom2_ptr{abi_param4};
+  reg64_t reg_param_ptr{abi_param5};
+  reg64_t reg_mom1_out_ptr{abi_param6};
 
-  xmm_t xmm_lr = xmm_t(0);
-  xmm_t xmm_lr_ratio = xmm_t(1);
-  xmm_t xmm_coeff = xmm_t(2);
+  xmm_t xmm_beta1 = xmm_t(0);
+  xmm_t xmm_beta2 = xmm_t(1);
+  xmm_t xmm_lr = xmm_t(2);
+  xmm_t xmm_eps = xmm_t(3);
+  xmm_t xmm_old_lr = xmm_t(4);
+  xmm_t xmm_lr_ratio = xmm_t(5);
+  xmm_t xmm_coeff = xmm_t(6);
+  xmm_t xmm_one_sub_beta1 = xmm_t(7);
+  xmm_t xmm_one_sub_beta2 = xmm_t(8);
+  xmm_t xmm_one = xmm_t(9);
 
-  ymm_t ymm_lr = ymm_t(0);
-  ymm_t ymm_lr_ratio = ymm_t(1);
-  ymm_t ymm_coeff = ymm_t(2);
+  ymm_t ymm_beta1 = ymm_t(0);
+  ymm_t ymm_beta2 = ymm_t(1);
+  ymm_t ymm_lr = ymm_t(2);
+  ymm_t ymm_eps = ymm_t(3);
+  ymm_t ymm_old_lr = ymm_t(4);
+  ymm_t ymm_lr_ratio = ymm_t(5);
+  ymm_t ymm_coeff = ymm_t(6);
+  ymm_t ymm_one_sub_beta1 = ymm_t(7);
+  ymm_t ymm_one_sub_beta2 = ymm_t(8);
+  ymm_t ymm_one = ymm_t(9);
 
-  reg64_t reg_numel_without_tail{r10};
+  reg64_t reg_mom2_out_ptr{r10};
+  reg64_t reg_param_out_ptr{r11};
+  reg64_t reg_numel_without_tail{r12};
   reg64_t reg_offset{rax};
 };
 

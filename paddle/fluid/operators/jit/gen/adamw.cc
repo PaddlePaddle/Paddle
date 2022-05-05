@@ -25,12 +25,26 @@ namespace jit {
 namespace gen {
 
 void AdamWJitCode::loadArgs() {
+  static constexpr int32_t one_as_float = 0x3f800000;
   static constexpr int32_t mask_all_ones = 0xFFFFFFFF;
   static constexpr int64_t mask_8_divisible = 0xFFFFFFFFFFFFFFF8;
+  static constexpr int64_t abi_pushes_offset = num_g_abi_regs * 8;
 
-  vbroadcastss(ymm_lr, xmm_lr);              // lr
-  vbroadcastss(ymm_lr_ratio, xmm_lr_ratio);  // lr_ratio
-  vbroadcastss(ymm_coeff, xmm_coeff);        // coeff
+  mov(reg_mom2_out_ptr, ptr[rsp + (abi_pushes_offset + 8)]);
+  mov(reg_param_out_ptr, ptr[rsp + (abi_pushes_offset + 16)]);
+  mov(eax, one_as_float);
+  movd(xmm_one, eax);
+
+  vbroadcastss(ymm_one, xmm_one);                 // 1
+  vbroadcastss(ymm_beta1, xmm_beta1);             // beta1
+  vbroadcastss(ymm_beta2, xmm_beta2);             // beta2
+  vbroadcastss(ymm_lr, xmm_lr);                   // -lr
+  vbroadcastss(ymm_eps, xmm_eps);                 // eps
+  vbroadcastss(ymm_old_lr, xmm_old_lr);           // old lr
+  vbroadcastss(ymm_lr_ratio, xmm_lr_ratio);       // lr_ratio
+  vbroadcastss(ymm_coeff, xmm_coeff);             // coeff
+  vsubps(ymm_one_sub_beta1, ymm_one, ymm_beta1);  // 1 - beta1
+  vsubps(ymm_one_sub_beta2, ymm_one, ymm_beta2);  // 1 - beta2
 
   mov(reg_numel_without_tail, reg_numel);
   and_(reg_numel_without_tail, mask_8_divisible);  // make it 8-divisible
@@ -60,17 +74,42 @@ void AdamWJitCode::setTailOpmask() {
 
 void AdamWJitCode::mainCode() {
   // load p
-  vmovups(ymm7 | k1, ptr[reg_param_ptr + reg_offset]);
+  vmovups(ymm10 | k1, ptr[reg_param_ptr + reg_offset]);
 
   // ((lr * lr_ratio) * coeff)
-  vmulps(ymm8 | k1, ymm_lr, ymm_lr_ratio);
-  vmulps(ymm8 | k1, ymm8, ymm_coeff);
+  vmulps(ymm11 | k1, ymm_old_lr, ymm_lr_ratio);
+  vmulps(ymm11 | k1, ymm11, ymm_coeff);
 
   // - (lr * lr_ratio) * coeff) * p + p
-  vfnmadd132ps(ymm8 | k1, ymm7, ymm7);
+  // p is stored in ymm11
+  vfnmadd132ps(ymm11 | k1, ymm10, ymm10);
+
+  // load grad
+  vmovups(ymm10 | k1, ptr[reg_grad_ptr + reg_offset]);
+
+  // beta1 * mom1 + (1 - beta1) * g
+  vmulps(ymm12 | k1, ymm_one_sub_beta1, ymm10);
+  vfmadd231ps(ymm12 | k1, ymm_beta1, ptr[reg_mom1_ptr + reg_offset]);
+
+  // beta2 * mom2 + (1 - beta2) * g * g
+  vmulps(ymm10 | k1, ymm10, ymm10);
+  vmulps(ymm10 | k1, ymm_one_sub_beta2, ymm10);
+  vfmadd231ps(ymm10 | k1, ymm_beta2, ptr[reg_mom2_ptr + reg_offset]);
+
+  // store mom1 and mom2
+  vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm12);
+  vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm10);
+
+  // sqrt(mom2) + eps
+  vsqrtps(ymm10 | k1, ymm10);
+  vaddps(ymm10 | k1, ymm10, ymm_eps);
+
+  // p + (-lr) * (mom1 / sqrt(mom2) + eps)
+  vdivps(ymm10 | k1, ymm12, ymm10);
+  vfmadd213ps(ymm10 | k1, ymm_lr, ymm11);
 
   // store p
-  vmovups(ptr[reg_param_ptr + reg_offset] | k1, ymm8);
+  vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm10);
 }
 
 void AdamWJitCode::genCode() {
@@ -92,7 +131,8 @@ void AdamWJitCode::genCode() {
   }
 
   cmp(reg_numel, reg_offset);
-  je("end");
+  je("end", T_NEAR);  // size between jmp and label is larger than 127 byte,
+                      // T_NEAR allow long jump
 
   L("process_tail");
   {

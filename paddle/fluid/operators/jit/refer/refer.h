@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <Eigen/Dense>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -567,10 +566,18 @@ void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
 }
 
 template <typename T>
-void AdamW(T lr, T lr_ratio, T coeff, int64_t numel, T* param) {
-  Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param_array{
-      param, static_cast<Eigen::Index>(numel)};
-  param_array -= lr * lr_ratio * coeff * param_array;
+void AdamW(T beta1, T beta2, T lr, T eps, T old_lr, T lr_ratio, T coeff,
+           int64_t numel, const T* grad_ptr, const T* mom1_ptr,
+           const T* mom2_ptr, const T* param_ptr, T* mom1_out_ptr,
+           T* mom2_out_ptr, T* param_out_ptr) {
+  for (int i = 0; i < numel; ++i) {
+    auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
+    mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
+    mom2_out_ptr[i] =
+        beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
+    param_out_ptr[i] =
+        param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+  }
 }
 
 #define DECLARE_REFER_KERNEL(name)                          \

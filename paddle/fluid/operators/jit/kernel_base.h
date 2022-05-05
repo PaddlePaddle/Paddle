@@ -291,7 +291,8 @@ struct AdamWTuple {
   static constexpr KernelType kernel_type = kAdamW;
   typedef T data_type;
   typedef int attr_type;
-  typedef void (*func_type)(const T, const T, const T, const int64_t, T*);
+  typedef void (*func_type)(T, T, T, T, T, T, T, int64_t, const T*, const T*,
+                            const T*, const T*, T*, T*, T*);
 };
 
 typedef struct matmul_attr_s {
