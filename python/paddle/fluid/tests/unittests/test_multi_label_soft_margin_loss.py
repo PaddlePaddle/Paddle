@@ -98,8 +98,8 @@ def calc_multilabel_margin_loss(input,
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
     def test_MultiLabelSoftMarginLoss(self):
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        label = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
 
         places = ['cpu']
         if paddle.device.is_compiled_with_cuda():
@@ -147,9 +147,9 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         paddle.enable_static()
 
     def test_MultiLabelSoftMarginLoss_weights(self):
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        label = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        weight = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
+        weight = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
         place='cpu'
         reduction = 'mean'
         expected = calc_multilabel_margin_loss(input=input, label=label,weight=weight,
@@ -174,6 +174,7 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_functional, expected))
         self.assertTrue(np.allclose(static_functional, dy_functional))
         self.assertTrue(np.allclose(dy_functional, expected))
+        
     def test_MultiLabelSoftMarginLoss_dimension(self):
         paddle.disable_static()
 
