@@ -2229,17 +2229,11 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 def soft_margin_loss(input, label,reduction='mean',
                          name=None):
     """
-    This op measures the soft margin loss between input predictions ``input``
+    This APIs measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
     .. math::
         Out = log(1 + exp((-label * input)))
-    If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
-    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
-    .. math::
-        Out = MEAN(Out)
-    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
-    .. math::
-        Out = SUM(Out)
+
     Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``input``
@@ -2255,11 +2249,14 @@ def soft_margin_loss(input, label,reduction='mean',
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
+
     Examples:
         .. code-block:: python
+
             import paddle
             input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
             label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')

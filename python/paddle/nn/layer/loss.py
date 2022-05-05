@@ -1302,16 +1302,15 @@ class HingeEmbeddingLoss(Layer):
             reduction=self.reduction,
             margin=self.margin,
             name=self.name)
+
 class SoftMarginLoss(Layer):
     r"""
-    This op measures the soft margin loss between input predictions ``input``
+    Creates a criterion that measures a two-class
+    soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
     .. math::
         Out = log(1 + exp((-label * input)))
-    And this operator applies reduce operation on the loss.
-    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
-    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
-    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
+
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -1321,6 +1320,7 @@ class SoftMarginLoss(Layer):
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Call Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``logit``
@@ -1330,10 +1330,13 @@ class SoftMarginLoss(Layer):
             Available dtype is float32, float64.
         output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
             same as ``logit`` , else the shape of output is scalar.
+
     Returns:
         A callable object of SoftMarginLoss
+
     Examples:
         .. code-block:: python
+
             import paddle
             input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
