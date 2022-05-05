@@ -217,7 +217,8 @@ def find_best_compatible_distributed_operator_impl(dist_op,
 
     if compatible_impls:
         # For now, just return the first compatible impl
-        best_compatible_impl = compatible_impls[0]
+        # best_compatible_impl = compatible_impls[0]
+        best_compatible_impl = compatible_impls
     else:
         best_compatible_impl = None
     return best_compatible_impl

@@ -69,8 +69,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
             for dims_mapping in dims_mapping_list:
                 if idx < len(dims_mapping):
                     dim_mappings.append(dims_mapping[-(idx + 1)])
-            if not all(dim_mappings[0] == dim_mapping
-                       for dim_mapping in dim_mappings):
+            if compute_compatible_dim_mapping(dim_mappings) is None:
                 return False
         return True
 
@@ -85,8 +84,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
             dims_mapping_list.append(dims_mapping)
 
-        if not all(dims_mapping_list[0] == dims_mapping
-                   for dims_mapping in dims_mapping_list):
+        if compute_compatible_dims_mapping(dims_mapping_list) is None:
             return False
         return True
 
@@ -154,7 +152,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
         compatible_dims_mapping = compute_compatible_dims_mapping(
             dims_mapping_list)
-        assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dims_mapping:
+            return False
 
         for arg_name in input_arg_names:
             if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:

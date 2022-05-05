@@ -121,13 +121,12 @@ class DistributedContext:
     def serial_main_program(self):
         return self._serial_main_program
 
-    # @serial_main_program.setter
-    # def serial_main_program(self, program):
-    #     if self._serial_main_program:
-    #         print("WARNING: The program attached to this distributed context will be replaced by the new one.")
-    #     self._serial_main_program = program
-    #     self.clear()
-    #     self.initialize()
+    @serial_main_program.setter
+    def serial_main_program(self, program):
+        # if self._serial_main_program:
+        #     print("WARNING: The program attached to this distributed context will be replaced by the new one.")
+        self._original_serial_main_program = program
+        self._serial_main_program = program
 
     @property
     def serial_startup_program(self):
@@ -195,10 +194,12 @@ class DistributedContext:
 
     def initialize(self):
         if not self._is_initialized:
-            self._serial_main_program = self._original_serial_main_program.clone(
-            )
-            self._serial_startup_program = self._original_serial_startup_program.clone(
-            )
+            # self._serial_main_program = self._original_serial_main_program.clone(
+            # )
+            # self._serial_startup_program = self._original_serial_startup_program.clone(
+            # )
+            self._serial_main_program = self._original_serial_main_program
+            self._serial_startup_program = self._original_serial_startup_program
             self._serial_loss = self._original_serial_loss
             self._serial_optimizer = self._original_serial_optimizer
             self._init_dist_attr_for_program()
@@ -687,10 +688,12 @@ class DistributedContext:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_main_program" or k == "_serial_graph" \
-                or k == "_dist_main_programs" or k == "_dist_startup_programs" \
-                or k == "_serial_ordered_nodes" or k == "_serial_ordered_tensor_nodes" \
-                or k == "_serial_ordered_op_nodes":
+            if k in [
+                "_original_serial_main_program", "_original_serial_startup_program", \
+                "_serial_main_program", "_serial_startup_program", "_serial_graph", \
+                "_dist_main_programs", "_dist_startup_programs", \
+                "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
+                "_serial_ordered_op_nodes"]:
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))

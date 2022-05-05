@@ -133,6 +133,7 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
     for i in range(len(process_mesh.topology)):
         if dims_mapping.count(i) > 1:
             return False
+    return True
 
 
 class Completer:
@@ -248,20 +249,30 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Find the most compatible implemenetations from the distributed operator
-            op_dist_impl = find_best_compatible_distributed_operator_impl(
+            op_dist_impls = find_best_compatible_distributed_operator_impl(
                 dist_op, fwd=True)
-            if op_dist_impl is not None:
-                dim_changed = op_dist_impl.update_dims_mapping(dist_op)
-                if dim_changed:
-                    changed = True
-                if op_dist_impl.is_auto_compatible(dist_op):
-                    if op_dist_impl.type == "elementwise":
-                        op_dist_attr.impl_type = "default"
+            # print("fwd middle op", op_desc.type(), op_desc.id(), changed, op_dist_attr, op_dist_impls, "\n", flush=True)
+            if op_dist_impls is not None:
+                not_compatible = True
+                backup_op_dist_attr = copy.deepcopy(op_dist_attr)
+                backup_changed = changed
+                for op_dist_impl in op_dist_impls:
+                    dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+                    if dim_changed:
+                        changed = True
+                    if op_dist_impl.is_auto_compatible(dist_op):
+                        if op_dist_impl.type == "elementwise":
+                            op_dist_attr.impl_type = "default"
+                        else:
+                            op_dist_attr.impl_type = op_dist_impl.type
+                        # op_dist_attr.impl_type = op_dist_impl.type
+                        op_dist_attr.impl_idx = op_dist_impl.idx
+                        not_compatible = False
+                        break
                     else:
-                        op_dist_attr.impl_type = op_dist_impl.type
-                    # op_dist_attr.impl_type = op_dist_impl.type
-                    op_dist_attr.impl_idx = op_dist_impl.idx
-                else:
+                        dist_op.dist_attr = backup_op_dist_attr
+                        changed = backup_changed
+                if not_compatible:
                     dist_op.dist_attr = original_op_dist_attr
                     changed = False
             else:
@@ -292,20 +303,31 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Find the most compatible implemenetations from the distributed operator
-            op_dist_impl = find_best_compatible_distributed_operator_impl(
+            op_dist_impls = find_best_compatible_distributed_operator_impl(
                 dist_op, fwd=False)
-            if op_dist_impl is not None:
-                dim_changed = op_dist_impl.update_dims_mapping(dist_op)
-                if dim_changed:
-                    changed = True
-                if op_dist_impl.is_auto_compatible(dist_op):
-                    if op_dist_impl.type == "elementwise":
-                        op_dist_attr.impl_type = "default"
+            # print("bwd middle op", op_desc.type(), op_desc.id(), changed, op_dist_attr, op_dist_impls, "\n", flush=True)
+            if op_dist_impls is not None:
+                not_compatible = True
+                backup_op_dist_attr = copy.deepcopy(op_dist_attr)
+                backup_changed = changed
+                for op_dist_impl in op_dist_impls:
+                    dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+                    if dim_changed:
+                        changed = True
+                    if op_dist_impl.is_auto_compatible(dist_op):
+                        not_compatible = False
+                        if op_dist_impl.type == "elementwise":
+                            op_dist_attr.impl_type = "default"
+                        else:
+                            op_dist_attr.impl_type = op_dist_impl.type
+                        # op_dist_attr.impl_type = op_dist_impl.type
+                        op_dist_attr.impl_idx = op_dist_impl.idx
+                        not_compatible = False
+                        break
                     else:
-                        op_dist_attr.impl_type = op_dist_impl.type
-                    # op_dist_attr.impl_type = op_dist_impl.type
-                    op_dist_attr.impl_idx = op_dist_impl.idx
-                else:
+                        dist_op.dist_attr = backup_op_dist_attr
+                        changed = backup_changed
+                if not_compatible:
                     dist_op.dist_attr = original_op_dist_attr
                     changed = False
             else:

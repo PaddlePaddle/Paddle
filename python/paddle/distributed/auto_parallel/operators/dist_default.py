@@ -61,6 +61,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 for mapping in dims_mapping:
                     if mapping != -1:
                         return False
+                continue
             if len(dims_mapping) > 1:
                 for mapping in dims_mapping[1:]:
                     if mapping != -1:
@@ -68,8 +69,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             if len(dims_mapping) >= 1:
                 batch_dim_mappings.append(dims_mapping[0])
 
-        if not all(batch_dim_mappings[0] == dim_mapping
-                   for dim_mapping in batch_dim_mappings):
+        if compute_compatible_dim_mapping(batch_dim_mappings) is None:
             return False
 
         return True
@@ -89,6 +89,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 for mapping in dims_mapping:
                     if mapping != -1:
                         return False
+                continue
             if arg_name not in xshape_arg_names:
                 if len(dims_mapping) > 1:
                     for mapping in dims_mapping[1:]:
@@ -106,8 +107,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 if len(dims_mapping) >= 2:
                     batch_dim_mappings.append(dims_mapping[1])
 
-        if not all(batch_dim_mappings[0] == dim_mapping
-                   for dim_mapping in batch_dim_mappings):
+        if compute_compatible_dim_mapping(batch_dim_mappings) is None:
             return False
 
         return True
@@ -206,7 +206,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         compatible_dim_mapping = compute_compatible_dim_mapping(
             batch_dim_mappings)
-        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dim_mapping is None:
+            return False
+
         for arg_name in op_desc.input_arg_names():
             serial_tensor = dist_op.get_serial_input(arg_name)
             if serial_tensor.is_parameter:
