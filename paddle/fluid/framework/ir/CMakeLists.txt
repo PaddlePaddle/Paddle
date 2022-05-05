@@ -515,4 +515,9 @@ if(WITH_MKLDNN)
     test_fc_rnn_mkldnn_fuse_pass
     SRCS mkldnn/mkldnn_fc_rnn_fuse_pass_tester.cc
     DEPS ${TEST_FC_RNN_PASS_DEPS})
+  cc_test(
+    test_params_to_int8_pass
+    SRCS mkldnn/params_to_int8_pass_tester.cc
+    DEPS params_to_int8_pass)
+  )
 endif()

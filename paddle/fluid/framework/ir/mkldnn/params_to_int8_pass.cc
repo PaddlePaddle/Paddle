@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/ir/mkldnn/params_to_int8_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-// #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -211,7 +210,7 @@ void ParamsToInt8Pass::Conv(ir::Graph* graph) const {
           platform::errors::InvalidArgument("No bias node found."));
       ir::Node* conv_bias = (*conv_bias_it);
 
-      // connect new int32 bias to weights input
+      // connect new int32 bias to bias input
       conv_op->Op()->SetInput("Bias", {int_biases_node->Name()});
       IR_NODE_LINK_TO(int_biases_node, conv_op);
       GraphSafeRemoveNodes(graph, {conv_bias});
