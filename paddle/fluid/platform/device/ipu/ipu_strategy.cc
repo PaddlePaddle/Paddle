@@ -64,7 +64,6 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(is_training);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
-  ADD_BOOL_OPTION(transfer_cast_op);
   ADD_BOOL_OPTION(use_no_bias_optimizer);
   ADD_BOOL_OPTION(enable_distribution);
   ADD_BOOL_OPTION(scaled_optimizer_state);
