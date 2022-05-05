@@ -26,6 +26,9 @@ np.random.seed(102)
 
 
 def index_add_np(data, axis, index, added_value):
+    # as the calculation will modify the elements inplace,
+    # so copying the input data is important
+    data = data.copy()
     if isinstance(index, np.ndarray):
         index = list(index.flatten())
     added_value = float(added_value)
@@ -66,9 +69,9 @@ class TestIndexAddOp(OpTest):
         self.index_size = 4
         self.added_value = 9.0
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
-        # self.index_np = np.random.randint(
-        #     low=0, high=self.x_shape[self.axis], size=self.index_size)
-        self.index_np = np.array([0, 3], dtype=self.index_type)
+        self.index_np = np.random.randint(
+            low=0, high=self.x_shape[self.axis], size=self.index_size)
+        # self.index_np = np.array([0, 3], dtype=self.index_type)
         self.out_np = index_add_np(self.x_np, self.axis, self.index_np,
                                     self.added_value)
 
