@@ -123,6 +123,9 @@ from ...fluid.layers import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
 
+from .transformer import mha_data_prepare  # noqa: F401
+from .transformer import multi_head_attn  # noqa: F401
+
 __all__ = [     #noqa
            'celu',
            'conv1d',
@@ -228,4 +231,6 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'fold',
+           'mha_data_prepare',
+           'multi_head_attn',
 ]
