@@ -26,7 +26,7 @@ def numpy_corr(np_arr, rowvar=True, dtype='float64'):
 
 class Corr_Test(unittest.TestCase):
     def setUp(self):
-        self.shape = [20, 10]
+        self.shape = [4, 5]
 
     def test_tensor_corr_default(self):
         typelist = ['float64', 'float32']
@@ -84,13 +84,13 @@ class Corr_Test2(Corr_Test):
 
 class Corr_Test3(Corr_Test):
     def setUp(self):
-        self.shape = [20, 10]
+        self.shape = [4, 5]
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
 class Corr_Test4(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 5, 10]
+        self.shape = [2, 5, 2]
 
     def test_errors(self):
         def test_err():
