@@ -47,7 +47,7 @@ class TensorRTEngineTest : public ::testing::Test {
             .get());
     ctx_->PartialInitWithAllocator();
 
-    engine_ = new TensorRTEngine(10, 1 << 10);
+    engine_ = new TensorRTEngine(16, 1 << 10);
     engine_->InitNetwork();
   }
 
@@ -271,7 +271,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 4, 1});
+                                  nvinfer1::Dims4{4, 1, 4, 1});
 
   plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kGelu;
 
