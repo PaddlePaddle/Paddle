@@ -185,12 +185,9 @@ void Compiler::RegisterOpFunc() {
      auto debug_context = BuildDebugContext(op_desc);         \
      auto aiGraphcoreOpset = builder_->aiGraphcoreOpset1();   \
      auto aiOnnxOpset = builder_->aiOnnxOpset11();            \
-     PushNameScope(op_desc);                                  \
+     NameScopeHelper ns_helper(op_desc, builder_.get());      \
      auto output_ids = OnnxImpl(inputs Args, debug_context);  \
-     PopNameScope(op_desc);                                   \
-     SetIpuIndexStage(output_ids, op_desc);                   \
-     SetAMPAttributes(output_ids, op_desc);                   \
-     SetSerializeAttributes(output_ids, op_desc);             \
+     PostLower(output_ids, op_desc);                          \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
 #include "paddle/fluid/platform/device/ipu/supported_ops_autogen.h"
@@ -273,10 +270,9 @@ void Compiler::LowerConstants(const Scope* scope) {
       popart::TensorInfo tensor_info(PdDataType2PopartType(tensor->dtype()),
                                      shape);
       const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
-      PushNameScope(op_desc);
+      NameScopeHelper ns_helper(op_desc, builder_.get());
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
-      PopNameScope(op_desc);
-      SetIpuIndexStage(result, op_desc);
+      PostLower(result, op_desc);
       resources_->tensors.emplace(tensor_name, result);
     }
   }
@@ -285,42 +281,42 @@ void Compiler::LowerConstants(const Scope* scope) {
 
 void Compiler::LowerWeights(const Scope* scope) {
   VLOG(10) << "enter Compiler::LowerWeights";
-  // at this step, the graph doesn't contains optimizer related states
+  // At this step, the graph doesn't contains optimizer related states
   for (auto id : graph_helper_->sorted_vars_id) {
     auto* node = graph_helper_->nodes_id_map[id];
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      if (node->Var()->Persistable() && node->inputs.empty()) {
-        auto var_name = node->Var()->Name();
-        if (resources_->tensors.count(var_name) != 0) {
-          VLOG(10) << "found existed one, skip lowering Weight: " << var_name;
-          continue;
-        }
-        if (var_name.rfind("learning_rate", 0) == 0) {
-          VLOG(10) << "skip learning_rate_var: " << var_name;
-          continue;
-        }
-        VLOG(10) << "lowering weight: " << var_name;
-
-        auto var = scope->FindVar(var_name);
-        if (var) {
-          auto tensor = var->Get<framework::LoDTensor>();
-          auto dtype = PdDataType2PopartType(tensor.dtype());
-          auto shape = std::vector<int64_t>();
-          for (size_t i = 0; i < tensor.dims().size(); ++i) {
-            shape.push_back(tensor.dims().at(i));
-          }
-          popart::TensorInfo tensor_info(dtype, shape);
-          popart::ConstVoidData const_data{tensor.data(), tensor_info};
-          if (!node->outputs.empty()) {
-            auto op_node = node->outputs[0];
-            PushNameScope(op_node->Op());
-            popart::TensorId result =
-                builder_->addInitializedInputTensor(const_data, var_name);
-            PopNameScope(op_node->Op());
-            resources_->tensors.emplace(var_name, result);
-            resources_->weights.push_back(var_name);
-          }
-        }
+    // Weights are var node and Persistable
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var() &&
+        node->Var()->Persistable()) {
+      // Weights are Parameter in training mode
+      if (ipu_strategy_->is_training && !node->Var()->IsParameter()) {
+        continue;
+      }
+      auto var_name = node->Var()->Name();
+      // Some op has same input and output tensor, like batchnorm
+      if (resources_->tensors.count(var_name) != 0) {
+        VLOG(10) << "found existed one, skip lowering Weight: " << var_name;
+        continue;
+      }
+      VLOG(10) << "lowering weight: " << var_name;
+      auto var = scope->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound("Tensor %s is not found in the scope",
+                                          var_name));
+      auto tensor = var->Get<framework::LoDTensor>();
+      auto dtype = PdDataType2PopartType(tensor.dtype());
+      auto shape = std::vector<int64_t>();
+      for (size_t i = 0; i < tensor.dims().size(); ++i) {
+        shape.push_back(tensor.dims().at(i));
+      }
+      popart::TensorInfo tensor_info(dtype, shape);
+      popart::ConstVoidData const_data{tensor.data(), tensor_info};
+      if (!node->outputs.empty()) {
+        auto op_node = node->outputs[0];
+        NameScopeHelper ns_helper(op_node->Op(), builder_.get());
+        popart::TensorId result =
+            builder_->addInitializedInputTensor(const_data, var_name);
+        resources_->tensors.emplace(var_name, result);
+        resources_->weights.push_back(var_name);
       }
     }
   }
@@ -341,10 +337,9 @@ void Compiler::LowerBody() {
     } else if (op_type == "popart_checkpointoutput") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
-      PushNameScope(op_desc);
+      NameScopeHelper ns_helper(op_desc, builder_.get());
       auto output_ids = builder_->checkpointOutput(inputs);
-      PopNameScope(op_desc);
-      SetIpuIndexStage(output_ids, op_desc);
+      PostLower(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_custom_op") {
       auto inputs = GetOpInputs(op_desc);
@@ -359,12 +354,11 @@ void Compiler::LowerBody() {
           BOOST_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
       VLOG(10) << "Build graph from custom op: " << __op_type;
       auto it = custom_ops_.find(__op_type);
-      PushNameScope(op_desc);
+      NameScopeHelper ns_helper(op_desc, builder_.get());
       auto output_ids =
           builder_->customOp(it->second.popart_op, it->second.popart_op.version,
                              inputs, outputs.size(), attributes, debug_context);
-      PopNameScope(op_desc);
-      SetIpuIndexStage(output_ids, op_desc);
+      PostLower(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_printtensor") {
       auto inputs = GetOpInputs(op_desc);
@@ -373,11 +367,10 @@ void Compiler::LowerBody() {
       auto print_gradient =
           BOOST_GET_CONST(int64_t, op_desc->GetAttr("print_gradient"));
       auto title = BOOST_GET_CONST(std::string, op_desc->GetAttr("title"));
-      PushNameScope(op_desc);
+      NameScopeHelper ns_helper(op_desc, builder_.get());
       auto output_ids = builder_->aiGraphcoreOpset1().printtensor(
           inputs, print_gradient, debug_context, title);
-      PopNameScope(op_desc);
-      SetIpuIndexStage(output_ids, op_desc);
+      PostLower(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else {
       auto itr = name_function_.find(op_type);
@@ -625,12 +618,13 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
   resources_->tensors.emplace(output_names[0], tensor_id);
 }
 
-void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
-                                const OpDesc* op_desc) {
-  VLOG(10) << "enter Compiler::SetIpuIndexStage";
+void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
+                         const OpDesc* op_desc) {
+  // Set pipline
+  // Due to the limitation of popart, if an op has multiple outputs,
+  // pipline settings needs to be set at the same time
   auto tensor_ids_set =
       std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
-
   if (op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_ids_set, ipu_index);
@@ -639,18 +633,24 @@ void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
     if (op_desc->HasAttr(sIpuStageAttr)) {
       auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_ids_set, ipu_stage);
-      VLOG(10) << "set " << sIpuStageAttr << "= " << ipu_stage
+      VLOG(10) << "set " << sIpuStageAttr << " = " << ipu_stage
                << " for op: " << op_desc->Type();
     }
   }
-  VLOG(10) << "leave Compiler::SetIpuIndexStage";
+
+  for (auto& tensor_id : tensor_ids) {
+    PostLower(tensor_id, op_desc, true);
+  }
 }
 
-void Compiler::SetIpuIndexStage(const std::string& tensor_id,
-                                const OpDesc* op_desc) {
-  VLOG(10) << "enter Compiler::SetIpuIndexStage";
+void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc) {
+  PostLower(tensor_id, op_desc, false);
+}
 
-  if (op_desc->HasAttr(sIpuIndexAttr)) {
+void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc,
+                         bool skip_pipline) {
+  // Set pipline
+  if (!skip_pipline && op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_id, ipu_index);
     VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
@@ -658,32 +658,18 @@ void Compiler::SetIpuIndexStage(const std::string& tensor_id,
     if (op_desc->HasAttr(sIpuStageAttr)) {
       auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_id, ipu_stage);
-      VLOG(10) << "set " << sIpuStageAttr << "= " << ipu_stage
+      VLOG(10) << "set " << sIpuStageAttr << " = " << ipu_stage
                << " for op: " << op_desc->Type();
     }
   }
-  VLOG(10) << "leave Compiler::SetIpuIndexStage";
-}
-
-void Compiler::SetAMPAttributes(const std::vector<std::string>& tensor_ids,
-                                const OpDesc* op_desc) {
-  if (op_desc->Type() == "popart_matmul") {
-    for (const auto& tensor_id : tensor_ids) {
-      SetAMPAttributes(tensor_id, op_desc);
-    }
-  }
-}
-
-void Compiler::SetAMPAttributes(const std::string& tensor_id,
-                                const OpDesc* op_desc) {
-  VLOG(10) << "enter Compiler::SetAMPAttributes";
+  // Set amp
   if (op_desc->Type() == "popart_matmul") {
     if (set_amp_for_all_) {
       auto amp = ipu_strategy_->available_memory_proportion;
       if (amp < 0.0f || amp > 1.0) {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "AvailableMemoryProportion %f is invalid, which should be set 0 <= "
-            "amp <= 1",
+            "AvailableMemoryProportion %f is invalid, which should be in "
+            "range [0.0, 1.0]",
             amp));
       }
       if (amp > 0.0f) {
@@ -694,8 +680,8 @@ void Compiler::SetAMPAttributes(const std::string& tensor_id,
         auto amp = BOOST_GET_CONST(float, op_desc->GetAttr(sAvailMemAttribute));
         if (amp < 0.0f || amp > 1.0) {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "AvailableMemoryProportion %f is invalid, which should be set 0 "
-              "<= amp <= 1",
+              "AvailableMemoryProportion %f is invalid, which should be in "
+              "range [0.0, 1.0]",
               amp));
         }
         if (amp > 0.0f) {
@@ -705,17 +691,7 @@ void Compiler::SetAMPAttributes(const std::string& tensor_id,
         }
       }
     }
-  }
-  VLOG(10) << "leave Compiler::SetAMPAttributes";
-}
-
-void Compiler::SetSerializeAttributes(
-    const std::vector<std::string>& tensor_ids, const OpDesc* op_desc) {
-  VLOG(10) << "enter Compiler::SetSerializeAttributes";
-  auto tensor_ids_set =
-      std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
-
-  if (op_desc->Type() == "popart_matmul") {
+    // Set serialize matmul
     if (op_desc->HasAttr(sMatmulSerializeFactor)) {
       auto factor =
           BOOST_GET_CONST(int, op_desc->GetAttr(sMatmulSerializeFactor));
@@ -724,16 +700,9 @@ void Compiler::SetSerializeAttributes(
         mode = BOOST_GET_CONST(std::string,
                                op_desc->GetAttr(sMatmulSerializeMode));
       }
-      builder_->setSerializeMatMul(tensor_ids_set, mode, (int64_t)factor, true);
+      builder_->setSerializeMatMul({tensor_id}, mode, factor, true);
     }
   }
-  VLOG(10) << "leave Compiler::SetSerializeAttributes";
-}
-
-void Compiler::SetSerializeAttributes(const std::string& tensor_id,
-                                      const OpDesc* op_desc) {
-  std::vector<std::string> tensor_ids = {tensor_id};
-  SetSerializeAttributes(tensor_ids, op_desc);
 }
 
 void Compiler::SetCustomOps(
@@ -791,29 +760,6 @@ popart::DebugContext Compiler::BuildDebugContext(const OpDesc* op) {
   VLOG(10) << "op_identify_id of op: " << op->Type() << " is "
            << op_identify_id;
   return popart::DebugContext(op_identify_id);
-}
-
-void Compiler::PushNameScope(const OpDesc* op) {
-  auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
-  if (op_namescope == "/") {
-    return;
-  }
-  if (!op_namescope.empty()) {
-    op_namescope.pop_back();
-  }
-  if (!op_namescope.empty()) {
-    op_namescope.erase(op_namescope.begin());
-  }
-  VLOG(10) << "name_scope is: " << op_namescope;
-  builder_->pushNameScope(op_namescope);
-}
-
-void Compiler::PopNameScope(const OpDesc* op) {
-  auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
-  if (op_namescope == "/") {
-    return;
-  }
-  builder_->popNameScope();
 }
 
 }  // namespace ipu
