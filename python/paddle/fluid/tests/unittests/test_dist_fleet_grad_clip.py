@@ -51,9 +51,11 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
         self._grad_clip_mode = 2
 
 
+'''
+# lod_level is not supported
 class TestDistASyncClipByValue(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "geo"
         self._reader = "dataset"
         self._grad_clip_mode = 1
 
@@ -77,7 +79,7 @@ class TestDistASyncClipByValue(TestFleetBase):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
-
+# do not support grad_clip in async mode now
 class TestDistASyncClipByNorm(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
@@ -103,11 +105,12 @@ class TestDistASyncClipByNorm(TestFleetBase):
     def test_dist_train(self):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+'''
 
 
 class TestDistASyncClipByGlobalNorm(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "geo"
         self._reader = "dataset"
         self._grad_clip_mode = 3
 
