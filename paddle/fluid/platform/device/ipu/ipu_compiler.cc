@@ -57,12 +57,14 @@ struct CustomOpAttrVisitor : public boost::static_visitor<void> {
     attrs_->emplace(attr_name_, v);
   }
   void operator()(BlockDesc* desc) const {
-    PADDLE_THROW(errors::Unavailable(
-        "Unsupported calling method for `BlockDesc` type."));
+    PADDLE_THROW(
+        errors::Unavailable("Unsupported calling method for `BlockDesc` type "
+                            "when extracting custom operator attributes."));
   }
   void operator()(const std::vector<BlockDesc*>& v) const {
-    PADDLE_THROW(errors::Unavailable(
-        "Unsupported calling method for `BlockDesc` type."));
+    PADDLE_THROW(
+        errors::Unavailable("Unsupported calling method for `BlockDesc` type "
+                            "when extracting  custom operator attributes."));
   }
   void operator()(int64_t v) const { attrs_->emplace(attr_name_, v); }
   void operator()(const std::vector<int64_t>& v) const {
@@ -73,7 +75,8 @@ struct CustomOpAttrVisitor : public boost::static_visitor<void> {
   }
   void operator()(boost::blank) const {
     PADDLE_THROW(errors::Unavailable(
-        "Unsupported calling method for `boost::blank` type."));
+        "Unsupported calling method for `boost::blank` type when extracting "
+        "custom operator attributes."));
   }
 };
 

@@ -47,7 +47,8 @@ const popart::DataType VarType2PopartDType(const VarType::Type type) {
     case VarType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(errors::Unimplemented("Unsupported VarType::Type."));
+      PADDLE_THROW(errors::Unimplemented(
+          "Unsupported VarType::Type when converting to popart data type."));
   }
 }
 
@@ -78,7 +79,8 @@ const popart::DataType PhiDType2PopartDType(const phi::DataType type) {
     case phi::DataType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(errors::Unimplemented("Unsupported phi::DataType."));
+      PADDLE_THROW(errors::Unimplemented(
+          "Unsupported phi::DataType when converting to popart data type."));
   }
 }
 
@@ -109,7 +111,8 @@ const VarType::Type PopartDType2VarType(const popart::DataType type) {
     case popart::DataType::COMPLEX128:
       return VarType::COMPLEX128;
     default:
-      PADDLE_THROW(errors::Unimplemented("Unsupported popart::DataType."));
+      PADDLE_THROW(errors::Unimplemented(
+          "Unsupported popart::DataType when converting to var type."));
   }
 }
 
@@ -140,7 +143,8 @@ const popart::DataType OnnxDType2PopartType(const ONNXDataType type) {
     case ONNXDataType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(errors::Unimplemented("Unsupported ONNXDataType."));
+      PADDLE_THROW(errors::Unimplemented(
+          "Unsupported ONNXDataType when converting to popart data type."));
   }
 }
 
@@ -171,8 +175,8 @@ const ONNXDataType VarType2OnnxDType(const VarType::Type type) {
     case VarType::COMPLEX128:
       return ONNXDataType::COMPLEX128;
     default:
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Unsupported VarType::Type"));
+      PADDLE_THROW(errors::Unimplemented(
+          "Unsupported VarType::Type when converting to onnx data type."));
   }
 }
 
