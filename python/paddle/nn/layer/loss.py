@@ -1347,7 +1347,7 @@ class MultiLabelSoftMarginLoss(Layer):
 
                 input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
                 label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
-                
+
                 multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='none')
                 loss = multi_label_soft_margin_loss(input, label)
                 print(loss)
