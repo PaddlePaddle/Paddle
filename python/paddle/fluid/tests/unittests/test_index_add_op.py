@@ -28,6 +28,7 @@ np.random.seed(102)
 def index_add_np(data, axis, index, added_value):
     if isinstance(index, np.ndarray):
         index = list(index.flatten())
+    added_value = float(added_value)
     outer_loop = int(np.prod(data.shape[:axis]))
     x_reshape = [outer_loop] + list(data.shape[axis:])
     x_np_reshape = data.reshape(tuple(x_reshape))
