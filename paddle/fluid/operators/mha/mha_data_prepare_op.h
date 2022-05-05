@@ -32,8 +32,7 @@ class MHADataPrepKernel : public framework::OpKernel<T> {
 
     const Tensor* attn_mask = context.Input<Tensor>("attn_mask");
     // TODO(Ming Huang): Use reduce_sum kernel to compute qkvo seqlen in GPU
-    // buffer.
-    // That could remove this DtoH data movement.
+    // buffer. That could remove this DtoH data movement.
     size_t attn_mask_size = attn_mask->numel() * sizeof(int);
     memory::allocation::AllocationPtr attn_mask_host =
         memory::Alloc(host_pinned_place, attn_mask_size);

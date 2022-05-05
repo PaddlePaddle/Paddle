@@ -31,11 +31,25 @@ class MHADataPrepOp : public framework::OperatorWithKernel {
 
     auto attn_mask_dims = ctx->GetInputDim("attn_mask");
 
-    std::vector<int64_t> qkvo_output_dims(1, attn_mask_dims[0] * 2);
+    size_t qo_kv_size = attn_mask_dims[0] * 2;
+    size_t low_high_win_size = 0;
+    if (attn_mask_dims.size() == 2) {
+      low_high_win_size = attn_mask_dims[1] * 2;
+    } else if (attn_mask_dims.size() == 4) {
+      low_high_win_size = attn_mask_dims[3] * 2;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The dimension of attn mask to mha_data_prepare op "
+          "should be equal to 2 or 4 . But received "
+          "dimensions = %d.",
+          attn_mask_dims.size()));
+    }
+
+    std::vector<int64_t> qkvo_output_dims(1, qo_kv_size);
     ctx->SetOutputDim("qo_kv_seqlen", phi::make_ddim(qkvo_output_dims));
     ctx->SetOutputDim("qo_kv_seqlen_host", phi::make_ddim(qkvo_output_dims));
 
-    std::vector<int64_t> lo_hi_output_dims(1, attn_mask_dims[3] * 2);
+    std::vector<int64_t> lo_hi_output_dims(1, low_high_win_size);
     ctx->SetOutputDim("low_high_windows_host",
                       phi::make_ddim(lo_hi_output_dims));
   }
