@@ -2206,6 +2206,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CustomPlace>)
       .def("get_device_id",
            [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
@@ -3020,6 +3021,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetGPUComputeCapability(place.device) >= 53;
+  });
+  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 80 support bfloat16
+    return platform::GetGPUComputeCapability(place.device) >= 80;
   });
 #endif
 

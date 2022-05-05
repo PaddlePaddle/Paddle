@@ -125,7 +125,6 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
 #ifdef PADDLE_WITH_MKLDNN
     tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
 #endif
-    tran_lod_tensor->set_layout(in_lod_tensor.layout());
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<phi::SelectedRows>()) {
     auto &in_selected_rows = in_var.Get<phi::SelectedRows>();
