@@ -65,7 +65,7 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "(Tensor), tensor to be added to the final result.");
-    AddInput("X@Q", "(Tensor), The first input tensor for mul.");
+    AddInput("X", "(Tensor), The first input tensor for mul.");
     AddInput("Y", "(Tensor), The second input tensor for mul.");
     AddOutput("Out", "(Tensor), The output tensor of addmm op.");
     AddAttr<bool>("use_mkldnn",
