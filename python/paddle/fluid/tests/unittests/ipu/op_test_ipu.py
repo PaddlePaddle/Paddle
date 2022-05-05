@@ -76,7 +76,8 @@ class IPUTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
     # Check if ipumodel mode is enabled
-    def use_ipumodel():
+    @classmethod
+    def use_ipumodel(cls):
         if 'POPLAR_IPUMODEL' not in os.environ:
             return False
         else:
@@ -86,7 +87,7 @@ class IPUTest(unittest.TestCase):
 
     # Decorator for static graph building
     def static_graph(builder):
-        def wrapper(self: IPUOpTest, *args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
             self.startup_prog = paddle.static.Program()
