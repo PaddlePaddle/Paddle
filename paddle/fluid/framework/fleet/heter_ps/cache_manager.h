@@ -31,6 +31,8 @@ namespace framework {
 
 #if defined(PADDLE_WITH_XPU_KP)
 
+typedef uint64_t FeatureKey;
+
 class CacheManager {
  public:
   struct CacheMeta {
@@ -38,20 +40,28 @@ class CacheManager {
     uint64_t sign_;
   };
 
-  CacheManager() {}
+  CacheManager(int worker_num);
+  CacheManager(int thread_num, int batch_sz, int worker_num);
   ~CacheManager() {}
 
-  void build_sign2fids(FeatureKey* d_keys, size_t len) {}
-  uint64_t query_sign2fid(FeatureKey & key) { return 0; }
+  void build_sign2fids(FeatureKey* d_keys, size_t len);
+  uint64_t query_sign2fid(FeatureKey & key);
 
-  void build_batch_fid_seq(Record * recs, int size) {}
-  void prepare_current_batch_fid_seq() {}
-  std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq() { return nullptr; }
-  void convert_fid2bfid(uint64_t * fids, uint64_t * out_bfids, int size) {}
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  void build_batch_fid_seq(Record * recs, int size);
+  void prepare_current_batch_fid_seq();
+  std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq();
+  void convert_fid2bfid(uint64_t * fids, uint64_t * out_bfids, int size);
+#endif
 
  private:
+  std::atomic<int> feasign_cnt_;
   std::unordered_map<FeatureKey, uint64_t> sign2fid_;
   std::vector<CacheMeta> fid2meta_;
+
+  int thread_num_;
+  int batch_sz_;
+  int worker_num_;
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   // for batch fid sequence
@@ -60,7 +70,7 @@ class CacheManager {
       fid_seq_channel_ = 
           paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint64_t>>>();;
   std::shared_ptr<std::vector<uint64_t>> current_batch_fid_seq_ = nullptr;
-  std::unordered_map<uint64_t, uint64_t> current_batch_fid2bfid;
+  std::unordered_map<uint64_t, uint64_t> current_batch_fid2bfid_;
   int current_batch_fid_seq_ref_ = 0;
   std::shared_ptr<std::mutex> current_batch_fid_seq_lock;
 #endif
