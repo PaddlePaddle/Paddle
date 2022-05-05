@@ -689,3 +689,39 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             img = np.array(img).astype(np.float32)
 
         return F_cv2.normalize(img, mean, std, data_format, to_rgb)
+
+
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image with given value.
+    
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): input Tensor image. 
+                 For Tensor input, the shape should be (C, H, W). For np.array input, 
+                 the shape should be (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor | np.array): value used to replace the pixels in erased region. It 
+                should be np.array when img is np.array or PIL.Image.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor | np.array | PIL.Image: Erased image. The type is same with input image.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                
+                fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
+                values = paddle.zeros((1,1,1), dtype=paddle.float32)
+                result = paddle.vision.transforms.erase(fake_img, 4, 4, 3, 3, values)
+
+    """
+    if _is_tensor_image(img):
+        return F_t.erase(img, i, j, h, w, v, inplace=inplace)
+    elif _is_pil_image(img):
+        return F_pil.erase(img, i, j, h, w, v, inplace=inplace)
+    else:
+        return F_cv2.erase(img, i, j, h, w, v, inplace=inplace)
