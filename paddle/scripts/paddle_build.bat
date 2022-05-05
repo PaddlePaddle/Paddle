@@ -274,7 +274,7 @@ rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+rem set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -285,7 +285,7 @@ rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+rem set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
