@@ -56,13 +56,15 @@ class TestImperativeQat(unittest.TestCase):
         self.onnx_format = False
         self.check_export_model_accuracy = True
         self.diff_threshold = 0.01
+        self.fuse_conv_bn = False
 
     def func_qat(self):
         self.set_vars()
 
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=self.weight_quantize_type,
-            activation_quantize_type=self.activation_quantize_type)
+            activation_quantize_type=self.activation_quantize_type,
+            fuse_conv_bn=self.fuse_conv_bn)
 
         with fluid.dygraph.guard():
             # For CI coverage
@@ -214,6 +216,7 @@ class TestImperativeQatONNXFormat(unittest.TestCase):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
         self.diff_threshold = 0.025
+        self.fuse_conv_bn = False
 
 
 if __name__ == '__main__':

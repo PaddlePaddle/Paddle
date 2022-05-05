@@ -118,9 +118,9 @@ class {} : public egr::GradNodeBase {{
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
   ~{}() override = default;
 
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
-  std::string name() override {{ return \" {} \"; }}
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
+  std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
       {}
@@ -149,7 +149,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = \
 """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
     // Fill Zero For GradIn Tensors
 {}
 
@@ -236,15 +236,16 @@ FORWARD_BODY_TEMPLATE = \
 {}
       // SetAttributes
 {}
-      // SetTensorWrappers
+      // Set TensorWrappers for Forward Inputs
 {}
       // SetGradOutMeta & SetEdges
-{}
 {}
       // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
 {}
 {}
 {}
+{}
+      // Set TensorWrappers for Forward Outputs
 {}
     }}
 """
@@ -354,7 +355,7 @@ AMP_LOGIC_TEMPLATE = \
     if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
         VLOG(5) << "Check and Prepare For AMP";
         {}
-        std::vector<std::vector<paddle::experimental::Tensor>> amp_tensors_vector = {};
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
         {}
         {}
         {}
@@ -720,18 +721,19 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_attributes_str = "\n".join(set_attributes_list)
 
         # SetTensorWrappers
-        set_tensor_wrappers_list = []
+        set_input_tensor_wrappers_list = []
+        set_output_tensor_wrappers_list = []
         num_fwd_outputs = len(forward_outputs_position_map.keys())
         for name, (atype, is_fwd_input,
                    pos) in backward_forward_inputs_map.items():
             is_optional = (name in optional_inputs)
 
             if is_fwd_input:
-                need_input_data = "false" if name in self.no_need_buffers else "true"
                 if is_optional:
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, {need_input_data});"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, true);"
+                set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
@@ -743,8 +745,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
-            set_tensor_wrappers_list.append(set_tensor_wrappers)
-        set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
+                set_output_tensor_wrappers_list.append(set_tensor_wrappers)
+        set_input_tensor_wrappers_str = "\n".join(
+            set_input_tensor_wrappers_list)
+        set_output_tensor_wrappers_str = "\n".join(
+            set_output_tensor_wrappers_list)
 
         # SetGradOutMeta & SetEdges
         set_grad_out_meta_list = []
@@ -763,15 +768,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             is_optional = (name in self.optional_inputs)
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
-                set_edges = f"{indent}if({name}.get_ptr() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
             else:
                 set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                set_edges = f"{indent}grad_node->AddEdges({input_autograd_meta_name}, {pos});"
 
             set_grad_out_meta_list.append(set_grad_out_meta)
-            set_edges_list.append(set_edges)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
-        set_edges_str = "\n".join(set_edges_list)
 
         # SetOutRank & SetHistory & SetGradInMeta
         set_out_rank_list = []
@@ -797,13 +798,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_retain_grad_str = "\n".join(set_retain_grad_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
+        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             node_creation_event_str, pass_stop_gradient_args_str,
-            node_construction_str, set_attributes_str, set_tensor_wrappers_str,
-            set_grad_out_meta_str, set_edges_str, set_out_rank_str,
-            set_history_str, set_grad_in_meta_str, set_retain_grad_str)
+            node_construction_str, set_attributes_str,
+            set_input_tensor_wrappers_str, set_grad_out_meta_str,
+            set_out_rank_str, set_history_str, set_grad_in_meta_str,
+            set_retain_grad_str, set_output_tensor_wrappers_str)
 
     def run(self):
         # Basic Validation Check
@@ -1296,7 +1298,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
-            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
@@ -1447,7 +1449,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         # Construct grad_api returns
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
-        returns_str = f"{indent}std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
+        returns_str = f"{indent}paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});\n"
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
@@ -1463,9 +1465,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         returns_str += f"{indent}return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
-
-        if len(grad_node_creation_str) == 0:
-            grad_node_creation_str = f"if(create_graph) VLOG(3) << \"Higher order grad node for {grad_node_name} has not been implemented yet.\";"
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,

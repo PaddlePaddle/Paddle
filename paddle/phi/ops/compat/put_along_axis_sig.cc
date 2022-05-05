@@ -26,9 +26,9 @@ KernelSignature PutAlongAxisArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature PutAlongAxisGradArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("put_along_axis_grad",
-                         {"Input", "Index", GradVarName("Result")},
+                         {"Input", "Index", "Result@GRAD"},
                          {"Axis", "Reduce"},
-                         {GradVarName("Input"), GradVarName("Value")});
+                         {"Input@GRAD", "Value@GRAD"});
 }
 
 }  // namespace phi

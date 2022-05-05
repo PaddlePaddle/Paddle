@@ -100,6 +100,14 @@ inline int str_to_float(const char* str, float* v) {
   return index;
 }
 
+inline float* str_to_float(std::string& str) {
+  return (float*)const_cast<char*>(str.c_str());
+}
+
+inline float* str_to_float(const char* str) {
+  return (float*)const_cast<char*>(str);
+}
+
 // checks whether the test string is a suffix of the input string.
 bool ends_with(std::string const& input, std::string const& test);
 

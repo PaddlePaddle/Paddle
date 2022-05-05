@@ -28,6 +28,10 @@ from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
 import warnings
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 __all__ = [
     'append_backward',
     'gradients',
@@ -1722,7 +1726,7 @@ def append_backward(loss,
 def _as_list(x):
     if x is None:
         return []
-    return list(x) if isinstance(x, collections.Sequence) else [x]
+    return list(x) if isinstance(x, Sequence) else [x]
 
 
 def _is_ancestor_block(ancestor_block, block):
@@ -2021,7 +2025,6 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 @framework.static_only
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    :api_attr: Static Graph
 
     Backpropagate the gradients of targets to inputs.
 
@@ -2042,8 +2045,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
+    
         .. code-block:: python
-
+          :name: code-example
             import paddle
             import paddle.nn.functional as F
 
@@ -2054,7 +2058,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             y = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
             y = F.relu(y)
             z = paddle.static.gradients([y], x)
-            print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
+            print(z) # [var x@GRAD : LOD_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
     """
     check_type(targets, 'targets', (framework.Variable, list, tuple),
                'paddle.static.gradients')

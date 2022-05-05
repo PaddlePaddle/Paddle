@@ -25,6 +25,12 @@ namespace kps {
  */
 template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
+#ifdef PADDLE_WITH_XPU_KP
+  HOSTDEVICE inline IdentityFunctor() {}
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+  HOSTDEVICE Ty operator()(const Tx x) const { return static_cast<Ty>(x); }
+  HOSTDEVICE inline void SetDiv(int n) {}
+#else
   inline IdentityFunctor() {}
 
   explicit inline IdentityFunctor(int n) {}
@@ -38,6 +44,7 @@ struct IdentityFunctor {
     return static_cast<Ty>(x);
   }
   __device__ inline void SetDiv(int n) {}
+#endif
 };
 
 /**
@@ -117,7 +124,8 @@ struct MaxFunctor {
  */
 template <typename T>
 struct AddFunctor {
-  inline T initial() { return static_cast<T>(0.0f); }
+  inline T initial() { /*return static_cast<T>(0.0f);*/
+  }
 
   __device__ T operator()(const T a, const T b) const { return b + a; }
 };
@@ -127,7 +135,8 @@ struct AddFunctor {
  */
 template <typename T>
 struct MulFunctor {
-  inline T initial() { return static_cast<T>(1.0f); }
+  inline T initial() { /*return static_cast<T>(1.0f);*/
+  }
 
   __device__ T operator()(const T& a, const T& b) const { return b * a; }
 };
@@ -137,7 +146,8 @@ struct MulFunctor {
  */
 template <typename T>
 struct LogicalOrFunctor {
-  inline T initial() { return static_cast<T>(false); }
+  inline T initial() { /*return static_cast<T>(false);*/
+  }
 
   __device__ T operator()(const T& a, const T& b) const { return b || a; }
 };
