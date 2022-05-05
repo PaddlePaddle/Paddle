@@ -695,10 +695,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
 
-  struct CacheImpl;
-  mutable CacheImpl* impl_;
-  CacheImpl* getCacheImpl();
-
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
@@ -714,6 +710,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
+
+  struct CacheImpl;
+  mutable CacheImpl* impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

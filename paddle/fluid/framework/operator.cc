@@ -182,52 +182,15 @@ static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-OperatorWithKernel::CacheImpl {
-  CacheImpl() : kernel_ctx_(nullptr), infer_shape_ctx_(nullptr) {}
+struct OperatorWithKernel::CacheImpl {
+  explicit CacheImpl(phi::KernelContext* kernel_ctx)
+      : kernel_ctx_(kernel_ctx) {}
 
-  phi::KernelContext* getKernelContext() {
-    if (kernel_ctx_ == nullptr) updateKernelContext();
-    return kernel_ctx_.get();
-  }
-  RuntimeInferShapeContext* getRuntimeInferShapeContext(
-      const OperatorBase& op) {
-    if (infer_shape_ctx_ == nullptr) updateInferShapeContext(op);
-    return infer_shape_ctx_.get();
-  }
+  phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
 
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
-  std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
-  void updateKernelContext() {
-    updateRuntimeContext();
-    // update kernelContext
-    if (kernel_ctx_.get() == nullptr) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(place);
-      BuildPhiKernelContext(*runtime_ctx_, dev_ctx, kernel_ctx_.get());
-    }
-  }
-  void updateInferShapeContext(const OperatorBase& op) {
-    updateRuntimeContext();
-
-    infer_shape_ctx_.reset(op, runtime_ctx_);
-  }
-  void updateRuntimeContext() {
-    // update runtimeContext
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-      std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
-      }
-    }
-  }
 };
-struct CacheImpl* OperatorWithKernel::getCacheImpl() {
-  if (impl_ == nullptr) impl_ = new CacheImpl();
-  return impl_;
-}
 
 RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const VariableNameMap& outnames,
@@ -1273,7 +1236,8 @@ void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
-  this->Info().infer_shape_(getCacheImpl()->getRuntimeInferShapeContext());
+  RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
+  this->Info().infer_shape_(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
@@ -1539,7 +1503,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
-    this->Info().infer_shape_(getCacheImpl()->getRuntimeInferShapeContext());
+    RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    this->Info().infer_shape_(&infer_shape_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -1555,9 +1520,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (run_phi_kernel_) {
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
-      PreparePhiData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
-                     runtime_ctx);
-      (*pt_kernel_)(getCacheImpl()->getKernelContext());
+      if (impl_ == nullptr) {
+        impl_ = new CacheImpl(new phi::KernelContext());
+        PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_,
+                       runtime_ctx);
+        BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
+      }
+      (*pt_kernel_)(impl_->getKernelContext());
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
