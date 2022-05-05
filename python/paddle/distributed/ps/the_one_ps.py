@@ -1161,10 +1161,11 @@ class TheOnePSRuntime(RuntimeBase):
         print("save_var_names:", save_var_names)
 
         for var in save_var_names:
-            tensor = var.get_value(scope)
+            tensor = scope.find_var(var).get_tensor()
+            import paddle
             paddle.save(
                 tensor,
-                os.path.join(model_path, var.name),
+                os.path.join(dirname, var),
                 use_binary_format=True)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
@@ -1407,7 +1408,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_one_table(self, table_id, path, mode):
         if self.role_maker._is_first_worker():
-            self._worker.save_one_table(table_id, path, mode)
+            self._worker.save_one_model(table_id, path, mode)
         fleet.util.barrier()
 
     def _save_dense_params(self, *args, **kwargs):
