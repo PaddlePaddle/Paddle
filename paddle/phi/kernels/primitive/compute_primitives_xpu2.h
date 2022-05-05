@@ -336,7 +336,7 @@ __device__ __forceinline__ void Reduce(T* out,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
-    BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
+    details::BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {

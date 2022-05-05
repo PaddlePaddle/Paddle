@@ -1187,11 +1187,6 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE =
-          "      if(%s) grad_node->AddEdges(%s, %d);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
-                                  input_autograd_name, input_position);
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1200,10 +1195,6 @@ static std::string GenerateGradNodeCreationContent(
           "      grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
-
-      const char* ADD_EDGES_TEMPLATE = "      grad_node->AddEdges(&%s, %d);\n";
-      grad_node_creation_str += paddle::string::Sprintf(
-          ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
   }
 
@@ -1649,7 +1640,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     std::string amp_logic_str = "";
     if (in_vars.size() != 0) {
       const char* AMP_TENSORS_VECTOR_TEMPLATE =
-          "    std::vector<std::vector<paddle::experimental::Tensor>> "
+          "    paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+          "egr::kSlotSmallVectorSize> "
           "amp_tensors_vector = { "
           "%s };\n";
       std::string amp_tensors_vector = paddle::string::Sprintf(
@@ -2428,9 +2420,11 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
-      "  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads = "
+      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> hooked_grads = "
       "GradNode%s::ApplyGradientHooks(grads);\n"
-      "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
+      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> outputs(%d);\n"
       "  %s\n"
       "  if(NeedComplexToRealConversion()) "
       "HandleComplexGradToRealGrad(&outputs);\n"
@@ -2441,10 +2435,12 @@ static std::string GenerateGradNodeCCContents(
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
-      "std::vector<std::vector<paddle::experimental::Tensor>> "
+      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> "
       "GradNode%s::operator()("
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
-      "create_graph) {\n"
+      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize>& grads, bool "
+      "create_graph, bool is_new_grad) {\n"
       "%s"
       "%s"
       "\n}";
@@ -2487,10 +2483,13 @@ static std::string GenerateGradNodeHeaderContents(
       "Construct GradNode%s \"; }\n"
       "  ~GradNode%s() override { VLOG(6) << \" Destruct GradNode%s \"; }\n"
       "\n"
-      "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
+      "  virtual "
+      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> "
       "operator()("
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
-      "create_graph = false) "
+      "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize>& grads, bool "
+      "create_graph = false, bool is_new_grad = false) "
       "override;\n"
       "\n"
       "  void ClearTensorWrappers() override { \n"

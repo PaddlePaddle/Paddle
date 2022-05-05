@@ -27,23 +27,24 @@ namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Place place, bool blocking);
+Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Place place, bool blocking) const {
+Tensor Tensor::copy_to(const Place &place, bool blocking) const {
   return experimental::copy_to(*this, place, blocking);
 }
 
 template <typename T>
 Tensor Tensor::copy_to(const Place &target_place) const {
-  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argument instead. "
-                  "reason: copying a Tensor to another device does not need "
-                  "to specify the data type template argument.";
+  LOG_FIRST_N(WARNING, 1)
+      << "The Tensor's `copy_to` method is deprecated since version "
+         "2.3, and will be removed in version 2.4, please use "
+         "`copy_to` method without template argument instead. "
+         "reason: copying a Tensor to another device does not need "
+         "to specify the data type template argument.";
   return copy_to(target_place, /*blocking=*/false);
 }
 

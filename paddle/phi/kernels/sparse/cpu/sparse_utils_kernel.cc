@@ -254,11 +254,13 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   if (indices_dims.size() == 1) {
     sparse_dim = 1;
   }
-  const int64_t dense_dim = values.dims().size() - 1;
+  const int64_t dense_dim = x.dense_dim();
 
-  const auto place = dev_ctx.GetPlace();
   const T* x_data = values.data<T>();
-  T* out_data = out->mutable_data<T>(place);
+  *out = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(x.dtype(), x.dims(), x.non_zero_elements().layout()));
+  T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];

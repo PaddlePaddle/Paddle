@@ -235,12 +235,13 @@ class TestCondInputOutput(unittest.TestCase):
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        ret = exe.run(main_program,
+                      fetch_list=[out, b, a.grad_name, b.grad_name])
         # Note: fill_constant has loss of precision, you have to assertEqual
         # with values doens't lose precision in float-point number.
-        self.assertEqual(ret[0][0], 1.25)
-        self.assertEqual(ret[1][0], 0.0)
-        self.assertEqual(ret[2][0], 1.0)
+        self.assertEqual(ret[0][0], ret[1][0])
+        self.assertEqual(ret[2][0], 0.0)
+        self.assertEqual(ret[3][0], 1.0)
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
