@@ -211,16 +211,12 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
     def setUp(self):
         self.input1_np = np.random.random(size=(10, 3)).astype(np.float32)
         self.input2_np = np.random.random(size=(10, 3)).astype(np.float32)
-        # self.label_np = np.random.randint(
-        #     low=0, high=2, size=10).astype(np.int64)
         a = np.array([-1, -1, -1, -1, -1]).astype(np.int64)
         b = np.array([1, 1, 1, 1, 1]).astype(np.int64)
         self.label_np = np.concatenate((a, b), axis=0)
         np.random.shuffle(self.label_np)
         self.input1_np_1D = np.random.random(size=10).astype(np.float32)
         self.input2_np_1D = np.random.random(size=10).astype(np.float32)
-        # self.label_np_1D = np.random.randint(
-        #     low=0, high=2, size=1).astype(np.int64)
         self.label_np_1D = np.array([1]).astype(np.int64)
 
     def run_dynamic(self):
