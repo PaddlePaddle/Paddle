@@ -24,8 +24,6 @@ void RReluKernel(const Context& dev_ctx,
                  const float lower,
                  const float upper,
                  bool is_test,
-                 bool fix_seed,
-                 int seed,
                  DenseTensor* out,
                  DenseTensor* noise);
 }  // namespace phi

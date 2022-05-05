@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_, default_main_program
+from ...fluid.framework import convert_np_dtype_to_dtype_
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
@@ -625,33 +625,16 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
                 upper))
 
     is_test = not training
-    seed = None
 
     if _in_legacy_dygraph():
-        if default_main_program().random_seed != 0:
-            seed = default_main_program().random_seed
         out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
-                                  is_test, 'fix_seed', seed is not None, 'seed',
-                                  seed if seed is not None else 0)
+                                  is_test)
         return out
-
-    def get_attrs(prog, lower, upper, is_test, seed):
-        if (seed is None or seed == 0) and prog.random_seed != 0:
-            seed = prog.random_seed
-        attrs = {
-            'lower': lower,
-            'upper': upper,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
-        }
-        return attrs
 
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     noise = helper.create_variable_for_type_inference(dtype=x.dtype)
-    attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
-
+    attrs = {'lower': lower, 'upper': upper, 'is_test': is_test}
     helper.append_op(
         type='rrelu',
         inputs={"X": x},

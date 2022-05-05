@@ -17,10 +17,8 @@
 namespace phi {
 
 KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("rrelu",
-                         {"X"},
-                         {"lower", "upper", "is_test", "fix_seed", "seed"},
-                         {"Out", "Noise"});
+  return KernelSignature(
+      "rrelu", {"X"}, {"lower", "upper", "is_test"}, {"Out", "Noise"});
 }
 
 KernelSignature RReluGradGradOpArgumentMapping(

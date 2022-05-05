@@ -277,8 +277,6 @@ void RReluInferMeta(const MetaTensor& x,
                     float lower,
                     float upper,
                     bool is_test,
-                    bool fix_seed,
-                    int seed,
                     MetaTensor* out,
                     MetaTensor* noise);
 

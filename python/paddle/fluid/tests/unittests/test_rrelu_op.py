@@ -187,6 +187,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             paddle.enable_static()
 
     def test_error_functional(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(

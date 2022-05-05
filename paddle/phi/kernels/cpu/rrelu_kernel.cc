@@ -26,8 +26,6 @@ void RReluKernel(const Context& dev_ctx,
                  const float lower,
                  const float upper,
                  bool is_test,
-                 bool fix_seed,
-                 int seed,
                  DenseTensor* out,
                  DenseTensor* noise) {
   const T* x_ptr = x.data<T>();
@@ -52,8 +50,7 @@ void RReluKernel(const Context& dev_ctx,
     return;
   }
 
-  int seed_data = fix_seed ? seed : 0;
-  auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+  auto engine = paddle::framework::GetCPURandomEngine(0);
 
   std::uniform_real_distribution<float> dist(lower, upper);
 
