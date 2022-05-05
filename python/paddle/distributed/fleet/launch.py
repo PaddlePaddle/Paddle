@@ -166,6 +166,33 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_mlus", dest="mlus")
 
+    if fluid.core.is_compiled_with_ipu():
+        base_group.add_argument(
+            "--num_ipus",
+            type=int,
+            default=1,
+            help="It's for ipu training. The total number of IPUs requested. For example: "
+            "--num_ipus=128 will request 128 IPUs for training.")
+        base_group.add_argument(
+            "--ipus_per_replica",
+            type=int,
+            default=1,
+            help="It's for ipu training. The number of IPUs requested by each replica. For example: "
+            "--ipus_per_replica=8 will allocate 8 IPUs to each replica.")
+        base_group.add_argument(
+            "--partition_name",
+            type=str,
+            default="pod64",
+            help="It's for ipu training. Set the name of the re-created partition."
+        )
+        base_group.add_argument(
+            "--vipu_server",
+            type=str,
+            default="127.0.0.1",
+            help="It's for ipu training. Choose the vipu server host to enable vipu."
+            "Vipu server host is able to be checked by the command \`vipu-admin --server-version\` out of the docker container."
+        )
+
     base_group.add_argument(
         "training_script",
         type=str,
@@ -432,6 +459,78 @@ def launch_ps(args, distribute_mode):
     return
 
 
+def launch_ipu(args):
+    # The number of replicas for data parallel
+    assert (args.num_ipus % args.ipus_per_replica) == 0, \
+                "The number of IPUs:{} mod the number of IPUs per replica:{} must == 0".format(args.num_ipus, args.ipus_per_replica)
+    num_replicas = int(args.num_ipus / args.ipus_per_replica)
+
+    # The number of processes
+    nproc_per_node = 1
+    if args.nproc_per_node is not None:
+        nproc_per_node = args.nproc_per_node
+    num_nodes = len(args.ips.split(','))
+    num_procs = num_nodes * nproc_per_node
+    assert (num_replicas % num_procs) == 0, \
+                "The number of replicas:{} mod the number of processes:{} must == 0".format(num_replicas, num_procs)
+
+    # ips and endpoints
+    ips = args.ips.replace(' ', '').split(',')
+    endpoints = [x + ":8090" for x in ips]
+
+    # args for poprun
+    poprun_args = ['poprun']
+
+    poprun_args.append('--num-instances={}'.format(num_procs))
+    poprun_args.append('--num-replicas={}'.format(num_replicas))
+    poprun_args.append('--ipus-per-replica={}'.format(args.ipus_per_replica))
+    poprun_args.append('--host={}'.format(','.join(ips)))
+    poprun_args.append('--vipu-partition={}'.format(args.partition_name))
+    poprun_args.append('--vipu-server-host={}'.format(args.vipu_server))
+
+    poprun_args.extend([
+        '--update-partition=yes', '--vipu-server-timeout=120',
+        '--print-topology=yes', '--numa-aware=yes'
+    ])
+    poprun_args.append('--mpi-global-args=\'--tag-output\'')
+
+    # global envs
+    global_envs = '--mpi-local-args=\''
+    log_level = os.getenv('POPART_LOG_LEVEL', None)
+    if log_level:
+        global_envs += '-x POPART_LOG_LEVEL={} '.format(log_level)
+    global_envs += '-x PADDLE_TRAINERS_NUM={} -x PADDLE_TRAINER_ENDPOINTS={}'.format(
+        num_procs, ','.join(endpoints))
+    global_envs += '\''
+    poprun_args.append(global_envs)
+
+    # local envs
+    for idx in range(num_procs):
+        cur_endpoint = endpoints[idx // nproc_per_node]
+        rank_in_node = idx % nproc_per_node
+        poprun_args.append(
+            '--instance-mpi-local-args={}:\"-x PADDLE_TRAINER_ID={} -x PADDLE_CURRENT_ENDPOINT={} -x PADDLE_RANK_IN_NODE={}\"'.
+            format(idx, idx, cur_endpoint, rank_in_node))
+
+    # executor
+    poprun_args.append("python3.7")
+    # script and script args
+    poprun_args.append(args.training_script)
+    for arg in args.training_script_args:
+        poprun_args.append(arg)
+
+    # for debug
+    print("-----------  PopRun Command -----------")
+    for i in range(len(poprun_args) - 1):
+        print("%s \\" % (poprun_args[i]))
+    print("%s" % (poprun_args[len(poprun_args) - 1]))
+    print("---------------------------------------")
+
+    # Launch
+    subprocess.run(" ".join(poprun_args), shell=True)
+    return
+
+
 def infer_backend(args):
     if args.backend != "auto": return
     if fluid.core.is_compiled_with_cuda():
@@ -442,6 +541,8 @@ def infer_backend(args):
         args.backend = 'bkcl'
     elif fluid.core.is_compiled_with_mlu():
         args.backend = 'cncl'
+    elif fluid.core.is_compiled_with_ipu():
+        args.backend = 'gcl'
     else:
         args.backend = 'gloo'
 
@@ -559,6 +660,15 @@ def launch():
         - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
+
+    IPU Parameters:
+        - ``--num_ipus``: It's for ipu training. The total number of IPUs requested. e.g., ``--num_ipus=128`` will request 128 IPUs for training.
+
+        - ``--ipus_per_replica``: It's for ipu training. The number of IPUs requested by each replica. e.g., ``--ipus_per_replica=8`` will allocate 8 IPUs to each replica.
+
+        - ``--partition_name``: It's for ipu training. Set the name of the re-created partition.
+
+        - ``--vipu_server``: It's for ipu training. Choose the vipu server host to enable vipu. Vipu server host is able to be checked by the command \`vipu-admin --server-version\` out of the docker container.
 
     Collective Parameters:
         - ``--ips``: Paddle cluster nodes ips, e.g., ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
@@ -709,6 +819,13 @@ def launch():
         distribute_mode = DistributeMode.COLLECTIVE
 
     #assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
+
+    # Only support Collective mode with IPUs
+    if args.backend == 'gcl':
+        if distribute_mode != DistributeMode.COLLECTIVE:
+            raise ValueError("Only support Collective mode with IPUs.")
+        launch_ipu(args)
+        return
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

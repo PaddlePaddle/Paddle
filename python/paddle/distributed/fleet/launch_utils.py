@@ -58,6 +58,7 @@ class DeviceMode():
     ASCEND_NPU = 3
     UNKNOWN = 3
     MLU = 4
+    IPU = 5
 
 
 class Cluster(object):
@@ -803,6 +804,10 @@ def get_device_mode(backend):
     if backend == 'gloo':
         print("launch train in CPU mode")
         return DeviceMode.CPU
+
+    if backend == 'gcl':
+        print("launch train in IPU mode")
+        return DeviceMode.IPU
 
     raise RuntimeError("Don't supported devices")
 
@@ -1768,11 +1773,14 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter']:
-        raise ValueError("paddle.distributed initialize error, "
-                         "backend argument can only be one of "
-                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
-                         "but got %s" % backend)
+    if backend not in [
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'gcl'
+    ]:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'gcl' "
+            "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(
@@ -1796,6 +1804,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with mlu but you assign 'cncl' as backend."
+        )
+
+    if backend == 'gcl' and not fluid.core._is_compiled_with_ipu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with ipu but you assign 'gcl' as backend."
         )
 
 
@@ -1823,5 +1837,8 @@ def get_backend_by_compile_flag():
 
     if fluid.core.is_compiled_with_mlu():
         return 'cncl'
+
+    if fluid.core.is_compiled_with_ipu():
+        return 'gcl'
 
     return 'gloo'
