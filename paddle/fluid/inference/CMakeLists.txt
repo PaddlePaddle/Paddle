@@ -36,7 +36,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-set(utils_modules stringpiece pretty_log string_helper)
+set(utils_modules stringpiece pretty_log string_helper benchmark)
 
 add_subdirectory(api)
 
@@ -46,15 +46,9 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
      zero_copy_tensor reset_tensor_array
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
 
-if(WITH_ONNXRUNTIME)
-  set(STATIC_INFERENCE_API ${STATIC_INFERENCE_API} onnxruntime_predictor)
-endif()
-
-#TODO(wilber, T8T9): Do we still need to support windows gpu static library?
+#windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules})
-elseif(WITH_IPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules} paddle_ipu)
+  cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API} ${utils_modules})
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
@@ -86,21 +80,20 @@ set(SHARED_INFERENCE_SRCS
     ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
-set(SHARED_INFERENCE_DEPS ${fluid_modules} ${phi_modules} analysis_predictor)
+set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor ${utils_modules})
 
 if (WITH_CRYPTO) 
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
 endif (WITH_CRYPTO)
 
 if (WITH_PSCORE)
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service tensor_table)
 endif ()
 
 if (WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} 
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc
   )
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} onnxruntime_predictor)
 endif (WITH_ONNXRUNTIME)
 
 # Create shared inference library

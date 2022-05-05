@@ -1239,7 +1239,9 @@ class Resharder:
                     for item in self.has_allgather[var_name]:
                         if op_desc.group == item[0]:
                             tensor_list = [
-                                program.global_block().vars[var_name]
+                                get_var_with_recursion(
+                                    var_name, block,
+                                    self.auto_parallel_main_prog)
                                 for var_name in item[1]
                             ]
                             break

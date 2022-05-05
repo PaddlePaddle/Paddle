@@ -97,15 +97,19 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                 if not isinstance(data, list):
                     data = to_list(data)
 
-                if batch_data is None:
-                    batch_data = [[] for i in range(len(data))]
-
-                for idx in range(len(data)):
-                    batch_data[idx].append(data[idx])
-
-                if (step + 1) % self.batch_size == 0:
-                    yield batch_data
+                if self.batch_size == 1:
+                    yield data
                     batch_data = None
+                else:
+                    if batch_data is None:
+                        batch_data = [[] for i in range(len(data))]
+
+                    for idx in range(len(data)):
+                        batch_data[idx].append(data[idx])
+
+                    if (step + 1) % self.batch_size == 0:
+                        yield batch_data
+                        batch_data = None
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=self.feed_list, capacity=70, iterable=False)

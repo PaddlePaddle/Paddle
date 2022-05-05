@@ -50,6 +50,8 @@ enum class TracerEventType {
   PythonOp = 13,
   // Used to mark python level userdefined
   PythonUserDefined = 14,
+  // Used to mark mlu runtime record returned by cnpapi
+  MluRuntime = 15,
   // A flag to denote the number of current types
   NumTypes
 };

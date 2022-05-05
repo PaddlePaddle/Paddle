@@ -425,4 +425,5 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.fluid.framework._test_eager_guard():
+        unittest.main()

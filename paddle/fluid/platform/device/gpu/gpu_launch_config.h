@@ -99,10 +99,11 @@ struct GpuLaunchConfig {
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int64_t numel,
     int vec_size = 1) {
-  PADDLE_ENFORCE_GT(numel, 0, platform::errors::InvalidArgument(
-                                  "element quantity should be greater than 0,"
-                                  " but received value is: %d.",
-                                  numel));
+  PADDLE_ENFORCE_GE(numel, 0,
+                    platform::errors::InvalidArgument(
+                        "element quantity should be greater than or equal 0,"
+                        " but received value is: %d.",
+                        numel));
   // Get compute_capability
   const int capability = context.GetComputeCapability();
   /* If thread number per block is 64/128/256/512, cuda performs better.*/
@@ -170,6 +171,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
   return config;
 }
 
+template <typename Context>
+void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+  auto max_grid_dim = reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                          .GetCUDAMaxGridDimSize();
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
+  grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
+}
 }  // namespace platform
 }  // namespace paddle
 

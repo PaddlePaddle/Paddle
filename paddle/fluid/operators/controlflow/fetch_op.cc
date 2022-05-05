@@ -33,6 +33,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
       framework::Tensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
+      VLOG(4) << "innerTransDataLayoutFromMKLDNN";
       framework::innerTransDataLayoutFromMKLDNN(
           src_item.layout(), fetch_var_name == framework::GradVarName("Filter")
                                  ? framework::DataLayout::kNCHW

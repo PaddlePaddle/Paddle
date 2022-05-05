@@ -161,10 +161,10 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
     VLOG(3) << "ComputeInterceptor " << interceptor_id_
             << " Reply data_is_useless msg to " << up_id
             << " for step: " << step_;
-    if (up_id == -1) return;
+    if (is_source_ && up_id == -1) return;
 
     InterceptorMessage reply_msg;
-    reply_msg.set_message_type(DATE_IS_USELESS);
+    reply_msg.set_message_type(DATA_IS_USELESS);
     Send(up_id, reply_msg);
   }
 }
@@ -247,7 +247,7 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
     IncreaseReady(msg.src_id());
     Run();
-  } else if (msg.message_type() == DATE_IS_USELESS) {
+  } else if (msg.message_type() == DATA_IS_USELESS) {
     DecreaseBuff(msg.src_id());
     Run();
   } else if (msg.message_type() == STOP) {

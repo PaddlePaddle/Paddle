@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -49,10 +49,9 @@ void FakeDot(const Context& dev_ctx,
              float fake_attr_float,
              double fake_attr_double,
              int64_t fake_attr_int64,
-             phi::dtype::float16 fake_attr_f16,
              phi::DataType fake_attr_dtype,
              const phi::Scalar& fake_attr_scalar,
-             const phi::ScalarArray& fake_attr_scalar_array,
+             const phi::IntArray& fake_attr_int_array,
              const std::vector<int64_t>& fake_attr_int64_vec,
              const std::vector<int>& fake_attr_int_vec,
              phi::DenseTensor* out,
@@ -64,7 +63,6 @@ void FakeDot(const Context& dev_ctx,
   std::cout << "fake_attr_float: " << fake_attr_float << std::endl;
   std::cout << "fake_attr_double: " << fake_attr_double << std::endl;
   std::cout << "fake_attr_int64: " << fake_attr_int64 << std::endl;
-  std::cout << "fake_attr_f16: " << fake_attr_f16 << std::endl;
   std::cout << "fake_attr_dtype: " << fake_attr_dtype << std::endl;
   std::cout << "fake_attr_int64_vec: " << fake_attr_int64_vec.size()
             << std::endl;
@@ -78,7 +76,6 @@ void FakeDot(const Context& dev_ctx,
   assert(fake_attr_float == 2);
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
-  assert(fake_attr_f16 == phi::dtype::float16(5));
   assert(fake_attr_dtype == phi::DataType::UINT32);
   assert(fake_attr_int64_vec.size() == 0);
   assert(fake_attr_int_vec.size() == 0);
@@ -248,12 +245,11 @@ TEST(CustomKernel, custom_kernel_dot) {
   float fake_attr_float = 2.0;
   double fake_attr_double = 3.0;
   int64_t fake_attr_int64 = 4;
-  phi::dtype::float16 fake_attr_f16 = phi::dtype::float16(5);
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
-  phi::ScalarArray fake_attr_scalar_array;
+  phi::IntArray fake_attr_int_array;
   std::vector<int64_t> fake_attr_int64_vec;
   std::vector<int> fake_attr_int_vec;
 
@@ -262,10 +258,9 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_float);
   kernel_context.EmplaceBackAttr(fake_attr_double);
   kernel_context.EmplaceBackAttr(fake_attr_int64);
-  kernel_context.EmplaceBackAttr(fake_attr_f16);
   kernel_context.EmplaceBackAttr(fake_attr_dtype);
   kernel_context.EmplaceBackAttr(fake_attr_scalar);
-  kernel_context.EmplaceBackAttr(fake_attr_scalar_array);
+  kernel_context.EmplaceBackAttr(fake_attr_int_array);
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 

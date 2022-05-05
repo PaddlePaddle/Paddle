@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void RandintRawKernel(const Context& dev_ctx,
                       int low,
                       int high,
-                      const ScalarArray& shape,
+                      const IntArray& shape,
                       DataType dtype,
                       int seed,
                       DenseTensor* out) {
@@ -49,7 +49,7 @@ template <typename T, typename Context>
 void RandintKernel(const Context& dev_ctx,
                    int low,
                    int high,
-                   const ScalarArray& shape,
+                   const IntArray& shape,
                    DataType dtype,
                    DenseTensor* out) {
   RandintRawKernel<T>(dev_ctx, low, high, shape, dtype, 0, out);

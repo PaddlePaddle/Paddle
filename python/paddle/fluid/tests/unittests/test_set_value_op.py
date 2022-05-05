@@ -1011,10 +1011,7 @@ class TestBackward(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
-        # 
-        # TODO(pangyoki) add inplace and delete if
-        if _in_legacy_dygraph():
-            self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
+        self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
     def test_dynamic(self):
         with _test_eager_guard():
@@ -1192,8 +1189,8 @@ class TestGradientTruncated(unittest.TestCase):
 
         x[0, :] = value
 
-        self.assertTrue(~x.stop_gradient)
-        self.assertTrue(~x.is_leaf)
+        self.assertTrue(not x.stop_gradient)
+        self.assertTrue(not x.is_leaf)
 
     def test_consistent_with_competitor(self):
         with _test_eager_guard():

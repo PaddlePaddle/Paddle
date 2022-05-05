@@ -18,10 +18,12 @@
 #include <functional>
 #include "glog/logging.h"
 
-void Algo() { VLOG(3) << "algo test"; }
+enum ConvAlgos { GEMMKernel = 0, CuDNNKernel_1 = 1, CuDNNKernel_2 = 2 };
 
 TEST(AlgosCache, AlgosCache) {
-  phi::autotune::AlgorithmsCache<std::function<void()>> cache;
+  auto autotune_cache = phi::autotune::AutoTuneCache::Instance();
+  auto& cache = autotune_cache.GetConvForward();
+
   std::vector<int64_t> x_shape = {4, 224, 224, 3};
   std::vector<int64_t> w_shape = {32, 3, 3, 3};
   std::vector<int> paddings = {0, 0};
@@ -29,17 +31,30 @@ TEST(AlgosCache, AlgosCache) {
   std::vector<int> dilations = {1, 1};
   phi::DataType dtype = paddle::experimental::CppTypeToDataType<float>::Type();
 
-  auto key =
-      cache.ConvKey(x_shape, w_shape, paddings, strides, dilations, dtype);
+  auto key = phi::autotune::ConvKey(
+      x_shape, w_shape, paddings, strides, dilations, dtype);
   EXPECT_EQ(cache.Find(key), false);
-  cache.Set(key, Algo);
+  cache.Set(key, ConvAlgos::GEMMKernel);
+  EXPECT_EQ(cache.Size(), 1);
   EXPECT_EQ(cache.Find(key), true);
   auto algo = cache.Get(key);
-  algo();
+  EXPECT_EQ(algo, ConvAlgos::GEMMKernel);
 
   x_shape = {4, 128, 128, 3};
-  key = cache.ConvKey(x_shape, w_shape, paddings, strides, dilations, dtype);
+  key = phi::autotune::ConvKey(
+      x_shape, w_shape, paddings, strides, dilations, dtype);
   EXPECT_EQ(cache.Find(key), false);
+  cache.Set(key, ConvAlgos::CuDNNKernel_1);
+  EXPECT_EQ(cache.Size(), 2);
+  EXPECT_EQ(cache.CacheHits(), 1);
+  EXPECT_EQ(cache.CacheMisses(), 2);
+
   float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
   EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);
+
+  autotune_cache.UpdateStatus();
+  EXPECT_EQ(autotune_cache.Size(), 2);
+  EXPECT_EQ(autotune_cache.CacheHits(), 1);
+  EXPECT_EQ(autotune_cache.CacheMisses(), 2);
+  EXPECT_LT(std::abs(cache_hit_rate - autotune_cache.CacheHitRate()), 1e-5);
 }

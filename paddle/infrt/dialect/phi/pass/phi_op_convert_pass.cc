@@ -36,12 +36,35 @@
 #include "paddle/phi/ops/compat/signatures.h"
 
 namespace {
+
+infrt::Place ParsePlaceFromStr(const std::string &key) {
+  size_t first_index = key.find_first_of('-');
+  size_t second_index = key.find_last_of('-');
+  if (first_index != second_index) {
+    llvm::Optional<infrt::TargetType> tar =
+        infrt::GetTargetType(key.substr(0, first_index));
+    llvm::Optional<infrt::PrecisionType> pre = infrt::GetPrecisionType(
+        key.substr(first_index + 1, second_index - first_index - 1));
+    llvm::Optional<infrt::LayoutType> lay =
+        infrt::GetLayoutType(key.substr(second_index + 1));
+    if (tar && pre && lay) {
+      return infrt::Place(tar.getValue(), pre.getValue(), lay.getValue());
+    }
+  }
+  LOG(FATAL) << "Can't parse infrt::Place from string:" << key;
+  return infrt::Place();
+}
+
 class PhiOpConvertPass
     : public mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "PhiOpConvertPass"; }
   void runOnFunction() override;
-  PhiOpConvertPass();
+
+  /// Initialize the valid_places_ by the valid_places_options_ while
+  /// valid_places_options_ has values.
+  mlir::LogicalResult initialize(mlir::MLIRContext *context) override;
+  PhiOpConvertPass() {}
   explicit PhiOpConvertPass(const std::vector<infrt::Place> &valid_places)
       : valid_places_(valid_places) {}
 
@@ -53,21 +76,83 @@ class PhiOpConvertPass
   void getDependentDialects(mlir::DialectRegistry &registry) const override;
 
  private:
+  void updateInputsAndResults(infrt::TargetType target);
   void convertStage();
   void dispatchStage();
 
-  // Force a specified data format for all layout sensitive operations.
-  Option<std::string> valid_places_options_{
+  ListOption<std::string> valid_places_options_{
       *this,
       "valid-targets",
-      llvm::cl::desc("Set the valid target, [CPU-FP32-NCHW]")};
+      llvm::cl::desc(
+          "Set the valids target, such as: CPU-FP32-NCHW,GPU-FP32-NCHW"),
+      llvm::cl::MiscFlags::CommaSeparated};
 
   std::vector<infrt::Place> valid_places_;
 };
+
+/// Initialize the canonicalizer by building the set of patterns used during
+/// execution.
+mlir::LogicalResult PhiOpConvertPass::initialize(mlir::MLIRContext *context) {
+  if (valid_places_options_.hasValue()) {
+    VLOG(4) << "Start parse valid_places from commond line:";
+    if (!valid_places_.empty()) {
+      LOG(WARNING) << "Find valid place from commandline, current value will "
+                      "be overwrittern.";
+      valid_places_.clear();
+    }
+    for (auto &val : *valid_places_options_) {
+      VLOG(4) << "place string:" << val;
+      valid_places_.emplace_back(ParsePlaceFromStr(val));
+    }
+    VLOG(4) << "End parse valid_places from commond line:";
+  }
+  return mlir::success();
+}
+
 // Implementation of the PhiOpConvertPass.
 void PhiOpConvertPass::runOnFunction() {
+  updateInputsAndResults(valid_places_[0].target);
   convertStage();
   dispatchStage();
+}
+
+void PhiOpConvertPass::updateInputsAndResults(infrt::TargetType target) {
+  mlir::Block &body = getFunction().front();
+  auto loc = getFunction().getLoc();
+  mlir::Operation &operation = body.front();
+  mlir::MLIRContext *context = operation.getContext();
+  size_t num_input = body.getNumArguments();
+
+  // step1. update input cpu tensors into gpu tensors
+  for (size_t index = 0; index < num_input; index++) {
+    auto argument = body.getArgument(index);
+    if (auto t = argument.getType().dyn_cast<::infrt::DenseTensorType>()) {
+      mlir::Type replace_type = infrt::DenseTensorType::get(
+          context, target, t.getPrecision(), infrt::LayoutType::NCHW);
+      getFunction().insertArgument(index, replace_type, {}, loc);
+      argument.replaceAllUsesWith(getFunction().getArgument(index));
+      getFunction().eraseArgument(index + 1);
+    }
+  }
+  // update output tensors
+  unsigned int num_result = getFunction().getNumResults();
+  for (unsigned int index = 0; index < num_result; index++) {
+    mlir::Type replace_type =
+        infrt::DenseTensorType::get(context,
+                                    target,
+                                    infrt::PrecisionType::FLOAT32,
+                                    infrt::LayoutType::NCHW);
+    getFunction().eraseResult(index);
+    getFunction().insertResult(index, replace_type, {});
+  }
+  // update dense_tensor_map
+  mlir::Type replace_type = infrt::DenseTensorType::get(
+      context, target, infrt::PrecisionType::FLOAT32, infrt::LayoutType::NCHW);
+
+  for (auto &op : body.without_terminator()) {
+    if (op.getName().getIdentifier().str() == "phi_dt.tensor_map_get_tensor")
+      op.getResult(0).setType(replace_type);
+  }
 }
 
 void PhiOpConvertPass::convertStage() {
@@ -108,14 +193,14 @@ void PhiOpConvertPass::convertStage() {
       op->replaceAllUsesWith(kernel_op.getResults());
     } else {
       ::phi::KernelSignature kernel_sign =
-          ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
+          (*::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name))(
               infrt::ProtoArgumentMappingContext(op));
       VLOG(3) << "IncompatiblePhiKernel: op(" << op_name << "), kernel("
               << kernel_sign.name << ")";
       // resort input&output according to kernel_sign
       ::llvm::SmallVector<mlir::Value, 4> inputs, ori_output;
       ::llvm::SmallVector<mlir::Type, 4> output_types;
-      for (const std::string &str : std::get<0>(kernel_sign.args)) {
+      for (const std::string &str : kernel_sign.input_names) {
         if (pd_dialect_inputs_info_map_.at(op_name).count(str) == 0) {
           LOG(ERROR) << "No input info for Op " << op_name << " and argument "
                      << str;
@@ -125,7 +210,7 @@ void PhiOpConvertPass::convertStage() {
         inputs.push_back(op->getOperands()[index]);
       }
 
-      for (const std::string &str : std::get<2>(kernel_sign.args)) {
+      for (const std::string &str : kernel_sign.output_names) {
         if (pd_dialect_outputs_info_map_.at(op_name).count(str) == 0) {
           LOG(ERROR) << "No output info for Op " << op_name << " and argument "
                      << str;
@@ -156,6 +241,7 @@ void PhiOpConvertPass::dispatchStage() {
 
   mlir::OpBuilder builder(&block, block.begin());
   std::map<infrt::TargetType, mlir::Value> phi_context;
+
   for (infrt::KernelOp kernel_op : worklist) {
     std::string kernel_name = kernel_op.name().str();
     std::vector<infrt::PhiKernelDesc> candidates =
@@ -191,7 +277,16 @@ void PhiOpConvertPass::dispatchStage() {
                   .output();
           phi_context[infrt::TargetType::CPU] = context_value;
         } break;
-        case infrt::TargetType::GPU:
+        case infrt::TargetType::GPU: {
+          auto context_value =
+              builder
+                  .create<infrt::phi::CreateGPUContextOp>(
+                      kernel_op.getLoc(),
+                      infrt::phi::ContextType::get(kernel_op.getContext(),
+                                                   infrt::TargetType::GPU))
+                  .output();
+          phi_context[infrt::TargetType::GPU] = context_value;
+        } break;
         case infrt::TargetType::UNK:
         default:
           LOG(FATAL) << "Unsupported TargetType";
@@ -204,15 +299,25 @@ void PhiOpConvertPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.input_types.size();
          ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(),
-          infrt::DenseTensorType::get(
-              kernel_op.getContext(),
-              phi_kernel_desc.input_types[index].target,
-              phi_kernel_desc.input_types[index].precision,
-              phi_kernel_desc.input_types[index].layout),
-          input);
-      operation_state.addOperands(cvt_tensor_type_op.output());
+      if (input.getType().dyn_cast<::infrt::DenseTensorType>().getTarget() ==
+              ::infrt::TargetType::CPU &&
+          phi_kernel_desc.input_types[index].target ==
+              ::infrt::TargetType::GPU) {
+        auto cvt_tensor_type_op = builder.create<infrt::phi::GpuMemCopyOp>(
+            kernel_op.getLoc(),
+            infrt::DenseTensorType::get(
+                kernel_op.getContext(),
+                phi_kernel_desc.input_types[index].target,
+                phi_kernel_desc.input_types[index].precision,
+                phi_kernel_desc.input_types[index].layout),
+            input,
+            phi_context[infrt::TargetType::GPU],
+            mlir::BoolAttr::get(kernel_op.getContext(), /*d2h*/ false));
+
+        operation_state.addOperands(cvt_tensor_type_op.output());
+      } else {
+        operation_state.addOperands(input);
+      }
     }
 
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
@@ -227,25 +332,11 @@ void PhiOpConvertPass::dispatchStage() {
     mlir::Operation *phi_operation = builder.createOperation(operation_state);
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
-      mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
-          cvt_tensor_type_op.output());
+          phi_operation->getResult(index));
     }
     kernel_op.erase();
   }
-}
-
-PhiOpConvertPass::PhiOpConvertPass() {
-  if (!valid_places_options_.hasValue()) {
-    valid_places_.emplace_back(infrt::TargetType::CPU,
-                               infrt::PrecisionType::FLOAT32,
-                               infrt::LayoutType::NCHW);
-    return;
-  }
-
-  LOG(FATAL) << "To be done for specifying places in command line";
 }
 
 void PhiOpConvertPass::getDependentDialects(
@@ -261,11 +352,7 @@ void PhiOpConvertPass::getDependentDialects(
 
 mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
-}
-
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
-  return std::make_unique<PhiOpConvertPass>();
 }

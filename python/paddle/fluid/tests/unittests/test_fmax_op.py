@@ -125,6 +125,7 @@ class TestElementwiseFmaxOp(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -136,21 +137,29 @@ class TestElementwiseFmaxOp(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_eager=True)
 
 
 class TestElementwiseFmax2Op(OpTest):
@@ -159,6 +168,7 @@ class TestElementwiseFmax2Op(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -172,18 +182,26 @@ class TestElementwiseFmax2Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_eager=True)
