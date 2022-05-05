@@ -80,7 +80,8 @@ void ConvInt8ScalesPass::ApplyImpl(ir::Graph* graph) const {
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
 
-    if (!platform::HasOpINT8DataType(conv_op->Op())) {
+    if (!platform::HasOpINT8DataType(conv_op->Op()) ||
+        conv_op->Op()->HasAttr("Sum_scale")) {
       return;
     }
 

@@ -12,28 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestConvInt8ScalesPass(PassAutoScanTest):
-    """
-    x_var   f_var(persistable)   bias_var(persistable)
-      \       /                     /
-        conv2d 
-          |
-      conv2d_var  
-    """
-
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.pass_builder().append_pass("conv_int8_scales_pass")
@@ -86,42 +72,46 @@ class TestConvInt8ScalesPass(PassAutoScanTest):
         else:
             f_shape[1] = x_shape[3]
 
-        strides = [2, 2]
+        strides = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=2, max_size=2))
 
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
-        padding = [1, 1, 1, 1]
+        padding = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=4, max_size=4))
 
         groups = draw(st.integers(min_value=1, max_value=3))
 
-        dilations = [1, 1]
+        dilations = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=2, max_size=2))
+
         bias_shape = [f_shape[0]]
-        conv_bias_shape = []
         inputs = dict()
         weights = dict()
         use_mkldnn = True
 
-        if draw(st.booleans()):
-            conv_bias_shape = [f_shape[0]]
+        has_bias = draw(st.booleans())
+        if has_bias:
             inputs = {
                 "Input": ["input_x"],
                 "Filter": ["filter"],
-                "Bias": ["conv_bias"],
             }
             weights = {
                 "filter": TensorConfig(shape=f_shape),
                 "bias": TensorConfig(shape=bias_shape),
-                "conv_bias": TensorConfig(shape=conv_bias_shape)
             }
         else:
             inputs = {
                 "Input": ["input_x"],
                 "Filter": ["filter"],
             }
-            weights = {
-                "filter": TensorConfig(shape=f_shape),
-                "bias": TensorConfig(shape=bias_shape)
-            }
+            weights = {"filter": TensorConfig(shape=f_shape), }
 
         conv2d_op = OpConfig(
             "conv2d",
